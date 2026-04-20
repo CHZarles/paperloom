@@ -18,6 +18,8 @@ public interface FileUploadRepository extends JpaRepository<FileUpload, Long> {
 
     List<FileUpload> findAllByFileMd5(String fileMd5);
 
+    List<FileUpload> findAllByVectorizationStatusIsNull();
+
     List<FileUpload> findAllByFileMd5AndUserIdOrderByCreatedAtDesc(String fileMd5, String userId);
 
     Optional<FileUpload> findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(String fileMd5, String userId);

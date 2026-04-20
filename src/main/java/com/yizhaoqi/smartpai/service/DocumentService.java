@@ -351,6 +351,8 @@ public class DocumentService {
         logger.info("获取用户可访问文件列表: userId={}", userId);
         
         try {
+            backfillLegacyVectorizationStatuses();
+
             User user = resolveUser(userId);
             String userDbId = String.valueOf(user.getId());
             
@@ -369,8 +371,6 @@ public class DocumentService {
                 logger.debug("使用有效组织标签查询文件");
             }
 
-            backfillLegacyVectorizationStatuses(files);
-            
             logger.info("成功获取用户可访问文件列表: userId={}, fileCount={}", userId, files.size());
             return files;
         } catch (Exception e) {
@@ -389,8 +389,8 @@ public class DocumentService {
         logger.info("获取用户上传的文件列表: userId={}", userId);
         
         try {
+            backfillLegacyVectorizationStatuses();
             List<FileUpload> files = fileUploadRepository.findByUserId(userId);
-            backfillLegacyVectorizationStatuses(files);
             logger.info("成功获取用户上传的文件列表: userId={}, fileCount={}", userId, files.size());
             return files;
         } catch (Exception e) {
@@ -408,6 +408,10 @@ public class DocumentService {
             return userRepository.findByUsername(userId)
                     .orElseThrow(() -> new RuntimeException("用户不存在: " + userId));
         }
+    }
+
+    private void backfillLegacyVectorizationStatuses() {
+        backfillLegacyVectorizationStatuses(fileUploadRepository.findAllByVectorizationStatusIsNull());
     }
 
     private void backfillLegacyVectorizationStatuses(List<FileUpload> files) {

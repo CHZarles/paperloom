@@ -271,10 +271,15 @@ function isVectorizationProcessing(row: Api.KnowledgeBase.UploadTask) {
   return row.vectorizationStatus === 'PENDING' || row.vectorizationStatus === 'PROCESSING';
 }
 
+function hasActualVectorizationUsage(row: Api.KnowledgeBase.UploadTask) {
+  return row.actualEmbeddingTokens !== null && row.actualEmbeddingTokens !== undefined;
+}
+
 function canRetryVectorization(row: Api.KnowledgeBase.UploadTask) {
   if (!canManageFile(row)) return false;
   if (row.vectorizationStatus === 'FAILED') return true;
-  if (!row.actualEmbeddingTokens && row.estimatedEmbeddingTokens) return true;
+  if (row.vectorizationStatus === 'COMPLETED' && !hasActualVectorizationUsage(row)) return true;
+  if (!hasActualVectorizationUsage(row) && row.estimatedEmbeddingTokens) return true;
   return false;
 }
 
@@ -295,7 +300,7 @@ async function handleRetryVectorization(row: Api.KnowledgeBase.UploadTask) {
 }
 
 function renderActualEmbeddingUsage(row: Api.KnowledgeBase.UploadTask) {
-  if (row.actualEmbeddingTokens !== null && row.actualEmbeddingTokens !== undefined) {
+  if (hasActualVectorizationUsage(row)) {
     const actualTokenLabel = Number(row.actualEmbeddingTokens).toLocaleString();
     const actualChunkLabel = Number(row.actualChunkCount || 0).toLocaleString();
     return (
@@ -311,6 +316,24 @@ function renderActualEmbeddingUsage(row: Api.KnowledgeBase.UploadTask) {
       <div class="text-xs text-sky-700 leading-5">
         <div>向量化处理中</div>
         <div class="text-stone-400">完成后会回写实际 Tokens</div>
+      </div>
+    );
+  }
+
+  if (row.vectorizationStatus === 'COMPLETED') {
+    return (
+      <div class="flex flex-col gap-6px text-xs leading-5">
+        <div class="text-emerald-700 font-500">向量化已完成</div>
+        <NEllipsis tooltip lineClamp={2} class="text-stone-500">
+          {row.vectorizationErrorMessage || '历史数据未统计实际 Tokens，可按需重试回写'}
+        </NEllipsis>
+        {canRetryVectorization(row) ? (
+          <div>
+            <NButton size="tiny" ghost onClick={() => handleRetryVectorization(row)}>
+              重试向量化
+            </NButton>
+          </div>
+        ) : null}
       </div>
     );
   }
