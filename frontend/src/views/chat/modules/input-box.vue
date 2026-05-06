@@ -377,9 +377,11 @@ onUnmounted(() => {
 
 <template>
   <div class="relative shrink-0 bg-white px-4 pb-3 pt-2 dark:bg-[#1c1c1c]">
-    <div class="pointer-events-none absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-white/95 to-transparent dark:from-[#1c1c1c]/95" />
     <div
-      class="mx-auto max-w-[960px] w-full flex items-end gap-2 rounded-2xl bg-[rgb(var(--border-color)/0.08)] px-3.5 py-2.5 ring-1 ring-transparent transition-all focus-within:bg-white focus-within:ring-[rgb(var(--primary-color)/0.35)] focus-within:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06)] dark:bg-[#FFFFFF08] dark:focus-within:bg-[#1f1f1f]"
+      class="pointer-events-none absolute inset-x-0 h-6 from-white/95 to-transparent bg-gradient-to-t -top-6 dark:from-[#1c1c1c]/95"
+    />
+    <div
+      class="chat-input-shell mx-auto max-w-[960px] w-full flex items-end gap-2 rounded-2xl bg-white px-3.5 py-2.5 dark:bg-[#1f1f1f]"
     >
       <textarea
         ref="inputRef"
@@ -424,4 +426,27 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.chat-input-shell {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 18px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.chat-input-shell:focus-within {
+  border-color: rgb(var(--primary-color) / 0.38);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.dark .chat-input-shell {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+</style>
