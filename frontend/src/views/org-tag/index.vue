@@ -1,11 +1,13 @@
 <script setup lang="tsx">
 import { NButton, NPopconfirm } from 'naive-ui';
+import { fetchGetOrgTagList } from '@/service/api/org-tag';
 import OrgTagOperateDialog from './modules/org-tag-operate-dialog.vue';
 
 const appStore = useAppStore();
 
-const { columns, columnChecks, data, loading, getData } = useTable({
+const { columns, columnChecks, data, loading, getData, mobilePagination } = useTable({
   apiFn: fetchGetOrgTagList,
+  showTotal: true,
   columns: () => [
     {
       key: 'name',
@@ -99,7 +101,7 @@ async function handleDelete(tagId: string) {
         :flex-height="!appStore.isMobile"
         :scroll-x="962"
         :loading="loading"
-        :pagination="false"
+        :pagination="mobilePagination"
         :row-key="item => item.tagId"
         class="sm:h-full"
       />

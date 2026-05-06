@@ -554,22 +554,43 @@ public class AdminController {
      * 获取组织标签树结构
      */
     @GetMapping("/org-tags/tree")
-    public ResponseEntity<?> getOrganizationTagTree(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getOrganizationTagTree(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
         validateAdmin(adminUsername);
         
         try {
             List<Map<String, Object>> tagTree = userService.getOrganizationTagTree();
+            Object data = (page != null || size != null) ? paginateTree(tagTree, page, size) : tagTree;
             return ResponseEntity.ok(Map.of(
                 "code", 200, 
                 "message", "获取组织标签树成功", 
-                "data", tagTree
+                "data", data
             ));
         } catch (Exception e) {
             LogUtils.logBusinessError("ADMIN_GET_ORG_TAG_TREE", adminUsername, "获取组织标签树失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("code", 500, "message", "获取组织标签树失败: " + e.getMessage()));
         }
+    }
+
+    private Map<String, Object> paginateTree(List<Map<String, Object>> tagTree, Integer page, Integer size) {
+        int pageNumber = page == null || page < 1 ? 1 : page;
+        int pageSize = size == null || size < 1 ? 10 : size;
+        int total = tagTree.size();
+        int fromIndex = Math.min((pageNumber - 1) * pageSize, total);
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<Map<String, Object>> pagedTree = tagTree.subList(fromIndex, toIndex);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("data", pagedTree);
+        result.put("content", pagedTree);
+        result.put("number", pageNumber);
+        result.put("size", pageSize);
+        result.put("totalElements", total);
+        return result;
     }
     
     /**

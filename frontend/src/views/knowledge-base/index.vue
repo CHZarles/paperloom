@@ -1,8 +1,8 @@
 <script setup lang="tsx">
 import type { UploadFileInfo } from 'naive-ui';
 import { NButton, NEllipsis, NModal, NPopconfirm, NProgress, NTag, NUpload } from 'naive-ui';
+import type { FlatResponseData } from '@sa/axios';
 import { uploadAccept } from '@/constants/common';
-import { fakePaginationRequest } from '@/service/request';
 import { UploadStatus } from '@/enum';
 import SvgIcon from '@/components/custom/svg-icon.vue';
 import FilePreview from '@/components/custom/file-preview.vue';
@@ -17,8 +17,31 @@ const previewVisible = ref(false);
 const previewFileName = ref('');
 const previewFileMd5 = ref('');
 
-function apiFn() {
-  return fakePaginationRequest<Api.KnowledgeBase.List>({ url: '/documents/accessible' });
+async function apiFn(params: Api.Common.CommonSearchParams = {}): Promise<FlatResponseData<Api.KnowledgeBase.List>> {
+  const response = await request<Api.KnowledgeBase.UploadTask[] | Api.KnowledgeBase.List>({
+    url: '/documents/accessible',
+    params
+  });
+  if (response.error) return response as FlatResponseData<Api.KnowledgeBase.List>;
+
+  const payload = response.data;
+  if (!Array.isArray(payload)) return response as FlatResponseData<Api.KnowledgeBase.List>;
+
+  const page = params.page && params.page > 0 ? params.page : 1;
+  const size = params.size && params.size > 0 ? params.size : 10;
+  const start = (page - 1) * size;
+  const pageData = payload.slice(start, start + size);
+
+  return {
+    ...response,
+    data: {
+      data: pageData,
+      content: pageData,
+      number: page,
+      size,
+      totalElements: payload.length
+    }
+  };
 }
 
 function canManageFile(row: Api.KnowledgeBase.UploadTask) {
@@ -48,8 +71,9 @@ function closeFilePreview() {
   previewFileMd5.value = '';
 }
 
-const { columns, columnChecks, data, getData, loading } = useTable({
+const { columns, columnChecks, data, getData, loading, mobilePagination } = useTable({
   apiFn,
+  showTotal: true,
   immediate: false,
   columns: () => [
     {
@@ -161,6 +185,16 @@ const { columns, columnChecks, data, getData, loading } = useTable({
 
 const store = useKnowledgeBaseStore();
 const { tasks } = storeToRefs(store);
+const tableTasks = computed(() => {
+  const remoteRows = data.value.map(item => tasks.value.find(task => task.fileMd5 === item.fileMd5) || item);
+  const localRows = tasks.value.filter(
+    task =>
+      task.file && task.status !== UploadStatus.Completed && !remoteRows.some(item => item.fileMd5 === task.fileMd5)
+  );
+
+  return [...localRows, ...remoteRows];
+});
+
 onMounted(async () => {
   await getList();
 });
@@ -189,11 +223,6 @@ function syncTaskFromServer(target: Api.KnowledgeBase.UploadTask, source: Api.Kn
 /** 异步获取列表函数 该函数主要用于更新或初始化上传任务列表 它首先调用getData函数获取数据，然后根据获取到的数据状态更新任务列表 */
 async function getList() {
   await getData();
-
-  if (data.value.length === 0) {
-    tasks.value = [];
-    return;
-  }
 
   data.value.forEach(item => {
     const index = tasks.value.findIndex(task => task.fileMd5 === item.fileMd5);
@@ -488,14 +517,14 @@ async function onBeforeUpload(
       <NDataTable
         striped
         :columns="columns"
-        :data="tasks"
+        :data="tableTasks"
         size="small"
         :flex-height="!appStore.isMobile"
         :scroll-x="962"
         :loading="loading"
         remote
         :row-key="row => row.id"
-        :pagination="false"
+        :pagination="mobilePagination"
         class="sm:h-full"
       />
     </NCard>

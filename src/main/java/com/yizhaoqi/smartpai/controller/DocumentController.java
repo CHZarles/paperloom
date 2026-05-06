@@ -223,7 +223,9 @@ public class DocumentController {
     @GetMapping("/accessible")
     public ResponseEntity<?> getAccessibleFiles(
             @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
+            @RequestAttribute("orgTags") String orgTags,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_ACCESSIBLE_FILES");
         try {
@@ -231,6 +233,7 @@ public class DocumentController {
             
             List<FileUpload> files = documentService.getAccessibleFiles(userId, orgTags);
             List<Map<String, Object>> fileData = convertFilesToResponse(files);
+            Object data = (page != null || size != null) ? paginateList(fileData, page, size) : fileData;
             
             LogUtils.logUserOperation(userId, "GET_ACCESSIBLE_FILES", "file_list", "SUCCESS");
             LogUtils.logBusiness("GET_ACCESSIBLE_FILES", userId, "成功获取可访问文件: fileCount=%d", files.size());
@@ -239,7 +242,7 @@ public class DocumentController {
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
             response.put("message", "获取可访问文件列表成功");
-            response.put("data", fileData);
+            response.put("data", data);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             LogUtils.logBusinessError("GET_ACCESSIBLE_FILES", userId, "获取可访问文件失败", e);
@@ -249,6 +252,23 @@ public class DocumentController {
             response.put("message", "获取可访问文件列表失败: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }
+
+    private Map<String, Object> paginateList(List<Map<String, Object>> records, Integer page, Integer size) {
+        int pageNumber = page == null || page < 1 ? 1 : page;
+        int pageSize = size == null || size < 1 ? 10 : size;
+        int total = records.size();
+        int fromIndex = Math.min((pageNumber - 1) * pageSize, total);
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<Map<String, Object>> pageData = records.subList(fromIndex, toIndex);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("data", pageData);
+        result.put("content", pageData);
+        result.put("number", pageNumber);
+        result.put("size", pageSize);
+        result.put("totalElements", total);
+        return result;
     }
     
     /**

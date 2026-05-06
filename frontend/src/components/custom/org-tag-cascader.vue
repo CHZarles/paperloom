@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { CascaderOption } from 'naive-ui';
+import { fetchGetOrgTagTree } from '@/service/api/org-tag';
 
 defineOptions({
   name: 'OrgTagCascader'
@@ -14,8 +15,8 @@ const model = defineModel<string | number | Array<number | string> | undefined |
 const opts = ref<CascaderOption[]>([]);
 
 async function getOptions() {
-  const { error, data } = await fetchGetOrgTagList();
-  if (!error) opts.value = data.data as unknown as CascaderOption[];
+  const { error, data } = await fetchGetOrgTagTree();
+  if (!error) opts.value = data as unknown as CascaderOption[];
 }
 
 onMounted(async () => {
