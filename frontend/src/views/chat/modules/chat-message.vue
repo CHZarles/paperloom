@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { nextTick } from 'vue';
-import { formatDate } from '@/utils/common';
 import { router } from '@/router';
 import { request } from '@/service/request';
+import { formatDate } from '@/utils/common';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
 defineOptions({ name: 'ChatMessage' });
 
@@ -21,6 +21,52 @@ function handleCopy(content: string) {
 }
 
 const chatStore = useChatStore();
+const feedbackSubmitting = ref<Record<string, boolean>>({});
+
+function getMessageFeedbackKey(message: Api.Chat.Message) {
+  return message.generationId || `${message.conversationId || 'unknown'}:${message.timestamp || ''}`;
+}
+
+async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad') {
+  if (message.role !== 'assistant') {
+    return;
+  }
+
+  const key = getMessageFeedbackKey(message);
+  if (feedbackSubmitting.value[key]) {
+    return;
+  }
+
+  feedbackSubmitting.value = {
+    ...feedbackSubmitting.value,
+    [key]: true
+  };
+
+  const { error } = await request({
+    url: 'chat/feedback',
+    method: 'POST',
+    baseURL: 'proxy-api',
+    data: {
+      rating,
+      reason: rating === 'good' ? '用户点击点赞，表示认可本次回答' : '用户点击点踩，表示不满意本次回答',
+      conversationId: message.conversationId || props.sessionId,
+      generationId: message.generationId
+    }
+  });
+
+  feedbackSubmitting.value = {
+    ...feedbackSubmitting.value,
+    [key]: false
+  };
+
+  if (error) {
+    window.$message?.error('反馈记录失败');
+    return;
+  }
+
+  message.feedbackRating = rating;
+  window.$message?.success(rating === 'good' ? '已记录点赞反馈' : '已记录点踩反馈');
+}
 
 // 存储文件名和对应的事件处理
 const sourceFiles = ref<Array<{fileName: string, id: string, referenceNumber: number, fileMd5?: string, pageNumber?: number}>>([]);
@@ -355,10 +401,36 @@ async function handleSourceFileClick(fileInfo: {
     </div>
     <NText v-else-if="msg.role === 'user'" class="ml-12 mt-2 text-4">{{ content }}</NText>
     <NDivider class="ml-12 w-[calc(100%-3rem)] mb-0! mt-2!" />
-    <div class="ml-12 flex gap-4">
-      <NButton quaternary @click="handleCopy(msg.content)">
+    <div class="ml-12 flex gap-2">
+      <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
         <template #icon>
           <icon-mynaui:copy />
+        </template>
+      </NButton>
+      <NButton
+        v-if="msg.role === 'assistant'"
+        quaternary
+        title="点赞"
+        aria-label="点赞"
+        :type="msg.feedbackRating === 'good' ? 'primary' : 'default'"
+        :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
+        @click="handleFeedback(msg, 'good')"
+      >
+        <template #icon>
+          <icon-material-symbols:thumb-up-outline-rounded />
+        </template>
+      </NButton>
+      <NButton
+        v-if="msg.role === 'assistant'"
+        quaternary
+        title="点踩"
+        aria-label="点踩"
+        :type="msg.feedbackRating === 'bad' ? 'error' : 'default'"
+        :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
+        @click="handleFeedback(msg, 'bad')"
+      >
+        <template #icon>
+          <icon-material-symbols:thumb-down-outline-rounded />
         </template>
       </NButton>
     </div>

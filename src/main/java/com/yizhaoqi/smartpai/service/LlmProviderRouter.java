@@ -109,6 +109,13 @@ public class LlmProviderRouter {
     public List<Map<String, Object>> buildReActMessages(String userMessage,
                                                         String context,
                                                         List<Map<String, String>> history) {
+        return buildReActMessages(userMessage, context, history, "");
+    }
+
+    public List<Map<String, Object>> buildReActMessages(String userMessage,
+                                                        String context,
+                                                        List<Map<String, String>> history,
+                                                        String feedbackGuidance) {
         List<Map<String, Object>> messages = new ArrayList<>();
         AiProperties.Prompt promptCfg = aiProperties.getPrompt();
 
@@ -120,6 +127,9 @@ public class LlmProviderRouter {
                 .append("如果需要查询知识库、整理知识库摘要、记录反馈或查看知识库统计，请通过 tool_calls 调用工具；")
                 .append("拿到 tool 结果后继续思考并给出最终回答。")
                 .append("如果工具执行失败，请根据 tool 返回的错误信息重新判断下一步，不要直接中断。\n\n");
+        if (feedbackGuidance != null && !feedbackGuidance.isBlank()) {
+            sysBuilder.append(feedbackGuidance.trim()).append("\n\n");
+        }
 
         String refStart = promptCfg.getRefStart() != null ? promptCfg.getRefStart() : "<<REF>>";
         String refEnd = promptCfg.getRefEnd() != null ? promptCfg.getRefEnd() : "<<END>>";

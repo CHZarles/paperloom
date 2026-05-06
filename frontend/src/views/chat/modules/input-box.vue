@@ -29,7 +29,7 @@ const latestMessage = computed(() => {
   return list.value[list.value.length - 1] ?? {};
 });
 
-let generationStatusTimer: ReturnType<typeof window.setInterval> | null = null;
+let generationStatusTimer: number | null = null;
 let lastStreamContentLength = 0;
 let lastStreamContentChangedAt = 0;
 

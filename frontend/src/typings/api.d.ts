@@ -437,6 +437,7 @@ declare namespace Api {
       username?: string;
       referenceMappings?: Record<string, ReferenceEvidence>;
       toolEvents?: AgentToolEvent[];
+      feedbackRating?: 'good' | 'bad';
     }
 
     interface Token {

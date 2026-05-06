@@ -15,6 +15,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -169,7 +170,12 @@ public class ChatHandler {
                               String generationId,
                               List<Map<String, String>> history,
                               CompletableFuture<String> responseFuture) {
-        List<Map<String, Object>> messages = llmProviderRouter.buildReActMessages(userMessage, "", history);
+        List<Map<String, Object>> messages = llmProviderRouter.buildReActMessages(
+                userMessage,
+                "",
+                history,
+                buildRecentFeedbackGuidance(userId)
+        );
         int executedToolCalls = 0;
         int totalPromptTokens = 0;
         int totalCompletionTokens = 0;
@@ -578,6 +584,46 @@ public class ChatHandler {
             history.add(normalized);
         }
         return history;
+    }
+
+    private String buildRecentFeedbackGuidance(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return "";
+        }
+        try {
+            Map<Object, Object> feedbackEntries = redisTemplate.opsForHash().entries("feedback:" + userId);
+            if (feedbackEntries == null || feedbackEntries.isEmpty()) {
+                return "";
+            }
+
+            StringBuilder guidance = new StringBuilder("近期用户对回答的显式反馈如下，按时间倒序排列，越靠前越新。")
+                    .append("后续回答需要参考这些偏好：good 表示用户认可这类回答方式，bad 表示需要避免类似问题；")
+                    .append("如果同一轮回答既有 good 又有 bad，以最新一条为准。\n");
+            feedbackEntries.entrySet().stream()
+                    .sorted(Comparator.comparingLong(entry -> -parseFeedbackTimestamp(entry.getKey())))
+                    .limit(5)
+                    .forEach(entry -> guidance.append("- ")
+                            .append("feedbackTime=")
+                            .append(entry.getKey())
+                            .append("; ")
+                            .append(entry.getValue())
+                            .append("\n"));
+            return guidance.toString().trim();
+        } catch (Exception exception) {
+            logger.warn("读取用户反馈上下文失败: userId={}", userId, exception);
+            return "";
+        }
+    }
+
+    private long parseFeedbackTimestamp(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException exception) {
+            return 0L;
+        }
     }
 
     private List<Map<String, Object>> getConversationHistoryRecords(String conversationId) {
