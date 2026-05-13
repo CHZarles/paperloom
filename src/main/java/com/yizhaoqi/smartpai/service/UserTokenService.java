@@ -219,17 +219,31 @@ public class UserTokenService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void addLlmTokens(String userId, long tokens) {
+        addLlmTokens(userId, tokens, "购买套餐充值", null);
+    }
+
+    /**
+     * 为用户增加 LLM Token
+     *
+     * @param userId 用户 ID
+     * @param tokens 增加的 token 数量
+     * @param reason 变动原因
+     * @param remark 备注
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void addLlmTokens(String userId, long tokens, String reason, String remark) {
         if (tokens <= 0) {
             throw new CustomException("增加的 Token 数量必须大于 0", HttpStatus.BAD_REQUEST);
         }
         String key = buildLlmTokenKey(userId);
         Long currentBalance = getLlmTokenBalance(userId);
+        Long balanceAfter = safeAddTokenBalance(currentBalance, tokens);
 
         // 记录 Token 增加
-        recordTokenIncrease(userId, UserTokenRecord.TokenType.LLM, tokens, currentBalance, currentBalance + tokens, "购买套餐充值", null);
+        recordTokenIncrease(userId, UserTokenRecord.TokenType.LLM, tokens, currentBalance, balanceAfter, reason, remark);
 
         stringRedisTemplate.opsForValue().increment(key, tokens);
-        logger.info("用户 {} 增加 LLM Token: {}, 当前余额：{}", userId, tokens, currentBalance + tokens);
+        logger.info("用户 {} 增加 LLM Token: {}, 当前余额：{}", userId, tokens, balanceAfter);
     }
 
     /**
@@ -240,17 +254,39 @@ public class UserTokenService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void addEmbeddingTokens(String userId, long tokens) {
+        addEmbeddingTokens(userId, tokens, "购买套餐充值", null);
+    }
+
+    /**
+     * 为用户增加 Embedding Token
+     *
+     * @param userId 用户 ID
+     * @param tokens 增加的 token 数量
+     * @param reason 变动原因
+     * @param remark 备注
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void addEmbeddingTokens(String userId, long tokens, String reason, String remark) {
         if (tokens <= 0) {
             throw new CustomException("增加的 Token 数量必须大于 0", HttpStatus.BAD_REQUEST);
         }
 
         String key = buildEmbeddingTokenKey(userId);
         Long currentBalance = getEmbeddingTokenBalance(userId);
+        Long balanceAfter = safeAddTokenBalance(currentBalance, tokens);
         // 记录 Token 增加
-        recordTokenIncrease(userId, UserTokenRecord.TokenType.EMBEDDING, tokens, currentBalance, currentBalance + tokens, "购买套餐充值", null);
+        recordTokenIncrease(userId, UserTokenRecord.TokenType.EMBEDDING, tokens, currentBalance, balanceAfter, reason, remark);
 
         stringRedisTemplate.opsForValue().increment(key, tokens);
-        logger.info("用户 {} 增加 Embedding Token: {}, 当前余额：{}", userId, tokens, currentBalance + tokens);
+        logger.info("用户 {} 增加 Embedding Token: {}, 当前余额：{}", userId, tokens, balanceAfter);
+    }
+
+    private Long safeAddTokenBalance(Long currentBalance, long tokens) {
+        try {
+            return Math.addExact(currentBalance, tokens);
+        } catch (ArithmeticException e) {
+            throw new CustomException("Token 余额超过系统上限", HttpStatus.BAD_REQUEST);
+        }
     }
 
     /**

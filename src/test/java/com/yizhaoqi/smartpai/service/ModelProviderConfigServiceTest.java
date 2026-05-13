@@ -136,9 +136,11 @@ class ModelProviderConfigServiceTest {
     @Test
     void shouldReuseStoredApiKeyWhenTestingConnectionWithBlankInput() throws Exception {
         AtomicReference<String> authorizationHeader = new AtomicReference<>();
+        AtomicReference<String> requestPath = new AtomicReference<>();
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
             authorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            requestPath.set(exchange.getRequestURI().getPath());
             byte[] response = "{\"ok\":true}".getBytes();
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
@@ -152,7 +154,7 @@ class ModelProviderConfigServiceTest {
                     ModelProviderConfigService.SCOPE_LLM,
                     new ModelProviderConfigService.ProviderConnectionTestRequest(
                             "deepseek",
-                            "http://127.0.0.1:" + port + "/v1",
+                            "http://127.0.0.1:" + port + "/v1/chat/completions",
                             "deepseek-chat",
                             "",
                             null
@@ -161,8 +163,54 @@ class ModelProviderConfigServiceTest {
 
             assertTrue(result.success());
             assertEquals("Bearer sk-default-deepseek", authorizationHeader.get());
+            assertEquals("/v1/chat/completions", requestPath.get());
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void shouldNormalizeOpenAiCompatibleEndpointSuffixWhenSavingConfig() {
+        ModelProviderConfigService.UpdateScopeRequest request = new ModelProviderConfigService.UpdateScopeRequest(
+                "zhipu",
+                List.of(
+                        new ModelProviderConfigService.ProviderUpsertRequest("deepseek", "https://api.deepseek.com/v1", "deepseek-chat", "", null, true),
+                        new ModelProviderConfigService.ProviderUpsertRequest("qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-flash", "", null, true),
+                        new ModelProviderConfigService.ProviderUpsertRequest("zhipu", "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions", "glm-5.1", "sk-zhipu", null, true)
+                )
+        );
+
+        ModelProviderConfigService.ScopeSettingsView updated = service.updateScope(ModelProviderConfigService.SCOPE_LLM, request, "admin");
+        ModelProviderConfigService.ProviderConfigView zhipu = updated.providers().stream()
+                .filter(item -> item.provider().equals("zhipu"))
+                .findFirst()
+                .orElseThrow();
+        ModelProviderConfigService.ActiveProviderView activeProvider = service.getActiveProvider(ModelProviderConfigService.SCOPE_LLM);
+
+        assertEquals("https://open.bigmodel.cn/api/coding/paas/v4", zhipu.apiBaseUrl());
+        assertEquals("https://open.bigmodel.cn/api/coding/paas/v4", activeProvider.apiBaseUrl());
+    }
+
+    @Test
+    void shouldNormalizePersistedEndpointSuffixWhenLoadingSettings() {
+        ModelProviderConfig zhipu = new ModelProviderConfig();
+        zhipu.setConfigScope("llm");
+        zhipu.setProviderCode("zhipu");
+        zhipu.setDisplayName("ZhipuAI");
+        zhipu.setApiStyle(ModelProviderConfigService.API_STYLE_OPENAI);
+        zhipu.setApiBaseUrl("https://open.bigmodel.cn/api/coding/paas/v4/chat/completions");
+        zhipu.setModelName("glm-5.1");
+        zhipu.setEnabled(true);
+        zhipu.setActive(true);
+        repository.save(zhipu);
+
+        service.reloadSettings();
+
+        ModelProviderConfigService.ProviderConfigView loaded = service.getCurrentSettings().llm().providers().stream()
+                .filter(item -> item.provider().equals("zhipu"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("https://open.bigmodel.cn/api/coding/paas/v4", loaded.apiBaseUrl());
     }
 }

@@ -35,9 +35,10 @@ public class ChatGenerationStateService {
         String now = LocalDateTime.now().toString();
         GenerationMeta meta = new GenerationMeta(generationId, userId, conversationId, question, GenerationStatus.STREAMING, now, now, null);
 
-        writeMeta(meta);
-        redisTemplate.opsForValue().set(contentKey(generationId), "", GENERATION_TTL);
+        // 写入顺序：先把可读子项准备好，最后再发布 active key，避免读取者拿到 active key 后却查不到 meta/content。
         redisTemplate.delete(referenceKey(generationId));
+        redisTemplate.opsForValue().set(contentKey(generationId), "", GENERATION_TTL);
+        writeMeta(meta);
         redisTemplate.opsForValue().set(activeGenerationKey(userId), generationId, GENERATION_TTL);
         return toSnapshot(meta, "", Collections.emptyMap());
     }

@@ -3,8 +3,10 @@ import { ref } from 'vue';
 import { NButton, NTag } from 'naive-ui';
 import UserSearch from './modules/user-search.vue';
 import OrgTagSettingDialog from './modules/org-tag-setting-dialog.vue';
+import TokenQuotaDialog from './modules/token-quota-dialog.vue';
 
 const appStore = useAppStore();
+const authStore = useAuthStore();
 
 function apiFn(params: Api.User.SearchParams) {
   return request<Api.User.List>({ url: '/admin/users/list', params });
@@ -75,8 +77,12 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
         }
         return (
           <div class="flex flex-col gap-1 text-xs">
-            <span>{Number(quota.usedTokens || 0).toLocaleString()} / {Number(quota.limitTokens || 0).toLocaleString()}</span>
-            <span class="text-stone-400">剩余 {Number(quota.remainingTokens || 0).toLocaleString()} · {quota.requestCount} 次</span>
+            <span>
+              {Number(quota.usedTokens || 0).toLocaleString()} / {Number(quota.limitTokens || 0).toLocaleString()}
+            </span>
+            <span class="text-stone-400">
+              剩余 {Number(quota.remainingTokens || 0).toLocaleString()} · {quota.requestCount} 次
+            </span>
           </div>
         );
       }
@@ -92,8 +98,12 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
         }
         return (
           <div class="flex flex-col gap-1 text-xs">
-            <span>{Number(quota.usedTokens || 0).toLocaleString()} / {Number(quota.limitTokens || 0).toLocaleString()}</span>
-            <span class="text-stone-400">剩余 {Number(quota.remainingTokens || 0).toLocaleString()} · {quota.requestCount} 次</span>
+            <span>
+              {Number(quota.usedTokens || 0).toLocaleString()} / {Number(quota.limitTokens || 0).toLocaleString()}
+            </span>
+            <span class="text-stone-400">
+              剩余 {Number(quota.remainingTokens || 0).toLocaleString()} · {quota.requestCount} 次
+            </span>
           </div>
         );
       }
@@ -101,11 +111,18 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
     {
       key: 'operate',
       title: '操作',
-      width: 130,
+      width: 230,
       render: row => (
-        <NButton type="primary" ghost size="small" onClick={() => handleOrgTag(row)}>
-          分配组织标签
-        </NButton>
+        <div class="flex gap-2">
+          <NButton type="primary" ghost size="small" onClick={() => handleOrgTag(row)}>
+            分配组织标签
+          </NButton>
+          {authStore.isAdmin ? (
+            <NButton type="warning" ghost size="small" onClick={() => handleTokenQuota(row)}>
+              追加 Token
+            </NButton>
+          ) : null}
+        </div>
       )
     }
   ]
@@ -113,10 +130,17 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
 
 const visible = ref(false);
 const editingData = ref<Api.User.Item | null>(null);
+const tokenVisible = ref(false);
+const tokenEditingData = ref<Api.User.Item | null>(null);
 
 function handleOrgTag(row: Api.User.Item) {
   editingData.value = row;
   visible.value = true;
+}
+
+function handleTokenQuota(row: Api.User.Item) {
+  tokenEditingData.value = row;
+  tokenVisible.value = true;
 }
 </script>
 
@@ -145,6 +169,7 @@ function handleOrgTag(row: Api.User.Item) {
     </NCard>
 
     <OrgTagSettingDialog v-model:visible="visible" :row-data="editingData!" @submitted="getData" />
+    <TokenQuotaDialog v-model:visible="tokenVisible" :row-data="tokenEditingData!" @submitted="getData" />
   </div>
 </template>
 

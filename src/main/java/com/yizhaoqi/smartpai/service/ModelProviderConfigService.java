@@ -28,6 +28,8 @@ public class ModelProviderConfigService {
     public static final String SCOPE_LLM = "llm";
     public static final String SCOPE_EMBEDDING = "embedding";
     public static final String API_STYLE_OPENAI = "openai-compatible";
+    private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
+    private static final String EMBEDDINGS_PATH = "/embeddings";
 
     private final ModelProviderConfigRepository repository;
     private final SecretCryptoService secretCryptoService;
@@ -112,7 +114,8 @@ public class ModelProviderConfigService {
             entity.setProviderCode(provider);
             entity.setDisplayName(fallback.displayName());
             entity.setApiStyle(fallback.apiStyle());
-            entity.setApiBaseUrl(requireNonBlank(item.apiBaseUrl(), fallback.apiBaseUrl(), provider + " API 地址不能为空"));
+            entity.setApiBaseUrl(normalizeOpenAiCompatibleBaseUrl(
+                    requireNonBlank(item.apiBaseUrl(), fallback.apiBaseUrl(), provider + " API 地址不能为空")));
             entity.setModelName(requireNonBlank(item.model(), fallback.model(), provider + " 模型不能为空"));
             entity.setEmbeddingDimension(SCOPE_EMBEDDING.equals(normalizedScope)
                     ? Optional.ofNullable(item.dimension()).orElse(fallback.dimension())
@@ -146,7 +149,7 @@ public class ModelProviderConfigService {
         String provider = normalizeOptionalProvider(request.provider());
         try {
             WebClient.Builder builder = WebClient.builder()
-                    .baseUrl(request.apiBaseUrl())
+                    .baseUrl(normalizeOpenAiCompatibleBaseUrl(request.apiBaseUrl()))
                     .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE);
 
             String apiKey = resolveConnectionTestApiKey(normalizedScope, provider, request.apiKey());
@@ -240,7 +243,7 @@ public class ModelProviderConfigService {
                     config.getProviderCode(),
                     config.getDisplayName(),
                     config.getApiStyle(),
-                    config.getApiBaseUrl(),
+                    normalizeOpenAiCompatibleBaseUrl(config.getApiBaseUrl()),
                     config.getModelName(),
                     config.getEmbeddingDimension() != null ? config.getEmbeddingDimension() : fallback.dimension(),
                     config.isEnabled(),
@@ -274,7 +277,7 @@ public class ModelProviderConfigService {
                 provider.provider(),
                 provider.displayName(),
                 provider.apiStyle(),
-                provider.apiBaseUrl(),
+                normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()),
                 provider.model(),
                 apiKey,
                 provider.dimension()
@@ -393,6 +396,34 @@ public class ModelProviderConfigService {
 
     private String normalizeOptionalProvider(String provider) {
         return provider == null || provider.isBlank() ? null : normalizeProvider(provider);
+    }
+
+    public static String normalizeOpenAiCompatibleBaseUrl(String rawBaseUrl) {
+        if (rawBaseUrl == null) {
+            return null;
+        }
+        String normalized = rawBaseUrl.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
+        boolean changed;
+        do {
+            changed = false;
+            String lower = normalized.toLowerCase(Locale.ROOT);
+            if (lower.endsWith(CHAT_COMPLETIONS_PATH)) {
+                normalized = normalized.substring(0, normalized.length() - CHAT_COMPLETIONS_PATH.length());
+                changed = true;
+            } else if (lower.endsWith(EMBEDDINGS_PATH)) {
+                normalized = normalized.substring(0, normalized.length() - EMBEDDINGS_PATH.length());
+                changed = true;
+            }
+            while (normalized.endsWith("/")) {
+                normalized = normalized.substring(0, normalized.length() - 1);
+                changed = true;
+            }
+        } while (changed);
+        return normalized;
     }
 
     private String resolveConnectionTestApiKey(String scope, String provider, String rawApiKey) {

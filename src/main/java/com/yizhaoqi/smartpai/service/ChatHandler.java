@@ -15,6 +15,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /**
  * 聊天处理服务
@@ -42,6 +45,9 @@ public class ChatHandler {
     private static final int MAX_MATCHED_CHUNK_LEN = 800;
     private static final int MAX_EVIDENCE_SNIPPET_LEN = 160;
     private static final int GENERATION_COMPLETION_TIMEOUT_SECONDS = 120;
+    private static final int MAX_REACT_ROUNDS = 4;
+    private static final int MAX_REACT_TOOL_CALLS = 8;
+    private static final int REACT_MAX_COMPLETION_TOKENS = 2000;
     private final RedisTemplate<String, String> redisTemplate;
     private final HybridSearchService searchService;
     private final LlmProviderRouter llmProviderRouter;
@@ -49,6 +55,7 @@ public class ChatHandler {
     private final ConversationService conversationService;
     private final ChatGenerationStateService chatGenerationStateService;
     private final ChatSessionRegistry chatSessionRegistry;
+    private final AgentToolRegistry agentToolRegistry;
     private final ThreadPoolTaskExecutor chatMonitorExecutor;
     private final ObjectMapper objectMapper;
     
@@ -72,6 +79,7 @@ public class ChatHandler {
                       ConversationService conversationService,
                       ChatGenerationStateService chatGenerationStateService,
                       ChatSessionRegistry chatSessionRegistry,
+                      AgentToolRegistry agentToolRegistry,
                       ObjectMapper objectMapper,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
@@ -81,6 +89,7 @@ public class ChatHandler {
         this.conversationService = conversationService;
         this.chatGenerationStateService = chatGenerationStateService;
         this.chatSessionRegistry = chatSessionRegistry;
+        this.agentToolRegistry = agentToolRegistry;
         this.objectMapper = objectMapper;
         this.chatMonitorExecutor = chatMonitorExecutor;
     }
@@ -102,61 +111,30 @@ public class ChatHandler {
             final String finalGenerationId = generationId;
             logger.info("会话ID: {}, 用户ID: {}", conversationId, userId);
             sendGenerationStart(userId, finalGenerationId, finalConversationId);
-            
+
             // 为当前生成任务创建响应构建器
             responseBuilders.put(finalGenerationId, new StringBuilder());
             // 创建一个CompletableFuture来跟踪响应完成状态
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
-            
+
             // 2. 获取对话历史
             List<Map<String, String>> history = getConversationHistory(conversationId);
             logger.debug("获取到 {} 条历史对话", history.size());
-            
-            // 3. 执行带权限过滤的混合搜索
-            List<SearchResult> searchResults = searchService.searchWithPermission(userMessage, userId, 5);
-            logger.debug("搜索结果数量: {}", searchResults.size());
-            
-            // 4. 构建上下文
-            String context = buildContext(searchResults, finalGenerationId, userMessage);
-            
-            // 5. 调用活动 LLM Provider 并处理流式响应
-            logger.info("调用活动 LLM Provider 生成回复");
-            LlmProviderRouter.StreamHandle streamHandle = llmProviderRouter.streamResponse(userId, userMessage, context, history,
-                chunk -> {
-                    if (isGenerationCancelled(finalGenerationId)) {
-                        logger.debug("检测到取消标志，忽略新的响应块: generationId={}", finalGenerationId);
-                        return;
-                    }
-                    // 累积响应内容
-                    StringBuilder responseBuilder = responseBuilders.get(finalGenerationId);
-                    if (responseBuilder != null) {
-                        responseBuilder.append(chunk);
-                    }
-                    chatGenerationStateService.appendChunk(finalGenerationId, chunk);
-                    sendResponseChunk(userId, finalGenerationId, finalConversationId, chunk);
-                },
-                error -> {
-                    if (isGenerationCancelled(finalGenerationId)) {
-                        logger.info("生成任务已取消，忽略上游错误: generationId={}, message={}", finalGenerationId, error.getMessage());
-                        return;
-                    }
-                    handleError(userId, finalGenerationId, error);
-                    sendCompletionNotification(userId, finalGenerationId, finalConversationId, true);
-                    chatGenerationStateService.markFailed(finalGenerationId, error.getMessage());
-                    responseFuture.completeExceptionally(error);
-                    cleanupGenerationState(finalGenerationId, error);
-                },
-                () -> finalizeResponse(userId, userMessage, finalConversationId, finalGenerationId,
-                        responseFuture, responseBuilders.get(finalGenerationId)));
-            activeStreams.put(finalGenerationId, streamHandle);
-            if (responseFuture.isDone()) {
-                activeStreams.remove(finalGenerationId, streamHandle);
+
+            // 3. 异步执行 ReAct 决策循环：模型按需返回 tool_calls，避免在 WebSocket 处理线程上阻塞 90s+ 的工具流
+            try {
+                chatMonitorExecutor.execute(() ->
+                        runReActLoopSafely(userId, userMessage, finalConversationId, finalGenerationId, history, responseFuture));
+            } catch (RejectedExecutionException ex) {
+                logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
+                RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
+                chatGenerationStateService.markFailed(finalGenerationId, busyException.getMessage());
+                handleError(userId, finalGenerationId, busyException);
+                sendCompletionNotification(userId, finalGenerationId, finalConversationId, true, false);
+                cleanupGenerationState(finalGenerationId, ex);
             }
 
-            // 6. 后台任务仅兜底超时；正常完成由上游流结束信号驱动
-            submitCompletionMonitor(userId, userMessage, finalConversationId, finalGenerationId, responseFuture);
-            
         } catch (RateLimitExceededException e) {
             sendRateLimitMessage(userId, null, e);
         } catch (Exception e) {
@@ -167,6 +145,265 @@ public class ChatHandler {
             }
             handleError(userId, generationId, e);
         }
+    }
+
+    private void runReActLoopSafely(String userId,
+                                    String userMessage,
+                                    String conversationId,
+                                    String generationId,
+                                    List<Map<String, String>> history,
+                                    CompletableFuture<String> responseFuture) {
+        try {
+            runReActLoop(userId, userMessage, conversationId, generationId, history, responseFuture);
+        } catch (Exception e) {
+            logger.error("ReAct 循环执行失败: generationId={}", generationId, e);
+            chatGenerationStateService.markFailed(generationId, e.getMessage());
+            handleError(userId, generationId, e);
+            sendCompletionNotification(userId, generationId, conversationId, true, false);
+            cleanupGenerationState(generationId, e);
+        }
+    }
+
+    private void runReActLoop(String userId,
+                              String userMessage,
+                              String conversationId,
+                              String generationId,
+                              List<Map<String, String>> history,
+                              CompletableFuture<String> responseFuture) {
+        List<Map<String, Object>> messages = llmProviderRouter.buildReActMessages(
+                userMessage,
+                "",
+                history,
+                buildRecentFeedbackGuidance(userId)
+        );
+        int executedToolCalls = 0;
+        int totalPromptTokens = 0;
+        int totalCompletionTokens = 0;
+
+        for (int round = 1; round <= MAX_REACT_ROUNDS; round++) {
+            if (finishCancelledGeneration(generationId, responseFuture, responseBuilders.get(generationId))) {
+                return;
+            }
+
+            LlmProviderRouter.ReActTurn turn = streamReActTurnBlocking(
+                    userId, conversationId, generationId, messages, agentToolRegistry.getTools());
+            if (turn == null) {
+                // 上游 stream 被取消（如用户点 stop），保证内存映射被回收
+                cleanupGenerationState(generationId, null);
+                return;
+            }
+            totalPromptTokens += turn.promptTokens();
+            totalCompletionTokens += turn.completionTokens();
+
+            if (turn.toolCalls().isEmpty()) {
+                finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
+                        responseBuilders.get(generationId),
+                        new LlmProviderRouter.StreamCompletion(turn.finishReason(), totalPromptTokens, totalCompletionTokens, turn.content().length()));
+                return;
+            }
+
+            messages.add(turn.assistantMessage());
+            for (LlmProviderRouter.ToolCallDecision toolCall : turn.toolCalls()) {
+                ExecutedToolResult executedToolResult;
+                if (executedToolCalls >= MAX_REACT_TOOL_CALLS) {
+                    executedToolResult = new ExecutedToolResult(
+                            "工具调用预算已用尽，本次工具未执行。请基于已有 tool 结果给出最终回答。",
+                            false
+                    );
+                    sendToolCallStatus(userId, generationId, conversationId, toolCall, "failed");
+                } else {
+                    executedToolResult = executeToolForReAct(userId, userMessage, generationId, conversationId, toolCall);
+                    executedToolCalls++;
+                }
+                messages.add(toolMessage(toolCall.id(), executedToolResult.content()));
+                if (executedToolResult.streamedToUser()) {
+                    finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
+                            responseBuilders.get(generationId),
+                            new LlmProviderRouter.StreamCompletion(
+                                    "tool_streamed",
+                                    totalPromptTokens,
+                                    totalCompletionTokens,
+                                    responseBuilders.get(generationId) != null ? responseBuilders.get(generationId).length() : 0
+                            ));
+                    return;
+                }
+            }
+        }
+
+        messages.add(Map.of(
+                "role", "user",
+                "content", "ReAct 轮次预算已用尽，请不要再调用工具，直接基于已有 tool 结果给出最终回答。"
+        ));
+        LlmProviderRouter.ReActTurn finalTurn = streamReActTurnBlocking(
+                userId, conversationId, generationId, messages, List.of());
+        if (finalTurn == null) {
+            cleanupGenerationState(generationId, null);
+            return;
+        }
+        totalPromptTokens += finalTurn.promptTokens();
+        totalCompletionTokens += finalTurn.completionTokens();
+        finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
+                responseBuilders.get(generationId),
+                new LlmProviderRouter.StreamCompletion(finalTurn.finishReason(), totalPromptTokens, totalCompletionTokens, finalTurn.content().length()));
+    }
+
+    private ExecutedToolResult executeToolForReAct(String userId,
+                                                   String userMessage,
+                                                   String generationId,
+                                                   String conversationId,
+                                                   LlmProviderRouter.ToolCallDecision toolCall) {
+        sendToolCallStatus(userId, generationId, conversationId, toolCall, "executing");
+        AtomicBoolean summaryStreamStarted = new AtomicBoolean(false);
+        try {
+            logger.info("ReAct 执行 Agent Tool: name={}, userId={}, generationId={}, toolCallId={}, args={}",
+                    toolCall.name(), userId, generationId, toolCall.id(), toolCall.arguments());
+            Consumer<String> toolChunkConsumer = "generate_summary".equals(toolCall.name())
+                    ? chunk -> {
+                        if (chunk == null || chunk.isEmpty()) {
+                            return;
+                        }
+                        if (summaryStreamStarted.compareAndSet(false, true)) {
+                            appendStreamChunk(userId, generationId, conversationId, "\n\n");
+                        }
+                        appendStreamChunk(userId, generationId, conversationId, chunk);
+                    }
+                    : null;
+            AgentToolRegistry.ToolExecutionResult toolResult =
+                    agentToolRegistry.executeTool(toolCall.name(), toolCall.arguments(), userId, toolChunkConsumer);
+
+            // search_knowledge 返回的 SearchResult 列表与模型 prompt 中的 [N] 编号一一对应，
+            // 必须把它落到 generationReferenceMappings 里，否则前端点击引用拿不到 MD5/页码。
+            if ("search_knowledge".equals(toolCall.name())) {
+                replaceReferencesFromSearchTool(generationId, userMessage, toolResult);
+            }
+
+            String content = toolResult.content();
+            if (content == null || content.isBlank()) {
+                content = "工具 " + toolCall.name() + " 执行成功，但没有返回可展示内容。";
+            }
+            sendToolCallStatus(userId, generationId, conversationId, toolCall, "success");
+            return new ExecutedToolResult(content, toolResult.streamedToUser());
+        } catch (Exception exception) {
+            logger.warn("ReAct Agent Tool 执行失败，作为 tool message 返回模型: name={}, generationId={}",
+                    toolCall.name(), generationId, exception);
+            sendToolCallStatus(userId, generationId, conversationId, toolCall, "failed");
+            // generate_summary 已经把部分摘要流给前端，再让模型重写会拼出"半个旧摘要 + 新摘要"。
+            // 直接以失败提示收尾，让 ReAct 循环立即 finalize，避免数据不一致。
+            if ("generate_summary".equals(toolCall.name()) && summaryStreamStarted.get()) {
+                appendStreamChunk(userId, generationId, conversationId,
+                        "\n\n（摘要流式生成中断：" + exception.getMessage() + "）");
+                return new ExecutedToolResult(
+                        "工具 " + toolCall.name() + " 已部分流式输出后失败: " + exception.getMessage(),
+                        true
+                );
+            }
+            return new ExecutedToolResult("工具 " + toolCall.name() + " 执行失败: " + exception.getMessage(), false);
+        }
+    }
+
+    private void replaceReferencesFromSearchTool(String generationId,
+                                                 String userMessage,
+                                                 AgentToolRegistry.ToolExecutionResult toolResult) {
+        if (toolResult == null || toolResult.data() == null) {
+            return;
+        }
+        Object resultsObj = toolResult.data().get("results");
+        if (!(resultsObj instanceof List<?> rawList) || rawList.isEmpty()) {
+            return;
+        }
+
+        Map<Integer, ReferenceInfo> mapping = new HashMap<>();
+        int referenceNumber = 1;
+        for (Object item : rawList) {
+            if (!(item instanceof SearchResult result) || result.getFileMd5() == null) {
+                continue;
+            }
+            String fileLabel = result.getFileName() != null ? result.getFileName() : "unknown";
+            mapping.put(referenceNumber, buildReferenceInfo(result, fileLabel, userMessage));
+            referenceNumber++;
+        }
+        if (mapping.isEmpty()) {
+            return;
+        }
+        // 模型每次 search_knowledge 都会拿到 [1]..[K] 重新编号，因此按"覆盖"语义保存最新一次的引用映射。
+        generationReferenceMappings.put(generationId, mapping);
+        chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(mapping));
+        logger.info("ReAct search_knowledge 引用映射已刷新: generationId={}, count={}", generationId, mapping.size());
+    }
+
+    private record ExecutedToolResult(String content, boolean streamedToUser) {
+    }
+
+    private Map<String, Object> toolMessage(String toolCallId, String content) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("role", "tool");
+        message.put("tool_call_id", toolCallId == null ? "" : toolCallId);
+        message.put("content", content == null ? "" : content);
+        return message;
+    }
+
+    private LlmProviderRouter.ReActTurn streamReActTurnBlocking(String userId,
+                                                                String conversationId,
+                                                                String generationId,
+                                                                List<Map<String, Object>> messages,
+                                                                List<AgentToolRegistry.AgentTool> tools) {
+        CompletableFuture<LlmProviderRouter.ReActTurn> turnFuture = new CompletableFuture<>();
+        LlmProviderRouter.StreamHandle streamHandle = llmProviderRouter.streamReActTurn(
+                userId,
+                messages,
+                tools,
+                REACT_MAX_COMPLETION_TOKENS,
+                chunk -> appendStreamChunk(userId, generationId, conversationId, chunk),
+                turnFuture::completeExceptionally,
+                turnFuture::complete
+        );
+        activeStreams.put(generationId, streamHandle);
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(GENERATION_COMPLETION_TIMEOUT_SECONDS);
+        try {
+            while (true) {
+                if (isGenerationCancelled(generationId)) {
+                    streamHandle.cancel();
+                    return null;
+                }
+                long remainingNanos = deadline - System.nanoTime();
+                if (remainingNanos <= 0) {
+                    streamHandle.cancel();
+                    throw new RuntimeException("模型响应超时，请稍后重试");
+                }
+                try {
+                    long waitMillis = Math.min(TimeUnit.NANOSECONDS.toMillis(remainingNanos), 200L);
+                    return turnFuture.get(Math.max(waitMillis, 1L), TimeUnit.MILLISECONDS);
+                } catch (TimeoutException ignored) {
+                    // 短轮询用于及时响应用户停止生成。
+                }
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            streamHandle.cancel();
+            throw new RuntimeException("模型响应被中断", exception);
+        } catch (ExecutionException exception) {
+            streamHandle.cancel();
+            Throwable cause = exception.getCause() == null ? exception : exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new RuntimeException("ReAct 流式模型回合调用失败", cause);
+        } finally {
+            activeStreams.remove(generationId, streamHandle);
+        }
+    }
+
+    private void appendStreamChunk(String userId, String generationId, String conversationId, String chunk) {
+        if (chunk == null || chunk.isEmpty() || isGenerationCancelled(generationId)) {
+            return;
+        }
+        StringBuilder responseBuilder = responseBuilders.get(generationId);
+        if (responseBuilder != null) {
+            responseBuilder.append(chunk);
+        }
+        chatGenerationStateService.appendChunk(generationId, chunk);
+        sendResponseChunk(userId, generationId, conversationId, chunk);
     }
 
     private void submitCompletionMonitor(String userId, String userMessage, String conversationId, String generationId,
@@ -186,7 +423,7 @@ public class ChatHandler {
                     RuntimeException exception = new RuntimeException("模型响应超时，请稍后重试");
                     if (responseFuture.completeExceptionally(exception)) {
                         handleError(userId, generationId, exception);
-                        sendCompletionNotification(userId, generationId, conversationId, true);
+                        sendCompletionNotification(userId, generationId, conversationId, true, false);
                         chatGenerationStateService.markFailed(generationId, exception.getMessage());
                         cleanupGenerationState(generationId, exception);
                     }
@@ -212,7 +449,9 @@ public class ChatHandler {
     }
 
     private void finalizeResponse(String userId, String userMessage, String conversationId, String generationId,
-                                  CompletableFuture<String> responseFuture, StringBuilder responseBuilder) {
+                                  CompletableFuture<String> responseFuture,
+                                  StringBuilder responseBuilder,
+                                  LlmProviderRouter.StreamCompletion completion) {
         if (finishCancelledGeneration(generationId, responseFuture, responseBuilder)) {
             return;
         }
@@ -223,7 +462,7 @@ public class ChatHandler {
             RuntimeException exception = new RuntimeException("响应构建器为空");
             if (responseFuture.completeExceptionally(exception)) {
                 handleError(userId, generationId, exception);
-                sendCompletionNotification(userId, generationId, conversationId, true);
+                sendCompletionNotification(userId, generationId, conversationId, true, false);
                 chatGenerationStateService.markFailed(generationId, exception.getMessage());
                 cleanupGenerationState(generationId, exception);
             }
@@ -234,7 +473,7 @@ public class ChatHandler {
             RuntimeException exception = new RuntimeException("模型未返回有效内容，请稍后重试");
             if (responseFuture.completeExceptionally(exception)) {
                 handleError(userId, generationId, exception);
-                sendCompletionNotification(userId, generationId, conversationId, true);
+                sendCompletionNotification(userId, generationId, conversationId, true, false);
                 chatGenerationStateService.markFailed(generationId, exception.getMessage());
                 cleanupGenerationState(generationId, exception);
             }
@@ -243,18 +482,32 @@ public class ChatHandler {
         if (!responseFuture.complete(completeResponse)) {
             return;
         }
+        logger.info("模型回答收尾: generationId={}, conversationId={}, answerChars={}, finishReason={}, promptTokens={}, completionTokens={}",
+                generationId,
+                conversationId,
+                completeResponse.length(),
+                completion != null && completion.finishReason() != null ? completion.finishReason() : "unknown",
+                completion != null ? completion.promptTokens() : 0,
+                completion != null ? completion.completionTokens() : 0);
         Map<Integer, ReferenceInfo> referenceMappings = generationReferenceMappings.get(generationId);
-        updateConversationHistory(conversationId, userMessage, completeResponse, referenceMappings);
-        persistConversation(userId, userMessage, completeResponse, conversationId, referenceMappings);
+        // 先把消息事务性地落 MySQL；只有 MySQL 成功后才写 Redis 短期会话历史，
+        // 否则两个数据源会出现一边有记录、一边没有的不一致状态。
+        boolean persisted = persistConversation(userId, userMessage, completeResponse, conversationId, referenceMappings);
+        if (persisted) {
+            updateConversationHistory(conversationId, userMessage, completeResponse, referenceMappings);
+        } else {
+            logger.warn("MySQL 落库失败，跳过 Redis 会话历史写入以保持两端一致: generationId={}, conversationId={}",
+                    generationId, conversationId);
+        }
         chatGenerationStateService.markCompleted(generationId, toSerializableReferenceMappings(referenceMappings));
-        sendCompletionNotification(userId, generationId, conversationId, false);
+        sendCompletionNotification(userId, generationId, conversationId, false, !persisted);
         logger.info("对话存储信息 - Redis键: {}, 值: {}", "user:" + userId + ":current_conversation", conversationId);
         cleanupGenerationState(generationId, null);
         logger.info("消息处理完成，用户ID: {}", userId);
     }
 
-    private void persistConversation(String userId, String userMessage, String completeResponse, String conversationId,
-                                     Map<Integer, ReferenceInfo> referenceMappings) {
+    private boolean persistConversation(String userId, String userMessage, String completeResponse, String conversationId,
+                                        Map<Integer, ReferenceInfo> referenceMappings) {
         try {
             Long userIdLong = Long.parseLong(userId);
             conversationService.recordConversation(
@@ -264,8 +517,10 @@ public class ChatHandler {
                     conversationId,
                     toSerializableReferenceMappings(referenceMappings)
             );
+            return true;
         } catch (Exception e) {
             logger.error("持久化对话历史失败: userId={}, conversationId={}", userId, conversationId, e);
+            return false;
         }
     }
 
@@ -329,6 +584,46 @@ public class ChatHandler {
             history.add(normalized);
         }
         return history;
+    }
+
+    private String buildRecentFeedbackGuidance(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return "";
+        }
+        try {
+            Map<Object, Object> feedbackEntries = redisTemplate.opsForHash().entries("feedback:" + userId);
+            if (feedbackEntries == null || feedbackEntries.isEmpty()) {
+                return "";
+            }
+
+            StringBuilder guidance = new StringBuilder("近期用户对回答的显式反馈如下，按时间倒序排列，越靠前越新。")
+                    .append("后续回答需要参考这些偏好：good 表示用户认可这类回答方式，bad 表示需要避免类似问题；")
+                    .append("如果同一轮回答既有 good 又有 bad，以最新一条为准。\n");
+            feedbackEntries.entrySet().stream()
+                    .sorted(Comparator.comparingLong(entry -> -parseFeedbackTimestamp(entry.getKey())))
+                    .limit(5)
+                    .forEach(entry -> guidance.append("- ")
+                            .append("feedbackTime=")
+                            .append(entry.getKey())
+                            .append("; ")
+                            .append(entry.getValue())
+                            .append("\n"));
+            return guidance.toString().trim();
+        } catch (Exception exception) {
+            logger.warn("读取用户反馈上下文失败: userId={}", userId, exception);
+            return "";
+        }
+    }
+
+    private long parseFeedbackTimestamp(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException exception) {
+            return 0L;
+        }
     }
 
     private List<Map<String, Object>> getConversationHistoryRecords(String conversationId) {
@@ -481,10 +776,27 @@ public class ChatHandler {
         ));
     }
 
+    private void sendToolCallStatus(String userId,
+                                    String generationId,
+                                    String conversationId,
+                                    LlmProviderRouter.ToolCallDecision toolCall,
+                                    String status) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "tool_call");
+        payload.put("tool", toolCall.name());
+        payload.put("toolCallId", toolCall.id());
+        payload.put("status", status);
+        payload.put("generationId", generationId);
+        payload.put("conversationId", conversationId);
+        payload.put("timestamp", System.currentTimeMillis());
+        chatSessionRegistry.sendJsonToUser(userId, payload);
+    }
+
     private void sendCompletionNotification(String userId,
                                             String generationId,
                                             String conversationId,
-                                            boolean failed) {
+                                            boolean failed,
+                                            boolean persistenceDegraded) {
         Map<String, Object> notification = new HashMap<>();
         notification.put("type", "completion");
         notification.put("generationId", generationId);
@@ -498,6 +810,10 @@ public class ChatHandler {
             if (referenceMappings != null && !referenceMappings.isEmpty()) {
                 notification.put("referenceMappings", toSerializableReferenceMappings(referenceMappings));
             }
+        }
+        if (persistenceDegraded) {
+            notification.put("persistenceDegraded", true);
+            notification.put("persistenceWarning", "本次回复未能持久化到数据库，刷新后可能无法在历史中找到。");
         }
         chatSessionRegistry.sendJsonToUser(userId, notification);
     }
@@ -707,4 +1023,5 @@ public class ChatHandler {
             Integer chunkId
     ) {
     }
+
 }

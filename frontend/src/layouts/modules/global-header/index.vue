@@ -30,7 +30,7 @@ const isDev = import.meta.env.DEV;
 
 <template>
   <DarkModeContainer class="ml-12 h-full flex-y-center justify-between bg-transparent">
-    <div id="header-extra" class="h-full flex-col justify-center rd-full bg-container shadow-2xl"></div>
+    <div id="header-extra" class="h-full flex-col justify-center"></div>
     <!-- <GlobalLogo v-if="showLogo" class="h-full" :style="{ width: themeStore.sider.width + 'px' }" /> -->
     <MenuToggler
       v-if="showMenuToggler && appStore.isMobile"
@@ -43,7 +43,7 @@ const isDev = import.meta.env.DEV;
       <GlobalBreadcrumb v-if="!appStore.isMobile" class="ml-12px" />
     </div>
 -->
-    <div class="h-full flex-y-center justify-end rd-full bg-container px-8 shadow-2xl">
+    <div class="h-full flex-y-center justify-end px-6">
       <GlobalSearch />
       <FullScreen v-if="!appStore.isMobile" :full="isFullscreen" @click="toggle" />
       <LangSwitch

@@ -42,7 +42,11 @@ public class ChatSessionRegistry {
         }
 
         try {
-            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
+            synchronized (session) {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
+                }
+            }
         } catch (Exception e) {
             logger.error("向用户 {} 发送 WebSocket 消息失败: {}", userId, e.getMessage(), e);
         }

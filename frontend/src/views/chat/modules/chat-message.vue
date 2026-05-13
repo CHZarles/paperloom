@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { nextTick } from 'vue';
-import { formatDate } from '@/utils/common';
 import { router } from '@/router';
 import { request } from '@/service/request';
+import { formatDate } from '@/utils/common';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
 defineOptions({ name: 'ChatMessage' });
 
@@ -21,10 +21,76 @@ function handleCopy(content: string) {
 }
 
 const chatStore = useChatStore();
+const feedbackSubmitting = ref<Record<string, boolean>>({});
+
+function getMessageFeedbackKey(message: Api.Chat.Message) {
+  return message.generationId || `${message.conversationId || 'unknown'}:${message.timestamp || ''}`;
+}
+
+async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad') {
+  if (message.role !== 'assistant') {
+    return;
+  }
+
+  const key = getMessageFeedbackKey(message);
+  if (feedbackSubmitting.value[key]) {
+    return;
+  }
+
+  feedbackSubmitting.value = {
+    ...feedbackSubmitting.value,
+    [key]: true
+  };
+
+  const { error } = await request({
+    url: 'chat/feedback',
+    method: 'POST',
+    data: {
+      rating,
+      reason: rating === 'good' ? '用户点击点赞，表示认可本次回答' : '用户点击点踩，表示不满意本次回答',
+      conversationId: message.conversationId || props.sessionId,
+      generationId: message.generationId
+    }
+  });
+
+  feedbackSubmitting.value = {
+    ...feedbackSubmitting.value,
+    [key]: false
+  };
+
+  if (error) {
+    window.$message?.error('反馈记录失败');
+    return;
+  }
+
+  message.feedbackRating = rating;
+  window.$message?.success(rating === 'good' ? '已记录点赞反馈' : '已记录点踩反馈');
+}
 
 // 存储文件名和对应的事件处理
 const sourceFiles = ref<Array<{fileName: string, id: string, referenceNumber: number, fileMd5?: string, pageNumber?: number}>>([]);
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
+const toolNameLabels: Record<string, string> = {
+  search_knowledge: '检索知识库',
+  generate_summary: '生成知识摘要',
+  submit_feedback: '记录反馈',
+  knowledge_stats: '读取知识库统计'
+};
+const toolStatusLabels: Record<Api.Chat.AgentToolEvent['status'], string> = {
+  executing: '执行中',
+  success: '已完成',
+  failed: '失败'
+};
+
+const toolEvents = computed(() => props.msg.toolEvents || []);
+
+function getToolLabel(tool: string) {
+  return toolNameLabels[tool] || tool;
+}
+
+function getToolStatusLabel(status: Api.Chat.AgentToolEvent['status']) {
+  return toolStatusLabels[status] || status;
+}
 
 function splitTrailingUrlPunctuation(rawUrl: string) {
   let url = rawUrl;
@@ -235,8 +301,7 @@ async function handleSourceFileClick(fileInfo: {
           params: {
             sessionId: referenceSessionId,
             referenceNumber: referenceNumber.toString()
-          },
-          baseURL: '/proxy-api'
+          }
         });
 
         if (!detailError && detailData?.fileMd5) {
@@ -309,7 +374,21 @@ async function handleSourceFileClick(fileInfo: {
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>
-    <NText v-if="msg.status === 'pending'">
+    <div v-if="msg.role === 'assistant' && toolEvents.length > 0" class="ml-12 mt-3 flex flex-col gap-2">
+      <div
+        v-for="event in toolEvents"
+        :key="event.id || event.tool"
+        class="tool-event"
+        :class="`tool-event--${event.status}`"
+      >
+        <icon-eos-icons:three-dots-loading v-if="event.status === 'executing'" class="text-4" />
+        <icon-material-symbols:check-circle-rounded v-else-if="event.status === 'success'" class="text-4" />
+        <icon-material-symbols:error-rounded v-else class="text-4" />
+        <span class="tool-event__name">{{ getToolLabel(event.tool) }}</span>
+        <span class="tool-event__status">{{ getToolStatusLabel(event.status) }}</span>
+      </div>
+    </div>
+    <NText v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)">
       <icon-eos-icons:three-dots-loading class="ml-12 mt-2 text-8" />
     </NText>
     <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 italic color-#d03050">
@@ -320,10 +399,36 @@ async function handleSourceFileClick(fileInfo: {
     </div>
     <NText v-else-if="msg.role === 'user'" class="ml-12 mt-2 text-4">{{ content }}</NText>
     <NDivider class="ml-12 w-[calc(100%-3rem)] mb-0! mt-2!" />
-    <div class="ml-12 flex gap-4">
-      <NButton quaternary @click="handleCopy(msg.content)">
+    <div class="ml-12 flex gap-2">
+      <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
         <template #icon>
           <icon-mynaui:copy />
+        </template>
+      </NButton>
+      <NButton
+        v-if="msg.role === 'assistant'"
+        quaternary
+        title="点赞"
+        aria-label="点赞"
+        :type="msg.feedbackRating === 'good' ? 'primary' : 'default'"
+        :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
+        @click="handleFeedback(msg, 'good')"
+      >
+        <template #icon>
+          <icon-material-symbols:thumb-up-outline-rounded />
+        </template>
+      </NButton>
+      <NButton
+        v-if="msg.role === 'assistant'"
+        quaternary
+        title="点踩"
+        aria-label="点踩"
+        :type="msg.feedbackRating === 'bad' ? 'error' : 'default'"
+        :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
+        @click="handleFeedback(msg, 'bad')"
+      >
+        <template #icon>
+          <icon-material-symbols:thumb-down-outline-rounded />
         </template>
       </NButton>
     </div>
@@ -345,5 +450,39 @@ async function handleSourceFileClick(fileInfo: {
   &:active {
     color: #096dd9;
   }
+}
+
+.tool-event {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgb(var(--border-color) / 0.18);
+  border-radius: 6px;
+  background: rgb(var(--card-color));
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 18px;
+  color: rgb(var(--text-color-2));
+}
+
+.tool-event__name {
+  font-weight: 500;
+  color: rgb(var(--text-color));
+}
+
+.tool-event__status {
+  color: rgb(var(--text-color-3));
+}
+
+.tool-event--success {
+  border-color: rgb(24 160 88 / 0.25);
+  color: #18a058;
+}
+
+.tool-event--failed {
+  border-color: rgb(208 48 80 / 0.25);
+  color: #d03050;
 }
 </style>

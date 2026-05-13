@@ -105,8 +105,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       return null;
     }
     const { error, data } = await request<Api.Chat.GenerationSnapshot | null>({
-      url: `chat/generation/${generationId}`,
-      baseURL: 'proxy-api'
+      url: `chat/generation/${generationId}`
     });
     if (error) {
       return null;
@@ -116,8 +115,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
 
   async function fetchActiveGenerationSnapshot() {
     const { error, data } = await request<Api.Chat.GenerationSnapshot | null>({
-      url: 'chat/active-generation',
-      baseURL: 'proxy-api'
+      url: 'chat/active-generation'
     });
     if (error) {
       return null;
@@ -410,6 +408,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     clearRateLimitCountdown,
     startRateLimitCountdown,
     handleAuthReset,
+    fetchGenerationSnapshot,
     upsertGenerationSnapshot,
     syncGenerationAfterReconnect,
     loadSessions,

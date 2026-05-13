@@ -27,6 +27,8 @@ public interface FileUploadRepository extends JpaRepository<FileUpload, Long> {
     Optional<FileUpload> findFirstByFileMd5AndIsPublicTrueOrderByCreatedAtDesc(String fileMd5);
 
     Optional<FileUpload> findFirstByFileNameAndIsPublicTrueOrderByCreatedAtDesc(String fileName);
+
+    Optional<FileUpload> findFirstByOrderByMergedAtDesc();
     
     long countByFileMd5(String fileMd5);
 

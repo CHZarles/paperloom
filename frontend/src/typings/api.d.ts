@@ -416,6 +416,13 @@ declare namespace Api {
       chunk: string;
     }
 
+    interface AgentToolEvent {
+      id?: string;
+      tool: string;
+      status: 'executing' | 'success' | 'failed';
+      timestamp?: number;
+    }
+
     interface Conversation {
       conversationId: string;
     }
@@ -429,6 +436,8 @@ declare namespace Api {
       generationId?: string;
       username?: string;
       referenceMappings?: Record<string, ReferenceEvidence>;
+      toolEvents?: AgentToolEvent[];
+      feedbackRating?: 'good' | 'bad';
     }
 
     interface Token {

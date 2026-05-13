@@ -3,14 +3,18 @@ defineOptions({
   name: 'ConversationSidebar'
 });
 
+const collapsed = defineModel<boolean>('collapsed', { default: false });
+
 const chatStore = useChatStore();
 const { conversationId, sessionsLoading, filteredSessions, activeTab } = storeToRefs(chatStore);
-
-const collapsed = ref(false);
 
 onMounted(() => {
   chatStore.loadSessions();
 });
+
+function handleCollapse() {
+  collapsed.value = true;
+}
 
 function handleNewChat() {
   chatStore.createNewSession();
@@ -51,24 +55,11 @@ function formatDate(dateStr?: string) {
 
 <template>
   <div
-    class="relative flex h-full flex-col border-r border-[rgb(var(--border-color)/0.3)] bg-white transition-all duration-300 dark:bg-[#1a1a1a]"
-    :class="collapsed ? 'w-[40px] min-w-[40px] overflow-hidden' : 'w-[300px] min-w-[300px]'"
+    class="relative h-full shrink-0 flex flex-col overflow-hidden border-r border-#eef0f4 bg-#f8f9fb transition-[width] duration-200 ease-out dark:border-#ffffff0f dark:bg-#ffffff05"
+    :class="collapsed ? 'w-0 min-w-0 border-r-0' : 'w-[260px] min-w-[260px]'"
   >
-    <!-- Header / Collapsed bar -->
-    <div v-if="collapsed" class="flex flex-col items-center gap-3 pt-3">
-      <NButton type="primary" size="tiny" circle @click="handleNewChat">
-        <template #icon>
-          <icon-material-symbols:add-rounded class="text-16px" />
-        </template>
-      </NButton>
-      <NButton text size="tiny" @click="collapsed = false">
-        <template #icon>
-          <icon-material-symbols:chevron-right-rounded class="text-16px" />
-        </template>
-      </NButton>
-    </div>
-
-    <div v-else class="flex items-center justify-between px-4 pt-4 pb-2">
+    <div class="flex w-[260px] flex-1 flex-col overflow-hidden" :class="{ 'pointer-events-none invisible': collapsed }">
+    <div class="flex items-center justify-between px-4 pt-4 pb-2">
       <span class="text-15px font-600">对话列表</span>
       <div class="flex items-center gap-1">
         <NButton
@@ -82,9 +73,9 @@ function formatDate(dateStr?: string) {
           </template>
           新对话
         </NButton>
-        <NButton text size="tiny" @click="collapsed = true">
+        <NButton text size="tiny" @click="handleCollapse">
           <template #icon>
-            <icon-material-symbols:chevron-left-rounded />
+            <icon-material-symbols:left-panel-close-outline-rounded />
           </template>
         </NButton>
       </div>
@@ -181,6 +172,7 @@ function formatDate(dateStr?: string) {
           </div>
         </TransitionGroup>
       </NSpin>
+    </div>
     </div>
 
   </div>
