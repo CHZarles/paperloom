@@ -118,7 +118,8 @@ git commit -m "tutorial: 初始化从零撸 PaiSmart 教程目录与写作模板
 **Acceptance Criteria:**
 - [ ] 文件存在且 ≥ 500 行
 - [ ] 含 7 段固定结构（开场、业务驱动、设计决策、完整代码、验证步骤、常见坑、思考题+下集预告）
-- [ ] 完整代码段含：完整 `pom.xml`、主启动类、`application.yml`、dev/docker/prod 三 profile
+- [ ] 完整代码段含：完整 `pom.xml`（groupId=`charles`、artifactId=`easyrag`、Java 17、Spring Boot 3.4.2）、主启动类 `charles.easyrag.EasyRagApplication`、`application.yml`、dev/docker/prod 三 profile
+- [ ] 全文所有 Java 代码使用 `package charles.easyrag`（**不用** `com.yizhaoqi.smartpai`）
 - [ ] 验证步骤含具体命令（`mvn spring-boot:run`）和预期输出
 - [ ] 至少 3 个常见坑 + 面试问答
 - [ ] 末尾有下集预告指向 bfs-02

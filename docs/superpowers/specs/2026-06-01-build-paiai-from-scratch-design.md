@@ -30,8 +30,8 @@
 
 ### M0 — 项目骨架（1 集）
 - **bfs-01-spring-boot-skeleton.md**（对应分析集 01）
-  - 完整 pom.xml（Java 17、Spring Boot 3.4.2）
-  - 主启动类、application.yml、dev/docker/prod 三 profile
+  - 完整 pom.xml（Java 17、Spring Boot 3.4.2，groupId=`charles`，artifactId=`easyrag`）
+  - 主启动类（`charles.easyrag.EasyRagApplication`）、application.yml、dev/docker/prod 三 profile
   - 验证：`mvn spring-boot:run` 起得来
 
 ### M1 — 用户体系（3 集）
