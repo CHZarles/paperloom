@@ -76,6 +76,19 @@ frontend/
 └── ...               # 构建配置文件
 ```
 
+> **前端代码状态说明（2026-06-19）**
+>
+> README 中保留的部分前端截图、页面说明和“派聪明 / PaiSmart 企业知识库”前端叙述，属于原始
+> Soybean Admin + 通用知识库界面的历史说明，已经不代表当前前端产品方向。
+>
+> 当前有效的前端定位是 **PaperLoom：科研论文解读 RAG 工作台**。主体验以
+> `frontend/src/views/chat` 的独立 ChatShell、`frontend/src/views/knowledge-base`
+> 的文献库、引用预览、文件/PDF 预览和 Journal Ink 学术配色为准。旧后台壳、旧截图、
+> 旧品牌文案和通用企业知识库描述只作为兼容或历史上下文保留，不应作为后续前端改造的设计依据。
+>
+> 新增或重构前端功能时，请优先遵循 PaperLoom 的论文阅读、claim 分析、cited evidence
+> 和文献库工作流，而不是继续沿用旧的 PaiSmart 通用知识库 UI 叙事。
+
 > 派聪明如何写到简历上：[https://paicoding.com/column/10/2](https://paicoding.com/column/10/2)
 
 ## 核心功能
