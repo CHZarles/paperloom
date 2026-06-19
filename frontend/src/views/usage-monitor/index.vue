@@ -255,21 +255,20 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-auto">
-    <NCard :bordered="false" size="small" class="card-wrapper">
-      <template #header>调用限流配置</template>
+  <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
+    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper">
+      <template #header>Runtime Limits / 限流配置</template>
       <template #header-extra>
         <div class="flex items-center gap-2">
           <span class="text-xs text-stone-400">保存后立即对新请求生效</span>
-          <NButton type="primary" size="small" :loading="rateLimitSaving" @click="submitRateLimits">
-            保存配置
-          </NButton>
+          <NButton type="primary" size="small" :loading="rateLimitSaving" @click="submitRateLimits">保存配置</NButton>
         </div>
       </template>
 
       <NSpin :show="rateLimitLoading">
-        <div class="mb-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-500">
-          这里集中管理聊天消息、LLM 全网 Token 预算，以及 Embedding 上传/查询两条链路的运行时限流配置。保存后对新请求立即生效，无需改 `application.yml`。
+        <div class="admin-console-note mb-4">
+          这里集中管理聊天消息、LLM 全网 Token 预算，以及 Embedding
+          上传/查询两条链路的运行时限流配置。保存后对新请求立即生效，无需改 `application.yml`。
         </div>
 
         <div v-if="rateLimits" class="grid gap-4 xl:grid-cols-2">
@@ -318,7 +317,11 @@ onMounted(() => {
               </div>
               <div>
                 <div class="limit-label">分钟窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingUploadToken.minuteWindowSeconds" :min="1" class="w-full" />
+                <NInputNumber
+                  v-model:value="rateLimits.embeddingUploadToken.minuteWindowSeconds"
+                  :min="1"
+                  class="w-full"
+                />
               </div>
               <div>
                 <div class="limit-label">日 Token 上限</div>
@@ -326,7 +329,11 @@ onMounted(() => {
               </div>
               <div>
                 <div class="limit-label">日窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingUploadToken.dayWindowSeconds" :min="1" class="w-full" />
+                <NInputNumber
+                  v-model:value="rateLimits.embeddingUploadToken.dayWindowSeconds"
+                  :min="1"
+                  class="w-full"
+                />
               </div>
             </div>
           </div>
@@ -340,7 +347,11 @@ onMounted(() => {
               </div>
               <div>
                 <div class="limit-label">分钟窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryRequest.minuteWindowSeconds" :min="1" class="w-full" />
+                <NInputNumber
+                  v-model:value="rateLimits.embeddingQueryRequest.minuteWindowSeconds"
+                  :min="1"
+                  class="w-full"
+                />
               </div>
               <div>
                 <div class="limit-label">单用户日次数</div>
@@ -348,7 +359,11 @@ onMounted(() => {
               </div>
               <div>
                 <div class="limit-label">日窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryRequest.dayWindowSeconds" :min="1" class="w-full" />
+                <NInputNumber
+                  v-model:value="rateLimits.embeddingQueryRequest.dayWindowSeconds"
+                  :min="1"
+                  class="w-full"
+                />
               </div>
               <div>
                 <div class="limit-label">全网分钟 Token</div>
@@ -356,7 +371,11 @@ onMounted(() => {
               </div>
               <div>
                 <div class="limit-label">查询分钟窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryGlobalToken.minuteWindowSeconds" :min="1" class="w-full" />
+                <NInputNumber
+                  v-model:value="rateLimits.embeddingQueryGlobalToken.minuteWindowSeconds"
+                  :min="1"
+                  class="w-full"
+                />
               </div>
               <div>
                 <div class="limit-label">全网日 Token</div>
@@ -364,7 +383,11 @@ onMounted(() => {
               </div>
               <div>
                 <div class="limit-label">查询日窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryGlobalToken.dayWindowSeconds" :min="1" class="w-full" />
+                <NInputNumber
+                  v-model:value="rateLimits.embeddingQueryGlobalToken.dayWindowSeconds"
+                  :min="1"
+                  class="w-full"
+                />
               </div>
             </div>
           </div>
@@ -373,24 +396,42 @@ onMounted(() => {
       </NSpin>
     </NCard>
 
-    <NCard :bordered="false" size="small" class="card-wrapper">
+    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper">
       <template #header>
         <div class="flex items-center gap-3">
-          <span>用量总览</span>
+          <span>Usage Ledger / 用量总览</span>
           <NTag size="small" type="warning">今日告警 {{ alertCount }}</NTag>
           <NTag size="small" type="error">超额 {{ criticalAlertCount }}</NTag>
         </div>
       </template>
       <template #header-extra>
         <div class="flex items-center gap-2">
-          <NButton size="small" :type="trendWindow === 7 ? 'primary' : 'default'" @click="trendWindow = 7; getOverview()">近7天</NButton>
-          <NButton size="small" :type="trendWindow === 30 ? 'primary' : 'default'" @click="trendWindow = 30; getOverview()">近30天</NButton>
+          <NButton
+            size="small"
+            :type="trendWindow === 7 ? 'primary' : 'default'"
+            @click="
+              trendWindow = 7;
+              getOverview();
+            "
+          >
+            近7天
+          </NButton>
+          <NButton
+            size="small"
+            :type="trendWindow === 30 ? 'primary' : 'default'"
+            @click="
+              trendWindow = 30;
+              getOverview();
+            "
+          >
+            近30天
+          </NButton>
         </div>
       </template>
 
       <NSpin :show="overviewLoading">
         <div class="flex flex-col gap-4">
-          <div class="grid gap-4 xl:grid-cols-5 sm:grid-cols-2">
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <div class="summary-card">
               <div class="summary-label">今日聊天消息</div>
               <div class="summary-value">{{ formatNumber(todaySummary?.chatRequestCount) }}</div>
@@ -435,13 +476,14 @@ onMounted(() => {
                   >
                     <div class="flex items-center justify-between gap-3">
                       <div class="flex items-center gap-2">
-                        <span class="font-medium text-stone-700">{{ alert.username }}</span>
+                        <span class="text-stone-700 font-medium">{{ alert.username }}</span>
                         <NTag size="small" :type="alertType(alert.level)">{{ scopeLabel(alert.scope) }}</NTag>
                       </div>
                       <NTag size="small" :type="alertType(alert.level)">{{ alert.message }}</NTag>
                     </div>
                     <div class="text-xs text-stone-500">
-                      {{ formatNumber(alert.usedTokens) }} / {{ formatNumber(alert.limitTokens) }}，剩余 {{ formatNumber(alert.remainingTokens) }}，{{ alert.requestCount }} 次
+                      {{ formatNumber(alert.usedTokens) }} / {{ formatNumber(alert.limitTokens) }}，剩余
+                      {{ formatNumber(alert.remainingTokens) }}，{{ alert.requestCount }} 次
                     </div>
                   </div>
                 </div>
@@ -452,7 +494,7 @@ onMounted(() => {
                 <template #header>今日用量排行</template>
                 <div class="flex flex-col gap-4">
                   <div>
-                    <div class="mb-2 text-xs font-semibold uppercase tracking-0.12em text-stone-400">LLM</div>
+                    <div class="mb-2 text-xs text-stone-400 font-semibold tracking-0.12em uppercase">LLM</div>
                     <div v-if="overview?.llmRankings?.length" class="flex flex-col gap-2">
                       <div
                         v-for="(item, index) in overview.llmRankings"
@@ -461,9 +503,10 @@ onMounted(() => {
                       >
                         <span class="ranking-index">{{ index + 1 }}</span>
                         <div class="flex-1">
-                          <div class="font-medium text-stone-700">{{ item.username }}</div>
+                          <div class="text-stone-700 font-medium">{{ item.username }}</div>
                           <div class="text-xs text-stone-500">
-                            {{ formatNumber(item.usedTokens) }} / {{ formatNumber(item.limitTokens) }} · {{ item.requestCount }} 次
+                            {{ formatNumber(item.usedTokens) }} / {{ formatNumber(item.limitTokens) }} ·
+                            {{ item.requestCount }} 次
                           </div>
                         </div>
                       </div>
@@ -472,7 +515,7 @@ onMounted(() => {
                   </div>
 
                   <div>
-                    <div class="mb-2 text-xs font-semibold uppercase tracking-0.12em text-stone-400">Embedding</div>
+                    <div class="mb-2 text-xs text-stone-400 font-semibold tracking-0.12em uppercase">Embedding</div>
                     <div v-if="overview?.embeddingRankings?.length" class="flex flex-col gap-2">
                       <div
                         v-for="(item, index) in overview.embeddingRankings"
@@ -481,9 +524,10 @@ onMounted(() => {
                       >
                         <span class="ranking-index">{{ index + 1 }}</span>
                         <div class="flex-1">
-                          <div class="font-medium text-stone-700">{{ item.username }}</div>
+                          <div class="text-stone-700 font-medium">{{ item.username }}</div>
                           <div class="text-xs text-stone-500">
-                            {{ formatNumber(item.usedTokens) }} / {{ formatNumber(item.limitTokens) }} · {{ item.requestCount }} 次
+                            {{ formatNumber(item.usedTokens) }} / {{ formatNumber(item.limitTokens) }} ·
+                            {{ item.requestCount }} 次
                           </div>
                         </div>
                       </div>
@@ -502,11 +546,18 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .limit-card {
-  @apply rounded-2xl border border-stone-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-4 shadow-sm;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
+  box-shadow: 3px 3px 0 rgba(201, 193, 178, 0.48);
+  padding: 16px;
 }
 
 .limit-title {
-  @apply mb-4 text-sm font-semibold text-stone-700;
+  margin-bottom: 16px;
+  color: #26364a;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .limit-grid {
@@ -514,42 +565,82 @@ onMounted(() => {
 }
 
 .limit-label {
-  @apply mb-2 text-xs font-semibold uppercase tracking-0.08em text-stone-400;
+  margin-bottom: 8px;
+  color: #7e3f46;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .summary-card {
-  @apply rounded-2xl border border-stone-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(248,250,252,0.92))] p-4 shadow-sm;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
+  padding: 16px;
 }
 
 .summary-card.is-alert {
-  @apply border-amber-200 bg-[linear-gradient(180deg,_rgba(255,251,235,0.98),_rgba(254,243,199,0.7))];
+  border-color: #d8b46a;
+  background: linear-gradient(180deg, #fff7e4, #f5e8c8);
 }
 
 .summary-label {
-  @apply text-xs font-semibold uppercase tracking-0.12em text-stone-400;
+  color: #7e3f46;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .summary-value {
-  @apply mt-3 text-7 font-semibold text-stone-800;
+  margin-top: 12px;
+  color: #20242a;
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .summary-sub {
-  @apply mt-1 text-xs text-stone-500;
+  margin-top: 4px;
+  color: #5e6470;
+  font-size: 12px;
 }
 
 .overview-section {
-  border-radius: 20px;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #fbfaf6;
 }
 
 .alert-item {
-  @apply rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #e2dccc;
+  padding: 12px;
 }
 
 .ranking-item {
-  @apply flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #e2dccc;
+  padding: 12px;
 }
 
 .ranking-index {
-  @apply inline-flex h-8 w-8 items-center justify-center rounded-full bg-stone-900 text-xs font-semibold text-white;
+  display: inline-flex;
+  height: 32px;
+  width: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #26364a;
+  color: #fbfaf6;
+  font-size: 12px;
+  font-weight: 700;
 }
 </style>

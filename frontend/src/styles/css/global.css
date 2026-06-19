@@ -11,3 +11,100 @@ body,
 html {
   overflow-x: hidden;
 }
+
+body {
+  background:
+    linear-gradient(90deg, rgba(38, 54, 74, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px), rgb(var(--layout-bg-color));
+  background-size: 24px 24px;
+  color: rgb(var(--base-text-color));
+  font-family:
+    'Noto Sans SC',
+    'Microsoft YaHei',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+::selection {
+  background: rgba(38, 54, 74, 0.22);
+  color: #20242a;
+}
+
+.paper-serif {
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+}
+
+.admin-console-page {
+  min-height: 500px;
+  color: #20242a;
+}
+
+.admin-console-card {
+  border: 1px solid #c9c1b2 !important;
+  border-radius: 8px !important;
+  background: #fbfaf6 !important;
+  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.58);
+}
+
+.admin-console-card > .n-card-header {
+  border-bottom: 1px solid #c9c1b2;
+  background: #e2dccc;
+}
+
+.admin-console-card > .n-card-header .n-card-header__main {
+  color: #26364a;
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.admin-console-card > .n-card__content {
+  background: #fbfaf6;
+}
+
+.admin-console-note {
+  border: 1px solid #c9c1b2;
+  border-radius: 6px;
+  background: #e2dccc;
+  color: #5e6470;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.admin-console-kicker {
+  color: #9a6428;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.admin-console-panel {
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #e2dccc;
+  box-shadow: 3px 3px 0 rgba(201, 193, 178, 0.48);
+}
+
+.admin-console-card .n-data-table {
+  --n-td-color: #fbfaf6 !important;
+  --n-th-color: #e2dccc !important;
+  --n-border-color: #c9c1b2 !important;
+  --n-th-text-color: #26364a !important;
+  --n-td-text-color: #20242a !important;
+}
+
+.admin-console-card .n-data-table-th {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-console-card .n-button--primary-type {
+  box-shadow: none;
+}

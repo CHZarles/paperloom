@@ -6,9 +6,7 @@ defineOptions({
 
 <template>
   <DarkModeContainer class="h-full flex-center">
-    <a href="https://github.com/itwanger/PaiSmart.git" target="_blank" rel="noopener noreferrer">
-      Copyright MIT © 2025 PaiSmart
-    </a>
+    <span>Copyright MIT © 2025 PaperLoom</span>
   </DarkModeContainer>
 </template>
 

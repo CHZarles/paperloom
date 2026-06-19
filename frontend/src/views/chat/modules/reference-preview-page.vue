@@ -78,6 +78,8 @@ function syncFromStorage() {
   }
 }
 
+// Existing reference loading supports URL fallback, localStorage handoff, and endpoint refresh.
+// eslint-disable-next-line complexity
 async function loadReferenceDetail() {
   syncFallbackFromQuery();
   const restoredFromStorage = syncFromStorage();
@@ -137,7 +139,7 @@ function handleBack() {
 watch(
   () => route.query,
   () => {
-    void loadReferenceDetail();
+    loadReferenceDetail();
   },
   { immediate: true }
 );
@@ -147,7 +149,7 @@ watch(
   <div class="flex-col gap-4">
     <div v-if="loading && !hasPreviewTarget" class="preview-page-state">
       <NSpin size="large" />
-      <span>正在加载引用详情...</span>
+      <span>正在加载 source evidence...</span>
     </div>
 
     <div v-else-if="!hasPreviewTarget" class="preview-page-empty">
@@ -179,11 +181,17 @@ watch(
 
 <style scoped lang="scss">
 .preview-page-state {
-  @apply flex min-h-220px flex-col items-center justify-center gap-4 rounded-12px bg-white text-stone-500;
+  @apply flex min-h-220px flex-col items-center justify-center gap-4 text-stone-500;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #fbfaf6;
 }
 
 .preview-page-empty {
-  @apply rounded-12px bg-white py-10;
+  @apply py-10;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #fbfaf6;
 }
 
 .preview-page-shell {
@@ -191,6 +199,10 @@ watch(
 }
 
 .preview-page-tip {
-  @apply rounded-12px border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700;
+  @apply px-4 py-3 text-sm;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #e2dccc;
+  color: #7e3f46;
 }
 </style>

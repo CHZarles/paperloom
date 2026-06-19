@@ -29,6 +29,10 @@ export function initThemeSettings() {
     localStg.set('overrideThemeFlag', BUILD_TIME);
   }
 
+  if (settings.themeColor.toLowerCase() === '#2f5d62') {
+    settings.themeColor = themeSettings.themeColor;
+  }
+
   return settings;
 }
 

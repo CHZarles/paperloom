@@ -4,8 +4,8 @@ export const themeSettings: App.Theme.ThemeSetting = {
   grayscale: false,
   colourWeakness: false,
   recommendColor: true,
-  themeColor: '#646cff',
-  otherColor: { info: '#2080f0', success: '#52c41a', warning: '#faad14', error: '#f5222d' },
+  themeColor: '#26364a',
+  otherColor: { info: '#335c67', success: '#58735e', warning: '#9a6428', error: '#8a3e3e' },
   isInfoFollowPrimary: true,
   resetCacheStrategy: 'close',
   layout: { mode: 'vertical', scrollMode: 'content', reverseHorizontalMix: false },
@@ -22,22 +22,22 @@ export const themeSettings: App.Theme.ThemeSetting = {
     mixChildMenuWidth: 200
   },
   footer: { visible: false, fixed: false, height: 48, right: true },
-  watermark: { visible: false, text: '派聪明 PaiSmart' },
+  watermark: { visible: false, text: 'PaperLoom' },
   tokens: {
     light: {
       colors: {
-        container: 'rgb(255, 255, 255)',
-        layout: 'rgb(247, 250, 252)',
-        inverted: 'rgb(0, 20, 40)',
-        'base-text': 'rgb(31, 31, 31)'
+        container: 'rgb(251, 250, 246)',
+        layout: 'rgb(238, 234, 225)',
+        inverted: 'rgb(34, 39, 48)',
+        'base-text': 'rgb(32, 36, 42)'
       },
       boxShadow: {
-        header: '0 1px 2px rgb(0, 21, 41, 0.08)',
-        sider: '2px 0 8px 0 rgb(29, 35, 41, 0.05)',
-        tab: '0 1px 2px rgb(0, 21, 41, 0.08)'
+        header: '0 1px 0 rgb(201, 193, 178, 0.7)',
+        sider: '1px 0 0 0 rgb(201, 193, 178, 0.8)',
+        tab: '0 1px 0 rgb(201, 193, 178, 0.7)'
       }
     },
-    dark: { colors: { container: 'rgb(28, 28, 28)', layout: 'rgb(18, 18, 18)', 'base-text': 'rgb(224, 224, 224)' } }
+    dark: { colors: { container: 'rgb(22, 26, 33)', layout: 'rgb(16, 19, 24)', 'base-text': 'rgb(237, 233, 223)' } }
   }
 };
 

@@ -30,7 +30,9 @@ function cloneModelProviderScope(payload: Api.Admin.ModelProviderScopeSettings):
   };
 }
 
-function cloneModelProviderSettings(payload?: Api.Admin.ModelProviderSettings | null): Api.Admin.ModelProviderSettings | null {
+function cloneModelProviderSettings(
+  payload?: Api.Admin.ModelProviderSettings | null
+): Api.Admin.ModelProviderSettings | null {
   if (!payload) {
     return null;
   }
@@ -114,9 +116,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-auto">
-    <NCard :bordered="false" size="small" class="card-wrapper">
-      <template #header>模型 Provider 配置</template>
+  <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
+    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper">
+      <template #header>Experiment Config / 模型配置</template>
       <template #header-extra>
         <div class="flex items-center gap-2">
           <span class="text-xs text-stone-400">LLM 保存后新请求立即生效，Embedding 暂不允许危险直切</span>
@@ -124,8 +126,9 @@ onMounted(() => {
       </template>
 
       <NSpin :show="modelProvidersLoading">
-        <div class="mb-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-500">
-          这里管理平台代付的模型接入配置。API Key 输入为空时保留现有密钥，不会回显明文。Embedding 如果切换 active provider，后端会拦截需要重嵌入的危险变更。
+        <div class="admin-console-note mb-4">
+          这里管理平台代付的模型接入配置。API Key 输入为空时保留现有密钥，不会回显明文。Embedding 如果切换 active
+          provider，后端会拦截需要重嵌入的危险变更。
         </div>
 
         <div v-if="modelProviders" class="grid gap-4">
@@ -138,10 +141,21 @@ onMounted(() => {
               <div class="flex items-center gap-3">
                 <NSelect
                   v-model:value="modelProviders.llm.activeProvider"
-                  :options="modelProviders.llm.providers.map(item => ({ label: item.displayName, value: item.provider, disabled: !item.enabled }))"
+                  :options="
+                    modelProviders.llm.providers.map(item => ({
+                      label: item.displayName,
+                      value: item.provider,
+                      disabled: !item.enabled
+                    }))
+                  "
                   class="min-w-180px"
                 />
-                <NButton type="primary" size="small" :loading="modelProvidersSaving" @click="submitModelProviders('llm')">
+                <NButton
+                  type="primary"
+                  size="small"
+                  :loading="modelProvidersSaving"
+                  @click="submitModelProviders('llm')"
+                >
                   保存 LLM 配置
                 </NButton>
               </div>
@@ -171,7 +185,12 @@ onMounted(() => {
                   </div>
                   <div>
                     <div class="limit-label">新 API Key</div>
-                    <NInput v-model:value="item.apiKeyInput" type="password" show-password-on="click" placeholder="留空则保留现有值" />
+                    <NInput
+                      v-model:value="item.apiKeyInput"
+                      type="password"
+                      show-password-on="click"
+                      placeholder="留空则保留现有值"
+                    />
                   </div>
                 </div>
                 <div class="mt-3 flex justify-end">
@@ -185,22 +204,39 @@ onMounted(() => {
             <div class="provider-scope-header">
               <div>
                 <div class="provider-scope-title">Embedding Provider</div>
-                <div class="provider-scope-sub">当前版本只支持配置管理；切 active provider 若需要重嵌入会被后端拦截</div>
+                <div class="provider-scope-sub">
+                  当前版本只支持配置管理；切 active provider 若需要重嵌入会被后端拦截
+                </div>
               </div>
               <div class="flex items-center gap-3">
                 <NSelect
                   v-model:value="modelProviders.embedding.activeProvider"
-                  :options="modelProviders.embedding.providers.map(item => ({ label: item.displayName, value: item.provider, disabled: !item.enabled }))"
+                  :options="
+                    modelProviders.embedding.providers.map(item => ({
+                      label: item.displayName,
+                      value: item.provider,
+                      disabled: !item.enabled
+                    }))
+                  "
                   class="min-w-180px"
                 />
-                <NButton type="primary" size="small" :loading="modelProvidersSaving" @click="submitModelProviders('embedding')">
+                <NButton
+                  type="primary"
+                  size="small"
+                  :loading="modelProvidersSaving"
+                  @click="submitModelProviders('embedding')"
+                >
                   保存 Embedding 配置
                 </NButton>
               </div>
             </div>
 
             <div class="provider-grid">
-              <div v-for="item in modelProviders.embedding.providers" :key="`embedding-${item.provider}`" class="provider-card">
+              <div
+                v-for="item in modelProviders.embedding.providers"
+                :key="`embedding-${item.provider}`"
+                class="provider-card"
+              >
                 <div class="provider-card-header">
                   <div>
                     <div class="provider-name">{{ item.displayName }}</div>
@@ -227,7 +263,12 @@ onMounted(() => {
                   </div>
                   <div class="sm:col-span-2">
                     <div class="limit-label">新 API Key</div>
-                    <NInput v-model:value="item.apiKeyInput" type="password" show-password-on="click" placeholder="留空则保留现有值" />
+                    <NInput
+                      v-model:value="item.apiKeyInput"
+                      type="password"
+                      show-password-on="click"
+                      placeholder="留空则保留现有值"
+                    />
                   </div>
                 </div>
                 <div class="mt-3 flex justify-end">
@@ -245,7 +286,11 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .provider-scope {
-  @apply rounded-3xl border border-stone-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-5 shadow-sm;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
+  box-shadow: 3px 3px 0 rgba(201, 193, 178, 0.48);
+  padding: 20px;
 }
 
 .provider-scope-header {
@@ -253,11 +298,15 @@ onMounted(() => {
 }
 
 .provider-scope-title {
-  @apply text-sm font-semibold text-stone-700;
+  color: #26364a;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .provider-scope-sub {
-  @apply mt-1 text-xs text-stone-500;
+  margin-top: 4px;
+  color: #5e6470;
+  font-size: 12px;
 }
 
 .provider-grid {
@@ -265,7 +314,10 @@ onMounted(() => {
 }
 
 .provider-card {
-  @apply rounded-2xl border border-stone-200 bg-white p-4 shadow-sm;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #fbfaf6;
+  padding: 16px;
 }
 
 .provider-card-header {
@@ -273,15 +325,27 @@ onMounted(() => {
 }
 
 .provider-name {
-  @apply text-sm font-semibold text-stone-700;
+  color: #4b4032;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .provider-code {
-  @apply mt-1 text-xs uppercase tracking-0.08em text-stone-400;
+  margin-top: 4px;
+  color: #7e3f46;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .provider-mask {
-  @apply rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-500;
+  border: 1px dashed #c9c1b2;
+  border-radius: 6px;
+  background: #e2dccc;
+  color: #5e6470;
+  padding: 8px 12px;
+  font-size: 13px;
 }
 
 .limit-grid {
@@ -289,6 +353,12 @@ onMounted(() => {
 }
 
 .limit-label {
-  @apply mb-2 text-xs font-semibold uppercase tracking-0.08em text-stone-400;
+  margin-bottom: 8px;
+  color: #7e3f46;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 </style>

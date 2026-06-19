@@ -116,7 +116,7 @@ watch(
     <aside class="invite-side-panel">
       <div class="invite-side-header">
         <div class="invite-side-kicker">邀请码获取</div>
-        <div class="invite-side-title">派聪明RAG实战项目，祝你求职无敌。</div>
+        <div class="invite-side-title">PaperLoom 科研论文解读 RAG 工作台正在内测。</div>
         <div class="invite-side-desc">
           微信搜索
           <span class="invite-emphasis">{{ inviteChannelConfig.officialAccountName }}</span>
@@ -177,7 +177,7 @@ watch(
       <NFormItem path="username">
         <NInput v-model:value="model.username" :placeholder="$t('page.login.common.userNamePlaceholder')">
           <template #prefix>
-            <icon-ant-design:user-outlined />
+            <icon-mdi-account-school-outline />
           </template>
         </NInput>
       </NFormItem>
@@ -189,7 +189,7 @@ watch(
           :placeholder="$t('page.login.common.passwordPlaceholder')"
         >
           <template #prefix>
-            <icon-ant-design:key-outlined />
+            <icon-mdi-key-variant />
           </template>
         </NInput>
       </NFormItem>
@@ -201,7 +201,7 @@ watch(
           :placeholder="$t('page.login.common.confirmPasswordPlaceholder')"
         >
           <template #prefix>
-            <icon-ant-design:key-outlined />
+            <icon-mdi-lock-check-outline />
           </template>
         </NInput>
       </NFormItem>
@@ -212,7 +212,7 @@ watch(
       >
         <NInput v-model:value="model.inviteCode" :placeholder="$t('page.login.common.inviteCodePlaceholder')">
           <template #prefix>
-            <icon-ant-design:safety-certificate-outlined />
+            <icon-mdi-ticket-confirmation-outline />
           </template>
         </NInput>
       </NFormItem>
@@ -221,9 +221,15 @@ watch(
       </div>
       <NSpace vertical :size="18" class="w-full">
         <NButton type="primary" size="large" round block :loading="loading" @click="handleSubmit">
+          <template #icon>
+            <icon-mdi-account-plus-outline />
+          </template>
           {{ $t('page.login.common.register') }}
         </NButton>
         <NButton block @click="toggleLoginModule('pwd-login')">
+          <template #icon>
+            <icon-mdi-arrow-left />
+          </template>
           {{ $t('page.login.common.back') }}
         </NButton>
       </NSpace>
@@ -250,6 +256,20 @@ watch(
   min-width: 0;
 }
 
+.register-form-panel :deep(.n-input) {
+  border-radius: 6px;
+  background: #e2dccc;
+}
+
+.register-form-panel :deep(.n-input .n-input__border),
+.register-form-panel :deep(.n-input .n-input__state-border) {
+  border-color: #c9c1b2;
+}
+
+.register-form-panel :deep(.n-input .n-input__prefix) {
+  color: #26364a;
+}
+
 .register-form-tip {
   font-size: 12px;
   line-height: 1.7;
@@ -260,24 +280,17 @@ watch(
   display: flex;
   min-width: 0;
   flex-direction: column;
-  border: 1px solid rgb(var(--primary-color) / 0.16);
-  border-radius: 24px;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
   padding: 20px;
-  background:
-    radial-gradient(circle at top right, rgb(var(--primary-color) / 0.16), transparent 36%),
-    linear-gradient(
-      145deg,
-      rgb(var(--primary-50-color) / 0.94),
-      rgb(var(--primary-100-color) / 0.82) 55%,
-      rgb(var(--container-bg-color)) 100%
-    );
-  box-shadow: 0 18px 40px rgb(var(--primary-color) / 0.08);
+  background: #e2dccc;
+  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.62);
 }
 
 .invite-side-kicker {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
   color: rgb(var(--primary-700-color));
 }
 

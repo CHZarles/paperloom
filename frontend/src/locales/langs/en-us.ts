@@ -1,6 +1,6 @@
 const local: App.I18n.Schema = {
   system: {
-    title: 'PaiSmart',
+    title: 'PaperLoom',
     updateTitle: 'System Version Update Notification',
     updateContent: 'A new version of the system has been detected. Do you want to refresh the page immediately?',
     updateConfirm: 'Refresh immediately',
@@ -162,15 +162,15 @@ const local: App.I18n.Schema = {
     404: 'Page Not Found',
     500: 'Server Error',
     'iframe-page': 'Iframe',
-    chat: 'Chat Assistant',
-    'chat-history': 'Chat History',
+    chat: 'Paper Q&A',
+    'chat-history': 'Q&A History',
     'invite-code': 'Invite Codes',
-    'knowledge-base': 'Knowledge Base',
-    'model-provider': 'Model Providers',
-    'org-tag': 'Organization Tag',
-    'usage-monitor': 'Usage Monitor',
-    user: 'User Management',
-    'personal-center': 'Personal Center',
+    'knowledge-base': 'Paper Library',
+    'model-provider': 'Experiment Config',
+    'org-tag': 'Taxonomy Tags',
+    'usage-monitor': 'Usage Curves',
+    user: 'Collaborators',
+    'personal-center': 'Research Profile',
     recharge: 'Recharge',
     'recharge-manage': 'Recharge Management'
   },
@@ -218,7 +218,7 @@ const local: App.I18n.Schema = {
         and: 'and',
         policy: '《Privacy Policy》',
         inviteCodeTip:
-          'This site is invite-only. If you do not have an invite code yet, follow the WeChat official account "沉默王二" and reply with "聪明".'
+          'This site is invite-only. If you do not have an invite code yet, contact an administrator for a PaperLoom invite code.'
       },
       resetPwd: {
         title: 'Reset Password'

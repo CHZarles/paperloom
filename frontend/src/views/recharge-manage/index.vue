@@ -370,8 +370,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-auto">
-    <NCard title="充值套餐管理" :bordered="false" size="small" class="card-wrapper">
+  <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
+    <NCard title="Billing Packages / 充值套餐" :bordered="false" size="small" class="admin-console-card card-wrapper">
       <template #header-extra>
         <NButton type="primary" @click="handleCreate">新增套餐</NButton>
       </template>

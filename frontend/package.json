@@ -2,9 +2,9 @@
   "name": "pi-smart",
   "type": "module",
   "version": "1.3.13",
-  "description": "PaiSmart",
+  "description": "PaperLoom",
   "author": {
-    "name": "PaiSmart",
+    "name": "PaperLoom",
     "url": "https://github.com/itwanger/PaiSmart.git"
   },
   "license": "MIT",
@@ -21,7 +21,7 @@
     "llm",
     "chat",
     "itwanger",
-    "pai-smart"
+    "paperloom"
   ],
   "engines": {
     "node": ">=18.20.0",

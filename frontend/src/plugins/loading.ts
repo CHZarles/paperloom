@@ -3,11 +3,15 @@ import { getRgb } from '@sa/color';
 import { DARK_CLASS } from '@/constants/app';
 import { localStg } from '@/utils/storage';
 import { toggleHtmlClass } from '@/utils/common';
-import systemLogo from '@/assets/svg-icon/logo.svg?raw';
 import { $t } from '@/locales';
 
 export function setupLoading() {
-  const themeColor = localStg.get('themeColor') || '#646cff';
+  let themeColor = localStg.get('themeColor') || '#26364a';
+  if (themeColor.toLowerCase() === '#2f5d62') {
+    themeColor = '#26364a';
+    localStg.set('themeColor', themeColor);
+  }
+
   const darkMode = localStg.get('darkMode') || false;
   const { r, g, b } = getRgb(themeColor);
 
@@ -24,8 +28,6 @@ export function setupLoading() {
     'right-0 bottom-0 animate-delay-1500'
   ];
 
-  const logoWithClass = systemLogo.replace('<svg', `<svg class="size-128px text-primary"`);
-
   const dot = loadingClasses
     .map(item => {
       return `<div class="absolute w-16px h-16px bg-primary rounded-8px animate-pulse ${item}"></div>`;
@@ -34,13 +36,30 @@ export function setupLoading() {
 
   const loading = `
 <div class="fixed-center flex-col bg-layout" style="${primaryColor}">
-  ${logoWithClass}
-  <div class="w-56px h-56px my-36px">
+  <div class="size-128px flex flex-col items-center justify-center border border-primary/28 bg-[rgb(251,250,246)] text-primary shadow-[8px_8px_0_rgba(201,193,178,0.9)]">
+    <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g transform="rotate(-4 36 36)">
+        <rect x="15" y="15" width="44" height="44" rx="8" fill="rgb(201 193 178)" opacity=".82" transform="translate(4 4)"/>
+        <rect x="16" y="9" width="12" height="54" rx="4" fill="rgb(251 250 246)" stroke="currentColor" stroke-width="3"/>
+        <rect x="30" y="9" width="12" height="54" rx="4" fill="rgb(226 220 204)" stroke="currentColor" stroke-width="3"/>
+        <rect x="44" y="9" width="12" height="54" rx="4" fill="rgb(251 250 246)" stroke="currentColor" stroke-width="3"/>
+        <rect x="9" y="18" width="54" height="12" rx="4" fill="rgb(226 220 204)" stroke="currentColor" stroke-width="3"/>
+        <rect x="9" y="31" width="54" height="12" rx="4" fill="rgb(231 221 224)" stroke="currentColor" stroke-width="3"/>
+        <rect x="9" y="44" width="54" height="12" rx="4" fill="rgb(226 220 204)" stroke="currentColor" stroke-width="3"/>
+        <rect x="16" y="31" width="12" height="12" rx="3" fill="rgb(251 250 246)" stroke="currentColor" stroke-width="3"/>
+        <rect x="30" y="18" width="12" height="12" rx="3" fill="rgb(226 220 204)" stroke="currentColor" stroke-width="3"/>
+        <rect x="30" y="44" width="12" height="12" rx="3" fill="rgb(226 220 204)" stroke="currentColor" stroke-width="3"/>
+        <rect x="44" y="31" width="12" height="12" rx="3" fill="rgb(251 250 246)" stroke="currentColor" stroke-width="3"/>
+      </g>
+    </svg>
+    <div class="mt-2 text-12px font-mono tracking-0">WOVEN EVIDENCE</div>
+  </div>
+  <div class="w-56px h-56px my-34px">
     <div class="relative h-full animate-spin">
       ${dot}
     </div>
   </div>
-  <h2 class="text-28px font-500 text-primary">${$t('system.title')}</h2>
+  <h2 class="font-serif text-28px font-700 text-primary">${$t('system.title')}</h2>
 </div>`;
 
   const app = document.getElementById('app');

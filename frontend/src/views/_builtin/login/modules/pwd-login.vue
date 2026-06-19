@@ -59,15 +59,22 @@ async function handleSubmit() {
     localStg.remove('rememberedLogin');
   }
 }
-
 </script>
 
 <template>
-  <NForm ref="formRef" :model="model" :rules="rules" size="large" :show-label="false" @keyup.enter="handleSubmit">
+  <NForm
+    ref="formRef"
+    :model="model"
+    :rules="rules"
+    size="large"
+    :show-label="false"
+    class="auth-form"
+    @keyup.enter="handleSubmit"
+  >
     <NFormItem path="userName">
       <NInput v-model:value="model.userName" :placeholder="$t('page.login.common.userNamePlaceholder')">
         <template #prefix>
-          <icon-ant-design:user-outlined />
+          <icon-mdi-account-school-outline />
         </template>
       </NInput>
     </NFormItem>
@@ -79,7 +86,7 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       >
         <template #prefix>
-          <icon-ant-design:key-outlined />
+          <icon-mdi-key-variant />
         </template>
       </NInput>
     </NFormItem>
@@ -90,9 +97,15 @@ async function handleSubmit() {
     </div>
     <div class="flex-col gap-6">
       <NButton type="primary" size="large" round block :loading="authStore.loginLoading" @click="handleSubmit">
+        <template #icon>
+          <icon-mdi-login-variant />
+        </template>
         {{ $t('page.login.common.login') }}
       </NButton>
       <NButton block @click="toggleLoginModule('register')">
+        <template #icon>
+          <icon-mdi-ticket-confirmation-outline />
+        </template>
         {{ $t(loginModuleRecord.register) }}
       </NButton>
 
@@ -106,4 +119,22 @@ async function handleSubmit() {
   </NForm>
 </template>
 
-<style scoped></style>
+<style scoped>
+.auth-form {
+  color: #4b4032;
+}
+
+:deep(.n-input) {
+  border-radius: 6px;
+  background: #e2dccc;
+}
+
+:deep(.n-input .n-input__border),
+:deep(.n-input .n-input__state-border) {
+  border-color: #c9c1b2;
+}
+
+:deep(.n-input .n-input__prefix) {
+  color: #26364a;
+}
+</style>

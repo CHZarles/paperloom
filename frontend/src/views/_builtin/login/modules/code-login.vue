@@ -40,13 +40,29 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <NForm ref="formRef" :model="model" :rules="rules" size="large" :show-label="false" @keyup.enter="handleSubmit">
+  <NForm
+    ref="formRef"
+    :model="model"
+    :rules="rules"
+    size="large"
+    :show-label="false"
+    class="auth-form"
+    @keyup.enter="handleSubmit"
+  >
     <NFormItem path="phone">
-      <NInput v-model:value="model.phone" :placeholder="$t('page.login.common.phonePlaceholder')" />
+      <NInput v-model:value="model.phone" :placeholder="$t('page.login.common.phonePlaceholder')">
+        <template #prefix>
+          <icon-mdi-cellphone />
+        </template>
+      </NInput>
     </NFormItem>
     <NFormItem path="code">
       <div class="w-full flex-y-center gap-16px">
-        <NInput v-model:value="model.code" :placeholder="$t('page.login.common.codePlaceholder')" />
+        <NInput v-model:value="model.code" :placeholder="$t('page.login.common.codePlaceholder')">
+          <template #prefix>
+            <icon-mdi-shield-key-outline />
+          </template>
+        </NInput>
         <NButton size="large" :disabled="isCounting" :loading="loading" @click="getCaptcha(model.phone)">
           {{ label }}
         </NButton>
@@ -63,4 +79,18 @@ async function handleSubmit() {
   </NForm>
 </template>
 
-<style scoped></style>
+<style scoped>
+.auth-form :deep(.n-input) {
+  border-radius: 6px;
+  background: #e2dccc;
+}
+
+.auth-form :deep(.n-input .n-input__border),
+.auth-form :deep(.n-input .n-input__state-border) {
+  border-color: #c9c1b2;
+}
+
+.auth-form :deep(.n-input .n-input__prefix) {
+  color: #26364a;
+}
+</style>

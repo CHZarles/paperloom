@@ -8,9 +8,31 @@ import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
 defineOptions({ name: 'ChatMessage' });
 
 const props = defineProps<{
-  msg: Api.Chat.Message,
-  sessionId?: string,
-  retrievalQueryFallback?: string
+  msg: Api.Chat.Message;
+  sessionId?: string;
+  retrievalQueryFallback?: string;
+  previewMode?: 'page' | 'drawer';
+}>();
+
+const emit = defineEmits<{
+  (
+    e: 'openReference',
+    payload: {
+      retrievalMode?: Api.Chat.ReferenceEvidence['retrievalMode'];
+      retrievalLabel?: string | null;
+      retrievalQuery?: string | null;
+      evidenceSnippet?: string | null;
+      matchedChunkText?: string | null;
+      score?: number | null;
+      chunkId?: number | null;
+      fileName: string;
+      fileMd5?: string | null;
+      pageNumber?: number | null;
+      anchorText?: string | null;
+      sessionId?: string;
+      referenceNumber: number;
+    }
+  ): void;
 }>();
 
 const authStore = useAuthStore();
@@ -68,21 +90,41 @@ async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad')
 }
 
 // 存储文件名和对应的事件处理
-const sourceFiles = ref<Array<{fileName: string, id: string, referenceNumber: number, fileMd5?: string, pageNumber?: number}>>([]);
+const sourceFiles = ref<
+  Array<{ fileName: string; id: string; referenceNumber: number; fileMd5?: string; pageNumber?: number }>
+>([]);
+// eslint-disable-next-line no-useless-escape
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
 const toolNameLabels: Record<string, string> = {
-  search_knowledge: '检索知识库',
-  generate_summary: '生成知识摘要',
+  search_knowledge: '检索文献库',
+  generate_summary: '生成论文摘要',
   submit_feedback: '记录反馈',
-  knowledge_stats: '读取知识库统计'
+  knowledge_stats: '读取文献统计'
 };
 const toolStatusLabels: Record<Api.Chat.AgentToolEvent['status'], string> = {
   executing: '执行中',
   success: '已完成',
   failed: '失败'
 };
+const sourceCitationPattern = /(?:来源|source)\s*#\s*(\d+)/gi;
 
 const toolEvents = computed(() => props.msg.toolEvents || []);
+const citedReferenceNumbers = computed(() => getCitedReferenceNumbers(props.msg.content || ''));
+const referenceEntries = computed(() => {
+  const mappings = props.msg.referenceMappings || {};
+  return Object.entries(mappings)
+    .map(([referenceNumber, detail]) => ({
+      referenceNumber: Number.parseInt(referenceNumber, 10),
+      detail
+    }))
+    .filter(
+      item =>
+        Number.isFinite(item.referenceNumber) &&
+        item.detail?.fileMd5 &&
+        citedReferenceNumbers.value.has(item.referenceNumber)
+    )
+    .sort((left, right) => left.referenceNumber - right.referenceNumber);
+});
 
 function getToolLabel(tool: string) {
   return toolNameLabels[tool] || tool;
@@ -100,26 +142,24 @@ function splitTrailingUrlPunctuation(rawUrl: string) {
     const lastChar = url.at(-1);
     if (!lastChar) break;
 
+    let shouldTrim = false;
     if (/[，。！？；：、,.!?;:]/.test(lastChar)) {
-      trailing = `${lastChar}${trailing}`;
-      url = url.slice(0, -1);
-      continue;
-    }
-
-    if (lastChar === ')' || lastChar === '）') {
+      shouldTrim = true;
+    } else if (lastChar === ')' || lastChar === '）') {
       const openingChar = lastChar === ')' ? '(' : '（';
       const closingChar = lastChar;
       const openingCount = (url.match(new RegExp(`\\${openingChar}`, 'g')) || []).length;
       const closingCount = (url.match(new RegExp(`\\${closingChar}`, 'g')) || []).length;
 
       if (closingCount > openingCount) {
-        trailing = `${lastChar}${trailing}`;
-        url = url.slice(0, -1);
-        continue;
+        shouldTrim = true;
       }
     }
 
-    break;
+    if (!shouldTrim) break;
+
+    trailing = `${lastChar}${trailing}`;
+    url = url.slice(0, -1);
   }
 
   return { url, trailing };
@@ -140,25 +180,46 @@ function normalizeBareUrls(text: string) {
   });
 }
 
+function getCitedReferenceNumbers(text: string) {
+  const numbers = new Set<number>();
+  sourceCitationPattern.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = sourceCitationPattern.exec(text)) !== null) {
+    const referenceNumber = Number.parseInt(match[1], 10);
+    if (Number.isFinite(referenceNumber)) {
+      numbers.add(referenceNumber);
+    }
+  }
+  return numbers;
+}
+
 function createSourceLink(
   sourceNum: string,
   fileName: string,
-  extras?: { fileMd5?: string; pageNumber?: number; displayName?: string }
+  fallback?: { fileMd5?: string; pageNumber?: number }
 ): string {
+  const persistedDetail = props.msg.referenceMappings?.[sourceNum];
+  const fileMd5 = persistedDetail?.fileMd5 || fallback?.fileMd5;
+  if (!fileMd5) {
+    return `来源#${sourceNum}: ${fileName.trim()}`;
+  }
+
   const linkClass = 'source-file-link';
-  const trimmedFileName = fileName.trim();
+  const trimmedFileName = persistedDetail?.fileName || fileName.trim();
   const fileId = `source-file-${sourceFiles.value.length}`;
-  const referenceNumber = parseInt(sourceNum, 10);
+  const referenceNumber = Number.parseInt(sourceNum, 10);
+  const pageNumber = persistedDetail?.pageNumber ?? fallback?.pageNumber ?? undefined;
+  const displayName = pageNumber ? `${trimmedFileName} (第${pageNumber}页)` : trimmedFileName;
 
   sourceFiles.value.push({
     fileName: trimmedFileName,
     id: fileId,
     referenceNumber,
-    fileMd5: extras?.fileMd5,
-    pageNumber: extras?.pageNumber
+    fileMd5,
+    pageNumber
   });
 
-  return `来源#${sourceNum}: <span class="${linkClass}" data-file-id="${fileId}">${extras?.displayName || trimmedFileName}</span>`;
+  return `来源#${sourceNum}: <span class="${linkClass}" data-file-id="${fileId}">${displayName}</span>`;
 }
 
 // 处理来源文件链接的函数
@@ -177,19 +238,17 @@ function processSourceLinks(text: string): string {
     `来源#(\\d+):\\s*([^|;；,，、。！？!?\\n\\r]+?)\\s*\\|\\s*MD5:\\s*([a-fA-F0-9]+)${entryBoundary}`,
     'g'
   );
-  const simplePattern = new RegExp(
-    `来源#(\\d+):\\s*([^<>\\n\\r|;；,，、。！？!?]+?)${entryBoundary}`,
-    'g'
-  );
+  const simplePattern = new RegExp(`来源#(\\d+):\\s*([^<>\\n\\r|;；,，、。！？!?]+?)${entryBoundary}`, 'g');
 
-  let processedText = text.replace(pagePattern, (_match, sourceNum, fileName, pageNum) => {
+  let processedText = text.replace(pagePattern, (...matches) => {
+    const [, sourceNum, fileName, pageNum] = matches;
     return createSourceLink(sourceNum, fileName, {
-      pageNumber: parseInt(pageNum, 10),
-      displayName: `${fileName.trim()} (第${pageNum}页)`
+      pageNumber: Number.parseInt(pageNum, 10)
     });
   });
 
-  processedText = processedText.replace(md5Pattern, (_match, sourceNum, fileName, fileMd5) => {
+  processedText = processedText.replace(md5Pattern, (...matches) => {
+    const [, sourceNum, fileName, fileMd5] = matches;
     return createSourceLink(sourceNum, fileName, {
       fileMd5: fileMd5.trim()
     });
@@ -242,6 +301,11 @@ function openReferencePreviewPage(payload: {
   sessionId?: string;
   referenceNumber: number;
 }) {
+  if (props.previewMode === 'drawer') {
+    emit('openReference', payload);
+    return;
+  }
+
   const previewKey = `reference-preview:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
   localStorage.setItem(previewKey, JSON.stringify(payload));
 
@@ -253,24 +317,29 @@ function openReferencePreviewPage(payload: {
     }
   });
 
-  window.open(routeLocation.href, '_blank', 'noopener,noreferrer');
+  router.push(routeLocation);
 }
 
 // 处理内容点击事件（事件委托）
 function handleContentClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
+  const sourceTarget = target.closest<HTMLElement>('.source-file-link');
 
   // 检查点击的是否是文件链接
-  if (target.classList.contains('source-file-link')) {
-    const fileId = target.getAttribute('data-file-id');
+  if (sourceTarget) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const fileId = sourceTarget.getAttribute('data-file-id');
     if (fileId) {
       const file = sourceFiles.value.find(f => f.id === fileId);
       if (file) {
-        const contextAnchorText = extractContextAnchorText(target);
+        const contextAnchorText = extractContextAnchorText(sourceTarget);
         handleSourceFileClick({
           fileName: file.fileName,
           referenceNumber: file.referenceNumber,
           fileMd5: file.fileMd5,
+          pageNumber: file.pageNumber,
           anchorText: contextAnchorText
         });
       }
@@ -279,22 +348,34 @@ function handleContentClick(event: MouseEvent) {
 }
 
 // 处理来源文件点击事件
+// Existing reference resolution has several fallback branches because older persisted messages may miss detail fields.
+// eslint-disable-next-line complexity
 async function handleSourceFileClick(fileInfo: {
   fileName: string;
   referenceNumber: number;
   fileMd5?: string;
+  pageNumber?: number;
   anchorText?: string;
 }) {
-  const { fileName, referenceNumber, fileMd5: extractedMd5, anchorText: clickedAnchorText } = fileInfo;
-  const persistedDetail = props.msg.referenceMappings?.[String(referenceNumber)] || props.msg.referenceMappings?.[referenceNumber];
+  const {
+    fileName,
+    referenceNumber,
+    fileMd5: extractedMd5,
+    pageNumber: extractedPageNumber,
+    anchorText: clickedAnchorText
+  } = fileInfo;
+  const persistedDetail =
+    props.msg.referenceMappings?.[String(referenceNumber)] || props.msg.referenceMappings?.[referenceNumber];
   const referenceSessionId = props.msg.generationId || props.msg.conversationId || props.sessionId;
-  console.log('点击了来源文件:', fileName, '引用编号:', referenceNumber, '提取的MD5:', extractedMd5, '会话ID:', referenceSessionId);
 
   try {
     let detail: Api.Document.ReferenceDetailResponse | null = null;
     const fallbackRetrievalQuery = props.retrievalQueryFallback || '';
 
-    if (referenceSessionId && (!persistedDetail?.retrievalQuery || !persistedDetail?.matchedChunkText || !persistedDetail?.evidenceSnippet)) {
+    if (
+      referenceSessionId &&
+      (!persistedDetail?.retrievalQuery || !persistedDetail?.matchedChunkText || !persistedDetail?.evidenceSnippet)
+    ) {
       try {
         const { error: detailError, data: detailData } = await request<Api.Document.ReferenceDetailResponse>({
           url: 'documents/reference-detail',
@@ -307,8 +388,8 @@ async function handleSourceFileClick(fileInfo: {
         if (!detailError && detailData?.fileMd5) {
           detail = detailData;
         }
-      } catch (detailErr) {
-        console.warn('通过API查询引用详情失败:', detailErr);
+      } catch {
+        // Continue with persisted or parsed citation data when the detail endpoint is unavailable.
       }
     }
 
@@ -335,7 +416,7 @@ async function handleSourceFileClick(fileInfo: {
     openReferencePreviewPage({
       fileName: detail?.fileName || fileName,
       fileMd5: targetMd5,
-      pageNumber: detail?.pageNumber,
+      pageNumber: detail?.pageNumber ?? extractedPageNumber,
       anchorText: detail?.anchorText || clickedAnchorText || '',
       retrievalMode: detail?.retrievalMode,
       retrievalLabel: detail?.retrievalLabel,
@@ -347,30 +428,48 @@ async function handleSourceFileClick(fileInfo: {
       sessionId: referenceSessionId,
       referenceNumber
     });
-  } catch (err) {
-    console.error('文件下载失败:', err);
+  } catch {
     window.$message?.error(`文件下载失败: ${fileName}`);
   }
+}
+
+function openMappedReference(referenceNumber: number, detail: Api.Chat.ReferenceEvidence) {
+  const referenceSessionId = props.msg.generationId || props.msg.conversationId || props.sessionId;
+  openReferencePreviewPage({
+    fileName: detail.fileName,
+    fileMd5: detail.fileMd5,
+    pageNumber: detail.pageNumber,
+    anchorText: detail.anchorText || '',
+    retrievalMode: detail.retrievalMode,
+    retrievalLabel: detail.retrievalLabel,
+    retrievalQuery: detail.retrievalQuery || props.retrievalQueryFallback || '',
+    evidenceSnippet: detail.evidenceSnippet,
+    matchedChunkText: detail.matchedChunkText,
+    score: detail.score,
+    chunkId: detail.chunkId,
+    sessionId: referenceSessionId,
+    referenceNumber
+  });
 }
 </script>
 
 <template>
-  <div class="mb-8 flex-col gap-2">
-    <div v-if="msg.role === 'user'" class="flex items-center gap-4">
-      <NAvatar class="bg-success">
+  <div class="message-block" :class="msg.role === 'user' ? 'message-block--user' : 'message-block--assistant'">
+    <div v-if="msg.role === 'user'" class="message-heading">
+      <NAvatar class="user-avatar">
         <SvgIcon icon="ph:user-circle" class="text-icon-large color-white" />
       </NAvatar>
       <div class="flex-col gap-1">
-        <NText class="text-4 font-bold">{{ msg.username || authStore.userInfo.username }}</NText>
+        <NText class="message-author">{{ msg.username || authStore.userInfo.username }}</NText>
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>
-    <div v-else class="flex items-center gap-4">
-      <NAvatar class="bg-primary">
-        <SystemLogo class="text-6 text-white" />
+    <div v-else class="message-heading">
+      <NAvatar class="bg-transparent">
+        <SystemLogo class="text-36px" />
       </NAvatar>
       <div class="flex-col gap-1">
-        <NText class="text-4 font-bold">派聪明</NText>
+        <NText class="message-author">PaperLoom</NText>
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>
@@ -391,15 +490,42 @@ async function handleSourceFileClick(fileInfo: {
     <NText v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)">
       <icon-eos-icons:three-dots-loading class="ml-12 mt-2 text-8" />
     </NText>
-    <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 italic color-#d03050">
+    <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 color-#d03050 italic">
       {{ msg.content || '服务器繁忙，请稍后再试' }}
     </NText>
-    <div v-else-if="msg.role === 'assistant'" class="mt-2 pl-12" @click="handleContentClick">
+    <div v-else-if="msg.role === 'assistant'" class="assistant-content message-content" @click="handleContentClick">
       <VueMarkdownIt :content="content" />
+      <div v-if="referenceEntries.length > 0" class="reference-list" aria-label="参考来源">
+        <div class="reference-list__title">References</div>
+        <button
+          v-for="entry in referenceEntries"
+          :key="entry.referenceNumber"
+          class="reference-list__item"
+          type="button"
+          @click.stop="openMappedReference(entry.referenceNumber, entry.detail)"
+        >
+          <span class="reference-list__badge">[{{ entry.referenceNumber }}]</span>
+          <span class="reference-list__body">
+            <span class="reference-list__file">
+              {{ entry.detail.fileName }}
+              <span v-if="entry.detail.pageNumber">· 第{{ entry.detail.pageNumber }}页</span>
+            </span>
+            <span class="reference-list__meta">
+              {{ entry.detail.retrievalLabel || '文献库召回' }}
+              <span v-if="entry.detail.score !== null && entry.detail.score !== undefined">
+                · {{ Number(entry.detail.score).toFixed(3) }}
+              </span>
+            </span>
+            <span v-if="entry.detail.evidenceSnippet" class="reference-list__snippet">
+              {{ entry.detail.evidenceSnippet }}
+            </span>
+          </span>
+        </button>
+      </div>
     </div>
-    <NText v-else-if="msg.role === 'user'" class="ml-12 mt-2 text-4">{{ content }}</NText>
-    <NDivider class="ml-12 w-[calc(100%-3rem)] mb-0! mt-2!" />
-    <div class="ml-12 flex gap-2">
+    <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
+    <NDivider class="message-divider" />
+    <div class="message-actions">
       <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
         <template #icon>
           <icon-mynaui:copy />
@@ -437,19 +563,191 @@ async function handleSourceFileClick(fileInfo: {
 
 <style scoped lang="scss">
 :deep(.source-file-link) {
-  color: #1890ff;
+  color: #26364a;
   cursor: pointer;
   text-decoration: underline;
   transition: color 0.2s;
 
   &:hover {
-    color: #40a9ff;
+    color: #7a1212;
     text-decoration: none;
   }
 
   &:active {
-    color: #096dd9;
+    color: #4f0c0c;
   }
+}
+
+.message-block {
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.message-author {
+  font-size: 15px;
+  font-weight: 700;
+  color: #20242a;
+}
+
+.message-content {
+  margin-top: 2px;
+  margin-left: 52px;
+  max-width: min(860px, calc(100% - 52px));
+  font-size: 15px;
+  line-height: 1.78;
+  color: #20242a;
+}
+
+.message-block--assistant .message-author {
+  color: #26364a;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+}
+
+.user-avatar {
+  background: #6b4f2a;
+}
+
+.user-content {
+  display: inline-flex;
+  width: fit-content;
+  max-width: min(760px, calc(100% - 52px));
+  white-space: pre-wrap;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #e2dccc;
+  padding: 10px 14px;
+}
+
+.assistant-content :deep(p) {
+  margin: 0 0 12px;
+}
+
+.reference-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reference-list__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5e6470;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.reference-list__item {
+  display: flex;
+  width: 100%;
+  cursor: pointer;
+  gap: 10px;
+  border: 1px solid #c9c1b2;
+  border-radius: 6px;
+  background: #fbfaf6;
+  padding: 9px 10px;
+  text-align: left;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.reference-list__item:hover {
+  border-color: rgba(38, 54, 74, 0.34);
+  background: #e2dccc;
+}
+
+.reference-list__badge {
+  display: inline-flex;
+  min-width: 34px;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #c9c1b2;
+  color: #26364a;
+  padding-right: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reference-list__body {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reference-list__file {
+  overflow: hidden;
+  color: #20242a;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference-list__meta,
+.reference-list__snippet {
+  overflow: hidden;
+  color: #5e6470;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-divider {
+  margin-bottom: 0 !important;
+  margin-left: 52px;
+  margin-top: 4px !important;
+  width: calc(100% - 52px);
+  opacity: 0.55;
+}
+
+.message-actions {
+  margin-left: 52px;
+  display: flex;
+  gap: 8px;
+}
+
+.dark .message-author,
+.dark .message-content {
+  color: #ede9df;
+}
+
+.dark .user-content {
+  border-color: rgba(201, 193, 178, 0.24);
+  background: rgba(255, 253, 248, 0.06);
+}
+
+.dark .reference-list__title,
+.dark .reference-list__file {
+  color: #ede9df;
+}
+
+.dark .reference-list__item {
+  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(201, 193, 178, 0.18);
+  background: rgba(255, 253, 248, 0.045);
+}
+
+.dark .reference-list__item:hover {
+  border-color: rgba(38, 54, 74, 0.42);
+  background: rgba(38, 54, 74, 0.16);
+}
+
+.dark .reference-list__meta,
+.dark .reference-list__snippet {
+  color: #c6bba7;
 }
 
 .tool-event {

@@ -42,11 +42,11 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: 'chat',
     path: '/chat',
-    component: 'layout.base$view.chat',
+    component: 'layout.blank$view.chat',
     meta: {
       title: 'chat',
       i18nKey: 'route.chat',
-      icon: 'solar:chat-round-call-line-duotone',
+      icon: 'mdi:comment-question-outline',
       order: 1
     }
   },
@@ -58,7 +58,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'chat-history',
       i18nKey: 'route.chat-history',
       roles: ['ADMIN'],
-      icon: 'solar:hashtag-chat-broken',
+      hideInMenu: true,
+      icon: 'mdi:history',
       order: 2
     }
   },
@@ -82,7 +83,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'invite-code',
       i18nKey: 'route.invite-code',
-      icon: 'solar:key-minimalistic-square-line-duotone',
+      icon: 'mdi:ticket-confirmation-outline',
       roles: ['ADMIN'],
       order: 6
     }
@@ -94,7 +95,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'knowledge-base',
       i18nKey: 'route.knowledge-base',
-      icon: 'solar:folder-line-duotone',
+      icon: 'mdi:bookshelf',
       order: 3
     }
   },
@@ -117,7 +118,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'model-provider',
       i18nKey: 'route.model-provider',
-      icon: 'solar:tuning-square-line-duotone',
+      icon: 'mdi:flask-outline',
       roles: ['ADMIN'],
       order: 5
     }
@@ -129,7 +130,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'org-tag',
       i18nKey: 'route.org-tag',
-      icon: 'solar:tag-line-duotone',
+      icon: 'mdi:tag-multiple-outline',
       roles: ['ADMIN'],
       order: 4
     }
@@ -141,7 +142,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'personal-center',
       i18nKey: 'route.personal-center',
-      icon: 'solar:people-nearby-line-duotone',
+      icon: 'mdi:account-circle-outline',
       order: 7
     }
   },
@@ -152,7 +153,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'recharge',
       i18nKey: 'route.recharge',
-      icon: 'solar:airbuds-case-charge-broken',
+      icon: 'mdi:credit-card-outline',
       order: 8
     }
   },
@@ -163,7 +164,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'recharge-manage',
       i18nKey: 'route.recharge-manage',
-      icon: 'solar:shop-minimalistic-broken',
+      icon: 'mdi:receipt-text-outline',
       roles: ['ADMIN'],
       order: 9
     }
@@ -175,7 +176,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'usage-monitor',
       i18nKey: 'route.usage-monitor',
-      icon: 'solar:chart-2-line-duotone',
+      icon: 'mdi:chart-line',
       roles: ['ADMIN'],
       order: 6
     }
@@ -187,7 +188,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'user',
       i18nKey: 'route.user',
-      icon: 'solar:users-group-two-rounded-line-duotone',
+      icon: 'mdi:account-group-outline',
       roles: ['ADMIN']
     }
   }

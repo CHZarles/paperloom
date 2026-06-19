@@ -1,6 +1,6 @@
 const local: App.I18n.Schema = {
   system: {
-    title: '派聪明',
+    title: 'PaperLoom',
     updateTitle: '系统版本更新通知',
     updateContent: '检测到系统有新版本发布，是否立即刷新页面？',
     updateConfirm: '立即刷新',
@@ -162,15 +162,15 @@ const local: App.I18n.Schema = {
     404: '页面不存在',
     500: '服务器错误',
     'iframe-page': '外链页面',
-    chat: '聊天助手',
-    'chat-history': '聊天记录',
+    chat: '论文问答',
+    'chat-history': '问答记录',
     'invite-code': '邀请码管理',
-    'knowledge-base': '知识库',
-    'model-provider': '模型配置',
-    'org-tag': '组织标签',
-    'usage-monitor': '用量监控',
-    user: '用户管理',
-    'personal-center': '个人中心',
+    'knowledge-base': '文献库',
+    'model-provider': '实验配置',
+    'org-tag': '分类标签',
+    'usage-monitor': '用量曲线',
+    user: '协作者',
+    'personal-center': '个人档案',
     recharge: '余额充值',
     'recharge-manage': '充值管理'
   },
@@ -217,7 +217,7 @@ const local: App.I18n.Schema = {
         protocol: '《用户协议》',
         and: '和',
         policy: '《隐私权政策》',
-        inviteCodeTip: '当前站点采用邀请码注册。还没有邀请码时，可先关注公众号【沉默王二】，后台回复【聪明】领取。'
+        inviteCodeTip: '当前站点采用邀请码注册。还没有邀请码时，可联系管理员获取 PaperLoom 邀请码。'
       },
       resetPwd: {
         title: '重置密码'

@@ -2,10 +2,32 @@
 import { NScrollbar } from 'naive-ui';
 import { VueMarkdownItProvider } from '@/vendor/vue-markdown-shiki';
 import ChatMessage from './chat-message.vue';
+import InputBox from './input-box.vue';
 
 defineOptions({
   name: 'ChatList'
 });
+
+const emit = defineEmits<{
+  (
+    e: 'openReference',
+    payload: {
+      retrievalMode?: Api.Chat.ReferenceEvidence['retrievalMode'];
+      retrievalLabel?: string | null;
+      retrievalQuery?: string | null;
+      evidenceSnippet?: string | null;
+      matchedChunkText?: string | null;
+      score?: number | null;
+      chunkId?: number | null;
+      fileName: string;
+      fileMd5?: string | null;
+      pageNumber?: number | null;
+      anchorText?: string | null;
+      sessionId?: string;
+      referenceNumber: number;
+    }
+  ): void;
+}>();
 
 const chatStore = useChatStore();
 const { list, sessionId, conversationId } = storeToRefs(chatStore);
@@ -24,8 +46,6 @@ function scrollToBottom() {
   }, 100);
 }
 
-const range = ref<[number, number] | null>(null);
-
 function getRetrievalQueryFallback(index: number) {
   for (let i = index - 1; i >= 0; i -= 1) {
     const candidate = list.value[i];
@@ -38,10 +58,6 @@ function getRetrievalQueryFallback(index: number) {
 
 const params = computed(() => {
   const p: Record<string, string> = {};
-  if (range.value) {
-    p.start_date = dayjs(range.value[0]).format('YYYY-MM-DD');
-    p.end_date = dayjs(range.value[1]).format('YYYY-MM-DD');
-  }
   if (conversationId.value) {
     p.conversationId = conversationId.value;
   }
@@ -73,35 +89,30 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 
 <template>
   <Suspense>
-    <div class="flex h-0 flex-1 flex-col">
-      <!-- Date filter in header -->
-      <Teleport defer to="#header-extra">
-        <div v-if="!showEmpty" class="flex items-center px-4">
-          <NForm :model="params" label-placement="left" :show-feedback="false" inline>
-            <NFormItem label="时间" size="small">
-              <NDatePicker v-model:value="range" type="daterange" clearable size="small" />
-            </NFormItem>
-          </NForm>
+    <div class="chat-list-shell">
+      <div v-if="showEmpty" class="welcome-panel">
+        <div class="welcome-logo">
+          <SystemLogo class="text-56px" />
         </div>
-      </Teleport>
-
-      <!-- Empty state -->
-      <div v-if="showEmpty" class="flex flex-1 flex-col items-center justify-center gap-4">
-        <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-[rgb(var(--primary-color)/0.08)]">
-          <icon-material-symbols:chat-outline-rounded class="text-36px text-[rgb(var(--primary-color)/0.5)]" />
+        <div class="welcome-copy">
+          <div class="welcome-kicker">evidence-grounded paper reading desk</div>
+          <h1>Ask papers with cited evidence</h1>
+          <p>围绕论文、PDF、方法、实验和结论提问，回答会保留来源编号、页码、chunk 与原文预览。</p>
+          <div class="welcome-tags" aria-label="example scopes">
+            <span>[PDF]</span>
+            <span>[METHOD]</span>
+            <span>[CLAIMS]</span>
+            <span>[REFS]</span>
+          </div>
         </div>
-        <div class="text-15px font-500 color-#aaa">
-          {{ conversationId ? '开始新对话' : '选择或创建一个对话' }}
-        </div>
-        <div class="text-12px color-#bbb">
-          在左侧选择一个对话，或点击「新对话」开始
+        <div class="welcome-input">
+          <InputBox variant="hero" />
         </div>
       </div>
 
-      <!-- Message list -->
       <NScrollbar v-else ref="scrollbarRef" class="flex-1">
         <NSpin :show="loading">
-          <div class="mx-auto w-full max-w-[960px] px-4">
+          <div class="chat-message-stack">
             <VueMarkdownItProvider>
               <ChatMessage
                 v-for="(item, index) in list"
@@ -109,6 +120,8 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
                 :msg="item"
                 :session-id="sessionId"
                 :retrieval-query-fallback="getRetrievalQueryFallback(index)"
+                preview-mode="drawer"
+                @open-reference="emit('openReference', $event)"
               />
             </VueMarkdownItProvider>
           </div>
@@ -118,4 +131,121 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   </Suspense>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.chat-list-shell {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+.welcome-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 32px 20px 64px;
+  text-align: center;
+}
+
+.welcome-logo {
+  display: flex;
+  height: 72px;
+  width: 72px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #fbfaf6;
+  box-shadow: 7px 7px 0 rgba(201, 193, 178, 0.85);
+  color: #26364a;
+}
+
+.welcome-copy {
+  max-width: 860px;
+}
+
+.welcome-kicker {
+  margin-bottom: 9px;
+  color: #7e3f46;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.welcome-copy h1 {
+  margin: 0;
+  color: #26364a;
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.welcome-copy p {
+  margin: 12px auto 0;
+  max-width: 590px;
+  color: #5e6470;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.welcome-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.welcome-tags span {
+  border: 1px solid #c9c1b2;
+  border-radius: 4px;
+  background: #fbfaf6;
+  color: #5e6470;
+  padding: 5px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.welcome-input {
+  width: min(760px, 100%);
+}
+
+.chat-message-stack {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 26px 24px 36px;
+}
+
+.dark .welcome-logo {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.dark .welcome-copy h1 {
+  color: #f0c0b9;
+}
+
+.dark .welcome-copy p {
+  color: #c6bba7;
+}
+
+.dark .welcome-tags span {
+  border-color: rgba(201, 193, 178, 0.24);
+  background: rgba(255, 253, 248, 0.06);
+  color: #c6bba7;
+}
+
+@media (max-width: 640px) {
+  .welcome-copy h1 {
+    font-size: 26px;
+  }
+
+  .chat-message-stack {
+    padding: 18px 16px 28px;
+  }
+}
+</style>

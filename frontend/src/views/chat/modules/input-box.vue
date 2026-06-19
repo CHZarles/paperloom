@@ -1,4 +1,13 @@
 <script setup lang="ts">
+const props = withDefaults(
+  defineProps<{
+    variant?: 'dock' | 'hero';
+  }>(),
+  {
+    variant: 'dock'
+  }
+);
+
 const chatStore = useChatStore();
 const { connectionStatus, input, isRateLimited, list, rateLimitRemainingSeconds, wsData } = storeToRefs(chatStore);
 
@@ -66,7 +75,7 @@ const cooldownText = computed(() => {
   if (!isRateLimited.value) {
     return '';
   }
-  return `${rateLimitRemainingSeconds} 秒后可重新发送`;
+  return `${rateLimitRemainingSeconds.value} 秒后可重新发送`;
 });
 
 function findAssistantMessage(generationId?: string) {
@@ -375,18 +384,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative shrink-0 bg-white px-4 pb-3 pt-2 dark:bg-[#1c1c1c]">
+  <div class="chat-input-wrap" :class="props.variant === 'hero' ? 'chat-input-wrap--hero' : 'chat-input-wrap--dock'">
     <div
-      class="pointer-events-none absolute inset-x-0 h-6 from-white/95 to-transparent bg-gradient-to-t -top-6 dark:from-[#1c1c1c]/95"
+      v-if="props.variant === 'dock'"
+      class="pointer-events-none absolute inset-x-0 h-6 from-[#fbfaf6]/95 to-transparent bg-gradient-to-t -top-6 dark:from-[#161a21]/95"
     />
     <div
-      class="chat-input-shell mx-auto max-w-[960px] w-full flex items-end gap-2 rounded-2xl bg-white px-3.5 py-2.5 dark:bg-[#1f1f1f]"
+      class="chat-input-shell mx-auto w-full flex items-end gap-2 bg-white px-3.5 py-2.5 dark:bg-[#161a21]"
+      :class="props.variant === 'hero' ? 'max-w-[760px]' : 'max-w-[960px]'"
     >
       <textarea
         ref="inputRef"
         v-model.trim="input.message"
-        placeholder="给 派聪明 发送消息，Enter 发送，Shift+Enter 换行"
-        class="max-h-32 min-h-6 w-full flex-1 resize-none border-none bg-transparent py-1 text-14px color-#333 caret-[rgb(var(--primary-color))] outline-none placeholder:text-#bbb dark:color-#e1e1e1 dark:placeholder:text-#555"
+        placeholder="Search papers, claims, methods... Enter 发送，Shift+Enter 换行"
+        class="max-h-32 min-h-6 w-full flex-1 resize-none border-none bg-transparent py-1 text-14px color-#20242a caret-[rgb(var(--primary-color))] outline-none placeholder:text-#7f8490 dark:color-#ede9df dark:placeholder:text-#858b96"
         @keydown="handShortcut"
       />
       <NButton
@@ -403,7 +414,10 @@ onUnmounted(() => {
         </template>
       </NButton>
     </div>
-    <div class="mx-auto mt-1.5 max-w-[960px] w-full flex items-center justify-between px-1">
+    <div
+      class="mx-auto mt-1.5 w-full flex items-center justify-between px-1"
+      :class="props.variant === 'hero' ? 'max-w-[760px]' : 'max-w-[960px]'"
+    >
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-1">
           <span
@@ -414,23 +428,37 @@ onUnmounted(() => {
               'bg-red-400': connectionStatus === 'CLOSED'
             }"
           />
-          <span class="text-11px color-#aaa">{{ connectionText }}</span>
+          <span class="text-11px color-#747a84">{{ connectionText }}</span>
         </div>
         <span v-if="isRateLimited" class="text-11px text-[rgb(var(--primary-color))]">
           {{ cooldownText }}
         </span>
       </div>
-      <span class="text-11px color-#bbb">Shift+Enter 换行</span>
+      <span class="text-11px color-#747a84">Shift+Enter 换行</span>
     </div>
   </div>
 </template>
 
 <style scoped>
+.chat-input-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chat-input-wrap--dock {
+  background: #fbfaf6;
+  padding: 8px 16px 12px;
+}
+
+.chat-input-wrap--hero {
+  width: 100%;
+}
+
 .chat-input-shell {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 6px 18px rgba(15, 23, 42, 0.04);
+  border: 1px solid #c9c1b2;
+  border-radius: 8px;
+  background: #fbfaf6 !important;
+  box-shadow: 4px 4px 0 rgba(201, 193, 178, 0.58);
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease,
@@ -438,14 +466,19 @@ onUnmounted(() => {
 }
 
 .chat-input-shell:focus-within {
-  border-color: rgb(var(--primary-color) / 0.38);
+  border-color: rgba(38, 54, 74, 0.42);
   box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 8px 24px rgba(15, 23, 42, 0.06);
+    4px 4px 0 rgba(201, 193, 178, 0.58),
+    0 0 0 3px rgba(38, 54, 74, 0.08);
+}
+
+.dark .chat-input-wrap--dock {
+  background: #161a21;
 }
 
 .dark .chat-input-shell {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(201, 193, 178, 0.22);
+  background: #161a21 !important;
   box-shadow: none;
 }
 </style>

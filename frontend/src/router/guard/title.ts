@@ -7,7 +7,9 @@ export function createDocumentTitleGuard(router: Router) {
     const { i18nKey, title } = to.meta;
 
     const documentTitle = i18nKey ? $t(i18nKey) : title;
+    const appTitle = $t('system.title');
+    const fullTitle = documentTitle && documentTitle !== appTitle ? `${documentTitle} - ${appTitle}` : appTitle;
 
-    useTitle(documentTitle);
+    useTitle(fullTitle);
   });
 }

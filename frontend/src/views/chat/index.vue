@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import FilePreview from '@/components/custom/file-preview.vue';
 import ChatList from './modules/chat-list.vue';
 import InputBox from './modules/input-box.vue';
 import ConversationSidebar from './modules/conversation-sidebar.vue';
@@ -8,32 +9,442 @@ import ReferencePreviewPage from './modules/reference-preview-page.vue';
 
 const route = useRoute();
 const showReferencePreview = computed(() => route.query.preview === 'reference');
-const sidebarCollapsed = ref(false);
+const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth <= 960 : false);
+const chatStore = useChatStore();
+const { connectionStatus, list } = storeToRefs(chatStore);
+const referencePanelVisible = ref(false);
+const referencePayload = ref<{
+  retrievalMode?: Api.Chat.ReferenceEvidence['retrievalMode'];
+  retrievalLabel?: string | null;
+  retrievalQuery?: string | null;
+  evidenceSnippet?: string | null;
+  matchedChunkText?: string | null;
+  score?: number | null;
+  chunkId?: number | null;
+  fileName: string;
+  fileMd5?: string | null;
+  pageNumber?: number | null;
+  anchorText?: string | null;
+  sessionId?: string;
+  referenceNumber: number;
+} | null>(null);
+
+const showDockInput = computed(() => list.value.length > 0);
+const referencePreviewKey = computed(() => {
+  if (!referencePayload.value) {
+    return 'empty-reference';
+  }
+  return [
+    referencePayload.value.fileMd5 || referencePayload.value.fileName,
+    referencePayload.value.pageNumber || '',
+    referencePayload.value.referenceNumber
+  ].join(':');
+});
+const connectionText = computed(() => {
+  if (connectionStatus.value === 'OPEN') return '已连接';
+  if (connectionStatus.value === 'CONNECTING') return '连接中';
+  if (connectionStatus.value === 'RECONNECTING') return '重连中';
+  return '未连接';
+});
+
+function handleOpenReference(payload: NonNullable<typeof referencePayload.value>) {
+  referencePayload.value = payload;
+  referencePanelVisible.value = true;
+}
+
+function closeReferencePanel() {
+  referencePanelVisible.value = false;
+}
+
+function syncSidebarForViewport() {
+  sidebarCollapsed.value = window.innerWidth <= 960;
+}
+
+onMounted(() => {
+  syncSidebarForViewport();
+  window.addEventListener('resize', syncSidebarForViewport);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncSidebarForViewport);
+});
 </script>
 
 <template>
   <div v-if="showReferencePreview" class="h-full">
     <ReferencePreviewPage />
   </div>
-  <div v-else class="h-full bg-layout p-3 pt-6">
-    <div
-      class="h-full flex overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_28px_rgba(15,23,42,0.06)] dark:bg-[#1c1c1c] dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_28px_rgba(0,0,0,0.3)]"
-    >
-      <ConversationSidebar v-model:collapsed="sidebarCollapsed" />
-      <div class="relative min-w-0 flex flex-col flex-1">
+  <div v-else class="chat-shell">
+    <div v-if="!sidebarCollapsed" class="mobile-sidebar-mask" @click="sidebarCollapsed = true" />
+    <ConversationSidebar v-model:collapsed="sidebarCollapsed" class="chat-shell__sidebar" />
+
+    <main class="chat-shell__main">
+      <header class="chat-topbar">
         <button
           v-show="sidebarCollapsed"
-          class="absolute left-3 top-3 z-20 h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white text-#666 shadow-[0_1px_2px_rgba(15,23,42,0.06),0_4px_12px_rgba(15,23,42,0.08)] ring-1 ring-#0f172a14 transition-all duration-150 active:scale-95 hover:scale-105 dark:bg-#262626 dark:text-#bbb hover:text-[rgb(var(--primary-color))] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_4px_12px_rgba(0,0,0,0.4)] dark:ring-#ffffff14"
+          class="topbar-icon-button"
           aria-label="展开对话列表"
           @click="sidebarCollapsed = false"
         >
           <icon-material-symbols:left-panel-open-outline-rounded class="text-18px" />
         </button>
-        <ChatList />
-        <InputBox />
-      </div>
-    </div>
+        <div class="min-w-0 flex-1">
+          <div class="topbar-title">PaperLoom</div>
+          <div class="topbar-subtitle">evidence-grounded paper analysis</div>
+        </div>
+        <div class="connection-pill" :class="`connection-pill--${connectionStatus}`">
+          <span />
+          {{ connectionText }}
+        </div>
+        <button
+          class="topbar-icon-button"
+          :class="{ 'topbar-icon-button--active': referencePanelVisible }"
+          aria-label="引用预览"
+          @click="referencePanelVisible = !referencePanelVisible"
+        >
+          <icon-material-symbols:article-outline-rounded class="text-18px" />
+        </button>
+      </header>
+
+      <section class="chat-workspace">
+        <div class="chat-conversation">
+          <ChatList @open-reference="handleOpenReference" />
+          <InputBox v-if="showDockInput" />
+        </div>
+
+        <aside v-if="referencePanelVisible" class="reference-panel">
+          <div class="reference-panel__header">
+            <div>
+              <div class="reference-panel__title">Source Evidence</div>
+              <div class="reference-panel__subtitle">核对回答依据、页码与原始文档</div>
+            </div>
+            <NButton quaternary circle size="small" @click="closeReferencePanel">
+              <template #icon>
+                <icon-mdi-close />
+              </template>
+            </NButton>
+          </div>
+          <FilePreview
+            v-if="referencePayload"
+            :key="referencePreviewKey"
+            :file-name="referencePayload.fileName"
+            :file-md5="referencePayload.fileMd5 || undefined"
+            :page-number="referencePayload.pageNumber || undefined"
+            :anchor-text="referencePayload.anchorText || undefined"
+            :retrieval-mode="referencePayload.retrievalMode"
+            :retrieval-label="referencePayload.retrievalLabel || undefined"
+            :retrieval-query="referencePayload.retrievalQuery || undefined"
+            :evidence-snippet="referencePayload.evidenceSnippet || undefined"
+            :matched-chunk-text="referencePayload.matchedChunkText || undefined"
+            :score="referencePayload.score"
+            :chunk-id="referencePayload.chunkId"
+            :visible="referencePanelVisible"
+            @close="closeReferencePanel"
+          />
+          <div v-else class="reference-panel__empty">
+            <icon-material-symbols:article-outline-rounded class="text-34px" />
+            <span>点击回答中的 [source #] 引用后，会在这里显示证据和文件预览。</span>
+          </div>
+        </aside>
+      </section>
+    </main>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.chat-shell {
+  --paper-accent: #26364a;
+  --paper-accent-soft: #e7dde0;
+  --paper-surface: #fbfaf6;
+  --paper-muted: #e2dccc;
+  --paper-line: #c9c1b2;
+  --paper-text: #20242a;
+  --paper-text-muted: #5e6470;
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(38, 54, 74, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px), #eeeae1;
+  background-size: 24px 24px;
+  color: var(--paper-text);
+  font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+}
+
+.chat-shell__main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-topbar {
+  display: flex;
+  height: 58px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--paper-line);
+  background: rgba(255, 253, 248, 0.9);
+  padding: 0 16px;
+  backdrop-filter: blur(10px);
+}
+
+.topbar-icon-button {
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  background: #fbfaf6;
+  color: var(--paper-text-muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.topbar-icon-button:hover,
+.topbar-icon-button--active {
+  border-color: rgba(38, 54, 74, 0.28);
+  background: var(--paper-accent-soft);
+  color: var(--paper-accent);
+}
+
+.topbar-title {
+  color: var(--paper-accent);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.topbar-subtitle {
+  color: var(--paper-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.connection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--paper-line);
+  border-radius: 4px;
+  background: #fbfaf6;
+  color: var(--paper-text-muted);
+  padding: 5px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.connection-pill span {
+  height: 7px;
+  width: 7px;
+  border-radius: 999px;
+  background: #a0aec0;
+}
+
+.connection-pill--OPEN span {
+  background: #16a34a;
+}
+
+.connection-pill--CONNECTING span,
+.connection-pill--RECONNECTING span {
+  background: #f59e0b;
+}
+
+.chat-workspace {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.chat-conversation {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(255, 253, 248, 0.82);
+}
+
+.reference-panel {
+  display: flex;
+  width: min(860px, 48vw);
+  min-width: 560px;
+  flex-shrink: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--paper-line);
+  background: #fbfaf6;
+}
+
+.reference-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--paper-line);
+  padding: 12px 14px;
+}
+
+.reference-panel__title {
+  color: var(--paper-accent);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.reference-panel__subtitle {
+  margin-top: 2px;
+  color: var(--paper-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.reference-panel__empty {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--paper-text-muted);
+  padding: 24px;
+  text-align: center;
+}
+
+.reference-panel :deep(.file-preview-container) {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.reference-panel :deep(.preview-content) {
+  padding: 10px;
+}
+
+.reference-panel :deep(.preview-content .content-wrapper),
+.reference-panel :deep(.preview-content .content-wrapper--immersive) {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.reference-panel :deep(.preview-content .content-wrapper--pdf) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.reference-panel :deep(.content-wrapper--pdf .insight-rail) {
+  display: grid;
+  max-height: 184px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  overflow: auto;
+  padding-right: 0;
+}
+
+.reference-panel :deep(.content-wrapper--pdf .source-card) {
+  min-width: 0;
+}
+
+.reference-panel :deep(.content-wrapper--pdf .source-actions) {
+  margin-top: 10px;
+}
+
+.reference-panel :deep(.content-wrapper--pdf .info-card) {
+  min-width: 0;
+  padding: 12px;
+}
+
+.reference-panel :deep(.content-wrapper--pdf .info-card:not(.source-card):last-child:nth-child(3)) {
+  grid-column: 1 / -1;
+}
+
+.reference-panel :deep(.content-wrapper--pdf .info-copy),
+.reference-panel :deep(.content-wrapper--pdf .support-copy) {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-height: 1.55;
+}
+
+.reference-panel :deep(.content-wrapper--pdf .preview-stage) {
+  min-height: 0;
+}
+
+.mobile-sidebar-mask {
+  display: none;
+}
+
+.dark .chat-shell {
+  background: #181210;
+  color: #ede9df;
+}
+
+.dark .chat-topbar,
+.dark .chat-conversation {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(30, 25, 22, 0.88);
+}
+
+.dark .topbar-icon-button,
+.dark .connection-pill,
+.dark .reference-panel {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #161a21;
+}
+
+.dark .topbar-subtitle,
+.dark .connection-pill,
+.dark .reference-panel__subtitle {
+  color: #c6bba7;
+}
+
+@media (max-width: 960px) {
+  .chat-shell__sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: 292px !important;
+    min-width: 292px !important;
+    transform: translateX(0);
+  }
+
+  .chat-shell__sidebar.w-0 {
+    transform: translateX(-100%);
+  }
+
+  .mobile-sidebar-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: block;
+    background: rgba(32, 36, 42, 0.34);
+  }
+
+  .reference-panel {
+    position: fixed;
+    inset: 58px 0 0 auto;
+    z-index: 20;
+    width: min(100vw, 560px);
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .connection-pill {
+    display: none;
+  }
+
+  .reference-panel {
+    inset: 58px 0 0;
+    width: 100vw;
+  }
+}
+</style>
