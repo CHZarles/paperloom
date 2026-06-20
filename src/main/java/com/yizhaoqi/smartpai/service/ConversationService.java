@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -63,8 +64,8 @@ public class ConversationService {
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
         saveConversation(user, question, answer, conversationId, referenceMappings);
-        updateSessionTitleIfDefault(conversationId, question);
-        touchSessionUpdatedAt(conversationId);
+        updateSessionTitleIfDefault(userId, conversationId, question);
+        touchSessionUpdatedAt(userId, conversationId);
     }
 
     private void saveConversation(User user, String question, String answer, String conversationId,
@@ -126,8 +127,16 @@ public class ConversationService {
     }
 
     public void ensureConversationSession(Long userId, String conversationId, String title) {
-        if (sessionRepository.existsByConversationId(conversationId)) {
+        if (conversationId == null || conversationId.isBlank()) {
             return;
+        }
+
+        if (sessionRepository.findByConversationIdAndUserId(conversationId, userId).isPresent()) {
+            return;
+        }
+
+        if (sessionRepository.existsByConversationId(conversationId)) {
+            throw new CustomException("对话不存在", HttpStatus.NOT_FOUND);
         }
 
         User user = userRepository.findById(userId)
@@ -142,15 +151,13 @@ public class ConversationService {
     }
 
     public void switchCurrentConversation(Long userId, String conversationId) {
-        if (!sessionRepository.existsByConversationId(conversationId)) {
-            throw new CustomException("对话不存在", HttpStatus.NOT_FOUND);
-        }
+        requireOwnedSession(userId, conversationId);
         String redisKey = "user:" + userId + ":current_conversation";
         redisTemplate.opsForValue().set(redisKey, conversationId, Duration.ofDays(7));
     }
 
-    public void updateSessionTitle(String conversationId, String title) {
-        sessionRepository.findByConversationId(conversationId).ifPresent(session -> {
+    public void updateSessionTitle(Long userId, String conversationId, String title) {
+        findOwnedSession(userId, conversationId).ifPresent(session -> {
             if (session.getTitle() == null || "新对话".equals(session.getTitle())) {
                 session.setTitle(title);
                 sessionRepository.save(session);
@@ -158,33 +165,31 @@ public class ConversationService {
         });
     }
 
-    public void archiveConversationSession(String conversationId) {
-        ConversationSession session = sessionRepository.findByConversationId(conversationId)
-                .orElseThrow(() -> new CustomException("对话不存在", HttpStatus.NOT_FOUND));
+    public void archiveConversationSession(Long userId, String conversationId) {
+        ConversationSession session = requireOwnedSession(userId, conversationId);
         session.setStatus(ConversationSession.SessionStatus.ARCHIVED);
         sessionRepository.save(session);
     }
 
-    public void unarchiveConversationSession(String conversationId) {
-        ConversationSession session = sessionRepository.findByConversationId(conversationId)
-                .orElseThrow(() -> new CustomException("对话不存在", HttpStatus.NOT_FOUND));
+    public void unarchiveConversationSession(Long userId, String conversationId) {
+        ConversationSession session = requireOwnedSession(userId, conversationId);
         session.setStatus(ConversationSession.SessionStatus.ACTIVE);
         sessionRepository.save(session);
     }
 
-    private void touchSessionUpdatedAt(String conversationId) {
-        sessionRepository.findByConversationId(conversationId).ifPresent(session -> {
+    private void touchSessionUpdatedAt(Long userId, String conversationId) {
+        findOwnedSession(userId, conversationId).ifPresent(session -> {
             session.setUpdatedAt(LocalDateTime.now());
             sessionRepository.save(session);
         });
     }
 
-    public void updateSessionTitleIfDefault(String conversationId, String title) {
+    public void updateSessionTitleIfDefault(Long userId, String conversationId, String title) {
         if (title == null || title.isBlank()) {
             return;
         }
         String trimmed = title.length() > 50 ? title.substring(0, 50) : title;
-        sessionRepository.findByConversationId(conversationId).ifPresent(session -> {
+        findOwnedSession(userId, conversationId).ifPresent(session -> {
             if ("新对话".equals(session.getTitle())) {
                 session.setTitle(trimmed);
                 sessionRepository.save(session);
@@ -194,9 +199,21 @@ public class ConversationService {
 
     // ---- Message queries ----
 
-    public List<Map<String, Object>> getMessagesByConversationId(String conversationId) {
-        List<Conversation> conversations = conversationRepository.findByConversationIdOrderByTimestampAsc(conversationId);
+    public List<Map<String, Object>> getMessagesByConversationId(Long userId, String conversationId) {
+        List<Conversation> conversations = conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(userId, conversationId);
         return toMessageHistory(conversations, false);
+    }
+
+    private ConversationSession requireOwnedSession(Long userId, String conversationId) {
+        return findOwnedSession(userId, conversationId)
+                .orElseThrow(() -> new CustomException("对话不存在", HttpStatus.NOT_FOUND));
+    }
+
+    private Optional<ConversationSession> findOwnedSession(Long userId, String conversationId) {
+        if (userId == null || conversationId == null || conversationId.isBlank()) {
+            return Optional.empty();
+        }
+        return sessionRepository.findByConversationIdAndUserId(conversationId, userId);
     }
 
     public List<Conversation> getConversations(String username, LocalDateTime startDate, LocalDateTime endDate) {

@@ -77,12 +77,14 @@ public class ConversationSessionController {
             @RequestHeader("Authorization") String token,
             @PathVariable String conversationId) {
         try {
-            String username = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
+            String rawToken = token.replace("Bearer ", "");
+            String username = jwtUtils.extractUsernameFromToken(rawToken);
             if (username == null || username.isEmpty()) {
                 throw new CustomException("无效的token", HttpStatus.UNAUTHORIZED);
             }
+            Long userId = Long.parseLong(jwtUtils.extractUserIdFromToken(rawToken));
 
-            conversationService.archiveConversationSession(conversationId);
+            conversationService.archiveConversationSession(userId, conversationId);
             return ResponseEntity.ok(Map.of("code", 200, "message", "归档成功"));
         } catch (CustomException e) {
             return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
@@ -118,12 +120,14 @@ public class ConversationSessionController {
             @RequestHeader("Authorization") String token,
             @PathVariable String conversationId) {
         try {
-            String username = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
+            String rawToken = token.replace("Bearer ", "");
+            String username = jwtUtils.extractUsernameFromToken(rawToken);
             if (username == null || username.isEmpty()) {
                 throw new CustomException("无效的token", HttpStatus.UNAUTHORIZED);
             }
+            Long userId = Long.parseLong(jwtUtils.extractUserIdFromToken(rawToken));
 
-            conversationService.unarchiveConversationSession(conversationId);
+            conversationService.unarchiveConversationSession(userId, conversationId);
             return ResponseEntity.ok(Map.of("code", 200, "message", "取消归档成功"));
         } catch (CustomException e) {
             return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));

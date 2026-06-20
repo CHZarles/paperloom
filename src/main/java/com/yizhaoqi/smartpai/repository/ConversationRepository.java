@@ -44,5 +44,6 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     @EntityGraph(attributePaths = "user")
     List<Conversation> findAllByOrderByTimestampAsc();
 
-    List<Conversation> findByConversationIdOrderByTimestampAsc(String conversationId);
+    @EntityGraph(attributePaths = "user")
+    List<Conversation> findByUserIdAndConversationIdOrderByTimestampAsc(Long userId, String conversationId);
 }

@@ -1,7 +1,9 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.model.Conversation;
+import com.yizhaoqi.smartpai.model.ConversationSession;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.ConversationRepository;
 import com.yizhaoqi.smartpai.repository.ConversationSessionRepository;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
@@ -77,5 +80,53 @@ class ConversationServiceTest {
 
         var result = conversationService.getConversations("testuser", null, null);
         assertEquals(1, result.size());
+    }
+
+    @Test
+    void getMessagesByConversationIdQueriesWithinCurrentUserScope() {
+        when(conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(2L, "conversation-1"))
+                .thenReturn(List.of());
+
+        var result = conversationService.getMessagesByConversationId(2L, "conversation-1");
+
+        assertEquals(0, result.size());
+        verify(conversationRepository).findByUserIdAndConversationIdOrderByTimestampAsc(2L, "conversation-1");
+    }
+
+    @Test
+    void switchCurrentConversationRejectsConversationNotOwnedByCurrentUser() {
+        when(sessionRepository.findByConversationIdAndUserId("other-conversation", 2L))
+                .thenReturn(Optional.empty());
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> conversationService.switchCurrentConversation(2L, "other-conversation"));
+
+        assertEquals("对话不存在", exception.getMessage());
+        verify(valueOperations, never()).set(anyString(), anyString(), any());
+        verify(sessionRepository, never()).existsByConversationId(anyString());
+    }
+
+    @Test
+    void archiveConversationSessionRejectsConversationNotOwnedByCurrentUser() {
+        when(sessionRepository.findByConversationIdAndUserId("other-conversation", 2L))
+                .thenReturn(Optional.empty());
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> conversationService.archiveConversationSession(2L, "other-conversation"));
+
+        assertEquals("对话不存在", exception.getMessage());
+        verify(sessionRepository, never()).save(any(ConversationSession.class));
+    }
+
+    @Test
+    void unarchiveConversationSessionRejectsConversationNotOwnedByCurrentUser() {
+        when(sessionRepository.findByConversationIdAndUserId("other-conversation", 2L))
+                .thenReturn(Optional.empty());
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> conversationService.unarchiveConversationSession(2L, "other-conversation"));
+
+        assertEquals("对话不存在", exception.getMessage());
+        verify(sessionRepository, never()).save(any(ConversationSession.class));
     }
 }

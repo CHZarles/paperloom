@@ -40,19 +40,21 @@ public class ConversationController {
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_CONVERSATIONS");
         String username = null;
         try {
-            username = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
+            String rawToken = token.replace("Bearer ", "");
+            username = jwtUtils.extractUsernameFromToken(rawToken);
             if (username == null || username.isEmpty()) {
                 LogUtils.logUserOperation("anonymous", "GET_CONVERSATIONS", "token_validation", "FAILED_INVALID_TOKEN");
                 monitor.end("获取对话历史失败：无效token");
                 throw new CustomException("无效的token", HttpStatus.UNAUTHORIZED);
             }
+            Long userId = Long.parseLong(jwtUtils.extractUserIdFromToken(rawToken));
 
             LogUtils.logBusiness("GET_CONVERSATIONS", username, "开始查询用户持久化对话历史");
 
             List<Map<String, Object>> messages;
 
             if (conversationId != null && !conversationId.isBlank()) {
-                messages = conversationService.getMessagesByConversationId(conversationId);
+                messages = conversationService.getMessagesByConversationId(userId, conversationId);
             } else {
                 LocalDateTime startDateTime = parseStartDate(start_date);
                 LocalDateTime endDateTime = parseEndDate(end_date);
