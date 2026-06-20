@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ConversationRepository extends JpaRepository<Conversation, Long> {
@@ -30,7 +31,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
      */
     @EntityGraph(attributePaths = "user")
     List<Conversation> findByUserIdOrderByTimestampAsc(Long userId);
-    
+
     /**
      * 根据时间范围查询所有对话记录。
      *
@@ -46,4 +47,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     @EntityGraph(attributePaths = "user")
     List<Conversation> findByUserIdAndConversationIdOrderByTimestampAsc(Long userId, String conversationId);
+
+    @EntityGraph(attributePaths = "user")
+    Optional<Conversation> findByIdAndUserId(Long id, Long userId);
 }

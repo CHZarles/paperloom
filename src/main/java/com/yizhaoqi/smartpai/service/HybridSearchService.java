@@ -9,8 +9,8 @@ import com.yizhaoqi.smartpai.entity.SearchResult;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.repository.UserRepository;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
-import com.yizhaoqi.smartpai.model.FileUpload;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.model.Paper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,7 +50,7 @@ public class HybridSearchService {
     private OrgTagCacheService orgTagCacheService;
 
     @Autowired
-    private FileUploadRepository fileUploadRepository;
+    private PaperRepository paperRepository;
 
     /**
      * 使用文本匹配和向量相似度进行论文混合搜索，支持权限过滤。
@@ -62,7 +62,7 @@ public class HybridSearchService {
      */
     public List<SearchResult> searchWithPermission(String query, String userId, int topK) {
         logger.debug("开始带权限搜索，查询: {}, 用户ID: {}", query, userId);
-        
+
         try {
             // 获取用户有效的组织标签（包含层级关系）
             List<String> userEffectiveTags = getUserEffectiveOrgTags(userId);
@@ -134,7 +134,7 @@ public class HybridSearchService {
                         return s;
                     }, PaperChunkDocument.class);
 
-            logger.debug("Elasticsearch查询执行完成，命中数量: {}, 最大分数: {}", 
+            logger.debug("Elasticsearch查询执行完成，命中数量: {}, 最大分数: {}",
                 response.hits().total().value(), response.hits().maxScore());
 
             List<SearchResult> results = response.hits().hits().stream()
@@ -244,7 +244,7 @@ public class HybridSearchService {
                     PaperChunkDocument.class
             );
 
-            logger.debug("纯文本查询执行完成，命中数量: {}, 最大分数: {}", 
+            logger.debug("纯文本查询执行完成，命中数量: {}, 最大分数: {}",
                 response.hits().total().value(), response.hits().maxScore());
 
             List<SearchResult> results = response.hits().hits().stream()
@@ -289,7 +289,7 @@ public class HybridSearchService {
 
             // 生成查询向量
             final List<Float> queryVector = embedToVectorList(query, "system");
-            
+
             // 如果向量生成失败，仅使用文本匹配
             if (queryVector == null) {
                 logger.warn("向量生成失败，仅使用文本匹配进行搜索");
@@ -418,7 +418,7 @@ public class HybridSearchService {
             return null;
         }
     }
-    
+
     /**
      * 获取用户的有效组织标签（包含层级关系）
      */
@@ -440,7 +440,7 @@ public class HybridSearchService {
                     .orElseThrow(() -> new CustomException("User not found: " + userId, HttpStatus.NOT_FOUND));
                 logger.debug("通过用户名找到用户: {}", user.getUsername());
             }
-            
+
             // 通过orgTagCacheService获取用户的有效标签集合
             List<String> effectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
             logger.debug("用户 {} 的有效组织标签: {}", user.getUsername(), effectiveTags);
@@ -488,9 +488,9 @@ public class HybridSearchService {
             Set<String> paperIds = results.stream()
                     .map(SearchResult::getPaperId)
                     .collect(Collectors.toSet());
-            List<FileUpload> uploads = fileUploadRepository.findByFileMd5In(new java.util.ArrayList<>(paperIds));
+            List<Paper> uploads = paperRepository.findByPaperIdIn(new java.util.ArrayList<>(paperIds));
             Map<String, String> paperIdToTitle = uploads.stream()
-                    .collect(Collectors.toMap(FileUpload::getFileMd5, FileUpload::getFileName, (existing, replacement) -> existing));
+                    .collect(Collectors.toMap(Paper::getPaperId, Paper::getOriginalFilename, (existing, replacement) -> existing));
             results.forEach(r -> r.setPaperTitle(paperIdToTitle.get(r.getPaperId())));
         } catch (Exception e) {
             logger.error("补充论文标题失败", e);

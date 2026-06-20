@@ -3,9 +3,9 @@ package com.yizhaoqi.smartpai.controller;
 import com.yizhaoqi.smartpai.config.KafkaConfig;
 import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.model.PaperProcessingTask;
-import com.yizhaoqi.smartpai.model.FileUpload;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.OrganizationTag;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.service.FileTypeValidationService;
 import com.yizhaoqi.smartpai.service.ParseService;
 import com.yizhaoqi.smartpai.service.UploadService;
@@ -42,10 +42,10 @@ public class PaperUploadController {
 
     @Autowired
     private UserService userService;
-    
+
     @Autowired
-    private FileUploadRepository fileUploadRepository;
-    
+    private PaperRepository paperRepository;
+
     @Autowired
     private FileTypeValidationService fileTypeValidationService;
 
@@ -82,22 +82,22 @@ public class PaperUploadController {
             @RequestParam(value = "isPublic", required = false, defaultValue = "false") boolean isPublic,
             @RequestParam("file") MultipartFile file,
             @RequestAttribute("userId") String userId) throws IOException {
-        
+
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("UPLOAD_CHUNK");
         try {
             // 文件类型验证（仅在第一个分片时进行验证）
             if (chunkIndex == 0) {
-                FileTypeValidationService.FileTypeValidationResult validationResult = 
+                FileTypeValidationService.FileTypeValidationResult validationResult =
                     fileTypeValidationService.validateFileType(paperTitle);
-                
+
                 LogUtils.logBusiness("UPLOAD_CHUNK", userId, "论文 PDF 类型验证结果: paperTitle=%s, valid=%s, fileType=%s, message=%s",
                         paperTitle, validationResult.isValid(), validationResult.getFileType(), validationResult.getMessage());
-                
+
                 if (!validationResult.isValid()) {
                     LogUtils.logBusinessError("UPLOAD_CHUNK", userId, "论文 PDF 类型验证失败: paperTitle=%s, fileType=%s",
                             new RuntimeException(validationResult.getMessage()), paperTitle, validationResult.getFileType());
                     monitor.end("论文 PDF 类型验证失败: " + validationResult.getMessage());
-                    
+
                     Map<String, Object> errorResponse = new HashMap<>();
                     errorResponse.put("code", HttpStatus.BAD_REQUEST.value());
                     errorResponse.put("message", validationResult.getMessage());
@@ -106,13 +106,13 @@ public class PaperUploadController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
                 }
             }
-            
+
             String fileType = getFileType(paperTitle);
             String contentType = file.getContentType();
-            
+
             LogUtils.logBusiness("UPLOAD_CHUNK", userId, "接收到论文分片上传请求: paperId=%s, chunkIndex=%d, paperTitle=%s, fileType=%s, contentType=%s, fileSize=%d, totalSize=%d, orgTag=%s, isPublic=%s",
                     paperId, chunkIndex, paperTitle, fileType, contentType, file.getSize(), totalSize, orgTag, isPublic);
-        
+
             // 如果未指定组织标签，则获取用户的主组织标签
             if (orgTag == null || orgTag.isEmpty()) {
                 try {
@@ -151,30 +151,33 @@ public class PaperUploadController {
                     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
                 }
             }
-        
+
             LogUtils.logFileOperation(userId, "UPLOAD_CHUNK", paperTitle, paperId, "PROCESSING");
-        
+
             uploadService.uploadChunk(paperId, chunkIndex, totalSize, paperTitle, file, orgTag, isPublic, userId);
-            
+
             List<Integer> uploadedChunks = uploadService.getUploadedChunks(paperId, userId);
             int actualTotalChunks = uploadService.getTotalChunks(paperId, userId);
             double progress = calculateProgress(uploadedChunks, actualTotalChunks);
-            
+
             LogUtils.logBusiness("UPLOAD_CHUNK", userId, "论文分片上传成功: paperId=%s, paperTitle=%s, fileType=%s, chunkIndex=%d, 进度=%.2f%%",
                     paperId, paperTitle, fileType, chunkIndex, progress);
             monitor.end("分片上传成功");
-            
+
             // 构建数据对象
             Map<String, Object> data = new HashMap<>();
             data.put("uploaded", uploadedChunks);
             data.put("progress", progress);
-            
+            data.put("paperId", paperId);
+            data.put("paperTitle", paperTitle);
+            data.put("originalFilename", paperTitle);
+
             // 构建统一响应格式
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
             response.put("message", "分片上传成功");
             response.put("data", data);
-            
+
             return ResponseEntity.ok(response);
         } catch (CustomException e) {
             LogUtils.logBusinessError("UPLOAD_CHUNK", userId, "论文分片上传失败: paperId=%s, paperTitle=%s, chunkIndex=%d", e, paperId, paperTitle, chunkIndex);
@@ -208,40 +211,41 @@ public class PaperUploadController {
             String fileName = "unknown";
             String fileType = "unknown";
             try {
-                Optional<FileUpload> fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId);
-                if (fileUpload.isPresent()) {
-                    fileName = fileUpload.get().getFileName();
+                Optional<Paper> paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId);
+                if (paper.isPresent()) {
+                    fileName = paper.get().getOriginalFilename();
                     fileType = getFileType(fileName);
                 }
             } catch (Exception e) {
                 // 获取文件信息失败不影响状态查询，继续处理
                 LogUtils.logBusiness("GET_UPLOAD_STATUS", "system", "获取论文信息失败，使用默认值: paperId=%s, 错误=%s", paperId, e.getMessage());
             }
-            
+
             LogUtils.logBusiness("GET_UPLOAD_STATUS", "system", "获取论文上传状态: paperId=%s, paperTitle=%s, fileType=%s", paperId, fileName, fileType);
-            
+
             List<Integer> uploadedChunks = uploadService.getUploadedChunks(paperId, userId);
             int totalChunks = uploadService.getTotalChunks(paperId, userId);
             double progress = calculateProgress(uploadedChunks, totalChunks);
-            
+
             LogUtils.logBusiness("GET_UPLOAD_STATUS", "system", "论文上传状态: paperId=%s, paperTitle=%s, fileType=%s, 已上传=%d/%d, 进度=%.2f%%",
                     paperId, fileName, fileType, uploadedChunks.size(), totalChunks, progress);
             monitor.end("获取上传状态成功");
-            
+
             // 构建数据对象
             Map<String, Object> data = new HashMap<>();
             data.put("uploaded", uploadedChunks);
             data.put("progress", progress);
             data.put("paperId", paperId);
             data.put("paperTitle", fileName);
+            data.put("originalFilename", fileName);
             data.put("fileType", fileType);
-            
+
             // 构建统一响应格式
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
             response.put("message", "获取上传状态成功");
             response.put("data", data);
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             LogUtils.logBusinessError("GET_UPLOAD_STATUS", "system", "获取论文上传状态失败: paperId=%s", e, paperId);
@@ -264,26 +268,26 @@ public class PaperUploadController {
     public ResponseEntity<Map<String, Object>> mergeFile(
             @RequestBody MergeRequest request,
             @RequestAttribute("userId") String userId) {
-        
+
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("MERGE_FILE");
         try {
             String fileType = getFileType(request.paperTitle());
             LogUtils.logBusiness("MERGE_FILE", userId, "接收到合并论文请求: paperId=%s, paperTitle=%s, fileType=%s",
                     request.paperId(), request.paperTitle(), fileType);
-            
+
             // 检查论文完整性和权限
             LogUtils.logBusiness("MERGE_FILE", userId, "检查论文记录和权限: paperId=%s, paperTitle=%s", request.paperId(), request.paperTitle());
-            FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
+            Paper paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
                     .orElseThrow(() -> {
                         LogUtils.logUserOperation(userId, "MERGE_FILE", request.paperId(), "FAILED_FILE_NOT_FOUND");
                         return new RuntimeException("论文记录不存在");
                     });
-                    
+
             // 确保用户有权限操作该论文
-            if (!fileUpload.getUserId().equals(userId)) {
+            if (!paper.getUserId().equals(userId)) {
                 LogUtils.logUserOperation(userId, "MERGE_FILE", request.paperId(), "FAILED_PERMISSION_DENIED");
                 LogUtils.logBusiness("MERGE_FILE", userId, "权限验证失败: 尝试合并不属于自己的论文, paperId=%s, paperTitle=%s, 实际所有者=%s",
-                        request.paperId(), request.paperTitle(), fileUpload.getUserId());
+                        request.paperId(), request.paperTitle(), paper.getUserId());
                 monitor.end("合并失败：权限不足");
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("code", HttpStatus.FORBIDDEN.value());
@@ -291,24 +295,24 @@ public class PaperUploadController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
             }
 
-            if (fileUpload.getStatus() == FileUpload.STATUS_COMPLETED) {
+            if (paper.getStatus() == Paper.STATUS_COMPLETED) {
                 LogUtils.logBusiness("MERGE_FILE", userId, "论文已完成合并，按幂等成功返回: paperId=%s, paperTitle=%s", request.paperId(), request.paperTitle());
                 monitor.end("论文 PDF 已完成合并");
                 return buildAlreadyMergedResponse(request.paperId());
             }
 
-            if (fileUpload.getStatus() == FileUpload.STATUS_MERGING) {
+            if (paper.getStatus() == Paper.STATUS_MERGING) {
                 throw new CustomException("论文 PDF 正在合并中，请稍后重试", HttpStatus.CONFLICT);
             }
-            
+
             LogUtils.logBusiness("MERGE_FILE", userId, "权限验证通过，开始合并论文: paperId=%s, paperTitle=%s, fileType=%s", request.paperId(), request.paperTitle(), fileType);
-            
+
             // 检查分片是否全部上传完成
             List<Integer> uploadedChunks = uploadService.getUploadedChunks(request.paperId(), userId);
             int totalChunks = uploadService.getTotalChunks(request.paperId(), userId);
             LogUtils.logBusiness("MERGE_FILE", userId, "论文分片上传状态: paperId=%s, paperTitle=%s, 已上传=%d/%d",
                     request.paperId(), request.paperTitle(), uploadedChunks.size(), totalChunks);
-            
+
             if (uploadedChunks.size() < totalChunks) {
                 LogUtils.logUserOperation(userId, "MERGE_FILE", request.paperId(), "FAILED_INCOMPLETE_CHUNKS");
                 monitor.end("合并失败：分片未全部上传");
@@ -318,26 +322,26 @@ public class PaperUploadController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
             }
 
-            int updatedRows = fileUploadRepository.updateStatusIfCurrent(
-                    fileUpload.getId(),
-                    FileUpload.STATUS_UPLOADING,
-                    FileUpload.STATUS_MERGING
+            int updatedRows = paperRepository.updateStatusIfCurrent(
+                    paper.getId(),
+                    Paper.STATUS_UPLOADING,
+                    Paper.STATUS_MERGING
             );
             if (updatedRows == 0) {
-                FileUpload latestFileUpload = fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
+                Paper latestPaper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
                         .orElseThrow(() -> new RuntimeException("论文记录不存在"));
-                if (latestFileUpload.getStatus() == FileUpload.STATUS_COMPLETED) {
+                if (latestPaper.getStatus() == Paper.STATUS_COMPLETED) {
                     LogUtils.logBusiness("MERGE_FILE", userId, "论文已被其他请求合并完成，按幂等成功返回: paperId=%s, paperTitle=%s", request.paperId(), request.paperTitle());
                     monitor.end("论文 PDF 已完成合并");
                     return buildAlreadyMergedResponse(request.paperId());
                 }
-                if (latestFileUpload.getStatus() == FileUpload.STATUS_MERGING) {
+                if (latestPaper.getStatus() == Paper.STATUS_MERGING) {
                     throw new CustomException("论文 PDF 正在合并中，请稍后重试", HttpStatus.CONFLICT);
                 }
                 throw new CustomException("论文 PDF 状态已变化，请刷新后重试", HttpStatus.CONFLICT);
             }
 
-            fileUpload = fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
+            paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
                     .orElseThrow(() -> new RuntimeException("论文记录不存在"));
 
             // 合并论文 PDF
@@ -346,20 +350,20 @@ public class PaperUploadController {
             try {
                 objectUrl = uploadService.mergeChunks(request.paperId(), request.paperTitle(), userId);
             } catch (Exception mergeException) {
-                fileUploadRepository.updateStatusIfCurrent(fileUpload.getId(), FileUpload.STATUS_MERGING, FileUpload.STATUS_UPLOADING);
+                paperRepository.updateStatusIfCurrent(paper.getId(), Paper.STATUS_MERGING, Paper.STATUS_UPLOADING);
                 throw mergeException;
             }
             LogUtils.logFileOperation(userId, "MERGE", request.paperTitle(), request.paperId(), "SUCCESS");
 
-            fileUpload = fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
+            paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
                     .orElseThrow(() -> new RuntimeException("论文记录不存在"));
 
             ParseService.EmbeddingEstimate embeddingEstimate = null;
             try (io.minio.GetObjectResponse mergedFileStream = uploadService.getMergedFileStream(request.paperId())) {
                 embeddingEstimate = parseService.estimateEmbeddingUsage(mergedFileStream);
-                fileUpload.setEstimatedEmbeddingTokens(embeddingEstimate.estimatedTokens());
-                fileUpload.setEstimatedChunkCount(embeddingEstimate.estimatedChunkCount());
-                fileUploadRepository.save(fileUpload);
+                paper.setEstimatedEmbeddingTokens(embeddingEstimate.estimatedTokens());
+                paper.setEstimatedChunkCount(embeddingEstimate.estimatedChunkCount());
+                paperRepository.save(paper);
                 LogUtils.logBusiness(
                         "MERGE_FILE",
                         userId,
@@ -381,25 +385,25 @@ public class PaperUploadController {
 
             // 发送任务到 Kafka，包含完整的权限信息
             LogUtils.logBusiness("MERGE_FILE", userId, "创建论文处理任务: paperId=%s, paperTitle=%s, fileType=%s, orgTag=%s, isPublic=%s",
-                    request.paperId(), request.paperTitle(), fileType, fileUpload.getOrgTag(), fileUpload.isPublic());
-            
+                    request.paperId(), request.paperTitle(), fileType, paper.getOrgTag(), paper.isPublic());
+
             PaperProcessingTask task = new PaperProcessingTask(
                     request.paperId(),
                     objectUrl,
                     request.paperTitle(),
-                    fileUpload.getUserId(),
-                    fileUpload.getOrgTag(),
-                    fileUpload.isPublic(),
+                    paper.getUserId(),
+                    paper.getOrgTag(),
+                    paper.isPublic(),
                     PaperProcessingTask.TASK_TYPE_UPLOAD_PROCESS,
                     userId
             );
 
-            fileUpload.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_PROCESSING);
-            fileUpload.setVectorizationErrorMessage(null);
-            fileUpload.setActualEmbeddingTokens(null);
-            fileUpload.setActualChunkCount(null);
-            fileUploadRepository.save(fileUpload);
-            
+            paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PROCESSING);
+            paper.setVectorizationErrorMessage(null);
+            paper.setActualEmbeddingTokens(null);
+            paper.setActualChunkCount(null);
+            paperRepository.save(paper);
+
             LogUtils.logBusiness("MERGE_FILE", userId, "发送论文处理任务到 Kafka(事务): topic=%s, paperId=%s, paperTitle=%s",
                     kafkaConfig.getPaperProcessingTopic(), request.paperId(), request.paperTitle());
             kafkaTemplate.executeInTransaction(kt -> {
@@ -410,18 +414,21 @@ public class PaperUploadController {
 
             // 构建数据对象
             Map<String, Object> data = new HashMap<>();
-            data.put("object_url", objectUrl);
+            data.put("paperId", request.paperId());
+            data.put("paperTitle", paper.getPaperTitle());
+            data.put("originalFilename", paper.getOriginalFilename());
+            data.put("objectUrl", objectUrl);
             if (embeddingEstimate != null) {
                 data.put("estimatedEmbeddingTokens", embeddingEstimate.estimatedTokens());
                 data.put("estimatedChunkCount", embeddingEstimate.estimatedChunkCount());
             }
-            
+
             // 构建统一响应格式
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
             response.put("message", "论文 PDF 合并成功，处理任务已发送到 Kafka");
             response.put("data", data);
-            
+
             LogUtils.logUserOperation(userId, "MERGE_FILE", request.paperId(), "SUCCESS");
             monitor.end("论文 PDF 合并成功");
             return ResponseEntity.ok(response);
@@ -447,8 +454,13 @@ public class PaperUploadController {
     }
 
     private ResponseEntity<Map<String, Object>> buildAlreadyMergedResponse(String paperId) throws Exception {
+        Optional<Paper> paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId);
         Map<String, Object> data = new HashMap<>();
         data.put("paperId", paperId);
+        paper.ifPresent(value -> {
+            data.put("paperTitle", value.getPaperTitle());
+            data.put("originalFilename", value.getOriginalFilename());
+        });
         data.put("objectUrl", uploadService.generateMergedObjectUrl(paperId));
 
         Map<String, Object> response = new HashMap<>();
@@ -499,26 +511,26 @@ public class PaperUploadController {
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_SUPPORTED_TYPES");
         try {
             LogUtils.logBusiness("GET_SUPPORTED_TYPES", "system", "获取支持的论文格式列表");
-            
+
             Set<String> supportedTypes = fileTypeValidationService.getSupportedFileTypes();
             Set<String> supportedExtensions = fileTypeValidationService.getSupportedExtensions();
-            
+
             // 构建数据对象
             Map<String, Object> data = new HashMap<>();
             data.put("supportedTypes", supportedTypes);
             data.put("supportedExtensions", supportedExtensions);
             data.put("description", "PaperLoom 当前只支持 PDF 论文上传、解析和向量化");
-            
+
             // 构建统一响应格式
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
             response.put("message", "获取支持的论文格式成功");
             response.put("data", data);
-            
-            LogUtils.logBusiness("GET_SUPPORTED_TYPES", "system", "成功返回支持的论文格式: 类型数量=%d, 扩展名数量=%d", 
+
+            LogUtils.logBusiness("GET_SUPPORTED_TYPES", "system", "成功返回支持的论文格式: 类型数量=%d, 扩展名数量=%d",
                     supportedTypes.size(), supportedExtensions.size());
             monitor.end("获取支持的论文格式成功");
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             LogUtils.logBusinessError("GET_SUPPORTED_TYPES", "system", "获取支持的论文格式失败", e);
@@ -540,14 +552,14 @@ public class PaperUploadController {
         if (fileName == null || fileName.isEmpty()) {
             return "unknown";
         }
-        
+
         int lastDotIndex = fileName.lastIndexOf('.');
         if (lastDotIndex == -1 || lastDotIndex == fileName.length() - 1) {
             return "unknown";
         }
-        
+
         String extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-        
+
         return "pdf".equals(extension) ? "PDF论文" : "unsupported";
     }
 }

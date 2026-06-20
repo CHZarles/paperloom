@@ -19,11 +19,11 @@ const emit = defineEmits<{
       matchedChunkText?: string | null;
       score?: number | null;
       chunkId?: number | null;
-      fileName: string;
-      fileMd5?: string | null;
+      paperTitle: string;
+      paperId?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
-      sessionId?: string;
+      conversationRecordId?: number;
       referenceNumber: number;
     }
   ): void;

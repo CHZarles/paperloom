@@ -12,8 +12,8 @@ const router = useRouter();
 
 const loading = ref(false);
 const loadError = ref('');
-const fileName = ref('');
-const fileMd5 = ref('');
+const paperTitle = ref('');
+const paperId = ref('');
 const pageNumber = ref<number | undefined>(undefined);
 const anchorText = ref('');
 const retrievalMode = ref<Api.Chat.ReferenceEvidence['retrievalMode']>(null);
@@ -24,9 +24,9 @@ const matchedChunkText = ref('');
 const score = ref<number | null>(null);
 const chunkId = ref<number | null>(null);
 const referenceNumber = ref<number | undefined>(undefined);
-const sessionId = ref('');
+const conversationRecordId = ref<number | undefined>(undefined);
 const previewKey = computed(() => String(route.query.previewKey || ''));
-const hasPreviewTarget = computed(() => Boolean(fileName.value || fileMd5.value));
+const hasPreviewTarget = computed(() => Boolean(paperTitle.value || paperId.value));
 
 function readOptionalNumber(value: unknown) {
   const parsed = Number.parseInt(String(value || ''), 10);
@@ -34,12 +34,12 @@ function readOptionalNumber(value: unknown) {
 }
 
 function syncFallbackFromQuery() {
-  fileName.value = String(route.query.fileName || '');
-  fileMd5.value = String(route.query.fileMd5 || '');
+  paperTitle.value = String(route.query.paperTitle || '');
+  paperId.value = String(route.query.paperId || '');
   pageNumber.value = readOptionalNumber(route.query.pageNumber);
   anchorText.value = String(route.query.anchorText || '');
   retrievalQuery.value = String(route.query.retrievalQuery || '');
-  sessionId.value = String(route.query.sessionId || '');
+  conversationRecordId.value = readOptionalNumber(route.query.conversationRecordId);
   referenceNumber.value = readOptionalNumber(route.query.referenceNumber);
 }
 
@@ -50,17 +50,17 @@ function syncFromStorage() {
   if (!raw) return false;
 
   try {
-    const payload = JSON.parse(raw) as Partial<Api.Document.ReferenceDetailResponse> & {
-      fileName?: string;
-      fileMd5?: string;
+    const payload = JSON.parse(raw) as Partial<Api.Paper.ReferenceDetailResponse> & {
+      paperTitle?: string;
+      paperId?: string;
       pageNumber?: number | null;
       anchorText?: string | null;
-      sessionId?: string | null;
+      conversationRecordId?: number | null;
       referenceNumber?: number | null;
     };
 
-    fileName.value = payload.fileName || fileName.value;
-    fileMd5.value = payload.fileMd5 || fileMd5.value;
+    paperTitle.value = payload.paperTitle || paperTitle.value;
+    paperId.value = payload.paperId || paperId.value;
     pageNumber.value = payload.pageNumber || pageNumber.value;
     anchorText.value = payload.anchorText || anchorText.value;
     retrievalMode.value = payload.retrievalMode ?? retrievalMode.value;
@@ -70,7 +70,7 @@ function syncFromStorage() {
     matchedChunkText.value = payload.matchedChunkText || matchedChunkText.value;
     score.value = payload.score ?? score.value;
     chunkId.value = payload.chunkId ?? chunkId.value;
-    sessionId.value = payload.sessionId || sessionId.value;
+    conversationRecordId.value = payload.conversationRecordId || conversationRecordId.value;
     referenceNumber.value = payload.referenceNumber || referenceNumber.value;
     return true;
   } catch {
@@ -85,21 +85,21 @@ async function loadReferenceDetail() {
   const restoredFromStorage = syncFromStorage();
   loadError.value = '';
 
-  if (restoredFromStorage && (fileMd5.value || matchedChunkText.value || evidenceSnippet.value)) {
+  if (restoredFromStorage && (paperId.value || matchedChunkText.value || evidenceSnippet.value)) {
     return;
   }
 
-  if (!sessionId.value || !referenceNumber.value) {
+  if (!conversationRecordId.value || !referenceNumber.value) {
     return;
   }
 
   loading.value = true;
 
   try {
-    const { error, data } = await request<Api.Document.ReferenceDetailResponse>({
-      url: 'documents/reference-detail',
+    const { error, data } = await request<Api.Paper.ReferenceDetailResponse>({
+      url: 'papers/reference-detail',
       params: {
-        sessionId: sessionId.value,
+        conversationRecordId: conversationRecordId.value,
         referenceNumber: String(referenceNumber.value)
       }
     });
@@ -109,8 +109,8 @@ async function loadReferenceDetail() {
       return;
     }
 
-    fileName.value = data.fileName || fileName.value;
-    fileMd5.value = data.fileMd5 || fileMd5.value;
+    paperTitle.value = data.paperTitle || paperTitle.value;
+    paperId.value = data.paperId || paperId.value;
     pageNumber.value = data.pageNumber || pageNumber.value;
     anchorText.value = data.anchorText || anchorText.value;
     retrievalMode.value = data.retrievalMode ?? null;
@@ -161,8 +161,8 @@ watch(
         {{ loadError }}
       </div>
       <FilePreview
-        :file-name="fileName"
-        :file-md5="fileMd5 || undefined"
+        :paper-title="paperTitle"
+        :paper-id="paperId || undefined"
         :page-number="pageNumber"
         :anchor-text="anchorText"
         :retrieval-mode="retrievalMode"

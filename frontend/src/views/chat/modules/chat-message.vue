@@ -25,11 +25,11 @@ const emit = defineEmits<{
       matchedChunkText?: string | null;
       score?: number | null;
       chunkId?: number | null;
-      fileName: string;
-      fileMd5?: string | null;
+      paperTitle: string;
+      paperId?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
-      sessionId?: string;
+      conversationRecordId?: number;
       referenceNumber: number;
     }
   ): void;
@@ -91,7 +91,7 @@ async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad')
 
 // 存储文件名和对应的事件处理
 const sourceFiles = ref<
-  Array<{ fileName: string; id: string; referenceNumber: number; fileMd5?: string; pageNumber?: number }>
+  Array<{ paperTitle: string; id: string; referenceNumber: number; paperId?: string; pageNumber?: number }>
 >([]);
 // eslint-disable-next-line no-useless-escape
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
@@ -120,7 +120,7 @@ const referenceEntries = computed(() => {
     .filter(
       item =>
         Number.isFinite(item.referenceNumber) &&
-        item.detail?.fileMd5 &&
+        item.detail?.paperId &&
         citedReferenceNumbers.value.has(item.referenceNumber)
     )
     .sort((left, right) => left.referenceNumber - right.referenceNumber);
@@ -195,27 +195,27 @@ function getCitedReferenceNumbers(text: string) {
 
 function createSourceLink(
   sourceNum: string,
-  fileName: string,
-  fallback?: { fileMd5?: string; pageNumber?: number }
+  paperTitle: string,
+  fallback?: { paperId?: string; pageNumber?: number }
 ): string {
   const persistedDetail = props.msg.referenceMappings?.[sourceNum];
-  const fileMd5 = persistedDetail?.fileMd5 || fallback?.fileMd5;
-  if (!fileMd5) {
-    return `来源#${sourceNum}: ${fileName.trim()}`;
+  const paperId = persistedDetail?.paperId || fallback?.paperId;
+  if (!paperId) {
+    return `来源#${sourceNum}: ${paperTitle.trim()}`;
   }
 
   const linkClass = 'source-file-link';
-  const trimmedFileName = persistedDetail?.fileName || fileName.trim();
+  const trimmedFileName = persistedDetail?.paperTitle || paperTitle.trim();
   const fileId = `source-file-${sourceFiles.value.length}`;
   const referenceNumber = Number.parseInt(sourceNum, 10);
   const pageNumber = persistedDetail?.pageNumber ?? fallback?.pageNumber ?? undefined;
   const displayName = pageNumber ? `${trimmedFileName} (第${pageNumber}页)` : trimmedFileName;
 
   sourceFiles.value.push({
-    fileName: trimmedFileName,
+    paperTitle: trimmedFileName,
     id: fileId,
     referenceNumber,
-    fileMd5,
+    paperId,
     pageNumber
   });
 
@@ -241,21 +241,21 @@ function processSourceLinks(text: string): string {
   const simplePattern = new RegExp(`来源#(\\d+):\\s*([^<>\\n\\r|;；,，、。！？!?]+?)${entryBoundary}`, 'g');
 
   let processedText = text.replace(pagePattern, (...matches) => {
-    const [, sourceNum, fileName, pageNum] = matches;
-    return createSourceLink(sourceNum, fileName, {
+    const [, sourceNum, paperTitle, pageNum] = matches;
+    return createSourceLink(sourceNum, paperTitle, {
       pageNumber: Number.parseInt(pageNum, 10)
     });
   });
 
   processedText = processedText.replace(md5Pattern, (...matches) => {
-    const [, sourceNum, fileName, fileMd5] = matches;
-    return createSourceLink(sourceNum, fileName, {
-      fileMd5: fileMd5.trim()
+    const [, sourceNum, paperTitle, paperId] = matches;
+    return createSourceLink(sourceNum, paperTitle, {
+      paperId: paperId.trim()
     });
   });
 
-  processedText = processedText.replace(simplePattern, (_match, sourceNum, fileName) => {
-    return createSourceLink(sourceNum, fileName);
+  processedText = processedText.replace(simplePattern, (_match, sourceNum, paperTitle) => {
+    return createSourceLink(sourceNum, paperTitle);
   });
 
   return processedText;
@@ -294,11 +294,11 @@ function openReferencePreviewPage(payload: {
   matchedChunkText?: string | null;
   score?: number | null;
   chunkId?: number | null;
-  fileName: string;
-  fileMd5?: string | null;
+  paperTitle: string;
+  paperId?: string | null;
   pageNumber?: number | null;
   anchorText?: string | null;
-  sessionId?: string;
+  conversationRecordId?: number;
   referenceNumber: number;
 }) {
   if (props.previewMode === 'drawer') {
@@ -336,9 +336,9 @@ function handleContentClick(event: MouseEvent) {
       if (file) {
         const contextAnchorText = extractContextAnchorText(sourceTarget);
         handleSourceFileClick({
-          fileName: file.fileName,
+          paperTitle: file.paperTitle,
           referenceNumber: file.referenceNumber,
-          fileMd5: file.fileMd5,
+          paperId: file.paperId,
           pageNumber: file.pageNumber,
           anchorText: contextAnchorText
         });
@@ -351,41 +351,35 @@ function handleContentClick(event: MouseEvent) {
 // Existing reference resolution has several fallback branches because older persisted messages may miss detail fields.
 // eslint-disable-next-line complexity
 async function handleSourceFileClick(fileInfo: {
-  fileName: string;
+  paperTitle: string;
   referenceNumber: number;
-  fileMd5?: string;
+  paperId?: string;
   pageNumber?: number;
   anchorText?: string;
 }) {
-  const {
-    fileName,
-    referenceNumber,
-    fileMd5: extractedMd5,
-    pageNumber: extractedPageNumber,
-    anchorText: clickedAnchorText
-  } = fileInfo;
+  const { paperTitle, referenceNumber, paperId: extractedPaperId, pageNumber: extractedPageNumber, anchorText: clickedAnchorText } = fileInfo;
   const persistedDetail =
     props.msg.referenceMappings?.[String(referenceNumber)] || props.msg.referenceMappings?.[referenceNumber];
-  const referenceSessionId = props.msg.generationId || props.msg.conversationId || props.sessionId;
+  const conversationRecordId = props.msg.conversationRecordId;
 
   try {
-    let detail: Api.Document.ReferenceDetailResponse | null = null;
+    let detail: Api.Paper.ReferenceDetailResponse | null = null;
     const fallbackRetrievalQuery = props.retrievalQueryFallback || '';
 
     if (
-      referenceSessionId &&
+      conversationRecordId &&
       (!persistedDetail?.retrievalQuery || !persistedDetail?.matchedChunkText || !persistedDetail?.evidenceSnippet)
     ) {
       try {
-        const { error: detailError, data: detailData } = await request<Api.Document.ReferenceDetailResponse>({
-          url: 'documents/reference-detail',
+        const { error: detailError, data: detailData } = await request<Api.Paper.ReferenceDetailResponse>({
+          url: 'papers/reference-detail',
           params: {
-            sessionId: referenceSessionId,
+            conversationRecordId,
             referenceNumber: referenceNumber.toString()
           }
         });
 
-        if (!detailError && detailData?.fileMd5) {
+        if (!detailError && detailData?.paperId) {
           detail = detailData;
         }
       } catch {
@@ -393,10 +387,10 @@ async function handleSourceFileClick(fileInfo: {
       }
     }
 
-    if (persistedDetail?.fileMd5 && !detail) {
+    if (persistedDetail?.paperId && !detail) {
       openReferencePreviewPage({
-        fileName: persistedDetail.fileName || fileName,
-        fileMd5: persistedDetail.fileMd5,
+        paperTitle: persistedDetail.paperTitle || paperTitle,
+        paperId: persistedDetail.paperId,
         pageNumber: persistedDetail.pageNumber,
         anchorText: persistedDetail.anchorText || clickedAnchorText || '',
         retrievalMode: persistedDetail.retrievalMode,
@@ -406,16 +400,16 @@ async function handleSourceFileClick(fileInfo: {
         matchedChunkText: persistedDetail.matchedChunkText,
         score: persistedDetail.score,
         chunkId: persistedDetail.chunkId,
-        sessionId: referenceSessionId,
+        conversationRecordId,
         referenceNumber
       });
       return;
     }
 
-    const targetMd5 = detail?.fileMd5 || extractedMd5 || null;
+    const targetPaperId = detail?.paperId || extractedPaperId || null;
     openReferencePreviewPage({
-      fileName: detail?.fileName || fileName,
-      fileMd5: targetMd5,
+      paperTitle: detail?.paperTitle || paperTitle,
+      paperId: targetPaperId,
       pageNumber: detail?.pageNumber ?? extractedPageNumber,
       anchorText: detail?.anchorText || clickedAnchorText || '',
       retrievalMode: detail?.retrievalMode,
@@ -425,19 +419,18 @@ async function handleSourceFileClick(fileInfo: {
       matchedChunkText: detail?.matchedChunkText,
       score: detail?.score,
       chunkId: detail?.chunkId,
-      sessionId: referenceSessionId,
+      conversationRecordId,
       referenceNumber
     });
   } catch {
-    window.$message?.error(`文件下载失败: ${fileName}`);
+    window.$message?.error(`论文预览失败: ${paperTitle}`);
   }
 }
 
 function openMappedReference(referenceNumber: number, detail: Api.Chat.ReferenceEvidence) {
-  const referenceSessionId = props.msg.generationId || props.msg.conversationId || props.sessionId;
   openReferencePreviewPage({
-    fileName: detail.fileName,
-    fileMd5: detail.fileMd5,
+    paperTitle: detail.paperTitle,
+    paperId: detail.paperId,
     pageNumber: detail.pageNumber,
     anchorText: detail.anchorText || '',
     retrievalMode: detail.retrievalMode,
@@ -447,7 +440,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
     matchedChunkText: detail.matchedChunkText,
     score: detail.score,
     chunkId: detail.chunkId,
-    sessionId: referenceSessionId,
+    conversationRecordId: props.msg.conversationRecordId,
     referenceNumber
   });
 }
@@ -507,7 +500,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
           <span class="reference-list__badge">[{{ entry.referenceNumber }}]</span>
           <span class="reference-list__body">
             <span class="reference-list__file">
-              {{ entry.detail.fileName }}
+              {{ entry.detail.paperTitle }}
               <span v-if="entry.detail.pageNumber">· 第{{ entry.detail.pageNumber }}页</span>
             </span>
             <span class="reference-list__meta">

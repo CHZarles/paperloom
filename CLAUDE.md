@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PaiSmart (派聪明) is an enterprise-grade AI knowledge management system built with RAG (Retrieval-Augmented Generation) technology. It provides intelligent document processing and retrieval capabilities using a modern tech stack including Spring Boot, Vue 3, Elasticsearch, and AI services.
+PaperLoom is an evidence-grounded RAG workbench for structured research paper reading. The repository directory and some legacy physical database names still use PaiSmart/file terminology, but the product story, public API, and frontend contract should be paper-centered.
+
+PaperLoom supports PDF paper upload, asynchronous parsing/indexing, page-aware chunk retrieval, source-grounded chat, persistent evidence references, and basic editable paper metadata. It should not be described as a generic enterprise knowledge-base assistant.
 
 ## Development Environment Setup
 
@@ -105,21 +107,22 @@ frontend/src/
 ## Key Components
 
 ### Core Services
-- **DocumentService**: Handles document upload, parsing, and management
-- **ElasticsearchService**: Manages document indexing and search
+- **PaperController / PaperUploadController / PaperSearchController**: Paper library, PDF upload, preview, metadata, evidence reference, and search APIs
+- **PaperService**: Handles paper deletion, access lists, preview, metadata updates, and indexing retries
+- **ElasticsearchService**: Manages paper chunk indexing and search
 - **VectorizationService**: Converts text to embeddings using AI models
 - **ChatHandler**: Processes AI chat interactions with RAG
 - **UserService**: User authentication and management
-- **ConversationService**: Chat history and session management
+- **ConversationService**: Chat history, session management, and MySQL-backed reference evidence recovery
 
 ### AI Integration
 - **DeepSeek API**: Primary LLM for chat responses
-- **Embedding API**: Text-embedding-v4 for document vectorization
-- **RAG Pipeline**: Document → Chunk → Embedding → Search → Response
+- **Embedding API**: Text-embedding-v4 for paper chunk vectorization
+- **RAG Pipeline**: Paper PDF → page-aware chunk → embedding → hybrid retrieval → source-grounded response
 
 ### Multi-tenant Architecture
 - **Organization Tags**: Supports multi-tenant isolation
-- **Permission System**: Public/private document access control
+- **Permission System**: Public/private/organization-scoped paper access control
 - **User-Organization Mapping**: Flexible user-to-org relationships
 
 ## Configuration Files
@@ -138,15 +141,16 @@ frontend/src/
 
 The application uses MySQL as the primary database with JPA/Hibernate for ORM. Key entities include:
 - `User`: User accounts and authentication
-- `FileUpload`: Document metadata and storage info
-- `Conversation`: Chat sessions and history
+- `Paper`: paper upload metadata, processing status, visibility, and editable paper metadata
+- `PaperTextChunk`: page-aware paper chunks
+- `Conversation`: Chat history and persisted reference mappings
 - `OrganizationTag`: Multi-tenant organization structure
-- `ChunkInfo`: Document chunks for vector search
+- `ChunkInfo`: legacy physical table/entity name for upload chunks
 
 ## External Dependencies
 
 ### Services
-- **Elasticsearch 8.10.0**: Document search and vector storage
+- **Elasticsearch 8.10.0**: Paper chunk search and vector storage
 - **Kafka 3.2.1**: Message queue for async file processing
 - **Redis 7.0.11**: Caching and session management
 - **MinIO 8.5.12**: File storage service
@@ -154,7 +158,7 @@ The application uses MySQL as the primary database with JPA/Hibernate for ORM. K
 
 ### AI Services
 - **DeepSeek API**: LLM for generating responses
-- **DashScope Embedding**: Text-embedding-v4 for document vectorization
+- **DashScope Embedding**: Text-embedding-v4 for paper chunk vectorization
 
 ## Development Workflow
 
@@ -234,9 +238,9 @@ Key configuration variables that should be set in production:
 
 ## Performance Considerations
 
-- Elasticsearch for efficient document search
+- Elasticsearch for efficient paper chunk search
 - Redis caching for frequently accessed data
 - Kafka for asynchronous file processing
-- File chunking for large document processing
+- PDF chunking for large paper processing
 - Vector embeddings for semantic search
 - Connection pooling for database and external services

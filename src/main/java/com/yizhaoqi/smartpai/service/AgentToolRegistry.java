@@ -8,8 +8,8 @@ import co.elastic.clients.elasticsearch.indices.stats.IndicesStats;
 import com.yizhaoqi.smartpai.client.DeepSeekClient;
 import com.yizhaoqi.smartpai.config.PaperSearchIndex;
 import com.yizhaoqi.smartpai.entity.SearchResult;
-import com.yizhaoqi.smartpai.model.FileUpload;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
+import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +32,7 @@ public class AgentToolRegistry {
     private final DeepSeekClient deepSeekClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final ElasticsearchClient elasticsearchClient;
-    private final FileUploadRepository fileUploadRepository;
+    private final PaperRepository paperRepository;
     private final List<AgentTool> tools;
     private final Map<String, ToolHandler> handlers;
 
@@ -40,12 +40,12 @@ public class AgentToolRegistry {
                              DeepSeekClient deepSeekClient,
                              StringRedisTemplate stringRedisTemplate,
                              ElasticsearchClient elasticsearchClient,
-                             FileUploadRepository fileUploadRepository) {
+                             PaperRepository paperRepository) {
         this.hybridSearchService = hybridSearchService;
         this.deepSeekClient = deepSeekClient;
         this.stringRedisTemplate = stringRedisTemplate;
         this.elasticsearchClient = elasticsearchClient;
-        this.fileUploadRepository = fileUploadRepository;
+        this.paperRepository = paperRepository;
         this.tools = List.of(
                 searchPapersTool(),
                 generateSummaryTool(),
@@ -154,17 +154,17 @@ public class AgentToolRegistry {
             DocStats docStats = indexStats != null && indexStats.total() != null ? indexStats.total().docs() : null;
             StoreStats storeStats = indexStats != null && indexStats.total() != null ? indexStats.total().store() : null;
 
-            long documentCount = fileUploadRepository.count();
+            long paperCount = paperRepository.count();
             long fragmentCount = docStats != null ? docStats.count() : 0L;
             Long deletedFragmentCount = docStats != null ? docStats.deleted() : null;
             Long storeSizeInBytes = storeStats != null ? storeStats.sizeInBytes() : null;
-            LocalDateTime latestUpdatedAt = fileUploadRepository.findFirstByOrderByMergedAtDesc()
+            LocalDateTime latestUpdatedAt = paperRepository.findFirstByOrderByMergedAtDesc()
                     .map(this::resolveLatestUpdatedAt)
                     .orElse(null);
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("index", PaperSearchIndex.INDEX_NAME);
-            data.put("paperCount", documentCount);
+            data.put("paperCount", paperCount);
             data.put("fragmentCount", fragmentCount);
             data.put("deletedFragmentCount", deletedFragmentCount);
             data.put("storeSizeInBytes", storeSizeInBytes);
@@ -279,11 +279,11 @@ public class AgentToolRegistry {
                 + "\n- 最近更新时间：" + nullToDash(data.get("latestUpdatedAt"));
     }
 
-    private LocalDateTime resolveLatestUpdatedAt(FileUpload fileUpload) {
-        if (fileUpload.getMergedAt() != null) {
-            return fileUpload.getMergedAt();
+    private LocalDateTime resolveLatestUpdatedAt(Paper paper) {
+        if (paper.getMergedAt() != null) {
+            return paper.getMergedAt();
         }
-        return fileUpload.getCreatedAt();
+        return paper.getCreatedAt();
     }
 
     private String getRequiredString(Map<String, Object> arguments, String name) {

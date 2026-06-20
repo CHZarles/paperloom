@@ -38,7 +38,7 @@ spring:
       acks: all
       retries: 3
       enable-idempotence: true
-      transactional-id-prefix: file-upload-tx-
+      transactional-id-prefix: paper-upload-tx-
       properties:
         client.dns.lookup: use_all_dns_ips
     consumer:
@@ -130,15 +130,13 @@ usage-quota:
     init-tokens: ${USAGE_QUOTA_EMBEDDING_INIT_TOKENS:10000} # token 总量使用策略下，新用户的初始可用token数
     admin-init-tokens: ${USAGE_QUOTA_EMBEDDING_ADMIN_INIT_TOKENS:100000} # 管理员初始 Embedding Token
 
-file:
+paper:
   parsing:
     chunk-size: 512
     overlap-size: 100
     min-chunk-size: 100
     buffer-size: 8192
     max-memory-threshold: 0.8
-
-paper:
   bootstrap:
     enabled: ${PAPER_BOOTSTRAP_ENABLED:true}
     path: ${PAPER_BOOTSTRAP_PATH:docs/paismart.pdf}

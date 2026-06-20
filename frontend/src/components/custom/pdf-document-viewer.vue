@@ -12,7 +12,7 @@ GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface Props {
   url: string;
-  fileName?: string;
+  paperTitle?: string;
   pageNumber?: number;
   singlePageMode?: boolean;
   sourcePageNumber?: number;
@@ -549,7 +549,7 @@ function shouldAttachAuthHeaders(url: string) {
 
   try {
     const parsedUrl = new URL(url, window.location.origin);
-    return parsedUrl.origin === window.location.origin || parsedUrl.pathname.includes('/documents/page-preview');
+    return parsedUrl.origin === window.location.origin || parsedUrl.pathname.includes('/papers/');
   } catch {
     return false;
   }

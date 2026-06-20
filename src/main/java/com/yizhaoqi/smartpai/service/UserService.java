@@ -43,7 +43,7 @@ import java.util.UUID;
 public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
-    
+
     private static final String DEFAULT_ORG_TAG = "DEFAULT";
     private static final String DEFAULT_ORG_NAME = "默认组织";
     private static final String DEFAULT_ORG_DESCRIPTION = "系统默认组织标签，自动分配给所有新用户";
@@ -60,10 +60,10 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private OrganizationTagRepository organizationTagRepository;
-    
+
     @Autowired
     private OrgTagCacheService orgTagCacheService;
 
@@ -101,37 +101,37 @@ public class UserService {
             // 若用户名已存在，抛出自定义异常，状态码为 400 Bad Request
             throw new CustomException("Username already exists", HttpStatus.BAD_REQUEST);
         }
-        
+
         // 确保默认组织标签存在（系统内部使用）
         ensureDefaultOrgTagExists();
-        
+
         User user = new User();
         user.setUsername(username);
         // 对密码进行加密处理并设置到 User 对象中
         user.setPassword(PasswordUtil.encode(password));
         // 设置用户角色为普通用户
         user.setRole(User.Role.USER);
-        
+
         // 保存用户以生成ID
         userRepository.save(user);
-        
+
         // 创建用户的私人组织标签
         String privateTagId = PRIVATE_TAG_PREFIX + username;
         createPrivateOrgTag(privateTagId, username, user);
-        
+
         // 新用户默认拥有系统默认组织和自己的私人组织
         List<String> assignedOrgTags = List.of(DEFAULT_ORG_TAG, privateTagId);
         user.setOrgTags(String.join(",", assignedOrgTags));
-        
+
         // 设置私人组织标签为主组织标签
         user.setPrimaryOrg(privateTagId);
-        
+
         userRepository.save(user);
-        
+
         // 缓存组织标签信息
         orgTagCacheService.cacheUserOrgTags(username, assignedOrgTags);
         orgTagCacheService.cacheUserPrimaryOrg(username, privateTagId);
-        
+
         logger.info("User registered successfully with default and private organization tags: {}", username);
     }
 
@@ -148,7 +148,7 @@ public class UserService {
             inviteCodeService.consume(inviteCode, username);
         }
     }
-    
+
     /**
      * 创建用户的私人组织标签
      */
@@ -156,14 +156,14 @@ public class UserService {
         // 检查私人标签是否已存在
         if (!organizationTagRepository.existsByTagId(privateTagId)) {
             logger.info("Creating private organization tag for user: {}", username);
-            
+
             // 创建私人组织标签
             OrganizationTag privateTag = new OrganizationTag();
             privateTag.setTagId(privateTagId);
             privateTag.setName(username + PRIVATE_ORG_NAME_SUFFIX);
             privateTag.setDescription(PRIVATE_ORG_DESCRIPTION);
             privateTag.setCreatedBy(owner);
-            
+
             organizationTagRepository.save(privateTag);
             logger.info("Private organization tag created successfully for user: {}", username);
         }
@@ -175,7 +175,7 @@ public class UserService {
     private void ensureDefaultOrgTagExists() {
         if (!organizationTagRepository.existsByTagId(DEFAULT_ORG_TAG)) {
             logger.info("Creating default organization tag");
-            
+
             // 寻找一个管理员用户作为创建者
             Optional<User> adminUser = userRepository.findAll().stream()
                     .filter(user -> User.Role.ADMIN.equals(user.getRole()))
@@ -183,14 +183,14 @@ public class UserService {
 
             User creator = adminUser.orElseThrow(
                     () -> new CustomException("No admin user exists to initialize default organization tag", HttpStatus.INTERNAL_SERVER_ERROR));
-            
+
             // 创建默认组织标签
             OrganizationTag defaultTag = new OrganizationTag();
             defaultTag.setTagId(DEFAULT_ORG_TAG);
             defaultTag.setName(DEFAULT_ORG_NAME);
             defaultTag.setDescription(DEFAULT_ORG_DESCRIPTION);
             defaultTag.setCreatedBy(creator);
-            
+
             organizationTagRepository.save(defaultTag);
             logger.info("Default organization tag created successfully");
         }
@@ -208,18 +208,18 @@ public class UserService {
         // 验证创建者是否为管理员
         User creator = userRepository.findByUsername(creatorUsername)
                 .orElseThrow(() -> new CustomException("Creator not found", HttpStatus.NOT_FOUND));
-        
+
         if (creator.getRole() != User.Role.ADMIN) {
             throw new CustomException("Only administrators can create admin accounts", HttpStatus.FORBIDDEN);
         }
-        
+
         // 检查数据库中是否已存在该用户名
         if (userRepository.findByUsername(username).isPresent()) {
             throw new CustomException("Username already exists", HttpStatus.BAD_REQUEST);
         }
 
         validatePassword(password);
-        
+
         User adminUser = new User();
         adminUser.setUsername(username);
         adminUser.setPassword(PasswordUtil.encode(password));
@@ -252,10 +252,10 @@ public class UserService {
         // 认证成功，返回用户的用户名
         return user.getUsername();
     }
-    
+
     /**
      * 创建组织标签
-     * 
+     *
      * @param tagId 标签唯一标识
      * @param name 标签名称
      * @param description 标签描述
@@ -263,24 +263,24 @@ public class UserService {
      * @param creatorUsername 创建者用户名（必须是管理员）
      */
     @Transactional
-    public OrganizationTag createOrganizationTag(String tagId, String name, String description, 
+    public OrganizationTag createOrganizationTag(String tagId, String name, String description,
                                                 String parentTag, Long uploadMaxSizeMb, String creatorUsername) {
         // 验证创建者是否为管理员
         User creator = userRepository.findByUsername(creatorUsername)
                 .orElseThrow(() -> new CustomException("Creator not found", HttpStatus.NOT_FOUND));
-        
+
         if (creator.getRole() != User.Role.ADMIN) {
             throw new CustomException("Only administrators can create organization tags", HttpStatus.FORBIDDEN);
         }
-        
+
         String resolvedTagId = resolveOrGenerateTagId(tagId, name);
-        
+
         // 如果指定了父标签，检查父标签是否存在
         if (parentTag != null && !parentTag.isEmpty()) {
             organizationTagRepository.findByTagId(parentTag)
                     .orElseThrow(() -> new CustomException("Parent tag not found", HttpStatus.NOT_FOUND));
         }
-        
+
         OrganizationTag tag = new OrganizationTag();
         tag.setTagId(resolvedTagId);
         tag.setName(name);
@@ -288,18 +288,18 @@ public class UserService {
         tag.setParentTag(parentTag);
         tag.setUploadMaxSizeBytes(normalizeUploadMaxSizeBytes(uploadMaxSizeMb));
         tag.setCreatedBy(creator);
-        
+
         OrganizationTag savedTag = organizationTagRepository.save(tag);
-        
+
         // 清除标签缓存，因为层级关系可能变化
         orgTagCacheService.invalidateAllEffectiveTagsCache();
-        
+
         return savedTag;
     }
-    
+
     /**
      * 为用户分配组织标签
-     * 
+     *
      * @param userId 用户ID
      * @param orgTags 组织标签ID列表
      * @param adminUsername 管理员用户名
@@ -309,42 +309,42 @@ public class UserService {
         // 验证操作者是否为管理员
         User admin = userRepository.findByUsername(adminUsername)
                 .orElseThrow(() -> new CustomException("Admin not found", HttpStatus.NOT_FOUND));
-        
+
         if (admin.getRole() != User.Role.ADMIN) {
             throw new CustomException("Only administrators can assign organization tags", HttpStatus.FORBIDDEN);
         }
-        
+
         // 查找用户
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
-        
+
         // 验证所有标签是否存在
         for (String tagId : orgTags) {
             if (!organizationTagRepository.existsByTagId(tagId)) {
                 throw new CustomException("Organization tag " + tagId + " not found", HttpStatus.NOT_FOUND);
             }
         }
-        
+
         // 获取用户的现有组织标签
         Set<String> existingTags = new HashSet<>();
         if (user.getOrgTags() != null && !user.getOrgTags().isEmpty()) {
             existingTags = Arrays.stream(user.getOrgTags().split(",")).collect(Collectors.toSet());
         }
-        
+
         // 找出并保留用户的私人组织标签
         String privateTagId = PRIVATE_TAG_PREFIX + user.getUsername();
         boolean hasPrivateTag = existingTags.contains(privateTagId);
-        
+
         // 确保用户的私人组织标签不会被删除
         Set<String> finalTags = new HashSet<>(orgTags);
         if (hasPrivateTag && !finalTags.contains(privateTagId)) {
             finalTags.add(privateTagId);
         }
-        
+
         // 将标签列表转换为逗号分隔的字符串
         String orgTagsStr = String.join(",", finalTags);
         user.setOrgTags(orgTagsStr);
-        
+
         // 如果用户没有主组织标签且有组织标签，则优先使用私人标签作为主组织
         if ((user.getPrimaryOrg() == null || user.getPrimaryOrg().isEmpty()) && !finalTags.isEmpty()) {
             if (hasPrivateTag) {
@@ -353,47 +353,47 @@ public class UserService {
                 user.setPrimaryOrg(new ArrayList<>(finalTags).get(0));
             }
         }
-        
+
         userRepository.save(user);
-        
+
         // 更新缓存
         orgTagCacheService.deleteUserOrgTagsCache(user.getUsername());
         orgTagCacheService.cacheUserOrgTags(user.getUsername(), new ArrayList<>(finalTags));
         // 同时清除有效标签缓存
         orgTagCacheService.deleteUserEffectiveTagsCache(user.getUsername());
-        
+
         if (user.getPrimaryOrg() != null && !user.getPrimaryOrg().isEmpty()) {
             orgTagCacheService.cacheUserPrimaryOrg(user.getUsername(), user.getPrimaryOrg());
         }
     }
-    
+
     /**
      * 获取用户的组织标签信息
-     * 
+     *
      * @param username 用户名
      * @return 包含用户组织标签信息的Map
      */
     public Map<String, Object> getUserOrgTags(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
-        
+
         // 尝试从缓存获取
         List<String> orgTags = orgTagCacheService.getUserOrgTags(username);
         String primaryOrg = orgTagCacheService.getUserPrimaryOrg(username);
-        
+
         // 如果缓存中没有，则从数据库获取
         if (orgTags == null || orgTags.isEmpty()) {
             orgTags = Arrays.asList(user.getOrgTags().split(","));
             // 更新缓存
             orgTagCacheService.cacheUserOrgTags(username, orgTags);
         }
-        
+
         if (primaryOrg == null || primaryOrg.isEmpty()) {
             primaryOrg = user.getPrimaryOrg();
             // 更新缓存
             orgTagCacheService.cacheUserPrimaryOrg(username, primaryOrg);
         }
-        
+
         // 获取组织标签的详细信息
         List<Map<String, Object>> orgTagDetails = new ArrayList<>();
         for (String tagId : orgTags) {
@@ -409,57 +409,57 @@ public class UserService {
                 orgTagDetails.add(tagInfo);
             }
         }
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("orgTags", orgTags);
         result.put("primaryOrg", primaryOrg);
         result.put("orgTagDetails", orgTagDetails);
-        
+
         return result;
     }
-    
+
     /**
      * 设置用户的主组织标签
-     * 
+     *
      * @param username 用户名
      * @param primaryOrg 主组织标签
      */
     public void setUserPrimaryOrg(String username, String primaryOrg) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
-        
+
         // 检查该组织标签是否已分配给用户
         Set<String> userTags = Arrays.stream(user.getOrgTags().split(",")).collect(Collectors.toSet());
         if (!userTags.contains(primaryOrg)) {
             throw new CustomException("Organization tag not assigned to user", HttpStatus.BAD_REQUEST);
         }
-        
+
         user.setPrimaryOrg(primaryOrg);
         userRepository.save(user);
-        
+
         // 更新缓存
         orgTagCacheService.cacheUserPrimaryOrg(username, primaryOrg);
     }
-    
+
     /**
      * 获取用户的主组织标签
-     * 
+     *
      * @param userId 用户ID
      * @return 用户的主组织标签
      */
     public String getUserPrimaryOrg(String userId) {
         // 先通过userId查找用户，然后获取username
         User user = resolveUser(userId);
-        
+
         String username = user.getUsername();
-        
+
         // 尝试从缓存获取
         String primaryOrg = orgTagCacheService.getUserPrimaryOrg(username);
-        
+
         // 如果缓存中没有，则从数据库获取
         if (primaryOrg == null || primaryOrg.isEmpty()) {
             primaryOrg = user.getPrimaryOrg();
-            
+
             // 如果用户没有设置主组织标签，则尝试使用第一个分配的组织标签
             if (primaryOrg == null || primaryOrg.isEmpty()) {
                 String[] tags = user.getOrgTags().split(",");
@@ -473,36 +473,36 @@ public class UserService {
                     primaryOrg = DEFAULT_ORG_TAG;
                 }
             }
-            
+
             // 更新缓存
             orgTagCacheService.cacheUserPrimaryOrg(username, primaryOrg);
         }
-        
+
         return primaryOrg;
     }
 
     /**
      * 获取组织标签树结构
-     * 
+     *
      * @return 组织标签树结构
      */
     public List<Map<String, Object>> getOrganizationTagTree() {
         // 获取所有根节点（parentTag为null的标签）
         List<OrganizationTag> rootTags = organizationTagRepository.findByParentTag(null);
-        
+
         // 递归构建标签树
         return buildTagTreeRecursive(rootTags);
     }
-    
+
     /**
      * 递归构建标签树
-     * 
+     *
      * @param tags 当前级别的标签列表
      * @return 树形结构
      */
     private List<Map<String, Object>> buildTagTreeRecursive(List<OrganizationTag> tags) {
         List<Map<String, Object>> result = new ArrayList<>();
-        
+
         for (OrganizationTag tag : tags) {
             Map<String, Object> node = new HashMap<>();
             node.put("tagId", tag.getTagId());
@@ -511,23 +511,23 @@ public class UserService {
             node.put("parentTag", tag.getParentTag()); // 添加父标签字段
             node.put("uploadMaxSizeBytes", tag.getUploadMaxSizeBytes());
             node.put("uploadMaxSizeMb", toUploadMaxSizeMb(tag.getUploadMaxSizeBytes()));
-            
+
             // 获取子标签
             List<OrganizationTag> children = organizationTagRepository.findByParentTag(tag.getTagId());
             if (!children.isEmpty()) {
                 node.put("children", buildTagTreeRecursive(children));
             }
             // 如果没有子节点，不添加children字段，而不是添加空数组
-            
+
             result.add(node);
         }
-        
+
         return result;
     }
-    
+
     /**
      * 更新组织标签
-     * 
+     *
      * @param tagId 标签ID
      * @param name 新名称
      * @param description 新描述
@@ -536,54 +536,54 @@ public class UserService {
      * @return 更新后的组织标签
      */
     @Transactional
-    public OrganizationTag updateOrganizationTag(String tagId, String name, String description, 
+    public OrganizationTag updateOrganizationTag(String tagId, String name, String description,
                                                 String parentTag, Long uploadMaxSizeMb, String adminUsername) {
         // 验证操作者是否为管理员
         User admin = userRepository.findByUsername(adminUsername)
                 .orElseThrow(() -> new CustomException("Admin not found", HttpStatus.NOT_FOUND));
-        
+
         if (admin.getRole() != User.Role.ADMIN) {
             throw new CustomException("Only administrators can update organization tags", HttpStatus.FORBIDDEN);
         }
-        
+
         // 获取要更新的标签
         OrganizationTag tag = organizationTagRepository.findByTagId(tagId)
                 .orElseThrow(() -> new CustomException("Organization tag not found", HttpStatus.NOT_FOUND));
-        
+
         // 如果指定了父标签，检查父标签是否存在
         if (parentTag != null && !parentTag.isEmpty()) {
             // 检查是否为自身
             if (tagId.equals(parentTag)) {
                 throw new CustomException("A tag cannot be its own parent", HttpStatus.BAD_REQUEST);
             }
-            
+
             // 检查是否存在
             organizationTagRepository.findByTagId(parentTag)
                     .orElseThrow(() -> new CustomException("Parent tag not found", HttpStatus.NOT_FOUND));
-            
+
             // 检查是否会形成循环
             if (wouldFormCycle(tagId, parentTag)) {
                 throw new CustomException("Setting this parent would create a cycle in the tag hierarchy", HttpStatus.BAD_REQUEST);
             }
         }
-        
+
         // 更新标签
         if (name != null && !name.isEmpty()) {
             tag.setName(name);
         }
-        
+
         if (description != null) {
             tag.setDescription(description);
         }
-        
+
         tag.setParentTag(parentTag);
         tag.setUploadMaxSizeBytes(normalizeUploadMaxSizeBytes(uploadMaxSizeMb));
-        
+
         OrganizationTag updatedTag = organizationTagRepository.save(tag);
-        
+
         // 清除所有标签缓存，因为层级关系可能变化
         orgTagCacheService.invalidateAllEffectiveTagsCache();
-        
+
         return updatedTag;
     }
 
@@ -595,38 +595,38 @@ public class UserService {
         return organizationTagRepository.findByTagId(tagId)
                 .orElseThrow(() -> new CustomException("Organization tag not found", HttpStatus.NOT_FOUND));
     }
-    
+
     /**
      * 检查是否会形成标签层级循环
-     * 
+     *
      * @param tagId 要设置父标签的标签ID
      * @param newParentId 新的父标签ID
      * @return 是否会形成循环
      */
     private boolean wouldFormCycle(String tagId, String newParentId) {
         String currentParentId = newParentId;
-        
+
         // 检查是否形成循环
         while (currentParentId != null && !currentParentId.isEmpty()) {
             if (tagId.equals(currentParentId)) {
                 return true; // 形成循环
             }
-            
+
             // 获取父标签的父标签
             Optional<OrganizationTag> parentTag = organizationTagRepository.findByTagId(currentParentId);
             if (parentTag.isEmpty()) {
                 break;
             }
-            
+
             currentParentId = parentTag.get().getParentTag();
         }
-        
+
         return false;
     }
-    
+
     /**
      * 删除组织标签
-     * 
+     *
      * @param tagId 标签ID
      * @param adminUsername 管理员用户名
      */
@@ -635,26 +635,26 @@ public class UserService {
         // 验证操作者是否为管理员
         User admin = userRepository.findByUsername(adminUsername)
                 .orElseThrow(() -> new CustomException("Admin not found", HttpStatus.NOT_FOUND));
-        
+
         if (admin.getRole() != User.Role.ADMIN) {
             throw new CustomException("Only administrators can delete organization tags", HttpStatus.FORBIDDEN);
         }
-        
+
         // 获取要删除的标签
         OrganizationTag tag = organizationTagRepository.findByTagId(tagId)
                 .orElseThrow(() -> new CustomException("Organization tag not found", HttpStatus.NOT_FOUND));
-        
+
         // 检查是否是特殊标签（如默认标签）
         if (DEFAULT_ORG_TAG.equals(tagId)) {
             throw new CustomException("Cannot delete the default organization tag", HttpStatus.BAD_REQUEST);
         }
-        
+
         // 检查是否有子标签
         List<OrganizationTag> children = organizationTagRepository.findByParentTag(tagId);
         if (!children.isEmpty()) {
             throw new CustomException("Cannot delete a tag with child tags", HttpStatus.BAD_REQUEST);
         }
-        
+
         // 检查是否有用户使用此标签
         List<User> users = userRepository.findAll();
         for (User user : users) {
@@ -663,39 +663,39 @@ public class UserService {
                 if (userTags.contains(tagId)) {
                     throw new CustomException("Cannot delete a tag that is assigned to users", HttpStatus.CONFLICT);
                 }
-                
+
                 // 检查是否被用作主组织标签
                 if (tagId.equals(user.getPrimaryOrg())) {
                     throw new CustomException("Cannot delete a tag that is used as primary organization", HttpStatus.CONFLICT);
                 }
             }
         }
-        
-        // 检查是否有文档使用此标签（此处应检查file_upload表中的org_tag字段）
-        // 由于我们没有直接访问FileUploadRepository，这里采用简化的方式检查
-        // 实际实现中，应该注入FileUploadRepository并使用正确的查询方法
+
+        // 检查是否有论文使用此标签（当前物理表仍为 file_upload）
+        // 由于我们没有直接访问PaperRepository，这里采用简化的方式检查
+        // 实际实现中，应该注入PaperRepository并使用正确的查询方法
         try {
-            long fileCount = 0; // 应该是 fileUploadRepository.countByOrgTag(tagId);
+            long fileCount = 0; // 应该是 paperRepository.countByOrgTag(tagId);
             if (fileCount > 0) {
-                throw new CustomException("Cannot delete a tag that is associated with documents", HttpStatus.CONFLICT);
+                throw new CustomException("Cannot delete a tag that is associated with papers", HttpStatus.CONFLICT);
             }
         } catch (Exception e) {
-            logger.error("Error checking file usage of tag: {}", tagId, e);
-            throw new CustomException("Failed to check if tag is used by documents", HttpStatus.INTERNAL_SERVER_ERROR);
+            logger.error("Error checking paper usage of tag: {}", tagId, e);
+            throw new CustomException("Failed to check if tag is used by papers", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        
+
         // 删除标签
         organizationTagRepository.delete(tag);
-        
+
         // 清除所有标签缓存，因为层级关系可能变化
         orgTagCacheService.invalidateAllEffectiveTagsCache();
-        
+
         logger.info("Organization tag deleted successfully: {}", tagId);
     }
-    
+
     /**
      * 获取用户列表，支持分页和过滤
-     * 
+     *
      * @param keyword 搜索关键词
      * @param orgTag 组织标签过滤
      * @param status 用户状态过滤
@@ -717,7 +717,7 @@ public class UserService {
         int end = Math.min(start + pageable.getPageSize(), filteredUsers.size());
         List<User> pageContent = start < end ? filteredUsers.subList(start, end) : Collections.emptyList();
         Page<User> userPage = new PageImpl<>(pageContent, pageable, filteredUsers.size());
-        
+
         // 转换为前端需要的格式
         Map<String, UsageQuotaService.UserUsageSnapshot> usageSnapshots = usageQuotaService.getSnapshots(
                 userPage.getContent().stream()
@@ -730,7 +730,7 @@ public class UserService {
                     Map<String, Object> userMap = new HashMap<>();
                     userMap.put("userId", user.getId());
                     userMap.put("username", user.getUsername());
-                    
+
                     // 获取用户组织标签的详细信息
                     List<Map<String, String>> orgTagDetails = new ArrayList<>();
                     if (user.getOrgTags() != null && !user.getOrgTags().isEmpty()) {
@@ -746,7 +746,7 @@ public class UserService {
                                     }
                                 });
                     }
-                    
+
                     userMap.put("orgTags", orgTagDetails);
                     userMap.put("primaryOrg", user.getPrimaryOrg());
                     userMap.put("status", user.getRole() == User.Role.USER ? 1 : 0);
@@ -755,11 +755,11 @@ public class UserService {
                             String.valueOf(user.getId()),
                             usageQuotaService.getSnapshot(String.valueOf(user.getId()))
                     ));
-                    
+
                     return userMap;
                 })
                 .collect(Collectors.toList());
-        
+
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("content", userList);
@@ -767,7 +767,7 @@ public class UserService {
         result.put("totalPages", userPage.getTotalPages());
         result.put("size", userPage.getSize());
         result.put("number", userPage.getNumber() + 1); // 转换为从1开始的页码
-        
+
         return result;
     }
 

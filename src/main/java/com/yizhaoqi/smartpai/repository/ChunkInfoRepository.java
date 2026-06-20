@@ -8,10 +8,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ChunkInfoRepository extends JpaRepository<ChunkInfo, Long> {
-    List<ChunkInfo> findByFileMd5OrderByChunkIndexAsc(String fileMd5);
+    List<ChunkInfo> findByPaperIdOrderByChunkIndexAsc(String paperId);
 
-    boolean existsByFileMd5AndChunkIndex(String fileMd5, int chunkIndex);
+    boolean existsByPaperIdAndChunkIndex(String paperId, int chunkIndex);
 
-    @Query("select c.chunkIndex from ChunkInfo c where c.fileMd5 = :fileMd5 order by c.chunkIndex asc")
-    List<Integer> findChunkIndexesByFileMd5(@Param("fileMd5") String fileMd5);
+    @Query("select c.chunkIndex from ChunkInfo c where c.paperId = :paperId order by c.chunkIndex asc")
+    List<Integer> findChunkIndexesByPaperId(@Param("paperId") String paperId);
 }

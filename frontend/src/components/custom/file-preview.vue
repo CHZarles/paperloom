@@ -8,8 +8,9 @@ import PdfDocumentViewer from '@/components/custom/pdf-document-viewer.vue';
 import SvgIcon from '@/components/custom/svg-icon.vue';
 
 interface Props {
-  fileName: string;
-  fileMd5?: string;
+  paperTitle: string;
+  paperId?: string;
+  originalFilename?: string;
   pageNumber?: number;
   anchorText?: string;
   searchText?: string;
@@ -37,7 +38,7 @@ const error = ref('');
 const previewType = ref<'pdf' | 'image' | 'text' | 'download'>('text');
 const previewUrl = ref('');
 const sourceUrl = ref('');
-const resolvedFileMd5 = ref('');
+const resolvedPaperId = ref('');
 const singlePageMode = ref(false);
 const sourcePageNumber = ref<number | undefined>(undefined);
 const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
@@ -45,8 +46,9 @@ const { baseURL: serviceBaseUrl } = getServiceBaseURL(import.meta.env, isHttpPro
 
 const resolvedPreviewUrl = computed(() => resolveFileAccessUrl(previewUrl.value));
 const resolvedSourceUrl = computed(() => resolveFileAccessUrl(sourceUrl.value));
+const displayTitle = computed(() => props.paperTitle || props.originalFilename || '');
 const fileExtensionLabel = computed(() => {
-  const extension = getFileExt(props.fileName)?.toUpperCase();
+  const extension = getFileExt(props.originalFilename || props.paperTitle)?.toUpperCase();
   return extension || 'FILE';
 });
 const resolvedHighlightAnchor = computed(() => props.anchorText || '');
@@ -69,7 +71,7 @@ const resolvedPdfSinglePageMode = computed(() => {
     return singlePageMode.value;
   }
 
-  return Boolean(resolvedFileMd5.value || singlePageMode.value);
+  return Boolean(resolvedPaperId.value || singlePageMode.value);
 });
 const displayPageLabel = computed(() => (displayPage.value ? `第 ${displayPage.value} 页` : ''));
 const headerMetaLine = computed(() => {
@@ -102,14 +104,10 @@ const resolvedPdfPreviewUrl = computed(() => {
     return resolvedPreviewUrl.value;
   }
 
-  if (resolvedFileMd5.value) {
+  if (resolvedPaperId.value) {
     return resolveFileAccessUrl(
-      `/api/v1/documents/page-preview?fileMd5=${encodeURIComponent(resolvedFileMd5.value)}&pageNumber=${resolvedPdfPageNumber.value}`
+      `/api/v1/papers/${encodeURIComponent(resolvedPaperId.value)}/page-preview?pageNumber=${resolvedPdfPageNumber.value}`
     );
-  }
-
-  if (resolvedPreviewUrl.value.includes('/documents/page-preview')) {
-    return resolvedPreviewUrl.value;
   }
 
   return '';
@@ -149,8 +147,8 @@ function resolveFileAccessUrl(url: string) {
 }
 
 // 获取文件图标
-function getFileIcon(fileName: string) {
-  const ext = getFileExt(fileName);
+function getFileIcon(paperTitle: string) {
+  const ext = getFileExt(paperTitle);
   if (ext) {
     const supportedIcons = ['pdf', 'doc', 'docx', 'txt'];
     return supportedIcons.includes(ext.toLowerCase()) ? ext : 'dflt';
@@ -158,11 +156,11 @@ function getFileIcon(fileName: string) {
   return 'dflt';
 }
 
-// 监听文件名变化，加载预览内容
+// 监听论文标题变化，加载预览内容
 watch(
-  () => props.fileName,
-  async newFileName => {
-    if (newFileName && props.visible) {
+  () => [props.paperTitle, props.paperId, props.pageNumber],
+  async () => {
+    if (displayTitle.value && props.visible) {
       await loadPreviewContent();
     }
   },
@@ -173,92 +171,60 @@ watch(
 watch(
   () => props.visible,
   async visible => {
-    if (visible && props.fileName) {
+    if (visible && displayTitle.value) {
       await loadPreviewContent();
     }
   }
 );
 
 // 加载预览内容
-// Existing preview loading handles MD5 and filename fallback paths for legacy persisted references.
-// eslint-disable-next-line complexity
 async function loadPreviewContent() {
-  if (!props.fileName) return;
+  if (!displayTitle.value) return;
 
   loading.value = true;
   error.value = '';
   content.value = '';
   previewUrl.value = '';
   sourceUrl.value = '';
-  resolvedFileMd5.value = props.fileMd5 || '';
+  resolvedPaperId.value = props.paperId || '';
   singlePageMode.value = false;
   sourcePageNumber.value = undefined;
   previewType.value = 'text';
 
   try {
-    // 优先使用 MD5 预览（如果存在）
-    if (props.fileMd5) {
-      const { error: requestError, data } = await request<{
-        fileName: string;
-        fileSize: number;
-        fileMd5?: string;
-        content?: string;
-        previewUrl?: string;
-        sourceUrl?: string;
-        singlePageMode?: boolean;
-        sourcePageNumber?: number;
-        previewType?: 'pdf' | 'image' | 'text' | 'download';
-      }>({
-        url: '/documents/preview',
-        params: {
-          fileName: props.fileName,
-          fileMd5: props.fileMd5,
-          pageNumber: props.pageNumber
-        }
-      });
+    if (!props.paperId) {
+      error.value = '预览失败：缺少 paperId';
+      return;
+    }
 
-      if (requestError) {
-        error.value = `预览失败：${requestError.message || '未知错误'}`;
-      } else if (data) {
-        previewType.value = data.previewType || 'download';
-        content.value = data.content || '';
-        previewUrl.value = data.previewUrl || '';
-        sourceUrl.value = data.sourceUrl || data.previewUrl || '';
-        resolvedFileMd5.value = data.fileMd5 || props.fileMd5 || '';
-        singlePageMode.value = Boolean(data.singlePageMode);
-        sourcePageNumber.value = data.sourcePageNumber || props.pageNumber;
+    const { error: requestError, data } = await request<{
+      paperTitle: string;
+      originalFilename?: string;
+      sourceFileSizeBytes: number;
+      paperId?: string;
+      content?: string;
+      previewUrl?: string;
+      sourceUrl?: string;
+      singlePageMode?: boolean;
+      sourcePageNumber?: number;
+      previewType?: 'pdf' | 'image' | 'text' | 'download';
+    }>({
+      url: `/papers/${props.paperId}/preview`,
+      params: {
+        pageNumber: props.pageNumber
       }
-    } else {
-      // 降级：使用文件名预览（向后兼容）
-      const { error: requestError, data } = await request<{
-        fileName: string;
-        fileSize: number;
-        fileMd5?: string;
-        content?: string;
-        previewUrl?: string;
-        sourceUrl?: string;
-        singlePageMode?: boolean;
-        sourcePageNumber?: number;
-        previewType?: 'pdf' | 'image' | 'text' | 'download';
-      }>({
-        url: '/documents/preview',
-        params: {
-          fileName: props.fileName,
-          pageNumber: props.pageNumber
-        }
-      });
+    });
 
-      if (requestError) {
-        error.value = `预览失败：${requestError.message || '未知错误'}`;
-      } else if (data) {
-        previewType.value = data.previewType || 'download';
-        content.value = data.content || '';
-        previewUrl.value = data.previewUrl || '';
-        sourceUrl.value = data.sourceUrl || data.previewUrl || '';
-        resolvedFileMd5.value = data.fileMd5 || '';
-        singlePageMode.value = Boolean(data.singlePageMode);
-        sourcePageNumber.value = data.sourcePageNumber || props.pageNumber;
-      }
+    if (requestError) {
+      error.value = `预览失败：${requestError.message || '未知错误'}`;
+    } else if (data) {
+      previewType.value = data.previewType || 'download';
+      content.value = data.content || '';
+      previewUrl.value = data.previewUrl || '';
+      sourceUrl.value = data.sourceUrl || data.previewUrl || '';
+      resolvedPaperId.value = data.paperId || props.paperId || '';
+      singlePageMode.value = Boolean(data.singlePageMode);
+      sourcePageNumber.value = data.sourcePageNumber || props.pageNumber;
     }
   } catch (err: any) {
     error.value = `预览失败：${err.message || '网络错误'}`;
@@ -269,62 +235,31 @@ async function loadPreviewContent() {
 
 // 下载文件
 async function downloadFile() {
-  if (!props.fileName) return;
+  if (!displayTitle.value) return;
 
   downloading.value = true;
 
   try {
-    // 优先使用 MD5 下载（如果存在）
-    if (resolvedFileMd5.value || props.fileMd5) {
-      const { error: requestError, data } = await request<{
-        fileName: string;
-        downloadUrl: string;
-        fileSize: number;
-        fileMd5?: string;
-      }>({
-        url: '/documents/download-by-md5',
-        params: {
-          fileMd5: resolvedFileMd5.value || props.fileMd5
-        }
-      });
+    const targetPaperId = resolvedPaperId.value || props.paperId;
+    if (!targetPaperId) {
+      window.$message?.error('下载失败：缺少 paperId');
+      return;
+    }
 
-      if (requestError) {
-        window.$message?.error(`下载失败：${requestError.message || '未知错误'}`);
-      } else if (data) {
-        // 使用预签名URL下载文件
-        const link = document.createElement('a');
-        link.href = data.downloadUrl;
-        link.download = data.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.$message?.success('开始下载文件');
-      }
-    } else {
-      // 降级：使用文件名下载（向后兼容）
-      const { error: requestError, data } = await request<{
-        fileName: string;
-        downloadUrl: string;
-        fileSize: number;
-      }>({
-        url: '/documents/download',
-        params: {
-          fileName: props.fileName
-        }
-      });
+    const { error: requestError, data } = await request<Api.Paper.DownloadResponse>({
+      url: `/papers/${targetPaperId}/download`
+    });
 
-      if (requestError) {
-        window.$message?.error(`下载失败：${requestError.message || '未知错误'}`);
-      } else if (data) {
-        // 使用预签名URL下载文件
-        const link = document.createElement('a');
-        link.href = data.downloadUrl;
-        link.download = data.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.$message?.success('开始下载文件');
-      }
+    if (requestError) {
+      window.$message?.error(`下载失败：${requestError.message || '未知错误'}`);
+    } else if (data) {
+      const link = document.createElement('a');
+      link.href = data.downloadUrl;
+      link.download = data.originalFilename || data.paperTitle;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.$message?.success('开始下载论文');
     }
   } catch (err: any) {
     window.$message?.error(`下载失败：${err.message || '网络错误'}`);
@@ -392,10 +327,10 @@ function closePreview() {
               <div class="source-card-top">
                 <div class="file-badge-shell">
                   <div class="file-badge-icon">
-                    <SvgIcon :local-icon="getFileIcon(fileName)" class="text-18" />
+                    <SvgIcon :local-icon="getFileIcon(displayTitle)" class="text-18" />
                   </div>
                   <div class="file-badge-copy">
-                    <h2 class="preview-title">{{ fileName }}</h2>
+                    <h2 class="preview-title">{{ displayTitle }}</h2>
                     <p v-if="headerMetaLine" class="preview-subtitle">{{ headerMetaLine }}</p>
                   </div>
                 </div>
@@ -450,7 +385,7 @@ function closePreview() {
                 <div class="pdf-preview-stack">
                   <PdfDocumentViewer
                     :url="resolvedPdfPreviewUrl"
-                    :file-name="fileName"
+                    :paper-title="displayTitle"
                     :page-number="pageNumber"
                     :single-page-mode="resolvedPdfSinglePageMode"
                     :source-page-number="resolvedPdfPageNumber"
@@ -462,7 +397,7 @@ function closePreview() {
               </template>
               <template v-else-if="previewType === 'image' && resolvedPreviewUrl">
                 <div class="image-preview-shell">
-                  <img :src="resolvedPreviewUrl" :alt="fileName" class="preview-image" />
+                  <img :src="resolvedPreviewUrl" :alt="displayTitle" class="preview-image" />
                 </div>
               </template>
               <template v-else-if="previewType === 'text'">
@@ -473,7 +408,7 @@ function closePreview() {
               <template v-else>
                 <div class="download-placeholder">
                   <div class="placeholder-icon">
-                    <SvgIcon :local-icon="getFileIcon(fileName)" class="text-28" />
+                    <SvgIcon :local-icon="getFileIcon(displayTitle)" class="text-28" />
                   </div>
                   <div class="state-copy">
                     <strong>当前 source 格式暂不支持在线预览</strong>

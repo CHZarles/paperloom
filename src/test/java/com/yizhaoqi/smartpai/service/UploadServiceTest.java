@@ -3,9 +3,9 @@ package com.yizhaoqi.smartpai.service;
 import com.yizhaoqi.smartpai.config.MinioConfig;
 import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.model.ChunkInfo;
-import com.yizhaoqi.smartpai.model.FileUpload;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.repository.ChunkInfoRepository;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +40,7 @@ class UploadServiceTest {
     private MinioClient minioClient;
 
     @Mock
-    private FileUploadRepository fileUploadRepository;
+    private PaperRepository paperRepository;
 
     @Mock
     private ChunkInfoRepository chunkInfoRepository;
@@ -56,7 +56,7 @@ class UploadServiceTest {
         uploadService = new UploadService();
         ReflectionTestUtils.setField(uploadService, "redisTemplate", redisTemplate);
         ReflectionTestUtils.setField(uploadService, "minioClient", minioClient);
-        ReflectionTestUtils.setField(uploadService, "fileUploadRepository", fileUploadRepository);
+        ReflectionTestUtils.setField(uploadService, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(uploadService, "chunkInfoRepository", chunkInfoRepository);
         ReflectionTestUtils.setField(uploadService, "minioConfig", minioConfig);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -64,13 +64,13 @@ class UploadServiceTest {
 
     @Test
     void uploadChunkRejectsWhenFileAlreadyCompleted() throws Exception {
-        FileUpload fileUpload = new FileUpload();
-        fileUpload.setFileMd5("md5");
-        fileUpload.setUserId("1");
-        fileUpload.setStatus(FileUpload.STATUS_COMPLETED);
+        Paper paper = new Paper();
+        paper.setPaperId("md5");
+        paper.setUserId("1");
+        paper.setStatus(Paper.STATUS_COMPLETED);
 
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc("md5", "1"))
-                .thenReturn(Optional.of(fileUpload));
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5", "1"))
+                .thenReturn(Optional.of(paper));
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
@@ -85,13 +85,13 @@ class UploadServiceTest {
 
     @Test
     void uploadChunkRejectsWhenFileIsMerging() throws Exception {
-        FileUpload fileUpload = new FileUpload();
-        fileUpload.setFileMd5("md5");
-        fileUpload.setUserId("1");
-        fileUpload.setStatus(FileUpload.STATUS_MERGING);
+        Paper paper = new Paper();
+        paper.setPaperId("md5");
+        paper.setUserId("1");
+        paper.setStatus(Paper.STATUS_MERGING);
 
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc("md5", "1"))
-                .thenReturn(Optional.of(fileUpload));
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5", "1"))
+                .thenReturn(Optional.of(paper));
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
@@ -106,9 +106,9 @@ class UploadServiceTest {
 
     @Test
     void uploadChunkSkipsDatabaseWhenRedisBitmapHit() throws Exception {
-        FileUpload fileUpload = uploadingFile();
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc("md5", "1"))
-                .thenReturn(Optional.of(fileUpload));
+        Paper paper = uploadingFile();
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5", "1"))
+                .thenReturn(Optional.of(paper));
         when(valueOperations.getBit("upload:1:md5", 0)).thenReturn(true);
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
@@ -121,11 +121,11 @@ class UploadServiceTest {
 
     @Test
     void uploadChunkBackfillsRedisWhenDatabaseHasChunkAfterRedisMiss() throws Exception {
-        FileUpload fileUpload = uploadingFile();
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc("md5", "1"))
-                .thenReturn(Optional.of(fileUpload));
+        Paper paper = uploadingFile();
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5", "1"))
+                .thenReturn(Optional.of(paper));
         when(valueOperations.getBit("upload:1:md5", 0)).thenReturn(false);
-        when(chunkInfoRepository.existsByFileMd5AndChunkIndex("md5", 0)).thenReturn(true);
+        when(chunkInfoRepository.existsByPaperIdAndChunkIndex("md5", 0)).thenReturn(true);
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
@@ -137,11 +137,11 @@ class UploadServiceTest {
 
     @Test
     void uploadChunkWritesDatabaseBeforeRedisForNewChunk() throws Exception {
-        FileUpload fileUpload = uploadingFile();
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc("md5", "1"))
-                .thenReturn(Optional.of(fileUpload));
+        Paper paper = uploadingFile();
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5", "1"))
+                .thenReturn(Optional.of(paper));
         when(valueOperations.getBit("upload:1:md5", 0)).thenReturn(false);
-        when(chunkInfoRepository.existsByFileMd5AndChunkIndex("md5", 0)).thenReturn(false);
+        when(chunkInfoRepository.existsByPaperIdAndChunkIndex("md5", 0)).thenReturn(false);
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
@@ -153,11 +153,11 @@ class UploadServiceTest {
         inOrder.verify(valueOperations).setBit("upload:1:md5", 0, true);
     }
 
-    private FileUpload uploadingFile() {
-        FileUpload fileUpload = new FileUpload();
-        fileUpload.setFileMd5("md5");
-        fileUpload.setUserId("1");
-        fileUpload.setStatus(FileUpload.STATUS_UPLOADING);
-        return fileUpload;
+    private Paper uploadingFile() {
+        Paper paper = new Paper();
+        paper.setPaperId("md5");
+        paper.setUserId("1");
+        paper.setStatus(Paper.STATUS_UPLOADING);
+        return paper;
     }
 }

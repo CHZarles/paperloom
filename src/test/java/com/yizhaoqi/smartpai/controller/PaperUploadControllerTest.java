@@ -1,9 +1,9 @@
 package com.yizhaoqi.smartpai.controller;
 
 import com.yizhaoqi.smartpai.config.KafkaConfig;
-import com.yizhaoqi.smartpai.model.FileUpload;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.OrganizationTag;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.service.FileTypeValidationService;
 import com.yizhaoqi.smartpai.service.ParseService;
 import com.yizhaoqi.smartpai.service.UploadService;
@@ -40,7 +40,7 @@ class PaperUploadControllerTest {
     private UserService userService;
 
     @Mock
-    private FileUploadRepository fileUploadRepository;
+    private PaperRepository paperRepository;
 
     @Mock
     private FileTypeValidationService fileTypeValidationService;
@@ -56,7 +56,7 @@ class PaperUploadControllerTest {
         uploadController = new PaperUploadController(uploadService, kafkaTemplate);
         ReflectionTestUtils.setField(uploadController, "kafkaConfig", kafkaConfig);
         ReflectionTestUtils.setField(uploadController, "userService", userService);
-        ReflectionTestUtils.setField(uploadController, "fileUploadRepository", fileUploadRepository);
+        ReflectionTestUtils.setField(uploadController, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(uploadController, "fileTypeValidationService", fileTypeValidationService);
         ReflectionTestUtils.setField(uploadController, "parseService", parseService);
         when(fileTypeValidationService.getSupportedFileTypes()).thenReturn(Set.of("pdf"));
@@ -115,7 +115,16 @@ class PaperUploadControllerTest {
         );
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals(Map.of("uploaded", List.of(0), "progress", 100.0d), response.getBody().get("data"));
+        assertEquals(
+                Map.of(
+                        "uploaded", List.of(0),
+                        "progress", 100.0d,
+                        "paperId", "md5",
+                        "paperTitle", "test.pdf",
+                        "originalFilename", "test.pdf"
+                ),
+                response.getBody().get("data")
+        );
         verify(uploadService).uploadChunk("md5", 0, 20L * 1024 * 1024, "test.pdf", file, "TEAM_A", false, "1");
         verify(userService, never()).getOrganizationTag(anyString());
     }
@@ -148,14 +157,14 @@ class PaperUploadControllerTest {
 
     @Test
     void testMergeFileReturnsExistingResultWhenAlreadyCompleted() throws Exception {
-        FileUpload fileUpload = new FileUpload();
-        fileUpload.setFileMd5("md5");
-        fileUpload.setFileName("test.pdf");
-        fileUpload.setUserId("1");
-        fileUpload.setStatus(FileUpload.STATUS_COMPLETED);
+        Paper paper = new Paper();
+        paper.setPaperId("md5");
+        paper.setOriginalFilename("test.pdf");
+        paper.setUserId("1");
+        paper.setStatus(Paper.STATUS_COMPLETED);
 
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc("md5", "1"))
-                .thenReturn(Optional.of(fileUpload));
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5", "1"))
+                .thenReturn(Optional.of(paper));
         when(uploadService.generateMergedObjectUrl("md5")).thenReturn("https://example.com/merged/md5");
 
         var response = uploadController.mergeFile(new PaperUploadController.MergeRequest("md5", "test.pdf"), "1");

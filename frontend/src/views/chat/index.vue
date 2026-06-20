@@ -21,11 +21,12 @@ const referencePayload = ref<{
   matchedChunkText?: string | null;
   score?: number | null;
   chunkId?: number | null;
-  fileName: string;
-  fileMd5?: string | null;
+  paperTitle: string;
+  paperId?: string | null;
+  originalFilename?: string | null;
   pageNumber?: number | null;
   anchorText?: string | null;
-  sessionId?: string;
+  conversationRecordId?: number;
   referenceNumber: number;
 } | null>(null);
 
@@ -35,7 +36,7 @@ const referencePreviewKey = computed(() => {
     return 'empty-reference';
   }
   return [
-    referencePayload.value.fileMd5 || referencePayload.value.fileName,
+    referencePayload.value.paperId || referencePayload.value.paperTitle,
     referencePayload.value.pageNumber || '',
     referencePayload.value.referenceNumber
   ].join(':');
@@ -127,8 +128,9 @@ onBeforeUnmount(() => {
           <FilePreview
             v-if="referencePayload"
             :key="referencePreviewKey"
-            :file-name="referencePayload.fileName"
-            :file-md5="referencePayload.fileMd5 || undefined"
+            :paper-title="referencePayload.paperTitle"
+            :paper-id="referencePayload.paperId || undefined"
+            :original-filename="referencePayload.originalFilename || undefined"
             :page-number="referencePayload.pageNumber || undefined"
             :anchor-text="referencePayload.anchorText || undefined"
             :retrieval-mode="referencePayload.retrievalMode"

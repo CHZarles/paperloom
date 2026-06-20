@@ -1,9 +1,9 @@
 package com.yizhaoqi.smartpai.config;
 
-import com.yizhaoqi.smartpai.model.FileUpload;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import com.yizhaoqi.smartpai.service.ElasticsearchService;
 import com.yizhaoqi.smartpai.service.ParseService;
@@ -50,7 +50,7 @@ class BootstrapPaperInitializerTest {
     private ElasticsearchService elasticsearchService;
 
     @Mock
-    private FileUploadRepository fileUploadRepository;
+    private PaperRepository paperRepository;
 
     @Mock
     private PaperTextChunkRepository paperTextChunkRepository;
@@ -72,9 +72,9 @@ class BootstrapPaperInitializerTest {
         Path pdfPath = createPdfLikeFile("paismart.pdf", "paismart ready");
         String fileMd5 = md5For(pdfPath);
 
-        FileUpload existingFile = new FileUpload();
-        existingFile.setFileMd5(fileMd5);
-        existingFile.setFileName("paismart.pdf");
+        Paper existingFile = new Paper();
+        existingFile.setPaperId(fileMd5);
+        existingFile.setOriginalFilename("paismart.pdf");
         existingFile.setOrgTag("default");
         existingFile.setPublic(true);
         existingFile.setStatus(1);
@@ -82,11 +82,11 @@ class BootstrapPaperInitializerTest {
 
         configureInitializer(pdfPath);
         mockAdminUser(1L, "admin");
-        when(fileUploadRepository.findByUserIdAndFileNameOrderByCreatedAtDesc("1", "paismart.pdf"))
+        when(paperRepository.findByUserIdAndOriginalFilenameOrderByCreatedAtDesc("1", "paismart.pdf"))
                 .thenReturn(Collections.emptyList());
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.of(existingFile));
-        when(fileUploadRepository.countByFileMd5AndUserId(fileMd5, "1")).thenReturn(1L);
+        when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(1L);
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
         when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(2L);
@@ -95,7 +95,7 @@ class BootstrapPaperInitializerTest {
 
         verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyBoolean());
         verify(vectorizationService, never()).vectorize(anyString(), anyString(), anyString(), anyBoolean(), anyString());
-        verify(fileUploadRepository, never()).save(any(FileUpload.class));
+        verify(paperRepository, never()).save(any(Paper.class));
         verify(minioClient, never()).putObject(any(PutObjectArgs.class));
     }
 
@@ -106,11 +106,11 @@ class BootstrapPaperInitializerTest {
 
         configureInitializer(pdfPath);
         mockAdminUser(1L, "admin");
-        when(fileUploadRepository.findByUserIdAndFileNameOrderByCreatedAtDesc("1", "paismart.pdf"))
+        when(paperRepository.findByUserIdAndOriginalFilenameOrderByCreatedAtDesc("1", "paismart.pdf"))
                 .thenReturn(Collections.emptyList());
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.empty());
-        when(fileUploadRepository.countByFileMd5AndUserId(fileMd5, "1")).thenReturn(0L);
+        when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(0L);
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(0L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(0L);
         when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(0L);
@@ -123,12 +123,12 @@ class BootstrapPaperInitializerTest {
         verify(parseService).parseAndSave(anyString(), any(), anyString(), anyString(), anyBoolean());
         verify(vectorizationService).vectorize(fileMd5, "1", "default", true, "system-bootstrap");
 
-        ArgumentCaptor<FileUpload> captor = ArgumentCaptor.forClass(FileUpload.class);
-        verify(fileUploadRepository).save(captor.capture());
+        ArgumentCaptor<Paper> captor = ArgumentCaptor.forClass(Paper.class);
+        verify(paperRepository).save(captor.capture());
 
-        FileUpload savedFile = captor.getValue();
-        assertEquals(fileMd5, savedFile.getFileMd5());
-        assertEquals("paismart.pdf", savedFile.getFileName());
+        Paper savedFile = captor.getValue();
+        assertEquals(fileMd5, savedFile.getPaperId());
+        assertEquals("paismart.pdf", savedFile.getOriginalFilename());
         assertEquals("1", savedFile.getUserId());
         assertEquals("default", savedFile.getOrgTag());
         assertTrue(savedFile.isPublic());
@@ -139,19 +139,19 @@ class BootstrapPaperInitializerTest {
         Path pdfPath = createPdfLikeFile("paismart.pdf", "paismart duplicate");
         String fileMd5 = md5For(pdfPath);
 
-        FileUpload newest = new FileUpload();
+        Paper newest = new Paper();
         newest.setId(1L);
-        newest.setFileMd5(fileMd5);
-        newest.setFileName("paismart.pdf");
+        newest.setPaperId(fileMd5);
+        newest.setOriginalFilename("paismart.pdf");
         newest.setOrgTag("default");
         newest.setPublic(true);
         newest.setStatus(1);
         newest.setUserId("1");
 
-        FileUpload duplicate = new FileUpload();
+        Paper duplicate = new Paper();
         duplicate.setId(2L);
-        duplicate.setFileMd5(fileMd5);
-        duplicate.setFileName("paismart.pdf");
+        duplicate.setPaperId(fileMd5);
+        duplicate.setOriginalFilename("paismart.pdf");
         duplicate.setOrgTag("default");
         duplicate.setPublic(true);
         duplicate.setStatus(1);
@@ -159,24 +159,24 @@ class BootstrapPaperInitializerTest {
 
         configureInitializer(pdfPath);
         mockAdminUser(1L, "admin");
-        when(fileUploadRepository.findByUserIdAndFileNameOrderByCreatedAtDesc("1", "paismart.pdf"))
+        when(paperRepository.findByUserIdAndOriginalFilenameOrderByCreatedAtDesc("1", "paismart.pdf"))
                 .thenReturn(List.of(newest, duplicate));
-        when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.of(newest));
-        when(fileUploadRepository.countByFileMd5AndUserId(fileMd5, "1")).thenReturn(1L);
+        when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(1L);
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
         when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(2L);
 
         initializer.run();
 
-        verify(fileUploadRepository).deleteAll(List.of(duplicate));
+        verify(paperRepository).deleteAll(List.of(duplicate));
         verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyBoolean());
         verify(vectorizationService, never()).vectorize(anyString(), anyString(), anyString(), anyBoolean(), anyString());
     }
 
     private void configureInitializer(Path pdfPath) {
-        ReflectionTestUtils.setField(initializer, "bootstrapDocumentPath", pdfPath.toString());
+        ReflectionTestUtils.setField(initializer, "bootstrapPaperPath", pdfPath.toString());
         ReflectionTestUtils.setField(initializer, "bootstrapOrgTag", "default");
         ReflectionTestUtils.setField(initializer, "bootstrapPublic", true);
         ReflectionTestUtils.setField(initializer, "bootstrapUserId", "system-bootstrap");

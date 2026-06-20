@@ -4,9 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 /**
- * ChunkInfo 类用于表示文件分块的信息
+ * ChunkInfo 类用于表示论文 PDF 分片上传的信息
  * 它是一个实体类，与数据库中的 'chunk_info' 表对应
- * 该类用来存储每个文件分块的元数据，包括分块的唯一标识、属于哪个文件、分块的顺序、分块的校验码和存储位置
+ * 该类用来存储每个论文 PDF 分片的元数据，包括分片的唯一标识、所属 paperId、分片顺序、校验码和存储位置
  */
 @Data
 @Entity
@@ -24,11 +24,10 @@ public class ChunkInfo {
     private Long id;
 
     /**
-     * 文件的MD5值
-     * 用于标识一个文件，同一个文件的MD5值相同，不同文件的MD5值不同
+     * 论文 PDF 的内容哈希。
      */
     @Column(name = "file_md5", nullable = false, length = 32)
-    private String fileMd5;
+    private String paperId;
 
     /**
      * 分块的索引号

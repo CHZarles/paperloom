@@ -4,32 +4,32 @@ import { nanoid } from '~/packages/utils/src';
 const maxConcurrentChunksPerFile = 4;
 
 export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () => {
-  const tasks = ref<Api.KnowledgeBase.UploadTask[]>([]);
+  const tasks = ref<Api.Paper.UploadTask[]>([]);
   const activeUploads = ref<Set<string>>(new Set());
 
   function mergeUploadedChunks(currentUploadedChunks: number[], latestUploadedChunks: number[]) {
     return Array.from(new Set([...currentUploadedChunks, ...latestUploadedChunks])).sort((a, b) => a - b);
   }
 
-  async function uploadChunk(task: Api.KnowledgeBase.UploadTask, chunkIndex: number): Promise<boolean> {
+  async function uploadChunk(task: Api.Paper.UploadTask, chunkIndex: number): Promise<boolean> {
     const totalChunks = Math.ceil(task.totalSize / chunkSize);
 
     const chunkStart = chunkIndex * chunkSize;
     const chunkEnd = Math.min(chunkStart + chunkSize, task.totalSize);
-    const chunk = task.file.slice(chunkStart, chunkEnd);
+    const chunk = task.file!.slice(chunkStart, chunkEnd);
 
     const requestId = nanoid();
     task.requestIds ??= [];
     task.requestIds.push(requestId);
-    const { error, data } = await request<Api.KnowledgeBase.Progress>({
-      url: '/upload/chunk',
+    const { error, data } = await request<Api.Paper.Progress>({
+      url: '/papers/upload/chunk',
       method: 'POST',
       data: {
         file: chunk,
-        fileMd5: task.fileMd5,
+        paperId: task.paperId,
         chunkIndex,
         totalSize: task.totalSize,
-        fileName: task.fileName,
+        paperTitle: task.paperTitle,
         orgTag: task.orgTag,
         isPublic: task.isPublic ?? false
       },
@@ -45,7 +45,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     if (error) return false;
 
     // 更新任务状态
-    const updatedTask = tasks.value.find(t => t.fileMd5 === task.fileMd5);
+    const updatedTask = tasks.value.find(t => t.paperId === task.paperId);
     if (!updatedTask) return true;
 
     updatedTask.chunkIndex = chunkIndex;
@@ -55,7 +55,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     return true;
   }
 
-  async function uploadChunksInParallel(task: Api.KnowledgeBase.UploadTask, chunkIndexes: number[]) {
+  async function uploadChunksInParallel(task: Api.Paper.UploadTask, chunkIndexes: number[]) {
     if (chunkIndexes.length === 0) return;
 
     let uploadError: Error | null = null;
@@ -81,23 +81,23 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     if (uploadError) throw uploadError;
   }
 
-  async function mergeFile(task: Api.KnowledgeBase.UploadTask) {
+  async function mergeFile(task: Api.Paper.UploadTask) {
     try {
-      const { error, data } = await request<Api.KnowledgeBase.MergeResult>({
-        url: '/upload/merge',
+      const { error, data } = await request<Api.Paper.MergeResult>({
+        url: '/papers/upload/merge',
         method: 'POST',
-        data: { fileMd5: task.fileMd5, fileName: task.fileName }
+        data: { paperId: task.paperId, paperTitle: task.paperTitle }
       });
       if (error) return false;
 
       // 更新任务状态为已完成
-      const index = tasks.value.findIndex(t => t.fileMd5 === task.fileMd5);
+      const index = tasks.value.findIndex(t => t.paperId === task.paperId);
       tasks.value[index].status = UploadStatus.Completed;
       tasks.value[index].progress = 100;
       tasks.value[index].estimatedEmbeddingTokens = data?.estimatedEmbeddingTokens;
       tasks.value[index].estimatedChunkCount = data?.estimatedChunkCount;
-      tasks.value[index].vectorizationStatus = 'PROCESSING';
-      tasks.value[index].vectorizationErrorMessage = null;
+      tasks.value[index].processingStatus = 'PROCESSING';
+      tasks.value[index].processingErrorMessage = null;
       tasks.value[index].actualEmbeddingTokens = undefined;
       tasks.value[index].actualChunkCount = undefined;
 
@@ -120,14 +120,14 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
    * @param form 包含上传信息的表单，包括文件列表和是否公开的标签
    * @returns 返回一个上传任务对象，无论是已存在的还是新创建的
    */
-  async function enqueueUpload(form: Api.KnowledgeBase.Form) {
+  async function enqueueUpload(form: Api.Paper.Form) {
     // 获取文件列表中的第一个文件
     const file = form.fileList![0].file!;
     // 计算文件的MD5值，用于唯一标识文件
     const md5 = await calculateMD5(file);
 
     // 检查是否已存在相同文件
-    const existingTask = tasks.value.find(t => t.fileMd5 === md5);
+    const existingTask = tasks.value.find(t => t.paperId === md5);
     if (existingTask) {
       // 如果存在相同文件，直接返回该上传任务
       if (existingTask.status === UploadStatus.Completed) {
@@ -144,21 +144,21 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     }
 
     // 创建新的上传任务对象
-    const newTask: Api.KnowledgeBase.UploadTask = {
+    const newTask: Api.Paper.UploadTask = {
       file,
       chunk: null,
       chunkIndex: 0,
-      fileMd5: md5,
-      fileName: file.name,
+      paperId: md5,
+      paperTitle: file.name,
+      originalFilename: file.name,
       totalSize: file.size,
-      public: form.isPublic,
       isPublic: form.isPublic,
       uploadedChunks: [],
       progress: 0,
       status: UploadStatus.Pending,
       orgTag: form.orgTag,
-      vectorizationStatus: 'PENDING',
-      vectorizationErrorMessage: null
+      processingStatus: 'PENDING',
+      processingErrorMessage: null
     };
 
     newTask.orgTagName = form.orgTagName ?? null;
@@ -176,7 +176,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     if (activeUploads.value.size >= 3) return;
     // 获取待上传的文件
     const pendingTasks = tasks.value.filter(
-      t => t.status === UploadStatus.Pending && !activeUploads.value.has(t.fileMd5)
+      t => t.status === UploadStatus.Pending && !activeUploads.value.has(t.paperId)
     );
 
     // 如果没有待上传的文件，则直接返回
@@ -185,7 +185,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     // 获取第一个待上传的文件
     const task = pendingTasks[0];
     task.status = UploadStatus.Uploading;
-    activeUploads.value.add(task.fileMd5);
+    activeUploads.value.add(task.paperId);
 
     // 计算文件总片数
     const totalChunks = Math.ceil(task.totalSize / chunkSize);
@@ -206,7 +206,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
 
       await uploadChunksInParallel(task, pendingChunkIndexes);
 
-      const updatedTask = tasks.value.find(t => t.fileMd5 === task.fileMd5);
+      const updatedTask = tasks.value.find(t => t.paperId === task.paperId);
       if (!updatedTask) return;
 
       if (updatedTask.uploadedChunks.length !== totalChunks) {
@@ -218,11 +218,11 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     } catch (e) {
       console.error('%c [ 👉 upload error 👈 ]-168', 'font-size:16px; background:#94cc97; color:#d8ffdb;', e);
       // 如果上传失败，则将任务状态设置为中断
-      const index = tasks.value.findIndex(t => t.fileMd5 === task.fileMd5);
+      const index = tasks.value.findIndex(t => t.paperId === task.paperId);
       tasks.value[index].status = UploadStatus.Break;
     } finally {
       // 无论成功或失败，都从活跃队列中移除
-      activeUploads.value.delete(task.fileMd5);
+      activeUploads.value.delete(task.paperId);
       // 继续下一个任务
       startUpload();
     }

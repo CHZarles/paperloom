@@ -1,18 +1,20 @@
 # AGENTS.md
 
-This file is the agent-facing working agreement for the `PaiSmart` repository.
+This file is the agent-facing working agreement for the PaperLoom repository. The directory is still named `PaiSmart`, but the product story and API subject are PaperLoom papers.
 
 ## Purpose
 
-PaiSmart (派聪明) is an enterprise AI knowledge management system built around a RAG workflow:
+PaperLoom is an evidence-grounded RAG workbench for structured research paper reading. It is built around a paper PDF workflow:
 
 - Spring Boot backend
 - Vue 3 + TypeScript frontend
 - MySQL for primary persistence
 - Redis for cache/session/short-lived chat context
 - Elasticsearch for retrieval
-- Kafka for async file processing
+- Kafka for async paper processing
 - MinIO for object storage
+
+PaperLoom should be described as a research-paper RAG system, not as a generic enterprise knowledge-base assistant. The public API and frontend contract should use `paperId`, `paperTitle`, `originalFilename`, page evidence, chunk provenance, and persistent reference mappings.
 
 Use this file as the first repo-local reference before making changes.
 
@@ -125,7 +127,7 @@ Do not stop at “frontend shows empty”; verify whether:
 
 ### Multi-tenant behavior
 
-PaiSmart uses organization tags and user/org relationships.
+PaperLoom uses organization tags and user/org relationships for paper access control.
 
 When changing queries or admin views, verify whether filtering is driven by:
 
@@ -138,7 +140,7 @@ Do not assume “missing data” is only a UI issue; it may be an unintended fil
 
 ### References / retrieval evidence
 
-If a chat response contains reference mappings, preserve them through persistence and history rendering. Do not regress the reference preview path when changing chat history storage.
+If a chat response contains reference mappings, preserve them through MySQL persistence and history rendering. Do not regress the reference preview path when changing chat history storage. Redis generation state is temporary; historical source preview must be recoverable from `Conversation.referenceMappingsJson`.
 
 ## Preferred Commands
 

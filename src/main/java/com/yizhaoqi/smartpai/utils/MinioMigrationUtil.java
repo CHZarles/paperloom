@@ -4,8 +4,8 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
 import com.yizhaoqi.smartpai.config.PaperSearchIndex;
-import com.yizhaoqi.smartpai.model.FileUpload;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
+import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import io.minio.CopyObjectArgs;
 import io.minio.CopySource;
 import io.minio.MinioClient;
@@ -38,7 +38,7 @@ public class MinioMigrationUtil {
     private MinioClient minioClient;
 
     @Autowired
-    private FileUploadRepository fileUploadRepository;
+    private PaperRepository paperRepository;
 
     @Autowired
     private ElasticsearchClient esClient;
@@ -57,10 +57,10 @@ public class MinioMigrationUtil {
 
         try {
             // 获取所有已完成上传的文件
-            List<FileUpload> allFiles = fileUploadRepository.findAll();
+            List<Paper> allFiles = paperRepository.findAll();
             logger.info("找到 {} 个文件记录", allFiles.size());
 
-            for (FileUpload file : allFiles) {
+            for (Paper file : allFiles) {
                 migrateFile(file, report);
             }
 
@@ -80,11 +80,11 @@ public class MinioMigrationUtil {
     /**
      * 迁移单个文件
      */
-    private void migrateFile(FileUpload file, MigrationReport report) {
-        String oldPath = "merged/" + file.getFileName();
-        String newPath = "merged/" + file.getFileMd5();
+    private void migrateFile(Paper file, MigrationReport report) {
+        String oldPath = "merged/" + file.getOriginalFilename();
+        String newPath = "merged/" + file.getPaperId();
 
-        logger.info("处理文件: {} (MD5: {})", file.getFileName(), file.getFileMd5());
+        logger.info("处理文件: {} (MD5: {})", file.getOriginalFilename(), file.getPaperId());
 
         try {
             // 1. 检查旧路径是否存在
@@ -137,7 +137,7 @@ public class MinioMigrationUtil {
         } catch (Exception e) {
             logger.error("  ❌ 迁移失败: {}", e.getMessage());
             report.errorCount++;
-            report.addError(file.getFileName(), e.getMessage());
+            report.addError(file.getOriginalFilename(), e.getMessage());
         }
     }
 
@@ -178,18 +178,18 @@ public class MinioMigrationUtil {
 
             // 2. 清空 MySQL 表
             logger.info("清空 MySQL 表...");
-            fileUploadRepository.deleteAll();
+            paperRepository.deleteAll();
             logger.info("✅ MySQL 表已清空");
 
             // 3. 清空 MinIO merged 目录
             logger.info("清空 MinIO merged 目录...");
-            List<FileUpload> files = fileUploadRepository.findAll();
-            for (FileUpload file : files) {
+            List<Paper> files = paperRepository.findAll();
+            for (Paper file : files) {
                 try {
                     minioClient.removeObject(
                         RemoveObjectArgs.builder()
                             .bucket("uploads")
-                            .object("merged/" + file.getFileMd5())
+                            .object("merged/" + file.getPaperId())
                             .build()
                     );
                 } catch (Exception e) {
@@ -199,7 +199,7 @@ public class MinioMigrationUtil {
                     minioClient.removeObject(
                         RemoveObjectArgs.builder()
                             .bucket("uploads")
-                            .object("merged/" + file.getFileName())
+                            .object("merged/" + file.getOriginalFilename())
                             .build()
                     );
                 } catch (Exception e) {

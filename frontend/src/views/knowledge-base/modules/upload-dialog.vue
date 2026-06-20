@@ -14,9 +14,9 @@ const authStore = useAuthStore();
 const { formRef, validate, restoreValidation } = useNaiveForm();
 const { defaultRequiredRule } = useFormRules();
 
-const model = ref<Api.KnowledgeBase.Form>(createDefaultModel());
+const model = ref<Api.Paper.Form>(createDefaultModel());
 
-function createDefaultModel(): Api.KnowledgeBase.Form {
+function createDefaultModel(): Api.Paper.Form {
   return {
     orgTag: null,
     orgTagName: '',

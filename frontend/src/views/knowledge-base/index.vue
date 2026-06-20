@@ -13,23 +13,48 @@ const authStore = useAuthStore();
 
 // 文件预览相关状态
 const previewVisible = ref(false);
-const previewFileName = ref('');
-const previewFileMd5 = ref('');
+const previewPaperTitle = ref('');
+const previewPaperId = ref('');
 
-async function apiFn(params: Api.Common.CommonSearchParams = {}): Promise<FlatResponseData<Api.KnowledgeBase.List>> {
-  const response = await request<Api.KnowledgeBase.UploadTask[] | Api.KnowledgeBase.List>({
-    url: '/documents/accessible',
+function mapUploadStatusToTaskStatus(uploadStatus?: Api.Paper.UploadTask['uploadStatus']) {
+  if (uploadStatus === 'COMPLETED' || uploadStatus === 1) return UploadStatus.Completed;
+  if (uploadStatus === 'MERGING' || uploadStatus === 2) return UploadStatus.Uploading;
+  if (uploadStatus === 'UPLOADING' || uploadStatus === 0) return UploadStatus.Uploading;
+  return UploadStatus.Break;
+}
+
+function normalizeRemotePaper(row: Api.Paper.UploadTask): Api.Paper.UploadTask {
+  return {
+    ...row,
+    paperTitle: row.paperTitle || row.originalFilename,
+    originalFilename: row.originalFilename || row.paperTitle,
+    uploadedChunks: row.uploadedChunks || [],
+    progress: row.progress ?? (row.uploadStatus === 'COMPLETED' ? 100 : 0),
+    status: row.status ?? mapUploadStatusToTaskStatus(row.uploadStatus),
+    chunk: row.chunk ?? null
+  };
+}
+
+async function apiFn(params: Api.Common.CommonSearchParams = {}): Promise<FlatResponseData<Api.Paper.List>> {
+  const response = await request<Api.Paper.UploadTask[] | Api.Paper.List>({
+    url: '/papers?scope=accessible',
     params
   });
-  if (response.error) return response as FlatResponseData<Api.KnowledgeBase.List>;
+  if (response.error) return response as FlatResponseData<Api.Paper.List>;
 
   const payload = response.data;
-  if (!Array.isArray(payload)) return response as FlatResponseData<Api.KnowledgeBase.List>;
+  if (!Array.isArray(payload)) {
+    if (payload?.data) {
+      payload.data = payload.data.map(normalizeRemotePaper);
+      payload.content = payload.content.map(normalizeRemotePaper);
+    }
+    return response as FlatResponseData<Api.Paper.List>;
+  }
 
   const page = params.page && params.page > 0 ? params.page : 1;
   const size = params.size && params.size > 0 ? params.size : 10;
   const start = (page - 1) * size;
-  const pageData = payload.slice(start, start + size);
+  const pageData = payload.slice(start, start + size).map(normalizeRemotePaper);
 
   return {
     ...response,
@@ -43,12 +68,12 @@ async function apiFn(params: Api.Common.CommonSearchParams = {}): Promise<FlatRe
   };
 }
 
-function canManageFile(row: Api.KnowledgeBase.UploadTask) {
+function canManageFile(row: Api.Paper.UploadTask) {
   return authStore.isAdmin || String(row.userId) === String(authStore.userInfo.id);
 }
 
-function renderIcon(fileName: string) {
-  const ext = getFileExt(fileName);
+function renderIcon(originalFilename: string) {
+  const ext = getFileExt(originalFilename);
   if (ext) {
     if (uploadAccept.split(',').includes(`.${ext}`)) return <SvgIcon localIcon={ext} class="library-file-icon" />;
     return <SvgIcon localIcon="dflt" class="library-file-icon" />;
@@ -57,17 +82,17 @@ function renderIcon(fileName: string) {
 }
 
 // 处理文件预览
-function handleFilePreview(fileName: string, fileMd5: string) {
-  previewFileName.value = fileName;
-  previewFileMd5.value = fileMd5;
+function handleFilePreview(originalFilename: string, paperId: string) {
+  previewPaperTitle.value = originalFilename;
+  previewPaperId.value = paperId;
   previewVisible.value = true;
 }
 
 // 关闭文件预览
 function closeFilePreview() {
   previewVisible.value = false;
-  previewFileName.value = '';
-  previewFileMd5.value = '';
+  previewPaperTitle.value = '';
+  previewPaperId.value = '';
 }
 
 const { columns, columnChecks, data, getData, loading, mobilePagination } = useTable({
@@ -76,7 +101,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
   immediate: false,
   columns: () => [
     {
-      key: 'fileName',
+      key: 'originalFilename',
       title: 'Paper / 文件',
       width: 320,
       render: row => (
@@ -84,18 +109,18 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
           <button
             class="library-file-cell__icon"
             type="button"
-            onClick={() => handleFilePreview(row.fileName, row.fileMd5)}
+            onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
-            {renderIcon(row.fileName)}
+            {renderIcon(row.originalFilename)}
           </button>
           <div class="library-file-cell__copy">
             <NEllipsis lineClamp={2} tooltip>
               <button
                 type="button"
                 class="library-file-cell__name"
-                onClick={() => handleFilePreview(row.fileName, row.fileMd5)}
+                onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
               >
-                {row.fileName}
+                {row.originalFilename}
               </button>
             </NEllipsis>
             <div class="library-file-cell__meta library-file-cell__meta--stacked">
@@ -103,12 +128,12 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
                 type="button"
                 class="library-digest-chip"
                 onClick={() => {
-                  navigator.clipboard.writeText(row.fileMd5);
+                  navigator.clipboard.writeText(row.paperId);
                   window.$message?.success('MD5已复制');
                 }}
                 title="点击复制MD5"
               >
-                {row.fileMd5.substring(0, 8)}
+                {row.paperId.substring(0, 8)}
               </button>
               <span>{dayjs(row.createdAt).format('YYYY-MM-DD')}</span>
             </div>
@@ -141,7 +166,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
       render: row => (
         <div class="library-scope-stack">
           <span class="library-scope-chip">{row.orgTagName || '未分类'}</span>
-          {row.public || row.isPublic ? (
+          {row.isPublic ? (
             <span class="library-visibility library-visibility--public">Public</span>
           ) : (
             <span class="library-visibility library-visibility--private">Private</span>
@@ -167,14 +192,19 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
       render: row => (
         <div class="library-action-group">
           {canManageFile(row) ? renderResumeUploadButton(row) : null}
-          <NButton type="primary" secondary size="small" onClick={() => handleFilePreview(row.fileName, row.fileMd5)}>
+          <NButton
+            type="primary"
+            secondary
+            size="small"
+            onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
+          >
             {{
               icon: () => <SvgIcon icon="mdi:file-eye-outline" class="text-14px" />,
               default: () => '预览'
             }}
           </NButton>
           {canManageFile(row) ? (
-            <NPopconfirm onPositiveClick={() => handleDelete(row.fileMd5)}>
+            <NPopconfirm onPositiveClick={() => handleDelete(row.paperId)}>
               {{
                 default: () => '确认删除当前文件吗？',
                 trigger: () => (
@@ -197,10 +227,10 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
 const store = useKnowledgeBaseStore();
 const { tasks } = storeToRefs(store);
 const tableTasks = computed(() => {
-  const remoteRows = data.value.map(item => tasks.value.find(task => task.fileMd5 === item.fileMd5) || item);
+  const remoteRows = data.value.map(item => tasks.value.find(task => task.paperId === item.paperId) || item);
   const localRows = tasks.value.filter(
     task =>
-      task.file && task.status !== UploadStatus.Completed && !remoteRows.some(item => item.fileMd5 === task.fileMd5)
+      task.file && task.status !== UploadStatus.Completed && !remoteRows.some(item => item.paperId === task.paperId)
   );
 
   return [...localRows, ...remoteRows];
@@ -210,7 +240,7 @@ const libraryStats = computed(() => {
   const rows = tableTasks.value;
   const completed = rows.filter(item => item.status === UploadStatus.Completed).length;
   const indexing = rows.filter(item => isVectorizationProcessing(item)).length;
-  const privateRows = rows.filter(item => !(item.public || item.isPublic)).length;
+  const privateRows = rows.filter(item => !item.isPublic).length;
   const estimatedTokens = rows.reduce((sum, item) => sum + Number(item.estimatedEmbeddingTokens || 0), 0);
 
   return [
@@ -246,15 +276,16 @@ onMounted(async () => {
   await getList();
 });
 
-function syncTaskFromServer(target: Api.KnowledgeBase.UploadTask, source: Api.KnowledgeBase.UploadTask) {
+function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.UploadTask) {
   Object.assign(target, {
-    fileName: source.fileName,
+    originalFilename: source.originalFilename,
+    paperTitle: source.paperTitle,
     totalSize: source.totalSize,
     status: source.status,
+    uploadStatus: source.uploadStatus,
     userId: source.userId,
     orgTag: source.orgTag,
     orgTagName: source.orgTagName,
-    public: source.public,
     isPublic: source.isPublic,
     createdAt: source.createdAt,
     mergedAt: source.mergedAt,
@@ -262,8 +293,8 @@ function syncTaskFromServer(target: Api.KnowledgeBase.UploadTask, source: Api.Kn
     estimatedChunkCount: source.estimatedChunkCount,
     actualEmbeddingTokens: source.actualEmbeddingTokens,
     actualChunkCount: source.actualChunkCount,
-    vectorizationStatus: source.vectorizationStatus,
-    vectorizationErrorMessage: source.vectorizationErrorMessage
+    processingStatus: source.processingStatus,
+    processingErrorMessage: source.processingErrorMessage
   });
 }
 
@@ -272,20 +303,20 @@ async function getList() {
   await getData();
 
   data.value.forEach(item => {
-    const index = tasks.value.findIndex(task => task.fileMd5 === item.fileMd5);
+    const index = tasks.value.findIndex(task => task.paperId === item.paperId);
     if (index !== -1) {
       syncTaskFromServer(tasks.value[index], item);
     } else if (item.status === UploadStatus.Completed) {
       tasks.value.push(item);
-    } else if (!tasks.value.some(task => task.fileMd5 === item.fileMd5)) {
+    } else if (!tasks.value.some(task => task.paperId === item.paperId)) {
       item.status = UploadStatus.Break;
       tasks.value.push(item);
     }
   });
 }
 
-async function handleDelete(fileMd5: string) {
-  const index = tasks.value.findIndex(task => task.fileMd5 === fileMd5);
+async function handleDelete(paperId: string) {
+  const index = tasks.value.findIndex(task => task.paperId === paperId);
 
   if (index !== -1) {
     tasks.value[index].requestIds?.forEach(requestId => {
@@ -299,7 +330,7 @@ async function handleDelete(fileMd5: string) {
     return;
   }
 
-  const { error } = await request({ url: `/documents/${fileMd5}`, method: 'DELETE' });
+  const { error } = await request({ url: `/papers/${paperId}`, method: 'DELETE' });
   if (!error) {
     tasks.value.splice(index, 1);
     window.$message?.success('删除成功');
@@ -349,7 +380,7 @@ function renderStatus(status: UploadStatus, percentage: number) {
   );
 }
 
-function renderIndexUsage(row: Api.KnowledgeBase.UploadTask) {
+function renderIndexUsage(row: Api.Paper.UploadTask) {
   return (
     <div class="library-index-cell">
       {renderIndexLine('EST', row.estimatedEmbeddingTokens, row.estimatedChunkCount)}
@@ -381,39 +412,39 @@ function renderIndexLine(label: string, tokens?: number | null, chunks?: number 
   );
 }
 
-function isVectorizationProcessing(row: Api.KnowledgeBase.UploadTask) {
-  return row.vectorizationStatus === 'PENDING' || row.vectorizationStatus === 'PROCESSING';
+function isVectorizationProcessing(row: Api.Paper.UploadTask) {
+  return row.processingStatus === 'PENDING' || row.processingStatus === 'PROCESSING';
 }
 
-function hasActualVectorizationUsage(row: Api.KnowledgeBase.UploadTask) {
+function hasActualVectorizationUsage(row: Api.Paper.UploadTask) {
   return row.actualEmbeddingTokens !== null && row.actualEmbeddingTokens !== undefined;
 }
 
-function canRetryVectorization(row: Api.KnowledgeBase.UploadTask) {
+function canRetryVectorization(row: Api.Paper.UploadTask) {
   if (!canManageFile(row)) return false;
-  if (row.vectorizationStatus === 'FAILED') return true;
-  if (row.vectorizationStatus === 'COMPLETED' && !hasActualVectorizationUsage(row)) return true;
+  if (row.processingStatus === 'FAILED') return true;
+  if (row.processingStatus === 'COMPLETED' && !hasActualVectorizationUsage(row)) return true;
   if (!hasActualVectorizationUsage(row) && row.estimatedEmbeddingTokens) return true;
   return false;
 }
 
-async function handleRetryVectorization(row: Api.KnowledgeBase.UploadTask) {
+async function handleRetryVectorization(row: Api.Paper.UploadTask) {
   const { error } = await request({
-    url: `/documents/${row.fileMd5}/vectorization/retry`,
+    url: `/papers/${row.paperId}/vectorization/retry`,
     method: 'POST'
   });
 
   if (error) return;
 
-  row.vectorizationStatus = 'PROCESSING';
-  row.vectorizationErrorMessage = null;
+  row.processingStatus = 'PROCESSING';
+  row.processingErrorMessage = null;
   row.actualEmbeddingTokens = undefined;
   row.actualChunkCount = undefined;
   window.$message?.success('已提交异步向量化重试任务');
   await getList();
 }
 
-function renderActualIndexLine(row: Api.KnowledgeBase.UploadTask) {
+function renderActualIndexLine(row: Api.Paper.UploadTask) {
   if (hasActualVectorizationUsage(row)) {
     return renderIndexLine('ACT', row.actualEmbeddingTokens, row.actualChunkCount);
   }
@@ -430,7 +461,7 @@ function renderActualIndexLine(row: Api.KnowledgeBase.UploadTask) {
     );
   }
 
-  if (row.vectorizationStatus === 'COMPLETED') {
+  if (row.processingStatus === 'COMPLETED') {
     return (
       <div class="library-index-line">
         <div class="library-index-line__top">
@@ -449,7 +480,7 @@ function renderActualIndexLine(row: Api.KnowledgeBase.UploadTask) {
     );
   }
 
-  if (row.vectorizationStatus === 'FAILED') {
+  if (row.processingStatus === 'FAILED') {
     return (
       <div class="library-index-line library-index-line--failed">
         <div class="library-index-line__top">
@@ -457,7 +488,7 @@ function renderActualIndexLine(row: Api.KnowledgeBase.UploadTask) {
           <span>failed</span>
         </div>
         <NEllipsis tooltip lineClamp={2} class="text-stone-500">
-          {row.vectorizationErrorMessage || '请检查 Embedding 额度或稍后重试'}
+          {row.processingErrorMessage || '请检查 Embedding 额度或稍后重试'}
         </NEllipsis>
         {canRetryVectorization(row) ? (
           <div>
@@ -520,7 +551,7 @@ function scheduleVectorizationPolling() {
 watch(
   () =>
     tasks.value
-      .map(item => `${item.fileMd5}:${item.vectorizationStatus || ''}:${item.actualEmbeddingTokens ?? ''}`)
+      .map(item => `${item.paperId}:${item.processingStatus || ''}:${item.actualEmbeddingTokens ?? ''}`)
       .join('|'),
   () => {
     scheduleVectorizationPolling();
@@ -533,7 +564,7 @@ onUnmounted(() => {
 });
 
 // #region 文件续传
-function renderResumeUploadButton(row: Api.KnowledgeBase.UploadTask) {
+function renderResumeUploadButton(row: Api.Paper.UploadTask) {
   if (row.status === UploadStatus.Break) {
     if (row.file)
       return (
@@ -576,24 +607,24 @@ function compactNumber(value?: number | string | null) {
 }
 
 // 任务列表存在文件，直接续传
-function resumeUpload(row: Api.KnowledgeBase.UploadTask) {
+function resumeUpload(row: Api.Paper.UploadTask) {
   row.status = UploadStatus.Pending;
   store.startUpload();
 }
 
 async function onBeforeUpload(
   options: { file: UploadFileInfo; fileList: UploadFileInfo[] },
-  row: Api.KnowledgeBase.UploadTask
+  row: Api.Paper.UploadTask
 ) {
   const md5 = await calculateMD5(options.file.file!);
-  if (md5 !== row.fileMd5) {
+  if (md5 !== row.paperId) {
     window.$message?.error('两次上传的文件不一致');
     return false;
   }
   loading.value = true;
-  const { error, data: progress } = await request<Api.KnowledgeBase.Progress>({
-    url: '/upload/status',
-    params: { file_md5: row.fileMd5 }
+  const { error, data: progress } = await request<Api.Paper.Progress>({
+    url: '/papers/upload/status',
+    params: { paperId: row.paperId }
   });
   if (!error) {
     row.file = options.file.file!;
@@ -660,8 +691,8 @@ async function onBeforeUpload(
     <NModal v-model:show="previewVisible" class="document-preview-modal" :auto-focus="false">
       <div class="document-preview-modal-shell">
         <FilePreview
-          :file-name="previewFileName"
-          :file-md5="previewFileMd5"
+          :paper-title="previewPaperTitle"
+          :paper-id="previewPaperId"
           :visible="previewVisible"
           @close="closeFilePreview"
         />

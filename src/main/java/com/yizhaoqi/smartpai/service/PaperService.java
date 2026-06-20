@@ -2,10 +2,10 @@ package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.config.KafkaConfig;
 import com.yizhaoqi.smartpai.model.PaperProcessingTask;
-import com.yizhaoqi.smartpai.model.FileUpload;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.repository.FileUploadRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -52,7 +52,7 @@ public class PaperService {
     private static final Map<String, InMemoryPdfPreviewCache> PDF_SINGLE_PAGE_LOCAL_CACHE = new ConcurrentHashMap<>();
 
     @Autowired
-    private FileUploadRepository fileUploadRepository;
+    private PaperRepository paperRepository;
 
     @Autowired
     private PaperTextChunkRepository paperTextChunkRepository;
@@ -100,11 +100,11 @@ public class PaperService {
     @Transactional
     public void deletePaper(String paperId, String userId) {
         logger.info("开始删除论文: paperId={}", paperId);
-        
+
         try {
-            FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(paperId, userId)
+            Paper paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId)
                     .orElseThrow(() -> new RuntimeException("论文不存在"));
-            
+
             // 1. 删除 Elasticsearch 中的 paper chunk
             try {
                 elasticsearchService.deleteByPaperId(paperId);
@@ -113,10 +113,10 @@ public class PaperService {
                 logger.error("从 Elasticsearch 删除论文 chunk 时出错: paperId={}", paperId, e);
                 // 继续删除其他数据
             }
-            
+
             // 2. 删除 MinIO 中的 PDF 对象
             try {
-                String objectName = "merged/" + fileUpload.getFileMd5();
+                String objectName = "merged/" + paper.getPaperId();
                 minioClient.removeObject(
                         RemoveObjectArgs.builder()
                                 .bucket("uploads")
@@ -130,7 +130,7 @@ public class PaperService {
             }
 
             invalidatePdfSinglePagePreviewCache(paperId);
-            
+
             // 3. 删除解析 chunk 记录
             try {
                 paperTextChunkRepository.deleteByPaperId(paperId);
@@ -139,11 +139,11 @@ public class PaperService {
                 logger.error("删除论文 chunk 记录时出错: paperId={}", paperId, e);
                 // 继续删除其他数据
             }
-            
+
             // 4. 删除上传记录
-            fileUploadRepository.deleteByFileMd5(paperId);
+            paperRepository.deleteByPaperId(paperId);
             logger.info("成功删除论文上传记录: paperId={}", paperId);
-            
+
             logger.info("论文删除完成: paperId={}", paperId);
         } catch (Exception e) {
             logger.error("删除论文过程中发生错误: paperId={}", paperId, e);
@@ -155,10 +155,10 @@ public class PaperService {
     public VectorizationService.VectorizationUsageResult reindexPaper(String paperId, String requesterId) {
         logger.info("开始重建论文索引: paperId={}, requesterId={}", paperId, requesterId);
 
-        FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
 
-        markVectorizationProcessing(fileUpload, true);
+        markVectorizationProcessing(paper, true);
 
         try (InputStream fileStream = uploadService.getMergedFileStream(paperId)) {
             try {
@@ -174,19 +174,19 @@ public class PaperService {
             parseService.parseAndSave(
                     paperId,
                     fileStream,
-                    fileUpload.getUserId(),
-                    fileUpload.getOrgTag(),
-                    fileUpload.isPublic()
+                    paper.getUserId(),
+                    paper.getOrgTag(),
+                    paper.isPublic()
             );
 
             VectorizationService.VectorizationUsageResult result = vectorizationService.vectorizeWithUsage(
                     paperId,
-                    fileUpload.getUserId(),
-                    fileUpload.getOrgTag(),
-                    fileUpload.isPublic(),
+                    paper.getUserId(),
+                    paper.getOrgTag(),
+                    paper.isPublic(),
                     requesterId
             );
-            markVectorizationCompleted(fileUpload, result);
+            markVectorizationCompleted(paper, result);
 
             logger.info(
                     "论文索引重建完成: paperId={}, actualTokens={}, actualChunkCount={}",
@@ -196,30 +196,30 @@ public class PaperService {
             );
             return result;
         } catch (TikaException e) {
-            markVectorizationFailed(fileUpload, e);
+            markVectorizationFailed(paper, e);
             logger.error("重建论文索引失败，PDF 解析异常: paperId={}", paperId, e);
             throw new RuntimeException("重建论文索引失败: " + e.getMessage(), e);
         } catch (Exception e) {
-            markVectorizationFailed(fileUpload, e);
+            markVectorizationFailed(paper, e);
             logger.error("重建论文索引失败: paperId={}", paperId, e);
             throw new RuntimeException("重建论文索引失败: " + e.getMessage(), e);
         }
     }
 
     @Transactional
-    public FileUpload enqueueAsyncVectorizationRetry(String paperId, String requesterId) {
-        FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+    public Paper enqueueAsyncVectorizationRetry(String paperId, String requesterId) {
+        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
 
-        markVectorizationProcessing(fileUpload, true);
+        markVectorizationProcessing(paper, true);
 
         PaperProcessingTask task = new PaperProcessingTask(
-                fileUpload.getFileMd5(),
+                paper.getPaperId(),
                 null,
-                fileUpload.getFileName(),
-                fileUpload.getUserId(),
-                fileUpload.getOrgTag(),
-                fileUpload.isPublic(),
+                paper.getOriginalFilename(),
+                paper.getUserId(),
+                paper.getOrgTag(),
+                paper.isPublic(),
                 PaperProcessingTask.TASK_TYPE_REINDEX,
                 requesterId
         );
@@ -230,63 +230,63 @@ public class PaperService {
         });
 
         logger.info("已发送异步论文向量化重试任务: paperId={}, requesterId={}", paperId, requesterId);
-        return fileUpload;
+        return paper;
     }
 
     @Transactional
     public void markVectorizationProcessing(String paperId, boolean resetActualUsage) {
-        FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
-        markVectorizationProcessing(fileUpload, resetActualUsage);
+        markVectorizationProcessing(paper, resetActualUsage);
     }
 
     @Transactional
     public void markVectorizationCompleted(String paperId, VectorizationService.VectorizationUsageResult result) {
-        FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
-        markVectorizationCompleted(fileUpload, result);
+        markVectorizationCompleted(paper, result);
     }
 
     @Transactional
     public void markVectorizationFailed(String paperId, String errorMessage) {
-        FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
-        markVectorizationFailed(fileUpload, errorMessage);
+        markVectorizationFailed(paper, errorMessage);
     }
 
     @Transactional
     public void markVectorizationFailed(String paperId, Throwable error) {
-        FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
-        markVectorizationFailed(fileUpload, error);
+        markVectorizationFailed(paper, error);
     }
 
-    private void markVectorizationProcessing(FileUpload fileUpload, boolean resetActualUsage) {
-        fileUpload.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_PROCESSING);
-        fileUpload.setVectorizationErrorMessage(null);
+    private void markVectorizationProcessing(Paper paper, boolean resetActualUsage) {
+        paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PROCESSING);
+        paper.setVectorizationErrorMessage(null);
         if (resetActualUsage) {
-            fileUpload.setActualEmbeddingTokens(null);
-            fileUpload.setActualChunkCount(null);
+            paper.setActualEmbeddingTokens(null);
+            paper.setActualChunkCount(null);
         }
-        fileUploadRepository.save(fileUpload);
+        paperRepository.save(paper);
     }
 
-    private void markVectorizationCompleted(FileUpload fileUpload, VectorizationService.VectorizationUsageResult result) {
-        fileUpload.setActualEmbeddingTokens((long) result.actualEmbeddingTokens());
-        fileUpload.setActualChunkCount(result.actualChunkCount());
-        fileUpload.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_COMPLETED);
-        fileUpload.setVectorizationErrorMessage(null);
-        fileUploadRepository.save(fileUpload);
+    private void markVectorizationCompleted(Paper paper, VectorizationService.VectorizationUsageResult result) {
+        paper.setActualEmbeddingTokens((long) result.actualEmbeddingTokens());
+        paper.setActualChunkCount(result.actualChunkCount());
+        paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
+        paper.setVectorizationErrorMessage(null);
+        paperRepository.save(paper);
     }
 
-    private void markVectorizationFailed(FileUpload fileUpload, String errorMessage) {
-        fileUpload.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_FAILED);
-        fileUpload.setVectorizationErrorMessage(trimVectorizationErrorMessage(errorMessage));
-        fileUploadRepository.save(fileUpload);
+    private void markVectorizationFailed(Paper paper, String errorMessage) {
+        paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_FAILED);
+        paper.setVectorizationErrorMessage(trimVectorizationErrorMessage(errorMessage));
+        paperRepository.save(paper);
     }
 
-    private void markVectorizationFailed(FileUpload fileUpload, Throwable error) {
-        markVectorizationFailed(fileUpload, resolveVectorizationErrorMessage(error));
+    private void markVectorizationFailed(Paper paper, Throwable error) {
+        markVectorizationFailed(paper, resolveVectorizationErrorMessage(error));
     }
 
     private String resolveVectorizationErrorMessage(Throwable error) {
@@ -321,7 +321,7 @@ public class PaperService {
         }
         return errorMessage.length() > 1000 ? errorMessage.substring(0, 1000) : errorMessage;
     }
-    
+
     /**
      * 获取用户可访问的所有论文列表。
      * 包括用户自己的论文、公开论文和用户所属组织的论文（支持层级权限）。
@@ -330,27 +330,27 @@ public class PaperService {
      * @param orgTags 用户所属的组织标签（逗号分隔的字符串，仅供兼容性使用）
      * @return 用户可访问的论文列表
      */
-    public List<FileUpload> getAccessiblePapers(String userId, String orgTags) {
+    public List<Paper> getAccessiblePapers(String userId, String orgTags) {
         logger.info("获取用户可访问论文列表: userId={}", userId);
-        
+
         try {
             backfillLegacyVectorizationStatuses();
 
             User user = resolveUser(userId);
             String userDbId = String.valueOf(user.getId());
-            
+
             List<String> userEffectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
             logger.debug("用户有效组织标签: {}", userEffectiveTags);
-            
+
             // 使用有效标签查询论文
-            List<FileUpload> files;
+            List<Paper> files;
             if (userEffectiveTags.isEmpty()) {
                 // 如果用户没有任何组织标签，只返回自己的论文和公开论文
-                files = fileUploadRepository.findByUserIdOrIsPublicTrue(userDbId);
+                files = paperRepository.findByUserIdOrIsPublicTrue(userDbId);
                 logger.debug("用户无组织标签，仅返回个人和公开论文");
             } else {
                 // 查询用户可访问的所有论文（考虑层级标签）
-                files = fileUploadRepository.findAccessibleFilesWithTags(userDbId, userEffectiveTags);
+                files = paperRepository.findAccessiblePapersWithTags(userDbId, userEffectiveTags);
                 logger.debug("使用有效组织标签查询论文");
             }
 
@@ -361,19 +361,19 @@ public class PaperService {
             throw new RuntimeException("获取可访问论文列表失败: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * 获取用户上传的所有论文列表。
      *
      * @param userId 用户ID
      * @return 用户上传的论文列表
      */
-    public List<FileUpload> getUserUploadedPapers(String userId) {
+    public List<Paper> getUserUploadedPapers(String userId) {
         logger.info("获取用户上传的论文列表: userId={}", userId);
-        
+
         try {
             backfillLegacyVectorizationStatuses();
-            List<FileUpload> files = fileUploadRepository.findByUserId(userId);
+            List<Paper> files = paperRepository.findByUserId(userId);
             logger.info("成功获取用户上传的论文列表: userId={}, paperCount={}", userId, files.size());
             return files;
         } catch (Exception e) {
@@ -394,55 +394,55 @@ public class PaperService {
     }
 
     private void backfillLegacyVectorizationStatuses() {
-        backfillLegacyVectorizationStatuses(fileUploadRepository.findAllByVectorizationStatusIsNull());
+        backfillLegacyVectorizationStatuses(paperRepository.findAllByVectorizationStatusIsNull());
     }
 
-    private void backfillLegacyVectorizationStatuses(List<FileUpload> files) {
+    private void backfillLegacyVectorizationStatuses(List<Paper> files) {
         if (files == null || files.isEmpty()) {
             return;
         }
 
         Map<String, Long> vectorCountCache = new HashMap<>();
-        for (FileUpload file : files) {
+        for (Paper file : files) {
             if (file == null || file.getVectorizationStatus() != null) {
                 continue;
             }
 
             boolean changed = false;
-            if (file.getStatus() == FileUpload.STATUS_UPLOADING) {
-                file.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_PENDING);
+            if (file.getStatus() == Paper.STATUS_UPLOADING) {
+                file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PENDING);
                 file.setVectorizationErrorMessage(null);
                 changed = true;
-            } else if (file.getStatus() == FileUpload.STATUS_MERGING) {
-                file.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_PROCESSING);
+            } else if (file.getStatus() == Paper.STATUS_MERGING) {
+                file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PROCESSING);
                 file.setVectorizationErrorMessage(null);
                 changed = true;
             } else if (file.getActualEmbeddingTokens() != null || file.getActualChunkCount() != null) {
-                file.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_COMPLETED);
+                file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
                 file.setVectorizationErrorMessage(null);
                 changed = true;
             } else {
                 long vectorCount = vectorCountCache.computeIfAbsent(
-                        file.getFileMd5(),
+                        file.getPaperId(),
                         paperTextChunkRepository::countByPaperId
                 );
                 if (vectorCount > 0) {
-                    file.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_COMPLETED);
+                    file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
                     file.setVectorizationErrorMessage(LEGACY_COMPLETED_WITHOUT_USAGE_MESSAGE);
                     changed = true;
                 } else if (file.getEstimatedEmbeddingTokens() != null || file.getEstimatedChunkCount() != null) {
-                    file.setVectorizationStatus(FileUpload.VECTORIZATION_STATUS_FAILED);
+                    file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_FAILED);
                     file.setVectorizationErrorMessage(LEGACY_FAILED_MESSAGE);
                     changed = true;
                 }
             }
 
             if (changed) {
-                fileUploadRepository.save(file);
+                paperRepository.save(file);
             }
         }
     }
-    
+
     /**
      * 生成论文 PDF 下载链接。
      *
@@ -453,7 +453,7 @@ public class PaperService {
         logger.info("生成论文 PDF 下载链接: paperId={}", paperId);
 
         try {
-            FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+            Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                     .orElseThrow(() -> new RuntimeException("论文不存在: " + paperId));
 
             String objectName = "merged/" + paperId;
@@ -466,7 +466,7 @@ public class PaperService {
                             .build()
             );
             logger.info("成功生成论文 PDF 下载链接: paperId={}, paperTitle={}, objectName={}",
-                    paperId, fileUpload.getFileName(), objectName);
+                    paperId, paper.getOriginalFilename(), objectName);
 
             return uploadService.transToPublicUrl(presignedUrl);
         } catch (Exception e) {
@@ -474,7 +474,7 @@ public class PaperService {
             return null;
         }
     }
-    
+
     /**
      * 获取非 PDF 论文预览兜底内容。
      *
@@ -486,7 +486,7 @@ public class PaperService {
         logger.info("获取论文预览兜底内容: paperId={}, paperTitle={}", paperId, paperTitle);
 
         try {
-            fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+            paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                     .orElseThrow(() -> new RuntimeException("论文不存在: " + paperId));
             return "PaperLoom 当前仅支持 PDF 论文预览。";
 
@@ -516,10 +516,10 @@ public class PaperService {
                 return new PdfSinglePagePreview(cachedPreview, true);
             }
 
-            FileUpload fileUpload = fileUploadRepository.findFirstByFileMd5OrderByCreatedAtDesc(paperId)
+            Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                     .orElseThrow(() -> new RuntimeException("论文不存在: " + paperId));
 
-            try (InputStream inputStream = openFileStream(fileUpload);
+            try (InputStream inputStream = openFileStream(paper);
                  PDDocument sourceDocument = PDDocument.load(inputStream);
                  PDDocument singlePageDocument = new PDDocument();
                  ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -544,15 +544,15 @@ public class PaperService {
             throw new RuntimeException("生成论文 PDF 单页预览失败: " + e.getMessage(), e);
         }
     }
-    
-    private InputStream openFileStream(FileUpload fileUpload) throws Exception {
-        String objectName = "merged/" + fileUpload.getFileMd5();
+
+    private InputStream openFileStream(Paper paper) throws Exception {
+        String objectName = "merged/" + paper.getPaperId();
         InputStream inputStream = minioClient.getObject(
                 GetObjectArgs.builder()
                         .bucket("uploads")
                         .object(objectName)
                         .build());
-        logger.info("使用 paperId 路径获取论文 PDF 流: paperId={}, objectName={}", fileUpload.getFileMd5(), objectName);
+        logger.info("使用 paperId 路径获取论文 PDF 流: paperId={}, objectName={}", paper.getPaperId(), objectName);
         return inputStream;
     }
 
@@ -632,5 +632,5 @@ public class PaperService {
             logger.warn("删除论文 PDF 单页预览缓存失败: paperId={}, error={}", paperId, e.getMessage());
         }
     }
-    
-} 
+
+}

@@ -284,6 +284,7 @@ public class ConversationService {
                             conversation.getQuestion(),
                             timestamp,
                             messageConversationId,
+                            conversation.getId(),
                             null,
                             includeUsername ? conversation.getUser().getUsername() : null
                     ));
@@ -292,6 +293,7 @@ public class ConversationService {
                             conversation.getAnswer(),
                             timestamp,
                             messageConversationId,
+                            conversation.getId(),
                             parseReferenceMappings(conversation.getReferenceMappingsJson()),
                             includeUsername ? conversation.getUser().getUsername() : null
                     ));
@@ -301,6 +303,7 @@ public class ConversationService {
     }
 
     private Map<String, Object> buildMessage(String role, String content, String timestamp, String conversationId,
+                                             Long conversationRecordId,
                                              Map<String, Map<String, Object>> referenceMappings, String username) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
@@ -311,6 +314,9 @@ public class ConversationService {
         if (conversationId != null && !conversationId.isBlank()) {
             message.put("conversationId", conversationId);
         }
+        if (conversationRecordId != null) {
+            message.put("conversationRecordId", conversationRecordId);
+        }
         if (referenceMappings != null && !referenceMappings.isEmpty()) {
             message.put("referenceMappings", referenceMappings);
         }
@@ -318,6 +324,44 @@ public class ConversationService {
             message.put("username", username);
         }
         return message;
+    }
+
+    public Optional<Map<String, Object>> findReferenceDetail(Long userId, Long conversationRecordId, Integer referenceNumber) {
+        if (userId == null || conversationRecordId == null || referenceNumber == null) {
+            return Optional.empty();
+        }
+
+        return conversationRepository.findByIdAndUserId(conversationRecordId, userId)
+                .map(Conversation::getReferenceMappingsJson)
+                .map(this::parseReferenceMappings)
+                .map(mappings -> mappings.get(String.valueOf(referenceNumber)))
+                .map(detail -> normalizeReferenceDetail(detail, referenceNumber));
+    }
+
+    private Map<String, Object> normalizeReferenceDetail(Map<String, Object> detail, Integer referenceNumber) {
+        Map<String, Object> normalized = new LinkedHashMap<>(detail);
+        normalized.put("referenceNumber", referenceNumber);
+
+        Object paperId = normalized.get("paperId");
+        if (paperId == null) {
+            paperId = normalized.get("fileMd5");
+            if (paperId != null) {
+                normalized.put("paperId", paperId);
+            }
+        }
+
+        Object paperTitle = normalized.get("paperTitle");
+        if (paperTitle == null) {
+            paperTitle = normalized.get("fileName");
+            if (paperTitle != null) {
+                normalized.put("paperTitle", paperTitle);
+            }
+        }
+
+        normalized.putIfAbsent("originalFilename", normalized.get("paperTitle"));
+        normalized.remove("fileMd5");
+        normalized.remove("fileName");
+        return normalized;
     }
 
     private String writeReferenceMappings(Map<String, Map<String, Object>> referenceMappings) {

@@ -38,7 +38,7 @@ spring:
       acks: all
       retries: 3
       enable-idempotence: true
-      transactional-id-prefix: file-upload-tx-
+      transactional-id-prefix: paper-upload-tx-
       properties:
         client.dns.lookup: use_all_dns_ips
     consumer:
@@ -109,7 +109,7 @@ rate-limit:
     day-max: ${RATE_LIMIT_EMBEDDING_DAY_MAX:2000}
     day-window-seconds: ${RATE_LIMIT_EMBEDDING_DAY_WINDOW_SECONDS:86400}
 
-file:
+paper:
   parsing:
     chunk-size: 512
     overlap-size: 100

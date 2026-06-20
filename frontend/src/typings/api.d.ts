@@ -319,7 +319,7 @@ declare namespace Api {
     }
   }
 
-  namespace KnowledgeBase {
+  namespace Paper {
     interface SearchParams {
       userId: string;
       query: string;
@@ -327,11 +327,16 @@ declare namespace Api {
     }
 
     interface SearchResult {
-      fileMd5: string;
+      paperId: string;
       chunkId: number;
       textContent: string;
       score: number;
-      fileName: string;
+      paperTitle: string;
+      originalFilename: string;
+      pageNumber?: number | null;
+      anchorText?: string | null;
+      retrievalMode?: 'HYBRID' | 'TEXT_ONLY' | null;
+      matchedChunkText?: string | null;
     }
 
     interface UploadState {
@@ -349,44 +354,69 @@ declare namespace Api {
     }
 
     interface UploadTask {
-      file: File;
-      chunk: Blob | null;
-      fileMd5: string;
+      file?: File;
+      chunk?: Blob | null;
+      paperId: string;
       chunkIndex: number;
       totalSize: number;
-      fileName: string;
+      paperTitle: string;
+      originalFilename: string;
       userId?: string;
       orgTag: string | null;
       orgTagName?: string | null;
-      public: boolean;
       isPublic: boolean;
       uploadedChunks: number[];
       progress: number;
       status: UploadStatus;
+      uploadStatus?: 0 | 1 | 2 | 'UPLOADING' | 'MERGING' | 'COMPLETED';
       estimatedEmbeddingTokens?: number;
       estimatedChunkCount?: number;
       actualEmbeddingTokens?: number;
       actualChunkCount?: number;
-      vectorizationStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;
-      vectorizationErrorMessage?: string | null;
+      processingStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;
+      processingErrorMessage?: string | null;
+      authors?: string | null;
+      publicationYear?: number | null;
+      venue?: string | null;
+      abstractText?: string | null;
+      doi?: string | null;
+      arxivId?: string | null;
       createdAt?: string;
       mergedAt?: string;
       requestIds?: string[]; // 请求ID，用于取消上传
     }
     type List = Common.PaginatingQueryRecord<UploadTask>;
 
-    type Merge = Pick<UploadTask, 'fileMd5' | 'fileName'>;
+    type Merge = Pick<UploadTask, 'paperId' | 'paperTitle'>;
 
     interface Progress {
       uploaded: number[];
       progress: number;
       totalChunks: number;
+      paperId?: string;
+      paperTitle?: string;
+      originalFilename?: string;
     }
 
     interface MergeResult {
       objectUrl: string;
+      paperId: string;
+      paperTitle: string;
+      originalFilename: string;
       estimatedEmbeddingTokens?: number;
       estimatedChunkCount?: number;
+    }
+
+    interface DownloadResponse {
+      paperTitle: string;
+      originalFilename: string;
+      downloadUrl: string;
+      sourceFileSizeBytes: number;
+      paperId?: string;
+    }
+
+    interface ReferenceDetailResponse extends Chat.ReferenceEvidence {
+      referenceNumber: number;
     }
   }
 
@@ -394,8 +424,9 @@ declare namespace Api {
     type GenerationStatus = 'STREAMING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
     interface ReferenceEvidence {
-      fileMd5: string;
-      fileName: string;
+      paperId: string;
+      paperTitle: string;
+      originalFilename?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
       retrievalMode?: 'HYBRID' | 'TEXT_ONLY' | null;
@@ -433,6 +464,7 @@ declare namespace Api {
       status?: 'pending' | 'loading' | 'finished' | 'error';
       timestamp?: string;
       conversationId?: string;
+      conversationRecordId?: number;
       generationId?: string;
       username?: string;
       referenceMappings?: Record<string, ReferenceEvidence>;
@@ -467,16 +499,15 @@ declare namespace Api {
     }
   }
 
-  namespace Document {
-    interface DownloadResponse {
-      fileName: string;
-      downloadUrl: string;
-      fileSize: number;
-      fileMd5?: string;
-    }
-
-    interface ReferenceDetailResponse extends Chat.ReferenceEvidence {
-      referenceNumber: number;
-    }
+  namespace KnowledgeBase {
+    type SearchParams = Paper.SearchParams;
+    type SearchResult = Paper.SearchResult;
+    type UploadState = Paper.UploadState;
+    type Form = Paper.Form;
+    type UploadTask = Paper.UploadTask;
+    type List = Paper.List;
+    type Merge = Paper.Merge;
+    type Progress = Paper.Progress;
+    type MergeResult = Paper.MergeResult;
   }
 }

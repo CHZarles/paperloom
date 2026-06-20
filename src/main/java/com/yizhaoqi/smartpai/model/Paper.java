@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "file_upload")
-public class FileUpload {
+public class Paper {
     public static final int STATUS_UPLOADING = 0;
     public static final int STATUS_COMPLETED = 1;
     public static final int STATUS_MERGING = 2;
@@ -31,12 +31,34 @@ public class FileUpload {
     private Long id; // 自增主键
 
     @Column(name = "file_md5", length = 32, nullable = false)
-    private String fileMd5;
+    private String paperId;
 
     /**
      * 上传时的 PDF 文件名，当前作为 paperTitle。
      */
-    private String fileName;
+    @Column(name = "file_name")
+    private String originalFilename;
+
+    @Column(name = "paper_title")
+    private String paperTitle;
+
+    @Column(name = "authors", length = 1000)
+    private String authors;
+
+    @Column(name = "publication_year")
+    private Integer publicationYear;
+
+    @Column(name = "venue")
+    private String venue;
+
+    @Column(name = "abstract_text", columnDefinition = "TEXT")
+    private String abstractText;
+
+    @Column(name = "doi")
+    private String doi;
+
+    @Column(name = "arxiv_id")
+    private String arxivId;
 
     /**
      * PDF 文件大小，单位为字节。
@@ -54,7 +76,7 @@ public class FileUpload {
      */
     @Column(name = "user_id", length = 64, nullable = false)
     private String userId;
-    
+
     /**
      * 论文所属组织标签。
      */
@@ -97,4 +119,11 @@ public class FileUpload {
      */
     @UpdateTimestamp
     private LocalDateTime mergedAt;
+
+    public String getPaperTitle() {
+        if (paperTitle == null || paperTitle.isBlank()) {
+            return originalFilename;
+        }
+        return paperTitle;
+    }
 }

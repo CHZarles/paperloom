@@ -9,9 +9,9 @@ const visible = defineModel<boolean>('visible', { default: false });
 const { formRef, restoreValidation } = useNaiveForm();
 
 const store = useAuthStore();
-const model = ref<Api.KnowledgeBase.SearchParams>(createDefaultModel());
+const model = ref<Api.Paper.SearchParams>(createDefaultModel());
 
-function createDefaultModel(): Api.KnowledgeBase.SearchParams {
+function createDefaultModel(): Api.Paper.SearchParams {
   return {
     userId: `${store.userInfo.id}`,
     query: '',
@@ -19,7 +19,7 @@ function createDefaultModel(): Api.KnowledgeBase.SearchParams {
   };
 }
 
-const list = ref<Api.KnowledgeBase.SearchResult[]>([]);
+const list = ref<Api.Paper.SearchResult[]>([]);
 
 const patterns = ref<string[]>([]);
 function highlight(text: string) {
@@ -30,8 +30,8 @@ function highlight(text: string) {
 
 async function search() {
   loading.value = true;
-  const { error, data } = await request<Api.KnowledgeBase.SearchResult[]>({
-    url: 'search/hybrid',
+  const { error, data } = await request<Api.Paper.SearchResult[]>({
+    url: 'papers/search/hybrid',
     params: model.value
   });
   if (!error) {
@@ -134,7 +134,7 @@ watch(visible, () => {
             </NTag>
           </div>
           <template #footer>
-            <span>来源：{{ item.fileName }}</span>
+            <span>来源：{{ item.originalFilename }}</span>
           </template>
         </NCard>
       </NScrollbar>

@@ -43,24 +43,24 @@ public class ParseService {
     @Autowired
     private UsageQuotaService usageQuotaService;
 
-    @Value("${file.parsing.chunk-size}")
+    @Value("${paper.parsing.chunk-size}")
     private int chunkSize;
 
-    @Value("${file.parsing.overlap-size:100}")
+    @Value("${paper.parsing.overlap-size:100}")
     private int overlapSize = 100;
 
-    @Value("${file.parsing.min-chunk-size:100}")
+    @Value("${paper.parsing.min-chunk-size:100}")
     private int minChunkSize = 100;
 
-    @Value("${file.parsing.parent-chunk-size:1048576}")
+    @Value("${paper.parsing.parent-chunk-size:1048576}")
     private int parentChunkSize;
-    
-    @Value("${file.parsing.buffer-size:8192}")
+
+    @Value("${paper.parsing.buffer-size:8192}")
     private int bufferSize;
-    
-    @Value("${file.parsing.max-memory-threshold:0.8}")
+
+    @Value("${paper.parsing.max-memory-threshold:0.8}")
     private double maxMemoryThreshold;
-    
+
     public ParseService() {
         // 无需初始化，StandardTokenizer是静态方法
     }
@@ -81,7 +81,7 @@ public class ParseService {
             String userId, String orgTag, boolean isPublic) throws IOException, TikaException {
         logger.info("开始解析论文 PDF，paperId: {}, userId: {}, orgTag: {}, isPublic: {}",
                 paperId, userId, orgTag, isPublic);
-        
+
         checkMemoryThreshold();
 
         try (BufferedInputStream bufferedStream = new BufferedInputStream(fileStream, bufferSize)) {
@@ -144,24 +144,24 @@ public class ParseService {
         long totalMemory = runtime.totalMemory();
         long freeMemory = runtime.freeMemory();
         long usedMemory = totalMemory - freeMemory;
-        
+
         double memoryUsage = (double) usedMemory / maxMemory;
-        
+
         if (memoryUsage > maxMemoryThreshold) {
             logger.warn("内存使用率过高: {:.2f}%, 触发垃圾回收", memoryUsage * 100);
             System.gc();
-            
+
             // 重新检查
             usedMemory = runtime.totalMemory() - runtime.freeMemory();
             memoryUsage = (double) usedMemory / maxMemory;
-            
+
             if (memoryUsage > maxMemoryThreshold) {
-                throw new RuntimeException("内存不足，无法处理大 PDF。当前使用率: " + 
+                throw new RuntimeException("内存不足，无法处理大 PDF。当前使用率: " +
                     String.format("%.2f%%", memoryUsage * 100));
             }
         }
     }
-    
+
     /**
      * 内部流式内容处理器，实现论文文本 chunk 切分。
      * Tika解析器会调用characters方法，当累积的文本达到"父块"大小时，
@@ -774,39 +774,39 @@ public class ParseService {
      */
     private List<String> splitLongSentence(String sentence, int chunkSize) {
         List<String> chunks = new ArrayList<>();
-        
+
         try {
             // 使用HanLP StandardTokenizer进行分词
             List<Term> termList = StandardTokenizer.segment(sentence);
-            
+
             StringBuilder currentChunk = new StringBuilder();
             for (Term term : termList) {
                 String word = term.word;
-                
+
                 // 如果添加这个词会超过chunk大小限制，且当前chunk不为空
                 if (currentChunk.length() + word.length() > chunkSize && !currentChunk.isEmpty()) {
                     chunks.add(currentChunk.toString());
                     currentChunk = new StringBuilder();
                 }
-                
+
                 currentChunk.append(word);
             }
-            
+
             if (!currentChunk.isEmpty()) {
                 chunks.add(currentChunk.toString());
             }
-            
-            logger.debug("HanLP智能分词成功，原文长度: {}, 分词数: {}, 分块数: {}", 
+
+            logger.debug("HanLP智能分词成功，原文长度: {}, 分词数: {}, 分块数: {}",
                     sentence.length(), termList.size(), chunks.size());
-                    
+
         } catch (Exception e) {
             logger.warn("HanLP分词异常: {}, 使用字符分割作为备用方案", e.getMessage());
             chunks = splitByCharacters(sentence, chunkSize);
          }
-        
+
         return chunks;
     }
-    
+
     /**
      * 备用方案：按字符分割
      */
