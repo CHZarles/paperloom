@@ -34,7 +34,7 @@
       "orgTag": {
         "type": "keyword"
       },
-      "isPublic": {
+      "public": {
         "type": "boolean"
       }
     }
