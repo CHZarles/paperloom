@@ -74,7 +74,7 @@ pnpm preview
 
 ### Backend Structure
 ```
-src/main/java/com/yizhaoqi/smartpai/
+`src/main/java/com/yizhaoqi/smartpai/
 ├── SmartPaiApplication.java      # Main application entry
 ├── client/                       # External API clients (DeepSeek, Embedding)
 ├── config/                       # Configuration classes (Security, JWT, etc.)
@@ -87,7 +87,7 @@ src/main/java/com/yizhaoqi/smartpai/
 ├── repository/                   # Data access layer
 ├── service/                      # Business logic layer
 └── utils/                        # Utility classes
-```
+````
 
 ### Frontend Structure
 ```

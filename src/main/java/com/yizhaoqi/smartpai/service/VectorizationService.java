@@ -1,10 +1,10 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.client.EmbeddingClient;
-import com.yizhaoqi.smartpai.model.DocumentVector;
-import com.yizhaoqi.smartpai.entity.EsDocument;
+import com.yizhaoqi.smartpai.model.PaperTextChunk;
+import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.TextChunk;
-import com.yizhaoqi.smartpai.repository.DocumentVectorRepository;
+import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,32 +27,32 @@ public class VectorizationService {
     private ElasticsearchService elasticsearchService;
 
     @Autowired
-    private DocumentVectorRepository documentVectorRepository;
+    private PaperTextChunkRepository paperTextChunkRepository;
 
     /**
      * 执行向量化操作
-     * @param fileMd5 文件指纹
+     * @param paperId 论文标识
      * @param userId 上传用户ID
      * @param orgTag 组织标签
      * @param isPublic 是否公开
      */
-    public void vectorize(String fileMd5, String userId, String orgTag, boolean isPublic) {
-        vectorizeWithUsage(fileMd5, userId, orgTag, isPublic, userId);
+    public void vectorize(String paperId, String userId, String orgTag, boolean isPublic) {
+        vectorizeWithUsage(paperId, userId, orgTag, isPublic, userId);
     }
 
-    public void vectorize(String fileMd5, String userId, String orgTag, boolean isPublic, String requesterId) {
-        vectorizeWithUsage(fileMd5, userId, orgTag, isPublic, requesterId);
+    public void vectorize(String paperId, String userId, String orgTag, boolean isPublic, String requesterId) {
+        vectorizeWithUsage(paperId, userId, orgTag, isPublic, requesterId);
     }
 
-    public VectorizationUsageResult vectorizeWithUsage(String fileMd5, String userId, String orgTag, boolean isPublic, String requesterId) {
+    public VectorizationUsageResult vectorizeWithUsage(String paperId, String userId, String orgTag, boolean isPublic, String requesterId) {
         try {
-            logger.info("开始向量化文件，fileMd5: {}, userId: {}, orgTag: {}, isPublic: {}", 
-                       fileMd5, userId, orgTag, isPublic);
+            logger.info("开始向量化论文，paperId: {}, userId: {}, orgTag: {}, isPublic: {}", 
+                       paperId, userId, orgTag, isPublic);
                        
-            // 获取文件分块内容
-            List<TextChunk> chunks = fetchTextChunks(fileMd5);
+            // 获取论文 chunk 内容
+            List<TextChunk> chunks = fetchTextChunks(paperId);
             if (chunks == null || chunks.isEmpty()) {
-                logger.warn("未找到分块内容，fileMd5: {}", fileMd5);
+                logger.warn("未找到论文 chunk 内容，paperId: {}", paperId);
                 return new VectorizationUsageResult(0, 0, embeddingClient.currentModelVersion());
             }
 
@@ -69,11 +69,11 @@ public class VectorizationService {
             );
             List<float[]> vectors = embeddingResult.vectors();
 
-            // 构建 Elasticsearch 文档并存储
-            List<EsDocument> esDocuments = IntStream.range(0, chunks.size())
-                    .mapToObj(i -> new EsDocument(
+            // 构建 Elasticsearch 论文 chunk 并存储
+            List<PaperChunkDocument> esDocuments = IntStream.range(0, chunks.size())
+                    .mapToObj(i -> new PaperChunkDocument(
                             UUID.randomUUID().toString(),
-                            fileMd5,
+                            paperId,
                             chunks.get(i).getChunkId(),
                             chunks.get(i).getContent(),
                             chunks.get(i).getPageNumber(),
@@ -88,32 +88,32 @@ public class VectorizationService {
 
             elasticsearchService.bulkIndex(esDocuments); // 批量存储到 Elasticsearch
 
-            logger.info("向量化完成，fileMd5: {}", fileMd5);
+            logger.info("论文向量化完成，paperId: {}", paperId);
             return new VectorizationUsageResult(
                     embeddingResult.totalTokens(),
                     chunks.size(),
                     embeddingResult.modelVersion()
             );
         } catch (Exception e) {
-            logger.error("向量化失败，fileMd5: {}", fileMd5, e);
+            logger.error("论文向量化失败，paperId: {}", paperId, e);
             String message = e.getMessage();
             if (message == null || message.isBlank()) {
-                throw new RuntimeException("向量化失败", e);
+                throw new RuntimeException("论文向量化失败", e);
             }
-            throw new RuntimeException("向量化失败: " + message, e);
+            throw new RuntimeException("论文向量化失败: " + message, e);
         }
     }
     
 
     /**
-     * 获取文件分块内容
-     * @param fileMd5 文件指纹
+     * 获取论文 chunk 内容
+     * @param paperId 论文标识
      * @return 分块内容列表
      */
     // 从数据库获取分块内容
-    private List<TextChunk> fetchTextChunks(String fileMd5) {
+    private List<TextChunk> fetchTextChunks(String paperId) {
         // 调用 Repository 查询数据
-        List<DocumentVector> vectors = documentVectorRepository.findByFileMd5OrderByChunkIdAsc(fileMd5);
+        List<PaperTextChunk> vectors = paperTextChunkRepository.findByPaperIdOrderByChunkIdAsc(paperId);
 
         // 转换为 TextChunk 列表
         return vectors.stream()

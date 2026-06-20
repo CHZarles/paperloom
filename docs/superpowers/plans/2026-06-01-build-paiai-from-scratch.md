@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers-extended-cc:subagent-driven-development (recommended) or superpowers-extended-cc:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 为 PaiSmart RAG 系统的从零实战教程写 20 集长文稿（每集含分析 + 完整可跑代码），按 15 个里程碑分批交付，每批可验证。
+**Goal:** 为 RAG 系统的从零实战教程写 20 集长文稿（每集含分析 + 完整可跑代码），按 15 个里程碑分批交付，每批可验证。**项目包名 `com.charles.easyrag`（与原 PaiSmart 的 `com.yizhaoqi.smartpai` 区分）**。
 
-**Architecture:** 在 `youtube_scripts/build-from-scratch/` 子目录写 21 个 markdown（1 README + 20 bfs-XX 集）。每集遵循 7 段固定结构（开场 / 业务驱动 / 设计决策 / 完整代码 / 验证步骤 / 常见坑 / 下集预告）。代码示例全部可跑，依赖 docker-compose 起中间件，真实 API key 在 README 提供申请指南。
+**Architecture:** 在 `youtube_scripts/build-from-scratch/` 子目录写 21 个 markdown（1 README + 20 bfs-XX 集）。每集遵循 7 段固定结构（开场 / 业务驱动 / 设计决策 / 完整代码 / 验证步骤 / 常见坑 / 下集预告）。代码示例全部可跑，依赖 docker-compose 起中间件，真实 API key 在 README 提供申请指南。**教程里所有 Java 代码统一使用包名 `com.charles.easyrag.*`，主启动类 `com.charles.easyrag.EasyRagApplication`，Maven `groupId=com.charles artifactId=easyrag`，数据库 `easy_rag`，应用名 `easy-rag`**。
 
 **Tech Stack:** Spring Boot 3.4.2、Java 17、Maven 3.8+、MySQL 8、Redis 7、Elasticsearch 8.10、Kafka 3.2、MinIO、Tika、HanLP、DeepSeek API、DashScope Embedding API、微信支付 V3、Vue 3 前端（仅 curl 示例）。
 
@@ -62,8 +62,9 @@ youtube_scripts/build-from-scratch/
 
 **Acceptance Criteria:**
 - [ ] `youtube_scripts/build-from-scratch/` 目录存在
-- [ ] README 占位文件存在
-- [ ] 写作模板包含：每集 7 段结构骨架、代码示例的"主路生产 vs 支路 TODO"标记约定、frontmatter 模板
+- [ ] README 占位文件存在，**标题写"从零撸 EasyRAG"**（不是 PaiSmart）
+- [ ] README 含**项目命名约定**段：包名 `com.charles.easyrag`、artifactId `easyrag`、主类 `EasyRagApplication`、数据库 `easy_rag`
+- [ ] 写作模板包含：每集 7 段结构骨架、代码示例的"主路生产 vs 支路 TODO"标记约定、frontmatter 模板、**包名替换说明**（教程里写 `com.charles.easyrag` 而不是 `com.yizhaoqi.smartpai`）
 
 **Verify:** `ls youtube_scripts/build-from-scratch/ && cat docs/superpowers/plans/build-paiai-helper.md`
 
@@ -118,8 +119,9 @@ git commit -m "tutorial: 初始化从零撸 PaiSmart 教程目录与写作模板
 **Acceptance Criteria:**
 - [ ] 文件存在且 ≥ 500 行
 - [ ] 含 7 段固定结构（开场、业务驱动、设计决策、完整代码、验证步骤、常见坑、思考题+下集预告）
-- [ ] 完整代码段含：完整 `pom.xml`（groupId=`charles`、artifactId=`easyrag`、Java 17、Spring Boot 3.4.2）、主启动类 `charles.easyrag.EasyRagApplication`、`application.yml`、dev/docker/prod 三 profile
-- [ ] 全文所有 Java 代码使用 `package charles.easyrag`（**不用** `com.yizhaoqi.smartpai`）
+- [ ] 完整 `pom.xml`：`groupId=com.charles`、`artifactId=easyrag`、Java 17、Spring Boot 3.4.2
+- [ ] 主启动类 `com.charles.easyrag.EasyRagApplication`
+- [ ] `application.yml` 含 dev/docker/prod 三 profile；spring.application.name=**easy-rag**
 - [ ] 验证步骤含具体命令（`mvn spring-boot:run`）和预期输出
 - [ ] 至少 3 个常见坑 + 面试问答
 - [ ] 末尾有下集预告指向 bfs-02

@@ -81,10 +81,10 @@ public class UploadService {
             logger.debug("检查文件记录是否存在 => fileMd5: {}, fileName: {}, fileType: {}, status: {}", fileMd5, fileName, fileType, fileUpload.getStatus());
 
             if (fileUpload.getStatus() == FileUpload.STATUS_MERGING) {
-                throw new CustomException("文件正在合并中，请稍后重试", HttpStatus.CONFLICT);
+                throw new CustomException("论文 PDF 正在合并中，请稍后重试", HttpStatus.CONFLICT);
             }
             if (fileUpload.getStatus() == FileUpload.STATUS_COMPLETED) {
-                throw new CustomException("文件已完成合并，不允许继续上传分片", HttpStatus.CONFLICT);
+                throw new CustomException("论文 PDF 已完成合并，不允许继续上传分片", HttpStatus.CONFLICT);
             }
 
             // Redis Bitmap 是上传进度快路径；数据库是最终可合并的事实来源。
@@ -155,10 +155,10 @@ public class UploadService {
     }
 
     /**
-     * 根据文件名获取文件类型
+     * 根据文件名获取 PaperLoom 上传类型。
      *
-     * @param fileName 文件名
-     * @return 文件类型
+     * @param fileName 上传 PDF 文件名
+     * @return 上传类型
      */
     private String getFileType(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
@@ -172,83 +172,7 @@ public class UploadService {
         
         String extension = fileName.substring(lastDotIndex + 1).toLowerCase();
         
-        // 根据文件扩展名返回文件类型
-        switch (extension) {
-            case "pdf":
-                return "PDF文档";
-            case "doc":
-            case "docx":
-                return "Word文档";
-            case "xls":
-            case "xlsx":
-                return "Excel表格";
-            case "ppt":
-            case "pptx":
-                return "PowerPoint演示文稿";
-            case "txt":
-                return "文本文件";
-            case "md":
-                return "Markdown文档";
-            case "jpg":
-            case "jpeg":
-                return "JPEG图片";
-            case "png":
-                return "PNG图片";
-            case "gif":
-                return "GIF图片";
-            case "bmp":
-                return "BMP图片";
-            case "svg":
-                return "SVG图片";
-            case "mp4":
-                return "MP4视频";
-            case "avi":
-                return "AVI视频";
-            case "mov":
-                return "MOV视频";
-            case "wmv":
-                return "WMV视频";
-            case "mp3":
-                return "MP3音频";
-            case "wav":
-                return "WAV音频";
-            case "flac":
-                return "FLAC音频";
-            case "zip":
-                return "ZIP压缩包";
-            case "rar":
-                return "RAR压缩包";
-            case "7z":
-                return "7Z压缩包";
-            case "tar":
-                return "TAR压缩包";
-            case "gz":
-                return "GZ压缩包";
-            case "json":
-                return "JSON文件";
-            case "xml":
-                return "XML文件";
-            case "csv":
-                return "CSV文件";
-            case "html":
-            case "htm":
-                return "HTML文件";
-            case "css":
-                return "CSS文件";
-            case "js":
-                return "JavaScript文件";
-            case "java":
-                return "Java源码";
-            case "py":
-                return "Python源码";
-            case "cpp":
-            case "c":
-                return "C/C++源码";
-            case "sql":
-                return "SQL文件";
-            default:
-                return extension.toUpperCase() + "文件";
-        }
+        return "pdf".equals(extension) ? "PDF论文" : "unsupported";
     }
 
     /**

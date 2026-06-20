@@ -2,7 +2,7 @@ package com.yizhaoqi.smartpai.config;
 
 import com.yizhaoqi.smartpai.model.FileUpload;
 import com.yizhaoqi.smartpai.model.User;
-import com.yizhaoqi.smartpai.repository.DocumentVectorRepository;
+import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.FileUploadRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import com.yizhaoqi.smartpai.service.ElasticsearchService;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class BootstrapKnowledgeInitializerTest {
+class BootstrapPaperInitializerTest {
 
     @Mock
     private ParseService parseService;
@@ -53,7 +53,7 @@ class BootstrapKnowledgeInitializerTest {
     private FileUploadRepository fileUploadRepository;
 
     @Mock
-    private DocumentVectorRepository documentVectorRepository;
+    private PaperTextChunkRepository paperTextChunkRepository;
 
     @Mock
     private MinioClient minioClient;
@@ -62,7 +62,7 @@ class BootstrapKnowledgeInitializerTest {
     private UserRepository userRepository;
 
     @InjectMocks
-    private BootstrapKnowledgeInitializer initializer;
+    private BootstrapPaperInitializer initializer;
 
     @TempDir
     Path tempDir;
@@ -87,9 +87,9 @@ class BootstrapKnowledgeInitializerTest {
         when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.of(existingFile));
         when(fileUploadRepository.countByFileMd5AndUserId(fileMd5, "1")).thenReturn(1L);
-        when(documentVectorRepository.countByFileMd5(fileMd5)).thenReturn(2L);
-        when(documentVectorRepository.countByFileMd5AndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
-        when(elasticsearchService.countByFileMd5(fileMd5)).thenReturn(2L);
+        when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
+        when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
+        when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(2L);
 
         initializer.run();
 
@@ -111,9 +111,9 @@ class BootstrapKnowledgeInitializerTest {
         when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.empty());
         when(fileUploadRepository.countByFileMd5AndUserId(fileMd5, "1")).thenReturn(0L);
-        when(documentVectorRepository.countByFileMd5(fileMd5)).thenReturn(0L);
-        when(documentVectorRepository.countByFileMd5AndPageNumberIsNotNull(fileMd5)).thenReturn(0L);
-        when(elasticsearchService.countByFileMd5(fileMd5)).thenReturn(0L);
+        when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(0L);
+        when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(0L);
+        when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(0L);
         doNothing().when(vectorizationService).vectorize(fileMd5, "1", "default", true, "system-bootstrap");
         when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
 
@@ -164,9 +164,9 @@ class BootstrapKnowledgeInitializerTest {
         when(fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.of(newest));
         when(fileUploadRepository.countByFileMd5AndUserId(fileMd5, "1")).thenReturn(1L);
-        when(documentVectorRepository.countByFileMd5(fileMd5)).thenReturn(2L);
-        when(documentVectorRepository.countByFileMd5AndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
-        when(elasticsearchService.countByFileMd5(fileMd5)).thenReturn(2L);
+        when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
+        when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
+        when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(2L);
 
         initializer.run();
 

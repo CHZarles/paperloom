@@ -11,29 +11,29 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
 
-// 提供混合检索接口
+// 提供论文混合检索接口
 @RestController
-@RequestMapping("/api/v1/search")
-public class SearchController {
+@RequestMapping("/api/v1/papers/search")
+public class PaperSearchController {
 
     @Autowired
     private HybridSearchService hybridSearchService;
 
     /**
-     * 混合检索接口
+     * 论文混合检索接口
      * 
-     * URL: /api/v1/search/hybrid
+     * URL: /api/v1/papers/search/hybrid
      * Method: GET
      * Parameters:
      *   - query: 搜索查询字符串（必需）
      *   - topK: 返回结果数量（可选，默认10）
      * 
-     * 示例: /api/v1/search/hybrid?query=人工智能的发展&topK=10
+     * 示例: /api/v1/papers/search/hybrid?query=attention mechanism&topK=10
      * 
      * Response:
      * [
      *   {
-     *     "fileMd5": "abc123...",
+     *     "paperId": "abc123...",
      *     "chunkId": 1,
      *     "textContent": "人工智能是未来科技发展的核心方向。",
      *     "score": 0.92,
@@ -50,7 +50,7 @@ public class SearchController {
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("HYBRID_SEARCH");
         try {
             LogUtils.logBusiness("HYBRID_SEARCH", userId != null ? userId : "anonymous", 
-                    "开始混合检索: query=%s, topK=%d", query, topK);
+                    "开始论文混合检索: query=%s, topK=%d", query, topK);
             
             List<SearchResult> results;
             if (userId != null) {
@@ -64,8 +64,8 @@ public class SearchController {
             LogUtils.logUserOperation(userId != null ? userId : "anonymous", "HYBRID_SEARCH", 
                     "search_query", "SUCCESS");
             LogUtils.logBusiness("HYBRID_SEARCH", userId != null ? userId : "anonymous", 
-                    "混合检索完成: 返回结果数量=%d", results.size());
-            monitor.end("混合检索成功");
+                    "论文混合检索完成: 返回结果数量=%d", results.size());
+            monitor.end("论文混合检索成功");
             
             // 构造统一响应结构
             Map<String, Object> responseBody = new HashMap<>(4);
@@ -76,8 +76,8 @@ public class SearchController {
             return responseBody;
         } catch (Exception e) {
             LogUtils.logBusinessError("HYBRID_SEARCH", userId != null ? userId : "anonymous", 
-                    "混合检索失败: query=%s", e, query);
-            monitor.end("混合检索失败: " + e.getMessage());
+                    "论文混合检索失败: query=%s", e, query);
+            monitor.end("论文混合检索失败: " + e.getMessage());
             
             // 构造错误响应结构，保持与前端解析一致
             Map<String, Object> errorBody = new HashMap<>(4);

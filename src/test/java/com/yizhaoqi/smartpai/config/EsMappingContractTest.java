@@ -2,7 +2,7 @@ package com.yizhaoqi.smartpai.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yizhaoqi.smartpai.entity.EsDocument;
+import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -16,8 +16,8 @@ class EsMappingContractTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void knowledgeBaseMappingUsesTheSamePublicFieldNameAsEsDocumentSerialization() throws Exception {
-        EsDocument document = new EsDocument(
+    void paperChunksMappingUsesTheSameFieldNamesAsPaperChunkDocumentSerialization() throws Exception {
+        PaperChunkDocument document = new PaperChunkDocument(
                 "doc-id",
                 "file-md5",
                 1,
@@ -32,15 +32,19 @@ class EsMappingContractTest {
         );
 
         JsonNode serializedDocument = objectMapper.valueToTree(document);
+        assertTrue(serializedDocument.has("paperId"));
+        assertFalse(serializedDocument.has("fileMd5"));
         assertTrue(serializedDocument.has("public"));
         assertFalse(serializedDocument.has("isPublic"));
 
-        InputStream mappingStream = getClass().getResourceAsStream("/es-mappings/knowledge_base.json");
+        InputStream mappingStream = getClass().getResourceAsStream("/es-mappings/paper_chunks.json");
         assertNotNull(mappingStream);
 
         JsonNode mapping = objectMapper.readTree(mappingStream);
         JsonNode properties = mapping.path("mappings").path("properties");
 
+        assertTrue(properties.has("paperId"));
+        assertFalse(properties.has("fileMd5"));
         assertTrue(properties.has("public"));
         assertFalse(properties.has("isPublic"));
     }

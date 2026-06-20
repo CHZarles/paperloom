@@ -813,35 +813,35 @@
         }
 
         // 合并分片
-        async function mergeChunks(fileMD5, fileName) {
-            console.log(`开始合并文件分片: fileMD5=${fileMD5}, fileName=${fileName}`);
+        async function mergeChunks(paperId, paperTitle) {
+            console.log(`开始合并论文分片: paperId=${paperId}, paperTitle=${paperTitle}`);
             return new Promise((resolve, reject) => {
-                fetch('/api/v1/upload/merge', {
+                fetch('/api/v1/papers/upload/merge', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        fileMd5: fileMD5,
-                        fileName: fileName
+                        paperId: paperId,
+                        paperTitle: paperTitle
                     })
                 })
                 .then(response => {
                     if (!response.ok) {
                         return response.json().then(data => {
-                            console.error(`合并文件失败: HTTP状态码=${response.status}, 错误信息=`, data);
-                            throw new Error(data.message || `合并文件失败: ${response.status} ${response.statusText}`);
+                            console.error(`合并论文失败: HTTP状态码=${response.status}, 错误信息=`, data);
+                            throw new Error(data.message || `合并论文失败: ${response.status} ${response.statusText}`);
                         });
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('文件合并成功:', data);
+                    console.log('论文合并成功:', data);
                     resolve(data);
                 })
                 .catch(error => {
-                    console.error('文件合并过程中出错:', error);
+                    console.error('论文合并过程中出错:', error);
                     reject(error);
                 });
             });
@@ -851,12 +851,12 @@
         async function uploadFileInChunks(file) {
             const chunkSize = 5 * 1024 * 1024; // 5MB per chunk
             const totalChunks = Math.ceil(file.size / chunkSize);
-            const fileMD5 = await calculateMD5(file);
+            const paperId = await calculateMD5(file);
             const progressBar = document.getElementById('upload-progress');
             const orgTag = document.getElementById('org-tag-select').value;
             const isPublic = document.getElementById('is-public').checked;
             
-            showResponse('upload-response', `开始上传文件，共${totalChunks}个分片...`, true);
+            showResponse('upload-response', `开始上传论文 PDF，共${totalChunks}个分片...`, true);
             
             for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
                 const start = chunkIndex * chunkSize;
@@ -865,8 +865,8 @@
                 
                 try {
                     await uploadChunk(chunk, {
-                        fileMD5,
-                        fileName: file.name,
+                        paperId,
+                        paperTitle: file.name,
                         totalSize: file.size,
                         chunkIndex,
                         totalChunks,
@@ -885,8 +885,8 @@
                 }
             }
             
-            showResponse('upload-response', '所有分片上传完成，开始合并文件...', true);
-            const mergeResult = await mergeChunks(fileMD5, file.name);
+            showResponse('upload-response', '所有分片上传完成，开始合并论文 PDF...', true);
+            const mergeResult = await mergeChunks(paperId, file.name);
             return mergeResult;
         }
 
@@ -895,10 +895,10 @@
             return new Promise((resolve, reject) => {
                 const formData = new FormData();
                 formData.append('file', chunk);
-                formData.append('fileMd5', metadata.fileMD5);
+                formData.append('paperId', metadata.paperId);
                 formData.append('chunkIndex', metadata.chunkIndex.toString());
                 formData.append('totalSize', metadata.totalSize.toString());
-                formData.append('fileName', metadata.fileName);
+                formData.append('paperTitle', metadata.paperTitle);
                 if (metadata.totalChunks) {
                     formData.append('totalChunks', metadata.totalChunks.toString());
                 }
@@ -924,7 +924,7 @@
                 
                 xhr.onerror = () => reject(new Error('网络错误'));
                 
-                xhr.open('POST', '/api/v1/upload/chunk', true);
+                xhr.open('POST', '/api/v1/papers/upload/chunk', true);
                 xhr.setRequestHeader('Authorization', `Bearer ${token}`);
                 
                 xhr.send(formData);
@@ -944,7 +944,7 @@
             
             try {
                 const result = await uploadFileInChunks(file);
-                showResponse('upload-response', `文件上传并处理成功！文件ID: ${result.data.object_url || result.data}`, true);
+                showResponse('upload-response', `论文 PDF 上传并处理成功！paperId: ${result.data.object_url || result.data}`, true);
                 fileInput.value = '';
                 progressBar.style.width = '0%';
                 loadUserFiles(); // 刷新文件列表
@@ -963,7 +963,7 @@
             if (!token) return;
             
             try {
-                const response = await fetch('/api/v1/documents/uploads', {
+                const response = await fetch('/api/v1/papers/uploads', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -976,7 +976,7 @@
                     console.error('获取文件列表失败:', data.message);
                 }
             } catch (error) {
-                console.error('获取文件列表失败:', error);
+                console.error('获取论文列表失败:', error);
             }
         }
 
@@ -994,14 +994,14 @@
                 const fileDiv = document.createElement('div');
                 fileDiv.className = 'file-item';
                 fileDiv.innerHTML = `
-                    <h4>${file.fileName}</h4>
-                    <p>大小: ${formatFileSize(file.totalSize)}</p>
-                    <p>状态: ${file.status}</p>
+                    <h4>${file.paperTitle}</h4>
+                    <p>大小: ${formatFileSize(file.sourceFileSizeBytes)}</p>
+                    <p>状态: ${file.uploadStatus}</p>
                     <p>组织: ${file.orgTagName || '未知'}</p>
                     <p>可见性: ${file.public ? '公开' : '私有'}</p>
                     <p>上传时间: ${new Date(file.createdAt).toLocaleString()}</p>
                     <div class="file-actions">
-                        <button onclick="deleteFile('${file.fileMd5}')">删除</button>
+                        <button onclick="deletePaper('${file.paperId}')">删除</button>
                     </div>
                 `;
                 container.appendChild(fileDiv);
@@ -1018,13 +1018,13 @@
         }
 
         // 删除文件
-        async function deleteFile(fileMd5) {
-            if (!confirm('确定要删除这个文件吗？')) {
+        async function deletePaper(paperId) {
+            if (!confirm('确定要删除这篇论文吗？')) {
                 return;
             }
             
             try {
-                const response = await fetch(`/api/v1/documents/${fileMd5}`, {
+                const response = await fetch(`/api/v1/papers/${paperId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -1033,13 +1033,13 @@
                 
                 const data = await response.json();
                 if (data.code === 200) {
-                    showResponse('upload-response', '文件删除成功', true);
-                    loadUserFiles(); // 刷新文件列表
+                    showResponse('upload-response', '论文删除成功', true);
+                    loadUserFiles(); // 刷新论文列表
                 } else {
                     showResponse('upload-response', data.message, false);
                 }
             } catch (error) {
-                showResponse('upload-response', `删除文件失败: ${error.message}`, false);
+                showResponse('upload-response', `删除论文失败: ${error.message}`, false);
             }
         }
 
@@ -1195,7 +1195,7 @@
                 params.append('query', query);
                 params.append('topK', topK);
                 
-                const url = `/api/search/hybrid?${params.toString()}`;
+                const url = `/api/v1/papers/search/hybrid?${params.toString()}`;
                 
                 const headers = {};
                 if (token) {
@@ -1238,7 +1238,8 @@
                 
                 const score = result.score ? result.score.toFixed(3) : 'N/A';
                 const content = result.textContent || result.text_content || '无内容';
-                const fileMd5 = result.fileMd5 || result.file_md5 || '未知';
+                const paperId = result.paperId || '未知';
+                const paperTitle = result.paperTitle || '未知';
                 const chunkId = result.chunkId || result.chunk_id || '未知';
                 const userId = result.userId || result.user_id || '未知';
                 const orgTag = result.orgTag || result.org_tag || '未知';
@@ -1250,7 +1251,8 @@
                     <h4>结果 ${index + 1}</h4>
                     <div class="content">${content}</div>
                     <div class="metadata">
-                        <span><strong>文件MD5:</strong> ${fileMd5}</span>
+                        <span><strong>paperId:</strong> ${paperId}</span>
+                        <span><strong>paperTitle:</strong> ${paperTitle}</span>
                         <span><strong>分片ID:</strong> ${chunkId}</span>
                         <span><strong>用户ID:</strong> ${userId}</span>
                         <span><strong>组织标签:</strong> ${orgTag}</span>

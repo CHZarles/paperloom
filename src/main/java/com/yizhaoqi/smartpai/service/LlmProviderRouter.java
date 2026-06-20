@@ -123,22 +123,22 @@ public class LlmProviderRouter {
         if (promptCfg.getRules() != null) {
             sysBuilder.append(promptCfg.getRules()).append("\n\n");
         }
-        sysBuilder.append("本系统是「知识库优先」的问答助手：你的首要职责是基于本系统已收录的资料回答用户。除非命中下方明确的白名单，否则**每一个用户问题都必须先调用 search_knowledge**，再基于检索结果作答。\n\n")
+        sysBuilder.append("本系统是「论文证据优先」的问答助手：你的首要职责是基于本系统已收录的论文片段回答用户。除非命中下方明确的白名单，否则**每一个用户问题都必须先调用 search_papers**，再基于检索结果作答。\n\n")
                 .append("强制检索原则（默认行为）：\n")
-                .append("1. 默认调用 search_knowledge：只要问题涉及任何实体、名称、缩写、产品、项目、术语、流程、功能、实现、背景、对比、引用，或包含「这/它/该/上述/这个/那个」等上下文指代，无论你是否自认为已知答案，都必须先检索，不要等用户说「查知识库」。\n")
-                .append("2. 构造 query 时严格保留用户原话中的核心名词、缩写和限定词，禁止替换为泛化关键词；必要时可在同一次 query 中合并原句与等价改写。\n")
-                .append("3. 用户要求整理、总结、归纳、提炼知识库内容时，先用 search_knowledge 圈定材料，再调用 generate_summary 生成总结。\n\n")
-                .append("可以跳过 search_knowledge 的白名单（必须严格匹配其一，否则一律检索）：\n")
+                .append("1. 默认调用 search_papers：只要问题涉及论文观点、方法、实验、数据集、指标、结论、限制、对比或引用依据，无论你是否自认为已知答案，都必须先检索，不要等用户说「查论文」。\n")
+                .append("2. 构造 query 时严格保留用户原话中的核心术语、方法名、数据集、指标和限定词，禁止替换为泛化关键词；必要时可在同一次 query 中合并原句与等价改写。\n")
+                .append("3. 用户要求整理、总结、归纳、提炼论文内容时，先用 search_papers 圈定材料，再调用 generate_summary 生成总结。\n\n")
+                .append("可以跳过 search_papers 的白名单（必须严格匹配其一，否则一律检索）：\n")
                 .append("- 纯打招呼或寒暄（你好/谢谢/再见等）；\n")
-                .append("- 纯翻译请求（把 X 翻译为 Y），且不涉及本系统术语；\n")
-                .append("- 与本系统材料无关的纯创作请求（写诗、写段子等）；\n")
+                .append("- 纯翻译请求，且不涉及论文内容；\n")
+                .append("- 与论文材料无关的纯创作请求；\n")
                 .append("- 通用编程语法、数学计算等完全不依赖任何专有信息的常识题；\n")
-                .append("- 用户在本轮明确表示「不要查知识库 / 直接回答」。\n\n")
+                .append("- 用户在本轮明确表示「不要查论文 / 直接回答」。\n\n")
                 .append("回答与异常处理：\n")
-                .append("- 只要 search_knowledge 返回了片段，必须基于片段作答并按来源编号标注，禁止回答「知识库暂无相关信息」。\n")
+                .append("- 只要 search_papers 返回了片段，必须基于片段作答并按来源编号标注，禁止回答「论文库暂无相关信息」。\n")
                 .append("- 只有工具明确返回零片段时，才说明暂无相关材料并提示用户补充线索。\n")
                 .append("- 工具失败时根据错误信息决定下一步（重试 / 换 query / 继续推理），不要直接中断。\n")
-                .append("- 如需记录反馈或查看知识库统计，通过 tool_calls 调用对应工具。\n")
+                .append("- 如需记录反馈或查看论文库统计，通过 tool_calls 调用对应工具。\n")
                 .append("拿到 tool 结果后继续推理并给出最终回答。\n\n");
         if (feedbackGuidance != null && !feedbackGuidance.isBlank()) {
             sysBuilder.append(feedbackGuidance.trim()).append("\n\n");

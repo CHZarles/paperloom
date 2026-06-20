@@ -6,6 +6,7 @@ import co.elastic.clients.elasticsearch._types.StoreStats;
 import co.elastic.clients.elasticsearch.indices.IndicesStatsResponse;
 import co.elastic.clients.elasticsearch.indices.stats.IndicesStats;
 import com.yizhaoqi.smartpai.client.DeepSeekClient;
+import com.yizhaoqi.smartpai.config.PaperSearchIndex;
 import com.yizhaoqi.smartpai.entity.SearchResult;
 import com.yizhaoqi.smartpai.model.FileUpload;
 import com.yizhaoqi.smartpai.repository.FileUploadRepository;
@@ -24,7 +25,6 @@ import java.util.function.Consumer;
 @Service
 public class AgentToolRegistry {
 
-    private static final String KNOWLEDGE_INDEX = "knowledge_base";
     private static final int DEFAULT_TOP_K = 5;
     private static final int MAX_SEARCH_DOCS = 20;
 
@@ -47,16 +47,16 @@ public class AgentToolRegistry {
         this.elasticsearchClient = elasticsearchClient;
         this.fileUploadRepository = fileUploadRepository;
         this.tools = List.of(
-                searchKnowledgeTool(),
+                searchPapersTool(),
                 generateSummaryTool(),
                 submitFeedbackTool(),
-                knowledgeStatsTool()
+                paperStatsTool()
         );
         this.handlers = Map.of(
-                "search_knowledge", this::executeSearchKnowledge,
+                "search_papers", this::executeSearchPapers,
                 "generate_summary", this::executeGenerateSummary,
                 "submit_feedback", this::executeSubmitFeedback,
-                "knowledge_stats", this::executeKnowledgeStats
+                "paper_stats", this::executePaperStats
         );
     }
 
@@ -85,9 +85,9 @@ public class AgentToolRegistry {
         return handler.execute(arguments == null ? Collections.emptyMap() : arguments, userId, onChunk);
     }
 
-    private ToolExecutionResult executeSearchKnowledge(Map<String, Object> arguments,
-                                                       String userId,
-                                                       Consumer<String> onChunk) {
+    private ToolExecutionResult executeSearchPapers(Map<String, Object> arguments,
+                                                    String userId,
+                                                    Consumer<String> onChunk) {
         requireUserId(userId);
         String query = getRequiredString(arguments, "query");
         int topK = getInt(arguments, "topK", DEFAULT_TOP_K, 1, MAX_SEARCH_DOCS);
@@ -97,7 +97,7 @@ public class AgentToolRegistry {
         data.put("query", query);
         data.put("topK", topK);
         data.put("results", results);
-        return new ToolExecutionResult("search_knowledge", true, formatSearchResults(results), data);
+        return new ToolExecutionResult("search_papers", true, formatSearchResults(results), data);
     }
 
     private ToolExecutionResult executeGenerateSummary(Map<String, Object> arguments,
@@ -145,12 +145,12 @@ public class AgentToolRegistry {
         return new ToolExecutionResult("submit_feedback", true, "已记录用户反馈: " + value, data);
     }
 
-    private ToolExecutionResult executeKnowledgeStats(Map<String, Object> arguments,
-                                                      String userId,
-                                                      Consumer<String> onChunk) {
+    private ToolExecutionResult executePaperStats(Map<String, Object> arguments,
+                                                  String userId,
+                                                  Consumer<String> onChunk) {
         try {
-            IndicesStatsResponse statsResponse = elasticsearchClient.indices().stats(s -> s.index(KNOWLEDGE_INDEX));
-            IndicesStats indexStats = statsResponse.indices().get(KNOWLEDGE_INDEX);
+            IndicesStatsResponse statsResponse = elasticsearchClient.indices().stats(s -> s.index(PaperSearchIndex.INDEX_NAME));
+            IndicesStats indexStats = statsResponse.indices().get(PaperSearchIndex.INDEX_NAME);
             DocStats docStats = indexStats != null && indexStats.total() != null ? indexStats.total().docs() : null;
             StoreStats storeStats = indexStats != null && indexStats.total() != null ? indexStats.total().store() : null;
 
@@ -163,25 +163,25 @@ public class AgentToolRegistry {
                     .orElse(null);
 
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("index", KNOWLEDGE_INDEX);
-            data.put("documentCount", documentCount);
+            data.put("index", PaperSearchIndex.INDEX_NAME);
+            data.put("paperCount", documentCount);
             data.put("fragmentCount", fragmentCount);
             data.put("deletedFragmentCount", deletedFragmentCount);
             data.put("storeSizeInBytes", storeSizeInBytes);
             data.put("latestUpdatedAt", latestUpdatedAt);
 
-            return new ToolExecutionResult("knowledge_stats", true, formatKnowledgeStats(data), data);
+            return new ToolExecutionResult("paper_stats", true, formatPaperStats(data), data);
         } catch (Exception e) {
-            throw new RuntimeException("获取知识库统计信息失败", e);
+            throw new RuntimeException("获取论文库统计信息失败", e);
         }
     }
 
-    private AgentTool searchKnowledgeTool() {
+    private AgentTool searchPapersTool() {
         return new AgentTool(
-                "search_knowledge",
-                "在知识库中搜索与用户问题相关的文档片段。当用户问题的答案可能依赖已上传资料、企业/项目/产品/系统内部信息、专有名词、事实依据、定义、功能、使用方式、实现细节、背景、流程或引用来源时应调用；即使用户没有明确说“查询知识库”，只要问题不像纯通用常识也应先检索。普通问候、闲聊、纯创作、翻译、通用代码/常识问题，或用户明确要求不要查知识库时不要调用。",
+                "search_papers",
+                "在论文库中搜索与用户问题相关的论文片段。当问题涉及论文观点、方法、实验、结论、限制、术语、对比或引用依据时应调用；普通问候、闲聊、纯创作、翻译、通用代码/常识问题，或用户明确要求不要查论文时不要调用。",
                 objectSchema(Map.of(
-                        "query", stringSchema("用于知识库检索的查询语句。应保留用户原话中的核心实体、缩写和限定词，可包含原始问句和必要的等价改写；不要替换成固定关键词。"),
+                        "query", stringSchema("用于论文检索的查询语句。应保留用户原话中的核心术语、方法名、数据集、指标和限定词，可包含必要的等价改写。"),
                         "topK", integerSchema("返回的片段数量，默认 5。")
                 ), List.of("query"))
         );
@@ -190,9 +190,9 @@ public class AgentToolRegistry {
     private AgentTool generateSummaryTool() {
         return new AgentTool(
                 "generate_summary",
-                "对指定主题的知识库文档生成结构化摘要。适合用户要求整理、总结、归纳、提炼知识库内容时调用；本工具内部会二次调用大模型完成摘要，外层 ReAct 循环只应接收结果，不要把内部摘要过程当作新的工具计划。",
+                "对指定主题的论文片段生成结构化摘要。适合用户要求整理、总结、归纳、提炼论文内容时调用；本工具内部会二次调用大模型完成摘要，外层 ReAct 循环只应接收结果，不要把内部摘要过程当作新的工具计划。",
                 objectSchema(Map.of(
-                        "topic", stringSchema("需要从知识库中整理和总结的主题。"),
+                        "topic", stringSchema("需要从论文库中整理和总结的主题。"),
                         "maxDocs", integerSchema("用于生成摘要的最多相关片段数量，默认 5。")
                 ), List.of("topic"))
         );
@@ -211,10 +211,10 @@ public class AgentToolRegistry {
         );
     }
 
-    private AgentTool knowledgeStatsTool() {
+    private AgentTool paperStatsTool() {
         return new AgentTool(
-                "knowledge_stats",
-                "返回当前知识库的统计信息，包括 MySQL 文档总数、Elasticsearch 片段总数、索引存储量和最近更新时间。仅当用户询问知识库规模、文档数量、片段数量、更新时间或索引状态时调用。",
+                "paper_stats",
+                "返回当前论文库的统计信息，包括 MySQL 论文总数、Elasticsearch chunk 总数、索引存储量和最近更新时间。仅当用户询问论文库规模、论文数量、chunk 数量、更新时间或索引状态时调用。",
                 objectSchema(Collections.emptyMap(), Collections.emptyList())
         );
     }
@@ -244,19 +244,19 @@ public class AgentToolRegistry {
 
     private String formatSearchResults(List<SearchResult> results) {
         if (results == null || results.isEmpty()) {
-            return "未检索到相关知识库片段。";
+            return "未检索到相关论文片段。";
         }
 
-        StringBuilder output = new StringBuilder("检索到 ").append(results.size()).append(" 个知识库片段。")
-                .append("请基于这些片段回答用户问题；不得声称知识库暂无相关信息。")
+        StringBuilder output = new StringBuilder("检索到 ").append(results.size()).append(" 个论文片段。")
+                .append("请基于这些片段回答用户问题；不得声称论文库暂无相关信息。")
                 .append("如果片段信息不足，请说明“基于已检索片段只能确认……”并标注来源编号。");
         for (int i = 0; i < results.size(); i++) {
             SearchResult result = results.get(i);
             output.append("\n\n[").append(i + 1).append("] ");
-            if (result.getFileName() != null && !result.getFileName().isBlank()) {
-                output.append(result.getFileName()).append(" ");
+            if (result.getPaperTitle() != null && !result.getPaperTitle().isBlank()) {
+                output.append(result.getPaperTitle()).append(" ");
             }
-            output.append("(fileMd5=").append(result.getFileMd5())
+            output.append("(paperId=").append(result.getPaperId())
                     .append(", chunkId=").append(result.getChunkId());
             if (result.getPageNumber() != null) {
                 output.append(", page=").append(result.getPageNumber());
@@ -270,10 +270,10 @@ public class AgentToolRegistry {
         return output.toString();
     }
 
-    private String formatKnowledgeStats(Map<String, Object> data) {
-        return "知识库统计："
-                + "\n- MySQL 文档总数：" + data.get("documentCount")
-                + "\n- Elasticsearch 片段总数：" + data.get("fragmentCount")
+    private String formatPaperStats(Map<String, Object> data) {
+        return "论文库统计："
+                + "\n- MySQL 论文总数：" + data.get("paperCount")
+                + "\n- Elasticsearch chunk 总数：" + data.get("fragmentCount")
                 + "\n- ES 已删除片段数：" + nullToDash(data.get("deletedFragmentCount"))
                 + "\n- ES 存储大小(bytes)：" + nullToDash(data.get("storeSizeInBytes"))
                 + "\n- 最近更新时间：" + nullToDash(data.get("latestUpdatedAt"));
@@ -333,7 +333,7 @@ public class AgentToolRegistry {
 
     private void requireUserId(String userId) {
         if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("工具调用缺少 userId，无法执行带权限的知识库或反馈操作");
+            throw new IllegalArgumentException("工具调用缺少 userId，无法执行带权限的论文检索或反馈操作");
         }
     }
 

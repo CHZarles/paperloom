@@ -1,6 +1,6 @@
 package com.yizhaoqi.smartpai.service;
 
-import com.yizhaoqi.smartpai.repository.DocumentVectorRepository;
+import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ParseServiceTest {
 
     @Mock
-    private DocumentVectorRepository documentVectorRepository;
+    private PaperTextChunkRepository paperTextChunkRepository;
 
     @InjectMocks
     private ParseService parseService;

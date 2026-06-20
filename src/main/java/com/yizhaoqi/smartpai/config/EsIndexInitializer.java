@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-// 确保在 BootstrapKnowledgeInitializer 之前进行初始化
+// 确保在启动内置论文导入之前进行初始化
 @Order(2)
 @Component
 @ConditionalOnProperty(name = "elasticsearch.init.enabled", havingValue = "true", matchIfMissing = true)
@@ -33,7 +33,7 @@ public class EsIndexInitializer implements CommandLineRunner {
     @Autowired
     private ElasticsearchClient esClient;
 
-    @Value("classpath:es-mappings/knowledge_base.json") // 加载 JSON 文件
+    @Value("classpath:es-mappings/paper_chunks.json")
     private org.springframework.core.io.Resource mappingResource;
 
     @Value("${elasticsearch.host}")
@@ -51,8 +51,8 @@ public class EsIndexInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         try {
-            logger.info("正在初始化索引 'knowledge_base'... endpoint={}://{}:{}, username={}",
-                    scheme, host, port, maskUsername(username));
+            logger.info("正在初始化索引 '{}'... endpoint={}://{}:{}, username={}",
+                    PaperSearchIndex.INDEX_NAME, scheme, host, port, maskUsername(username));
             initializeIndex();
         } catch (Exception exception) {
             // 特别处理连接关闭异常，尝试重新连接
@@ -81,11 +81,11 @@ public class EsIndexInitializer implements CommandLineRunner {
      */
     private void initializeIndex() throws Exception {
         // 检查索引是否存在
-        BooleanResponse existsResponse = esClient.indices().exists(ExistsRequest.of(e -> e.index("knowledge_base")));
+        BooleanResponse existsResponse = esClient.indices().exists(ExistsRequest.of(e -> e.index(PaperSearchIndex.INDEX_NAME)));
         if (!existsResponse.value()) {
             createIndex();
         } else {
-            logger.info("索引 'knowledge_base' 已存在");
+            logger.info("索引 '{}' 已存在", PaperSearchIndex.INDEX_NAME);
         }
     }
 
@@ -101,11 +101,11 @@ public class EsIndexInitializer implements CommandLineRunner {
         }
         // 创建索引并应用映射
         CreateIndexRequest createIndexRequest = CreateIndexRequest.of(c -> c
-                .index("knowledge_base") // 索引名称
-                .withJson(new StringReader(mappingJson)) // 使用 JSON 文件定义映射
+                .index(PaperSearchIndex.INDEX_NAME)
+                .withJson(new StringReader(mappingJson))
         );
         esClient.indices().create(createIndexRequest);
-        logger.info("索引 'knowledge_base' 已创建");
+        logger.info("索引 '{}' 已创建", PaperSearchIndex.INDEX_NAME);
     }
 
     private String buildDiagnosticMessage(Exception exception) {

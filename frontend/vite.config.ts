@@ -36,7 +36,7 @@ export default defineConfig(configEnv => {
       port: 9527,
       open: true,
       proxy: createViteProxy(viteEnv, enableProxy),
-      allowedHosts: ['u45964x883.zicp.vip']
+      allowedHosts: ['localhost', '127.0.0.1', 'u45964x883.zicp.vip']
     },
     preview: {
       port: 9725

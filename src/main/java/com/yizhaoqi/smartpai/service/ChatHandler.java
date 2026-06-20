@@ -17,7 +17,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -30,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 聊天处理服务
@@ -48,6 +52,10 @@ public class ChatHandler {
     private static final int MAX_REACT_ROUNDS = 4;
     private static final int MAX_REACT_TOOL_CALLS = 8;
     private static final int REACT_MAX_COMPLETION_TOKENS = 2000;
+    private static final int INITIAL_SEARCH_TOP_K = 5;
+    private static final String INITIAL_SEARCH_TOOL_CALL_ID = "initial-search";
+    private static final Pattern CITED_REFERENCE_PATTERN =
+            Pattern.compile("(?:来源|source)\\s*#\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
     private final RedisTemplate<String, String> redisTemplate;
     private final HybridSearchService searchService;
     private final LlmProviderRouter llmProviderRouter;
@@ -69,6 +77,8 @@ public class ChatHandler {
     private final Map<String, Boolean> stopFlags = new ConcurrentHashMap<>();
     // 用于标记已经取消的生成任务，防止后续又被落成 completed
     private final KeySetView<String, Boolean> cancelledGenerations = ConcurrentHashMap.newKeySet();
+    // 记录每次生成任务归属的前端页面实例，避免同一用户多个标签页之间串流。
+    private final Map<String, String> generationClientIds = new ConcurrentHashMap<>();
     // 用于存储每次生成任务的引用映射：generationId -> {referenceNumber -> detail}
     private final Map<String, Map<Integer, ReferenceInfo>> generationReferenceMappings = new ConcurrentHashMap<>();
 
@@ -96,6 +106,7 @@ public class ChatHandler {
 
     public void processMessage(String userId, String userMessage, WebSocketSession session) {
         logger.info("开始处理消息，用户ID: {}, 会话ID: {}", userId, session.getId());
+        String requestClientId = resolveClientId(session);
         String conversationId = null;
         String generationId = null;
         try {
@@ -109,6 +120,7 @@ public class ChatHandler {
             generationId = generation.generationId();
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
+            generationClientIds.put(finalGenerationId, requestClientId);
             logger.info("会话ID: {}, 用户ID: {}", conversationId, userId);
             sendGenerationStart(userId, finalGenerationId, finalConversationId);
 
@@ -130,20 +142,20 @@ public class ChatHandler {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
                 chatGenerationStateService.markFailed(finalGenerationId, busyException.getMessage());
-                handleError(userId, finalGenerationId, busyException);
+                handleError(userId, requestClientId, finalGenerationId, busyException);
                 sendCompletionNotification(userId, finalGenerationId, finalConversationId, true, false);
                 cleanupGenerationState(finalGenerationId, ex);
             }
 
         } catch (RateLimitExceededException e) {
-            sendRateLimitMessage(userId, null, e);
+            sendRateLimitMessage(userId, requestClientId, null, e);
         } catch (Exception e) {
             logger.error("处理消息错误: {}", e.getMessage(), e);
             if (generationId != null) {
                 chatGenerationStateService.markFailed(generationId, e.getMessage());
                 cleanupGenerationState(generationId, e);
             }
-            handleError(userId, generationId, e);
+            handleError(userId, requestClientId, generationId, e);
         }
     }
 
@@ -164,15 +176,37 @@ public class ChatHandler {
         }
     }
 
+    private String resolveClientId(WebSocketSession session) {
+        String clientId = chatSessionRegistry.getClientId(session);
+        if (clientId != null && !clientId.isBlank()) {
+            return clientId;
+        }
+        return session != null ? session.getId() : null;
+    }
+
     private void runReActLoop(String userId,
                               String userMessage,
                               String conversationId,
                               String generationId,
                               List<Map<String, String>> history,
                               CompletableFuture<String> responseFuture) {
+        String initialContext = "";
+        if (shouldUseInitialPaperSearch(userMessage)) {
+            InitialSearchOutcome initialSearchOutcome = runInitialPaperSearch(userId, userMessage, generationId, conversationId);
+            if (initialSearchOutcome.noHit()) {
+                appendStreamChunk(userId, generationId, conversationId, buildNoPaperHitResponse(userMessage));
+                finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
+                        responseBuilders.get(generationId),
+                        new LlmProviderRouter.StreamCompletion("no_paper_hit", 0, 0,
+                                responseBuilders.get(generationId) != null ? responseBuilders.get(generationId).length() : 0));
+                return;
+            }
+            initialContext = initialSearchOutcome.context();
+        }
+
         List<Map<String, Object>> messages = llmProviderRouter.buildReActMessages(
                 userMessage,
-                "",
+                initialContext,
                 history,
                 buildRecentFeedbackGuidance(userId)
         );
@@ -271,9 +305,9 @@ public class ChatHandler {
             AgentToolRegistry.ToolExecutionResult toolResult =
                     agentToolRegistry.executeTool(toolCall.name(), toolCall.arguments(), userId, toolChunkConsumer);
 
-            // search_knowledge 返回的 SearchResult 列表与模型 prompt 中的 [N] 编号一一对应，
-            // 必须把它落到 generationReferenceMappings 里，否则前端点击引用拿不到 MD5/页码。
-            if ("search_knowledge".equals(toolCall.name())) {
+            // search_papers 返回的 SearchResult 列表与模型 prompt 中的 [N] 编号一一对应，
+            // 必须把它落到 generationReferenceMappings 里，否则前端点击引用拿不到 paperId/页码。
+            if ("search_papers".equals(toolCall.name())) {
                 replaceReferencesFromSearchTool(generationId, userMessage, toolResult);
             }
 
@@ -314,21 +348,116 @@ public class ChatHandler {
 
         Map<Integer, ReferenceInfo> mapping = new HashMap<>();
         int referenceNumber = 1;
+        String retrievalQuery = toolResult.data().get("query") instanceof String query && !query.isBlank()
+                ? query
+                : userMessage;
         for (Object item : rawList) {
-            if (!(item instanceof SearchResult result) || result.getFileMd5() == null) {
+            if (!(item instanceof SearchResult result) || result.getPaperId() == null) {
                 continue;
             }
-            String fileLabel = result.getFileName() != null ? result.getFileName() : "unknown";
-            mapping.put(referenceNumber, buildReferenceInfo(result, fileLabel, userMessage));
+            String paperLabel = result.getPaperTitle() != null ? result.getPaperTitle() : "unknown";
+            mapping.put(referenceNumber, buildReferenceInfo(result, paperLabel, retrievalQuery));
             referenceNumber++;
         }
         if (mapping.isEmpty()) {
             return;
         }
-        // 模型每次 search_knowledge 都会拿到 [1]..[K] 重新编号，因此按"覆盖"语义保存最新一次的引用映射。
+        // 模型每次 search_papers 都会拿到 [1]..[K] 重新编号，因此按"覆盖"语义保存最新一次的引用映射。
         generationReferenceMappings.put(generationId, mapping);
         chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(mapping));
-        logger.info("ReAct search_knowledge 引用映射已刷新: generationId={}, count={}", generationId, mapping.size());
+        logger.info("ReAct search_papers 引用映射已刷新: generationId={}, count={}", generationId, mapping.size());
+    }
+
+    private InitialSearchOutcome runInitialPaperSearch(String userId,
+                                                           String userMessage,
+                                                           String generationId,
+                                                           String conversationId) {
+        LlmProviderRouter.ToolCallDecision toolCall = new LlmProviderRouter.ToolCallDecision(
+                INITIAL_SEARCH_TOOL_CALL_ID,
+                "search_papers",
+                Map.of("query", userMessage, "topK", INITIAL_SEARCH_TOP_K)
+        );
+        sendToolCallStatus(userId, generationId, conversationId, toolCall, "executing");
+
+        List<String> queries = buildInitialPaperQueries(userMessage);
+        Map<String, SearchResult> uniqueResults = new LinkedHashMap<>();
+        for (String query : queries) {
+            List<SearchResult> results = searchService.searchWithPermission(query, userId, INITIAL_SEARCH_TOP_K);
+            for (SearchResult result : results) {
+                if (result.getPaperId() == null || result.getChunkId() == null) {
+                    continue;
+                }
+                uniqueResults.putIfAbsent(result.getPaperId() + ":" + result.getChunkId(), result);
+            }
+            if (uniqueResults.size() >= INITIAL_SEARCH_TOP_K) {
+                break;
+            }
+        }
+
+        sendToolCallStatus(userId, generationId, conversationId, toolCall, "success");
+        if (uniqueResults.isEmpty()) {
+            logger.info("初始论文检索无命中: generationId={}, queries={}", generationId, queries);
+            return InitialSearchOutcome.noHitOutcome();
+        }
+
+        List<SearchResult> mergedResults = uniqueResults.values().stream()
+                .limit(INITIAL_SEARCH_TOP_K)
+                .toList();
+        String retrievalQuery = String.join(" | ", queries);
+        String context = buildContext(mergedResults, generationId, retrievalQuery);
+        logger.info("初始论文检索命中: generationId={}, queries={}, resultCount={}",
+                generationId, queries, mergedResults.size());
+        return InitialSearchOutcome.withContext(context);
+    }
+
+    static boolean shouldUseInitialPaperSearch(String userMessage) {
+        String normalized = normalizeEvidenceTextStatic(userMessage);
+        if (normalized.isBlank()) {
+            return false;
+        }
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        if (lower.contains("不要查论文") || lower.contains("不用查论文")
+                || lower.contains("别查论文") || lower.contains("直接回答")) {
+            return false;
+        }
+        return !lower.matches("^(你好|您好|hello|hi|谢谢|谢了|再见|拜拜)[!！。,.，\\s]*$");
+    }
+
+    static List<String> buildInitialPaperQueries(String userMessage) {
+        String original = normalizeEvidenceTextStatic(userMessage);
+        if (original.isBlank()) {
+            return List.of();
+        }
+
+        String focused = original
+                .replaceFirst("^(你知道|你懂|你了解|请问|帮我查一下|查一下|说说|解释一下|介绍一下)", "")
+                .replaceFirst("(是什么|是啥|吗|么|呢|\\?)$", "")
+                .trim();
+
+        List<String> queries = new ArrayList<>();
+        if (!focused.isBlank()) {
+            queries.add(focused);
+        }
+        if (!queries.contains(original)) {
+            queries.add(original);
+        }
+        return queries;
+    }
+
+    private String buildNoPaperHitResponse(String userMessage) {
+        List<String> queries = buildInitialPaperQueries(userMessage);
+        String queryLabel = queries.isEmpty() ? normalizeEvidenceText(userMessage) : queries.get(0);
+        return "暂无相关信息。\n原因：当前论文库中未检索到与“" + queryLabel + "”相关的内容。";
+    }
+
+    private record InitialSearchOutcome(String context, boolean noHit) {
+        private static InitialSearchOutcome withContext(String context) {
+            return new InitialSearchOutcome(context == null ? "" : context, false);
+        }
+
+        private static InitialSearchOutcome noHitOutcome() {
+            return new InitialSearchOutcome("", true);
+        }
     }
 
     private record ExecutedToolResult(String content, boolean streamedToUser) {
@@ -489,7 +618,15 @@ public class ChatHandler {
                 completion != null && completion.finishReason() != null ? completion.finishReason() : "unknown",
                 completion != null ? completion.promptTokens() : 0,
                 completion != null ? completion.completionTokens() : 0);
-        Map<Integer, ReferenceInfo> referenceMappings = generationReferenceMappings.get(generationId);
+        Map<Integer, ReferenceInfo> referenceMappings = filterReferenceMappingsForResponse(
+                generationReferenceMappings.get(generationId),
+                completeResponse
+        );
+        if (referenceMappings.isEmpty()) {
+            generationReferenceMappings.remove(generationId);
+        } else {
+            generationReferenceMappings.put(generationId, referenceMappings);
+        }
         // 先把消息事务性地落 MySQL；只有 MySQL 成功后才写 Redis 短期会话历史，
         // 否则两个数据源会出现一边有记录、一边没有的不一致状态。
         boolean persisted = persistConversation(userId, userMessage, completeResponse, conversationId, referenceMappings);
@@ -526,6 +663,7 @@ public class ChatHandler {
 
     private void cleanupGenerationState(String generationId, Throwable throwable) {
         responseBuilders.remove(generationId);
+        generationClientIds.remove(generationId);
         generationReferenceMappings.remove(generationId);
         stopFlags.remove(generationId);
         activeStreams.remove(generationId);
@@ -691,8 +829,8 @@ public class ChatHandler {
         for (Map.Entry<Integer, ReferenceInfo> entry : referenceMapping.entrySet()) {
             ReferenceInfo detail = entry.getValue();
             Map<String, Object> item = new HashMap<>();
-            item.put("fileMd5", detail.fileMd5());
-            item.put("fileName", detail.fileName());
+            item.put("paperId", detail.paperId());
+            item.put("paperTitle", detail.paperTitle());
             item.put("pageNumber", detail.pageNumber());
             item.put("anchorText", detail.anchorText());
             item.put("retrievalMode", detail.retrievalMode());
@@ -705,6 +843,28 @@ public class ChatHandler {
             serialized.put(String.valueOf(entry.getKey()), item);
         }
         return serialized;
+    }
+
+    static Map<Integer, ReferenceInfo> filterReferenceMappingsForResponse(Map<Integer, ReferenceInfo> referenceMapping,
+                                                                          String response) {
+        Map<Integer, ReferenceInfo> filtered = new LinkedHashMap<>();
+        if (referenceMapping == null || referenceMapping.isEmpty() || response == null || response.isBlank()) {
+            return filtered;
+        }
+
+        Matcher matcher = CITED_REFERENCE_PATTERN.matcher(response);
+        while (matcher.find()) {
+            try {
+                Integer referenceNumber = Integer.parseInt(matcher.group(1));
+                ReferenceInfo detail = referenceMapping.get(referenceNumber);
+                if (detail != null) {
+                    filtered.putIfAbsent(referenceNumber, detail);
+                }
+            } catch (NumberFormatException ignored) {
+                // The regex only captures digits; keep this branch defensive for future pattern changes.
+            }
+        }
+        return filtered;
     }
 
     private String buildContext(List<SearchResult> searchResults, String generationId, String userMessage) {
@@ -723,25 +883,24 @@ public class ChatHandler {
             if (snippet.length() > MAX_CONTEXT_SNIPPET_LEN) {
                 snippet = snippet.substring(0, MAX_CONTEXT_SNIPPET_LEN) + "…";
             }
-            String fileLabel = result.getFileName() != null ? result.getFileName() : "unknown";
-            String fileMd5 = result.getFileMd5();
+            String paperLabel = result.getPaperTitle() != null ? result.getPaperTitle() : "unknown";
+            String paperId = result.getPaperId();
 
             // 格式：[1] (test1.txt | 第5页) 文件内容... 或 [1] (test1.txt) 文件内容...
             // 有页码时显示页码，方便AI引用
             Integer pageNum = result.getPageNumber();
             if (pageNum != null && pageNum > 0) {
-                context.append(String.format("[%d] (%s | 第%d页) %s\n", i + 1, fileLabel, pageNum, snippet));
+                context.append(String.format("[%d] (%s | 第%d页) %s\n", i + 1, paperLabel, pageNum, snippet));
             } else {
-                context.append(String.format("[%d] (%s) %s\n", i + 1, fileLabel, snippet));
+                context.append(String.format("[%d] (%s) %s\n", i + 1, paperLabel, snippet));
             }
 
-            // 保存引用编号到MD5的映射
-            if (fileMd5 != null) {
-                ReferenceInfo detail = buildReferenceInfo(result, fileLabel, userMessage);
+            // 保存引用编号到论文证据的映射
+            if (paperId != null) {
+                ReferenceInfo detail = buildReferenceInfo(result, paperLabel, userMessage);
                 referenceMapping.put(i + 1, detail);
-                // 详细日志：记录每个引用编号的映射关系
-                logger.info("引用映射: generationId={}, 引用编号#{}={}, 文件名={}, MD5={}, page={}, retrievalMode={}, chunkId={}",
-                    generationId, i + 1, fileLabel, fileMd5, result.getPageNumber(), detail.retrievalMode(), detail.chunkId());
+                logger.info("引用映射: generationId={}, 引用编号#{}={}, paperTitle={}, paperId={}, page={}, retrievalMode={}, chunkId={}",
+                    generationId, i + 1, paperLabel, paperId, result.getPageNumber(), detail.retrievalMode(), detail.chunkId());
             }
         }
 
@@ -754,7 +913,7 @@ public class ChatHandler {
     }
 
     private void sendGenerationStart(String userId, String generationId, String conversationId) {
-        chatSessionRegistry.sendJsonToUser(userId, Map.of(
+        sendJsonToGenerationClient(userId, generationId, Map.of(
                 "type", "start",
                 "generationId", generationId,
                 "conversationId", conversationId,
@@ -768,7 +927,7 @@ public class ChatHandler {
             return;
         }
 
-        chatSessionRegistry.sendJsonToUser(userId, Map.of(
+        sendJsonToGenerationClient(userId, generationId, Map.of(
                 "type", "chunk",
                 "generationId", generationId,
                 "conversationId", conversationId,
@@ -789,7 +948,7 @@ public class ChatHandler {
         payload.put("generationId", generationId);
         payload.put("conversationId", conversationId);
         payload.put("timestamp", System.currentTimeMillis());
-        chatSessionRegistry.sendJsonToUser(userId, payload);
+        sendJsonToGenerationClient(userId, generationId, payload);
     }
 
     private void sendCompletionNotification(String userId,
@@ -815,32 +974,69 @@ public class ChatHandler {
             notification.put("persistenceDegraded", true);
             notification.put("persistenceWarning", "本次回复未能持久化到数据库，刷新后可能无法在历史中找到。");
         }
-        chatSessionRegistry.sendJsonToUser(userId, notification);
+        sendJsonToGenerationClient(userId, generationId, notification);
     }
 
     private void handleError(String userId, String generationId, Throwable error) {
+        handleError(userId, null, generationId, error);
+    }
+
+    private void handleError(String userId, String clientId, String generationId, Throwable error) {
         logger.error("AI服务错误: {}", error.getMessage(), error);
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("type", "error");
         errorResponse.put("generationId", generationId);
         errorResponse.put("error", "AI服务暂时不可用，请稍后重试");
-        chatSessionRegistry.sendJsonToUser(userId, errorResponse);
+        sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
     }
 
-    private void sendRateLimitMessage(String userId, String generationId, RateLimitExceededException exception) {
+    private void sendRateLimitMessage(String userId, String clientId, String generationId, RateLimitExceededException exception) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "error");
         payload.put("generationId", generationId);
         payload.put("code", 429);
         payload.put("message", exception.getMessage());
         payload.put("retryAfterSeconds", exception.getRetryAfterSeconds());
-        chatSessionRegistry.sendJsonToUser(userId, payload);
+        sendJsonToGenerationOrClient(userId, clientId, generationId, payload);
+    }
+
+    private void sendJsonToGenerationOrClient(String userId,
+                                              String clientId,
+                                              String generationId,
+                                              Map<String, ?> payload) {
+        if (generationId != null && !generationId.isBlank() && generationClientIds.containsKey(generationId)) {
+            sendJsonToGenerationClient(userId, generationId, payload);
+            return;
+        }
+        sendJsonToClient(userId, clientId, payload);
+    }
+
+    private void sendJsonToGenerationClient(String userId, String generationId, Map<String, ?> payload) {
+        String clientId = generationClientIds.get(generationId);
+        if (clientId == null || clientId.isBlank()) {
+            logger.debug("生成任务 {} 没有绑定 clientId，跳过 WebSocket 定向发送", generationId);
+            return;
+        }
+        chatSessionRegistry.sendJsonToClient(userId, clientId, payload);
+    }
+
+    private void sendJsonToClient(String userId, String clientId, Map<String, ?> payload) {
+        if (clientId == null || clientId.isBlank()) {
+            logger.debug("用户 {} 的请求 clientId 为空，跳过 WebSocket 定向发送", userId);
+            return;
+        }
+        chatSessionRegistry.sendJsonToClient(userId, clientId, payload);
     }
 
     /**
      * 停止响应
      */
     public void stopResponse(String userId, String generationId) {
+        stopResponse(userId, generationId, null);
+    }
+
+    public void stopResponse(String userId, String generationId, WebSocketSession requesterSession) {
+        String requesterClientId = resolveClientId(requesterSession);
         String resolvedGenerationId = generationId;
         if (resolvedGenerationId == null || resolvedGenerationId.isBlank()) {
             resolvedGenerationId = chatGenerationStateService.getActiveGenerationForUser(userId)
@@ -853,6 +1049,7 @@ public class ChatHandler {
             return;
         }
         final String targetGenerationId = resolvedGenerationId;
+        String targetClientId = generationClientIds.getOrDefault(targetGenerationId, requesterClientId);
 
         logger.info("收到停止请求，用户ID: {}，generationId: {}", userId, targetGenerationId);
 
@@ -869,7 +1066,7 @@ public class ChatHandler {
             responseFuture.completeExceptionally(new CancellationException("响应已停止"));
         }
 
-        chatSessionRegistry.sendJsonToUser(userId, Map.of(
+        sendJsonToClient(userId, targetClientId, Map.of(
                 "type", "stop",
                 "generationId", targetGenerationId,
                 "message", "响应已停止",
@@ -881,19 +1078,19 @@ public class ChatHandler {
     }
 
     /**
-     * 根据会话ID和引用编号获取文件MD5
+     * 根据生成任务和引用编号获取论文标识
      *
-     * @param sessionId WebSocket会话ID
+     * @param generationId 生成任务ID
      * @param referenceNumber 引用编号
-     * @return 文件MD5，如果找不到则返回null
+     * @return paperId，如果找不到则返回null
      */
-    public String getReferenceMd5(String generationId, int referenceNumber) {
+    public String getReferencePaperId(String generationId, int referenceNumber) {
         ReferenceInfo detail = getReferenceDetail(generationId, referenceNumber);
-        return detail != null ? detail.fileMd5() : null;
+        return detail != null ? detail.paperId() : null;
     }
 
     public ReferenceInfo getReferenceDetail(String generationId, int referenceNumber) {
-        logger.info("查询引用MD5: generationId={}, referenceNumber=#{}", generationId, referenceNumber);
+        logger.info("查询引用证据: generationId={}, referenceNumber=#{}", generationId, referenceNumber);
 
         Map<Integer, ReferenceInfo> referenceMapping = generationReferenceMappings.get(generationId);
         if (referenceMapping == null) {
@@ -916,8 +1113,8 @@ public class ChatHandler {
             return null;
         }
 
-        logger.info("成功找到引用映射: generationId={}, referenceNumber=#{}, fileMd5={}, pageNumber={}",
-                generationId, referenceNumber, detail.fileMd5(), detail.pageNumber());
+        logger.info("成功找到引用映射: generationId={}, referenceNumber=#{}, paperId={}, pageNumber={}",
+                generationId, referenceNumber, detail.paperId(), detail.pageNumber());
         return detail;
     }
 
@@ -926,8 +1123,8 @@ public class ChatHandler {
         for (Map.Entry<String, Map<String, Object>> entry : serializedMappings.entrySet()) {
             Map<String, Object> item = entry.getValue();
             referenceMap.put(Integer.parseInt(entry.getKey()), new ReferenceInfo(
-                    (String) item.get("fileMd5"),
-                    (String) item.get("fileName"),
+                    (String) item.get("paperId"),
+                    (String) item.get("paperTitle"),
                     item.get("pageNumber") instanceof Number number ? number.intValue() : null,
                     (String) item.get("anchorText"),
                     (String) item.get("retrievalMode"),
@@ -942,7 +1139,7 @@ public class ChatHandler {
         return referenceMap;
     }
 
-    private ReferenceInfo buildReferenceInfo(SearchResult result, String fileLabel, String userMessage) {
+    private ReferenceInfo buildReferenceInfo(SearchResult result, String paperLabel, String userMessage) {
         String matchedChunkText = trimToMaxLength(
                 result.getMatchedChunkText() != null ? result.getMatchedChunkText() : result.getTextContent(),
                 MAX_MATCHED_CHUNK_LEN
@@ -950,8 +1147,8 @@ public class ChatHandler {
         String evidenceSnippet = buildEvidenceSnippet(userMessage, result.getAnchorText(), matchedChunkText);
 
         return new ReferenceInfo(
-                result.getFileMd5(),
-                fileLabel,
+                result.getPaperId(),
+                paperLabel,
                 result.getPageNumber(),
                 result.getAnchorText(),
                 result.getRetrievalMode(),
@@ -1006,12 +1203,16 @@ public class ChatHandler {
     }
 
     private String normalizeEvidenceText(String value) {
+        return normalizeEvidenceTextStatic(value);
+    }
+
+    private static String normalizeEvidenceTextStatic(String value) {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
     public record ReferenceInfo(
-            String fileMd5,
-            String fileName,
+            String paperId,
+            String paperTitle,
             Integer pageNumber,
             String anchorText,
             String retrievalMode,

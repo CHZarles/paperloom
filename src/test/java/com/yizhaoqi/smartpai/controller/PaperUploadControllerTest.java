@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-class UploadControllerTest {
+class PaperUploadControllerTest {
 
     @Mock
     private UploadService uploadService;
@@ -48,12 +48,12 @@ class UploadControllerTest {
     @Mock
     private ParseService parseService;
 
-    private UploadController uploadController;
+    private PaperUploadController uploadController;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        uploadController = new UploadController(uploadService, kafkaTemplate);
+        uploadController = new PaperUploadController(uploadService, kafkaTemplate);
         ReflectionTestUtils.setField(uploadController, "kafkaConfig", kafkaConfig);
         ReflectionTestUtils.setField(uploadController, "userService", userService);
         ReflectionTestUtils.setField(uploadController, "fileUploadRepository", fileUploadRepository);
@@ -70,7 +70,7 @@ class UploadControllerTest {
         orgTag.setUploadMaxSizeBytes(1024L * 1024L);
 
         when(fileTypeValidationService.validateFileType("test.pdf"))
-                .thenReturn(new FileTypeValidationService.FileTypeValidationResult(true, "ok", "PDF文档", "pdf"));
+                .thenReturn(new FileTypeValidationService.FileTypeValidationResult(true, "ok", "PDF论文", "pdf"));
         when(userService.isAdminUser("1")).thenReturn(false);
         when(userService.getOrganizationTag("TEAM_A")).thenReturn(orgTag);
 
@@ -97,7 +97,7 @@ class UploadControllerTest {
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
         when(fileTypeValidationService.validateFileType("test.pdf"))
-                .thenReturn(new FileTypeValidationService.FileTypeValidationResult(true, "ok", "PDF文档", "pdf"));
+                .thenReturn(new FileTypeValidationService.FileTypeValidationResult(true, "ok", "PDF论文", "pdf"));
         when(userService.isAdminUser("1")).thenReturn(true);
         when(uploadService.getUploadedChunks("md5", "1")).thenReturn(List.of(0));
         when(uploadService.getTotalChunks("md5", "1")).thenReturn(1);
@@ -158,11 +158,11 @@ class UploadControllerTest {
                 .thenReturn(Optional.of(fileUpload));
         when(uploadService.generateMergedObjectUrl("md5")).thenReturn("https://example.com/merged/md5");
 
-        var response = uploadController.mergeFile(new UploadController.MergeRequest("md5", "test.pdf"), "1");
+        var response = uploadController.mergeFile(new PaperUploadController.MergeRequest("md5", "test.pdf"), "1");
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals("文件已完成合并", response.getBody().get("message"));
-        assertEquals("https://example.com/merged/md5", ((Map<?, ?>) response.getBody().get("data")).get("object_url"));
+        assertEquals("论文 PDF 已完成合并", response.getBody().get("message"));
+        assertEquals("https://example.com/merged/md5", ((Map<?, ?>) response.getBody().get("data")).get("objectUrl"));
         verify(uploadService, never()).mergeChunks(anyString(), anyString(), anyString());
         verify(kafkaTemplate, never()).executeInTransaction(any());
     }

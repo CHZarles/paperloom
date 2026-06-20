@@ -3,6 +3,7 @@ package com.yizhaoqi.smartpai.utils;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
+import com.yizhaoqi.smartpai.config.PaperSearchIndex;
 import com.yizhaoqi.smartpai.model.FileUpload;
 import com.yizhaoqi.smartpai.repository.FileUploadRepository;
 import io.minio.CopyObjectArgs;
@@ -169,7 +170,7 @@ public class MinioMigrationUtil {
             // 1. 清空 ElasticSearch
             logger.info("清空 ElasticSearch 索引...");
             DeleteByQueryRequest deleteRequest = DeleteByQueryRequest.of(d -> d
-                .index("knowledge_base")
+                .index(PaperSearchIndex.INDEX_NAME)
                 .query(Query.of(q -> q.matchAll(m -> m)))
             );
             esClient.deleteByQuery(deleteRequest);

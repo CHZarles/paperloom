@@ -1,5 +1,6 @@
 server:
   port: ${SERVER_PORT:8081}
+  address: 0.0.0.0
 
 spring:
   # dev 用于本地源码启动，优先读取 `.env` 中的同名变量。
@@ -42,7 +43,7 @@ spring:
       properties:
         client.dns.lookup: use_all_dns_ips
     consumer:
-      group-id: file-processing-group
+      group-id: paper-processing-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
@@ -50,8 +51,8 @@ spring:
         spring.json.trusted.packages: "*"
         client.dns.lookup: use_all_dns_ips
     topic:
-      file-processing: file-processing-topic1
-      dlt: file-processing-dlt
+      paper-processing: paper-processing-topic
+      dlt: paper-processing-dlt
       # 本地单机 Kafka 默认建议 1 分区、1 副本
       partitions: ${SPRING_KAFKA_TOPIC_PARTITIONS:1}
       replication-factor: ${SPRING_KAFKA_TOPIC_REPLICATION_FACTOR:1}

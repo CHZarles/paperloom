@@ -1,0 +1,42 @@
+package com.yizhaoqi.smartpai.entity;
+
+import lombok.Data;
+
+/**
+ * Elasticsearch 中的论文 chunk 文档。
+ */
+@Data
+public class PaperChunkDocument {
+
+    private String id;
+    private String paperId;
+    private Integer chunkId;
+    private String textContent;
+    private Integer pageNumber;
+    private String anchorText;
+    private float[] vector;
+    private String modelVersion;
+    private String userId;
+    private String orgTag;
+    private boolean isPublic;
+
+    public PaperChunkDocument() {
+    }
+
+    public PaperChunkDocument(String id, String paperId, int chunkId, String content,
+                              Integer pageNumber, String anchorText,
+                              float[] vector, String modelVersion,
+                              String userId, String orgTag, boolean isPublic) {
+        this.id = id;
+        this.paperId = paperId;
+        this.chunkId = chunkId;
+        this.textContent = content;
+        this.pageNumber = pageNumber;
+        this.anchorText = anchorText;
+        this.vector = vector;
+        this.modelVersion = modelVersion;
+        this.userId = userId;
+        this.orgTag = orgTag;
+        this.isPublic = isPublic;
+    }
+}

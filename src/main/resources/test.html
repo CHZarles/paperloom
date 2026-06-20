@@ -628,35 +628,35 @@
         }
 
         // 添加合并分片的函数
-        async function mergeChunks(fileMD5, fileName) {
-            console.log(`开始合并文件分片: fileMD5=${fileMD5}, fileName=${fileName}`);
+        async function mergeChunks(paperId, paperTitle) {
+            console.log(`开始合并论文分片: paperId=${paperId}, paperTitle=${paperTitle}`);
             return new Promise((resolve, reject) => {
-                fetch('/api/v1/upload/merge', {
+                fetch('/api/v1/papers/upload/merge', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        fileMd5: fileMD5,
-                        fileName: fileName
+                        paperId: paperId,
+                        paperTitle: paperTitle
                     })
                 })
                 .then(response => {
                     if (!response.ok) {
                         return response.json().then(data => {
-                            console.error(`合并文件失败: HTTP状态码=${response.status}, 错误信息=`, data);
-                            throw new Error(data.error || `合并文件失败: ${response.status} ${response.statusText}`);
+                            console.error(`合并论文失败: HTTP状态码=${response.status}, 错误信息=`, data);
+                            throw new Error(data.error || `合并论文失败: ${response.status} ${response.statusText}`);
                         });
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('文件合并成功:', data);
+                    console.log('论文合并成功:', data);
                     resolve(data);
                 })
                 .catch(error => {
-                    console.error('文件合并过程中出错:', error);
+                    console.error('论文合并过程中出错:', error);
                     reject(error);
                 });
             });
@@ -666,10 +666,10 @@
         async function uploadFileInChunks(file) {
             const chunkSize = 5 * 1024 * 1024; // 5MB per chunk
             const totalChunks = Math.ceil(file.size / chunkSize);
-            const fileMD5 = await calculateMD5(file);
+            const paperId = await calculateMD5(file);
             const progressBar = document.getElementById('upload-progress');
             
-            showResponse('upload-response', `开始上传文件，共${totalChunks}个分片...`, true);
+            showResponse('upload-response', `开始上传论文 PDF，共${totalChunks}个分片...`, true);
             
             for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
                 const start = chunkIndex * chunkSize;
@@ -678,8 +678,8 @@
                 
                 try {
                     await uploadChunk(chunk, {
-                        fileMD5,
-                        fileName: file.name,
+                        paperId,
+                        paperTitle: file.name,
                         totalSize: file.size,
                         chunkIndex,
                         totalChunks
@@ -698,9 +698,9 @@
             }
             
             // 所有分片上传完成后，调用合并接口
-            showResponse('upload-response', '所有分片上传完成，开始合并文件...', true);
-            const mergeResult = await mergeChunks(fileMD5, file.name);
-            return mergeResult.object_url;
+            showResponse('upload-response', '所有分片上传完成，开始合并论文 PDF...', true);
+            const mergeResult = await mergeChunks(paperId, file.name);
+            return mergeResult.data?.object_url;
         }
 
         // 添加单个分片上传函数
@@ -708,6 +708,11 @@
             return new Promise((resolve, reject) => {
                 const formData = new FormData();
                 formData.append('file', chunk);
+                formData.append('paperId', metadata.paperId);
+                formData.append('chunkIndex', metadata.chunkIndex.toString());
+                formData.append('totalSize', metadata.totalSize.toString());
+                formData.append('paperTitle', metadata.paperTitle);
+                formData.append('totalChunks', metadata.totalChunks.toString());
                 
                 const xhr = new XMLHttpRequest();
                 
@@ -726,13 +731,8 @@
                 
                 xhr.onerror = () => reject(new Error('网络错误'));
                 
-                xhr.open('POST', '/api/v1/upload/chunk', true);
+                xhr.open('POST', '/api/v1/papers/upload/chunk', true);
                 xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                xhr.setRequestHeader('X-File-MD5', metadata.fileMD5);
-                xhr.setRequestHeader('X-Chunk-Index', metadata.chunkIndex.toString());
-                xhr.setRequestHeader('X-Total-Chunks', metadata.totalChunks.toString());
-                xhr.setRequestHeader('X-Total-Size', metadata.totalSize.toString());
-                xhr.setRequestHeader('X-File-Name', encodeURIComponent(metadata.fileName));
                 
                 xhr.send(formData);
             });

@@ -79,7 +79,7 @@ class UploadServiceTest {
                 () -> uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "TEAM_A", false, "1")
         );
 
-        assertEquals("文件已完成合并，不允许继续上传分片", exception.getMessage());
+        assertEquals("论文 PDF 已完成合并，不允许继续上传分片", exception.getMessage());
         verifyNoInteractions(chunkInfoRepository);
     }
 
@@ -100,7 +100,7 @@ class UploadServiceTest {
                 () -> uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "TEAM_A", false, "1")
         );
 
-        assertEquals("文件正在合并中，请稍后重试", exception.getMessage());
+        assertEquals("论文 PDF 正在合并中，请稍后重试", exception.getMessage());
         verifyNoInteractions(chunkInfoRepository);
     }
 

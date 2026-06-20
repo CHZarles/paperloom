@@ -23,6 +23,25 @@
 | 代码完整度 | **主路生产 + 支路 TODO**——核心业务严谨，辅助功能用 TODO 标注 |
 | 目录 | `youtube_scripts/build-from-scratch/` |
 | 命名 | `bfs-XX-<topic>.md`（与原 `01-` 前缀区分） |
+| **包名 / 项目名** | `com.charles.easyrag`（用户指定，区别于原 PaiSmart 的 `com.yizhaoqi.smartpai`） |
+
+### 2.1 项目命名约定
+
+| 项 | 值 |
+|---|---|
+| Maven `groupId` | `com.charles` |
+| Maven `artifactId` | `easyrag` |
+| 主启动类 | `com.charles.easyrag.EasyRagApplication` |
+| 默认包 | `com.charles.easyrag` |
+| 子包 | `com.charles.easyrag.{config, controller, service, repository, entity, model, client, consumer, handler, exception, utils}`（**与 PaiSmart 同构**） |
+| 数据库名 | `easy_rag`（MySQL） |
+| 默认 schema / index | `knowledge_base`（ES，**与 PaiSmart 同名便于对照**） |
+| 应用名（Spring） | `easy-rag` |
+| 端口 | `8080`（默认） |
+| Docker 镜像 | `charles/easy-rag:latest` |
+| README 项目名 | `EasyRAG`（标题用，方便阅读） |
+
+**所有 bfs-XX 教程代码统一用此包名**。bfs-01 的 `pom.xml` 与主类即确立此约定，后续集的所有 `package` 声明、`import` 全部从 `com.charles.easyrag.*` 起。
 
 ## 三、13 个里程碑 / 20 集 详细规划
 
@@ -30,8 +49,8 @@
 
 ### M0 — 项目骨架（1 集）
 - **bfs-01-spring-boot-skeleton.md**（对应分析集 01）
-  - 完整 pom.xml（Java 17、Spring Boot 3.4.2，groupId=`charles`，artifactId=`easyrag`）
-  - 主启动类（`charles.easyrag.EasyRagApplication`）、application.yml、dev/docker/prod 三 profile
+  - 完整 pom.xml（Java 17、Spring Boot 3.4.2）
+  - 主启动类、application.yml、dev/docker/prod 三 profile
   - 验证：`mvn spring-boot:run` 起得来
 
 ### M1 — 用户体系（3 集）

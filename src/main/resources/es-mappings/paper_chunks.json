@@ -1,7 +1,7 @@
 {
   "mappings": {
     "properties": {
-      "fileMd5": {
+      "paperId": {
         "type": "keyword"
       },
       "chunkId": {

@@ -111,7 +111,7 @@ public class DeepSeekClient {
             throw new IllegalArgumentException("摘要主题不能为空");
         }
         if (searchResults == null || searchResults.isEmpty()) {
-            String noResult = "未检索到与主题相关的知识库文档，无法生成基于知识库的摘要。";
+            String noResult = "未检索到与主题相关的论文片段，无法生成基于论文证据的摘要。";
             if (onChunk != null) {
                 onChunk.accept(noResult);
             }
@@ -154,7 +154,7 @@ public class DeepSeekClient {
             if (usageTracker == null || !usageTracker.settled) {
                 usageQuotaService.abortReservation(reservation);
             }
-            throw new RuntimeException("生成知识库摘要失败", e);
+            throw new RuntimeException("生成论文摘要失败", e);
         }
     }
 
@@ -277,13 +277,13 @@ public class DeepSeekClient {
         List<Map<String, String>> messages = new ArrayList<>();
         messages.add(Map.of(
                 "role", "system",
-                "content", "你是 generate_summary 工具内部使用的知识库摘要模型。"
-                        + "只基于提供的知识库片段生成结构化摘要，不要发起工具调用，不要把自己当作外层 ReAct 循环。"
-                        + "输出应包含：核心结论、关键依据、可执行建议或待确认问题。"
+                "content", "你是 generate_summary 工具内部使用的论文摘要模型。"
+                        + "只基于提供的论文片段生成结构化摘要，不要发起工具调用，不要把自己当作外层 ReAct 循环。"
+                        + "输出应包含：核心结论、关键依据、方法或实验信息、限制或待确认问题。"
         ));
         messages.add(Map.of(
                 "role", "user",
-                "content", "主题：" + topic + "\n\n知识库片段：\n" + buildSummaryContext(searchResults)
+                "content", "主题：" + topic + "\n\n论文片段：\n" + buildSummaryContext(searchResults)
         ));
         return messages;
     }
@@ -293,10 +293,10 @@ public class DeepSeekClient {
         for (int i = 0; i < searchResults.size(); i++) {
             SearchResult result = searchResults.get(i);
             context.append("[").append(i + 1).append("] ");
-            if (result.getFileName() != null && !result.getFileName().isBlank()) {
-                context.append("文件：").append(result.getFileName()).append("，");
+            if (result.getPaperTitle() != null && !result.getPaperTitle().isBlank()) {
+                context.append("论文：").append(result.getPaperTitle()).append("，");
             }
-            context.append("fileMd5=").append(result.getFileMd5())
+            context.append("paperId=").append(result.getPaperId())
                     .append("，chunkId=").append(result.getChunkId());
             if (result.getPageNumber() != null) {
                 context.append("，page=").append(result.getPageNumber());

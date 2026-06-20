@@ -57,14 +57,14 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
             // 需要用户ID但不需要资源权限检查的API路径
             // 这些API只需要用户身份验证，不需要对特定资源进行权限检查
             // 控制器方法通过@RequestAttribute("userId")获取用户ID
-            if (path.matches(".*/upload/chunk.*") ||
-                path.matches(".*/upload/merge.*") ||
-                path.matches(".*/upload/status.*") ||
-                path.matches(".*/documents/uploads.*") ||
-                path.matches(".*/documents/accessible.*") ||
-                path.matches(".*/documents/page-preview.*") ||
-                path.matches(".*/search/hybrid.*") ||
-                (path.matches(".*/documents/[a-fA-F0-9]{32}.*") &&
+            if (path.matches(".*/papers/upload/chunk.*") ||
+                path.matches(".*/papers/upload/merge.*") ||
+                path.matches(".*/papers/upload/status.*") ||
+                path.matches(".*/papers/uploads.*") ||
+                path.matches(".*/papers/accessible.*") ||
+                path.matches(".*/papers/page-preview.*") ||
+                path.matches(".*/papers/search/hybrid.*") ||
+                (path.matches(".*/papers/[a-fA-F0-9]{32}.*") &&
                         ("DELETE".equals(request.getMethod()) || "POST".equals(request.getMethod())))) {
                 
                 String operation = "未知操作";
@@ -75,17 +75,17 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                 } else if (path.contains("/status")) {
                     operation = "获取上传状态";
                 } else if (path.contains("/uploads")) {
-                    operation = "获取用户文档";
+                    operation = "获取用户论文";
                 } else if (path.contains("/accessible")) {
-                    operation = "获取可访问文档";
+                    operation = "获取可访问论文";
                 } else if (path.contains("/page-preview")) {
                     operation = "获取 PDF 单页预览";
                 } else if (path.contains("/search/hybrid")) {
                     operation = "混合检索";
-                } else if ("DELETE".equals(request.getMethod()) && path.matches(".*/documents/[a-fA-F0-9]{32}.*")) {
-                    operation = "删除文档";
-                } else if ("POST".equals(request.getMethod()) && path.matches(".*/documents/[a-fA-F0-9]{32}/reindex.*")) {
-                    operation = "重建文档索引";
+                } else if ("DELETE".equals(request.getMethod()) && path.matches(".*/papers/[a-fA-F0-9]{32}.*")) {
+                    operation = "删除论文";
+                } else if ("POST".equals(request.getMethod()) && path.matches(".*/papers/[a-fA-F0-9]{32}/reindex.*")) {
+                    operation = "重建论文索引";
                 }
                 
                 logger.info("处理{}请求: {}", operation, path);
@@ -225,32 +225,21 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
             return fileId;
         }
         
-        // 2. 文档删除资源: /api/v1/documents/{file_md5}
-        if (path.matches(".*/documents/[a-fA-F0-9]{32}.*")) {
-            String fileMd5 = path.replaceAll(".*/documents/([a-fA-F0-9]{32}).*", "$1");
-            logger.debug("检测到文档删除请求，提取文件MD5: {}", fileMd5);
-            return fileMd5;
+        // 2. 论文资源: /api/v1/papers/{paperId}
+        if (path.matches(".*/papers/[a-fA-F0-9]{32}.*")) {
+            String paperId = path.replaceAll(".*/papers/([a-fA-F0-9]{32}).*", "$1");
+            logger.debug("检测到论文资源请求，提取 paperId: {}", paperId);
+            return paperId;
         }
         
-        // 3. 文档资源: /api/v1/documents/{docId} (数字ID)
-        if (path.matches(".*/documents/\\d+.*")) {
-            String docId = path.replaceAll(".*/documents/(\\d+).*", "$1");
-            logger.debug("检测到文档资源请求，提取ID: {}", docId);
-            return docId;
-        }
-        
-        // 4. 上传分片: /api/v1/upload/chunk
-        if (path.matches(".*/upload/chunk.*")) {
-            String fileMd5 = request.getHeader("X-File-MD5");
-            logger.debug("检测到分片上传请求，从请求头提取文件MD5: {}", fileMd5);
-            return fileMd5;
-        }
-        
-        // 5. 知识库资源: /api/v1/knowledge/{resourceId}
-        if (path.matches(".*/knowledge/[^/]+.*")) {
-            String knowledgeId = path.replaceAll(".*/knowledge/([^/]+).*", "$1");
-            logger.debug("检测到知识库资源请求，提取ID: {}", knowledgeId);
-            return knowledgeId;
+        // 3. 上传分片: /api/v1/papers/upload/chunk
+        if (path.matches(".*/papers/upload/chunk.*")) {
+            String paperId = request.getHeader("X-Paper-ID");
+            if (paperId == null || paperId.isBlank()) {
+                paperId = request.getHeader("X-File-MD5");
+            }
+            logger.debug("检测到论文分片上传请求，从请求头提取 paperId: {}", paperId);
+            return paperId;
         }
         
         logger.debug("未匹配到任何资源类型，返回null");

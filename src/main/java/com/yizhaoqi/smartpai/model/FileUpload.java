@@ -8,8 +8,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 /**
- * 文件上传实体类
- * 用于表示文件上传的相关信息
+ * 论文 PDF 上传实体。
+ * 现有表名和列名保留 file 前缀，业务层统一把 file_md5 映射为 paperId。
  */
 @Data
 @Entity
@@ -24,8 +24,7 @@ public class FileUpload {
     public static final String VECTORIZATION_STATUS_FAILED = "FAILED";
 
     /**
-     * 文件的唯一标识符
-     * 使用文件的MD5值来唯一确定一个文件
+     * 论文 PDF 的内容哈希。
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,39 +34,35 @@ public class FileUpload {
     private String fileMd5;
 
     /**
-     * 文件的原始名称
-     * 用于记录上传时文件的名称
+     * 上传时的 PDF 文件名，当前作为 paperTitle。
      */
     private String fileName;
 
     /**
-     * 文件的总大小
-     * 以字节为单位记录文件的大小
+     * PDF 文件大小，单位为字节。
      */
     private long totalSize;
 
     /**
-     * 文件上传的状态
-     * 0表示文件正在上传中，1表示文件上传已完成，2表示文件正在合并中
+     * PDF 上传状态。
+     * 0表示正在上传，1表示已合并完成，2表示正在合并。
      */
     private int status; // 0-上传中 1-已完成 2-合并中
 
     /**
-     * 上传文件的用户的标识符
-     * 用于记录哪个用户上传了文件
+     * 上传论文的用户标识。
      */
     @Column(name = "user_id", length = 64, nullable = false)
     private String userId;
     
     /**
-     * 文件所属组织标签
-     * 用于标识文件归属的组织，支持基于组织标签的权限控制
+     * 论文所属组织标签。
      */
     @Column(name = "org_tag")
     private String orgTag;
 
     /**
-     * 文件是否公开
+     * 论文是否公开。
      * true表示所有用户可访问，false表示仅组织内用户可访问
      */
     @Column(name = "is_public", nullable = false)
@@ -92,15 +87,13 @@ public class FileUpload {
     private String vectorizationErrorMessage;
 
     /**
-     * 文件上传的创建时间
-     * 自动记录文件上传开始的时间
+     * PDF 上传开始时间。
      */
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     /**
-     * 文件合并完成的时间
-     * 当文件上传状态为已完成时，自动记录完成的时间
+     * PDF 合并完成时间。
      */
     @UpdateTimestamp
     private LocalDateTime mergedAt;

@@ -13,7 +13,15 @@ import org.springframework.test.context.ActiveProfiles;
  * - 优化前：逐个查询Redis，n个分片需要n次网络往返
  * - 优化后：一次性获取所有分片状态，只需要1次网络往返
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:paismart;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "paper.bootstrap.enabled=false",
+        "elasticsearch.init.enabled=false"
+})
 @ActiveProfiles("test")
 public class UploadServicePerformanceTest {
 

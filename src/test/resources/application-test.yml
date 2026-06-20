@@ -19,19 +19,19 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: file-processing-group
+      group-id: paper-processing-group
       auto-offset-reset: earliest
       properties:
         spring.json.trusted.packages: "*"
     topic:
-      file-processing: file-processing-topic1
-      dlt: file-processing-dlt
+      paper-processing: paper-processing-topic
+      dlt: paper-processing-dlt
 
 admin:
   bootstrap:
     enabled: false
 
-knowledge:
+paper:
   bootstrap:
     enabled: false
 

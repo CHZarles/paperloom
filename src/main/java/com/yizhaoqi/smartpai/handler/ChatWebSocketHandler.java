@@ -7,6 +7,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.springframework.web.util.UriComponentsBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.service.ChatHandler;
 import com.yizhaoqi.smartpai.service.ChatSessionRegistry;
@@ -19,6 +20,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private static final Logger logger = LoggerFactory.getLogger(ChatWebSocketHandler.class);
     private static final String HEARTBEAT_PING = "__chat_ping__";
     private static final String HEARTBEAT_PONG = "__chat_pong__";
+    private static final String ATTR_USER_ID = "userId";
     private final ChatHandler chatHandler;
     private final ChatSessionRegistry chatSessionRegistry;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -54,9 +56,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
 
         String userId = extractUserId(jwtToken);
-        chatSessionRegistry.registerSession(userId, session);
-        logger.info("WebSocket连接已建立，用户ID: {}，会话ID: {}，URI路径: {}",
-                userId, session.getId(), session.getUri().getPath());
+        String clientId = extractClientId(session);
+        // 连接建立时写入 attributes，关闭时优先从 attributes 取，避免 token 过期/URI 不可用导致无法注销。
+        try {
+            session.getAttributes().put(ATTR_USER_ID, userId);
+        } catch (Exception e) {
+            logger.debug("写入 WebSocket attributes 失败，会话ID: {}，原因: {}", session.getId(), e.getMessage());
+        }
+        chatSessionRegistry.registerSession(userId, clientId, session);
+        logger.info("WebSocket连接已建立，用户ID: {}，clientId: {}，会话ID: {}，URI路径: {}",
+                userId, chatSessionRegistry.getClientId(session), session.getId(), session.getUri().getPath());
 
         // 发送会话ID到前端
         try {
@@ -100,7 +109,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     if ("stop".equals(messageType) && INTERNAL_CMD_TOKEN.equals(internalToken)) {
                         // 处理停止指令
                         logger.info("收到有效的停止按钮指令，用户ID: {}，会话ID: {}", userId, session.getId());
-                        chatHandler.stopResponse(userId, generationId);
+                        chatHandler.stopResponse(userId, generationId, session);
                         return;
                     }
                     
@@ -126,7 +135,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         String userId = "unknown";
         try {
-            userId = extractUserId(extractToken(session));
+            Object cachedUserId = session.getAttributes().get(ATTR_USER_ID);
+            if (cachedUserId instanceof String cached && !cached.isBlank()) {
+                userId = cached;
+            } else {
+                userId = extractUserId(extractToken(session));
+            }
             chatSessionRegistry.unregisterSession(userId, session);
         } catch (Exception e) {
             logger.debug("关闭连接时无法解析用户信息，会话ID: {}", session.getId());
@@ -159,6 +173,17 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         String path = session.getUri().getPath();
         String[] segments = path.split("/");
         return segments[segments.length - 1];
+    }
+
+    private String extractClientId(WebSocketSession session) {
+        if (session.getUri() == null) {
+            return null;
+        }
+        String clientId = UriComponentsBuilder.fromUri(session.getUri())
+                .build()
+                .getQueryParams()
+                .getFirst("clientId");
+        return clientId == null || clientId.isBlank() ? null : clientId.trim();
     }
 
     private void sendErrorMessage(WebSocketSession session, String errorMessage) {

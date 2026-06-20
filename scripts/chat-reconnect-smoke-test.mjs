@@ -12,7 +12,8 @@ const DEFAULTS = {
   activeCheckDelayMs: 800,
   reconnectDelayMs: 1200,
   settleAfterCompletionMs: 500,
-  timeoutMs: 30000
+  timeoutMs: 30000,
+  clientId: `chat-reconnect-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 };
 
 function parseArgs(argv) {
@@ -62,6 +63,9 @@ function parseArgs(argv) {
       case 'timeout-ms':
         config.timeoutMs = Number.parseInt(next, 10);
         break;
+      case 'client-id':
+        config.clientId = next;
+        break;
       default:
         throw new Error(`unknown option: --${key}`);
     }
@@ -109,6 +113,12 @@ function logStep(label, payload) {
   console.log(`[chat-reconnect] ${label}${suffix}`);
 }
 
+function buildWsUrl(token, config) {
+  const base = `${config.wsBase}/${token}`;
+  const separator = base.includes('?') ? '&' : '?';
+  return `${base}${separator}clientId=${encodeURIComponent(config.clientId)}`;
+}
+
 async function waitForSocketClose(socket) {
   if (socket.readyState === WebSocket.CLOSED) return;
   await new Promise(resolve => {
@@ -124,7 +134,7 @@ async function runPrimarySocket(token, config) {
   let closeScheduled = false;
   let socketError = null;
 
-  const socket = new WebSocket(`${config.wsBase}/${token}`);
+  const socket = new WebSocket(buildWsUrl(token, config));
   const opened = new Promise((resolve, reject) => {
     socket.addEventListener('open', resolve, { once: true });
     socket.addEventListener('error', reject, { once: true });
@@ -196,7 +206,7 @@ async function runReconnectSocket(token, generationId, config) {
   let completion = null;
   let socketError = null;
 
-  const socket = new WebSocket(`${config.wsBase}/${token}`);
+  const socket = new WebSocket(buildWsUrl(token, config));
 
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -277,6 +287,7 @@ async function main() {
     apiBase: config.apiBase,
     wsBase: config.wsBase,
     username: config.username,
+    clientId: config.clientId,
     disconnectAfterChunks: config.disconnectAfterChunks,
     timeoutMs: config.timeoutMs
   });

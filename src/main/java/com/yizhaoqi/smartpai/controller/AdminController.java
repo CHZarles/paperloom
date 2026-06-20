@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,7 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 管理员控制器，提供管理知识库、查看系统状态和监控用户活动的接口
+ * 管理员控制器，提供系统状态、用户活动、用量和配置管理接口。
  */
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -102,57 +101,6 @@ public class AdminController {
             monitor.end("获取用户列表失败: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("code", 500, "message", "Failed to get users: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * 添加知识库文档
-     */
-    @PostMapping("/knowledge/add")
-    public ResponseEntity<?> addKnowledgeDocument(
-            @RequestHeader("Authorization") String token,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("description") String description) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            // 这里应该调用知识库管理服务来处理文档
-            // knowledgeService.addDocument(file, description);
-            
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "文档已成功添加到知识库");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_ADD_KNOWLEDGE", adminUsername, "添加知识库文档失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "添加文档失败: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * 删除知识库文档
-     */
-    @DeleteMapping("/knowledge/{documentId}")
-    public ResponseEntity<?> deleteKnowledgeDocument(
-            @RequestHeader("Authorization") String token,
-            @PathVariable("documentId") String documentId) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            // 这里应该调用知识库管理服务来删除文档
-            // knowledgeService.deleteDocument(documentId);
-            
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "文档已成功从知识库中删除");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_DELETE_KNOWLEDGE", adminUsername, "删除知识库文档失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "删除文档失败: " + e.getMessage()));
         }
     }
 

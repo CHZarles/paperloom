@@ -3,7 +3,8 @@ package com.yizhaoqi.smartpai.service;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.yizhaoqi.smartpai.client.EmbeddingClient;
-import com.yizhaoqi.smartpai.entity.EsDocument;
+import com.yizhaoqi.smartpai.config.PaperSearchIndex;
+import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.SearchResult;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.exception.CustomException;
@@ -25,13 +26,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 混合搜索服务，结合文本匹配和向量相似度搜索
- * 支持权限过滤，确保用户只能搜索其有权限访问的文档
+ * 论文混合检索服务，结合文本匹配和向量相似度搜索。
  */
 @Service
 public class HybridSearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(HybridSearchService.class);
+    private static final double MIN_RELEVANCE_SCORE = 0.3d;
 
     @Autowired
     private ElasticsearchClient esClient;
@@ -52,8 +53,7 @@ public class HybridSearchService {
     private FileUploadRepository fileUploadRepository;
 
     /**
-     * 使用文本匹配和向量相似度进行混合搜索，支持权限过滤
-     * 该方法确保用户只能搜索其有权限访问的文档（自己的文档、公开文档、所属组织的文档）
+     * 使用文本匹配和向量相似度进行论文混合搜索，支持权限过滤。
      *
      * @param query  查询字符串
      * @param userId 用户ID
@@ -83,8 +83,8 @@ public class HybridSearchService {
 
             logger.debug("向量生成成功，开始执行混合搜索 KNN");
 
-            SearchResponse<EsDocument> response = esClient.search(s -> {
-                        s.index("knowledge_base");
+            SearchResponse<PaperChunkDocument> response = esClient.search(s -> {
+                        s.index(PaperSearchIndex.INDEX_NAME);
                         // KNN 召回
                         int recallK = topK * 30; // KNN 召回窗口
                         s.knn(kn -> kn
@@ -97,9 +97,9 @@ public class HybridSearchService {
                         s.query(q -> q.bool(b -> b
                                 .must(mst -> mst.match(m -> m.field("textContent").query(query)))
                                 .filter(f -> f.bool(bf -> bf
-                                        // 条件1: 用户可访问自己的文档
+                                        // 条件1: 用户可访问自己的论文
                                         .should(s1 -> s1.term(t -> t.field("userId").value(userDbId)))
-                                        // 条件2: 公开文档
+                                        // 条件2: 公开论文
                                         .should(s2 -> s2.term(t -> t.field("public").value(true)))
                                         // 条件3: 组织标签
                                         .should(s3 -> {
@@ -132,19 +132,20 @@ public class HybridSearchService {
                         );
                         s.size(topK);
                         return s;
-                    }, EsDocument.class);
+                    }, PaperChunkDocument.class);
 
             logger.debug("Elasticsearch查询执行完成，命中数量: {}, 最大分数: {}", 
                 response.hits().total().value(), response.hits().maxScore());
 
             List<SearchResult> results = response.hits().hits().stream()
+                    .filter(hit -> hit.score() == null || hit.score() >= MIN_RELEVANCE_SCORE)
                     .map(hit -> {
                         assert hit.source() != null;
-                        logger.debug("搜索结果 - 文件: {}, 块: {}, 分数: {}, 内容: {}", 
-                            hit.source().getFileMd5(), hit.source().getChunkId(), hit.score(), 
+                        logger.debug("搜索结果 - 论文: {}, chunk: {}, 分数: {}, 内容: {}",
+                            hit.source().getPaperId(), hit.source().getChunkId(), hit.score(),
                             hit.source().getTextContent().substring(0, Math.min(50, hit.source().getTextContent().length())));
                         return new SearchResult(
-                                hit.source().getFileMd5(),
+                                hit.source().getPaperId(),
                                 hit.source().getChunkId(),
                                 hit.source().getTextContent(),
                                 hit.score(),
@@ -161,7 +162,7 @@ public class HybridSearchService {
                     .toList();
 
             logger.debug("返回搜索结果数量: {}", results.size());
-            attachFileNames(results);
+            attachPaperTitles(results);
             return results;
         } catch (Exception e) {
             logger.error("带权限的搜索失败", e);
@@ -183,8 +184,8 @@ public class HybridSearchService {
         try {
             logger.debug("开始执行纯文本搜索，用户数据库ID: {}, 标签: {}", userDbId, userEffectiveTags);
 
-            SearchResponse<EsDocument> response = esClient.search(s -> s
-                    .index("knowledge_base")
+            SearchResponse<PaperChunkDocument> response = esClient.search(s -> s
+                    .index(PaperSearchIndex.INDEX_NAME)
                     .query(q -> q
                             .bool(b -> b
                                     // 匹配内容相关性
@@ -240,7 +241,7 @@ public class HybridSearchService {
                     )
                     .minScore(0.3d)
                     .size(topK),
-                    EsDocument.class
+                    PaperChunkDocument.class
             );
 
             logger.debug("纯文本查询执行完成，命中数量: {}, 最大分数: {}", 
@@ -249,11 +250,11 @@ public class HybridSearchService {
             List<SearchResult> results = response.hits().hits().stream()
                     .map(hit -> {
                         assert hit.source() != null;
-                        logger.debug("纯文本搜索结果 - 文件: {}, 块: {}, 分数: {}, 内容: {}", 
-                            hit.source().getFileMd5(), hit.source().getChunkId(), hit.score(), 
+                        logger.debug("纯文本搜索结果 - 论文: {}, chunk: {}, 分数: {}, 内容: {}",
+                            hit.source().getPaperId(), hit.source().getChunkId(), hit.score(),
                             hit.source().getTextContent().substring(0, Math.min(50, hit.source().getTextContent().length())));
                         return new SearchResult(
-                                hit.source().getFileMd5(),
+                                hit.source().getPaperId(),
                                 hit.source().getChunkId(),
                                 hit.source().getTextContent(),
                                 hit.score(),
@@ -270,7 +271,7 @@ public class HybridSearchService {
                     .toList();
 
             logger.debug("返回纯文本搜索结果数量: {}", results.size());
-            attachFileNames(results);
+            attachPaperTitles(results);
             return results;
         } catch (Exception e) {
             logger.error("纯文本搜索失败", e);
@@ -279,7 +280,7 @@ public class HybridSearchService {
     }
 
     /**
-     * 原始搜索方法，不包含权限过滤，保留向后兼容性
+     * 系统级搜索方法，不包含用户权限过滤。
      */
     public List<SearchResult> search(String query, int topK) {
         try {
@@ -295,8 +296,8 @@ public class HybridSearchService {
                 return textOnlySearch(query, topK);
             }
 
-            SearchResponse<EsDocument> response = esClient.search(s -> {
-                        s.index("knowledge_base");
+            SearchResponse<PaperChunkDocument> response = esClient.search(s -> {
+                        s.index(PaperSearchIndex.INDEX_NAME);
                         int recallK = topK * 30;
                         s.knn(kn -> kn
                                 .field("vector")
@@ -323,13 +324,14 @@ public class HybridSearchService {
                         );
                         s.size(topK);
                         return s;
-                    }, EsDocument.class);
+                    }, PaperChunkDocument.class);
 
             return response.hits().hits().stream()
+                    .filter(hit -> hit.score() == null || hit.score() >= MIN_RELEVANCE_SCORE)
                     .map(hit -> {
                         assert hit.source() != null;
                         return new SearchResult(
-                                hit.source().getFileMd5(),
+                                hit.source().getPaperId(),
                                 hit.source().getChunkId(),
                                 hit.source().getTextContent(),
                                 hit.score(),
@@ -361,23 +363,24 @@ public class HybridSearchService {
      * 仅使用文本匹配的搜索方法
      */
     private List<SearchResult> textOnlySearch(String query, int topK) throws Exception {
-        SearchResponse<EsDocument> response = esClient.search(s -> s
-                .index("knowledge_base")
+        SearchResponse<PaperChunkDocument> response = esClient.search(s -> s
+                .index(PaperSearchIndex.INDEX_NAME)
                 .query(q -> q
                         .match(m -> m
                                 .field("textContent")
                                 .query(query)
                         )
                 )
+                .minScore(MIN_RELEVANCE_SCORE)
                 .size(topK),
-                EsDocument.class
+                PaperChunkDocument.class
         );
 
         return response.hits().hits().stream()
                 .map(hit -> {
                     assert hit.source() != null;
                     return new SearchResult(
-                            hit.source().getFileMd5(),
+                            hit.source().getPaperId(),
                             hit.source().getChunkId(),
                             hit.source().getTextContent(),
                             hit.score(),
@@ -477,22 +480,20 @@ public class HybridSearchService {
         }
     }
 
-    private void attachFileNames(List<SearchResult> results) {
+    private void attachPaperTitles(List<SearchResult> results) {
         if (results == null || results.isEmpty()) {
             return;
         }
         try {
-            // 收集所有唯一的 fileMd5
-            Set<String> md5Set = results.stream()
-                    .map(SearchResult::getFileMd5)
+            Set<String> paperIds = results.stream()
+                    .map(SearchResult::getPaperId)
                     .collect(Collectors.toSet());
-            List<FileUpload> uploads = fileUploadRepository.findByFileMd5In(new java.util.ArrayList<>(md5Set));
-            Map<String, String> md5ToName = uploads.stream()
+            List<FileUpload> uploads = fileUploadRepository.findByFileMd5In(new java.util.ArrayList<>(paperIds));
+            Map<String, String> paperIdToTitle = uploads.stream()
                     .collect(Collectors.toMap(FileUpload::getFileMd5, FileUpload::getFileName, (existing, replacement) -> existing));
-            // 填充文件名
-            results.forEach(r -> r.setFileName(md5ToName.get(r.getFileMd5())));
+            results.forEach(r -> r.setPaperTitle(paperIdToTitle.get(r.getPaperId())));
         } catch (Exception e) {
-            logger.error("补充文件名失败", e);
+            logger.error("补充论文标题失败", e);
         }
     }
 }

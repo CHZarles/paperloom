@@ -1,10 +1,18 @@
 import { useWebSocket } from '@vueuse/core';
 import { request } from '@/service/request';
 
+function createChatClientId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const NON_RETRYABLE_CLOSE_CODES = new Set([1002, 1003, 1007, 1008]);
   const WS_HEARTBEAT_PING = '__chat_ping__';
   const WS_HEARTBEAT_PONG = '__chat_pong__';
+  const chatClientId = createChatClientId();
 
   const conversationId = ref<string>('');
   const input = ref<Api.Chat.Input>({ message: '' });
@@ -230,7 +238,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     if (!token) {
       return undefined;
     }
-    return `/proxy-ws/chat/${encodeURIComponent(token)}`;
+    return `/proxy-ws/chat/${encodeURIComponent(token)}?clientId=${encodeURIComponent(chatClientId)}`;
   });
 
   const {

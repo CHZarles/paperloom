@@ -2,7 +2,7 @@ package com.yizhaoqi.smartpai.config;
 
 import com.yizhaoqi.smartpai.model.FileUpload;
 import com.yizhaoqi.smartpai.model.User;
-import com.yizhaoqi.smartpai.repository.DocumentVectorRepository;
+import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.FileUploadRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import com.yizhaoqi.smartpai.service.ElasticsearchService;
@@ -33,33 +33,33 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 启动时导入内置知识库文档，确保新环境首次启动即可进行 RAG 问答。
+ * 启动时导入内置论文 PDF，确保新环境首次启动即可进行 PaperLoom 问答。
  */
 @Component
 @Order(3)
-@ConditionalOnProperty(name = "knowledge.bootstrap.enabled", havingValue = "true", matchIfMissing = true)
-public class BootstrapKnowledgeInitializer implements CommandLineRunner {
+@ConditionalOnProperty(name = "paper.bootstrap.enabled", havingValue = "true", matchIfMissing = true)
+public class BootstrapPaperInitializer implements CommandLineRunner {
 
-    private static final Logger logger = LoggerFactory.getLogger(BootstrapKnowledgeInitializer.class);
+    private static final Logger logger = LoggerFactory.getLogger(BootstrapPaperInitializer.class);
 
     private final ParseService parseService;
     private final VectorizationService vectorizationService;
     private final ElasticsearchService elasticsearchService;
     private final FileUploadRepository fileUploadRepository;
-    private final DocumentVectorRepository documentVectorRepository;
+    private final PaperTextChunkRepository paperTextChunkRepository;
     private final MinioClient minioClient;
     private final UserRepository userRepository;
 
-    @Value("${knowledge.bootstrap.path:docs/paismart.pdf}")
+    @Value("${paper.bootstrap.path:docs/paismart.pdf}")
     private String bootstrapDocumentPath;
 
-    @Value("${knowledge.bootstrap.org-tag:default}")
+    @Value("${paper.bootstrap.org-tag:default}")
     private String bootstrapOrgTag;
 
-    @Value("${knowledge.bootstrap.public:true}")
+    @Value("${paper.bootstrap.public:true}")
     private boolean bootstrapPublic;
 
-    @Value("${knowledge.bootstrap.user-id:system-bootstrap}")
+    @Value("${paper.bootstrap.user-id:system-bootstrap}")
     private String bootstrapUserId;
 
     @Value("${minio.bucketName:uploads}")
@@ -68,18 +68,18 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
     @Value("${admin.bootstrap.username:}")
     private String adminUsername;
 
-    public BootstrapKnowledgeInitializer(ParseService parseService,
-                                         VectorizationService vectorizationService,
-                                         ElasticsearchService elasticsearchService,
-                                         FileUploadRepository fileUploadRepository,
-                                         DocumentVectorRepository documentVectorRepository,
-                                         MinioClient minioClient,
-                                         UserRepository userRepository) {
+    public BootstrapPaperInitializer(ParseService parseService,
+                                     VectorizationService vectorizationService,
+                                     ElasticsearchService elasticsearchService,
+                                     FileUploadRepository fileUploadRepository,
+                                     PaperTextChunkRepository paperTextChunkRepository,
+                                     MinioClient minioClient,
+                                     UserRepository userRepository) {
         this.parseService = parseService;
         this.vectorizationService = vectorizationService;
         this.elasticsearchService = elasticsearchService;
         this.fileUploadRepository = fileUploadRepository;
-        this.documentVectorRepository = documentVectorRepository;
+        this.paperTextChunkRepository = paperTextChunkRepository;
         this.minioClient = minioClient;
         this.userRepository = userRepository;
     }
@@ -88,7 +88,7 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         Path documentPath = resolveDocumentPath();
         if (!Files.isRegularFile(documentPath)) {
-            logger.warn("启动知识库文档不存在，跳过导入: {}", documentPath);
+            logger.warn("启动论文 PDF 不存在，跳过导入: {}", documentPath);
             return;
         }
 
@@ -100,7 +100,7 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
         cleanupBootstrapHistory(fileName, fileMd5, ownerUserId);
 
         if (isBootstrapDocumentReady(fileMd5, fileName, ownerUserId)) {
-            logger.info("启动知识库文档已完成导入，跳过重复处理: fileName={}, fileMd5={}", fileName, fileMd5);
+            logger.info("启动论文 PDF 已完成导入，跳过重复处理: fileName={}, paperId={}", fileName, fileMd5);
             return;
         }
 
@@ -131,12 +131,12 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
         }
 
         staleFileMd5s.forEach(staleFileMd5 -> {
-            logger.info("清理旧版本启动知识库文档: oldFileMd5={}, currentFileMd5={}", staleFileMd5, currentFileMd5);
+            logger.info("清理旧版本启动论文 PDF: oldPaperId={}, currentPaperId={}", staleFileMd5, currentFileMd5);
             cleanupBootstrapData(staleFileMd5, ownerUserId);
         });
 
         if (!duplicateCurrentRecords.isEmpty()) {
-            logger.warn("检测到重复的启动知识库文件记录，删除多余记录: fileName={}, fileMd5={}, duplicates={}",
+            logger.warn("检测到重复的启动论文记录，删除多余记录: fileName={}, paperId={}, duplicates={}",
                     fileName, currentFileMd5, duplicateCurrentRecords.size());
             fileUploadRepository.deleteAll(duplicateCurrentRecords);
         }
@@ -145,9 +145,9 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
     private boolean isBootstrapDocumentReady(String fileMd5, String fileName, String ownerUserId) {
         Optional<FileUpload> existingFile = fileUploadRepository.findFirstByFileMd5AndUserIdOrderByCreatedAtDesc(fileMd5, ownerUserId);
         long fileRecordCount = fileUploadRepository.countByFileMd5AndUserId(fileMd5, ownerUserId);
-        long vectorCount = documentVectorRepository.countByFileMd5(fileMd5);
-        long pageAwareVectorCount = documentVectorRepository.countByFileMd5AndPageNumberIsNotNull(fileMd5);
-        long esCount = elasticsearchService.countByFileMd5(fileMd5);
+        long vectorCount = paperTextChunkRepository.countByPaperId(fileMd5);
+        long pageAwareVectorCount = paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5);
+        long esCount = elasticsearchService.countByPaperId(fileMd5);
 
         if (existingFile.isEmpty()) {
             return false;
@@ -164,14 +164,14 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
             return true;
         }
 
-        logger.info("启动知识库文档数据不完整、元数据已变化或存在重复记录，准备重新导入: fileMd5={}, fileRecords={}, vectors={}, pageAwareVectors={}, esDocs={}",
+        logger.info("启动论文数据不完整、元数据已变化或存在重复记录，准备重新导入: paperId={}, fileRecords={}, vectors={}, pageAwareVectors={}, esDocs={}",
                 fileMd5, fileRecordCount, vectorCount, pageAwareVectorCount, esCount);
         return false;
     }
 
     private void importBootstrapDocument(Path documentPath, String fileMd5, String fileName, long totalSize, String ownerUserId)
             throws IOException, TikaException {
-        logger.info("开始导入启动知识库文档: path={}, fileMd5={}", documentPath, fileMd5);
+        logger.info("开始导入启动论文 PDF: path={}, paperId={}", documentPath, fileMd5);
 
         uploadToMinio(documentPath, fileMd5);
 
@@ -196,7 +196,7 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
             fileUpload.setMergedAt(LocalDateTime.now());
             fileUploadRepository.save(fileUpload);
 
-            logger.info("启动知识库文档导入完成: fileName={}, fileMd5={}", fileName, fileMd5);
+            logger.info("启动论文 PDF 导入完成: fileName={}, paperId={}", fileName, fileMd5);
         } catch (Exception e) {
             cleanupBootstrapData(fileMd5, ownerUserId);
             throw e;
@@ -218,7 +218,7 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
                             .contentType(contentType)
                             .build()
             );
-            logger.info("启动知识库文档已写入 MinIO: bucket={}, object={}", minioBucketName, objectName);
+            logger.info("启动论文 PDF 已写入 MinIO: bucket={}, object={}", minioBucketName, objectName);
         } catch (Exception e) {
             throw new RuntimeException("写入 MinIO 失败", e);
         }
@@ -233,25 +233,25 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
                             .build()
             );
         } catch (Exception e) {
-            logger.warn("清理启动知识库 MinIO 文件失败: fileMd5={}, error={}", fileMd5, e.getMessage());
+            logger.warn("清理启动论文 MinIO 文件失败: paperId={}, error={}", fileMd5, e.getMessage());
         }
 
         try {
-            elasticsearchService.deleteByFileMd5(fileMd5);
+            elasticsearchService.deleteByPaperId(fileMd5);
         } catch (Exception e) {
-            logger.warn("清理启动知识库 ES 数据失败: fileMd5={}, error={}", fileMd5, e.getMessage());
+            logger.warn("清理启动论文 ES 数据失败: paperId={}, error={}", fileMd5, e.getMessage());
         }
 
         try {
-            documentVectorRepository.deleteByFileMd5(fileMd5);
+            paperTextChunkRepository.deleteByPaperId(fileMd5);
         } catch (Exception e) {
-            logger.warn("清理启动知识库分块数据失败: fileMd5={}, error={}", fileMd5, e.getMessage());
+            logger.warn("清理启动论文 chunk 数据失败: paperId={}, error={}", fileMd5, e.getMessage());
         }
 
         try {
             fileUploadRepository.deleteByFileMd5AndUserId(fileMd5, ownerUserId);
         } catch (Exception e) {
-            logger.warn("清理启动知识库文件记录失败: fileMd5={}, error={}", fileMd5, e.getMessage());
+            logger.warn("清理启动论文记录失败: paperId={}, error={}", fileMd5, e.getMessage());
         }
     }
 
@@ -259,12 +259,12 @@ public class BootstrapKnowledgeInitializer implements CommandLineRunner {
         Optional<User> adminUser = findAdminUser();
         if (adminUser.isPresent()) {
             String ownerUserId = String.valueOf(adminUser.get().getId());
-            logger.info("启动知识库文档归属管理员账号: username={}, userId={}",
+            logger.info("启动论文 PDF 归属管理员账号: username={}, userId={}",
                     adminUser.get().getUsername(), ownerUserId);
             return ownerUserId;
         }
 
-        logger.warn("未找到管理员账号，启动知识库文档回退使用 userId={}", bootstrapUserId);
+        logger.warn("未找到管理员账号，启动论文 PDF 回退使用 userId={}", bootstrapUserId);
         return bootstrapUserId;
     }
 

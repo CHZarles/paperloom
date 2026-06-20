@@ -27,11 +27,11 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${spring.kafka.topic.file-processing}")
-    private String fileProcessingTopic;
+    @Value("${spring.kafka.topic.paper-processing}")
+    private String paperProcessingTopic;
 
     @Value("${spring.kafka.topic.dlt}")
-    private String fileProcessingDltTopic;
+    private String paperProcessingDltTopic;
 
     @Value("${spring.kafka.topic.partitions:1}")
     private int topicPartitions;
@@ -40,7 +40,7 @@ public class KafkaConfig {
     private short topicReplicationFactor;
 
     @Value("${spring.kafka.consumer.group-id}")
-    private String fileProcessingGroupId;
+    private String paperProcessingGroupId;
 
     @Value("${spring.kafka.consumer.auto-offset-reset}")
     private String autoOffsetReset;
@@ -49,25 +49,25 @@ public class KafkaConfig {
     private String trustedPackages;
 
 
-    public String getFileProcessingTopic() {
-        return fileProcessingTopic;
+    public String getPaperProcessingTopic() {
+        return paperProcessingTopic;
     }
 
-    public String getFileProcessingGroupId() {
-        return fileProcessingGroupId;
+    public String getPaperProcessingGroupId() {
+        return paperProcessingGroupId;
     }
 
     @Bean
-    public NewTopic fileProcessingNewTopic() {
-        return TopicBuilder.name(fileProcessingTopic)
+    public NewTopic paperProcessingNewTopic() {
+        return TopicBuilder.name(paperProcessingTopic)
                 .partitions(topicPartitions)
                 .replicas(topicReplicationFactor)
                 .build();
     }
 
     @Bean
-    public NewTopic fileProcessingDltNewTopic() {
-        return TopicBuilder.name(fileProcessingDltTopic)
+    public NewTopic paperProcessingDltNewTopic() {
+        return TopicBuilder.name(paperProcessingDltTopic)
                 .partitions(topicPartitions)
                 .replicas(topicReplicationFactor)
                 .build();
@@ -87,7 +87,7 @@ public class KafkaConfig {
 
         DefaultKafkaProducerFactory<String, Object> factory = new DefaultKafkaProducerFactory<>(config);
         // 设置事务前缀，启用事务能力
-        factory.setTransactionIdPrefix("file-upload-tx-");
+        factory.setTransactionIdPrefix("paper-upload-tx-");
         return factory;
     }
 
@@ -101,7 +101,7 @@ public class KafkaConfig {
         Map<String, Object> config = new HashMap<>();
 //        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false); // 禁用自动提交偏移量
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, fileProcessingGroupId);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, paperProcessingGroupId);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         config.put(JsonDeserializer.TRUSTED_PACKAGES, trustedPackages);
@@ -113,10 +113,10 @@ public class KafkaConfig {
     public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
             ConsumerFactory<String, Object> consumerFactory,
             KafkaTemplate<String, Object> kafkaTemplate) {
-        // 当重试失败后，消息发送至 file-processing-dlt 主题，分区与原消息保持一致
+        // 当重试失败后，消息发送至 paper-processing-dlt 主题，分区与原消息保持一致
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 kafkaTemplate,
-                (record, ex) -> new TopicPartition(fileProcessingDltTopic, record.partition()));
+                (record, ex) -> new TopicPartition(paperProcessingDltTopic, record.partition()));
 
         // 固定退避策略：每 3 秒重试一次，最多重试 4 次（加首次共 5 次）
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(3000L, 4));

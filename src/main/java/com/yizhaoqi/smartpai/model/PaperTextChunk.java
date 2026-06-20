@@ -6,19 +6,19 @@ import lombok.Data;
 import java.sql.Blob;
 
 /**
- * 文档向量实体类
- * 用于存储文本分块和相关元数据
+ * 论文文本 chunk 实体。
+ * 存储 PDF 解析后的 chunk 文本、页码和证据锚点。
  */
 @Data
 @Entity
-@Table(name = "document_vectors")
-public class DocumentVector {
+@Table(name = "paper_text_chunks")
+public class PaperTextChunk {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long vectorId;
 
-    @Column(nullable = false, length = 32)
-    private String fileMd5;
+    @Column(name = "paper_id", nullable = false, length = 32)
+    private String paperId;
 
     @Column(nullable = false)
     private Integer chunkId;
@@ -42,13 +42,13 @@ public class DocumentVector {
     private String userId;
     
     /**
-     * 文件所属组织标签
+     * 论文所属组织标签
      */
     @Column(name = "org_tag", length = 50)
     private String orgTag;
     
     /**
-     * 文件是否公开
+     * 论文是否公开
      */
     @Column(name = "is_public", nullable = false)
     private boolean isPublic = false;

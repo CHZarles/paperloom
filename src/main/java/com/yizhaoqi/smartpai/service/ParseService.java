@@ -1,7 +1,7 @@
 package com.yizhaoqi.smartpai.service;
 
-import com.yizhaoqi.smartpai.model.DocumentVector;
-import com.yizhaoqi.smartpai.repository.DocumentVectorRepository;
+import com.yizhaoqi.smartpai.model.PaperTextChunk;
+import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.tika.exception.TikaException;
@@ -38,7 +38,7 @@ public class ParseService {
     private static final int PDF_BOILERPLATE_MAX_LENGTH = 120;
 
     @Autowired
-    private DocumentVectorRepository documentVectorRepository;
+    private PaperTextChunkRepository paperTextChunkRepository;
 
     @Autowired
     private UsageQuotaService usageQuotaService;
@@ -66,33 +66,33 @@ public class ParseService {
     }
 
     /**
-     * 以流式方式解析文件，将内容分块并保存到数据库，以避免OOM。
-     * 采用"父文档-子切片"策略。
+     * 解析论文 PDF，将内容分块并保存到数据库，以避免 OOM。
+     * 采用父文本块到子 chunk 的切分策略。
      *
-     * @param fileMd5    文件的MD5哈希值，用于唯一标识文件
-     * @param fileStream 文件输入流，用于读取文件内容
+     * @param paperId    论文标识，当前使用 PDF 内容哈希
+     * @param fileStream PDF 输入流
      * @param userId     上传用户ID
      * @param orgTag     组织标签
      * @param isPublic   是否公开
-     * @throws IOException   如果文件读取过程中发生错误
-     * @throws TikaException 如果文件解析过程中发生错误
+     * @throws IOException   如果PDF 读取过程中发生错误
+     * @throws TikaException 如果PDF 解析过程中发生错误
      */
-    public void parseAndSave(String fileMd5, InputStream fileStream,
+    public void parseAndSave(String paperId, InputStream fileStream,
             String userId, String orgTag, boolean isPublic) throws IOException, TikaException {
-        logger.info("开始流式解析文件，fileMd5: {}, userId: {}, orgTag: {}, isPublic: {}",
-                fileMd5, userId, orgTag, isPublic);
+        logger.info("开始解析论文 PDF，paperId: {}, userId: {}, orgTag: {}, isPublic: {}",
+                paperId, userId, orgTag, isPublic);
         
         checkMemoryThreshold();
 
         try (BufferedInputStream bufferedStream = new BufferedInputStream(fileStream, bufferSize)) {
             if (isPdfDocument(bufferedStream)) {
-                parsePdfAndSave(fileMd5, bufferedStream, userId, orgTag, isPublic);
-                logger.info("PDF 文件页级解析和入库完成，fileMd5: {}", fileMd5);
+                parsePdfAndSave(paperId, bufferedStream, userId, orgTag, isPublic);
+                logger.info("论文 PDF 页级解析和入库完成，paperId: {}", paperId);
                 return;
             }
 
             // 创建一个流式处理器，它会在内部处理父块的切分和子块的保存
-            StreamingContentHandler handler = new StreamingContentHandler(fileMd5, userId, orgTag, isPublic);
+            StreamingContentHandler handler = new StreamingContentHandler(paperId, userId, orgTag, isPublic);
             Metadata metadata = new Metadata();
             ParseContext context = new ParseContext();
             AutoDetectParser parser = new AutoDetectParser();
@@ -101,24 +101,24 @@ public class ParseService {
             // 当handler的characters方法接收到足够数据时，会触发分块、切片和保存
             parser.parse(bufferedStream, handler, metadata, context);
 
-            logger.info("文件流式解析和入库完成，fileMd5: {}", fileMd5);
+            logger.info("论文解析和入库完成，paperId: {}", paperId);
 
         } catch (SAXException e) {
-            logger.error("文档解析失败，fileMd5: {}", fileMd5, e);
-            throw new RuntimeException("文档解析失败", e);
+            logger.error("论文解析失败，paperId: {}", paperId, e);
+            throw new RuntimeException("论文解析失败", e);
         }
     }
 
     /**
      * 兼容旧版本的解析方法
      */
-    public void parseAndSave(String fileMd5, InputStream fileStream) throws IOException, TikaException {
+    public void parseAndSave(String paperId, InputStream fileStream) throws IOException, TikaException {
         // 使用默认值调用新方法
-        parseAndSave(fileMd5, fileStream, "unknown", "DEFAULT", false);
+        parseAndSave(paperId, fileStream, "unknown", "DEFAULT", false);
     }
 
     public EmbeddingEstimate estimateEmbeddingUsage(InputStream fileStream) throws IOException, TikaException {
-        logger.info("开始估算文档 Embedding Token");
+        logger.info("开始估算论文 Embedding Token");
         checkMemoryThreshold();
 
         try (BufferedInputStream bufferedStream = new BufferedInputStream(fileStream, bufferSize)) {
@@ -133,8 +133,8 @@ public class ParseService {
             parser.parse(bufferedStream, handler, metadata, context);
             return handler.snapshot();
         } catch (SAXException e) {
-            logger.error("文档 Embedding Token 估算失败", e);
-            throw new RuntimeException("文档 Embedding Token 估算失败", e);
+            logger.error("论文 Embedding Token 估算失败", e);
+            throw new RuntimeException("论文 Embedding Token 估算失败", e);
         }
     }
 
@@ -156,28 +156,28 @@ public class ParseService {
             memoryUsage = (double) usedMemory / maxMemory;
             
             if (memoryUsage > maxMemoryThreshold) {
-                throw new RuntimeException("内存不足，无法处理大文件。当前使用率: " + 
+                throw new RuntimeException("内存不足，无法处理大 PDF。当前使用率: " + 
                     String.format("%.2f%%", memoryUsage * 100));
             }
         }
     }
     
     /**
-     * 内部流式内容处理器，实现了父子文档切分策略的核心逻辑。
+     * 内部流式内容处理器，实现论文文本 chunk 切分。
      * Tika解析器会调用characters方法，当累积的文本达到"父块"大小时，
      * 就触发processParentChunk方法，进行"子切片"的生成和入库。
      */
     private class StreamingContentHandler extends BodyContentHandler {
         private final StringBuilder buffer = new StringBuilder();
-        private final String fileMd5;
+        private final String paperId;
         private final String userId;
         private final String orgTag;
         private final boolean isPublic;
         private int savedChunkCount = 0;
 
-        public StreamingContentHandler(String fileMd5, String userId, String orgTag, boolean isPublic) {
+        public StreamingContentHandler(String paperId, String userId, String orgTag, boolean isPublic) {
             super(-1); // 禁用Tika的内部写入限制，我们自己管理缓冲区
-            this.fileMd5 = fileMd5;
+            this.paperId = paperId;
             this.userId = userId;
             this.orgTag = orgTag;
             this.isPublic = isPublic;
@@ -193,7 +193,7 @@ public class ParseService {
 
         @Override
         public void endDocument() {
-            // 处理文档末尾剩余的最后一部分内容
+            // 处理论文末尾剩余文本
             if (buffer.length() > 0) {
                 processParentChunk();
             }
@@ -208,7 +208,7 @@ public class ParseService {
 
             // 2. 将子切片批量保存到数据库
             this.savedChunkCount = ParseService.this.saveChildChunks(
-                    fileMd5, childChunks, userId, orgTag, isPublic, this.savedChunkCount, null
+                    paperId, childChunks, userId, orgTag, isPublic, this.savedChunkCount, null
             );
 
             // 3. 清空缓冲区，为下一个父块做准备
@@ -255,7 +255,7 @@ public class ParseService {
     /**
      * 将子切片列表保存到数据库。
      *
-     * @param fileMd5         文件的 MD5 哈希值
+     * @param paperId         论文标识
      * @param chunks          子切片文本列表
      * @param userId          上传用户ID
      * @param orgTag          组织标签
@@ -263,27 +263,27 @@ public class ParseService {
      * @param startingChunkId 当前批次的起始分片ID
      * @return 保存后总的分片数量
      */
-    private int saveChildChunks(String fileMd5, List<String> chunks,
+    private int saveChildChunks(String paperId, List<String> chunks,
             String userId, String orgTag, boolean isPublic, int startingChunkId, Integer pageNumber) {
         int currentChunkId = startingChunkId;
         for (String chunk : chunks) {
             currentChunkId++;
-            var vector = new DocumentVector();
-            vector.setFileMd5(fileMd5);
-            vector.setChunkId(currentChunkId);
-            vector.setTextContent(chunk);
-            vector.setPageNumber(pageNumber);
-            vector.setAnchorText(buildAnchorText(chunk));
-            vector.setUserId(userId);
-            vector.setOrgTag(orgTag);
-            vector.setPublic(isPublic);
-            documentVectorRepository.save(vector);
+            var paperChunk = new PaperTextChunk();
+            paperChunk.setPaperId(paperId);
+            paperChunk.setChunkId(currentChunkId);
+            paperChunk.setTextContent(chunk);
+            paperChunk.setPageNumber(pageNumber);
+            paperChunk.setAnchorText(buildAnchorText(chunk));
+            paperChunk.setUserId(userId);
+            paperChunk.setOrgTag(orgTag);
+            paperChunk.setPublic(isPublic);
+            paperTextChunkRepository.save(paperChunk);
         }
         logger.info("成功保存 {} 个子切片到数据库", chunks.size());
         return currentChunkId;
     }
 
-    private void parsePdfAndSave(String fileMd5, InputStream fileStream, String userId, String orgTag, boolean isPublic) throws IOException {
+    private void parsePdfAndSave(String paperId, InputStream fileStream, String userId, String orgTag, boolean isPublic) throws IOException {
         try (PDDocument document = PDDocument.load(fileStream)) {
             int savedChunkCount = 0;
 
@@ -295,7 +295,7 @@ public class ParseService {
                 }
 
                 List<String> childChunks = splitTextIntoChunksWithSemantics(pageText, chunkSize);
-                savedChunkCount = saveChildChunks(fileMd5, childChunks, userId, orgTag, isPublic, savedChunkCount, pageNumber);
+                savedChunkCount = saveChildChunks(paperId, childChunks, userId, orgTag, isPublic, savedChunkCount, pageNumber);
             }
         }
     }
