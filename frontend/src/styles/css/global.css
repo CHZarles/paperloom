@@ -1,3 +1,4 @@
+@import './tokens.css';
 @import './reset.css';
 @import './nprogress.css';
 @import './transition.css';
@@ -31,7 +32,7 @@ body {
 
 ::selection {
   background: rgba(38, 54, 74, 0.22);
-  color: #20242a;
+  color: var(--color-text);
 }
 
 .paper-serif {
@@ -40,37 +41,37 @@ body {
 
 .admin-console-page {
   min-height: 500px;
-  color: #20242a;
+  color: var(--color-text);
 }
 
 .admin-console-card {
-  border: 1px solid #c9c1b2 !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 8px !important;
-  background: #fbfaf6 !important;
-  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.58);
+  background: var(--color-surface) !important;
+  box-shadow: var(--shadow-card);
 }
 
 .admin-console-card > .n-card-header {
-  border-bottom: 1px solid #c9c1b2;
-  background: #e2dccc;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card-band);
 }
 
 .admin-console-card > .n-card-header .n-card-header__main {
-  color: #26364a;
+  color: var(--color-primary);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 18px;
   font-weight: 700;
 }
 
 .admin-console-card > .n-card__content {
-  background: #fbfaf6;
+  background: var(--color-surface);
 }
 
 .admin-console-note {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #e2dccc;
-  color: #5e6470;
+  background: var(--color-card-band);
+  color: var(--color-text-muted);
   padding: 12px 14px;
   font-size: 12px;
   line-height: 1.7;
@@ -85,18 +86,18 @@ body {
 }
 
 .admin-console-panel {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
-  box-shadow: 3px 3px 0 rgba(201, 193, 178, 0.48);
+  background: var(--color-card-band);
+  box-shadow: var(--shadow-card-soft);
 }
 
 .admin-console-card .n-data-table {
-  --n-td-color: #fbfaf6 !important;
-  --n-th-color: #e2dccc !important;
-  --n-border-color: #c9c1b2 !important;
-  --n-th-text-color: #26364a !important;
-  --n-td-text-color: #20242a !important;
+  --n-td-color: var(--color-surface) !important;
+  --n-th-color: var(--color-card-band) !important;
+  --n-border-color: var(--color-border) !important;
+  --n-th-text-color: var(--color-primary) !important;
+  --n-td-text-color: var(--color-text) !important;
 }
 
 .admin-console-card .n-data-table-th {
