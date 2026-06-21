@@ -117,16 +117,16 @@ onMounted(() => {
 
 <template>
   <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
-    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper">
+    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper model-provider-card">
       <template #header>Experiment Config / 模型配置</template>
       <template #header-extra>
         <div class="flex items-center gap-2">
-          <span class="text-xs text-stone-400">LLM 保存后新请求立即生效，Embedding 暂不允许危险直切</span>
+          <span class="text-xs">LLM 保存后新请求立即生效，Embedding 暂不允许危险直切</span>
         </div>
       </template>
 
       <NSpin :show="modelProvidersLoading">
-        <div class="admin-console-note mb-4">
+        <div class="admin-console-note mb-4 model-provider-note">
           这里管理平台代付的模型接入配置。API Key 输入为空时保留现有密钥，不会回显明文。Embedding 如果切换 active
           provider，后端会拦截需要重嵌入的危险变更。
         </div>
@@ -285,6 +285,43 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
+// 1. Outer card: align with knowledge-base .paper-library-card
+.model-provider-card {
+  border-radius: 10px !important;
+  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.42) !important;
+}
+
+.model-provider-card ::v-deep(.n-card-header) {
+  border-bottom: 1px solid #c9c1b2;
+  background: #e2dccc;
+  padding: 14px 20px;
+}
+
+.model-provider-card ::v-deep(.n-card-header__main) {
+  color: #26364a;
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.model-provider-card ::v-deep(.n-card-header__extra) {
+  color: #5e6470;
+}
+
+.model-provider-card ::v-deep(.n-card__content) {
+  background: #fbfaf6;
+  padding: 16px 20px;
+}
+
+// 2. Note: dashed paper sticker
+.model-provider-note {
+  background: #fbfaf6 !important;
+  border: 1px dashed #c9c1b2 !important;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
 .provider-scope {
   border: 1px solid #c9c1b2;
   border-radius: 8px;
