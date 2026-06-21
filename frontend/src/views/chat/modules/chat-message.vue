@@ -622,7 +622,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   white-space: pre-wrap;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-card-band);
+  background: var(--color-surface-alt);
   padding: 10px 14px;
 }
 

@@ -166,12 +166,9 @@ onBeforeUnmount(() => {
   height: 100vh;
   width: 100%;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(38, 54, 74, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px), var(--color-bg);
-  background-size: 24px 24px;
+  background: var(--color-bg);
   color: var(--chat-text);
-  font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .chat-shell__main {
