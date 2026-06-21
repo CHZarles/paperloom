@@ -414,7 +414,7 @@ function formatDate(dateStr?: string) {
   align-items: center;
   gap: 10px;
   border-left: 3px solid transparent;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 10px 10px;
   color: var(--color-text);
   box-shadow: 0 0 0 transparent;
