@@ -450,7 +450,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   <div class="message-block" :class="msg.role === 'user' ? 'message-block--user' : 'message-block--assistant'">
     <div v-if="msg.role === 'user'" class="message-heading">
       <NAvatar class="user-avatar">
-        <SvgIcon icon="ph:user-circle" class="text-icon-large color-white" />
+        <SvgIcon icon="material-symbols:account-circle-outline-rounded" class="text-icon-large color-white" />
       </NAvatar>
       <div class="flex-col gap-1">
         <NText class="message-author">{{ msg.username || authStore.userInfo.username }}</NText>
@@ -483,7 +483,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
     <NText v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)">
       <icon-eos-icons:three-dots-loading class="ml-12 mt-2 text-8" />
     </NText>
-    <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 color-#d03050 italic">
+    <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 italic" style="color: var(--color-error)">
       {{ msg.content || '服务器繁忙，请稍后再试' }}
     </NText>
     <div v-else-if="msg.role === 'assistant'" class="assistant-content message-content" @click="handleContentClick">
@@ -521,7 +521,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
     <div class="message-actions">
       <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
         <template #icon>
-          <icon-mynaui:copy />
+          <icon-material-symbols:content-copy-outline-rounded />
         </template>
       </NButton>
       <NButton
@@ -556,18 +556,18 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 <style scoped lang="scss">
 :deep(.source-file-link) {
-  color: #26364a;
+  color: var(--color-primary);
   cursor: pointer;
   text-decoration: underline;
   transition: color 0.2s;
 
   &:hover {
-    color: #7a1212;
+    color: var(--color-accent);
     text-decoration: none;
   }
 
   &:active {
-    color: #4f0c0c;
+    color: var(--color-accent-hover);
   }
 }
 
@@ -587,7 +587,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 .message-author {
   font-size: 15px;
   font-weight: 700;
-  color: #20242a;
+  color: var(--color-text);
 }
 
 .message-content {
@@ -596,17 +596,17 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   max-width: min(860px, calc(100% - 52px));
   font-size: 15px;
   line-height: 1.78;
-  color: #20242a;
+  color: var(--color-text);
 }
 
 .message-block--assistant .message-author {
-  color: #26364a;
+  color: var(--color-primary);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 17px;
 }
 
 .user-avatar {
-  background: #6b4f2a;
+  background: var(--color-accent);
 }
 
 .user-content {
@@ -614,9 +614,9 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   width: fit-content;
   max-width: min(760px, calc(100% - 52px));
   white-space: pre-wrap;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
+  background: var(--color-card-band);
   padding: 10px 14px;
 }
 
@@ -634,7 +634,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 .reference-list__title {
   font-size: 12px;
   font-weight: 700;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -643,9 +643,9 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   width: 100%;
   cursor: pointer;
   gap: 10px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #fbfaf6;
+  background: var(--color-surface);
   padding: 9px 10px;
   text-align: left;
   transition:
@@ -654,8 +654,8 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 }
 
 .reference-list__item:hover {
-  border-color: rgba(38, 54, 74, 0.34);
-  background: #e2dccc;
+  border-color: var(--color-primary);
+  background: var(--color-card-band);
 }
 
 .reference-list__badge {
@@ -663,8 +663,8 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   min-width: 34px;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid #c9c1b2;
-  color: #26364a;
+  border-right: 1px solid var(--color-border);
+  color: var(--color-primary);
   padding-right: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
@@ -681,7 +681,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 .reference-list__file {
   overflow: hidden;
-  color: #20242a;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 650;
   text-overflow: ellipsis;
@@ -691,7 +691,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 .reference-list__meta,
 .reference-list__snippet {
   overflow: hidden;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-size: 12px;
   line-height: 18px;
   text-overflow: ellipsis;
@@ -714,33 +714,32 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 .dark .message-author,
 .dark .message-content {
-  color: #ede9df;
+  color: var(--color-text);
 }
 
 .dark .user-content {
-  border-color: rgba(201, 193, 178, 0.24);
-  background: rgba(255, 253, 248, 0.06);
+  border-color: var(--color-border);
+  background: var(--color-card-band);
 }
 
 .dark .reference-list__title,
 .dark .reference-list__file {
-  color: #ede9df;
+  color: var(--color-text);
 }
 
 .dark .reference-list__item {
-  border-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(201, 193, 178, 0.18);
-  background: rgba(255, 253, 248, 0.045);
+  border-color: var(--color-border);
+  background: var(--color-surface);
 }
 
 .dark .reference-list__item:hover {
-  border-color: rgba(38, 54, 74, 0.42);
-  background: rgba(38, 54, 74, 0.16);
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft-bg);
 }
 
 .dark .reference-list__meta,
 .dark .reference-list__snippet {
-  color: #c6bba7;
+  color: var(--color-text-muted);
 }
 
 .tool-event {
@@ -749,31 +748,31 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   max-width: 100%;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgb(var(--border-color) / 0.18);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: rgb(var(--card-color));
+  background: var(--color-surface);
   padding: 5px 9px;
   font-size: 12px;
   line-height: 18px;
-  color: rgb(var(--text-color-2));
+  color: var(--color-text-muted);
 }
 
 .tool-event__name {
   font-weight: 500;
-  color: rgb(var(--text-color));
+  color: var(--color-text);
 }
 
 .tool-event__status {
-  color: rgb(var(--text-color-3));
+  color: var(--color-text-muted);
 }
 
 .tool-event--success {
-  border-color: rgb(24 160 88 / 0.25);
-  color: #18a058;
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .tool-event--failed {
-  border-color: rgb(208 48 80 / 0.25);
-  color: #d03050;
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 </style>

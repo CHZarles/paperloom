@@ -199,7 +199,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {{
-              icon: () => <SvgIcon icon="mdi:file-eye-outline" class="text-14px" />,
+              icon: () => <SvgIcon icon="material-symbols:visibility-outline-rounded" class="text-14px" />,
               default: () => '预览'
             }}
           </NButton>
@@ -210,7 +210,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
                 trigger: () => (
                   <NButton type="error" secondary size="small">
                     {{
-                      icon: () => <SvgIcon icon="mdi:trash-can-outline" class="text-14px" />,
+                      icon: () => <SvgIcon icon="material-symbols:delete-outline-rounded" class="text-14px" />,
                       default: () => '删除'
                     }}
                   </NButton>
@@ -487,7 +487,7 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
           <span class="library-index-line__label">ACT</span>
           <span>failed</span>
         </div>
-        <NEllipsis tooltip lineClamp={2} style="color: #8c4034">
+        <NEllipsis tooltip lineClamp={2} style="color: var(--color-error)">
           {row.processingErrorMessage || '请检查 Embedding 额度或稍后重试'}
         </NEllipsis>
         {canRetryVectorization(row) ? (
@@ -570,7 +570,7 @@ function renderResumeUploadButton(row: Api.Paper.UploadTask) {
       return (
         <NButton type="primary" size="small" secondary onClick={() => resumeUpload(row)}>
           {{
-            icon: () => <SvgIcon icon="mdi:upload-outline" class="text-14px" />,
+            icon: () => <SvgIcon icon="material-symbols:upload-rounded" class="text-14px" />,
             default: () => '续传'
           }}
         </NButton>
@@ -585,7 +585,7 @@ function renderResumeUploadButton(row: Api.Paper.UploadTask) {
       >
         <NButton type="primary" size="small" secondary>
           {{
-            icon: () => <SvgIcon icon="mdi:upload-outline" class="text-14px" />,
+            icon: () => <SvgIcon icon="material-symbols:upload-rounded" class="text-14px" />,
             default: () => '续传'
           }}
         </NButton>
@@ -648,7 +648,7 @@ async function onBeforeUpload(
           <template #prefix>
             <NButton size="small" secondary type="primary" @click="handleSearch">
               <template #icon>
-                <icon-mdi-file-search-outline class="text-icon" />
+                <icon-material-symbols:search-rounded class="text-icon" />
               </template>
               检索文献库
             </NButton>
@@ -656,7 +656,7 @@ async function onBeforeUpload(
           <template #default>
             <NButton size="small" secondary type="primary" @click="handleUpload">
               <template #icon>
-                <icon-mdi-upload-outline class="text-icon" />
+                <icon-material-symbols:upload-rounded class="text-icon" />
               </template>
               上传文献
             </NButton>
@@ -713,20 +713,20 @@ async function onBeforeUpload(
 
 .paper-library-card {
   overflow: hidden;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: #fbfaf6;
-  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.42);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .paper-library-card > .n-card-header {
-  border-bottom: 1px solid #c9c1b2;
-  background: #e2dccc;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card-band);
   padding: 14px 20px;
 }
 
 .paper-library-card .n-card-header__main {
-  color: #26364a;
+  color: var(--color-primary);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 22px;
   font-weight: 700;
@@ -738,7 +738,7 @@ async function onBeforeUpload(
 }
 
 .paper-library-card .n-card__content {
-  background: #fbfaf6;
+  background: var(--color-bg);
   padding: 16px 20px;
 }
 
@@ -746,16 +746,16 @@ async function onBeforeUpload(
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-bottom: 14px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
+  background: linear-gradient(180deg, var(--color-card-band), var(--color-bg));
   overflow: hidden;
 }
 
 .library-summary__item {
   min-width: 0;
   padding: 12px 14px;
-  border-right: 1px solid rgba(201, 193, 178, 0.72);
+  border-right: 1px solid var(--color-border-soft);
 }
 
 .library-summary__item:last-child {
@@ -765,7 +765,7 @@ async function onBeforeUpload(
 .library-summary__label,
 .library-summary__item > span:last-child {
   display: block;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.3;
 }
@@ -779,37 +779,37 @@ async function onBeforeUpload(
 .library-summary__item strong {
   display: block;
   margin: 4px 0 3px;
-  color: #20242a;
+  color: var(--color-text);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 22px;
   line-height: 1.05;
 }
 
 .paper-library-card .n-data-table {
-  --n-td-color: #fbfaf6 !important;
-  --n-th-color: #e2dccc !important;
-  --n-border-color: #c9c1b2 !important;
-  --n-th-text-color: #26364a !important;
-  --n-td-text-color: #20242a !important;
+  --n-td-color: var(--color-bg) !important;
+  --n-th-color: var(--color-card-band) !important;
+  --n-border-color: var(--color-border) !important;
+  --n-th-text-color: var(--color-primary) !important;
+  --n-td-text-color: var(--color-text) !important;
 }
 
 .paper-library-card .n-data-table-th {
-  background: #eeeae1;
-  color: #394150;
+  background: var(--color-card-band-pressed);
+  color: var(--color-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   padding: 12px 12px;
 }
 
 .paper-library-card .n-data-table-td {
-  background: #fbfaf6;
+  background: var(--color-bg);
   vertical-align: middle;
   padding: 12px 12px;
   transition: background-color 120ms ease;
 }
 
 .paper-library-card .n-data-table-tr:hover .n-data-table-td {
-  background: #f1ebd9;
+  background: var(--color-surface-alt);
 }
 
 .library-file-cell {
@@ -826,16 +826,16 @@ async function onBeforeUpload(
   flex: 0 0 auto;
   width: 40px;
   height: 48px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 7px;
-  background: #e2dccc;
-  color: #7e3f46;
+  background: var(--color-card-band);
+  color: var(--color-accent);
   cursor: pointer;
 }
 
 .library-file-cell__icon:hover {
-  border-color: #7e3f46;
-  background: #e2dccc;
+  border-color: var(--color-accent);
+  background: var(--color-card-band);
 }
 
 .library-file-icon {
@@ -851,7 +851,7 @@ async function onBeforeUpload(
   padding: 0;
   border: 0;
   background: transparent;
-  color: #20242a;
+  color: var(--color-text);
   cursor: pointer;
   font: inherit;
   font-weight: 700;
@@ -860,13 +860,13 @@ async function onBeforeUpload(
 }
 
 .library-file-cell__name:hover {
-  color: #26364a;
+  color: var(--color-primary);
 }
 
 .library-file-cell__meta,
 .library-date-cell span:last-child,
 .library-index-line__meta {
-  color: #747a84;
+  color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -888,10 +888,10 @@ async function onBeforeUpload(
   justify-content: center;
   min-height: 23px;
   padding: 2px 9px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: #e2dccc;
-  color: #5e6470;
+  background: var(--color-card-band);
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
@@ -903,13 +903,13 @@ async function onBeforeUpload(
 }
 
 .library-digest-chip:hover {
-  border-color: #7e3f46;
-  color: #7e3f46;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .library-size-cell,
 .library-date-cell span:first-child {
-  color: #20242a;
+  color: var(--color-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   font-weight: 700;
@@ -931,7 +931,7 @@ async function onBeforeUpload(
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  color: #20242a;
+  color: var(--color-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
@@ -945,7 +945,7 @@ async function onBeforeUpload(
 }
 
 .library-index-line__label {
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 800;
@@ -954,18 +954,18 @@ async function onBeforeUpload(
 
 .library-index-line--processing .library-index-line__top,
 .library-index-line--pending .library-index-line__top {
-  color: #8a5e22;
+  color: var(--color-warning);
 }
 
 .library-index-line--failed .library-index-line__top {
-  color: #9f4c3f;
+  color: var(--color-error);
 }
 
 .library-index-line--empty {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #747a84;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -980,23 +980,23 @@ async function onBeforeUpload(
 }
 
 .library-pipeline-status--ready {
-  border-color: rgba(79, 125, 90, 0.35);
-  background: rgba(79, 125, 90, 0.11);
-  color: #3f6b4a;
+  border-color: var(--color-success);
+  background: var(--color-card-band);
+  color: var(--color-success);
 }
 
 .library-pipeline-status--ready .library-pipeline-status__dot {
-  background: #4f7d5a;
+  background: var(--color-success);
 }
 
 .library-pipeline-status--broken {
-  border-color: rgba(159, 76, 63, 0.35);
-  background: rgba(159, 76, 63, 0.1);
-  color: #8c4034;
+  border-color: var(--color-error);
+  background: var(--color-card-band);
+  color: var(--color-error);
 }
 
 .library-pipeline-status--broken .library-pipeline-status__dot {
-  background: #9f4c3f;
+  background: var(--color-error);
 }
 
 .library-progress-cell {
@@ -1004,22 +1004,22 @@ async function onBeforeUpload(
   grid-template-columns: minmax(60px, 1fr) 38px;
   align-items: center;
   gap: 8px;
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
 }
 
 .library-visibility--public {
-  border-color: rgba(79, 125, 90, 0.35);
-  background: rgba(79, 125, 90, 0.11);
-  color: #3f6b4a;
+  border-color: var(--color-success);
+  background: var(--color-card-band);
+  color: var(--color-success);
 }
 
 .library-visibility--private {
-  border-color: rgba(155, 107, 46, 0.35);
-  background: rgba(155, 107, 46, 0.1);
-  color: #9a6428;
+  border-color: var(--color-warning);
+  background: var(--color-card-band);
+  color: var(--color-warning);
 }
 
 .library-date-cell {
@@ -1048,10 +1048,10 @@ async function onBeforeUpload(
 
 .document-preview-modal-shell {
   overflow: hidden;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
-  box-shadow: 10px 10px 0 rgba(201, 193, 178, 0.6);
+  background: var(--color-bg);
+  box-shadow: 10px 10px 0 var(--shadow-card);
 }
 
 @media (max-width: 1180px) {
@@ -1060,7 +1060,7 @@ async function onBeforeUpload(
   }
 
   .library-summary__item {
-    border-bottom: 1px solid rgba(201, 193, 178, 0.72);
+    border-bottom: 1px solid var(--color-border-soft);
   }
 
   .library-summary__item:nth-child(3n) {
@@ -1100,7 +1100,7 @@ async function onBeforeUpload(
   }
 
   .library-summary__item:nth-child(3n) {
-    border-right: 1px solid rgba(201, 193, 178, 0.72);
+    border-right: 1px solid var(--color-border-soft);
   }
 
   .library-summary__item:nth-child(2n) {

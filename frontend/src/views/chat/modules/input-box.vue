@@ -387,17 +387,18 @@ onUnmounted(() => {
   <div class="chat-input-wrap" :class="props.variant === 'hero' ? 'chat-input-wrap--hero' : 'chat-input-wrap--dock'">
     <div
       v-if="props.variant === 'dock'"
-      class="pointer-events-none absolute inset-x-0 h-6 from-[#fbfaf6]/95 to-transparent bg-gradient-to-t -top-6 dark:from-[#161a21]/95"
+      class="pointer-events-none absolute inset-x-0 h-6 from-[var(--color-bg)]/95 to-transparent bg-gradient-to-t -top-6 dark:from-[var(--color-bg)]/95"
     />
     <div
-      class="chat-input-shell mx-auto w-full flex items-end gap-2 bg-white px-3.5 py-2.5 dark:bg-[#161a21]"
+      class="chat-input-shell mx-auto w-full flex items-end gap-2 px-3.5 py-2.5"
       :class="props.variant === 'hero' ? 'max-w-[760px]' : 'max-w-[960px]'"
     >
       <textarea
         ref="inputRef"
         v-model.trim="input.message"
         placeholder="Search papers, claims, methods... Enter 发送，Shift+Enter 换行"
-        class="max-h-32 min-h-6 w-full flex-1 resize-none border-none bg-transparent py-1 text-14px color-#20242a caret-[rgb(var(--primary-color))] outline-none placeholder:text-#7f8490 dark:color-#ede9df dark:placeholder:text-#858b96"
+        class="max-h-32 min-h-6 w-full flex-1 resize-none border-none bg-transparent py-1 text-14px caret-[rgb(var(--primary-color))] outline-none"
+        :style="{ color: 'var(--color-text)' }"
         @keydown="handShortcut"
       />
       <NButton
@@ -422,19 +423,23 @@ onUnmounted(() => {
         <div class="flex items-center gap-1">
           <span
             class="inline-block h-1.5 w-1.5 rounded-full"
-            :class="{
-              'bg-green-500': connectionStatus === 'OPEN',
-              'bg-yellow-500 animate-pulse': connectionStatus === 'CONNECTING' || connectionStatus === 'RECONNECTING',
-              'bg-red-400': connectionStatus === 'CLOSED'
+            :style="{
+              background:
+                connectionStatus === 'OPEN'
+                  ? 'var(--color-success)'
+                  : connectionStatus === 'CONNECTING' || connectionStatus === 'RECONNECTING'
+                  ? 'var(--color-warning)'
+                  : 'var(--color-error)'
             }"
+            :class="{ 'animate-pulse': connectionStatus === 'CONNECTING' || connectionStatus === 'RECONNECTING' }"
           />
-          <span class="text-11px color-#747a84">{{ connectionText }}</span>
+          <span class="text-11px" :style="{ color: 'var(--color-text-muted)' }">{{ connectionText }}</span>
         </div>
         <span v-if="isRateLimited" class="text-11px text-[rgb(var(--primary-color))]">
           {{ cooldownText }}
         </span>
       </div>
-      <span class="text-11px color-#747a84">Shift+Enter 换行</span>
+      <span class="text-11px" :style="{ color: 'var(--color-text-muted)' }">Shift+Enter 换行</span>
     </div>
   </div>
 </template>
@@ -446,7 +451,7 @@ onUnmounted(() => {
 }
 
 .chat-input-wrap--dock {
-  background: #fbfaf6;
+  background: var(--color-bg);
   padding: 8px 16px 12px;
 }
 
@@ -455,10 +460,10 @@ onUnmounted(() => {
 }
 
 .chat-input-shell {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6 !important;
-  box-shadow: 4px 4px 0 rgba(201, 193, 178, 0.58);
+  background: var(--color-surface) !important;
+  box-shadow: var(--shadow-card);
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease,
@@ -466,19 +471,19 @@ onUnmounted(() => {
 }
 
 .chat-input-shell:focus-within {
-  border-color: rgba(38, 54, 74, 0.42);
+  border-color: var(--color-primary);
   box-shadow:
-    4px 4px 0 rgba(201, 193, 178, 0.58),
-    0 0 0 3px rgba(38, 54, 74, 0.08);
+    var(--shadow-card),
+    0 0 0 3px var(--color-primary-soft-bg);
 }
 
 .dark .chat-input-wrap--dock {
-  background: #161a21;
+  background: var(--color-bg);
 }
 
 .dark .chat-input-shell {
-  border-color: rgba(201, 193, 178, 0.22);
-  background: #161a21 !important;
+  border-color: var(--color-border);
+  background: var(--color-surface) !important;
   box-shadow: none;
 }
 </style>

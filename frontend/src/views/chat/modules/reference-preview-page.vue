@@ -182,16 +182,16 @@ watch(
 <style scoped lang="scss">
 .preview-page-state {
   @apply flex min-h-220px flex-col items-center justify-center gap-4 text-stone-500;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .preview-page-empty {
   @apply py-10;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .preview-page-shell {
@@ -200,9 +200,9 @@ watch(
 
 .preview-page-tip {
   @apply px-4 py-3 text-sm;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
-  color: #7e3f46;
+  background: var(--color-card-band);
+  color: var(--color-accent);
 }
 </style>

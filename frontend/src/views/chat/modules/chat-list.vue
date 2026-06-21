@@ -157,11 +157,11 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   width: 72px;
   align-items: center;
   justify-content: center;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
-  box-shadow: 7px 7px 0 rgba(201, 193, 178, 0.85);
-  color: #26364a;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-primary);
 }
 
 .welcome-copy {
@@ -170,14 +170,14 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 
 .welcome-kicker {
   margin-bottom: 9px;
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
 }
 
 .welcome-copy h1 {
   margin: 0;
-  color: #26364a;
+  color: var(--color-primary);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 34px;
   font-weight: 700;
@@ -187,7 +187,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 .welcome-copy p {
   margin: 12px auto 0;
   max-width: 590px;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -201,10 +201,10 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 }
 
 .welcome-tags span {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  background: #fbfaf6;
-  color: #5e6470;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
   padding: 5px 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
@@ -221,22 +221,22 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 }
 
 .dark .welcome-logo {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface);
   box-shadow: none;
 }
 
 .dark .welcome-copy h1 {
-  color: #f0c0b9;
+  color: var(--color-text);
 }
 
 .dark .welcome-copy p {
-  color: #c6bba7;
+  color: var(--color-text-muted);
 }
 
 .dark .welcome-tags span {
-  border-color: rgba(201, 193, 178, 0.24);
-  background: rgba(255, 253, 248, 0.06);
-  color: #c6bba7;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
 }
 
 @media (max-width: 640px) {

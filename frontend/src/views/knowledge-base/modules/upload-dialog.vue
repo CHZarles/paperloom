@@ -142,10 +142,10 @@ function onUpdate(option: unknown) {
         >
           <NButton>上传文件</NButton>
         </NUpload>
-        <div v-if="fileSizeLimitError" class="mt-8px text-12px text-#ef4444">
+        <div v-if="fileSizeLimitError" class="mt-8px text-12px" style="color: var(--color-error)">
           {{ fileSizeLimitError }}
         </div>
-        <div v-else-if="!authStore.isAdmin && model.uploadMaxSizeMb" class="mt-8px text-12px text-#d97706">
+        <div v-else-if="!authStore.isAdmin && model.uploadMaxSizeMb" class="mt-8px text-12px" style="color: var(--color-warning)">
           当前组织限制非管理员上传文件不超过 {{ model.uploadMaxSizeMb }} MB
         </div>
       </NFormItem>

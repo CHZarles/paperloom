@@ -168,7 +168,7 @@ function formatDate(dateStr?: string) {
       <div class="px-3 pt-3">
         <NInput v-model:value="keyword" clearable size="small" placeholder="搜索 query / session">
           <template #prefix>
-            <icon-material-symbols:search-rounded class="text-16px text-#a0aec0" />
+            <icon-material-symbols:search-rounded class="text-16px" style="color: var(--color-text-muted)" />
           </template>
         </NInput>
       </div>
@@ -188,7 +188,7 @@ function formatDate(dateStr?: string) {
         <NSpin :show="sessionsLoading" class="h-full">
           <TransitionGroup name="session-list" tag="div">
             <div v-if="visibleSessions.length === 0 && !sessionsLoading" class="empty-sessions">
-              <icon-material-symbols:chat-outline-rounded class="text-36px color-#ccc dark:color-#444" />
+              <icon-material-symbols:chat-outline-rounded class="text-36px" style="color: var(--color-border-soft)" />
               <span>{{ showArchived ? '暂无归档 query' : '暂无 query 记录' }}</span>
             </div>
 
@@ -216,7 +216,7 @@ function formatDate(dateStr?: string) {
                     @click.stop
                   >
                     <template #icon>
-                      <icon-material-symbols:archive-outline-rounded class="text-15px color-#999 hover:color-#666" />
+                      <icon-material-symbols:archive-outline-rounded class="text-15px" style="color: var(--color-text-muted)" />
                     </template>
                   </NButton>
                 </template>
@@ -230,7 +230,7 @@ function formatDate(dateStr?: string) {
                 @click.stop="handleUnarchive(session.conversationId)"
               >
                 <template #icon>
-                  <icon-material-symbols:unarchive-outline-rounded class="text-15px color-#999 hover:color-#666" />
+                  <icon-material-symbols:unarchive-outline-rounded class="text-15px" style="color: var(--color-text-muted)" />
                 </template>
               </NButton>
             </div>
@@ -246,7 +246,7 @@ function formatDate(dateStr?: string) {
           aria-label="进入工作台"
           @click="handleWorkbenchClick"
         >
-          <icon-mdi-bookshelf class="footer-action__icon" />
+          <icon-material-symbols:menu-book-outline-rounded class="footer-action__icon" />
           <span class="footer-action__copy">
             <strong>Paper Library</strong>
             <small>{{ workbenchSubtitle }}</small>
@@ -272,8 +272,8 @@ function formatDate(dateStr?: string) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid #c9c1b2;
-  background: #e2dccc;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-card-band);
   transition:
     width 0.2s ease,
     min-width 0.2s ease;
@@ -292,18 +292,18 @@ function formatDate(dateStr?: string) {
   width: 42px;
   align-items: center;
   justify-content: center;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #fbfaf6;
-  box-shadow: 4px 4px 0 rgba(201, 193, 178, 0.8);
-  color: #26364a;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-primary);
 }
 
 .brand-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #26364a;
+  color: var(--color-primary);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 18px;
   font-weight: 700;
@@ -311,13 +311,13 @@ function formatDate(dateStr?: string) {
 
 .brand-subtitle {
   margin-top: 1px;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
 }
 
 .collapse-button {
-  color: #5e6470;
+  color: var(--color-text-muted);
 }
 
 .new-chat-button {
@@ -331,7 +331,7 @@ function formatDate(dateStr?: string) {
   align-items: center;
   justify-content: space-between;
   padding: 16px 14px 8px;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   font-weight: 700;
@@ -340,7 +340,7 @@ function formatDate(dateStr?: string) {
 .archive-toggle {
   border: 0;
   background: transparent;
-  color: #26364a;
+  color: var(--color-primary);
   cursor: pointer;
   font-size: 12px;
 }
@@ -352,7 +352,7 @@ function formatDate(dateStr?: string) {
   justify-content: center;
   gap: 10px;
   padding: 56px 12px;
-  color: #747a84;
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
@@ -410,7 +410,7 @@ function formatDate(dateStr?: string) {
   border-left: 3px solid transparent;
   border-radius: 6px;
   padding: 10px 10px;
-  color: #20242a;
+  color: var(--color-text);
   box-shadow: 0 0 0 transparent;
   transition:
     background 0.16s ease,
@@ -420,15 +420,15 @@ function formatDate(dateStr?: string) {
 }
 
 .session-item:hover {
-  background: rgba(255, 253, 248, 0.88);
-  border-left-color: rgba(126, 63, 70, 0.42);
+  background: var(--color-surface);
+  border-left-color: var(--color-accent);
 }
 
 .session-item--active {
-  background: #fbfaf6;
-  color: #26364a;
-  border-left-color: #7e3f46;
-  box-shadow: 2px 2px 0 rgba(201, 193, 178, 0.42);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border-left-color: var(--color-accent);
+  box-shadow: var(--shadow-card-soft);
 }
 
 .session-title {
@@ -441,7 +441,7 @@ function formatDate(dateStr?: string) {
 
 .session-date {
   margin-top: 2px;
-  color: #747a84;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
 }
@@ -449,7 +449,7 @@ function formatDate(dateStr?: string) {
 .sidebar-footer {
   display: grid;
   gap: 6px;
-  border-top: 1px solid #c9c1b2;
+  border-top: 1px solid var(--color-border);
   padding: 10px 10px 12px;
 }
 
@@ -461,7 +461,7 @@ function formatDate(dateStr?: string) {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #394150;
+  color: var(--color-text);
   cursor: pointer;
   padding: 0 10px;
   text-align: left;
@@ -472,20 +472,20 @@ function formatDate(dateStr?: string) {
 }
 
 .footer-action:hover {
-  background: rgba(255, 253, 248, 0.8);
-  color: #26364a;
+  background: var(--color-surface);
+  color: var(--color-primary);
 }
 
 .footer-action--active {
-  background: #e2dccc;
-  color: #26364a;
-  box-shadow: inset 3px 0 0 #26364a;
+  background: var(--color-card-band);
+  color: var(--color-primary);
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 .footer-action--workbench {
   min-height: 54px;
-  border: 1px solid #c9c1b2;
-  background: #fbfaf6;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .footer-action__icon {
@@ -510,7 +510,7 @@ function formatDate(dateStr?: string) {
 
 .footer-action__copy small {
   overflow: hidden;
-  color: #747a84;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   line-height: 1.25;
@@ -519,8 +519,8 @@ function formatDate(dateStr?: string) {
 }
 
 .footer-action--danger:hover {
-  background: rgba(245, 34, 45, 0.08);
-  color: #d03050;
+  background: var(--color-accent-soft-bg);
+  color: var(--color-error);
 }
 
 .session-list-enter-active,
@@ -534,68 +534,68 @@ function formatDate(dateStr?: string) {
 }
 
 .dark .chat-sidebar {
-  border-right-color: rgba(255, 255, 255, 0.08);
-  background: #161a21;
+  border-right-color: var(--color-border);
+  background: var(--color-bg);
 }
 
 .dark .brand-mark {
-  background: rgba(255, 253, 248, 0.08);
+  background: var(--color-surface);
   box-shadow: none;
 }
 
 .dark .brand-subtitle,
 .dark .sidebar-section-header,
 .dark .session-date {
-  color: #c6bba7;
+  color: var(--color-text-muted);
 }
 
 .dark .session-item {
-  color: #ede9df;
+  color: var(--color-text);
 }
 
 .dark .session-item:hover {
-  background: rgba(38, 54, 74, 0.18);
-  border-left-color: rgba(212, 165, 165, 0.42);
+  background: var(--color-primary-soft-bg);
+  border-left-color: var(--color-accent);
 }
 
 .dark .session-item--active {
-  background: rgba(38, 54, 74, 0.34);
-  color: #ede9df;
-  border-left-color: #d4a5a5;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.32);
+  background: var(--color-primary-soft-bg);
+  color: var(--color-text);
+  border-left-color: var(--color-accent);
+  box-shadow: var(--shadow-card-soft);
 }
 
 .dark .session-scroll--overflowing:hover {
-  scrollbar-color: rgba(38, 54, 74, 0.34) transparent;
+  scrollbar-color: var(--color-primary) transparent;
 }
 
 .dark .session-scroll--overflowing:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(38, 54, 74, 0.36);
+  background-color: var(--color-primary);
 }
 
 .dark .session-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(38, 54, 74, 0.52);
+  background-color: var(--color-primary);
 }
 
 .dark .sidebar-footer {
-  border-top-color: rgba(255, 255, 255, 0.08);
+  border-top-color: var(--color-border);
 }
 
 .dark .footer-action__copy small {
-  color: #bfb29d;
+  color: var(--color-text-muted);
 }
 
 .dark .footer-action {
-  color: #e5d8c2;
+  color: var(--color-text-muted);
 }
 
 .dark .footer-action:hover,
 .dark .footer-action--active {
-  background: rgba(38, 54, 74, 0.2);
-  color: #ede9df;
+  background: var(--color-primary-soft-bg);
+  color: var(--color-text);
 }
 
 .dark .footer-action--workbench {
-  background: rgba(38, 54, 74, 0.14);
+  background: var(--color-primary-soft-bg);
 }
 </style>
