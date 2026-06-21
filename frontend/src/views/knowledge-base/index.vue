@@ -714,22 +714,23 @@ async function onBeforeUpload(
 .paper-library-card {
   overflow: hidden;
   border: 1px solid #c9c1b2;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fbfaf6;
-  box-shadow: 6px 6px 0 rgba(201, 193, 178, 0.55);
+  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.42);
 }
 
 .paper-library-card > .n-card-header {
   border-bottom: 1px solid #c9c1b2;
   background: #e2dccc;
-  padding: 13px 16px;
+  padding: 14px 20px;
 }
 
 .paper-library-card .n-card-header__main {
   color: #26364a;
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
 .paper-library-card .n-card-header__extra {
@@ -738,7 +739,7 @@ async function onBeforeUpload(
 
 .paper-library-card .n-card__content {
   background: #fbfaf6;
-  padding: 14px 16px 16px;
+  padding: 16px 20px;
 }
 
 .library-summary {
