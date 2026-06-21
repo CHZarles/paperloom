@@ -411,20 +411,24 @@ function formatDate(dateStr?: string) {
   border-radius: 6px;
   padding: 10px 10px;
   color: #20242a;
+  box-shadow: 0 0 0 transparent;
   transition:
     background 0.16s ease,
-    color 0.16s ease;
+    color 0.16s ease,
+    border-left-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .session-item:hover {
-  background: rgba(255, 253, 248, 0.78);
-  border-left-color: rgba(38, 54, 74, 0.28);
+  background: rgba(255, 253, 248, 0.88);
+  border-left-color: rgba(126, 63, 70, 0.42);
 }
 
 .session-item--active {
-  background: #e2dccc;
+  background: #fbfaf6;
   color: #26364a;
-  border-left-color: #26364a;
+  border-left-color: #7e3f46;
+  box-shadow: 2px 2px 0 rgba(201, 193, 178, 0.42);
 }
 
 .session-title {
@@ -549,9 +553,16 @@ function formatDate(dateStr?: string) {
   color: #ede9df;
 }
 
-.dark .session-item:hover,
+.dark .session-item:hover {
+  background: rgba(38, 54, 74, 0.18);
+  border-left-color: rgba(212, 165, 165, 0.42);
+}
+
 .dark .session-item--active {
-  background: rgba(38, 54, 74, 0.2);
+  background: rgba(38, 54, 74, 0.34);
+  color: #ede9df;
+  border-left-color: #d4a5a5;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.32);
 }
 
 .dark .session-scroll--overflowing:hover {
