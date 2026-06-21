@@ -256,17 +256,17 @@ onMounted(() => {
 
 <template>
   <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
-    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper">
+    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper usage-monitor-card">
       <template #header>Runtime Limits / 限流配置</template>
       <template #header-extra>
         <div class="flex items-center gap-2">
-          <span class="text-xs text-stone-400">保存后立即对新请求生效</span>
+          <span class="text-xs">保存后立即对新请求生效</span>
           <NButton type="primary" size="small" :loading="rateLimitSaving" @click="submitRateLimits">保存配置</NButton>
         </div>
       </template>
 
       <NSpin :show="rateLimitLoading">
-        <div class="admin-console-note mb-4">
+        <div class="admin-console-note mb-4 usage-monitor-note">
           这里集中管理聊天消息、LLM 全网 Token 预算，以及 Embedding
           上传/查询两条链路的运行时限流配置。保存后对新请求立即生效，无需改 `application.yml`。
         </div>
@@ -396,7 +396,7 @@ onMounted(() => {
       </NSpin>
     </NCard>
 
-    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper">
+    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper usage-monitor-card">
       <template #header>
         <div class="flex items-center gap-3">
           <span>Usage Ledger / 用量总览</span>
@@ -545,6 +545,43 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
+// 1. Outer cards: align with knowledge-base .paper-library-card
+.usage-monitor-card {
+  border-radius: 10px !important;
+  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.42) !important;
+}
+
+.usage-monitor-card ::v-deep(.n-card-header) {
+  border-bottom: 1px solid #c9c1b2;
+  background: #e2dccc;
+  padding: 14px 20px;
+}
+
+.usage-monitor-card ::v-deep(.n-card-header__main) {
+  color: #26364a;
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.usage-monitor-card ::v-deep(.n-card-header__extra) {
+  color: #5e6470;
+}
+
+.usage-monitor-card ::v-deep(.n-card__content) {
+  background: #fbfaf6;
+  padding: 16px 20px;
+}
+
+// 2. Note: dashed paper sticker
+.usage-monitor-note {
+  background: #fbfaf6 !important;
+  border: 1px dashed #c9c1b2 !important;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
 .limit-card {
   border: 1px solid #c9c1b2;
   border-radius: 8px;
