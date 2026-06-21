@@ -1051,7 +1051,7 @@ async function onBeforeUpload(
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-bg);
-  box-shadow: 10px 10px 0 var(--shadow-card);
+  box-shadow: 10px 10px 0 var(--color-border);
 }
 
 @media (max-width: 1180px) {
