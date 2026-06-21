@@ -389,7 +389,7 @@ onMounted(() => {
       title="Invite Codes / 邀请码"
       :bordered="false"
       size="small"
-      class="admin-console-card sm:flex-1-hidden card-wrapper"
+      class="admin-console-card sm:flex-1-hidden card-wrapper invite-code-card"
       content-class="flex-col-stretch min-h-0 sm:h-full"
     >
       <template #header-extra>
@@ -411,7 +411,7 @@ onMounted(() => {
         </NSpace>
       </template>
 
-      <div class="admin-console-note mb-4">
+      <div class="admin-console-note mb-4 invite-code-note">
         邀请码留空时，后端会自动生成 16 位随机码；批量创建时会连续生成多条随机邀请码，默认长期有效。
       </div>
 
@@ -477,4 +477,37 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped lang="scss">
+// 1. Outer card: align with knowledge-base .paper-library-card
+.invite-code-card {
+  border-radius: 10px !important;
+  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.42) !important;
+}
+
+.invite-code-card ::v-deep(.n-card-header) {
+  border-bottom: 1px solid #c9c1b2;
+  background: #e2dccc;
+  padding: 14px 20px;
+}
+
+.invite-code-card ::v-deep(.n-card-header__main) {
+  color: #26364a;
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.invite-code-card ::v-deep(.n-card__content) {
+  background: #fbfaf6;
+  padding: 16px 20px;
+}
+
+// 2. Note: dashed paper sticker
+.invite-code-note {
+  background: #fbfaf6 !important;
+  border: 1px dashed #c9c1b2 !important;
+  border-radius: 8px;
+  font-size: 13px;
+}
+</style>
