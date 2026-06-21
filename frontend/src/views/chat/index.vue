@@ -188,7 +188,6 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--chat-line);
   background: var(--color-surface);
   padding: 0 16px;
-  backdrop-filter: blur(10px);
 }
 
 .topbar-icon-button {

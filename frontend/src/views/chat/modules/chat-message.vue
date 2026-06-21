@@ -649,19 +649,15 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   width: 100%;
   cursor: pointer;
   gap: 10px;
-  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: var(--color-surface);
+  background: var(--color-surface-alt);
   padding: 9px 10px;
   text-align: left;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
+  transition: background 0.2s;
 }
 
 .reference-list__item:hover {
-  border-color: var(--color-primary);
-  background: var(--color-card-band);
+  background: var(--color-primary-soft-bg);
 }
 
 .reference-list__badge {
@@ -725,7 +721,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 .dark .user-content {
   border-color: var(--color-border);
-  background: var(--color-card-band);
+  background: var(--color-surface-alt);
 }
 
 .dark .reference-list__title,

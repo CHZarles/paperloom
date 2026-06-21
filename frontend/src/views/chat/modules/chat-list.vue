@@ -157,10 +157,8 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   width: 72px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  border-radius: 12px;
+  background: var(--color-primary-soft-bg);
   color: var(--color-primary);
 }
 
@@ -173,15 +171,16 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   color: var(--color-accent);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
+  font-weight: 600;
 }
 
 .welcome-copy h1 {
   margin: 0;
-  color: var(--color-primary);
+  color: var(--color-text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.2;
 }
 
 .welcome-copy p {
@@ -201,13 +200,13 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 }
 
 .welcome-tags span {
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-surface);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
   color: var(--color-text-muted);
-  padding: 5px 8px;
+  padding: 5px 12px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
+  font-weight: 500;
 }
 
 .welcome-input {
@@ -221,8 +220,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 }
 
 .dark .welcome-logo {
-  background: var(--color-surface);
-  box-shadow: none;
+  background: var(--color-primary-soft-bg);
 }
 
 .dark .welcome-copy h1 {
