@@ -47,7 +47,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'chat',
       i18nKey: 'route.chat',
       icon: 'mdi:comment-question-outline',
-      order: 1
+      order: 1,
+      hideInMenu: true
     }
   },
   {

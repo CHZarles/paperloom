@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useFullscreen } from '@vueuse/core';
+import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/modules/app';
 import { useThemeStore } from '@/store/modules/theme';
 import GlobalSearch from '../global-search/index.vue';
@@ -23,9 +24,14 @@ defineProps<Props>();
 
 const appStore = useAppStore();
 const themeStore = useThemeStore();
+const router = useRouter();
 const { isFullscreen, toggle } = useFullscreen();
 
 const isDev = import.meta.env.DEV;
+
+function goToChatbot() {
+  router.push('/chat');
+}
 </script>
 
 <template>
@@ -43,7 +49,20 @@ const isDev = import.meta.env.DEV;
       <GlobalBreadcrumb v-if="!appStore.isMobile" class="ml-12px" />
     </div>
 -->
-    <div class="h-full flex-y-center justify-end px-6">
+    <div class="h-full flex-y-center justify-end px-6 gap-2">
+      <NButton
+        size="small"
+        secondary
+        aria-label="返回 Chatbot"
+        title="返回 Chatbot"
+        class="chatbot-back-button"
+        @click="goToChatbot"
+      >
+        <template #icon>
+          <icon-mdi-robot-outline class="text-icon" />
+        </template>
+        Chatbot
+      </NButton>
       <GlobalSearch />
       <FullScreen v-if="!appStore.isMobile" :full="isFullscreen" @click="toggle" />
       <LangSwitch
@@ -63,4 +82,15 @@ const isDev = import.meta.env.DEV;
   </DarkModeContainer>
 </template>
 
-<style scoped></style>
+<style scoped>
+.chatbot-back-button {
+  --n-border-color: #c9c1b2;
+  --n-color: #fbfaf6;
+  --n-color-hover: #f1ebd9;
+  --n-color-pressed: #e2dccc;
+  --n-text-color: #5e6470;
+  --n-text-color-hover: #26364a;
+  --n-text-color-pressed: #26364a;
+  font-weight: 600;
+}
+</style>
