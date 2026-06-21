@@ -42,7 +42,7 @@ defineOptions({ name: 'SystemLogo' });
   inset: 0.16em 0.11em 0.11em 0.16em;
   z-index: 0;
   border-radius: 0.14em;
-  background: rgba(201, 193, 178, 0.82);
+  background: rgba(148, 163, 184, 0.82);
   content: '';
   transform: translate(0.08em, 0.08em);
 }
@@ -90,7 +90,7 @@ defineOptions({ name: 'SystemLogo' });
 
 .system-logo__strip--h2 {
   top: 0.39em;
-  background: #e7dde0;
+  background: #cbd5e1;
 }
 
 .system-logo__strip--h3 {

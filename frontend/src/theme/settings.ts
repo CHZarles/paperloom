@@ -26,15 +26,15 @@ export const themeSettings: App.Theme.ThemeSetting = {
   tokens: {
     light: {
       colors: {
-        container: 'rgb(251, 250, 246)',
-        layout: 'rgb(238, 234, 225)',
+        container: 'rgb(255, 255, 255)',
+        layout: 'rgb(248, 250, 252)',
         inverted: 'rgb(34, 39, 48)',
         'base-text': 'rgb(32, 36, 42)'
       },
       boxShadow: {
-        header: '0 1px 0 rgb(201, 193, 178, 0.7)',
-        sider: '1px 0 0 0 rgb(201, 193, 178, 0.8)',
-        tab: '0 1px 0 rgb(201, 193, 178, 0.7)'
+        header: '0 1px 0 rgb(226, 232, 240, 0.7)',
+        sider: '1px 0 0 0 rgb(226, 232, 240, 0.8)',
+        tab: '0 1px 0 rgb(226, 232, 240, 0.7)'
       }
     },
     dark: { colors: { container: 'rgb(22, 26, 33)', layout: 'rgb(16, 19, 24)', 'base-text': 'rgb(237, 233, 223)' } }

@@ -36,7 +36,7 @@ export function setupLoading() {
 
   const loading = `
 <div class="fixed-center flex-col bg-layout" style="${primaryColor}">
-  <div class="size-128px flex flex-col items-center justify-center border border-primary/28 bg-[rgb(251,250,246)] text-primary shadow-[8px_8px_0_rgba(201,193,178,0.9)]">
+  <div class="size-128px flex flex-col items-center justify-center border border-primary/28 bg-[rgb(255,255,255)] text-primary shadow-[8px_8px_0_rgba(226,232,240,0.9)]">
     <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g transform="rotate(-4 36 36)">
         <rect x="15" y="15" width="44" height="44" rx="8" fill="rgb(201 193 178)" opacity=".82" transform="translate(4 4)"/>
