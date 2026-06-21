@@ -54,13 +54,13 @@ const { columns, columnChecks, data, loading, getData, mobilePagination } = useT
         <div class="taxonomy-action-group">
           <NButton type="success" secondary size="small" onClick={() => addChild(row)}>
             {{
-              icon: () => <SvgIcon icon="mdi:source-branch-plus" class="text-14px" />,
+              icon: () => <SvgIcon icon="material-symbols:hub-outline-rounded" class="text-14px" />,
               default: () => '下级'
             }}
           </NButton>
           <NButton type="primary" secondary size="small" onClick={() => edit(row)}>
             {{
-              icon: () => <SvgIcon icon="mdi:pencil-outline" class="text-14px" />,
+              icon: () => <SvgIcon icon="material-symbols:edit-outline-rounded" class="text-14px" />,
               default: () => '编辑'
             }}
           </NButton>
@@ -70,7 +70,7 @@ const { columns, columnChecks, data, loading, getData, mobilePagination } = useT
               trigger: () => (
                 <NButton type="error" secondary size="small">
                   {{
-                    icon: () => <SvgIcon icon="mdi:trash-can-outline" class="text-14px" />,
+                    icon: () => <SvgIcon icon="material-symbols:delete-outline-rounded" class="text-14px" />,
                     default: () => '删除'
                   }}
                 </NButton>
@@ -171,7 +171,7 @@ function shortTagId(value?: string) {
           <template #default>
             <NButton size="small" secondary type="primary" @click="handleAdd">
               <template #icon>
-                <SvgIcon icon="mdi:tag-plus-outline" class="text-icon" />
+                <SvgIcon icon="material-symbols:label-outline-rounded" class="text-icon" />
               </template>
               新建标签
             </NButton>
@@ -227,16 +227,16 @@ function shortTagId(value?: string) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 14px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
+  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
   overflow: hidden;
 }
 
 .taxonomy-summary__item {
   min-width: 0;
   padding: 12px 14px;
-  border-right: 1px solid rgba(201, 193, 178, 0.72);
+  border-right: 1px solid var(--color-border);
 }
 
 .taxonomy-summary__item:last-child {
@@ -246,7 +246,7 @@ function shortTagId(value?: string) {
 .taxonomy-summary__label,
 .taxonomy-summary__item > span:last-child {
   display: block;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.3;
 }
@@ -260,7 +260,7 @@ function shortTagId(value?: string) {
 .taxonomy-summary__item strong {
   display: block;
   margin: 4px 0 3px;
-  color: #20242a;
+  color: var(--color-text);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 22px;
   line-height: 1.05;
@@ -280,10 +280,10 @@ function shortTagId(value?: string) {
   justify-content: center;
   min-height: 22px;
   padding: 2px 8px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: #e2dccc;
-  color: #5e6470;
+  background: var(--color-card-band);
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
@@ -292,9 +292,9 @@ function shortTagId(value?: string) {
 
 .taxonomy-level-chip--root,
 .taxonomy-limit-chip--limited {
-  border-color: #7e3f46;
-  background: #e2dccc;
-  color: #7e3f46;
+  border-color: var(--color-accent);
+  background: var(--color-card-band);
+  color: var(--color-accent);
 }
 
 .taxonomy-name-cell__copy {
@@ -302,13 +302,13 @@ function shortTagId(value?: string) {
 }
 
 .taxonomy-name-cell__name {
-  color: #20242a;
+  color: var(--color-text);
   font-weight: 700;
   line-height: 1.45;
 }
 
 .taxonomy-name-cell__id {
-  color: #747a84;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   line-height: 1.4;
@@ -317,7 +317,7 @@ function shortTagId(value?: string) {
 .taxonomy-description {
   display: -webkit-box;
   overflow: hidden;
-  color: #454b55;
+  color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.6;
   -webkit-box-orient: vertical;

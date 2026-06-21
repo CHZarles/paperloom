@@ -107,14 +107,14 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
         <div class="user-action-group">
           <NButton type="primary" secondary size="small" onClick={() => handleOrgTag(row)}>
             {{
-              icon: () => <SvgIcon icon="mdi:tag-multiple-outline" class="text-14px" />,
+              icon: () => <SvgIcon icon="material-symbols:sell-outline-rounded" class="text-14px" />,
               default: () => '组织'
             }}
           </NButton>
           {authStore.isAdmin ? (
             <NButton type="warning" secondary size="small" onClick={() => handleTokenQuota(row)}>
               {{
-                icon: () => <SvgIcon icon="mdi:database-plus-outline" class="text-14px" />,
+                icon: () => <SvgIcon icon="material-symbols:database-outline-rounded" class="text-14px" />,
                 default: () => 'Token'
               }}
             </NButton>
@@ -239,19 +239,19 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
     <div v-else class="user-mobile-filter">
       <div class="user-mobile-filter__header">
         <div class="user-filter-strip__label">
-          <icon-mdi-account-filter-outline />
+          <icon-material-symbols:filter-alt-outline-rounded />
           <span>User Filter</span>
         </div>
         <div class="user-mobile-filter__actions">
           <NButton size="small" secondary @click="resetSearchParams">
             <template #icon>
-              <icon-mdi-filter-remove-outline />
+              <icon-material-symbols:filter-alt-off-outline-rounded />
             </template>
             重置
           </NButton>
           <NButton size="small" type="primary" secondary @click="getData">
             <template #icon>
-              <icon-mdi-magnify />
+              <icon-material-symbols:search-rounded />
             </template>
             搜索
           </NButton>
@@ -263,7 +263,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
           <span>关键词</span>
           <NInput v-model:value="searchParams.keyword" placeholder="用户 / UID" clearable size="small">
             <template #prefix>
-              <icon-mdi-magnify />
+              <icon-material-symbols:search-rounded />
             </template>
           </NInput>
         </label>
@@ -327,15 +327,15 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 }
 
 .user-registry-card {
-  --user-line: #c9c1b2;
+  --user-line: var(--color-border);
 }
 
 .user-mobile-filter {
   width: 100%;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #fbfaf6, #ebe6da);
-  box-shadow: 3px 3px 0 rgba(201, 193, 178, 0.38);
+  background: linear-gradient(180deg, var(--color-surface), var(--color-border-soft));
+  box-shadow: var(--shadow-card-soft);
   padding: 12px;
 }
 
@@ -367,18 +367,18 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   grid-template-columns: 72px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  color: #7c6b55;
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 600;
 }
 
 .user-mobile-filter__grid .n-input,
 .user-mobile-filter__grid .n-base-selection {
-  --n-border: 1px solid #c9c1b2 !important;
-  --n-border-hover: 1px solid #7e3f46 !important;
-  --n-border-focus: 1px solid #7e3f46 !important;
-  --n-color: #e2dccc !important;
-  --n-color-focus: #fbfaf6 !important;
+  --n-border: 1px solid var(--color-border) !important;
+  --n-border-hover: 1px solid var(--color-accent) !important;
+  --n-border-focus: 1px solid var(--color-accent) !important;
+  --n-color: var(--color-card-band) !important;
+  --n-color-focus: var(--color-surface) !important;
   border-radius: 6px;
 }
 
@@ -392,14 +392,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   margin-bottom: 14px;
   border: 1px solid var(--user-line);
   border-radius: 8px;
-  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
+  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
   overflow: hidden;
 }
 
 .user-registry-summary__item {
   min-width: 0;
   padding: 12px 14px;
-  border-right: 1px solid rgba(201, 193, 178, 0.72);
+  border-right: 1px solid var(--color-border);
 }
 
 .user-registry-summary__item:last-child {
@@ -409,7 +409,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 .user-registry-summary__label,
 .user-registry-summary__item > span:last-child {
   display: block;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.3;
 }
@@ -423,7 +423,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 .user-registry-summary__item strong {
   display: block;
   margin: 4px 0 3px;
-  color: #20242a;
+  color: var(--color-text);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 22px;
   line-height: 1.05;
@@ -438,7 +438,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 }
 
 .user-index {
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   font-weight: 700;
@@ -449,7 +449,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 }
 
 .user-identity__name {
-  color: #20242a;
+  color: var(--color-text);
   font-weight: 700;
   line-height: 1.45;
 }
@@ -459,7 +459,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 .user-metric-cell__label,
 .user-quota-cell__meta,
 .user-empty-text {
-  color: #747a84;
+  color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -479,10 +479,10 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 .user-scope-chip {
   max-width: 136px;
   padding: 2px 8px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: #e2dccc;
-  color: #5e6470;
+  background: var(--color-card-band);
+  color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.55;
   overflow: hidden;
@@ -491,9 +491,9 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 }
 
 .user-scope-chip--primary {
-  border-color: #7e3f46;
-  background: #e2dccc;
-  color: #7e3f46;
+  border-color: var(--color-accent);
+  background: var(--color-card-band);
+  color: var(--color-accent);
   font-weight: 700;
 }
 
@@ -518,21 +518,21 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 .user-access--enabled {
   border-color: rgba(79, 125, 90, 0.35);
   background: rgba(79, 125, 90, 0.11);
-  color: #3f6b4a;
+  color: var(--color-success);
 }
 
 .user-access--enabled .user-access__dot {
-  background: #4f7d5a;
+  background: var(--color-success);
 }
 
 .user-access--disabled {
   border-color: rgba(155, 107, 46, 0.35);
   background: rgba(155, 107, 46, 0.1);
-  color: #9a6428;
+  color: var(--color-warning);
 }
 
 .user-access--disabled .user-access__dot {
-  background: #9a6428;
+  background: var(--color-warning);
 }
 
 .user-metric-cell,
@@ -545,7 +545,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 
 .user-metric-cell__value,
 .user-date-cell span:first-child {
-  color: #20242a;
+  color: var(--color-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   font-weight: 700;
@@ -574,7 +574,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  color: #20242a;
+  color: var(--color-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
@@ -588,7 +588,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 }
 
 .user-budget-line__label {
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 800;
@@ -596,9 +596,9 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 
 .user-quota-meter {
   height: 5px;
-  border: 1px solid rgba(201, 193, 178, 0.9);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: #ddd6c8;
+  background: var(--color-border-soft);
   overflow: hidden;
 }
 
@@ -606,7 +606,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #7e3f46, #7e3f46);
+  background: var(--color-accent);
 }
 
 .user-action-group {
@@ -623,7 +623,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   }
 
   .user-registry-summary__item {
-    border-bottom: 1px solid rgba(201, 193, 178, 0.72);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .user-registry-summary__item:nth-child(3n) {
@@ -641,7 +641,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   }
 
   .user-registry-summary__item:nth-child(3n) {
-    border-right: 1px solid rgba(201, 193, 178, 0.72);
+    border-right: 1px solid var(--color-border);
   }
 
   .user-registry-summary__item:nth-child(2n) {

@@ -548,17 +548,17 @@ onMounted(() => {
 // 1. Outer cards: align with knowledge-base .paper-library-card
 .usage-monitor-card {
   border-radius: 10px !important;
-  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.42) !important;
+  box-shadow: var(--shadow-card) !important;
 }
 
 .usage-monitor-card ::v-deep(.n-card-header) {
-  border-bottom: 1px solid #c9c1b2;
-  background: #e2dccc;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card-band);
   padding: 14px 20px;
 }
 
 .usage-monitor-card ::v-deep(.n-card-header__main) {
-  color: #26364a;
+  color: var(--color-primary);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 22px;
   font-weight: 700;
@@ -566,33 +566,33 @@ onMounted(() => {
 }
 
 .usage-monitor-card ::v-deep(.n-card-header__extra) {
-  color: #5e6470;
+  color: var(--color-text-muted);
 }
 
 .usage-monitor-card ::v-deep(.n-card__content) {
-  background: #fbfaf6;
+  background: var(--color-surface);
   padding: 16px 20px;
 }
 
 // 2. Note: dashed paper sticker
 .usage-monitor-note {
-  background: #fbfaf6 !important;
-  border: 1px dashed #c9c1b2 !important;
+  background: var(--color-surface) !important;
+  border: 1px dashed var(--color-border) !important;
   border-radius: 8px;
   font-size: 13px;
 }
 
 .limit-card {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
-  box-shadow: 3px 3px 0 rgba(201, 193, 178, 0.48);
+  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
+  box-shadow: var(--shadow-card-soft);
   padding: 16px;
 }
 
 .limit-title {
   margin-bottom: 16px;
-  color: #26364a;
+  color: var(--color-primary);
   font-size: 14px;
   font-weight: 700;
 }
@@ -603,7 +603,7 @@ onMounted(() => {
 
 .limit-label {
   margin-bottom: 8px;
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
@@ -612,19 +612,19 @@ onMounted(() => {
 }
 
 .summary-card {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #e2dccc, #fbfaf6);
+  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
   padding: 16px;
 }
 
 .summary-card.is-alert {
-  border-color: #d8b46a;
-  background: linear-gradient(180deg, #fff7e4, #f5e8c8);
+  border-color: var(--color-warning);
+  background: linear-gradient(180deg, var(--color-surface-alt), var(--color-card-band-pressed));
 }
 
 .summary-label {
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
@@ -634,27 +634,27 @@ onMounted(() => {
 
 .summary-value {
   margin-top: 12px;
-  color: #20242a;
+  color: var(--color-text);
   font-size: 28px;
   font-weight: 700;
 }
 
 .summary-sub {
   margin-top: 4px;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .overview-section {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
+  background: var(--color-surface);
 }
 
 .alert-item {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
+  background: var(--color-card-band);
   padding: 12px;
 }
 
@@ -662,9 +662,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
+  background: var(--color-card-band);
   padding: 12px;
 }
 
@@ -675,8 +675,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #26364a;
-  color: #fbfaf6;
+  background: var(--color-primary);
+  color: var(--color-surface);
   font-size: 12px;
   font-weight: 700;
 }
