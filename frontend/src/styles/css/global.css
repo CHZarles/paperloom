@@ -14,19 +14,15 @@ html {
 }
 
 body {
-  background:
-    linear-gradient(90deg, rgba(38, 54, 74, 0.055) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px), rgb(var(--layout-bg-color));
-  background-size: 24px 24px;
-  color: rgb(var(--base-text-color));
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family:
-    'Noto Sans SC',
-    'Microsoft YaHei',
-    ui-sans-serif,
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
     sans-serif;
 }
 
