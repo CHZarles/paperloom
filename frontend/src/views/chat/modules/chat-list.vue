@@ -168,10 +168,12 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 
 .welcome-kicker {
   margin-bottom: 9px;
-  color: var(--color-accent);
+  color: var(--color-text-muted);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .welcome-copy h1 {
