@@ -211,11 +211,11 @@ const tokenRecordColumns = computed(() => [
         <template #header>
           <div class="flex items-center gap-4">
             <NAvatar size="large">
-              <icon-solar:user-circle-linear class="text-icon-large" />
+              <icon-material-symbols:account-circle-outline-rounded class="text-icon-large" />
             </NAvatar>
             <div class="flex flex-col gap-1">
               <div>{{ userInfo.username }}</div>
-              <span class="text-xs text-stone-400">今日额度 · {{ usage.day || '未统计' }}</span>
+              <span class="text-xs" style="color: var(--color-text-muted)">今日额度 · {{ usage.day || '未统计' }}</span>
             </div>
           </div>
         </template>
@@ -223,22 +223,22 @@ const tokenRecordColumns = computed(() => [
           <div class="flex flex-col gap-4 p-4">
             <div class="grid gap-4 md:grid-cols-2">
               <NCard size="small" embedded class="quota-card">
-                <div class="text-sm font-semibold text-stone-700">LLM Token</div>
-                <div v-if="usage.llm.enabled" class="mt-3 flex flex-col gap-2 text-sm text-stone-500">
+                <div class="text-sm font-semibold" style="color: var(--color-primary)">LLM Token</div>
+                <div v-if="usage.llm.enabled" class="mt-3 flex flex-col gap-2 text-sm" style="color: var(--color-text-muted)">
                   <div>已用 {{ usage.llm.usedTokens.toLocaleString() }} / {{ usage.llm.limitTokens.toLocaleString() }}</div>
                   <div>剩余 {{ usage.llm.remainingTokens.toLocaleString() }}</div>
                   <div>请求 {{ usage.llm.requestCount.toLocaleString() }} 次</div>
                 </div>
-                <div v-else class="mt-3 text-sm text-stone-400">当前未启用配额</div>
+                <div v-else class="mt-3 text-sm" style="color: var(--color-text-muted)">当前未启用配额</div>
               </NCard>
               <NCard size="small" embedded class="quota-card">
-                <div class="text-sm font-semibold text-stone-700">Embedding Token</div>
-                <div v-if="usage.embedding.enabled" class="mt-3 flex flex-col gap-2 text-sm text-stone-500">
+                <div class="text-sm font-semibold" style="color: var(--color-primary)">Embedding Token</div>
+                <div v-if="usage.embedding.enabled" class="mt-3 flex flex-col gap-2 text-sm" style="color: var(--color-text-muted)">
                   <div>已用 {{ usage.embedding.usedTokens.toLocaleString() }} / {{ usage.embedding.limitTokens.toLocaleString() }}</div>
                   <div>剩余 {{ usage.embedding.remainingTokens.toLocaleString() }}</div>
                   <div>请求 {{ usage.embedding.requestCount.toLocaleString() }} 次</div>
                 </div>
-                <div v-else class="mt-3 text-sm text-stone-400">当前未启用配额</div>
+                <div v-else class="mt-3 text-sm" style="color: var(--color-text-muted)">当前未启用配额</div>
               </NCard>
             </div>
 
@@ -258,7 +258,7 @@ const tokenRecordColumns = computed(() => [
                 <NTag v-if="tag.tagId === tags.primaryOrg" type="primary" size="small">
                   主标签
                   <template #icon>
-                    <icon-solar:verified-check-bold-duotone class="text-icon" />
+                    <icon-material-symbols:check-circle-rounded class="text-icon" />
                   </template>
                 </NTag>
               </div>

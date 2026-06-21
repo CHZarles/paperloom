@@ -135,7 +135,7 @@ watch(
             class="invite-qr-image"
           />
           <div v-else class="invite-qr-placeholder">
-            <icon-ant-design:wechat-outlined class="invite-qr-icon" />
+            <icon-material-symbols:chat-bubble-outline-rounded class="invite-qr-icon" />
             <div class="invite-qr-title">公众号二维码位</div>
             <div class="invite-qr-desc">后续把二维码地址填到 `qrCodeImageUrl`，这里会直接展示扫码入口。</div>
           </div>
@@ -177,7 +177,7 @@ watch(
       <NFormItem path="username">
         <NInput v-model:value="model.username" :placeholder="$t('page.login.common.userNamePlaceholder')">
           <template #prefix>
-            <icon-mdi-account-school-outline />
+            <icon-material-symbols:school-outline-rounded />
           </template>
         </NInput>
       </NFormItem>
@@ -189,7 +189,7 @@ watch(
           :placeholder="$t('page.login.common.passwordPlaceholder')"
         >
           <template #prefix>
-            <icon-mdi-key-variant />
+            <icon-material-symbols:vpn-key-outline-rounded />
           </template>
         </NInput>
       </NFormItem>
@@ -201,7 +201,7 @@ watch(
           :placeholder="$t('page.login.common.confirmPasswordPlaceholder')"
         >
           <template #prefix>
-            <icon-mdi-lock-check-outline />
+            <icon-material-symbols:lock-open-outline-rounded />
           </template>
         </NInput>
       </NFormItem>
@@ -212,7 +212,7 @@ watch(
       >
         <NInput v-model:value="model.inviteCode" :placeholder="$t('page.login.common.inviteCodePlaceholder')">
           <template #prefix>
-            <icon-mdi-ticket-confirmation-outline />
+            <icon-material-symbols:confirmation-number-outline-rounded />
           </template>
         </NInput>
       </NFormItem>
@@ -222,13 +222,13 @@ watch(
       <NSpace vertical :size="18" class="w-full">
         <NButton type="primary" size="large" round block :loading="loading" @click="handleSubmit">
           <template #icon>
-            <icon-mdi-account-plus-outline />
+            <icon-material-symbols:person-add-outline-rounded />
           </template>
           {{ $t('page.login.common.register') }}
         </NButton>
         <NButton block @click="toggleLoginModule('pwd-login')">
           <template #icon>
-            <icon-mdi-arrow-left />
+            <icon-material-symbols:arrow-back-rounded />
           </template>
           {{ $t('page.login.common.back') }}
         </NButton>
@@ -258,16 +258,16 @@ watch(
 
 .register-form-panel :deep(.n-input) {
   border-radius: 6px;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 .register-form-panel :deep(.n-input .n-input__border),
 .register-form-panel :deep(.n-input .n-input__state-border) {
-  border-color: #c9c1b2;
+  border-color: var(--color-border);
 }
 
 .register-form-panel :deep(.n-input .n-input__prefix) {
-  color: #26364a;
+  color: var(--color-primary);
 }
 
 .register-form-tip {
@@ -280,11 +280,11 @@ watch(
   display: flex;
   min-width: 0;
   flex-direction: column;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 20px;
-  background: #e2dccc;
-  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.62);
+  background: var(--color-card-band);
+  box-shadow: var(--shadow-card);
 }
 
 .invite-side-kicker {

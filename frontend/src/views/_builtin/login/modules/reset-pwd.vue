@@ -57,14 +57,14 @@ async function handleSubmit() {
     <NFormItem path="phone">
       <NInput v-model:value="model.phone" :placeholder="$t('page.login.common.phonePlaceholder')">
         <template #prefix>
-          <icon-mdi-cellphone />
+          <icon-material-symbols:phone-iphone-rounded />
         </template>
       </NInput>
     </NFormItem>
     <NFormItem path="code">
       <NInput v-model:value="model.code" :placeholder="$t('page.login.common.codePlaceholder')">
         <template #prefix>
-          <icon-mdi-shield-key-outline />
+          <icon-material-symbols:vpn-key-alert-outline-rounded />
         </template>
       </NInput>
     </NFormItem>
@@ -76,7 +76,7 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       >
         <template #prefix>
-          <icon-mdi-key-variant />
+          <icon-material-symbols:vpn-key-outline-rounded />
         </template>
       </NInput>
     </NFormItem>
@@ -88,7 +88,7 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.confirmPasswordPlaceholder')"
       >
         <template #prefix>
-          <icon-mdi-lock-check-outline />
+          <icon-material-symbols:lock-open-outline-rounded />
         </template>
       </NInput>
     </NFormItem>
@@ -106,15 +106,15 @@ async function handleSubmit() {
 <style scoped>
 .auth-form :deep(.n-input) {
   border-radius: 6px;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 .auth-form :deep(.n-input .n-input__border),
 .auth-form :deep(.n-input .n-input__state-border) {
-  border-color: #c9c1b2;
+  border-color: var(--color-border);
 }
 
 .auth-form :deep(.n-input .n-input__prefix) {
-  color: #26364a;
+  color: var(--color-primary);
 }
 </style>

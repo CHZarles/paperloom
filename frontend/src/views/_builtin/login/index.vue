@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { Component } from 'vue';
-import { mixColor } from '@sa/color';
 import { loginModuleRecord } from '@/constants/app';
 import { useAppStore } from '@/store/modules/app';
 import { useThemeStore } from '@/store/modules/theme';
@@ -37,16 +35,10 @@ const moduleMap: Record<UnionKey.LoginModule, LoginModule> = {
 
 const activeModule = computed(() => moduleMap[props.module || 'pwd-login']);
 const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'register');
-
-const bgColor = computed(() => {
-  const ratio = themeStore.darkMode ? 0.9 : 0;
-
-  return mixColor('#eeeae1', '#000', ratio);
-});
 </script>
 
 <template>
-  <div class="login-page relative size-full flex-center" :style="{ backgroundColor: bgColor }">
+  <div class="login-page relative size-full flex-center">
     <NCard :bordered="false" class="relative z-4 w-auto card-wrapper">
       <div :class="isRegisterModule ? 'login-panel login-panel--register' : 'login-panel'">
         <header class="login-header">
@@ -98,15 +90,15 @@ const bgColor = computed(() => {
 .login-page {
   background:
     linear-gradient(90deg, rgba(38, 54, 74, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px), #eeeae1;
+    linear-gradient(180deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px), var(--color-bg);
   background-size: 24px 24px;
 }
 
 :deep(.card-wrapper) {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
-  box-shadow: 8px 8px 0 rgba(201, 193, 178, 0.7);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .login-header {
@@ -130,10 +122,10 @@ const bgColor = computed(() => {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
-  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.68);
+  background: var(--color-card-band);
+  box-shadow: var(--shadow-card);
 }
 
 .login-brand-title {
@@ -142,7 +134,7 @@ const bgColor = computed(() => {
   align-items: baseline;
   gap: 8px;
   margin: 0;
-  color: #26364a;
+  color: var(--color-primary);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 30px;
   font-weight: 700;
@@ -150,7 +142,7 @@ const bgColor = computed(() => {
 }
 
 .login-brand-mode {
-  color: #7e3f46;
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   font-weight: 700;
@@ -158,7 +150,7 @@ const bgColor = computed(() => {
 
 .login-brand-subtitle {
   margin-top: 7px;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
 }
@@ -168,15 +160,15 @@ const bgColor = computed(() => {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  color: #26364a;
+  color: var(--color-primary);
 }
 
 .login-module-heading {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid #c9c1b2;
-  color: #26364a;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-primary);
   padding-bottom: 6px;
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 18px;
@@ -184,7 +176,7 @@ const bgColor = computed(() => {
 }
 
 .login-module-heading span {
-  color: #9a6428;
+  color: var(--color-warning);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
 }

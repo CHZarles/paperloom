@@ -74,7 +74,7 @@ async function handleSubmit() {
     <NFormItem path="userName">
       <NInput v-model:value="model.userName" :placeholder="$t('page.login.common.userNamePlaceholder')">
         <template #prefix>
-          <icon-mdi-account-school-outline />
+          <icon-material-symbols:school-outline-rounded />
         </template>
       </NInput>
     </NFormItem>
@@ -86,7 +86,7 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       >
         <template #prefix>
-          <icon-mdi-key-variant />
+          <icon-material-symbols:vpn-key-outline-rounded />
         </template>
       </NInput>
     </NFormItem>
@@ -98,13 +98,13 @@ async function handleSubmit() {
     <div class="flex-col gap-6">
       <NButton type="primary" size="large" round block :loading="authStore.loginLoading" @click="handleSubmit">
         <template #icon>
-          <icon-mdi-login-variant />
+          <icon-material-symbols:login-rounded />
         </template>
         {{ $t('page.login.common.login') }}
       </NButton>
       <NButton block @click="toggleLoginModule('register')">
         <template #icon>
-          <icon-mdi-ticket-confirmation-outline />
+          <icon-material-symbols:confirmation-number-outline-rounded />
         </template>
         {{ $t(loginModuleRecord.register) }}
       </NButton>
@@ -121,20 +121,20 @@ async function handleSubmit() {
 
 <style scoped>
 .auth-form {
-  color: #4b4032;
+  color: var(--color-text);
 }
 
 :deep(.n-input) {
   border-radius: 6px;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 :deep(.n-input .n-input__border),
 :deep(.n-input .n-input__state-border) {
-  border-color: #c9c1b2;
+  border-color: var(--color-border);
 }
 
 :deep(.n-input .n-input__prefix) {
-  color: #26364a;
+  color: var(--color-primary);
 }
 </style>
