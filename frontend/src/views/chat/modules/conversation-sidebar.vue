@@ -414,15 +414,14 @@ function formatDate(dateStr?: string) {
   align-items: center;
   gap: 10px;
   border-left: 3px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px 10px;
   color: var(--color-text);
   box-shadow: 0 0 0 transparent;
   transition:
     background 0.16s ease,
     color 0.16s ease,
-    border-left-color 0.16s ease,
-    box-shadow 0.16s ease;
+    border-left-color 0.16s ease;
 }
 
 .session-item:hover {
@@ -431,10 +430,10 @@ function formatDate(dateStr?: string) {
 }
 
 .session-item--active {
-  background: var(--color-surface);
+  background: var(--color-primary-soft-bg);
   color: var(--color-primary);
   border-left-color: var(--color-accent);
-  box-shadow: var(--shadow-card-soft);
+  font-weight: 600;
 }
 
 .session-title {
