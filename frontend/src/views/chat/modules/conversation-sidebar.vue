@@ -199,6 +199,11 @@ function formatDate(dateStr?: string) {
               :class="session.conversationId === conversationId ? 'session-item--active' : ''"
               @click="handleSelect(session.conversationId)"
             >
+              <icon-lucide:circle-dot
+                v-if="session.conversationId === conversationId"
+                class="shrink-0 text-12px"
+                :style="{ color: 'var(--color-primary)' }"
+              />
               <div class="min-w-0 flex-1">
                 <div class="session-title">
                   {{ session.title }}
