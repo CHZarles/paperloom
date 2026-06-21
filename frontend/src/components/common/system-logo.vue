@@ -27,7 +27,7 @@ defineOptions({ name: 'SystemLogo' });
   height: 1em;
   align-items: center;
   justify-content: center;
-  color: #26364a;
+  color: var(--color-primary);
 }
 
 .system-logo__mark {
@@ -60,7 +60,7 @@ defineOptions({ name: 'SystemLogo' });
   top: 0.06em;
   bottom: 0.06em;
   width: 0.2em;
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .system-logo__strip--horizontal {
@@ -68,7 +68,7 @@ defineOptions({ name: 'SystemLogo' });
   right: 0.06em;
   z-index: 2;
   height: 0.2em;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 .system-logo__strip--v1 {
@@ -77,7 +77,7 @@ defineOptions({ name: 'SystemLogo' });
 
 .system-logo__strip--v2 {
   left: 0.39em;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 .system-logo__strip--v3 {
@@ -101,7 +101,7 @@ defineOptions({ name: 'SystemLogo' });
   z-index: 3;
   width: 0.2em;
   height: 0.2em;
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .system-logo__over--v1h2 {
@@ -112,13 +112,13 @@ defineOptions({ name: 'SystemLogo' });
 .system-logo__over--v2h1 {
   top: 0.16em;
   left: 0.39em;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 .system-logo__over--v2h3 {
   top: 0.62em;
   left: 0.39em;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 .system-logo__over--v3h2 {

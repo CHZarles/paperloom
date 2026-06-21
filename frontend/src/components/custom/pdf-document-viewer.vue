@@ -1427,23 +1427,23 @@ async function cleanupPdfState() {
         <template v-if="!singlePagePreviewActive">
           <NButton size="tiny" quaternary :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
             <template #icon>
-              <icon-mdi-chevron-left />
+              <icon-material-symbols-chevron-left-rounded />
             </template>
           </NButton>
           <NButton size="tiny" quaternary :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">
             <template #icon>
-              <icon-mdi-chevron-right />
+              <icon-material-symbols-chevron-right-rounded />
             </template>
           </NButton>
         </template>
         <NButton size="tiny" quaternary :disabled="zoom <= minZoom" @click="zoomOut">
           <template #icon>
-            <icon-mdi-magnify-minus-outline />
+            <icon-material-symbols-zoom-out-rounded />
           </template>
         </NButton>
         <NButton size="tiny" quaternary :disabled="zoom >= maxZoom" @click="zoomIn">
           <template #icon>
-            <icon-mdi-magnify-plus-outline />
+            <icon-material-symbols-zoom-in-rounded />
           </template>
         </NButton>
         <NButton size="tiny" secondary @click="resetZoom">适应宽度</NButton>
@@ -1474,7 +1474,7 @@ async function cleanupPdfState() {
           <span>正在加载 PDF 文档</span>
         </div>
         <div v-else-if="renderError" class="stage-feedback is-error">
-          <icon-mdi-alert-circle class="text-24" />
+          <icon-material-symbols-error-outline-rounded class="text-24" />
           <span>{{ renderError }}</span>
         </div>
         <div v-else class="page-scroll-shell">
@@ -1579,14 +1579,14 @@ async function cleanupPdfState() {
 
 .page-stage {
   @apply relative min-h-0 overflow-auto p-3;
-  background: #e2dccc;
+  background: var(--color-card-band);
 }
 
 .stage-feedback {
   @apply flex h-full min-h-320px flex-col items-center justify-center gap-3 text-stone-500;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .stage-feedback.is-error {
@@ -1603,9 +1603,9 @@ async function cleanupPdfState() {
 
 .pdf-page-shell {
   @apply relative border bg-white p-2;
-  border-color: #c9c1b2;
+  border-color: var(--color-border);
   border-radius: 8px;
-  box-shadow: 5px 5px 0 rgba(201, 193, 178, 0.65);
+  box-shadow: var(--shadow-card);
 }
 
 .pdf-viewer-body.is-single-page .page-stage {

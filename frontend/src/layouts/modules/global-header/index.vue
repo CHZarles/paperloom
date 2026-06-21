@@ -59,7 +59,7 @@ function goToChatbot() {
         @click="goToChatbot"
       >
         <template #icon>
-          <icon-mdi-robot-outline class="text-icon" />
+          <icon-material-symbols-smart-toy-outline-rounded class="text-icon" />
         </template>
         Chatbot
       </NButton>
@@ -84,13 +84,13 @@ function goToChatbot() {
 
 <style scoped>
 .chatbot-back-button {
-  --n-border-color: #c9c1b2;
-  --n-color: #fbfaf6;
-  --n-color-hover: #f1ebd9;
-  --n-color-pressed: #e2dccc;
-  --n-text-color: #5e6470;
-  --n-text-color-hover: #26364a;
-  --n-text-color-pressed: #26364a;
+  --n-border-color: var(--color-border);
+  --n-color: var(--color-bg);
+  --n-color-hover: var(--color-surface-alt);
+  --n-color-pressed: var(--color-card-band);
+  --n-text-color: var(--color-text-muted);
+  --n-text-color-hover: var(--color-text);
+  --n-text-color-pressed: var(--color-text);
   font-weight: 600;
 }
 </style>

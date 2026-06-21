@@ -46,7 +46,7 @@ function handleTo() {
           <span class="ml-5px flex-1">
             {{ (item.i18nKey && $t(item.i18nKey)) || item.label }}
           </span>
-          <icon-ant-design-enter-outlined class="icon mr-3px p-2px text-20px" />
+          <icon-material-symbols-keyboard-return-rounded class="icon mr-3px p-2px text-20px" />
         </div>
       </template>
     </div>

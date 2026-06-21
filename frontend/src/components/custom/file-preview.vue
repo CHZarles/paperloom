@@ -306,7 +306,7 @@ function closePreview() {
       <template v-else-if="error">
         <div class="state-panel state-panel--error">
           <div class="state-orb state-orb--error">
-            <icon-mdi-alert-circle class="text-34" />
+            <icon-material-symbols-error-outline-rounded class="text-34" />
           </div>
           <div class="state-copy">
             <strong>这份 source 暂时没能打开</strong>
@@ -344,19 +344,19 @@ function closePreview() {
                   @click="openPreviewInNewTab"
                 >
                   <template #icon>
-                    <icon-mdi-open-in-new />
+                    <icon-material-symbols-open-in-new-rounded />
                   </template>
                   新窗口
                 </NButton>
                 <NButton size="small" secondary :loading="downloading" @click="downloadFile">
                   <template #icon>
-                    <icon-mdi-download />
+                    <icon-material-symbols-download-rounded />
                   </template>
                   下载
                 </NButton>
                 <NButton size="small" quaternary @click="closePreview">
                   <template #icon>
-                    <icon-mdi-close />
+                    <icon-material-symbols-close-rounded />
                   </template>
                   关闭
                 </NButton>
@@ -417,13 +417,13 @@ function closePreview() {
                   <div class="placeholder-actions">
                     <NButton secondary :disabled="!canOpenInNewTab" @click="openPreviewInNewTab">
                       <template #icon>
-                        <icon-mdi-open-in-new />
+                        <icon-material-symbols-open-in-new-rounded />
                       </template>
                       新窗口打开
                     </NButton>
                     <NButton type="primary" @click="downloadFile">
                       <template #icon>
-                        <icon-mdi-download />
+                        <icon-material-symbols-download-rounded />
                       </template>
                       下载后查看
                     </NButton>
@@ -447,9 +447,9 @@ function closePreview() {
   min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #c9c1b2;
-  background: #fbfaf6;
-  color: #20242a;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 .preview-backdrop {
@@ -462,7 +462,7 @@ function closePreview() {
   min-height: 0;
   flex: 1 1 0;
   overflow: hidden;
-  background: #fbfaf6;
+  background: var(--color-bg);
   padding: 12px;
 }
 
@@ -487,9 +487,9 @@ function closePreview() {
   align-items: center;
   justify-content: center;
   gap: 18px;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
+  background: var(--color-bg);
   padding: 40px;
   text-align: center;
 }
@@ -506,16 +506,16 @@ function closePreview() {
   width: 64px;
   align-items: center;
   justify-content: center;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
-  color: #26364a;
+  background: var(--color-card-band);
+  color: var(--color-primary);
 }
 
 .state-orb--error {
   border-color: rgba(38, 54, 74, 0.32);
   background: #e7dde0;
-  color: #26364a;
+  color: var(--color-primary);
 }
 
 .state-copy {
@@ -523,11 +523,11 @@ function closePreview() {
   max-width: 520px;
   flex-direction: column;
   gap: 8px;
-  color: #5e6470;
+  color: var(--color-text-muted);
 }
 
 .state-copy strong {
-  color: #20242a;
+  color: var(--color-text);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 18px;
   font-weight: 700;
@@ -546,10 +546,10 @@ function closePreview() {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #e2dccc;
-  color: #26364a;
+  background: var(--color-card-band);
+  color: var(--color-primary);
 }
 
 .file-badge-copy {
@@ -559,7 +559,7 @@ function closePreview() {
 .preview-title {
   margin: 0;
   overflow: hidden;
-  color: #20242a;
+  color: var(--color-text);
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 17px;
   font-weight: 700;
@@ -570,7 +570,7 @@ function closePreview() {
 
 .preview-subtitle {
   margin: 5px 0 0;
-  color: #5e6470;
+  color: var(--color-text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
 }
@@ -587,15 +587,15 @@ function closePreview() {
 }
 
 .info-card {
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #e2dccc;
-  color: #394150;
+  background: var(--color-card-band);
+  color: var(--color-text);
   padding: 14px;
 }
 
 .source-card {
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .source-card-top {
@@ -611,7 +611,7 @@ function closePreview() {
 }
 
 .info-label {
-  color: #26364a;
+  color: var(--color-primary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
 }
@@ -621,7 +621,7 @@ function closePreview() {
 .spotlight-copy {
   margin: 9px 0 0;
   overflow-wrap: anywhere;
-  color: #394150;
+  color: var(--color-text);
   font-size: 14px;
   line-height: 1.75;
 }
@@ -629,16 +629,16 @@ function closePreview() {
 .preview-stage {
   min-height: 0;
   overflow: hidden;
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .stage-body {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid #c9c1b2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfaf6;
+  background: var(--color-bg);
 }
 
 .pdf-preview-stack {
@@ -650,7 +650,7 @@ function closePreview() {
 
 .text-preview-shell {
   height: 100%;
-  background: #fbfaf6;
+  background: var(--color-bg);
   padding: 16px;
 }
 
@@ -658,7 +658,7 @@ function closePreview() {
   height: 100%;
   margin: 0;
   overflow: auto;
-  color: #20242a;
+  color: var(--color-text);
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 14px;
   line-height: 1.68;
@@ -673,7 +673,7 @@ function closePreview() {
   align-items: center;
   justify-content: center;
   overflow: auto;
-  background: #fbfaf6;
+  background: var(--color-bg);
   padding: 16px;
 }
 
@@ -692,8 +692,8 @@ function closePreview() {
   align-items: center;
   justify-content: center;
   gap: 18px;
-  background: #e2dccc;
-  color: #5e6470;
+  background: var(--color-card-band);
+  color: var(--color-text-muted);
   padding: 32px;
   text-align: center;
 }

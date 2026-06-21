@@ -45,7 +45,7 @@ function refresh() {
     <slot name="default">
       <NButton v-if="addable" size="small" ghost type="primary" @click="add">
         <template #icon>
-          <icon-ic-round-plus class="text-icon" />
+          <icon-material-symbols-add-rounded class="text-icon" />
         </template>
         {{ $t('common.add') }}
       </NButton>
@@ -53,7 +53,7 @@ function refresh() {
         <template #trigger>
           <NButton size="small" ghost type="error">
             <template #icon>
-              <icon-ic-round-delete class="text-icon" />
+              <icon-material-symbols-delete-outline-rounded class="text-icon" />
             </template>
             {{ $t('common.batchDelete') }}
           </NButton>
@@ -63,7 +63,7 @@ function refresh() {
     </slot>
     <NButton size="small" @click="refresh">
       <template #icon>
-        <icon-mdi-refresh class="text-icon" :class="{ 'animate-spin': loading }" />
+        <icon-material-symbols-refresh-rounded class="text-icon" :class="{ 'animate-spin': loading }" />
       </template>
       {{ $t('common.refresh') }}
     </NButton>
