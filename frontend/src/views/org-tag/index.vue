@@ -252,7 +252,7 @@ function shortTagId(value?: string) {
 }
 
 .taxonomy-summary__label {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -261,7 +261,7 @@ function shortTagId(value?: string) {
   display: block;
   margin: 4px 0 3px;
   color: var(--color-text);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 22px;
   line-height: 1.05;
 }
@@ -284,7 +284,7 @@ function shortTagId(value?: string) {
   border-radius: 999px;
   background: var(--color-card-band);
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -309,7 +309,7 @@ function shortTagId(value?: string) {
 
 .taxonomy-name-cell__id {
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   line-height: 1.4;
 }

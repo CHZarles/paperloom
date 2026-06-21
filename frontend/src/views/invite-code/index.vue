@@ -492,7 +492,7 @@ onMounted(() => {
 
 .invite-code-card ::v-deep(.n-card-header__main) {
   color: var(--color-primary);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.2px;

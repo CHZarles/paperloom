@@ -607,7 +607,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 .message-block--assistant .message-author {
   color: var(--color-primary);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 17px;
 }
 
@@ -641,7 +641,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .reference-list__item {
@@ -672,7 +672,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   border-right: 1px solid var(--color-border);
   color: var(--color-primary);
   padding-right: 8px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
   font-weight: 700;
 }

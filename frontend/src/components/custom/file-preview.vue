@@ -528,7 +528,7 @@ function closePreview() {
 
 .state-copy strong {
   color: var(--color-text);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 18px;
   font-weight: 700;
 }
@@ -560,7 +560,7 @@ function closePreview() {
   margin: 0;
   overflow: hidden;
   color: var(--color-text);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 17px;
   font-weight: 700;
   line-height: 1.2;
@@ -571,7 +571,7 @@ function closePreview() {
 .preview-subtitle {
   margin: 5px 0 0;
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
 }
 
@@ -612,7 +612,7 @@ function closePreview() {
 
 .info-label {
   color: var(--color-primary);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
 }
 

@@ -310,7 +310,7 @@ function formatDate(dateStr?: string) {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-primary);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 18px;
   font-weight: 700;
 }
@@ -318,7 +318,7 @@ function formatDate(dateStr?: string) {
 .brand-subtitle {
   margin-top: 1px;
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
 }
 
@@ -338,7 +338,7 @@ function formatDate(dateStr?: string) {
   justify-content: space-between;
   padding: 16px 14px 8px;
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -448,7 +448,7 @@ function formatDate(dateStr?: string) {
 .session-date {
   margin-top: 2px;
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
 }
 
@@ -517,7 +517,7 @@ function formatDate(dateStr?: string) {
 .footer-action__copy small {
   overflow: hidden;
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   line-height: 1.25;
   text-overflow: ellipsis;

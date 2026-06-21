@@ -171,14 +171,14 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 .welcome-kicker {
   margin-bottom: 9px;
   color: var(--color-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
 }
 
 .welcome-copy h1 {
   margin: 0;
   color: var(--color-primary);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 34px;
   font-weight: 700;
   line-height: 1.08;
@@ -206,7 +206,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   background: var(--color-surface);
   color: var(--color-text-muted);
   padding: 5px 8px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
 }
 

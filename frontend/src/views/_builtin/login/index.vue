@@ -135,7 +135,7 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
   gap: 8px;
   margin: 0;
   color: var(--color-primary);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 30px;
   font-weight: 700;
   line-height: 1.05;
@@ -143,7 +143,7 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
 
 .login-brand-mode {
   color: var(--color-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 13px;
   font-weight: 700;
 }
@@ -151,7 +151,7 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
 .login-brand-subtitle {
   margin-top: 7px;
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
 }
 
@@ -170,14 +170,14 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
   border-bottom: 1px solid var(--color-border);
   color: var(--color-primary);
   padding-bottom: 6px;
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 18px;
   font-weight: 700;
 }
 
 .login-module-heading span {
   color: var(--color-warning);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
 }
 

@@ -299,7 +299,7 @@ onMounted(() => {
 
 .model-provider-card ::v-deep(.n-card-header__main) {
   color: var(--color-primary);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.2px;
@@ -370,7 +370,7 @@ onMounted(() => {
 .provider-code {
   margin-top: 4px;
   color: var(--color-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -392,7 +392,7 @@ onMounted(() => {
 .limit-label {
   margin-bottom: 8px;
   color: var(--color-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;

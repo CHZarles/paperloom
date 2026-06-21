@@ -94,7 +94,7 @@ function reset() {
   gap: 6px;
   flex: 0 0 auto;
   color: var(--color-primary);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;

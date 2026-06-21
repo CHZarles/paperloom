@@ -727,7 +727,7 @@ async function onBeforeUpload(
 
 .paper-library-card .n-card-header__main {
   color: var(--color-primary);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.2px;
@@ -771,7 +771,7 @@ async function onBeforeUpload(
 }
 
 .library-summary__label {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -780,7 +780,7 @@ async function onBeforeUpload(
   display: block;
   margin: 4px 0 3px;
   color: var(--color-text);
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 22px;
   line-height: 1.05;
 }
@@ -796,7 +796,7 @@ async function onBeforeUpload(
 .paper-library-card .n-data-table-th {
   background: var(--color-card-band-pressed);
   color: var(--color-text);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
   padding: 12px 12px;
 }
@@ -892,7 +892,7 @@ async function onBeforeUpload(
   border-radius: 999px;
   background: var(--color-card-band);
   color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -910,7 +910,7 @@ async function onBeforeUpload(
 .library-size-cell,
 .library-date-cell span:first-child {
   color: var(--color-text);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -932,7 +932,7 @@ async function onBeforeUpload(
   align-items: center;
   gap: 8px;
   color: var(--color-text);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   font-weight: 700;
 }
@@ -946,7 +946,7 @@ async function onBeforeUpload(
 
 .library-index-line__label {
   color: var(--color-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.4px;
@@ -1005,7 +1005,7 @@ async function onBeforeUpload(
   align-items: center;
   gap: 8px;
   color: var(--color-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
   font-weight: 700;
 }

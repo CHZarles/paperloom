@@ -217,7 +217,7 @@ onBeforeUnmount(() => {
 
 .topbar-title {
   color: var(--chat-accent);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 18px;
   font-weight: 700;
   line-height: 1.05;
@@ -225,7 +225,7 @@ onBeforeUnmount(() => {
 
 .topbar-subtitle {
   color: var(--chat-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 11px;
 }
 
@@ -238,7 +238,7 @@ onBeforeUnmount(() => {
   background: var(--color-surface);
   color: var(--chat-text-muted);
   padding: 5px 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
 }
 
@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
 
 .reference-panel__title {
   color: var(--chat-accent);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 17px;
   font-weight: 700;
 }
@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
 .reference-panel__subtitle {
   margin-top: 2px;
   color: var(--chat-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
 }
 
