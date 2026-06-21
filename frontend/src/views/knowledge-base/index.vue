@@ -487,7 +487,7 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
           <span class="library-index-line__label">ACT</span>
           <span>failed</span>
         </div>
-        <NEllipsis tooltip lineClamp={2} class="text-stone-500">
+        <NEllipsis tooltip lineClamp={2} style="color: #8c4034">
           {row.processingErrorMessage || '请检查 Embedding 额度或稍后重试'}
         </NEllipsis>
         {canRetryVectorization(row) ? (
@@ -798,15 +798,18 @@ async function onBeforeUpload(
   color: #394150;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
+  padding: 12px 12px;
 }
 
 .paper-library-card .n-data-table-td {
   background: #fbfaf6;
   vertical-align: middle;
+  padding: 12px 12px;
+  transition: background-color 120ms ease;
 }
 
 .paper-library-card .n-data-table-tr:hover .n-data-table-td {
-  background: #e2dccc;
+  background: #f1ebd9;
 }
 
 .library-file-cell {
@@ -883,8 +886,8 @@ async function onBeforeUpload(
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 22px;
-  padding: 2px 8px;
+  min-height: 23px;
+  padding: 2px 9px;
   border: 1px solid #c9c1b2;
   border-radius: 999px;
   background: #e2dccc;
@@ -914,7 +917,7 @@ async function onBeforeUpload(
 
 .library-index-cell {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 220px;
 }
 
@@ -946,6 +949,7 @@ async function onBeforeUpload(
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.4px;
 }
 
 .library-index-line--processing .library-index-line__top,
