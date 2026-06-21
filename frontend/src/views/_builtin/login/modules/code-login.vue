@@ -52,7 +52,7 @@ async function handleSubmit() {
     <NFormItem path="phone">
       <NInput v-model:value="model.phone" :placeholder="$t('page.login.common.phonePlaceholder')">
         <template #prefix>
-          <icon-material-symbols:phone-iphone-sharp />
+          <icon-lucide:smartphone />
         </template>
       </NInput>
     </NFormItem>
@@ -60,7 +60,7 @@ async function handleSubmit() {
       <div class="w-full flex-y-center gap-16px">
         <NInput v-model:value="model.code" :placeholder="$t('page.login.common.codePlaceholder')">
           <template #prefix>
-            <icon-material-symbols:vpn-key-alert-outline-rounded />
+            <icon-lucide:shield />
           </template>
         </NInput>
         <NButton size="large" :disabled="isCounting" :loading="loading" @click="getCaptcha(model.phone)">

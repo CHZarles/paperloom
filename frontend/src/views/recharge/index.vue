@@ -280,14 +280,14 @@ onMounted(() => {
 
               <div class="flex flex-col gap-2 text-sm">
                 <div class="flex items-center gap-2">
-                  <icon-material-symbols:check-rounded class="text-primary" />
+                  <icon-lucide:check class="text-primary" />
                   <span>
                     LLM Token:
                     <strong>{{ formatTokenWan(pkg.llmToken) }}</strong>
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <icon-material-symbols:check-rounded class="text-primary" />
+                  <icon-lucide:check class="text-primary" />
                   <span>
                     Embedding Token:
                     <strong>{{ formatTokenWan(pkg.embeddingToken) }}</strong>

@@ -456,7 +456,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   <div class="message-block" :class="msg.role === 'user' ? 'message-block--user' : 'message-block--assistant'">
     <div v-if="msg.role === 'user'" class="message-heading">
       <NAvatar class="user-avatar">
-        <SvgIcon icon="material-symbols:account-circle-outline-sharp" class="text-icon-large color-white" />
+        <SvgIcon icon="lucide:user-round" class="text-icon-large color-white" />
       </NAvatar>
       <div class="flex-col gap-1">
         <NText class="message-author">{{ msg.username || authStore.userInfo.username }}</NText>
@@ -479,15 +479,15 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
         class="tool-event"
         :class="`tool-event--${event.status}`"
       >
-        <icon-eos-icons:three-dots-loading v-if="event.status === 'executing'" class="text-4" />
-        <icon-material-symbols:check-circle-rounded v-else-if="event.status === 'success'" class="text-4" />
-        <icon-material-symbols:error-rounded v-else class="text-4" />
+        <icon-lucide:loader-circle v-if="event.status === 'executing'" class="text-4" />
+        <icon-lucide:check-circle v-else-if="event.status === 'success'" class="text-4" />
+        <icon-lucide:alert-circle v-else class="text-4" />
         <span class="tool-event__name">{{ getToolLabel(event.tool) }}</span>
         <span class="tool-event__status">{{ getToolStatusLabel(event.status) }}</span>
       </div>
     </div>
     <NText v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)">
-      <icon-eos-icons:three-dots-loading class="ml-12 mt-2 text-8" />
+      <icon-lucide:loader-circle class="ml-12 mt-2 text-8" />
     </NText>
     <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 italic" style="color: var(--color-error)">
       {{ msg.content || '服务器繁忙，请稍后再试' }}
@@ -527,7 +527,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
     <div class="message-actions">
       <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
         <template #icon>
-          <icon-material-symbols:content-copy-outline-rounded />
+          <icon-lucide:copy />
         </template>
       </NButton>
       <NButton
@@ -540,7 +540,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
         @click="handleFeedback(msg, 'good')"
       >
         <template #icon>
-          <icon-material-symbols:thumb-up-outline-rounded />
+          <icon-lucide:thumbs-up />
         </template>
       </NButton>
       <NButton
@@ -553,7 +553,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
         @click="handleFeedback(msg, 'bad')"
       >
         <template #icon>
-          <icon-material-symbols:thumb-down-outline-rounded />
+          <icon-lucide:thumbs-down />
         </template>
       </NButton>
     </div>

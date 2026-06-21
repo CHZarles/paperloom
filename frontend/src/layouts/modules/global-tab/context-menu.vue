@@ -41,27 +41,27 @@ const options = computed(() => {
     {
       key: 'closeCurrent',
       label: $t('dropdown.closeCurrent'),
-      icon: SvgIconVNode({ icon: 'material-symbols:close-rounded', fontSize: 18 })
+      icon: SvgIconVNode({ icon: 'lucide:x', fontSize: 18 })
     },
     {
       key: 'closeOther',
       label: $t('dropdown.closeOther'),
-      icon: SvgIconVNode({ icon: 'material-symbols:width-rounded', fontSize: 18 })
+      icon: SvgIconVNode({ icon: 'lucide:columns-2', fontSize: 18 })
     },
     {
       key: 'closeLeft',
       label: $t('dropdown.closeLeft'),
-      icon: SvgIconVNode({ icon: 'material-symbols:format-align-left-rounded', fontSize: 18 })
+      icon: SvgIconVNode({ icon: 'lucide:align-left', fontSize: 18 })
     },
     {
       key: 'closeRight',
       label: $t('dropdown.closeRight'),
-      icon: SvgIconVNode({ icon: 'material-symbols:format-align-right-rounded', fontSize: 18 })
+      icon: SvgIconVNode({ icon: 'lucide:align-right', fontSize: 18 })
     },
     {
       key: 'closeAll',
       label: $t('dropdown.closeAll'),
-      icon: SvgIconVNode({ icon: 'material-symbols:horizontal-rule-rounded', fontSize: 18 })
+      icon: SvgIconVNode({ icon: 'lucide:minus', fontSize: 18 })
     }
   ];
   const { excludeKeys, disabledKeys } = props;

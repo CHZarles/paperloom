@@ -107,14 +107,14 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
         <div class="user-action-group">
           <NButton type="primary" secondary size="small" onClick={() => handleOrgTag(row)}>
             {{
-              icon: () => <SvgIcon icon="material-symbols:sell-outline-sharp" class="text-14px" />,
+              icon: () => <SvgIcon icon="lucide:tag" class="text-14px" />,
               default: () => '组织'
             }}
           </NButton>
           {authStore.isAdmin ? (
             <NButton type="warning" secondary size="small" onClick={() => handleTokenQuota(row)}>
               {{
-                icon: () => <SvgIcon icon="material-symbols:database-outline" class="text-14px" />,
+                icon: () => <SvgIcon icon="lucide:database" class="text-14px" />,
                 default: () => 'Token'
               }}
             </NButton>
@@ -239,19 +239,19 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
     <div v-else class="user-mobile-filter">
       <div class="user-mobile-filter__header">
         <div class="user-filter-strip__label">
-          <icon-material-symbols:filter-alt-outline-sharp />
+          <icon-lucide:list-filter />
           <span>User Filter</span>
         </div>
         <div class="user-mobile-filter__actions">
           <NButton size="small" secondary @click="resetSearchParams">
             <template #icon>
-              <icon-material-symbols:filter-alt-off-outline-rounded />
+              <icon-lucide:filter-x />
             </template>
             重置
           </NButton>
           <NButton size="small" type="primary" secondary @click="getData">
             <template #icon>
-              <icon-material-symbols:search-rounded />
+              <icon-lucide:search />
             </template>
             搜索
           </NButton>
@@ -263,7 +263,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
           <span>关键词</span>
           <NInput v-model:value="searchParams.keyword" placeholder="用户 / UID" clearable size="small">
             <template #prefix>
-              <icon-material-symbols:search-rounded />
+              <icon-lucide:search />
             </template>
           </NInput>
         </label>

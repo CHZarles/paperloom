@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
           aria-label="展开对话列表"
           @click="sidebarCollapsed = false"
         >
-          <icon-material-symbols:left-panel-open-outline-rounded class="text-18px" />
+          <icon-lucide:panel-left-open class="text-18px" />
         </button>
         <div class="min-w-0 flex-1">
           <div class="topbar-title">PaperLoom</div>
@@ -103,7 +103,7 @@ onBeforeUnmount(() => {
           aria-label="引用预览"
           @click="referencePanelVisible = !referencePanelVisible"
         >
-          <icon-material-symbols:article-outline-rounded class="text-18px" />
+          <icon-lucide:file-text class="text-18px" />
         </button>
       </header>
 
@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
             </div>
             <NButton quaternary circle size="small" @click="closeReferencePanel">
               <template #icon>
-                <icon-material-symbols:close-rounded />
+                <icon-lucide:x />
               </template>
             </NButton>
           </div>
@@ -144,7 +144,7 @@ onBeforeUnmount(() => {
             @close="closeReferencePanel"
           />
           <div v-else class="reference-panel__empty">
-            <icon-material-symbols:article-outline-rounded class="text-34px" />
+            <icon-lucide:file-text class="text-34px" />
             <span>点击回答中的 [source #] 引用后，会在这里显示证据和文件预览。</span>
           </div>
         </aside>

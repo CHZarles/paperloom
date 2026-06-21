@@ -54,13 +54,13 @@ const { columns, columnChecks, data, loading, getData, mobilePagination } = useT
         <div class="taxonomy-action-group">
           <NButton type="success" secondary size="small" onClick={() => addChild(row)}>
             {{
-              icon: () => <SvgIcon icon="material-symbols:hub-outline-sharp" class="text-14px" />,
+              icon: () => <SvgIcon icon="lucide:git-branch" class="text-14px" />,
               default: () => '下级'
             }}
           </NButton>
           <NButton type="primary" secondary size="small" onClick={() => edit(row)}>
             {{
-              icon: () => <SvgIcon icon="material-symbols:edit-outline-rounded" class="text-14px" />,
+              icon: () => <SvgIcon icon="lucide:pencil" class="text-14px" />,
               default: () => '编辑'
             }}
           </NButton>
@@ -70,7 +70,7 @@ const { columns, columnChecks, data, loading, getData, mobilePagination } = useT
               trigger: () => (
                 <NButton type="error" secondary size="small">
                   {{
-                    icon: () => <SvgIcon icon="material-symbols:delete-outline-rounded" class="text-14px" />,
+                    icon: () => <SvgIcon icon="lucide:trash-2" class="text-14px" />,
                     default: () => '删除'
                   }}
                 </NButton>
@@ -171,7 +171,7 @@ function shortTagId(value?: string) {
           <template #default>
             <NButton size="small" secondary type="primary" @click="handleAdd">
               <template #icon>
-                <SvgIcon icon="material-symbols:label-outline-rounded" class="text-icon" />
+                <SvgIcon icon="lucide:tag" class="text-icon" />
               </template>
               新建标签
             </NButton>

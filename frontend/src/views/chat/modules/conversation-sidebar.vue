@@ -151,7 +151,7 @@ function formatDate(dateStr?: string) {
         </div>
         <NButton text size="tiny" class="collapse-button" @click="handleCollapse">
           <template #icon>
-            <icon-material-symbols:left-panel-close-outline-rounded />
+            <icon-lucide:panel-left-close />
           </template>
         </NButton>
       </div>
@@ -159,7 +159,7 @@ function formatDate(dateStr?: string) {
       <div class="px-3">
         <NButton type="primary" block class="new-chat-button" @click="handleNewChat">
           <template #icon>
-            <icon-material-symbols:add-rounded />
+            <icon-lucide:plus />
           </template>
           New Query
         </NButton>
@@ -168,7 +168,7 @@ function formatDate(dateStr?: string) {
       <div class="px-3 pt-3">
         <NInput v-model:value="keyword" clearable size="small" placeholder="搜索 query / session">
           <template #prefix>
-            <icon-material-symbols:search-rounded class="text-16px" style="color: var(--color-text-muted)" />
+            <icon-lucide:search class="text-16px" style="color: var(--color-text-muted)" />
           </template>
         </NInput>
       </div>
@@ -188,7 +188,7 @@ function formatDate(dateStr?: string) {
         <NSpin :show="sessionsLoading" class="h-full">
           <TransitionGroup name="session-list" tag="div">
             <div v-if="visibleSessions.length === 0 && !sessionsLoading" class="empty-sessions">
-              <icon-material-symbols:chat-outline-rounded class="text-36px" style="color: var(--color-border-soft)" />
+              <icon-lucide:message-circle class="text-36px" style="color: var(--color-border-soft)" />
               <span>{{ showArchived ? '暂无归档 query' : '暂无 query 记录' }}</span>
             </div>
 
@@ -216,7 +216,7 @@ function formatDate(dateStr?: string) {
                     @click.stop
                   >
                     <template #icon>
-                      <icon-material-symbols:archive-outline-rounded
+                      <icon-lucide:archive
                         class="text-15px"
                         style="color: var(--color-text-muted)"
                       />
@@ -233,7 +233,7 @@ function formatDate(dateStr?: string) {
                 @click.stop="handleUnarchive(session.conversationId)"
               >
                 <template #icon>
-                  <icon-material-symbols:unarchive-outline-rounded
+                  <icon-lucide:archive-restore
                     class="text-15px"
                     style="color: var(--color-text-muted)"
                   />
@@ -252,7 +252,7 @@ function formatDate(dateStr?: string) {
           aria-label="进入工作台"
           @click="handleWorkbenchClick"
         >
-          <icon-material-symbols:menu-book-outline-rounded class="footer-action__icon" />
+          <icon-lucide:book-open class="footer-action__icon" />
           <span class="footer-action__copy">
             <strong>Paper Library</strong>
             <small>{{ workbenchSubtitle }}</small>
@@ -260,7 +260,7 @@ function formatDate(dateStr?: string) {
         </button>
 
         <button type="button" class="footer-action footer-action--danger" @click="handleLogout">
-          <icon-material-symbols:logout-rounded class="footer-action__icon" />
+          <icon-lucide:log-out class="footer-action__icon" />
           <span class="footer-action__copy">
             <strong>Logout</strong>
           </span>

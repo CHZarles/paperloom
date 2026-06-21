@@ -135,7 +135,7 @@ watch(
             class="invite-qr-image"
           />
           <div v-else class="invite-qr-placeholder">
-            <icon-material-symbols:chat-bubble-outline-rounded class="invite-qr-icon" />
+            <icon-lucide:message-circle class="invite-qr-icon" />
             <div class="invite-qr-title">公众号二维码位</div>
             <div class="invite-qr-desc">后续把二维码地址填到 `qrCodeImageUrl`，这里会直接展示扫码入口。</div>
           </div>
@@ -177,7 +177,7 @@ watch(
       <NFormItem path="username">
         <NInput v-model:value="model.username" :placeholder="$t('page.login.common.userNamePlaceholder')">
           <template #prefix>
-            <icon-material-symbols:school-outline-rounded />
+            <icon-lucide:graduation-cap />
           </template>
         </NInput>
       </NFormItem>
@@ -189,7 +189,7 @@ watch(
           :placeholder="$t('page.login.common.passwordPlaceholder')"
         >
           <template #prefix>
-            <icon-material-symbols:vpn-key-outline-rounded />
+            <icon-lucide:key-round />
           </template>
         </NInput>
       </NFormItem>
@@ -201,7 +201,7 @@ watch(
           :placeholder="$t('page.login.common.confirmPasswordPlaceholder')"
         >
           <template #prefix>
-            <icon-material-symbols:lock-open-outline-rounded />
+            <icon-lucide:lock-open />
           </template>
         </NInput>
       </NFormItem>
@@ -212,7 +212,7 @@ watch(
       >
         <NInput v-model:value="model.inviteCode" :placeholder="$t('page.login.common.inviteCodePlaceholder')">
           <template #prefix>
-            <icon-material-symbols:confirmation-number-outline-rounded />
+            <icon-lucide:ticket />
           </template>
         </NInput>
       </NFormItem>
@@ -222,13 +222,13 @@ watch(
       <NSpace vertical :size="18" class="w-full">
         <NButton type="primary" size="large" round block :loading="loading" @click="handleSubmit">
           <template #icon>
-            <icon-material-symbols:person-add-outline-rounded />
+            <icon-lucide:user-plus />
           </template>
           {{ $t('page.login.common.register') }}
         </NButton>
         <NButton block @click="toggleLoginModule('pwd-login')">
           <template #icon>
-            <icon-material-symbols:arrow-back-rounded />
+            <icon-lucide:arrow-left />
           </template>
           {{ $t('page.login.common.back') }}
         </NButton>

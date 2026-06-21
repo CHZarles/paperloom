@@ -211,7 +211,7 @@ const tokenRecordColumns = computed(() => [
         <template #header>
           <div class="flex items-center gap-4">
             <NAvatar size="large">
-              <icon-material-symbols:account-circle-outline-sharp class="text-icon-large" />
+              <icon-lucide:user-round class="text-icon-large" />
             </NAvatar>
             <div class="flex flex-col gap-1">
               <div>{{ userInfo.username }}</div>
@@ -271,7 +271,7 @@ const tokenRecordColumns = computed(() => [
                   <NTag v-if="tag.tagId === tags.primaryOrg" type="primary" size="small">
                     主标签
                     <template #icon>
-                      <icon-material-symbols:check-circle-rounded class="text-icon" />
+                      <icon-lucide:check-circle class="text-icon" />
                     </template>
                   </NTag>
                 </div>

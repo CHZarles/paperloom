@@ -11,7 +11,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const icon = computed(() =>
-  props.pin ? 'material-symbols:push-pin-sharp' : 'material-symbols:push-pin-outline-sharp'
+  props.pin ? 'lucide:pin' : 'lucide:pin-off'
 );
 </script>
 

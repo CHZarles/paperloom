@@ -74,7 +74,7 @@ async function handleSubmit() {
     <NFormItem path="userName">
       <NInput v-model:value="model.userName" :placeholder="$t('page.login.common.userNamePlaceholder')">
         <template #prefix>
-          <icon-material-symbols:school-outline-rounded />
+          <icon-lucide:graduation-cap />
         </template>
       </NInput>
     </NFormItem>
@@ -86,7 +86,7 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       >
         <template #prefix>
-          <icon-material-symbols:vpn-key-outline-rounded />
+          <icon-lucide:key-round />
         </template>
       </NInput>
     </NFormItem>
@@ -98,13 +98,13 @@ async function handleSubmit() {
     <div class="flex-col gap-6">
       <NButton type="primary" size="large" round block :loading="authStore.loginLoading" @click="handleSubmit">
         <template #icon>
-          <icon-material-symbols:login-rounded />
+          <icon-lucide:log-in />
         </template>
         {{ $t('page.login.common.login') }}
       </NButton>
       <NButton block @click="toggleLoginModule('register')">
         <template #icon>
-          <icon-material-symbols:confirmation-number-outline-rounded />
+          <icon-lucide:ticket />
         </template>
         {{ $t(loginModuleRecord.register) }}
       </NButton>

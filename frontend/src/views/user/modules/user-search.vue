@@ -29,7 +29,7 @@ function reset() {
 <template>
   <div class="user-filter-strip">
     <div class="user-filter-strip__label">
-      <icon-material-symbols:filter-alt-outline-sharp />
+      <icon-lucide:list-filter />
       <span>User Filter</span>
     </div>
 
@@ -37,7 +37,7 @@ function reset() {
       <NFormItem label="关键词" path="keyword">
         <NInput v-model:value="model.keyword" placeholder="用户 / UID" clearable size="small" class="user-filter-input">
           <template #prefix>
-            <icon-material-symbols:search-rounded />
+            <icon-lucide:search />
           </template>
         </NInput>
       </NFormItem>
@@ -59,13 +59,13 @@ function reset() {
     <div class="user-filter-strip__actions">
       <NButton size="small" secondary @click="reset">
         <template #icon>
-          <icon-material-symbols:filter-alt-off-outline-rounded />
+          <icon-lucide:filter-x />
         </template>
         重置
       </NButton>
       <NButton size="small" type="primary" secondary @click="search">
         <template #icon>
-          <icon-material-symbols:search-rounded />
+          <icon-lucide:search />
         </template>
         搜索
       </NButton>

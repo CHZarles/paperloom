@@ -90,13 +90,13 @@ watch(visible, () => {
           <NSpace class="w-full" justify="end">
             <NButton @click="reset">
               <template #icon>
-                <icon-material-symbols:refresh-rounded class="text-icon" />
+                <icon-lucide:refresh-cw class="text-icon" />
               </template>
               重置
             </NButton>
             <NButton type="primary" ghost @click="search">
               <template #icon>
-                <icon-material-symbols:search-rounded class="text-icon" />
+                <icon-lucide:search class="text-icon" />
               </template>
               搜索
             </NButton>

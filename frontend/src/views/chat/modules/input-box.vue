@@ -410,8 +410,8 @@ onUnmounted(() => {
         @click="handleSend"
       >
         <template #icon>
-          <icon-material-symbols:stop-rounded v-if="isSending" class="text-16px" />
-          <icon-material-symbols:arrow-upward-rounded v-else class="text-16px" />
+          <icon-lucide:square v-if="isSending" class="text-16px" />
+          <icon-lucide:arrow-up v-else class="text-16px" />
         </template>
       </NButton>
     </div>

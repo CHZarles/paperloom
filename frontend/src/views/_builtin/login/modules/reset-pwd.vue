@@ -57,14 +57,14 @@ async function handleSubmit() {
     <NFormItem path="phone">
       <NInput v-model:value="model.phone" :placeholder="$t('page.login.common.phonePlaceholder')">
         <template #prefix>
-          <icon-material-symbols:phone-iphone-sharp />
+          <icon-lucide:smartphone />
         </template>
       </NInput>
     </NFormItem>
     <NFormItem path="code">
       <NInput v-model:value="model.code" :placeholder="$t('page.login.common.codePlaceholder')">
         <template #prefix>
-          <icon-material-symbols:vpn-key-alert-outline-rounded />
+          <icon-lucide:shield />
         </template>
       </NInput>
     </NFormItem>
@@ -76,7 +76,7 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       >
         <template #prefix>
-          <icon-material-symbols:vpn-key-outline-rounded />
+          <icon-lucide:key-round />
         </template>
       </NInput>
     </NFormItem>
@@ -88,7 +88,7 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.confirmPasswordPlaceholder')"
       >
         <template #prefix>
-          <icon-material-symbols:lock-open-outline-rounded />
+          <icon-lucide:lock-open />
         </template>
       </NInput>
     </NFormItem>

@@ -199,7 +199,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {{
-              icon: () => <SvgIcon icon="material-symbols:visibility-outline-rounded" class="text-14px" />,
+              icon: () => <SvgIcon icon="lucide:eye" class="text-14px" />,
               default: () => '预览'
             }}
           </NButton>
@@ -210,7 +210,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
                 trigger: () => (
                   <NButton type="error" secondary size="small">
                     {{
-                      icon: () => <SvgIcon icon="material-symbols:delete-outline-rounded" class="text-14px" />,
+                      icon: () => <SvgIcon icon="lucide:trash-2" class="text-14px" />,
                       default: () => '删除'
                     }}
                   </NButton>
@@ -570,7 +570,7 @@ function renderResumeUploadButton(row: Api.Paper.UploadTask) {
       return (
         <NButton type="primary" size="small" secondary onClick={() => resumeUpload(row)}>
           {{
-            icon: () => <SvgIcon icon="material-symbols:upload-rounded" class="text-14px" />,
+            icon: () => <SvgIcon icon="lucide:upload" class="text-14px" />,
             default: () => '续传'
           }}
         </NButton>
@@ -585,7 +585,7 @@ function renderResumeUploadButton(row: Api.Paper.UploadTask) {
       >
         <NButton type="primary" size="small" secondary>
           {{
-            icon: () => <SvgIcon icon="material-symbols:upload-rounded" class="text-14px" />,
+            icon: () => <SvgIcon icon="lucide:upload" class="text-14px" />,
             default: () => '续传'
           }}
         </NButton>
@@ -648,7 +648,7 @@ async function onBeforeUpload(
           <template #prefix>
             <NButton size="small" secondary type="primary" @click="handleSearch">
               <template #icon>
-                <icon-material-symbols:search-rounded class="text-icon" />
+                <icon-lucide:search class="text-icon" />
               </template>
               检索文献库
             </NButton>
@@ -656,7 +656,7 @@ async function onBeforeUpload(
           <template #default>
             <NButton size="small" secondary type="primary" @click="handleUpload">
               <template #icon>
-                <icon-material-symbols:upload-rounded class="text-icon" />
+                <icon-lucide:upload class="text-icon" />
               </template>
               上传文献
             </NButton>

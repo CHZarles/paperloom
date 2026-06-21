@@ -21,12 +21,12 @@ type NumberBool = 0 | 1;
 const icon = computed(() => {
   const icons: Record<NumberBool, Record<NumberBool, string>> = {
     0: {
-      0: 'material-symbols:left-panel-close-outline-rounded',
-      1: 'material-symbols:left-panel-open-outline-rounded'
+      0: 'lucide:panel-left-close',
+      1: 'lucide:panel-left-open'
     },
     1: {
-      0: 'material-symbols:chevron-left-rounded',
-      1: 'material-symbols:chevron-right-rounded'
+      0: 'lucide:chevron-left',
+      1: 'lucide:chevron-right'
     }
   };
 

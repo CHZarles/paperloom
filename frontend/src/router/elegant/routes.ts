@@ -46,7 +46,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'chat',
       i18nKey: 'route.chat',
-      icon: 'mdi:comment-question-outline',
+      icon: 'lucide:message-circle-question',
       order: 1,
       hideInMenu: true
     }
@@ -60,7 +60,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.chat-history',
       roles: ['ADMIN'],
       hideInMenu: true,
-      icon: 'mdi:history',
+      icon: 'lucide:history',
       order: 2
     }
   },
@@ -84,7 +84,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'invite-code',
       i18nKey: 'route.invite-code',
-      icon: 'mdi:ticket-confirmation-outline',
+      icon: 'lucide:ticket',
       roles: ['ADMIN'],
       order: 6
     }
@@ -96,7 +96,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'knowledge-base',
       i18nKey: 'route.knowledge-base',
-      icon: 'mdi:bookshelf',
+      icon: 'lucide:library',
       order: 3
     }
   },
@@ -119,7 +119,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'model-provider',
       i18nKey: 'route.model-provider',
-      icon: 'mdi:flask-outline',
+      icon: 'lucide:flask-conical',
       roles: ['ADMIN'],
       order: 5
     }
@@ -131,7 +131,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'org-tag',
       i18nKey: 'route.org-tag',
-      icon: 'mdi:tag-multiple-outline',
+      icon: 'lucide:tags',
       roles: ['ADMIN'],
       order: 4
     }
@@ -143,7 +143,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'personal-center',
       i18nKey: 'route.personal-center',
-      icon: 'mdi:account-circle-outline',
+      icon: 'lucide:user-round',
       order: 7
     }
   },
@@ -154,7 +154,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'recharge',
       i18nKey: 'route.recharge',
-      icon: 'mdi:credit-card-outline',
+      icon: 'lucide:credit-card',
       order: 8
     }
   },
@@ -165,7 +165,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'recharge-manage',
       i18nKey: 'route.recharge-manage',
-      icon: 'mdi:receipt-text-outline',
+      icon: 'lucide:receipt',
       roles: ['ADMIN'],
       order: 9
     }
@@ -177,7 +177,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'usage-monitor',
       i18nKey: 'route.usage-monitor',
-      icon: 'mdi:chart-line',
+      icon: 'lucide:chart-line',
       roles: ['ADMIN'],
       order: 6
     }
@@ -189,7 +189,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'user',
       i18nKey: 'route.user',
-      icon: 'mdi:account-group-outline',
+      icon: 'lucide:users',
       roles: ['ADMIN']
     }
   }
