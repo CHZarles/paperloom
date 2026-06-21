@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useFullscreen } from '@vueuse/core';
 import { useRouter } from 'vue-router';
+import { useFullscreen } from '@vueuse/core';
 import { useAppStore } from '@/store/modules/app';
 import { useThemeStore } from '@/store/modules/theme';
 import GlobalSearch from '../global-search/index.vue';
@@ -49,7 +49,7 @@ function goToChatbot() {
       <GlobalBreadcrumb v-if="!appStore.isMobile" class="ml-12px" />
     </div>
 -->
-    <div class="h-full flex-y-center justify-end px-6 gap-2">
+    <div class="h-full flex-y-center justify-end gap-2 px-6">
       <NButton
         size="small"
         secondary

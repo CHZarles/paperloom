@@ -16,7 +16,7 @@ defineOptions({ name: 'SearchFooter' });
       <span>{{ $t('common.switch') }}</span>
     </span>
     <span class="flex-y-center">
-      <icon-material-symbols-keyboard-esc-rounded class="operate-shadow operate-item" />
+      <icon-material-symbols-close-rounded class="operate-shadow operate-item" />
       <span>{{ $t('common.close') }}</span>
     </span>
   </div>

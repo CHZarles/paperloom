@@ -57,7 +57,7 @@ async function handleSubmit() {
     <NFormItem path="phone">
       <NInput v-model:value="model.phone" :placeholder="$t('page.login.common.phonePlaceholder')">
         <template #prefix>
-          <icon-material-symbols:phone-iphone-rounded />
+          <icon-material-symbols:phone-iphone-sharp />
         </template>
       </NInput>
     </NFormItem>

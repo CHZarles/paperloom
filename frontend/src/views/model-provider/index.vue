@@ -117,7 +117,7 @@ onMounted(() => {
 
 <template>
   <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
-    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper model-provider-card">
+    <NCard :bordered="false" size="small" class="admin-console-card model-provider-card card-wrapper">
       <template #header>Experiment Config / 模型配置</template>
       <template #header-extra>
         <div class="flex items-center gap-2">
@@ -126,7 +126,7 @@ onMounted(() => {
       </template>
 
       <NSpin :show="modelProvidersLoading">
-        <div class="admin-console-note mb-4 model-provider-note">
+        <div class="admin-console-note model-provider-note mb-4">
           这里管理平台代付的模型接入配置。API Key 输入为空时保留现有密钥，不会回显明文。Embedding 如果切换 active
           provider，后端会拦截需要重嵌入的危险变更。
         </div>

@@ -145,7 +145,11 @@ function onUpdate(option: unknown) {
         <div v-if="fileSizeLimitError" class="mt-8px text-12px" style="color: var(--color-error)">
           {{ fileSizeLimitError }}
         </div>
-        <div v-else-if="!authStore.isAdmin && model.uploadMaxSizeMb" class="mt-8px text-12px" style="color: var(--color-warning)">
+        <div
+          v-else-if="!authStore.isAdmin && model.uploadMaxSizeMb"
+          class="mt-8px text-12px"
+          style="color: var(--color-warning)"
+        >
           当前组织限制非管理员上传文件不超过 {{ model.uploadMaxSizeMb }} MB
         </div>
       </NFormItem>

@@ -107,14 +107,14 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
         <div class="user-action-group">
           <NButton type="primary" secondary size="small" onClick={() => handleOrgTag(row)}>
             {{
-              icon: () => <SvgIcon icon="material-symbols:sell-outline-rounded" class="text-14px" />,
+              icon: () => <SvgIcon icon="material-symbols:sell-outline-sharp" class="text-14px" />,
               default: () => '组织'
             }}
           </NButton>
           {authStore.isAdmin ? (
             <NButton type="warning" secondary size="small" onClick={() => handleTokenQuota(row)}>
               {{
-                icon: () => <SvgIcon icon="material-symbols:database-outline-rounded" class="text-14px" />,
+                icon: () => <SvgIcon icon="material-symbols:database-outline" class="text-14px" />,
                 default: () => 'Token'
               }}
             </NButton>
@@ -239,7 +239,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
     <div v-else class="user-mobile-filter">
       <div class="user-mobile-filter__header">
         <div class="user-filter-strip__label">
-          <icon-material-symbols:filter-alt-outline-rounded />
+          <icon-material-symbols:filter-alt-outline-sharp />
           <span>User Filter</span>
         </div>
         <div class="user-mobile-filter__actions">

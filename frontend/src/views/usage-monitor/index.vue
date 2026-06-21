@@ -256,7 +256,7 @@ onMounted(() => {
 
 <template>
   <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
-    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper usage-monitor-card">
+    <NCard :bordered="false" size="small" class="admin-console-card usage-monitor-card card-wrapper">
       <template #header>Runtime Limits / 限流配置</template>
       <template #header-extra>
         <div class="flex items-center gap-2">
@@ -266,7 +266,7 @@ onMounted(() => {
       </template>
 
       <NSpin :show="rateLimitLoading">
-        <div class="admin-console-note mb-4 usage-monitor-note">
+        <div class="admin-console-note usage-monitor-note mb-4">
           这里集中管理聊天消息、LLM 全网 Token 预算，以及 Embedding
           上传/查询两条链路的运行时限流配置。保存后对新请求立即生效，无需改 `application.yml`。
         </div>
@@ -396,7 +396,7 @@ onMounted(() => {
       </NSpin>
     </NCard>
 
-    <NCard :bordered="false" size="small" class="admin-console-card card-wrapper usage-monitor-card">
+    <NCard :bordered="false" size="small" class="admin-console-card usage-monitor-card card-wrapper">
       <template #header>
         <div class="flex items-center gap-3">
           <span>Usage Ledger / 用量总览</span>

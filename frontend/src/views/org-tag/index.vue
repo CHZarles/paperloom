@@ -54,7 +54,7 @@ const { columns, columnChecks, data, loading, getData, mobilePagination } = useT
         <div class="taxonomy-action-group">
           <NButton type="success" secondary size="small" onClick={() => addChild(row)}>
             {{
-              icon: () => <SvgIcon icon="material-symbols:hub-outline-rounded" class="text-14px" />,
+              icon: () => <SvgIcon icon="material-symbols:hub-outline-sharp" class="text-14px" />,
               default: () => '下级'
             }}
           </NButton>

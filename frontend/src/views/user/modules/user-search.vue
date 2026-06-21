@@ -29,7 +29,7 @@ function reset() {
 <template>
   <div class="user-filter-strip">
     <div class="user-filter-strip__label">
-      <icon-material-symbols:filter-alt-outline-rounded />
+      <icon-material-symbols:filter-alt-outline-sharp />
       <span>User Filter</span>
     </div>
 

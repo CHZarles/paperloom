@@ -10,7 +10,9 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const icon = computed(() => (props.pin ? 'material-symbols:push-pin-rounded' : 'material-symbols:push-pin-outline-rounded'));
+const icon = computed(() =>
+  props.pin ? 'material-symbols:push-pin-sharp' : 'material-symbols:push-pin-outline-sharp'
+);
 </script>
 
 <template>

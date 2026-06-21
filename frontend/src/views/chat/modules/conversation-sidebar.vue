@@ -216,7 +216,10 @@ function formatDate(dateStr?: string) {
                     @click.stop
                   >
                     <template #icon>
-                      <icon-material-symbols:archive-outline-rounded class="text-15px" style="color: var(--color-text-muted)" />
+                      <icon-material-symbols:archive-outline-rounded
+                        class="text-15px"
+                        style="color: var(--color-text-muted)"
+                      />
                     </template>
                   </NButton>
                 </template>
@@ -230,7 +233,10 @@ function formatDate(dateStr?: string) {
                 @click.stop="handleUnarchive(session.conversationId)"
               >
                 <template #icon>
-                  <icon-material-symbols:unarchive-outline-rounded class="text-15px" style="color: var(--color-text-muted)" />
+                  <icon-material-symbols:unarchive-outline-rounded
+                    class="text-15px"
+                    style="color: var(--color-text-muted)"
+                  />
                 </template>
               </NButton>
             </div>

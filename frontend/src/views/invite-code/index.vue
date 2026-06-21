@@ -389,7 +389,7 @@ onMounted(() => {
       title="Invite Codes / 邀请码"
       :bordered="false"
       size="small"
-      class="admin-console-card sm:flex-1-hidden card-wrapper invite-code-card"
+      class="admin-console-card invite-code-card sm:flex-1-hidden card-wrapper"
       content-class="flex-col-stretch min-h-0 sm:h-full"
     >
       <template #header-extra>
@@ -411,7 +411,7 @@ onMounted(() => {
         </NSpace>
       </template>
 
-      <div class="admin-console-note mb-4 invite-code-note">
+      <div class="admin-console-note invite-code-note mb-4">
         邀请码留空时，后端会自动生成 16 位随机码；批量创建时会连续生成多条随机邀请码，默认长期有效。
       </div>
 

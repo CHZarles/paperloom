@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, h } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { NTag } from 'naive-ui';
 const { userInfo } = storeToRefs(useAuthStore());
 
@@ -211,7 +211,7 @@ const tokenRecordColumns = computed(() => [
         <template #header>
           <div class="flex items-center gap-4">
             <NAvatar size="large">
-              <icon-material-symbols:account-circle-outline-rounded class="text-icon-large" />
+              <icon-material-symbols:account-circle-outline-sharp class="text-icon-large" />
             </NAvatar>
             <div class="flex flex-col gap-1">
               <div>{{ userInfo.username }}</div>
@@ -224,8 +224,14 @@ const tokenRecordColumns = computed(() => [
             <div class="grid gap-4 md:grid-cols-2">
               <NCard size="small" embedded class="quota-card">
                 <div class="text-sm font-semibold" style="color: var(--color-primary)">LLM Token</div>
-                <div v-if="usage.llm.enabled" class="mt-3 flex flex-col gap-2 text-sm" style="color: var(--color-text-muted)">
-                  <div>已用 {{ usage.llm.usedTokens.toLocaleString() }} / {{ usage.llm.limitTokens.toLocaleString() }}</div>
+                <div
+                  v-if="usage.llm.enabled"
+                  class="mt-3 flex flex-col gap-2 text-sm"
+                  style="color: var(--color-text-muted)"
+                >
+                  <div>
+                    已用 {{ usage.llm.usedTokens.toLocaleString() }} / {{ usage.llm.limitTokens.toLocaleString() }}
+                  </div>
                   <div>剩余 {{ usage.llm.remainingTokens.toLocaleString() }}</div>
                   <div>请求 {{ usage.llm.requestCount.toLocaleString() }} 次</div>
                 </div>
@@ -233,8 +239,15 @@ const tokenRecordColumns = computed(() => [
               </NCard>
               <NCard size="small" embedded class="quota-card">
                 <div class="text-sm font-semibold" style="color: var(--color-primary)">Embedding Token</div>
-                <div v-if="usage.embedding.enabled" class="mt-3 flex flex-col gap-2 text-sm" style="color: var(--color-text-muted)">
-                  <div>已用 {{ usage.embedding.usedTokens.toLocaleString() }} / {{ usage.embedding.limitTokens.toLocaleString() }}</div>
+                <div
+                  v-if="usage.embedding.enabled"
+                  class="mt-3 flex flex-col gap-2 text-sm"
+                  style="color: var(--color-text-muted)"
+                >
+                  <div>
+                    已用 {{ usage.embedding.usedTokens.toLocaleString() }} /
+                    {{ usage.embedding.limitTokens.toLocaleString() }}
+                  </div>
                   <div>剩余 {{ usage.embedding.remainingTokens.toLocaleString() }}</div>
                   <div>请求 {{ usage.embedding.requestCount.toLocaleString() }} 次</div>
                 </div>
@@ -243,29 +256,29 @@ const tokenRecordColumns = computed(() => [
             </div>
 
             <div class="flex flex-wrap gap-4">
-            <NCard
-              v-for="tag in tags.orgTagDetails"
-              :key="tag.tagId"
-              size="small"
-              embedded
-              hoverable
-              class="w-[calc((100%-32px)/3)]"
-              :segmented="{ content: true, footer: 'soft' }"
-              @click="showModal(tag.tagId)"
-            >
-              <div class="flex items-center justify-between">
-                <div>{{ tag.name }}</div>
-                <NTag v-if="tag.tagId === tags.primaryOrg" type="primary" size="small">
-                  主标签
-                  <template #icon>
-                    <icon-material-symbols:check-circle-rounded class="text-icon" />
-                  </template>
-                </NTag>
-              </div>
-              <template #footer>
-                <NEllipsis :line-clamp="3">{{ tag.description }}</NEllipsis>
-              </template>
-            </NCard>
+              <NCard
+                v-for="tag in tags.orgTagDetails"
+                :key="tag.tagId"
+                size="small"
+                embedded
+                hoverable
+                class="w-[calc((100%-32px)/3)]"
+                :segmented="{ content: true, footer: 'soft' }"
+                @click="showModal(tag.tagId)"
+              >
+                <div class="flex items-center justify-between">
+                  <div>{{ tag.name }}</div>
+                  <NTag v-if="tag.tagId === tags.primaryOrg" type="primary" size="small">
+                    主标签
+                    <template #icon>
+                      <icon-material-symbols:check-circle-rounded class="text-icon" />
+                    </template>
+                  </NTag>
+                </div>
+                <template #footer>
+                  <NEllipsis :line-clamp="3">{{ tag.description }}</NEllipsis>
+                </template>
+              </NCard>
             </div>
           </div>
         </NScrollbar>

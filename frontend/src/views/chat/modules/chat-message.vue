@@ -357,7 +357,13 @@ async function handleSourceFileClick(fileInfo: {
   pageNumber?: number;
   anchorText?: string;
 }) {
-  const { paperTitle, referenceNumber, paperId: extractedPaperId, pageNumber: extractedPageNumber, anchorText: clickedAnchorText } = fileInfo;
+  const {
+    paperTitle,
+    referenceNumber,
+    paperId: extractedPaperId,
+    pageNumber: extractedPageNumber,
+    anchorText: clickedAnchorText
+  } = fileInfo;
   const persistedDetail =
     props.msg.referenceMappings?.[String(referenceNumber)] || props.msg.referenceMappings?.[referenceNumber];
   const conversationRecordId = props.msg.conversationRecordId;
@@ -450,7 +456,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   <div class="message-block" :class="msg.role === 'user' ? 'message-block--user' : 'message-block--assistant'">
     <div v-if="msg.role === 'user'" class="message-heading">
       <NAvatar class="user-avatar">
-        <SvgIcon icon="material-symbols:account-circle-outline-rounded" class="text-icon-large color-white" />
+        <SvgIcon icon="material-symbols:account-circle-outline-sharp" class="text-icon-large color-white" />
       </NAvatar>
       <div class="flex-col gap-1">
         <NText class="message-author">{{ msg.username || authStore.userInfo.username }}</NText>

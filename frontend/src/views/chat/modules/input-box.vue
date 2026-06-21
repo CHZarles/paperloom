@@ -428,8 +428,8 @@ onUnmounted(() => {
                 connectionStatus === 'OPEN'
                   ? 'var(--color-success)'
                   : connectionStatus === 'CONNECTING' || connectionStatus === 'RECONNECTING'
-                  ? 'var(--color-warning)'
-                  : 'var(--color-error)'
+                    ? 'var(--color-warning)'
+                    : 'var(--color-error)'
             }"
             :class="{ 'animate-pulse': connectionStatus === 'CONNECTING' || connectionStatus === 'RECONNECTING' }"
           />

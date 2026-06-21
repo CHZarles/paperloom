@@ -72,7 +72,7 @@ function handleDropdown(key: DropdownKey) {
   <NDropdown v-else placement="bottom" trigger="click" :options="options" @select="handleDropdown">
     <div>
       <ButtonIcon>
-        <SvgIcon icon="material-symbols:account-circle-outline-rounded" class="text-icon-large" />
+        <SvgIcon icon="material-symbols:account-circle-outline-sharp" class="text-icon-large" />
         <span class="text-16px font-medium">{{ authStore.userInfo.username }}</span>
       </ButtonIcon>
     </div>

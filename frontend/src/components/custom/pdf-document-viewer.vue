@@ -1500,7 +1500,7 @@ async function cleanupPdfState() {
                 }"
               />
             </div>
-            <div ref="textLayerRef" class="pdf-text-layer textLayer" />
+            <div ref="textLayerRef" class="textLayer pdf-text-layer" />
             <div v-if="pageRendering" class="page-loading-mask">
               <NSpin size="small" />
               <span>正在渲染页面</span>
