@@ -88,10 +88,7 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
 
 <style scoped>
 .login-page {
-  background:
-    linear-gradient(90deg, rgba(38, 54, 74, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(32, 36, 42, 0.035) 1px, transparent 1px), var(--color-bg);
-  background-size: 24px 24px;
+  background: var(--color-bg);
 }
 
 :deep(.card-wrapper) {
