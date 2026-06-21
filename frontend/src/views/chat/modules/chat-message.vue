@@ -777,4 +777,33 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   border-color: var(--color-error);
   color: var(--color-error);
 }
+
+/* Override VuePress-style markdown theme variables inside chat responses
+   so the AI response area matches our modern flat token system. */
+.assistant-content :deep(.vp-doc) {
+  --vp-c-bg: transparent;
+  --vp-c-bg-soft: var(--color-surface-alt);
+  --vp-c-bg-soft-up: var(--color-bg);
+  --vp-c-text-1: var(--color-text);
+  --vp-c-text-2: var(--color-text-muted);
+  --vp-c-text-3: var(--color-text-muted);
+  --vp-c-text-code: var(--color-primary);
+  --vp-c-divider: var(--color-border);
+  --vp-c-border: var(--color-border);
+  --vp-c-mute: var(--color-surface-alt);
+  --vp-c-mute-light: var(--color-surface-alt);
+  --vp-c-mute-dark: var(--color-surface-alt);
+  --vp-c-mute-darker: var(--color-surface-alt);
+  --vp-c-brand: var(--color-primary);
+  --vp-c-brand-lighter: var(--color-primary-soft-bg);
+  --vp-c-brand-dark: var(--color-primary-hover);
+  --vp-c-brand-darker: var(--color-primary-hover);
+  --vp-c-neutral: var(--color-text);
+  --vp-header-bg: var(--color-primary);
+  --vp-code-block-bg: var(--color-surface-alt);
+  --vp-code-block-color: var(--color-text);
+  --vp-code-line-number-color: var(--color-text-muted);
+  --vp-code-line-highlight-color: var(--color-primary-soft-bg);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
 </style>
