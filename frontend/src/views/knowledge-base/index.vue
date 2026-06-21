@@ -707,7 +707,7 @@ async function onBeforeUpload(
 }
 
 .paper-library-page {
-  padding: 16px 20px;
+  padding-bottom: 8px;
   overflow-x: hidden;
 }
 
