@@ -78,3 +78,5 @@ src/main/resources/cert
 # Worktrees
 .worktrees/
 
+.code*
+.understand-anything/
