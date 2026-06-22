@@ -142,7 +142,6 @@ public class PaperChunkBuilder {
         raw.put("pageNumber", element.pageNumber());
         raw.put("readingOrder", element.readingOrder());
         raw.put("elementType", element.elementType().name());
-        raw.put("rawAttributes", element.rawAttributes());
         return toJson(raw);
     }
 

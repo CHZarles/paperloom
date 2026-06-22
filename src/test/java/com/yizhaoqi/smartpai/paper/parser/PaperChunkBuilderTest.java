@@ -51,6 +51,37 @@ class PaperChunkBuilderTest {
         assertTrue(experimentChunk.text().contains("improves accuracy"));
     }
 
+    @Test
+    void rawProvenanceStaysCompactWhenParserRawAttributesAreLarge() {
+        String largeRawContent = "x".repeat(20_000);
+        ParsedPaper paper = new ParsedPaper(
+                "opendataloader-pdf",
+                "2.4.7",
+                new ParsedPaperMetadata("paper.pdf", "A Study", "Ada", 1, null, null),
+                List.of(
+                        new ParsedPaperElement(
+                                "large-element",
+                                1,
+                                1,
+                                ParsedPaperElementType.PARAGRAPH,
+                                "A compact chunk should not persist parser raw dumps.",
+                                null,
+                                null,
+                                bbox(1, 72, 620, 520, 690),
+                                Map.of("content", largeRawContent, "rows", largeRawContent)
+                        )
+                ),
+                Map.of()
+        );
+
+        PaperChunkCandidate chunk = new PaperChunkBuilder().buildChunks(paper, 512).get(0);
+
+        assertTrue(chunk.rawProvenanceJson().length() <= 255);
+        assertTrue(chunk.rawProvenanceJson().contains("\"elementId\":\"large-element\""));
+        assertTrue(chunk.rawProvenanceJson().contains("\"elementType\":\"PARAGRAPH\""));
+        assertTrue(!chunk.rawProvenanceJson().contains("rawAttributes"));
+    }
+
     private ParsedPaperElement element(String id, int page, int order, ParsedPaperElementType type,
                                        String text, Integer sectionLevel, BoundingBox bbox) {
         return new ParsedPaperElement(id, page, order, type, text, null, sectionLevel, bbox, Map.of());

@@ -42,7 +42,7 @@ public class PaperTextChunk {
     private Integer sectionLevel;
 
     @Lob
-    @Column(name = "bbox_json")
+    @Column(name = "bbox_json", columnDefinition = "TEXT")
     private String bboxJson;
 
     @Column(name = "parser_name", length = 64)
@@ -52,7 +52,7 @@ public class PaperTextChunk {
     private String parserVersion;
 
     @Lob
-    @Column(name = "raw_provenance_json")
+    @Column(name = "raw_provenance_json", columnDefinition = "TEXT")
     private String rawProvenanceJson;
 
     @Column(length = 32)
