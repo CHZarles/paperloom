@@ -39,8 +39,6 @@ const previewType = ref<'pdf' | 'image' | 'text' | 'download'>('text');
 const previewUrl = ref('');
 const sourceUrl = ref('');
 const resolvedPaperId = ref('');
-const singlePageMode = ref(false);
-const sourcePageNumber = ref<number | undefined>(undefined);
 const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
 const { baseURL: serviceBaseUrl } = getServiceBaseURL(import.meta.env, isHttpProxy);
 
@@ -64,15 +62,7 @@ const displayScore = computed(() => {
   }
   return props.score.toFixed(3);
 });
-const displayPage = computed(() => sourcePageNumber.value || props.pageNumber || undefined);
-const resolvedPdfPageNumber = computed(() => displayPage.value || 1);
-const resolvedPdfSinglePageMode = computed(() => {
-  if (previewType.value !== 'pdf') {
-    return singlePageMode.value;
-  }
-
-  return Boolean(resolvedPaperId.value || singlePageMode.value);
-});
+const displayPage = computed(() => props.pageNumber || undefined);
 const displayPageLabel = computed(() => (displayPage.value ? `第 ${displayPage.value} 页` : ''));
 const headerMetaLine = computed(() => {
   if (previewType.value === 'pdf') {
@@ -104,13 +94,7 @@ const resolvedPdfPreviewUrl = computed(() => {
     return resolvedPreviewUrl.value;
   }
 
-  if (resolvedPaperId.value) {
-    return resolveFileAccessUrl(
-      `/api/v1/papers/${encodeURIComponent(resolvedPaperId.value)}/page-preview?pageNumber=${resolvedPdfPageNumber.value}`
-    );
-  }
-
-  return '';
+  return resolvedPreviewUrl.value;
 });
 const canOpenInNewTab = computed(() => {
   if (previewType.value === 'pdf') {
@@ -187,8 +171,6 @@ async function loadPreviewContent() {
   previewUrl.value = '';
   sourceUrl.value = '';
   resolvedPaperId.value = props.paperId || '';
-  singlePageMode.value = false;
-  sourcePageNumber.value = undefined;
   previewType.value = 'text';
 
   try {
@@ -205,8 +187,6 @@ async function loadPreviewContent() {
       content?: string;
       previewUrl?: string;
       sourceUrl?: string;
-      singlePageMode?: boolean;
-      sourcePageNumber?: number;
       previewType?: 'pdf' | 'image' | 'text' | 'download';
     }>({
       url: `/papers/${props.paperId}/preview`,
@@ -223,8 +203,6 @@ async function loadPreviewContent() {
       previewUrl.value = data.previewUrl || '';
       sourceUrl.value = data.sourceUrl || data.previewUrl || '';
       resolvedPaperId.value = data.paperId || props.paperId || '';
-      singlePageMode.value = Boolean(data.singlePageMode);
-      sourcePageNumber.value = data.sourcePageNumber || props.pageNumber;
     }
   } catch (err: any) {
     error.value = `预览失败：${err.message || '网络错误'}`;
@@ -387,8 +365,6 @@ function closePreview() {
                     :url="resolvedPdfPreviewUrl"
                     :paper-title="displayTitle"
                     :page-number="pageNumber"
-                    :single-page-mode="resolvedPdfSinglePageMode"
-                    :source-page-number="resolvedPdfPageNumber"
                     :anchor-text="resolvedHighlightAnchor"
                     :search-text="resolvedHighlightSearchText"
                     :visible="visible"
@@ -528,7 +504,14 @@ function closePreview() {
 
 .state-copy strong {
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 18px;
   font-weight: 700;
 }
@@ -560,7 +543,14 @@ function closePreview() {
   margin: 0;
   overflow: hidden;
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 17px;
   font-weight: 700;
   line-height: 1.2;
@@ -571,7 +561,14 @@ function closePreview() {
 .preview-subtitle {
   margin: 5px 0 0;
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
 }
 
@@ -612,7 +609,14 @@ function closePreview() {
 
 .info-label {
   color: var(--color-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
 }
 

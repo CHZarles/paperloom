@@ -19,7 +19,25 @@ const emit = defineEmits<{
       matchedChunkText?: string | null;
       score?: number | null;
       chunkId?: number | null;
+      elementType?: string | null;
+      sectionTitle?: string | null;
+      sectionLevel?: number | null;
+      bboxJson?: string | null;
+      parserName?: string | null;
+      parserVersion?: string | null;
+      sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
+      tableId?: string | null;
+      figureId?: string | null;
+      formulaId?: string | null;
+      evidenceRole?: string | null;
+      retrievalRoute?: string | null;
+      intent?: string | null;
+      rankReason?: string | null;
+      tableText?: string | null;
+      tableMarkdown?: string | null;
+      tableScreenshotAvailable?: boolean | null;
       paperTitle: string;
+      originalFilename?: string | null;
       paperId?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
@@ -97,7 +115,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
         <div class="welcome-copy">
           <div class="welcome-kicker">evidence-grounded paper reading desk</div>
           <h1>Ask papers with cited evidence</h1>
-          <p>围绕论文、PDF、方法、实验和结论提问，回答会保留来源编号、页码、chunk 与原文预览。</p>
+          <p>围绕论文、PDF、方法、实验和结论提问，回答会用 citation chip 连接页码、chunk 与原文证据。</p>
           <div class="welcome-tags" aria-label="example scopes">
             <span>[PDF]</span>
             <span>[METHOD]</span>
@@ -120,7 +138,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
                 :msg="item"
                 :session-id="sessionId"
                 :retrieval-query-fallback="getRetrievalQueryFallback(index)"
-                preview-mode="drawer"
+                evidence-mode="drawer"
                 @open-reference="emit('openReference', $event)"
               />
             </VueMarkdownItProvider>
@@ -169,7 +187,14 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 .welcome-kicker {
   margin-bottom: 9px;
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -179,7 +204,14 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
 .welcome-copy h1 {
   margin: 0;
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 28px;
   font-weight: 700;
   line-height: 1.2;
@@ -206,7 +238,14 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
   padding: 5px 12px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 500;
 }

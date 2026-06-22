@@ -20,7 +20,8 @@ import org.springframework.test.context.ActiveProfiles;
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "paper.bootstrap.enabled=false",
-        "elasticsearch.init.enabled=false"
+        "elasticsearch.init.enabled=false",
+        "jwt.secret-key=MDEyMzQ1Njc4OWFiY2RlZg=="
 })
 @ActiveProfiles("test")
 public class UploadServicePerformanceTest {

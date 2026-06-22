@@ -146,7 +146,7 @@ function formatDate(dateStr?: string) {
           <SystemLogo class="text-36px" />
         </div>
         <div class="min-w-0 flex-1">
-          <div class="brand-title">PaperLoom</div>
+          <div class="brand-title">CiteWeave</div>
           <div class="brand-subtitle">structured paper reading</div>
         </div>
         <NButton text size="tiny" class="collapse-button" @click="handleCollapse">

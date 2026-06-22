@@ -22,6 +22,13 @@ public class Paper {
     public static final String VECTORIZATION_STATUS_PROCESSING = "PROCESSING";
     public static final String VECTORIZATION_STATUS_COMPLETED = "COMPLETED";
     public static final String VECTORIZATION_STATUS_FAILED = "FAILED";
+    public static final String VECTORIZATION_STATUS_MINERU_RUNNING = "MINERU_RUNNING";
+    public static final String VECTORIZATION_STATUS_MINERU_ARTIFACT_SAVED = "MINERU_ARTIFACT_SAVED";
+    public static final String VECTORIZATION_STATUS_MAPPING_STRUCTURED_CONTENT = "MAPPING_STRUCTURED_CONTENT";
+    public static final String VECTORIZATION_STATUS_RENDERING_VISUAL_ASSETS = "RENDERING_VISUAL_ASSETS";
+    public static final String VECTORIZATION_STATUS_CHUNKING = "CHUNKING";
+    public static final String VECTORIZATION_STATUS_EMBEDDING = "EMBEDDING";
+    public static final String VECTORIZATION_STATUS_INDEXING = "INDEXING";
 
     /**
      * 论文 PDF 的内容哈希。

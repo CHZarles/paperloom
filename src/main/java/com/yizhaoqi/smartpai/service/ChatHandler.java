@@ -54,10 +54,13 @@ public class ChatHandler {
     private static final int REACT_MAX_COMPLETION_TOKENS = 2000;
     private static final int INITIAL_SEARCH_TOP_K = 5;
     private static final String INITIAL_SEARCH_TOOL_CALL_ID = "initial-search";
+    private static final String SMALLTALK_RESPONSE = "我在。你可以直接问论文的方法、实验、结论、表格或某个引用点。";
     private static final Pattern CITED_REFERENCE_PATTERN =
-            Pattern.compile("(?:来源|source)\\s*#\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("\\[(\\d+)]");
     private final RedisTemplate<String, String> redisTemplate;
     private final HybridSearchService searchService;
+    private final PaperRetrievalService paperRetrievalService;
+    private final PaperAnswerService paperAnswerService;
     private final LlmProviderRouter llmProviderRouter;
     private final RateLimitService rateLimitService;
     private final ConversationService conversationService;
@@ -81,9 +84,12 @@ public class ChatHandler {
     private final Map<String, String> generationClientIds = new ConcurrentHashMap<>();
     // 用于存储每次生成任务的引用映射：generationId -> {referenceNumber -> detail}
     private final Map<String, Map<Integer, ReferenceInfo>> generationReferenceMappings = new ConcurrentHashMap<>();
+    private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
     public ChatHandler(RedisTemplate<String, String> redisTemplate,
                       HybridSearchService searchService,
+                      PaperRetrievalService paperRetrievalService,
+                      PaperAnswerService paperAnswerService,
                       LlmProviderRouter llmProviderRouter,
                       RateLimitService rateLimitService,
                       ConversationService conversationService,
@@ -94,6 +100,8 @@ public class ChatHandler {
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
         this.searchService = searchService;
+        this.paperRetrievalService = paperRetrievalService;
+        this.paperAnswerService = paperAnswerService;
         this.llmProviderRouter = llmProviderRouter;
         this.rateLimitService = rateLimitService;
         this.conversationService = conversationService;
@@ -123,6 +131,8 @@ public class ChatHandler {
             generationClientIds.put(finalGenerationId, requestClientId);
             logger.info("会话ID: {}, 用户ID: {}", conversationId, userId);
             sendGenerationStart(userId, finalGenerationId, finalConversationId);
+            ChatRequestTiming timing = ChatRequestTiming.start(userMessage);
+            generationTimings.put(finalGenerationId, timing);
 
             // 为当前生成任务创建响应构建器
             responseBuilders.put(finalGenerationId, new StringBuilder());
@@ -130,14 +140,19 @@ public class ChatHandler {
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
 
-            // 2. 获取对话历史
-            List<Map<String, String>> history = getConversationHistory(conversationId);
-            logger.debug("获取到 {} 条历史对话", history.size());
+            if (isSmalltalkMessage(userMessage)) {
+                timing.route("SMALLTALK");
+                timing.mark("intent_route_decided");
+                completeSmalltalkResponse(userId, userMessage, finalConversationId, finalGenerationId, responseFuture);
+                return;
+            }
+            timing.route("PAPER_QA");
+            timing.mark("intent_route_decided");
 
-            // 3. 异步执行 ReAct 决策循环：模型按需返回 tool_calls，避免在 WebSocket 处理线程上阻塞 90s+ 的工具流
+            // 2. 异步执行 Evidence Harness；默认用户聊天不再让模型自由调度工具和 citation。
             try {
                 chatMonitorExecutor.execute(() ->
-                        runReActLoopSafely(userId, userMessage, finalConversationId, finalGenerationId, history, responseFuture));
+                        runEvidenceHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, responseFuture));
             } catch (RejectedExecutionException ex) {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
@@ -176,6 +191,70 @@ public class ChatHandler {
         }
     }
 
+    private void completeSmalltalkResponse(String userId,
+                                           String userMessage,
+                                           String conversationId,
+                                           String generationId,
+                                           CompletableFuture<String> responseFuture) {
+        appendStreamChunk(userId, generationId, conversationId, SMALLTALK_RESPONSE);
+        finalizeResponse(
+                userId,
+                userMessage,
+                conversationId,
+                generationId,
+                responseFuture,
+                responseBuilders.get(generationId),
+                new LlmProviderRouter.StreamCompletion("smalltalk", 0, 0, SMALLTALK_RESPONSE.length())
+        );
+    }
+
+    private void runEvidenceHarnessSafely(String userId,
+                                          String userMessage,
+                                          String conversationId,
+                                          String generationId,
+                                          CompletableFuture<String> responseFuture) {
+        try {
+            runEvidenceHarness(userId, userMessage, conversationId, generationId, responseFuture);
+        } catch (Exception e) {
+            logger.error("Evidence Harness 执行失败: generationId={}", generationId, e);
+            chatGenerationStateService.markFailed(generationId, e.getMessage());
+            handleError(userId, generationId, e);
+            sendCompletionNotification(userId, generationId, conversationId, true, false);
+            cleanupGenerationState(generationId, e);
+        }
+    }
+
+    private void runEvidenceHarness(String userId,
+                                    String userMessage,
+                                    String conversationId,
+                                    String generationId,
+                                    CompletableFuture<String> responseFuture) {
+        ChatRequestTiming timing = generationTimings.get(generationId);
+        if (timing != null) {
+            timing.begin("harness");
+        }
+        PaperAnswerService.AnswerResult answer = paperAnswerService.answer(userId, conversationId, userMessage);
+        if (timing != null) {
+            timing.end("harness");
+            timing.route(answer.intent().name());
+            timing.retrievalHitCount(answer.evidenceCount());
+        }
+        if (!answer.referenceMappings().isEmpty()) {
+            generationReferenceMappings.put(generationId, answer.referenceMappings());
+            chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(answer.referenceMappings()));
+        }
+        appendStreamChunk(userId, generationId, conversationId, answer.markdown());
+        finalizeResponse(
+                userId,
+                userMessage,
+                conversationId,
+                generationId,
+                responseFuture,
+                responseBuilders.get(generationId),
+                new LlmProviderRouter.StreamCompletion(answer.intent().name(), 0, 0, answer.markdown().length())
+        );
+    }
+
     private String resolveClientId(WebSocketSession session) {
         String clientId = chatSessionRegistry.getClientId(session);
         if (clientId != null && !clientId.isBlank()) {
@@ -190,16 +269,19 @@ public class ChatHandler {
                               String generationId,
                               List<Map<String, String>> history,
                               CompletableFuture<String> responseFuture) {
+        ChatRequestTiming timing = generationTimings.get(generationId);
         String initialContext = "";
         if (shouldUseInitialPaperSearch(userMessage)) {
+            if (timing != null) {
+                timing.begin("retrieval");
+            }
             InitialSearchOutcome initialSearchOutcome = runInitialPaperSearch(userId, userMessage, generationId, conversationId);
+            if (timing != null) {
+                timing.retrievalHitCount(initialSearchOutcome.hitCount());
+                timing.end("retrieval");
+            }
             if (initialSearchOutcome.noHit()) {
-                appendStreamChunk(userId, generationId, conversationId, buildNoPaperHitResponse(userMessage));
-                finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
-                        responseBuilders.get(generationId),
-                        new LlmProviderRouter.StreamCompletion("no_paper_hit", 0, 0,
-                                responseBuilders.get(generationId) != null ? responseBuilders.get(generationId).length() : 0));
-                return;
+                logger.info("初始论文检索无命中，继续进入 ReAct 工具规划: generationId={}", generationId);
             }
             initialContext = initialSearchOutcome.context();
         }
@@ -219,8 +301,14 @@ public class ChatHandler {
                 return;
             }
 
+            if (timing != null) {
+                timing.begin("llm");
+            }
             LlmProviderRouter.ReActTurn turn = streamReActTurnBlocking(
                     userId, conversationId, generationId, messages, agentToolRegistry.getTools());
+            if (timing != null) {
+                timing.end("llm");
+            }
             if (turn == null) {
                 // 上游 stream 被取消（如用户点 stop），保证内存映射被回收
                 cleanupGenerationState(generationId, null);
@@ -268,8 +356,14 @@ public class ChatHandler {
                 "role", "user",
                 "content", "ReAct 轮次预算已用尽，请不要再调用工具，直接基于已有 tool 结果给出最终回答。"
         ));
+        if (timing != null) {
+            timing.begin("llm");
+        }
         LlmProviderRouter.ReActTurn finalTurn = streamReActTurnBlocking(
                 userId, conversationId, generationId, messages, List.of());
+        if (timing != null) {
+            timing.end("llm");
+        }
         if (finalTurn == null) {
             cleanupGenerationState(generationId, null);
             return;
@@ -302,12 +396,22 @@ public class ChatHandler {
                         appendStreamChunk(userId, generationId, conversationId, chunk);
                     }
                     : null;
+            ChatRequestTiming timing = generationTimings.get(generationId);
+            if ("search_papers".equals(toolCall.name()) && timing != null) {
+                timing.begin("retrieval");
+            }
             AgentToolRegistry.ToolExecutionResult toolResult =
                     agentToolRegistry.executeTool(toolCall.name(), toolCall.arguments(), userId, toolChunkConsumer);
+            if ("search_papers".equals(toolCall.name()) && timing != null) {
+                timing.end("retrieval");
+            }
 
             // search_papers 返回的 SearchResult 列表与模型 prompt 中的 [N] 编号一一对应，
             // 必须把它落到 generationReferenceMappings 里，否则前端点击引用拿不到 paperId/页码。
             if ("search_papers".equals(toolCall.name())) {
+                if (timing != null) {
+                    timing.retrievalHitCount(extractSearchResultCount(toolResult));
+                }
                 replaceReferencesFromSearchTool(generationId, userMessage, toolResult);
             }
 
@@ -333,6 +437,14 @@ public class ChatHandler {
             }
             return new ExecutedToolResult("工具 " + toolCall.name() + " 执行失败: " + exception.getMessage(), false);
         }
+    }
+
+    private int extractSearchResultCount(AgentToolRegistry.ToolExecutionResult toolResult) {
+        if (toolResult == null || toolResult.data() == null) {
+            return 0;
+        }
+        Object resultsObj = toolResult.data().get("results");
+        return resultsObj instanceof List<?> results ? results.size() : 0;
     }
 
     private void replaceReferencesFromSearchTool(String generationId,
@@ -379,38 +491,31 @@ public class ChatHandler {
         );
         sendToolCallStatus(userId, generationId, conversationId, toolCall, "executing");
 
-        List<String> queries = buildInitialPaperQueries(userMessage);
-        Map<String, SearchResult> uniqueResults = new LinkedHashMap<>();
-        for (String query : queries) {
-            List<SearchResult> results = searchService.searchWithPermission(query, userId, INITIAL_SEARCH_TOP_K);
-            for (SearchResult result : results) {
-                if (result.getPaperId() == null || result.getChunkId() == null) {
-                    continue;
-                }
-                uniqueResults.putIfAbsent(result.getPaperId() + ":" + result.getChunkId(), result);
-            }
-            if (uniqueResults.size() >= INITIAL_SEARCH_TOP_K) {
-                break;
-            }
-        }
+        PaperRetrievalService.RetrievalResult retrievalResult = paperRetrievalService.retrieve(
+                userMessage,
+                userId,
+                INITIAL_SEARCH_TOP_K
+        );
+        List<String> queries = retrievalResult.attemptedQueries();
 
         sendToolCallStatus(userId, generationId, conversationId, toolCall, "success");
-        if (uniqueResults.isEmpty()) {
+        if (retrievalResult.finalHitCount() == 0) {
             logger.info("初始论文检索无命中: generationId={}, queries={}", generationId, queries);
             return InitialSearchOutcome.noHitOutcome();
         }
 
-        List<SearchResult> mergedResults = uniqueResults.values().stream()
-                .limit(INITIAL_SEARCH_TOP_K)
-                .toList();
+        List<SearchResult> mergedResults = retrievalResult.results();
         String retrievalQuery = String.join(" | ", queries);
         String context = buildContext(mergedResults, generationId, retrievalQuery);
         logger.info("初始论文检索命中: generationId={}, queries={}, resultCount={}",
                 generationId, queries, mergedResults.size());
-        return InitialSearchOutcome.withContext(context);
+        return InitialSearchOutcome.withContext(context, mergedResults.size());
     }
 
     static boolean shouldUseInitialPaperSearch(String userMessage) {
+        if (isSmalltalkMessage(userMessage)) {
+            return false;
+        }
         String normalized = normalizeEvidenceTextStatic(userMessage);
         if (normalized.isBlank()) {
             return false;
@@ -421,6 +526,24 @@ public class ChatHandler {
             return false;
         }
         return !lower.matches("^(你好|您好|hello|hi|谢谢|谢了|再见|拜拜)[!！。,.，\\s]*$");
+    }
+
+    static boolean isSmalltalkMessage(String userMessage) {
+        String normalized = normalizeChatRouteText(userMessage);
+        return switch (normalized) {
+            case "hi", "hello", "hey", "你好", "您好", "在吗", "谢谢", "thanks", "ok", "好的" -> true;
+            default -> false;
+        };
+    }
+
+    private static String normalizeChatRouteText(String userMessage) {
+        if (userMessage == null) {
+            return "";
+        }
+        return userMessage
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[\\s!！?？。,.，;；:：、\"'“”‘’()（）\\[\\]{}<>《》]+", "");
     }
 
     static List<String> buildInitialPaperQueries(String userMessage) {
@@ -444,19 +567,13 @@ public class ChatHandler {
         return queries;
     }
 
-    private String buildNoPaperHitResponse(String userMessage) {
-        List<String> queries = buildInitialPaperQueries(userMessage);
-        String queryLabel = queries.isEmpty() ? normalizeEvidenceText(userMessage) : queries.get(0);
-        return "暂无相关信息。\n原因：当前论文库中未检索到与“" + queryLabel + "”相关的内容。";
-    }
-
-    private record InitialSearchOutcome(String context, boolean noHit) {
-        private static InitialSearchOutcome withContext(String context) {
-            return new InitialSearchOutcome(context == null ? "" : context, false);
+    private record InitialSearchOutcome(String context, boolean noHit, int hitCount) {
+        private static InitialSearchOutcome withContext(String context, int hitCount) {
+            return new InitialSearchOutcome(context == null ? "" : context, false, hitCount);
         }
 
         private static InitialSearchOutcome noHitOutcome() {
-            return new InitialSearchOutcome("", true);
+            return new InitialSearchOutcome("", true, 0);
         }
     }
 
@@ -627,6 +744,11 @@ public class ChatHandler {
         } else {
             generationReferenceMappings.put(generationId, referenceMappings);
         }
+        ChatRequestTiming timing = generationTimings.get(generationId);
+        if (timing != null) {
+            timing.citationCount(referenceMappings.size());
+            timing.mark("reference_mapping_saved");
+        }
         // 先把消息事务性地落 MySQL；只有 MySQL 成功后才写 Redis 短期会话历史，
         // 否则两个数据源会出现一边有记录、一边没有的不一致状态。
         boolean persisted = persistConversation(userId, userMessage, completeResponse, conversationId, referenceMappings);
@@ -638,6 +760,10 @@ public class ChatHandler {
         }
         chatGenerationStateService.markCompleted(generationId, toSerializableReferenceMappings(referenceMappings));
         sendCompletionNotification(userId, generationId, conversationId, false, !persisted);
+        if (timing != null) {
+            timing.mark("response_sent");
+            timing.log(logger, conversationId, generationId);
+        }
         logger.info("对话存储信息 - Redis键: {}, 值: {}", "user:" + userId + ":current_conversation", conversationId);
         cleanupGenerationState(generationId, null);
         logger.info("消息处理完成，用户ID: {}", userId);
@@ -665,6 +791,7 @@ public class ChatHandler {
         responseBuilders.remove(generationId);
         generationClientIds.remove(generationId);
         generationReferenceMappings.remove(generationId);
+        generationTimings.remove(generationId);
         stopFlags.remove(generationId);
         activeStreams.remove(generationId);
         cancelledGenerations.remove(generationId);
@@ -831,7 +958,7 @@ public class ChatHandler {
             Map<String, Object> item = new HashMap<>();
             item.put("paperId", detail.paperId());
             item.put("paperTitle", detail.paperTitle());
-            item.put("originalFilename", detail.paperTitle());
+            item.put("originalFilename", detail.originalFilename());
             item.put("pageNumber", detail.pageNumber());
             item.put("anchorText", detail.anchorText());
             item.put("retrievalMode", detail.retrievalMode());
@@ -841,6 +968,23 @@ public class ChatHandler {
             item.put("evidenceSnippet", detail.evidenceSnippet());
             item.put("score", detail.score());
             item.put("chunkId", detail.chunkId());
+            item.put("elementType", detail.elementType());
+            item.put("sectionTitle", detail.sectionTitle());
+            item.put("sectionLevel", detail.sectionLevel());
+            item.put("bboxJson", detail.bboxJson());
+            item.put("parserName", detail.parserName());
+            item.put("parserVersion", detail.parserVersion());
+            item.put("sourceKind", detail.sourceKind());
+            item.put("tableId", detail.tableId());
+            item.put("figureId", detail.figureId());
+            item.put("formulaId", detail.formulaId());
+            item.put("evidenceRole", detail.evidenceRole());
+            item.put("retrievalRoute", detail.retrievalRoute());
+            item.put("intent", detail.intent());
+            item.put("rankReason", detail.rankReason());
+            item.put("tableText", detail.tableText());
+            item.put("tableMarkdown", detail.tableMarkdown());
+            item.put("tableScreenshotAvailable", detail.tableScreenshotAvailable());
             serialized.put(String.valueOf(entry.getKey()), item);
         }
         return serialized;
@@ -887,14 +1031,22 @@ public class ChatHandler {
             String paperLabel = result.getPaperTitle() != null ? result.getPaperTitle() : "unknown";
             String paperId = result.getPaperId();
 
-            // 格式：[1] (test1.txt | 第5页) 文件内容... 或 [1] (test1.txt) 文件内容...
-            // 有页码时显示页码，方便AI引用
-            Integer pageNum = result.getPageNumber();
-            if (pageNum != null && pageNum > 0) {
-                context.append(String.format("[%d] (%s | 第%d页) %s\n", i + 1, paperLabel, pageNum, snippet));
-            } else {
-                context.append(String.format("[%d] (%s) %s\n", i + 1, paperLabel, snippet));
+            context.append("[").append(i + 1).append("]\n")
+                    .append("paperTitle: ").append(paperLabel).append("\n")
+                    .append("sourceKind: ").append(result.getSourceKind() != null ? result.getSourceKind() : "TEXT").append("\n");
+            if (result.getPageNumber() != null && result.getPageNumber() > 0) {
+                context.append("pageNumber: ").append(result.getPageNumber()).append("\n");
             }
+            if (result.getSectionTitle() != null && !result.getSectionTitle().isBlank()) {
+                context.append("sectionTitle: ").append(result.getSectionTitle()).append("\n");
+            }
+            if (result.getRetrievalRoute() != null && !result.getRetrievalRoute().isBlank()) {
+                context.append("retrievalRoute: ").append(result.getRetrievalRoute()).append("\n");
+            }
+            if (result.getScore() != null) {
+                context.append("score: ").append(String.format(Locale.ROOT, "%.4f", result.getScore())).append("\n");
+            }
+            context.append("matchedText: ").append(snippet).append("\n");
 
             // 保存引用编号到论文证据的映射
             if (paperId != null) {
@@ -1126,6 +1278,7 @@ public class ChatHandler {
             referenceMap.put(Integer.parseInt(entry.getKey()), new ReferenceInfo(
                     (String) item.get("paperId"),
                     (String) item.get("paperTitle"),
+                    (String) item.get("originalFilename"),
                     item.get("pageNumber") instanceof Number number ? number.intValue() : null,
                     (String) item.get("anchorText"),
                     (String) item.get("retrievalMode"),
@@ -1134,7 +1287,24 @@ public class ChatHandler {
                     (String) item.get("matchedChunkText"),
                     (String) item.get("evidenceSnippet"),
                     item.get("score") instanceof Number number ? number.doubleValue() : null,
-                    item.get("chunkId") instanceof Number number ? number.intValue() : null
+                    item.get("chunkId") instanceof Number number ? number.intValue() : null,
+                    (String) item.get("elementType"),
+                    (String) item.get("sectionTitle"),
+                    item.get("sectionLevel") instanceof Number number ? number.intValue() : null,
+                    (String) item.get("bboxJson"),
+                    (String) item.get("parserName"),
+                    (String) item.get("parserVersion"),
+                    (String) item.get("sourceKind"),
+                    (String) item.get("tableId"),
+                    (String) item.get("figureId"),
+                    (String) item.get("formulaId"),
+                    (String) item.get("evidenceRole"),
+                    (String) item.get("retrievalRoute"),
+                    (String) item.get("intent"),
+                    (String) item.get("rankReason"),
+                    (String) item.get("tableText"),
+                    (String) item.get("tableMarkdown"),
+                    item.get("tableScreenshotAvailable") instanceof Boolean value && value
             ));
         }
         return referenceMap;
@@ -1150,15 +1320,33 @@ public class ChatHandler {
         return new ReferenceInfo(
                 result.getPaperId(),
                 paperLabel,
+                result.getOriginalFilename(),
                 result.getPageNumber(),
                 result.getAnchorText(),
                 result.getRetrievalMode(),
                 buildRetrievalLabel(result.getRetrievalMode()),
-                normalizeEvidenceText(userMessage),
+                normalizeEvidenceText(result.getRetrievalQuery() != null ? result.getRetrievalQuery() : userMessage),
                 matchedChunkText,
                 evidenceSnippet,
                 result.getScore(),
-                result.getChunkId()
+                result.getChunkId(),
+                result.getElementType(),
+                result.getSectionTitle(),
+                result.getSectionLevel(),
+                result.getBboxJson(),
+                result.getParserName(),
+                result.getParserVersion(),
+                result.getSourceKind(),
+                result.getTableId(),
+                result.getFigureId(),
+                result.getFormulaId(),
+                result.getEvidenceRole(),
+                result.getRetrievalRoute(),
+                result.getIntent(),
+                result.getRankReason(),
+                result.getTableText(),
+                result.getTableMarkdown(),
+                Boolean.TRUE.equals(result.getTableScreenshotAvailable())
         );
     }
 
@@ -1211,9 +1399,72 @@ public class ChatHandler {
         return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
+    private static final class ChatRequestTiming {
+        private final long startedAtNanos = System.nanoTime();
+        private final int userQueryLength;
+        private final Map<String, Long> stageMs = new LinkedHashMap<>();
+        private final Map<String, Long> activeStageStarts = new HashMap<>();
+        private String route = "UNKNOWN";
+        private int retrievalHitCount;
+        private int citationCount;
+        private long lastMarkNanos = startedAtNanos;
+
+        private ChatRequestTiming(String userMessage) {
+            this.userQueryLength = userMessage == null ? 0 : userMessage.length();
+        }
+
+        static ChatRequestTiming start(String userMessage) {
+            return new ChatRequestTiming(userMessage);
+        }
+
+        void route(String route) {
+            this.route = route;
+        }
+
+        void mark(String stage) {
+            long now = System.nanoTime();
+            stageMs.merge(stage, TimeUnit.NANOSECONDS.toMillis(now - lastMarkNanos), Long::sum);
+            lastMarkNanos = now;
+        }
+
+        void begin(String stage) {
+            activeStageStarts.put(stage, System.nanoTime());
+        }
+
+        void end(String stage) {
+            Long stageStartedAt = activeStageStarts.remove(stage);
+            if (stageStartedAt != null) {
+                stageMs.merge(stage, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - stageStartedAt), Long::sum);
+            }
+        }
+
+        void retrievalHitCount(int retrievalHitCount) {
+            this.retrievalHitCount = Math.max(this.retrievalHitCount, retrievalHitCount);
+        }
+
+        void citationCount(int citationCount) {
+            this.citationCount = citationCount;
+        }
+
+        void log(Logger logger, String conversationId, String generationId) {
+            logger.info(
+                    "chat timing: conversationId={}, generationId={}, route={}, userQueryLength={}, retrievalHitCount={}, citationCount={}, totalMs={}, stageMs={}",
+                    conversationId,
+                    generationId,
+                    route,
+                    userQueryLength,
+                    retrievalHitCount,
+                    citationCount,
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos),
+                    stageMs
+            );
+        }
+    }
+
     public record ReferenceInfo(
             String paperId,
             String paperTitle,
+            String originalFilename,
             Integer pageNumber,
             String anchorText,
             String retrievalMode,
@@ -1222,8 +1473,137 @@ public class ChatHandler {
             String matchedChunkText,
             String evidenceSnippet,
             Double score,
-            Integer chunkId
+            Integer chunkId,
+            String elementType,
+            String sectionTitle,
+            Integer sectionLevel,
+            String bboxJson,
+            String parserName,
+            String parserVersion,
+            String sourceKind,
+            String tableId,
+            String figureId,
+            String formulaId,
+            String evidenceRole,
+            String retrievalRoute,
+            String intent,
+            String rankReason,
+            String tableText,
+            String tableMarkdown,
+            Boolean tableScreenshotAvailable
     ) {
+        public ReferenceInfo {
+            sourceKind = sourceKind == null || sourceKind.isBlank() ? "TEXT" : sourceKind;
+            evidenceRole = evidenceRole == null || evidenceRole.isBlank() ? "NORMAL_TEXT" : evidenceRole;
+            tableScreenshotAvailable = Boolean.TRUE.equals(tableScreenshotAvailable);
+        }
+
+        public ReferenceInfo(String paperId,
+                             String paperTitle,
+                             String originalFilename,
+                             Integer pageNumber,
+                             String anchorText,
+                             String retrievalMode,
+                             String retrievalLabel,
+                             String retrievalQuery,
+                             String matchedChunkText,
+                             String evidenceSnippet,
+                             Double score,
+                             Integer chunkId,
+                             String elementType,
+                             String sectionTitle,
+                             Integer sectionLevel,
+                             String bboxJson,
+                             String parserName,
+                             String parserVersion,
+                             String sourceKind,
+                             String tableId,
+                             String tableText,
+                             String tableMarkdown,
+                             Boolean tableScreenshotAvailable) {
+            this(
+                    paperId,
+                    paperTitle,
+                    originalFilename,
+                    pageNumber,
+                    anchorText,
+                    retrievalMode,
+                    retrievalLabel,
+                    retrievalQuery,
+                    matchedChunkText,
+                    evidenceSnippet,
+                    score,
+                    chunkId,
+                    elementType,
+                    sectionTitle,
+                    sectionLevel,
+                    bboxJson,
+                    parserName,
+                    parserVersion,
+                    sourceKind,
+                    tableId,
+                    null,
+                    null,
+                    "NORMAL_TEXT",
+                    null,
+                    null,
+                    null,
+                    tableText,
+                    tableMarkdown,
+                    tableScreenshotAvailable
+            );
+        }
+
+        public ReferenceInfo(String paperId,
+                             String paperTitle,
+                             String originalFilename,
+                             Integer pageNumber,
+                             String anchorText,
+                             String retrievalMode,
+                             String retrievalLabel,
+                             String retrievalQuery,
+                             String matchedChunkText,
+                             String evidenceSnippet,
+                             Double score,
+                             Integer chunkId,
+                             String elementType,
+                             String sectionTitle,
+                             Integer sectionLevel,
+                             String bboxJson,
+                             String parserName,
+                             String parserVersion) {
+            this(
+                    paperId,
+                    paperTitle,
+                    originalFilename,
+                    pageNumber,
+                    anchorText,
+                    retrievalMode,
+                    retrievalLabel,
+                    retrievalQuery,
+                    matchedChunkText,
+                    evidenceSnippet,
+                    score,
+                    chunkId,
+                    elementType,
+                    sectionTitle,
+                    sectionLevel,
+                    bboxJson,
+                    parserName,
+                    parserVersion,
+                    "TEXT",
+                    null,
+                    null,
+                    null,
+                    "NORMAL_TEXT",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false
+            );
+        }
     }
 
 }

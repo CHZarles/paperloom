@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
@@ -11,7 +10,7 @@ const props = defineProps<{
   msg: Api.Chat.Message;
   sessionId?: string;
   retrievalQueryFallback?: string;
-  previewMode?: 'page' | 'drawer';
+  evidenceMode?: 'page' | 'drawer';
 }>();
 
 const emit = defineEmits<{
@@ -25,7 +24,25 @@ const emit = defineEmits<{
       matchedChunkText?: string | null;
       score?: number | null;
       chunkId?: number | null;
+      elementType?: string | null;
+      sectionTitle?: string | null;
+      sectionLevel?: number | null;
+      bboxJson?: string | null;
+      parserName?: string | null;
+      parserVersion?: string | null;
+      sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
+      tableId?: string | null;
+      figureId?: string | null;
+      formulaId?: string | null;
+      evidenceRole?: string | null;
+      retrievalRoute?: string | null;
+      intent?: string | null;
+      rankReason?: string | null;
+      tableText?: string | null;
+      tableMarkdown?: string | null;
+      tableScreenshotAvailable?: boolean | null;
       paperTitle: string;
+      originalFilename?: string | null;
       paperId?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
@@ -91,8 +108,17 @@ async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad')
 
 // 存储文件名和对应的事件处理
 const sourceFiles = ref<
-  Array<{ paperTitle: string; id: string; referenceNumber: number; paperId?: string; pageNumber?: number }>
+  Array<{
+    paperTitle: string;
+    originalFilename?: string | null;
+    id: string;
+    referenceNumber: number;
+    paperId?: string;
+    pageNumber?: number;
+  }>
 >([]);
+const assistantContentRef = ref<HTMLElement | null>(null);
+const activeReferenceNumber = ref<number | null>(null);
 // eslint-disable-next-line no-useless-escape
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
 const toolNameLabels: Record<string, string> = {
@@ -106,25 +132,12 @@ const toolStatusLabels: Record<Api.Chat.AgentToolEvent['status'], string> = {
   success: '已完成',
   failed: '失败'
 };
-const sourceCitationPattern = /(?:来源|source)\s*#\s*(\d+)/gi;
 
 const toolEvents = computed(() => props.msg.toolEvents || []);
-const citedReferenceNumbers = computed(() => getCitedReferenceNumbers(props.msg.content || ''));
-const referenceEntries = computed(() => {
-  const mappings = props.msg.referenceMappings || {};
-  return Object.entries(mappings)
-    .map(([referenceNumber, detail]) => ({
-      referenceNumber: Number.parseInt(referenceNumber, 10),
-      detail
-    }))
-    .filter(
-      item =>
-        Number.isFinite(item.referenceNumber) &&
-        item.detail?.paperId &&
-        citedReferenceNumbers.value.has(item.referenceNumber)
-    )
-    .sort((left, right) => left.referenceNumber - right.referenceNumber);
-});
+const thinkingTitle = computed(() => (props.msg.route === 'SMALLTALK' ? '正在回复' : '正在研读证据'));
+const thinkingDescription = computed(() =>
+  props.msg.route === 'SMALLTALK' ? '准备简短回应' : '检索片段、页码与引用来源'
+);
 
 function getToolLabel(tool: string) {
   return toolNameLabels[tool] || tool;
@@ -180,85 +193,92 @@ function normalizeBareUrls(text: string) {
   });
 }
 
-function getCitedReferenceNumbers(text: string) {
-  const numbers = new Set<number>();
-  sourceCitationPattern.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = sourceCitationPattern.exec(text)) !== null) {
-    const referenceNumber = Number.parseInt(match[1], 10);
-    if (Number.isFinite(referenceNumber)) {
-      numbers.add(referenceNumber);
-    }
-  }
-  return numbers;
-}
-
-function createSourceLink(
-  sourceNum: string,
-  paperTitle: string,
-  fallback?: { paperId?: string; pageNumber?: number }
-): string {
+function createCompactCitationLink(sourceNum: string) {
   const persistedDetail = props.msg.referenceMappings?.[sourceNum];
-  const paperId = persistedDetail?.paperId || fallback?.paperId;
-  if (!paperId) {
-    return `来源#${sourceNum}: ${paperTitle.trim()}`;
+  if (!persistedDetail?.paperId) {
+    return `<span class="source-citation-chip source-citation-chip--muted" data-reference-number="${sourceNum}" title="Evidence mapping unavailable">[${sourceNum}]</span>`;
   }
 
-  const linkClass = 'source-file-link';
-  const trimmedFileName = persistedDetail?.paperTitle || paperTitle.trim();
   const fileId = `source-file-${sourceFiles.value.length}`;
   const referenceNumber = Number.parseInt(sourceNum, 10);
-  const pageNumber = persistedDetail?.pageNumber ?? fallback?.pageNumber ?? undefined;
-  const displayName = pageNumber ? `${trimmedFileName} (第${pageNumber}页)` : trimmedFileName;
-
   sourceFiles.value.push({
-    paperTitle: trimmedFileName,
+    paperTitle: persistedDetail.paperTitle,
+    originalFilename: persistedDetail.originalFilename,
     id: fileId,
     referenceNumber,
-    paperId,
-    pageNumber
+    paperId: persistedDetail.paperId,
+    pageNumber: persistedDetail.pageNumber ?? undefined
   });
 
-  return `来源#${sourceNum}: <span class="${linkClass}" data-file-id="${fileId}">${displayName}</span>`;
+  const title = persistedDetail.pageNumber
+    ? `${persistedDetail.paperTitle} · 第${persistedDetail.pageNumber}页`
+    : persistedDetail.paperTitle;
+
+  return `<span class="source-citation-chip source-file-link" data-file-id="${fileId}" data-reference-number="${sourceNum}" tabindex="0" role="button" title="${escapeHtml(title)}">[${sourceNum}]</span>`;
 }
 
-// 处理来源文件链接的函数
-function processSourceLinks(text: string): string {
-  // 重置来源文件列表，避免重复
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function processCompactCitationLinks(text: string): string {
   sourceFiles.value = [];
-
-  // 支持单个来源，也支持一个括号里包含多个来源：
-  // (来源#1: test.pdf | 第5页; 来源#2: other.pdf | 第8页)
-  const entryBoundary = '(?=\\s*(?:[;；,，、。！？!?\\)）]|$))';
-  const pagePattern = new RegExp(
-    `来源#(\\d+):\\s*([^|;；,，、。！？!?\\n\\r]+?)\\s*\\|\\s*第(\\d+)页${entryBoundary}`,
-    'g'
+  return processOutsideCode(text, segment =>
+    segment.replace(/(?<!!)\[(\d+)](?!\()/g, (_match, sourceNum) => {
+      return createCompactCitationLink(sourceNum);
+    })
   );
-  const md5Pattern = new RegExp(
-    `来源#(\\d+):\\s*([^|;；,，、。！？!?\\n\\r]+?)\\s*\\|\\s*MD5:\\s*([a-fA-F0-9]+)${entryBoundary}`,
-    'g'
-  );
-  const simplePattern = new RegExp(`来源#(\\d+):\\s*([^<>\\n\\r|;；,，、。！？!?]+?)${entryBoundary}`, 'g');
+}
 
-  let processedText = text.replace(pagePattern, (...matches) => {
-    const [, sourceNum, paperTitle, pageNum] = matches;
-    return createSourceLink(sourceNum, paperTitle, {
-      pageNumber: Number.parseInt(pageNum, 10)
-    });
+function processOutsideCode(text: string, transform: (segment: string) => string) {
+  const lines = text.split(/(\n)/);
+  let insideFence = false;
+  return lines
+    .map(line => {
+      if (line === '\n') {
+        return line;
+      }
+      if (/^\s*```/.test(line)) {
+        insideFence = !insideFence;
+        return line;
+      }
+      if (insideFence) {
+        return line;
+      }
+
+      return line
+        .split(/(`[^`]*`)/g)
+        .map(part => (part.startsWith('`') && part.endsWith('`') ? part : transform(part)))
+        .join('');
+    })
+    .join('');
+}
+
+function markEvidenceBlocks() {
+  syncActiveEvidenceBlock();
+}
+
+function syncActiveEvidenceBlock() {
+  const root = assistantContentRef.value;
+  if (!root) return;
+
+  root.querySelectorAll<HTMLElement>('.source-citation-chip--active').forEach(chip => {
+    chip.classList.remove('source-citation-chip--active');
   });
 
-  processedText = processedText.replace(md5Pattern, (...matches) => {
-    const [, sourceNum, paperTitle, paperId] = matches;
-    return createSourceLink(sourceNum, paperTitle, {
-      paperId: paperId.trim()
-    });
-  });
+  if (activeReferenceNumber.value === null) {
+    return;
+  }
 
-  processedText = processedText.replace(simplePattern, (_match, sourceNum, paperTitle) => {
-    return createSourceLink(sourceNum, paperTitle);
+  const activeNumber = String(activeReferenceNumber.value);
+  root.querySelectorAll<HTMLElement>(`.source-citation-chip[data-reference-number="${activeNumber}"]`).forEach(chip => {
+    chip.classList.add('source-citation-chip--active');
   });
+}
 
-  return processedText;
+async function refreshEvidenceBlocks() {
+  await nextTick();
+  markEvidenceBlocks();
 }
 
 const content = computed(() => {
@@ -267,26 +287,41 @@ const content = computed(() => {
 
   // 只对助手消息处理来源链接
   if (props.msg.role === 'assistant') {
-    return normalizeBareUrls(processSourceLinks(rawContent));
+    return normalizeBareUrls(processCompactCitationLinks(rawContent));
   }
 
   return rawContent;
 });
 
+watch(
+  () => content.value,
+  () => {
+    refreshEvidenceBlocks();
+  },
+  { immediate: true }
+);
+
+watch(activeReferenceNumber, () => {
+  syncActiveEvidenceBlock();
+});
+
 function extractContextAnchorText(target: HTMLElement) {
   const scope = target.closest('li, p, blockquote, td, th');
-  const rawText = scope?.textContent?.replace(/\s+/g, ' ').trim() || '';
+  if (!scope) return '';
+
+  const clone = scope.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('.source-citation-chip').forEach(chip => chip.remove());
+  const rawText = clone.textContent?.replace(/\s+/g, ' ').trim() || '';
   if (!rawText) return '';
 
-  const beforeCitation = rawText.split(/(?:\(|（)?来源#\d+:/)[0] || rawText;
-  return beforeCitation
+  return rawText
     .replace(/^\s*\d+\.\s*/, '')
     .replace(/[（(]\s*$/, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function openReferencePreviewPage(payload: {
+function openReferenceEvidencePage(payload: {
   retrievalMode?: Api.Chat.ReferenceEvidence['retrievalMode'];
   retrievalLabel?: string | null;
   retrievalQuery?: string | null;
@@ -294,26 +329,44 @@ function openReferencePreviewPage(payload: {
   matchedChunkText?: string | null;
   score?: number | null;
   chunkId?: number | null;
+  elementType?: string | null;
+  sectionTitle?: string | null;
+  sectionLevel?: number | null;
+  bboxJson?: string | null;
+  parserName?: string | null;
+  parserVersion?: string | null;
+  sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
+  tableId?: string | null;
+  figureId?: string | null;
+  formulaId?: string | null;
+  evidenceRole?: string | null;
+  retrievalRoute?: string | null;
+  intent?: string | null;
+  rankReason?: string | null;
+  tableText?: string | null;
+  tableMarkdown?: string | null;
+  tableScreenshotAvailable?: boolean | null;
   paperTitle: string;
+  originalFilename?: string | null;
   paperId?: string | null;
   pageNumber?: number | null;
   anchorText?: string | null;
   conversationRecordId?: number;
   referenceNumber: number;
 }) {
-  if (props.previewMode === 'drawer') {
+  if (props.evidenceMode === 'drawer') {
     emit('openReference', payload);
     return;
   }
 
-  const previewKey = `reference-preview:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-  localStorage.setItem(previewKey, JSON.stringify(payload));
+  const evidenceKey = `reference-evidence:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  localStorage.setItem(evidenceKey, JSON.stringify(payload));
 
   const routeLocation = router.resolve({
     path: '/chat',
     query: {
-      preview: 'reference',
-      previewKey
+      evidence: 'reference',
+      evidenceKey
     }
   });
 
@@ -334,9 +387,11 @@ function handleContentClick(event: MouseEvent) {
     if (fileId) {
       const file = sourceFiles.value.find(f => f.id === fileId);
       if (file) {
+        activeReferenceNumber.value = file.referenceNumber;
         const contextAnchorText = extractContextAnchorText(sourceTarget);
         handleSourceFileClick({
           paperTitle: file.paperTitle,
+          originalFilename: file.originalFilename,
           referenceNumber: file.referenceNumber,
           paperId: file.paperId,
           pageNumber: file.pageNumber,
@@ -347,11 +402,27 @@ function handleContentClick(event: MouseEvent) {
   }
 }
 
-// 处理来源文件点击事件
-// Existing reference resolution has several fallback branches because older persisted messages may miss detail fields.
+function handleContentKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    return;
+  }
+
+  const target = event.target as HTMLElement;
+  const sourceTarget = target.closest<HTMLElement>('.source-file-link');
+  if (!sourceTarget) {
+    return;
+  }
+
+  event.preventDefault();
+  sourceTarget.click();
+}
+
+// 处理来源证据点击事件
+// 引用详情优先使用当前消息中的持久化映射，缺少证据文本时再从 MySQL 历史记录刷新。
 // eslint-disable-next-line complexity
 async function handleSourceFileClick(fileInfo: {
   paperTitle: string;
+  originalFilename?: string | null;
   referenceNumber: number;
   paperId?: string;
   pageNumber?: number;
@@ -359,6 +430,7 @@ async function handleSourceFileClick(fileInfo: {
 }) {
   const {
     paperTitle,
+    originalFilename,
     referenceNumber,
     paperId: extractedPaperId,
     pageNumber: extractedPageNumber,
@@ -394,8 +466,9 @@ async function handleSourceFileClick(fileInfo: {
     }
 
     if (persistedDetail?.paperId && !detail) {
-      openReferencePreviewPage({
+      openReferenceEvidencePage({
         paperTitle: persistedDetail.paperTitle || paperTitle,
+        originalFilename: persistedDetail.originalFilename || originalFilename,
         paperId: persistedDetail.paperId,
         pageNumber: persistedDetail.pageNumber,
         anchorText: persistedDetail.anchorText || clickedAnchorText || '',
@@ -406,6 +479,23 @@ async function handleSourceFileClick(fileInfo: {
         matchedChunkText: persistedDetail.matchedChunkText,
         score: persistedDetail.score,
         chunkId: persistedDetail.chunkId,
+        elementType: persistedDetail.elementType,
+        sectionTitle: persistedDetail.sectionTitle,
+        sectionLevel: persistedDetail.sectionLevel,
+        bboxJson: persistedDetail.bboxJson,
+        parserName: persistedDetail.parserName,
+        parserVersion: persistedDetail.parserVersion,
+        sourceKind: persistedDetail.sourceKind,
+        tableId: persistedDetail.tableId,
+        figureId: persistedDetail.figureId,
+        formulaId: persistedDetail.formulaId,
+        evidenceRole: persistedDetail.evidenceRole,
+        retrievalRoute: persistedDetail.retrievalRoute,
+        intent: persistedDetail.intent,
+        rankReason: persistedDetail.rankReason,
+        tableText: persistedDetail.tableText,
+        tableMarkdown: persistedDetail.tableMarkdown,
+        tableScreenshotAvailable: persistedDetail.tableScreenshotAvailable,
         conversationRecordId,
         referenceNumber
       });
@@ -413,8 +503,9 @@ async function handleSourceFileClick(fileInfo: {
     }
 
     const targetPaperId = detail?.paperId || extractedPaperId || null;
-    openReferencePreviewPage({
+    openReferenceEvidencePage({
       paperTitle: detail?.paperTitle || paperTitle,
+      originalFilename: detail?.originalFilename || originalFilename,
       paperId: targetPaperId,
       pageNumber: detail?.pageNumber ?? extractedPageNumber,
       anchorText: detail?.anchorText || clickedAnchorText || '',
@@ -425,30 +516,29 @@ async function handleSourceFileClick(fileInfo: {
       matchedChunkText: detail?.matchedChunkText,
       score: detail?.score,
       chunkId: detail?.chunkId,
+      elementType: detail?.elementType,
+      sectionTitle: detail?.sectionTitle,
+      sectionLevel: detail?.sectionLevel,
+      bboxJson: detail?.bboxJson,
+      parserName: detail?.parserName,
+      parserVersion: detail?.parserVersion,
+      sourceKind: detail?.sourceKind,
+      tableId: detail?.tableId,
+      figureId: detail?.figureId,
+      formulaId: detail?.formulaId,
+      evidenceRole: detail?.evidenceRole,
+      retrievalRoute: detail?.retrievalRoute,
+      intent: detail?.intent,
+      rankReason: detail?.rankReason,
+      tableText: detail?.tableText,
+      tableMarkdown: detail?.tableMarkdown,
+      tableScreenshotAvailable: detail?.tableScreenshotAvailable,
       conversationRecordId,
       referenceNumber
     });
   } catch {
-    window.$message?.error(`论文预览失败: ${paperTitle}`);
+    window.$message?.error(`引用证据打开失败: ${paperTitle}`);
   }
-}
-
-function openMappedReference(referenceNumber: number, detail: Api.Chat.ReferenceEvidence) {
-  openReferencePreviewPage({
-    paperTitle: detail.paperTitle,
-    paperId: detail.paperId,
-    pageNumber: detail.pageNumber,
-    anchorText: detail.anchorText || '',
-    retrievalMode: detail.retrievalMode,
-    retrievalLabel: detail.retrievalLabel,
-    retrievalQuery: detail.retrievalQuery || props.retrievalQueryFallback || '',
-    evidenceSnippet: detail.evidenceSnippet,
-    matchedChunkText: detail.matchedChunkText,
-    score: detail.score,
-    chunkId: detail.chunkId,
-    conversationRecordId: props.msg.conversationRecordId,
-    referenceNumber
-  });
 }
 </script>
 
@@ -468,7 +558,7 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
         <SystemLogo class="text-36px" />
       </NAvatar>
       <div class="flex-col gap-1">
-        <NText class="message-author">PaperLoom</NText>
+        <NText class="message-author">CiteWeave</NText>
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>
@@ -486,41 +576,32 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
         <span class="tool-event__status">{{ getToolStatusLabel(event.status) }}</span>
       </div>
     </div>
-    <NText v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)">
-      <icon-lucide:loader-circle class="ml-12 mt-2 text-8" />
-    </NText>
-    <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 italic" style="color: var(--color-error)">
+    <div
+      v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)"
+      class="assistant-thinking"
+      aria-live="polite"
+    >
+      <div class="assistant-thinking__mark" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div class="assistant-thinking__copy">
+        <strong>{{ thinkingTitle }}</strong>
+        <span>{{ thinkingDescription }}</span>
+      </div>
+    </div>
+    <NText v-else-if="msg.status === 'error'" class="message-error">
       {{ msg.content || '服务器繁忙，请稍后再试' }}
     </NText>
-    <div v-else-if="msg.role === 'assistant'" class="assistant-content message-content" @click="handleContentClick">
+    <div
+      v-else-if="msg.role === 'assistant'"
+      ref="assistantContentRef"
+      class="assistant-content message-content"
+      @click="handleContentClick"
+      @keydown="handleContentKeydown"
+    >
       <VueMarkdownIt :content="content" />
-      <div v-if="referenceEntries.length > 0" class="reference-list" aria-label="参考来源">
-        <div class="reference-list__title">References</div>
-        <button
-          v-for="entry in referenceEntries"
-          :key="entry.referenceNumber"
-          class="reference-list__item"
-          type="button"
-          @click.stop="openMappedReference(entry.referenceNumber, entry.detail)"
-        >
-          <span class="reference-list__badge">[{{ entry.referenceNumber }}]</span>
-          <span class="reference-list__body">
-            <span class="reference-list__file">
-              {{ entry.detail.paperTitle }}
-              <span v-if="entry.detail.pageNumber">· 第{{ entry.detail.pageNumber }}页</span>
-            </span>
-            <span class="reference-list__meta">
-              {{ entry.detail.retrievalLabel || '文献库召回' }}
-              <span v-if="entry.detail.score !== null && entry.detail.score !== undefined">
-                · {{ Number(entry.detail.score).toFixed(3) }}
-              </span>
-            </span>
-            <span v-if="entry.detail.evidenceSnippet" class="reference-list__snippet">
-              {{ entry.detail.evidenceSnippet }}
-            </span>
-          </span>
-        </button>
-      </div>
     </div>
     <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
     <NDivider class="message-divider" />
@@ -562,19 +643,78 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 <style scoped lang="scss">
 :deep(.source-file-link) {
-  color: var(--color-primary);
   cursor: pointer;
-  text-decoration: underline;
-  transition: color 0.2s;
+}
+
+:deep(.source-citation-chip) {
+  display: inline-flex;
+  min-width: 24px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 2px;
+  border: 1px solid color-mix(in srgb, #b7791f 36%, var(--color-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, #f6d58a 22%, var(--color-surface));
+  box-shadow: 0 1px 0 rgb(146 91 10 / 8%);
+  color: #8a5a12;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: 0.08em;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
 
   &:hover {
-    color: var(--color-accent);
+    border-color: color-mix(in srgb, #b7791f 64%, var(--color-border));
+    background: color-mix(in srgb, #f6d58a 34%, var(--color-surface));
+    box-shadow: 0 2px 6px rgb(146 91 10 / 14%);
+    color: #6f4304;
     text-decoration: none;
+    transform: translateY(-1px);
   }
 
-  &:active {
-    color: var(--color-accent-hover);
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, #d6a84f 58%, transparent);
+    outline-offset: 2px;
   }
+}
+
+:deep(.source-citation-chip--active) {
+  border-color: #b7791f;
+  background: color-mix(in srgb, #f2c464 46%, var(--color-surface));
+  color: #613a05;
+}
+
+:deep(.source-citation-chip--muted) {
+  cursor: default;
+  border-color: var(--color-border);
+  background: var(--color-surface-alt);
+  box-shadow: none;
+  color: var(--color-text-muted);
+}
+
+.dark :deep(.source-citation-chip) {
+  border-color: rgb(246 213 138 / 34%);
+  background: rgb(246 213 138 / 12%);
+  color: #f1cf83;
+}
+
+.dark :deep(.source-citation-chip--active) {
+  border-color: rgb(246 213 138 / 72%);
+  background: rgb(246 213 138 / 20%);
+  color: #ffe4a3;
+}
+
+.dark :deep(.source-citation-chip--muted) {
+  border-color: var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
 }
 
 .message-block {
@@ -605,9 +745,23 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   color: var(--color-text);
 }
 
+.message-error {
+  margin-left: 52px;
+  margin-top: 8px;
+  color: var(--color-error);
+  font-style: italic;
+}
+
 .message-block--assistant .message-author {
   color: var(--color-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 17px;
 }
 
@@ -630,74 +784,87 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   margin: 0 0 12px;
 }
 
-.reference-list {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.assistant-thinking {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  max-width: min(520px, calc(100% - 52px));
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  margin-left: 52px;
+  margin-top: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 10px 13px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
 }
 
-.reference-list__title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+.assistant-thinking::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0%, rgb(255 255 255 / 10%) 42%, transparent 68%);
+  content: '';
+  pointer-events: none;
+  transform: translateX(-120%);
+  animation: evidence-sheen 2.4s ease-in-out infinite;
 }
 
-.reference-list__item {
-  display: flex;
-  width: 100%;
-  cursor: pointer;
-  gap: 10px;
+.assistant-thinking__mark {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, 4px);
+  gap: 4px;
+  align-items: end;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
   border-radius: 6px;
-  background: var(--color-surface-alt);
-  padding: 9px 10px;
-  text-align: left;
-  transition: background 0.2s;
-}
-
-.reference-list__item:hover {
   background: var(--color-primary-soft-bg);
 }
 
-.reference-list__badge {
-  display: inline-flex;
-  min-width: 34px;
-  align-items: center;
-  justify-content: center;
-  border-right: 1px solid var(--color-border);
-  color: var(--color-primary);
-  padding-right: 8px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
+.assistant-thinking__mark span {
+  display: block;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  opacity: 0.5;
+  animation: evidence-pulse 1.35s ease-in-out infinite;
 }
 
-.reference-list__body {
-  min-width: 0;
+.assistant-thinking__mark span:nth-child(1) {
+  height: 10px;
+}
+
+.assistant-thinking__mark span:nth-child(2) {
+  height: 17px;
+  animation-delay: 0.15s;
+}
+
+.assistant-thinking__mark span:nth-child(3) {
+  height: 13px;
+  animation-delay: 0.3s;
+}
+
+.assistant-thinking__copy {
   display: flex;
-  flex: 1;
+  min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
-.reference-list__file {
-  overflow: hidden;
+.assistant-thinking__copy strong {
   color: var(--color-text);
   font-size: 13px;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 750;
+  line-height: 18px;
 }
 
-.reference-list__meta,
-.reference-list__snippet {
-  overflow: hidden;
+.assistant-thinking__copy span {
   color: var(--color-text-muted);
   font-size: 12px;
-  line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 17px;
 }
 
 .message-divider {
@@ -724,26 +891,6 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   background: var(--color-surface-alt);
 }
 
-.dark .reference-list__title,
-.dark .reference-list__file {
-  color: var(--color-text);
-}
-
-.dark .reference-list__item {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-}
-
-.dark .reference-list__item:hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft-bg);
-}
-
-.dark .reference-list__meta,
-.dark .reference-list__snippet {
-  color: var(--color-text-muted);
-}
-
 .tool-event {
   display: inline-flex;
   width: fit-content;
@@ -766,6 +913,10 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 .tool-event__status {
   color: var(--color-text-muted);
+}
+
+.tool-event--executing .text-4 {
+  animation: tool-breathe 1.2s ease-in-out infinite;
 }
 
 .tool-event--success {
@@ -804,6 +955,51 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   --vp-code-block-color: var(--color-text);
   --vp-code-line-number-color: var(--color-text-muted);
   --vp-code-line-highlight-color: var(--color-primary-soft-bg);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+}
+
+@keyframes evidence-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleY(0.72);
+  }
+
+  45% {
+    opacity: 0.95;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes evidence-sheen {
+  0%,
+  35% {
+    transform: translateX(-120%);
+  }
+
+  75%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes tool-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>

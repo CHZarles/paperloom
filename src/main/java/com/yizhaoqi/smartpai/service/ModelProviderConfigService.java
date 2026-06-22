@@ -203,6 +203,7 @@ public class ModelProviderConfigService {
                 "deepseek",
                 List.of(
                         new ProviderConfigView("deepseek", "DeepSeek", API_STYLE_OPENAI, deepSeekApiUrl, deepSeekModel, null, true, true, hasValue(deepSeekApiKey), secretCryptoService.mask(deepSeekApiKey)),
+                        new ProviderConfigView("minimax", "MiniMax", API_STYLE_OPENAI, "https://api.minimaxi.com/v1", "MiniMax-M3", null, true, false, false, ""),
                         new ProviderConfigView("qwen", "Qwen", API_STYLE_OPENAI, "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-flash", null, true, false, false, ""),
                         new ProviderConfigView("zhipu", "ZhipuAI", API_STYLE_OPENAI, "https://open.bigmodel.cn/api/paas/v4", "glm-4.5-air", null, true, false, false, "")
                 )

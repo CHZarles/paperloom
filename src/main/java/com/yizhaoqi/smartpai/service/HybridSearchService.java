@@ -11,6 +11,10 @@ import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperTable;
+import com.yizhaoqi.smartpai.model.PaperVisualAsset;
+import com.yizhaoqi.smartpai.repository.PaperTableRepository;
+import com.yizhaoqi.smartpai.repository.PaperVisualAssetRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +55,12 @@ public class HybridSearchService {
 
     @Autowired
     private PaperRepository paperRepository;
+
+    @Autowired
+    private PaperTableRepository paperTableRepository;
+
+    @Autowired
+    private PaperVisualAssetRepository paperVisualAssetRepository;
 
     /**
      * 使用文本匹配和向量相似度进行论文混合搜索，支持权限过滤。
@@ -138,13 +148,12 @@ public class HybridSearchService {
                 response.hits().total().value(), response.hits().maxScore());
 
             List<SearchResult> results = response.hits().hits().stream()
-                    .filter(hit -> hit.score() == null || hit.score() >= MIN_RELEVANCE_SCORE)
                     .map(hit -> {
                         assert hit.source() != null;
                         logger.debug("搜索结果 - 论文: {}, chunk: {}, 分数: {}, 内容: {}",
                             hit.source().getPaperId(), hit.source().getChunkId(), hit.score(),
                             hit.source().getTextContent().substring(0, Math.min(50, hit.source().getTextContent().length())));
-                        return new SearchResult(
+                        SearchResult result = new SearchResult(
                                 hit.source().getPaperId(),
                                 hit.source().getChunkId(),
                                 hit.source().getTextContent(),
@@ -156,13 +165,27 @@ public class HybridSearchService {
                                 hit.source().getPageNumber(),
                                 hit.source().getAnchorText(),
                                 "HYBRID",
-                                hit.source().getTextContent()
+                                hit.source().getTextContent(),
+                                hit.source().getElementType(),
+                                hit.source().getSectionTitle(),
+                                hit.source().getSectionLevel(),
+                                hit.source().getBboxJson(),
+                                hit.source().getParserName(),
+                                hit.source().getParserVersion(),
+                                hit.source().getSourceKind(),
+                                hit.source().getTableId(),
+                                null,
+                                null,
+                                false
                         );
+                        applyExtendedEvidenceFields(result, hit.source());
+                        return result;
                     })
                     .toList();
 
             logger.debug("返回搜索结果数量: {}", results.size());
             attachPaperTitles(results);
+            attachTableEvidence(results);
             return results;
         } catch (Exception e) {
             logger.error("带权限的搜索失败", e);
@@ -253,7 +276,7 @@ public class HybridSearchService {
                         logger.debug("纯文本搜索结果 - 论文: {}, chunk: {}, 分数: {}, 内容: {}",
                             hit.source().getPaperId(), hit.source().getChunkId(), hit.score(),
                             hit.source().getTextContent().substring(0, Math.min(50, hit.source().getTextContent().length())));
-                        return new SearchResult(
+                        SearchResult result = new SearchResult(
                                 hit.source().getPaperId(),
                                 hit.source().getChunkId(),
                                 hit.source().getTextContent(),
@@ -265,13 +288,27 @@ public class HybridSearchService {
                                 hit.source().getPageNumber(),
                                 hit.source().getAnchorText(),
                                 "TEXT_ONLY",
-                                hit.source().getTextContent()
+                                hit.source().getTextContent(),
+                                hit.source().getElementType(),
+                                hit.source().getSectionTitle(),
+                                hit.source().getSectionLevel(),
+                                hit.source().getBboxJson(),
+                                hit.source().getParserName(),
+                                hit.source().getParserVersion(),
+                                hit.source().getSourceKind(),
+                                hit.source().getTableId(),
+                                null,
+                                null,
+                                false
                         );
+                        applyExtendedEvidenceFields(result, hit.source());
+                        return result;
                     })
                     .toList();
 
             logger.debug("返回纯文本搜索结果数量: {}", results.size());
             attachPaperTitles(results);
+            attachTableEvidence(results);
             return results;
         } catch (Exception e) {
             logger.error("纯文本搜索失败", e);
@@ -326,11 +363,11 @@ public class HybridSearchService {
                         return s;
                     }, PaperChunkDocument.class);
 
-            return response.hits().hits().stream()
+            List<SearchResult> results = response.hits().hits().stream()
                     .filter(hit -> hit.score() == null || hit.score() >= MIN_RELEVANCE_SCORE)
                     .map(hit -> {
                         assert hit.source() != null;
-                        return new SearchResult(
+                        SearchResult result = new SearchResult(
                                 hit.source().getPaperId(),
                                 hit.source().getChunkId(),
                                 hit.source().getTextContent(),
@@ -342,10 +379,26 @@ public class HybridSearchService {
                                 hit.source().getPageNumber(),
                                 hit.source().getAnchorText(),
                                 "HYBRID",
-                                hit.source().getTextContent()
+                                hit.source().getTextContent(),
+                                hit.source().getElementType(),
+                                hit.source().getSectionTitle(),
+                                hit.source().getSectionLevel(),
+                                hit.source().getBboxJson(),
+                                hit.source().getParserName(),
+                                hit.source().getParserVersion(),
+                                hit.source().getSourceKind(),
+                                hit.source().getTableId(),
+                                null,
+                                null,
+                                false
                         );
+                        applyExtendedEvidenceFields(result, hit.source());
+                        return result;
                     })
                     .toList();
+            attachPaperTitles(results);
+            attachTableEvidence(results);
+            return results;
         } catch (Exception e) {
             logger.error("搜索失败", e);
             // 发生异常时尝试使用纯文本搜索作为后备方案
@@ -376,10 +429,10 @@ public class HybridSearchService {
                 PaperChunkDocument.class
         );
 
-        return response.hits().hits().stream()
+        List<SearchResult> results = response.hits().hits().stream()
                 .map(hit -> {
                     assert hit.source() != null;
-                    return new SearchResult(
+                    SearchResult result = new SearchResult(
                             hit.source().getPaperId(),
                             hit.source().getChunkId(),
                             hit.source().getTextContent(),
@@ -391,10 +444,26 @@ public class HybridSearchService {
                             hit.source().getPageNumber(),
                             hit.source().getAnchorText(),
                             "TEXT_ONLY",
-                            hit.source().getTextContent()
+                            hit.source().getTextContent(),
+                            hit.source().getElementType(),
+                            hit.source().getSectionTitle(),
+                            hit.source().getSectionLevel(),
+                            hit.source().getBboxJson(),
+                            hit.source().getParserName(),
+                            hit.source().getParserVersion(),
+                            hit.source().getSourceKind(),
+                            hit.source().getTableId(),
+                            null,
+                            null,
+                            false
                     );
+                    applyExtendedEvidenceFields(result, hit.source());
+                    return result;
                 })
                 .toList();
+        attachPaperTitles(results);
+        attachTableEvidence(results);
+        return results;
     }
 
     /**
@@ -417,6 +486,12 @@ public class HybridSearchService {
             logger.error("生成向量失败", e);
             return null;
         }
+    }
+
+    private void applyExtendedEvidenceFields(SearchResult result, PaperChunkDocument source) {
+        result.setFigureId(source.getFigureId());
+        result.setFormulaId(source.getFormulaId());
+        result.setEvidenceRole(source.getEvidenceRole());
     }
 
     /**
@@ -489,11 +564,53 @@ public class HybridSearchService {
                     .map(SearchResult::getPaperId)
                     .collect(Collectors.toSet());
             List<Paper> uploads = paperRepository.findByPaperIdIn(new java.util.ArrayList<>(paperIds));
-            Map<String, String> paperIdToTitle = uploads.stream()
-                    .collect(Collectors.toMap(Paper::getPaperId, Paper::getOriginalFilename, (existing, replacement) -> existing));
-            results.forEach(r -> r.setPaperTitle(paperIdToTitle.get(r.getPaperId())));
+            Map<String, Paper> paperById = uploads.stream()
+                    .collect(Collectors.toMap(Paper::getPaperId, paper -> paper, (existing, replacement) -> existing));
+            results.forEach(result -> {
+                Paper paper = paperById.get(result.getPaperId());
+                if (paper != null) {
+                    result.setPaperTitle(paper.getPaperTitle());
+                    result.setOriginalFilename(paper.getOriginalFilename());
+                }
+            });
         } catch (Exception e) {
             logger.error("补充论文标题失败", e);
+        }
+    }
+
+    private void attachTableEvidence(List<SearchResult> results) {
+        if (results == null || results.isEmpty()) {
+            return;
+        }
+        for (SearchResult result : results) {
+            if (!"TABLE".equalsIgnoreCase(result.getSourceKind())
+                    || result.getPaperId() == null
+                    || result.getTableId() == null) {
+                continue;
+            }
+            try {
+                paperTableRepository.findFirstByPaperIdAndTableId(result.getPaperId(), result.getTableId())
+                        .ifPresent(table -> applyTableEvidence(result, table));
+                boolean screenshotAvailable = paperVisualAssetRepository
+                        .findFirstByPaperIdAndAssetTypeAndTableId(
+                                result.getPaperId(),
+                                PaperVisualAsset.TYPE_TABLE_CROP,
+                                result.getTableId()
+                        )
+                        .isPresent();
+                result.setTableScreenshotAvailable(screenshotAvailable);
+            } catch (Exception e) {
+                logger.warn("补充表格 evidence 失败: paperId={}, tableId={}, error={}",
+                        result.getPaperId(), result.getTableId(), e.getMessage());
+            }
+        }
+    }
+
+    private void applyTableEvidence(SearchResult result, PaperTable table) {
+        result.setTableText(table.getTableText());
+        result.setTableMarkdown(table.getTableMarkdown());
+        if (table.getScreenshotObjectKey() != null && !table.getScreenshotObjectKey().isBlank()) {
+            result.setTableScreenshotAvailable(true);
         }
     }
 }

@@ -494,6 +494,7 @@ public class UploadService {
                                 .bucket("uploads")
                                 .object(mergedPath)
                                 .sources(sources)
+                                .headers(PdfDownloadHeaders.objectHeaders())
                                 .build()
                 );
                 logger.info("分片合并成功 => paperId: {}, originalFilename: {}, fileType: {}, mergedPath: {}", paperId, originalFilename, fileType, mergedPath);
@@ -570,12 +571,16 @@ public class UploadService {
     }
 
     public String generateMergedObjectUrl(String paperId) throws Exception {
+        String originalFilename = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
+                .map(Paper::getOriginalFilename)
+                .orElse(null);
         return minioClient.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
                         .method(Method.GET)
                         .bucket("uploads")
                         .object("merged/" + paperId)
                         .expiry(1, TimeUnit.HOURS)
+                        .extraQueryParams(PdfDownloadHeaders.presignedQueryParams(originalFilename, paperId))
                         .build()
         );
     }

@@ -373,7 +373,19 @@ declare namespace Api {
       estimatedChunkCount?: number;
       actualEmbeddingTokens?: number;
       actualChunkCount?: number;
-      processingStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;
+      processingStatus?:
+        | 'PENDING'
+        | 'PROCESSING'
+        | 'MINERU_RUNNING'
+        | 'MINERU_ARTIFACT_SAVED'
+        | 'MAPPING_STRUCTURED_CONTENT'
+        | 'RENDERING_VISUAL_ASSETS'
+        | 'CHUNKING'
+        | 'EMBEDDING'
+        | 'INDEXING'
+        | 'COMPLETED'
+        | 'FAILED'
+        | null;
       processingErrorMessage?: string | null;
       authors?: string | null;
       publicationYear?: number | null;
@@ -381,6 +393,28 @@ declare namespace Api {
       abstractText?: string | null;
       doi?: string | null;
       arxivId?: string | null;
+      parserArtifact?: {
+        available: boolean;
+        parserName?: string | null;
+        parserVersion?: string | null;
+      };
+      tableAsset?: {
+        tableCount: number;
+        tableSearchable: boolean;
+      };
+      figureAsset?: {
+        figureCount: number;
+        figureSearchable: boolean;
+      };
+      formulaAsset?: {
+        formulaCount: number;
+        formulaSearchable: boolean;
+      };
+      visualAsset?: {
+        pageScreenshotCount: number;
+        tableCropCount: number;
+        figureCropCount?: number;
+      };
       createdAt?: string;
       mergedAt?: string;
       requestIds?: string[]; // 请求ID，用于取消上传
@@ -415,6 +449,43 @@ declare namespace Api {
       paperId?: string;
     }
 
+    interface ParserArtifactResponse {
+      paperId: string;
+      parserName?: string | null;
+      parserVersion?: string | null;
+      artifactType: string;
+      downloadUrl: string;
+      sizeBytes?: number | null;
+    }
+
+    interface TableItem {
+      paperId: string;
+      tableId: string;
+      pageNumber?: number | null;
+      caption?: string | null;
+      sectionTitle?: string | null;
+      rowCount?: number | null;
+      columnCount?: number | null;
+      tableText?: string | null;
+      tableMarkdown?: string | null;
+      bboxJson?: string | null;
+      parserName?: string | null;
+      parserVersion?: string | null;
+      screenshotAvailable?: boolean;
+    }
+
+    interface VisualAssetResponse {
+      paperId: string;
+      assetType: 'PAGE_SCREENSHOT' | 'TABLE_CROP' | 'FIGURE_CROP' | 'CHART_CROP';
+      pageNumber?: number | null;
+      tableId?: string | null;
+      figureId?: string | null;
+      downloadUrl: string;
+      contentType?: string | null;
+      widthPx?: number | null;
+      heightPx?: number | null;
+    }
+
     interface ReferenceDetailResponse extends Chat.ReferenceEvidence {
       referenceNumber: number;
     }
@@ -436,6 +507,23 @@ declare namespace Api {
       evidenceSnippet?: string | null;
       score?: number | null;
       chunkId?: number | null;
+      elementType?: string | null;
+      sectionTitle?: string | null;
+      sectionLevel?: number | null;
+      bboxJson?: string | null;
+      parserName?: string | null;
+      parserVersion?: string | null;
+      sourceKind?: 'TEXT' | 'TABLE' | 'FIGURE' | 'CHART' | 'FORMULA' | null;
+      tableId?: string | null;
+      figureId?: string | null;
+      formulaId?: string | null;
+      evidenceRole?: string | null;
+      retrievalRoute?: string | null;
+      intent?: string | null;
+      rankReason?: string | null;
+      tableText?: string | null;
+      tableMarkdown?: string | null;
+      tableScreenshotAvailable?: boolean | null;
     }
 
     interface Input {
@@ -467,6 +555,7 @@ declare namespace Api {
       conversationRecordId?: number;
       generationId?: string;
       username?: string;
+      route?: 'SMALLTALK' | 'PAPER_QA';
       referenceMappings?: Record<string, ReferenceEvidence>;
       toolEvents?: AgentToolEvent[];
       feedbackRating?: 'good' | 'bad';

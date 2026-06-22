@@ -6,10 +6,12 @@ import com.yizhaoqi.smartpai.model.ChunkInfo;
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.repository.ChunkInfoRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -153,11 +155,36 @@ class UploadServiceTest {
         inOrder.verify(valueOperations).setBit("upload:1:md5", 0, true);
     }
 
+    @Test
+    void generateMergedObjectUrlRequestsInlinePdfResponseHeaders() throws Exception {
+        Paper paper = new Paper();
+        paper.setPaperId("md5");
+        paper.setOriginalFilename("uploaded paper.pdf");
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("md5"))
+                .thenReturn(Optional.of(paper));
+        when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
+                .thenReturn("http://localhost:9000/uploads/merged/md5");
+
+        uploadService.generateMergedObjectUrl("md5");
+
+        ArgumentCaptor<GetPresignedObjectUrlArgs> captor = ArgumentCaptor.forClass(GetPresignedObjectUrlArgs.class);
+        verify(minioClient).getPresignedObjectUrl(captor.capture());
+        GetPresignedObjectUrlArgs args = captor.getValue();
+        assertEquals("merged/md5", args.object());
+        assertEquals("application/pdf", firstQueryParam(args, "response-content-type"));
+        assertEquals("inline; filename=\"uploaded paper.pdf\"",
+                firstQueryParam(args, "response-content-disposition"));
+    }
+
     private Paper uploadingFile() {
         Paper paper = new Paper();
         paper.setPaperId("md5");
         paper.setUserId("1");
         paper.setStatus(Paper.STATUS_UPLOADING);
         return paper;
+    }
+
+    private String firstQueryParam(GetPresignedObjectUrlArgs args, String name) {
+        return args.extraQueryParams().get(name).stream().findFirst().orElse(null);
     }
 }

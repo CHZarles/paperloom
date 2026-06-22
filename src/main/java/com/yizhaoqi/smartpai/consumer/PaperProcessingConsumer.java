@@ -66,8 +66,8 @@ public class PaperProcessingConsumer {
             }
 
             // 解析论文 PDF
-            parseService.parseAndSave(task.getPaperId(), fileStream, 
-                    task.getUserId(), task.getOrgTag(), task.isPublic());
+            parseService.parseAndSave(task.getPaperId(), fileStream,
+                    task.getPaperTitle(), task.getUserId(), task.getOrgTag(), task.isPublic());
             log.info("论文 PDF 解析完成，paperId: {}", task.getPaperId());
 
             // 向量化处理

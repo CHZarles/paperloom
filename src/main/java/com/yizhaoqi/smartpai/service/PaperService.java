@@ -1,9 +1,13 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.config.KafkaConfig;
+import com.yizhaoqi.smartpai.model.ChunkInfo;
 import com.yizhaoqi.smartpai.model.PaperProcessingTask;
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.User;
+import com.yizhaoqi.smartpai.paper.parser.MinerUUnavailableException;
+import com.yizhaoqi.smartpai.paper.parser.PaperParsingException;
+import com.yizhaoqi.smartpai.repository.ChunkInfoRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
@@ -12,25 +16,17 @@ import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.RemoveObjectArgs;
 import io.minio.http.Method;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.tika.exception.TikaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.redis.core.StringRedisTemplate;
 
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.HashMap;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -40,22 +36,18 @@ import java.util.stream.Collectors;
 @Service
 public class PaperService {
 
-    public record PdfSinglePagePreview(byte[] content, boolean cacheHit) {}
-    private record InMemoryPdfPreviewCache(byte[] content, long expiresAtMillis) {}
-
     private static final Logger logger = LoggerFactory.getLogger(PaperService.class);
-    private static final String PDF_SINGLE_PAGE_CACHE_PREFIX = "preview:pdf:single-page:";
-    private static final long PDF_SINGLE_PAGE_CACHE_TTL_MINUTES = 30;
-    private static final long PDF_SINGLE_PAGE_CACHE_TTL_MILLIS = TimeUnit.MINUTES.toMillis(PDF_SINGLE_PAGE_CACHE_TTL_MINUTES);
     private static final String LEGACY_COMPLETED_WITHOUT_USAGE_MESSAGE = "历史数据未统计实际 Tokens，可按需重试以回写实际向量化结果";
     private static final String LEGACY_FAILED_MESSAGE = "历史向量化结果缺失，可点击重试向量化重新处理";
-    private static final Map<String, InMemoryPdfPreviewCache> PDF_SINGLE_PAGE_LOCAL_CACHE = new ConcurrentHashMap<>();
 
     @Autowired
     private PaperRepository paperRepository;
 
     @Autowired
     private PaperTextChunkRepository paperTextChunkRepository;
+
+    @Autowired
+    private ChunkInfoRepository chunkInfoRepository;
 
     @Autowired
     private MinioClient minioClient;
@@ -73,13 +65,25 @@ public class PaperService {
     private UploadService uploadService;
 
     @Autowired
-    private StringRedisTemplate stringRedisTemplate;
-
-    @Autowired
     private ParseService parseService;
 
     @Autowired
     private VectorizationService vectorizationService;
+
+    @Autowired
+    private PaperParserArtifactService paperParserArtifactService;
+
+    @Autowired
+    private PaperTableService paperTableService;
+
+    @Autowired
+    private PaperFigureService paperFigureService;
+
+    @Autowired
+    private PaperFormulaService paperFormulaService;
+
+    @Autowired
+    private PaperVisualAssetService paperVisualAssetService;
 
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
@@ -87,67 +91,182 @@ public class PaperService {
     @Autowired
     private KafkaConfig kafkaConfig;
 
-    /**
-     * 删除论文及其相关数据。
-     * 该方法将删除:
-     * 1. 上传记录
-     * 2. 解析 chunk 记录
-     * 3. MinIO 中的 PDF 对象
-     * 4. Elasticsearch 中的 paper chunk 数据
-     *
-     * @param paperId 论文标识，当前使用 PDF 内容哈希
-     */
     @Transactional
     public void deletePaper(String paperId, String userId) {
-        logger.info("开始删除论文: paperId={}", paperId);
+        deletePaper(paperId, userId, "USER");
+    }
+
+    /**
+     * 删除论文记录及其最后一份物理资源。
+     * 多个用户可能上传同一 PDF，因此 paperId 指向的 ES/MinIO/chunk 资源只有在最后一条记录删除后才清理。
+     *
+     * @param paperId 论文标识，当前使用 PDF 内容哈希
+     * @param requesterId 当前发起删除的用户
+     * @param role 当前用户角色
+     */
+    @Transactional
+    public void deletePaper(String paperId, String requesterId, String role) {
+        logger.info("开始删除论文: paperId={}, requesterId={}, role={}", paperId, requesterId, role);
 
         try {
-            Paper paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId)
-                    .orElseThrow(() -> new RuntimeException("论文不存在"));
+            Paper paper = findPaperForDeletion(paperId, requesterId, role);
+            String ownerId = paper.getUserId();
 
-            // 1. 删除 Elasticsearch 中的 paper chunk
-            try {
-                elasticsearchService.deleteByPaperId(paperId);
-                logger.info("成功从 Elasticsearch 删除论文 chunk: paperId={}", paperId);
-            } catch (Exception e) {
-                logger.error("从 Elasticsearch 删除论文 chunk 时出错: paperId={}", paperId, e);
-                // 继续删除其他数据
+            clearUploadMarker(paperId, ownerId);
+            paperRepository.delete(paper);
+            paperRepository.flush();
+            logger.info("成功删除论文上传记录: paperId={}, ownerId={}", paperId, ownerId);
+
+            long remainingRecords = paperRepository.countByPaperId(paperId);
+            if (remainingRecords > 0) {
+                logger.info("论文仍被其他记录引用，跳过物理资源清理: paperId={}, remainingRecords={}",
+                        paperId, remainingRecords);
+                return;
             }
 
-            // 2. 删除 MinIO 中的 PDF 对象
-            try {
-                String objectName = "merged/" + paper.getPaperId();
-                minioClient.removeObject(
-                        RemoveObjectArgs.builder()
-                                .bucket("uploads")
-                                .object(objectName)
-                                .build()
-                );
-                logger.info("成功从 MinIO 删除论文 PDF: {}", objectName);
-            } catch (Exception e) {
-                logger.error("从 MinIO 删除论文 PDF 时出错: paperId={}", paperId, e);
-                // 继续删除其他数据
-            }
-
-            invalidatePdfSinglePagePreviewCache(paperId);
-
-            // 3. 删除解析 chunk 记录
-            try {
-                paperTextChunkRepository.deleteByPaperId(paperId);
-                logger.info("成功删除论文 chunk 记录: paperId={}", paperId);
-            } catch (Exception e) {
-                logger.error("删除论文 chunk 记录时出错: paperId={}", paperId, e);
-                // 继续删除其他数据
-            }
-
-            // 4. 删除上传记录
-            paperRepository.deleteByPaperId(paperId);
-            logger.info("成功删除论文上传记录: paperId={}", paperId);
-
-            logger.info("论文删除完成: paperId={}", paperId);
+            deletePhysicalPaperArtifacts(paperId);
+            logger.info("论文删除完成: paperId={}, requesterId={}, ownerId={}", paperId, requesterId, ownerId);
         } catch (Exception e) {
             logger.error("删除论文过程中发生错误: paperId={}", paperId, e);
             throw new RuntimeException("删除论文失败: " + e.getMessage(), e);
+        }
+    }
+
+    private Paper findPaperForDeletion(String paperId, String requesterId, String role) {
+        if (isAdmin(role)) {
+            return paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
+                    .orElseThrow(() -> new RuntimeException("论文不存在"));
+        }
+
+        return paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, requesterId)
+                .orElseThrow(() -> new RuntimeException("论文不存在"));
+    }
+
+    private boolean isAdmin(String role) {
+        return "ADMIN".equalsIgnoreCase(role);
+    }
+
+    private void clearUploadMarker(String paperId, String ownerId) {
+        try {
+            uploadService.deleteFileMark(paperId, ownerId);
+            logger.info("成功清理论文上传状态标记: paperId={}, ownerId={}", paperId, ownerId);
+        } catch (Exception e) {
+            logger.warn("清理论文上传状态标记失败，将继续删除论文记录: paperId={}, ownerId={}, error={}",
+                    paperId, ownerId, e.getMessage());
+        }
+    }
+
+    private void deletePhysicalPaperArtifacts(String paperId) {
+        deleteSearchIndex(paperId);
+        deleteMergedPaperObject(paperId);
+        deleteUploadChunks(paperId);
+        deleteParserArtifacts(paperId);
+        deleteVisualAssets(paperId);
+        deleteTables(paperId);
+        deleteFigures(paperId);
+        deleteFormulas(paperId);
+        deleteParsedChunks(paperId);
+    }
+
+    private void deleteSearchIndex(String paperId) {
+        try {
+            elasticsearchService.deleteByPaperId(paperId);
+            logger.info("成功从 Elasticsearch 删除论文 chunk: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("从 Elasticsearch 删除论文 chunk 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteMergedPaperObject(String paperId) {
+        try {
+            String objectName = "merged/" + paperId;
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket("uploads")
+                            .object(objectName)
+                            .build()
+            );
+            logger.info("成功从 MinIO 删除论文 PDF: {}", objectName);
+        } catch (Exception e) {
+            logger.error("从 MinIO 删除论文 PDF 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteUploadChunks(String paperId) {
+        try {
+            List<ChunkInfo> chunks = chunkInfoRepository.findByPaperIdOrderByChunkIndexAsc(paperId);
+            for (ChunkInfo chunk : chunks) {
+                try {
+                    minioClient.removeObject(
+                            RemoveObjectArgs.builder()
+                                    .bucket("uploads")
+                                    .object(chunk.getStoragePath())
+                                    .build()
+                    );
+                    logger.debug("成功从 MinIO 删除上传分片: paperId={}, path={}", paperId, chunk.getStoragePath());
+                } catch (Exception e) {
+                    logger.warn("从 MinIO 删除上传分片失败，将继续清理其他分片: paperId={}, path={}, error={}",
+                            paperId, chunk.getStoragePath(), e.getMessage());
+                }
+            }
+            chunkInfoRepository.deleteByPaperId(paperId);
+            logger.info("成功删除论文上传分片记录: paperId={}, chunkCount={}", paperId, chunks.size());
+        } catch (Exception e) {
+            logger.error("删除论文上传分片记录时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteParsedChunks(String paperId) {
+        try {
+            paperTextChunkRepository.deleteByPaperId(paperId);
+            logger.info("成功删除论文解析 chunk 记录: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文解析 chunk 记录时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteParserArtifacts(String paperId) {
+        try {
+            paperParserArtifactService.deleteParserArtifacts(paperId);
+            logger.info("成功删除 parser artifact: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除 parser artifact 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteVisualAssets(String paperId) {
+        try {
+            paperVisualAssetService.deleteVisualAssets(paperId);
+            logger.info("成功删除论文视觉资产: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文视觉资产时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteTables(String paperId) {
+        try {
+            paperTableService.deleteTables(paperId);
+            logger.info("成功删除论文表格 metadata: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文表格 metadata 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteFigures(String paperId) {
+        try {
+            paperFigureService.deleteFigures(paperId);
+            logger.info("成功删除论文图像 metadata: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文图像 metadata 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteFormulas(String paperId) {
+        try {
+            paperFormulaService.deleteFormulas(paperId);
+            logger.info("成功删除论文公式 metadata: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文公式 metadata 时出错: paperId={}", paperId, e);
         }
     }
 
@@ -169,11 +288,16 @@ public class PaperService {
             }
 
             paperTextChunkRepository.deleteByPaperId(paperId);
-            invalidatePdfSinglePagePreviewCache(paperId);
+            paperParserArtifactService.deleteParserArtifacts(paperId);
+            paperVisualAssetService.deleteVisualAssets(paperId);
+            paperTableService.deleteTables(paperId);
+            paperFigureService.deleteFigures(paperId);
+            paperFormulaService.deleteFormulas(paperId);
 
             parseService.parseAndSave(
                     paperId,
                     fileStream,
+                    paper.getOriginalFilename(),
                     paper.getUserId(),
                     paper.getOrgTag(),
                     paper.isPublic()
@@ -195,10 +319,6 @@ public class PaperService {
                     result.actualChunkCount()
             );
             return result;
-        } catch (TikaException e) {
-            markVectorizationFailed(paper, e);
-            logger.error("重建论文索引失败，PDF 解析异常: paperId={}", paperId, e);
-            throw new RuntimeException("重建论文索引失败: " + e.getMessage(), e);
         } catch (Exception e) {
             markVectorizationFailed(paper, e);
             logger.error("重建论文索引失败: paperId={}", paperId, e);
@@ -296,6 +416,12 @@ public class PaperService {
         while (current != null) {
             String message = current.getMessage();
             if (message != null && !message.isBlank()) {
+                if (current instanceof MinerUUnavailableException) {
+                    return message;
+                }
+                if (current instanceof PaperParsingException && message.startsWith("MinerU ")) {
+                    return message;
+                }
                 deepestMessage = message;
                 if (message.contains("余额不足")) {
                     return message;
@@ -450,6 +576,14 @@ public class PaperService {
      * @return 预签名下载URL
      */
     public String generateDownloadUrl(String paperId) {
+        return generateDownloadUrl(paperId, PdfDownloadHeaders.Disposition.INLINE);
+    }
+
+    public String generateAttachmentDownloadUrl(String paperId) {
+        return generateDownloadUrl(paperId, PdfDownloadHeaders.Disposition.ATTACHMENT);
+    }
+
+    private String generateDownloadUrl(String paperId, PdfDownloadHeaders.Disposition disposition) {
         logger.info("生成论文 PDF 下载链接: paperId={}", paperId);
 
         try {
@@ -463,6 +597,11 @@ public class PaperService {
                             .bucket("uploads")
                             .object(objectName)
                             .expiry(3600)
+                            .extraQueryParams(PdfDownloadHeaders.presignedQueryParams(
+                                    paper.getOriginalFilename(),
+                                    paperId,
+                                    disposition
+                            ))
                             .build()
             );
             logger.info("成功生成论文 PDF 下载链接: paperId={}, paperTitle={}, objectName={}",
@@ -493,143 +632,6 @@ public class PaperService {
         } catch (Exception e) {
             logger.error("获取论文预览兜底内容失败: paperId={}, paperTitle={}", paperId, paperTitle, e);
             return "预览失败: " + e.getMessage();
-        }
-    }
-
-    public PdfSinglePagePreview getPdfSinglePagePreview(String paperId, int pageNumber) {
-        logger.info("生成论文 PDF 单页预览: paperId={}, pageNumber={}", paperId, pageNumber);
-
-        try {
-            String cacheKey = buildPdfSinglePageCacheKey(paperId, pageNumber);
-            byte[] localPreview = getLocalPdfSinglePagePreview(cacheKey);
-            if (localPreview != null) {
-                logger.info("命中论文 PDF 单页预览本地缓存: paperId={}, pageNumber={}, previewSize={}",
-                        paperId, pageNumber, localPreview.length);
-                return new PdfSinglePagePreview(localPreview, true);
-            }
-
-            byte[] cachedPreview = getCachedPdfSinglePagePreview(cacheKey);
-            if (cachedPreview != null) {
-                cacheLocalPdfSinglePagePreview(cacheKey, cachedPreview);
-                logger.info("命中论文 PDF 单页预览缓存: paperId={}, pageNumber={}, previewSize={}",
-                        paperId, pageNumber, cachedPreview.length);
-                return new PdfSinglePagePreview(cachedPreview, true);
-            }
-
-            Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
-                    .orElseThrow(() -> new RuntimeException("论文不存在: " + paperId));
-
-            try (InputStream inputStream = openFileStream(paper);
-                 PDDocument sourceDocument = PDDocument.load(inputStream);
-                 PDDocument singlePageDocument = new PDDocument();
-                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-
-                int totalPages = sourceDocument.getNumberOfPages();
-                if (pageNumber < 1 || pageNumber > totalPages) {
-                    throw new IllegalArgumentException("页码超出范围: " + pageNumber + "/" + totalPages);
-                }
-
-                singlePageDocument.importPage(sourceDocument.getPage(pageNumber - 1));
-                singlePageDocument.save(outputStream);
-
-                byte[] previewBytes = outputStream.toByteArray();
-                cacheLocalPdfSinglePagePreview(cacheKey, previewBytes);
-                cachePdfSinglePagePreview(cacheKey, previewBytes);
-                logger.info("成功生成论文 PDF 单页预览: paperId={}, pageNumber={}, previewSize={}",
-                        paperId, pageNumber, outputStream.size());
-                return new PdfSinglePagePreview(previewBytes, false);
-            }
-        } catch (Exception e) {
-            logger.error("生成论文 PDF 单页预览失败: paperId={}, pageNumber={}", paperId, pageNumber, e);
-            throw new RuntimeException("生成论文 PDF 单页预览失败: " + e.getMessage(), e);
-        }
-    }
-
-    private InputStream openFileStream(Paper paper) throws Exception {
-        String objectName = "merged/" + paper.getPaperId();
-        InputStream inputStream = minioClient.getObject(
-                GetObjectArgs.builder()
-                        .bucket("uploads")
-                        .object(objectName)
-                        .build());
-        logger.info("使用 paperId 路径获取论文 PDF 流: paperId={}, objectName={}", paper.getPaperId(), objectName);
-        return inputStream;
-    }
-
-    private String buildPdfSinglePageCacheKey(String paperId, int pageNumber) {
-        return PDF_SINGLE_PAGE_CACHE_PREFIX + paperId + ":" + pageNumber;
-    }
-
-    private byte[] getLocalPdfSinglePagePreview(String cacheKey) {
-        InMemoryPdfPreviewCache cached = PDF_SINGLE_PAGE_LOCAL_CACHE.get(cacheKey);
-        if (cached == null) {
-            return null;
-        }
-
-        if (cached.expiresAtMillis() <= System.currentTimeMillis()) {
-            PDF_SINGLE_PAGE_LOCAL_CACHE.remove(cacheKey);
-            return null;
-        }
-
-        return cached.content();
-    }
-
-    private void cacheLocalPdfSinglePagePreview(String cacheKey, byte[] previewBytes) {
-        PDF_SINGLE_PAGE_LOCAL_CACHE.put(
-                cacheKey,
-                new InMemoryPdfPreviewCache(previewBytes, System.currentTimeMillis() + PDF_SINGLE_PAGE_CACHE_TTL_MILLIS)
-        );
-    }
-
-    private byte[] getCachedPdfSinglePagePreview(String cacheKey) {
-        try {
-            String normalizedValue = stringRedisTemplate.opsForValue().get(cacheKey);
-            if (normalizedValue != null && !normalizedValue.isBlank()) {
-                normalizedValue = normalizedValue.trim();
-                if (normalizedValue.startsWith("\"") && normalizedValue.endsWith("\"") && normalizedValue.length() >= 2) {
-                    normalizedValue = normalizedValue.substring(1, normalizedValue.length() - 1);
-                }
-                logger.info("命中 PDF 单页预览缓存 key: cacheKey={}, encodedLength={}", cacheKey, normalizedValue.length());
-                return Base64.getDecoder().decode(normalizedValue);
-            }
-            logger.info("未命中 PDF 单页预览缓存 key: cacheKey={}", cacheKey);
-        } catch (Exception e) {
-            logger.warn("读取 PDF 单页预览缓存失败: cacheKey={}, error={}", cacheKey, e.getMessage());
-        }
-        return null;
-    }
-
-    private void cachePdfSinglePagePreview(String cacheKey, byte[] previewBytes) {
-        try {
-            String encodedPreview = Base64.getEncoder().encodeToString(previewBytes);
-            stringRedisTemplate.opsForValue().set(
-                    cacheKey,
-                    encodedPreview,
-                    PDF_SINGLE_PAGE_CACHE_TTL_MINUTES,
-                    TimeUnit.MINUTES
-            );
-            String storedValue = stringRedisTemplate.opsForValue().get(cacheKey);
-            Long ttlSeconds = stringRedisTemplate.getExpire(cacheKey, TimeUnit.SECONDS);
-            logger.info("写入 PDF 单页预览缓存完成: cacheKey={}, encodedLength={}, storedLength={}, ttlSeconds={}",
-                    cacheKey,
-                    encodedPreview.length(),
-                    storedValue != null ? storedValue.length() : 0,
-                    ttlSeconds);
-        } catch (Exception e) {
-            logger.warn("写入 PDF 单页预览缓存失败: cacheKey={}, error={}", cacheKey, e.getMessage());
-        }
-    }
-
-    private void invalidatePdfSinglePagePreviewCache(String paperId) {
-        try {
-            PDF_SINGLE_PAGE_LOCAL_CACHE.keySet().removeIf(key -> key.startsWith(PDF_SINGLE_PAGE_CACHE_PREFIX + paperId + ":"));
-            Set<String> cacheKeys = stringRedisTemplate.keys(PDF_SINGLE_PAGE_CACHE_PREFIX + paperId + ":*");
-            if (cacheKeys != null && !cacheKeys.isEmpty()) {
-                stringRedisTemplate.delete(cacheKeys);
-                logger.info("删除论文 PDF 单页预览缓存: paperId={}, cacheCount={}", paperId, cacheKeys.size());
-            }
-        } catch (Exception e) {
-            logger.warn("删除论文 PDF 单页预览缓存失败: paperId={}, error={}", paperId, e.getMessage());
         }
     }
 

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import FilePreview from '@/components/custom/file-preview.vue';
 import ChatList from './modules/chat-list.vue';
 import InputBox from './modules/input-box.vue';
 import ConversationSidebar from './modules/conversation-sidebar.vue';
-import ReferencePreviewPage from './modules/reference-preview-page.vue';
+import ReferenceEvidencePage from './modules/reference-evidence-page.vue';
+import SourceEvidencePanel from './modules/source-evidence-panel.vue';
 
 const route = useRoute();
-const showReferencePreview = computed(() => route.query.preview === 'reference');
+const showReferenceEvidence = computed(() => route.query.evidence === 'reference');
 const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth <= 960 : false);
 const chatStore = useChatStore();
 const { connectionStatus, list } = storeToRefs(chatStore);
@@ -21,6 +21,23 @@ const referencePayload = ref<{
   matchedChunkText?: string | null;
   score?: number | null;
   chunkId?: number | null;
+  elementType?: string | null;
+  sectionTitle?: string | null;
+  sectionLevel?: number | null;
+  bboxJson?: string | null;
+  parserName?: string | null;
+  parserVersion?: string | null;
+  sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
+  tableId?: string | null;
+  figureId?: string | null;
+  formulaId?: string | null;
+  evidenceRole?: string | null;
+  retrievalRoute?: string | null;
+  intent?: string | null;
+  rankReason?: string | null;
+  tableText?: string | null;
+  tableMarkdown?: string | null;
+  tableScreenshotAvailable?: boolean | null;
   paperTitle: string;
   paperId?: string | null;
   originalFilename?: string | null;
@@ -31,7 +48,7 @@ const referencePayload = ref<{
 } | null>(null);
 
 const showDockInput = computed(() => list.value.length > 0);
-const referencePreviewKey = computed(() => {
+const referenceEvidenceKey = computed(() => {
   if (!referencePayload.value) {
     return 'empty-reference';
   }
@@ -72,8 +89,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="showReferencePreview" class="h-full">
-    <ReferencePreviewPage />
+  <div v-if="showReferenceEvidence" class="h-full">
+    <ReferenceEvidencePage />
   </div>
   <div v-else class="chat-shell">
     <div v-if="!sidebarCollapsed" class="mobile-sidebar-mask" @click="sidebarCollapsed = true" />
@@ -90,7 +107,7 @@ onBeforeUnmount(() => {
           <icon-lucide:panel-left-open class="text-18px" />
         </button>
         <div class="min-w-0 flex-1">
-          <div class="topbar-title">PaperLoom</div>
+          <div class="topbar-title">CiteWeave</div>
           <div class="topbar-subtitle">evidence-grounded paper analysis</div>
         </div>
         <div class="connection-pill" :class="`connection-pill--${connectionStatus}`">
@@ -100,7 +117,7 @@ onBeforeUnmount(() => {
         <button
           class="topbar-icon-button"
           :class="{ 'topbar-icon-button--active': referencePanelVisible }"
-          aria-label="引用预览"
+          aria-label="引用证据"
           @click="referencePanelVisible = !referencePanelVisible"
         >
           <icon-lucide:file-text class="text-18px" />
@@ -117,7 +134,7 @@ onBeforeUnmount(() => {
           <div class="reference-panel__header">
             <div>
               <div class="reference-panel__title">Source Evidence</div>
-              <div class="reference-panel__subtitle">核对回答依据、页码与原始文档</div>
+              <div class="reference-panel__subtitle">核对引用对应的论文原文</div>
             </div>
             <NButton quaternary circle size="small" @click="closeReferencePanel">
               <template #icon>
@@ -125,27 +142,28 @@ onBeforeUnmount(() => {
               </template>
             </NButton>
           </div>
-          <FilePreview
+          <SourceEvidencePanel
             v-if="referencePayload"
-            :key="referencePreviewKey"
+            :key="referenceEvidenceKey"
+            :reference-number="referencePayload.referenceNumber"
             :paper-title="referencePayload.paperTitle"
             :paper-id="referencePayload.paperId || undefined"
             :original-filename="referencePayload.originalFilename || undefined"
             :page-number="referencePayload.pageNumber || undefined"
-            :anchor-text="referencePayload.anchorText || undefined"
-            :retrieval-mode="referencePayload.retrievalMode"
-            :retrieval-label="referencePayload.retrievalLabel || undefined"
-            :retrieval-query="referencePayload.retrievalQuery || undefined"
             :evidence-snippet="referencePayload.evidenceSnippet || undefined"
             :matched-chunk-text="referencePayload.matchedChunkText || undefined"
-            :score="referencePayload.score"
-            :chunk-id="referencePayload.chunkId"
-            :visible="referencePanelVisible"
-            @close="closeReferencePanel"
+            :bbox-json="referencePayload.bboxJson || undefined"
+            :source-kind="referencePayload.sourceKind || undefined"
+            :table-id="referencePayload.tableId || undefined"
+            :figure-id="referencePayload.figureId || undefined"
+            :formula-id="referencePayload.formulaId || undefined"
+            :table-text="referencePayload.tableText || undefined"
+            :table-markdown="referencePayload.tableMarkdown || undefined"
+            :table-screenshot-available="referencePayload.tableScreenshotAvailable"
           />
           <div v-else class="reference-panel__empty">
             <icon-lucide:file-text class="text-34px" />
-            <span>点击回答中的 [source #] 引用后，会在这里显示证据和文件预览。</span>
+            <span>点击回答中的 source 引用后，会在这里显示证据来源。</span>
           </div>
         </aside>
       </section>
@@ -168,7 +186,14 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: var(--color-bg);
   color: var(--chat-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
 }
 
 .chat-shell__main {
@@ -213,7 +238,14 @@ onBeforeUnmount(() => {
 
 .topbar-title {
   color: var(--chat-accent);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 18px;
   font-weight: 700;
   line-height: 1.05;
@@ -221,7 +253,14 @@ onBeforeUnmount(() => {
 
 .topbar-subtitle {
   color: var(--chat-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
 }
 
@@ -234,7 +273,14 @@ onBeforeUnmount(() => {
   background: var(--color-surface);
   color: var(--chat-text-muted);
   padding: 5px 10px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
 }
 
@@ -291,7 +337,14 @@ onBeforeUnmount(() => {
 
 .reference-panel__title {
   color: var(--chat-accent);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 17px;
   font-weight: 700;
 }
@@ -299,7 +352,14 @@ onBeforeUnmount(() => {
 .reference-panel__subtitle {
   margin-top: 2px;
   color: var(--chat-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
 }
 
@@ -316,64 +376,11 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
-.reference-panel :deep(.file-preview-container) {
-  height: auto;
+.reference-panel :deep(.source-evidence) {
   min-height: 0;
   flex: 1 1 0;
-}
-
-.reference-panel :deep(.preview-content) {
-  padding: 10px;
-}
-
-.reference-panel :deep(.preview-content .content-wrapper),
-.reference-panel :deep(.preview-content .content-wrapper--immersive) {
-  grid-template-columns: 220px minmax(0, 1fr);
-}
-
-.reference-panel :deep(.preview-content .content-wrapper--pdf) {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.reference-panel :deep(.content-wrapper--pdf .insight-rail) {
-  display: grid;
-  max-height: 184px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
   overflow: auto;
-  padding-right: 0;
-}
-
-.reference-panel :deep(.content-wrapper--pdf .source-card) {
-  min-width: 0;
-}
-
-.reference-panel :deep(.content-wrapper--pdf .source-actions) {
-  margin-top: 10px;
-}
-
-.reference-panel :deep(.content-wrapper--pdf .info-card) {
-  min-width: 0;
-  padding: 12px;
-}
-
-.reference-panel :deep(.content-wrapper--pdf .info-card:not(.source-card):last-child:nth-child(3)) {
-  grid-column: 1 / -1;
-}
-
-.reference-panel :deep(.content-wrapper--pdf .info-copy),
-.reference-panel :deep(.content-wrapper--pdf .support-copy) {
-  display: -webkit-box;
-  margin-top: 6px;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-height: 1.55;
-}
-
-.reference-panel :deep(.content-wrapper--pdf .preview-stage) {
-  min-height: 0;
+  padding: 12px 14px;
 }
 
 .mobile-sidebar-mask {

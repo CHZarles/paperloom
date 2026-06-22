@@ -53,6 +53,8 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String path = request.getRequestURI();
+            String requestToken = extractToken(request);
+            setRequestAuthAttributes(request, requestToken, "资源访问");
 
             // 需要用户ID但不需要资源权限检查的API路径
             // 这些API只需要用户身份验证，不需要对特定资源进行权限检查
@@ -63,8 +65,6 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                 path.matches(".*/papers/upload/status.*") ||
                 path.matches(".*/papers/uploads.*") ||
                 path.matches(".*/papers/accessible.*") ||
-                path.matches(".*/papers/page-preview.*") ||
-                path.matches(".*/papers/[a-fA-F0-9]{32}/page-preview.*") ||
                 path.matches(".*/papers/search/hybrid.*") ||
                 (path.matches(".*/papers/[a-fA-F0-9]{32}.*") &&
                         ("DELETE".equals(request.getMethod()) || "POST".equals(request.getMethod()) || "PATCH".equals(request.getMethod())))) {
@@ -82,8 +82,6 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                     operation = "获取用户论文";
                 } else if (path.contains("/accessible")) {
                     operation = "获取可访问论文";
-                } else if (path.contains("/page-preview")) {
-                    operation = "获取 PDF 单页预览";
                 } else if (path.contains("/search/hybrid")) {
                     operation = "混合检索";
                 } else if ("DELETE".equals(request.getMethod()) && path.matches(".*/papers/[a-fA-F0-9]{32}.*")) {
@@ -95,19 +93,8 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                 logger.info("处理{}请求: {}", operation, path);
 
                 // 将用户ID和角色设置为请求属性，供控制器方法使用
-                String token = extractToken(request);
-                if (token != null) {
-                    String userId = jwtUtils.extractUserIdFromToken(token);
-                    String role = jwtUtils.extractRoleFromToken(token);
-                    String orgTags = jwtUtils.extractOrgTagsFromToken(token);
-                    if (userId != null) {
-                        request.setAttribute("userId", userId);
-                        request.setAttribute("role", role);
-                        request.setAttribute("orgTags", orgTags);
-                        logger.debug("为{}请求设置userId属性: {}, role: {}, orgTags: {}", operation, userId, role, orgTags);
-                    } else {
-                        logger.warn("{}请求中无法从token提取userId", operation);
-                    }
+                if (requestToken != null) {
+                    setRequestAuthAttributes(request, requestToken, operation);
                 } else {
                     logger.warn("{}请求中未找到有效token", operation);
                 }
@@ -159,7 +146,7 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
             }
 
             // 从请求头获取token
-            String token = extractToken(request);
+            String token = requestToken;
             if (token == null) {
                 logger.debug("未找到Token，返回401");
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -211,6 +198,24 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             logger.error("组织标签授权过滤器发生错误: {}", e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private void setRequestAuthAttributes(HttpServletRequest request, String token, String operation) {
+        if (token == null || request.getAttribute("userId") != null) {
+            return;
+        }
+
+        String userId = jwtUtils.extractUserIdFromToken(token);
+        String role = jwtUtils.extractRoleFromToken(token);
+        String orgTags = jwtUtils.extractOrgTagsFromToken(token);
+        if (userId != null) {
+            request.setAttribute("userId", userId);
+            request.setAttribute("role", role);
+            request.setAttribute("orgTags", orgTags);
+            logger.debug("为{}请求设置userId属性: {}, role: {}, orgTags: {}", operation, userId, role, orgTags);
+        } else {
+            logger.warn("{}请求中无法从token提取userId", operation);
         }
     }
 

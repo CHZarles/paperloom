@@ -360,7 +360,7 @@ public class PaperUploadController {
 
             ParseService.EmbeddingEstimate embeddingEstimate = null;
             try (io.minio.GetObjectResponse mergedFileStream = uploadService.getMergedFileStream(request.paperId())) {
-                embeddingEstimate = parseService.estimateEmbeddingUsage(mergedFileStream);
+                embeddingEstimate = parseService.estimateEmbeddingUsage(mergedFileStream, request.paperTitle());
                 paper.setEstimatedEmbeddingTokens(embeddingEstimate.estimatedTokens());
                 paper.setEstimatedChunkCount(embeddingEstimate.estimatedChunkCount());
                 paperRepository.save(paper);

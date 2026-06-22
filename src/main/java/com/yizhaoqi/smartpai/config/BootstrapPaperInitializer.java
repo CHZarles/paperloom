@@ -12,7 +12,6 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.tika.exception.TikaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -170,13 +169,13 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
     }
 
     private void importBootstrapPaper(Path paperPath, String fileMd5, String fileName, long totalSize, String ownerUserId)
-            throws IOException, TikaException {
+            throws IOException {
         logger.info("开始导入启动论文 PDF: path={}, paperId={}", paperPath, fileMd5);
 
         uploadToMinio(paperPath, fileMd5);
 
         try (InputStream inputStream = Files.newInputStream(paperPath)) {
-            parseService.parseAndSave(fileMd5, inputStream, ownerUserId, bootstrapOrgTag, bootstrapPublic);
+            parseService.parseAndSave(fileMd5, inputStream, fileName, ownerUserId, bootstrapOrgTag, bootstrapPublic);
         } catch (Exception e) {
             cleanupBootstrapData(fileMd5, ownerUserId);
             throw e;
