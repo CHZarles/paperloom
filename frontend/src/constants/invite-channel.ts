@@ -1,12 +1,12 @@
 export const inviteChannelConfig = {
   officialAccountName: '沉默王二',
-  replyKeywords: ['PaperLoom'],
+  replyKeywords: ['CiteWeave'],
   qrCodeImageUrl: 'https://cdn.tobebetterjavaer.com/paicoding/image-a3b05190f61e4fd0b376489336e31c14.jpg'
 } as const;
 
 export function buildInviteChannelGuide() {
   return [
-    '获取 PaperLoom 邀请码方式：',
+    '获取 CiteWeave 邀请码方式：',
     `1. 微信搜索并关注公众号${inviteChannelConfig.officialAccountName}`,
     `2. 后台回复【${inviteChannelConfig.replyKeywords.join('】、【')}】`,
     '3. 收到邀请码后，回到注册页继续完成注册'
@@ -15,7 +15,7 @@ export function buildInviteChannelGuide() {
 
 export function buildInviteCodeShareMessage(shareLink: string, inviteCode: string) {
   return [
-    'PaperLoom 正在内测，欢迎来体验。',
+    'CiteWeave 正在内测，欢迎来体验。',
     `邀请码：${inviteCode}`,
     `注册链接：${shareLink}`,
     '',

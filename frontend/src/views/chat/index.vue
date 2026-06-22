@@ -107,7 +107,7 @@ onBeforeUnmount(() => {
           <icon-lucide:panel-left-open class="text-18px" />
         </button>
         <div class="min-w-0 flex-1">
-          <div class="topbar-title">PaperLoom</div>
+          <div class="topbar-title">CiteWeave</div>
           <div class="topbar-subtitle">evidence-grounded paper analysis</div>
         </div>
         <div class="connection-pill" :class="`connection-pill--${connectionStatus}`">

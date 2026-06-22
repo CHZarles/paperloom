@@ -2,9 +2,9 @@
   "name": "pi-smart",
   "type": "module",
   "version": "1.3.13",
-  "description": "PaperLoom",
+  "description": "CiteWeave",
   "author": {
-    "name": "PaperLoom",
+    "name": "CiteWeave",
     "url": "https://github.com/itwanger/PaiSmart.git"
   },
   "license": "MIT",
