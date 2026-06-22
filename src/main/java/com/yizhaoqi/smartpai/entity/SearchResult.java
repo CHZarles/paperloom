@@ -23,6 +23,19 @@ public class SearchResult {
     private String parserVersion;
     private String retrievalMode; // 召回方式
     private String matchedChunkText; // 命中的 chunk 原文
+    private String sourceKind;
+    private String tableId;
+    private String figureId;
+    private String formulaId;
+    private String evidenceRole;
+    private String retrievalQuery;
+    private String originalQuery;
+    private String retrievalRoute;
+    private String intent;
+    private String rankReason;
+    private String tableText;
+    private String tableMarkdown;
+    private Boolean tableScreenshotAvailable;
 
     public SearchResult(String paperId, Integer chunkId, String textContent, Double score) {
         this(paperId, chunkId, textContent, score, null, null, false, null, null, null, null, null,
@@ -68,10 +81,34 @@ public class SearchResult {
     }
 
     public SearchResult(String paperId, Integer chunkId, String textContent, Double score, String userId, String orgTag,
+                        boolean isPublic, String paperTitle, Integer pageNumber, String anchorText,
+                        String retrievalMode, String matchedChunkText,
+                        String elementType, String sectionTitle, Integer sectionLevel,
+                        String bboxJson, String parserName, String parserVersion,
+                        String sourceKind, String tableId, String tableText, String tableMarkdown,
+                        Boolean tableScreenshotAvailable) {
+        this(paperId, chunkId, textContent, score, userId, orgTag, isPublic, paperTitle, null, pageNumber, anchorText,
+                retrievalMode, matchedChunkText, elementType, sectionTitle, sectionLevel, bboxJson, parserName,
+                parserVersion, sourceKind, tableId, tableText, tableMarkdown, tableScreenshotAvailable);
+    }
+
+    public SearchResult(String paperId, Integer chunkId, String textContent, Double score, String userId, String orgTag,
                         boolean isPublic, String paperTitle, String originalFilename,
                         Integer pageNumber, String anchorText, String retrievalMode, String matchedChunkText,
                         String elementType, String sectionTitle, Integer sectionLevel,
                         String bboxJson, String parserName, String parserVersion) {
+        this(paperId, chunkId, textContent, score, userId, orgTag, isPublic, paperTitle, originalFilename,
+                pageNumber, anchorText, retrievalMode, matchedChunkText, elementType, sectionTitle, sectionLevel,
+                bboxJson, parserName, parserVersion, "TEXT", null, null, null, false);
+    }
+
+    public SearchResult(String paperId, Integer chunkId, String textContent, Double score, String userId, String orgTag,
+                        boolean isPublic, String paperTitle, String originalFilename,
+                        Integer pageNumber, String anchorText, String retrievalMode, String matchedChunkText,
+                        String elementType, String sectionTitle, Integer sectionLevel,
+                        String bboxJson, String parserName, String parserVersion,
+                        String sourceKind, String tableId, String tableText, String tableMarkdown,
+                        Boolean tableScreenshotAvailable) {
         this.paperId = paperId;
         this.chunkId = chunkId;
         this.textContent = textContent;
@@ -91,5 +128,10 @@ public class SearchResult {
         this.bboxJson = bboxJson;
         this.parserName = parserName;
         this.parserVersion = parserVersion;
+        this.sourceKind = sourceKind;
+        this.tableId = tableId;
+        this.tableText = tableText;
+        this.tableMarkdown = tableMarkdown;
+        this.tableScreenshotAvailable = tableScreenshotAvailable;
     }
 }

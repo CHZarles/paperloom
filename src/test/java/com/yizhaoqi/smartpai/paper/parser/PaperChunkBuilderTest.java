@@ -82,6 +82,60 @@ class PaperChunkBuilderTest {
         assertTrue(!chunk.rawProvenanceJson().contains("rawAttributes"));
     }
 
+    @Test
+    void buildsFigureChartAndFormulaChunksWithSourceIds() {
+        ParsedPaper paper = new ParsedPaper(
+                "MinerU",
+                "1.3.0",
+                new ParsedPaperMetadata("paper.pdf", "A Study", "Ada", 6, null, null),
+                List.of(
+                        element("fig1", 5, 1, ParsedPaperElementType.FIGURE,
+                                "Figure 1: Accuracy rises with more context.",
+                                null, bbox(5, 100, 200, 500, 600)),
+                        element("formula1", 6, 2, ParsedPaperElementType.FORMULA,
+                                "score = alpha * bm25 + beta * cosine",
+                                null, bbox(6, 100, 200, 500, 240))
+                ),
+                Map.of(),
+                "{}",
+                List.of(),
+                List.of(new ParsedPaperFigure(
+                        "figure-1",
+                        "fig1",
+                        5,
+                        1,
+                        "Figure 1: Accuracy rises with more context.",
+                        "Experiments",
+                        "Figure 1: Accuracy rises with more context.",
+                        bbox(5, 100, 200, 500, 600),
+                        "MINERU_FIGURE",
+                        "HIGH",
+                        Map.of()
+                )),
+                List.of(new ParsedPaperFormula(
+                        "formula-1",
+                        "formula1",
+                        6,
+                        2,
+                        "score = alpha * bm25 + beta * cosine",
+                        null,
+                        "Method",
+                        bbox(6, 100, 200, 500, 240),
+                        Map.of()
+                ))
+        );
+
+        List<PaperChunkCandidate> chunks = new PaperChunkBuilder().buildChunks(paper, 512);
+
+        assertEquals(2, chunks.size());
+        assertEquals("FIGURE", chunks.get(0).sourceKind());
+        assertEquals("figure-1", chunks.get(0).figureId());
+        assertEquals("FIGURE_CAPTION", chunks.get(0).evidenceRole());
+        assertEquals("FORMULA", chunks.get(1).sourceKind());
+        assertEquals("formula-1", chunks.get(1).formulaId());
+        assertEquals("FORMULA", chunks.get(1).evidenceRole());
+    }
+
     private ParsedPaperElement element(String id, int page, int order, ParsedPaperElementType type,
                                        String text, Integer sectionLevel, BoundingBox bbox) {
         return new ParsedPaperElement(id, page, order, type, text, null, sectionLevel, bbox, Map.of());

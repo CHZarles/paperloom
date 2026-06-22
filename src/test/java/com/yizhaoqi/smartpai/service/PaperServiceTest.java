@@ -2,13 +2,16 @@ package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.model.ChunkInfo;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.paper.parser.MinerUUnavailableException;
 import com.yizhaoqi.smartpai.repository.ChunkInfoRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.RemoveObjectArgs;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -16,6 +19,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -42,6 +47,21 @@ class PaperServiceTest {
     @Mock
     private UploadService uploadService;
 
+    @Mock
+    private PaperParserArtifactService paperParserArtifactService;
+
+    @Mock
+    private PaperTableService paperTableService;
+
+    @Mock
+    private PaperFigureService paperFigureService;
+
+    @Mock
+    private PaperFormulaService paperFormulaService;
+
+    @Mock
+    private PaperVisualAssetService paperVisualAssetService;
+
     private PaperService paperService;
 
     @BeforeEach
@@ -54,6 +74,54 @@ class PaperServiceTest {
         ReflectionTestUtils.setField(paperService, "minioClient", minioClient);
         ReflectionTestUtils.setField(paperService, "elasticsearchService", elasticsearchService);
         ReflectionTestUtils.setField(paperService, "uploadService", uploadService);
+        ReflectionTestUtils.setField(paperService, "paperParserArtifactService", paperParserArtifactService);
+        ReflectionTestUtils.setField(paperService, "paperTableService", paperTableService);
+        ReflectionTestUtils.setField(paperService, "paperFigureService", paperFigureService);
+        ReflectionTestUtils.setField(paperService, "paperFormulaService", paperFormulaService);
+        ReflectionTestUtils.setField(paperService, "paperVisualAssetService", paperVisualAssetService);
+    }
+
+    @Test
+    void generateDownloadUrlRequestsInlinePdfResponseHeaders() throws Exception {
+        Paper paper = paper("paper-md5", "1");
+        paper.setOriginalFilename("paper-md5");
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-md5"))
+                .thenReturn(Optional.of(paper));
+        when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
+                .thenReturn("http://localhost:9000/uploads/merged/paper-md5");
+        when(uploadService.transToPublicUrl("http://localhost:9000/uploads/merged/paper-md5"))
+                .thenReturn("http://localhost:9000/uploads/merged/paper-md5");
+
+        paperService.generateDownloadUrl("paper-md5");
+
+        ArgumentCaptor<GetPresignedObjectUrlArgs> captor = ArgumentCaptor.forClass(GetPresignedObjectUrlArgs.class);
+        verify(minioClient).getPresignedObjectUrl(captor.capture());
+        GetPresignedObjectUrlArgs args = captor.getValue();
+        assertEquals("merged/paper-md5", args.object());
+        assertEquals("application/pdf", firstQueryParam(args, "response-content-type"));
+        assertEquals("inline; filename=\"paper-md5.pdf\"",
+                firstQueryParam(args, "response-content-disposition"));
+    }
+
+    @Test
+    void generateAttachmentDownloadUrlRequestsAttachmentPdfResponseHeaders() throws Exception {
+        Paper paper = paper("paper-md5", "1");
+        paper.setOriginalFilename("paper-md5");
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-md5"))
+                .thenReturn(Optional.of(paper));
+        when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
+                .thenReturn("http://localhost:9000/uploads/merged/paper-md5");
+        when(uploadService.transToPublicUrl("http://localhost:9000/uploads/merged/paper-md5"))
+                .thenReturn("http://localhost:9000/uploads/merged/paper-md5");
+
+        paperService.generateAttachmentDownloadUrl("paper-md5");
+
+        ArgumentCaptor<GetPresignedObjectUrlArgs> captor = ArgumentCaptor.forClass(GetPresignedObjectUrlArgs.class);
+        verify(minioClient).getPresignedObjectUrl(captor.capture());
+        GetPresignedObjectUrlArgs args = captor.getValue();
+        assertEquals("application/pdf", firstQueryParam(args, "response-content-type"));
+        assertEquals("attachment; filename=\"paper-md5.pdf\"",
+                firstQueryParam(args, "response-content-disposition"));
     }
 
     @Test
@@ -98,11 +166,38 @@ class PaperServiceTest {
         verify(chunkInfoRepository).deleteByPaperId("only-hash");
     }
 
+    @Test
+    void vectorizationFailureKeepsMinerUUnavailableMessage() {
+        Paper paper = paper("paper-md5", "1");
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-md5"))
+                .thenReturn(Optional.of(paper));
+
+        paperService.markVectorizationFailed(
+                "paper-md5",
+                new RuntimeException("Error processing task",
+                        new MinerUUnavailableException(
+                                "MinerU sidecar unavailable at http://localhost:8000/health. Start the self-hosted MinerU service or explicitly set PAPER_PARSING_PROVIDER=opendataloader for local fallback.",
+                                new RuntimeException("finishConnect(..) failed: Connection refused")
+                        ))
+        );
+
+        ArgumentCaptor<Paper> captor = ArgumentCaptor.forClass(Paper.class);
+        verify(paperRepository).save(captor.capture());
+        Paper saved = captor.getValue();
+        assertEquals(Paper.VECTORIZATION_STATUS_FAILED, saved.getVectorizationStatus());
+        assertTrue(saved.getVectorizationErrorMessage().startsWith("MinerU sidecar unavailable"));
+        assertTrue(saved.getVectorizationErrorMessage().contains("PAPER_PARSING_PROVIDER=opendataloader"));
+    }
+
     private Paper paper(String paperId, String userId) {
         Paper paper = new Paper();
         paper.setPaperId(paperId);
         paper.setOriginalFilename(paperId + ".pdf");
         paper.setUserId(userId);
         return paper;
+    }
+
+    private String firstQueryParam(GetPresignedObjectUrlArgs args, String name) {
+        return args.extraQueryParams().get(name).stream().findFirst().orElse(null);
     }
 }

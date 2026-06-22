@@ -34,7 +34,12 @@ class ChatHandlerReferenceEvidenceTest {
                 2,
                 "{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}",
                 "OpenDataLoader",
-                "2.4.7"
+                "2.4.7",
+                "TABLE",
+                "table-17",
+                "Metric: Accuracy PaperLoom: 91.2",
+                "| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |",
+                true
         );
 
         ChatHandler.ReferenceInfo detail = ReflectionTestUtils.invokeMethod(
@@ -58,6 +63,11 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}", detail.bboxJson());
         assertEquals("OpenDataLoader", detail.parserName());
         assertEquals("2.4.7", detail.parserVersion());
+        assertEquals("TABLE", detail.sourceKind());
+        assertEquals("table-17", detail.tableId());
+        assertEquals("Metric: Accuracy PaperLoom: 91.2", detail.tableText());
+        assertEquals("| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |", detail.tableMarkdown());
+        assertEquals(true, detail.tableScreenshotAvailable());
     }
 
     @Test
@@ -83,7 +93,12 @@ class ChatHandlerReferenceEvidenceTest {
                         2,
                         "{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}",
                         "OpenDataLoader",
-                        "2.4.7"
+                        "2.4.7",
+                        "TABLE",
+                        "table-17",
+                        "Metric: Accuracy PaperLoom: 91.2",
+                        "| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |",
+                        true
                 )
         );
 
@@ -107,6 +122,11 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}", detail.get("bboxJson"));
         assertEquals("OpenDataLoader", detail.get("parserName"));
         assertEquals("2.4.7", detail.get("parserVersion"));
+        assertEquals("TABLE", detail.get("sourceKind"));
+        assertEquals("table-17", detail.get("tableId"));
+        assertEquals("Metric: Accuracy PaperLoom: 91.2", detail.get("tableText"));
+        assertEquals("| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |", detail.get("tableMarkdown"));
+        assertEquals(true, detail.get("tableScreenshotAvailable"));
     }
 
     @Test
@@ -132,6 +152,11 @@ class ChatHandlerReferenceEvidenceTest {
         serializedDetail.put("bboxJson", "{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}");
         serializedDetail.put("parserName", "OpenDataLoader");
         serializedDetail.put("parserVersion", "2.4.7");
+        serializedDetail.put("sourceKind", "TABLE");
+        serializedDetail.put("tableId", "table-17");
+        serializedDetail.put("tableText", "Metric: Accuracy PaperLoom: 91.2");
+        serializedDetail.put("tableMarkdown", "| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |");
+        serializedDetail.put("tableScreenshotAvailable", true);
 
         Map<Integer, ChatHandler.ReferenceInfo> restored = ReflectionTestUtils.invokeMethod(
                 handler,
@@ -153,10 +178,85 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}", detail.bboxJson());
         assertEquals("OpenDataLoader", detail.parserName());
         assertEquals("2.4.7", detail.parserVersion());
+        assertEquals("TABLE", detail.sourceKind());
+        assertEquals("table-17", detail.tableId());
+        assertEquals("Metric: Accuracy PaperLoom: 91.2", detail.tableText());
+        assertEquals("| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |", detail.tableMarkdown());
+        assertEquals(true, detail.tableScreenshotAvailable());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void persistsMinerUEvidenceFieldsForHistoryDetail() {
+        ChatHandler handler = newHandler();
+        SearchResult result = new SearchResult(
+                "paper-1",
+                23,
+                "Figure 2 shows the benchmark accuracy.",
+                0.91d,
+                "2",
+                "TEAM_A",
+                false,
+                "Parsed Paper Title",
+                "uploaded-paper.pdf",
+                5,
+                "Figure 2",
+                "EXPANDED_HYBRID",
+                "Figure 2 shows the benchmark accuracy.",
+                "FIGURE",
+                "Experiments",
+                2,
+                "{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}",
+                "MinerU",
+                "1.3.0",
+                "FIGURE",
+                null,
+                null,
+                null,
+                false
+        );
+        result.setFigureId("figure-2");
+        result.setFormulaId("formula-1");
+        result.setEvidenceRole("FIGURE_CAPTION");
+        result.setRetrievalQuery("experimental results");
+        result.setRetrievalRoute("EXPANDED_HYBRID");
+        result.setIntent("EXPERIMENT_RESULT");
+        result.setRankReason("experiment-intent:FIGURE:FIGURE_CAPTION");
+
+        ChatHandler.ReferenceInfo reference = ReflectionTestUtils.invokeMethod(
+                handler,
+                "buildReferenceInfo",
+                result,
+                "Parsed Paper Title",
+                "有实验数据吗"
+        );
+
+        Map<String, Map<String, Object>> serialized = ReflectionTestUtils.invokeMethod(
+                handler,
+                "toSerializableReferenceMappings",
+                Map.of(1, reference)
+        );
+        Map<Integer, ChatHandler.ReferenceInfo> restored = ReflectionTestUtils.invokeMethod(
+                handler,
+                "toReferenceInfoMap",
+                serialized
+        );
+
+        ChatHandler.ReferenceInfo detail = restored.get(1);
+        assertEquals("FIGURE", detail.sourceKind());
+        assertEquals("figure-2", detail.figureId());
+        assertEquals("formula-1", detail.formulaId());
+        assertEquals("FIGURE_CAPTION", detail.evidenceRole());
+        assertEquals("experimental results", detail.retrievalQuery());
+        assertEquals("EXPANDED_HYBRID", detail.retrievalRoute());
+        assertEquals("EXPERIMENT_RESULT", detail.intent());
+        assertEquals("experiment-intent:FIGURE:FIGURE_CAPTION", detail.rankReason());
     }
 
     private static ChatHandler newHandler() {
         return new ChatHandler(
+                null,
+                null,
                 null,
                 null,
                 null,

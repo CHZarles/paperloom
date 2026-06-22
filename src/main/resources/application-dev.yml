@@ -112,6 +112,7 @@ rate-limit:
 
 paper:
   parsing:
+    provider: ${PAPER_PARSING_PROVIDER:mineru}
     chunk-size: 512
     overlap-size: 100
     min-chunk-size: 100
@@ -119,6 +120,22 @@ paper:
       reading-order: ${PAPER_PARSING_OPENDATALOADER_READING_ORDER:xycut}
       hybrid: ${PAPER_PARSING_OPENDATALOADER_HYBRID:off}
       image-output: ${PAPER_PARSING_OPENDATALOADER_IMAGE_OUTPUT:off}
+    mineru:
+      base-url: ${PAPER_PARSING_MINERU_BASE_URL:http://localhost:8000}
+      health-path: ${PAPER_PARSING_MINERU_HEALTH_PATH:/health}
+      health-timeout-seconds: ${PAPER_PARSING_MINERU_HEALTH_TIMEOUT_SECONDS:5}
+      submit-path: ${PAPER_PARSING_MINERU_SUBMIT_PATH:/tasks}
+      file-field-name: ${PAPER_PARSING_MINERU_FILE_FIELD_NAME:files}
+      backend: ${PAPER_PARSING_MINERU_BACKEND:pipeline}
+      parse-method: ${PAPER_PARSING_MINERU_PARSE_METHOD:auto}
+      return-md: ${PAPER_PARSING_MINERU_RETURN_MD:true}
+      return-content-list: ${PAPER_PARSING_MINERU_RETURN_CONTENT_LIST:true}
+      return-middle-json: ${PAPER_PARSING_MINERU_RETURN_MIDDLE_JSON:true}
+      response-format-zip: ${PAPER_PARSING_MINERU_RESPONSE_FORMAT_ZIP:true}
+      status-path-template: ${PAPER_PARSING_MINERU_STATUS_PATH_TEMPLATE:/tasks/{taskId}}
+      result-path-template: ${PAPER_PARSING_MINERU_RESULT_PATH_TEMPLATE:/tasks/{taskId}/result}
+      timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:900}
+      poll-interval-seconds: ${PAPER_PARSING_MINERU_POLL_INTERVAL_SECONDS:3}
 
 elasticsearch:
   # dev 下允许按需使用 https + 自签名证书

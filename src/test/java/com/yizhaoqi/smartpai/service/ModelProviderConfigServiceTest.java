@@ -86,10 +86,18 @@ class ModelProviderConfigServiceTest {
 
         assertEquals("deepseek", settings.llm().activeProvider());
         assertEquals("aliyun", settings.embedding().activeProvider());
-        assertEquals(3, settings.llm().providers().size());
+        assertEquals(4, settings.llm().providers().size());
         assertEquals(2, settings.embedding().providers().size());
+        assertTrue(settings.llm().providers().stream().anyMatch(item -> item.provider().equals("minimax")));
         assertTrue(settings.llm().providers().stream().anyMatch(item -> item.provider().equals("qwen")));
         assertTrue(settings.embedding().providers().stream().anyMatch(item -> item.provider().equals("zhipu")));
+
+        ModelProviderConfigService.ProviderConfigView minimax = settings.llm().providers().stream()
+                .filter(item -> item.provider().equals("minimax"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("https://api.minimaxi.com/v1", minimax.apiBaseUrl());
+        assertEquals("MiniMax-M3", minimax.model());
     }
 
     @Test

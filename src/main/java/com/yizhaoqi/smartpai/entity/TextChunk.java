@@ -19,6 +19,11 @@ public class TextChunk {
     private String bboxJson;
     private String parserName;
     private String parserVersion;
+    private String sourceKind;
+    private String tableId;
+    private String figureId;
+    private String formulaId;
+    private String evidenceRole;
 
     // 构造方法
     public TextChunk(int chunkId, String content) {
@@ -32,6 +37,22 @@ public class TextChunk {
     public TextChunk(int chunkId, String content, Integer pageNumber, String anchorText,
                      String elementType, String sectionTitle, Integer sectionLevel,
                      String bboxJson, String parserName, String parserVersion) {
+        this(chunkId, content, pageNumber, anchorText, elementType, sectionTitle, sectionLevel,
+                bboxJson, parserName, parserVersion, "TEXT", null);
+    }
+
+    public TextChunk(int chunkId, String content, Integer pageNumber, String anchorText,
+                     String elementType, String sectionTitle, Integer sectionLevel,
+                     String bboxJson, String parserName, String parserVersion,
+                     String sourceKind, String tableId) {
+        this(chunkId, content, pageNumber, anchorText, elementType, sectionTitle, sectionLevel,
+                bboxJson, parserName, parserVersion, sourceKind, tableId, null, null, "NORMAL_TEXT");
+    }
+
+    public TextChunk(int chunkId, String content, Integer pageNumber, String anchorText,
+                     String elementType, String sectionTitle, Integer sectionLevel,
+                     String bboxJson, String parserName, String parserVersion,
+                     String sourceKind, String tableId, String figureId, String formulaId, String evidenceRole) {
         this.chunkId = chunkId;
         this.content = content;
         this.pageNumber = pageNumber;
@@ -42,5 +63,10 @@ public class TextChunk {
         this.bboxJson = bboxJson;
         this.parserName = parserName;
         this.parserVersion = parserVersion;
+        this.sourceKind = sourceKind;
+        this.tableId = tableId;
+        this.figureId = figureId;
+        this.formulaId = formulaId;
+        this.evidenceRole = evidenceRole;
     }
 }

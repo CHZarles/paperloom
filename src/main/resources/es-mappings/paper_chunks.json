@@ -35,6 +35,21 @@
       "parserVersion": {
         "type": "keyword"
       },
+      "sourceKind": {
+        "type": "keyword"
+      },
+      "tableId": {
+        "type": "keyword"
+      },
+      "figureId": {
+        "type": "keyword"
+      },
+      "formulaId": {
+        "type": "keyword"
+      },
+      "evidenceRole": {
+        "type": "keyword"
+      },
       "textContent": {
         "type": "text",
         "analyzer": "ik_max_word",

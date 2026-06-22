@@ -1,9 +1,11 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.client.EmbeddingClient;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.PaperTextChunk;
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.TextChunk;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +30,9 @@ public class VectorizationService {
 
     @Autowired
     private PaperTextChunkRepository paperTextChunkRepository;
+
+    @Autowired
+    private PaperRepository paperRepository;
 
     /**
      * 执行向量化操作
@@ -62,6 +67,7 @@ public class VectorizationService {
                     .toList();
 
             // 调用外部模型生成向量
+            updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_EMBEDDING);
             EmbeddingClient.EmbeddingUsageResult embeddingResult = embeddingClient.embedWithUsage(
                     texts,
                     requesterId,
@@ -84,6 +90,11 @@ public class VectorizationService {
                             chunks.get(i).getBboxJson(),
                             chunks.get(i).getParserName(),
                             chunks.get(i).getParserVersion(),
+                            chunks.get(i).getSourceKind(),
+                            chunks.get(i).getTableId(),
+                            chunks.get(i).getFigureId(),
+                            chunks.get(i).getFormulaId(),
+                            chunks.get(i).getEvidenceRole(),
                             vectors.get(i),
                             embeddingResult.modelVersion(),
                             userId,
@@ -92,6 +103,7 @@ public class VectorizationService {
                     ))
                     .toList();
 
+            updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_INDEXING);
             elasticsearchService.bulkIndex(esDocuments); // 批量存储到 Elasticsearch
 
             logger.info("论文向量化完成，paperId: {}", paperId);
@@ -133,9 +145,25 @@ public class VectorizationService {
                         vector.getSectionLevel(),
                         vector.getBboxJson(),
                         vector.getParserName(),
-                        vector.getParserVersion()
+                        vector.getParserVersion(),
+                        vector.getSourceKind(),
+                        vector.getTableId(),
+                        vector.getFigureId(),
+                        vector.getFormulaId(),
+                        vector.getEvidenceRole()
                 ))
                 .toList();
+    }
+
+    private void updatePipelineStatus(String paperId, String status) {
+        if (paperId == null || paperId.isBlank() || status == null || status.isBlank()) {
+            return;
+        }
+        paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId).ifPresent(paper -> {
+            paper.setVectorizationStatus(status);
+            paper.setVectorizationErrorMessage(null);
+            paperRepository.save(paper);
+        });
     }
 
     public record VectorizationUsageResult(int actualEmbeddingTokens, int actualChunkCount, String modelVersion) {

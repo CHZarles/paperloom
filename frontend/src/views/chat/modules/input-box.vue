@@ -78,6 +78,15 @@ const cooldownText = computed(() => {
   return `${rateLimitRemainingSeconds.value} 秒后可重新发送`;
 });
 
+function isSmalltalkMessage(message: string) {
+  const normalized = message
+    .trim()
+    .toLowerCase()
+    .replace(/[\s!！?？。,.，;；:：、"'“”‘’()（）{}<>《》]+/g, '')
+    .replace(/\[|\]/g, '');
+  return ['hi', 'hello', 'hey', '你好', '您好', '在吗', '谢谢', 'thanks', 'ok', '好的'].includes(normalized);
+}
+
 function findAssistantMessage(generationId?: string) {
   if (generationId) {
     for (let i = list.value.length - 1; i >= 0; i -= 1) {
@@ -99,6 +108,7 @@ function findAssistantMessage(generationId?: string) {
 function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
   assistant.generationId = payload.generationId || assistant.generationId;
   assistant.conversationId = payload.conversationId || assistant.conversationId;
+  assistant.route = payload.route || assistant.route;
   if (!assistant.timestamp && payload.timestamp) {
     assistant.timestamp = new Date(payload.timestamp).toISOString();
   }
@@ -114,6 +124,7 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   if (payload.referenceMappings) {
     assistant.referenceMappings = payload.referenceMappings;
   }
+  assistant.route = payload.route || assistant.route;
   markExecutingToolsAsSuccess(assistant);
   stopGenerationStatusMonitor();
 }
@@ -338,17 +349,21 @@ const handleSend = async () => {
     return;
   }
 
+  const outgoingMessage = input.value.message;
+  const route = isSmalltalkMessage(outgoingMessage) ? 'SMALLTALK' : 'PAPER_QA';
+
   list.value.push({
-    content: input.value.message,
+    content: outgoingMessage,
     role: 'user'
   });
   list.value.push({
     content: '',
     role: 'assistant',
     status: 'pending',
+    route,
     toolEvents: []
   });
-  chatStore.wsSend(input.value.message);
+  chatStore.wsSend(outgoingMessage);
   input.value.message = '';
   startGenerationStatusMonitor();
 };

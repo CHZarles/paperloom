@@ -5,6 +5,8 @@ import com.yizhaoqi.smartpai.model.ChunkInfo;
 import com.yizhaoqi.smartpai.model.PaperProcessingTask;
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.User;
+import com.yizhaoqi.smartpai.paper.parser.MinerUUnavailableException;
+import com.yizhaoqi.smartpai.paper.parser.PaperParsingException;
 import com.yizhaoqi.smartpai.repository.ChunkInfoRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
@@ -67,6 +69,21 @@ public class PaperService {
 
     @Autowired
     private VectorizationService vectorizationService;
+
+    @Autowired
+    private PaperParserArtifactService paperParserArtifactService;
+
+    @Autowired
+    private PaperTableService paperTableService;
+
+    @Autowired
+    private PaperFigureService paperFigureService;
+
+    @Autowired
+    private PaperFormulaService paperFormulaService;
+
+    @Autowired
+    private PaperVisualAssetService paperVisualAssetService;
 
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
@@ -143,6 +160,11 @@ public class PaperService {
         deleteSearchIndex(paperId);
         deleteMergedPaperObject(paperId);
         deleteUploadChunks(paperId);
+        deleteParserArtifacts(paperId);
+        deleteVisualAssets(paperId);
+        deleteTables(paperId);
+        deleteFigures(paperId);
+        deleteFormulas(paperId);
         deleteParsedChunks(paperId);
     }
 
@@ -203,6 +225,51 @@ public class PaperService {
         }
     }
 
+    private void deleteParserArtifacts(String paperId) {
+        try {
+            paperParserArtifactService.deleteParserArtifacts(paperId);
+            logger.info("成功删除 parser artifact: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除 parser artifact 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteVisualAssets(String paperId) {
+        try {
+            paperVisualAssetService.deleteVisualAssets(paperId);
+            logger.info("成功删除论文视觉资产: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文视觉资产时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteTables(String paperId) {
+        try {
+            paperTableService.deleteTables(paperId);
+            logger.info("成功删除论文表格 metadata: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文表格 metadata 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteFigures(String paperId) {
+        try {
+            paperFigureService.deleteFigures(paperId);
+            logger.info("成功删除论文图像 metadata: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文图像 metadata 时出错: paperId={}", paperId, e);
+        }
+    }
+
+    private void deleteFormulas(String paperId) {
+        try {
+            paperFormulaService.deleteFormulas(paperId);
+            logger.info("成功删除论文公式 metadata: paperId={}", paperId);
+        } catch (Exception e) {
+            logger.error("删除论文公式 metadata 时出错: paperId={}", paperId, e);
+        }
+    }
+
     @Transactional
     public VectorizationService.VectorizationUsageResult reindexPaper(String paperId, String requesterId) {
         logger.info("开始重建论文索引: paperId={}, requesterId={}", paperId, requesterId);
@@ -221,6 +288,11 @@ public class PaperService {
             }
 
             paperTextChunkRepository.deleteByPaperId(paperId);
+            paperParserArtifactService.deleteParserArtifacts(paperId);
+            paperVisualAssetService.deleteVisualAssets(paperId);
+            paperTableService.deleteTables(paperId);
+            paperFigureService.deleteFigures(paperId);
+            paperFormulaService.deleteFormulas(paperId);
 
             parseService.parseAndSave(
                     paperId,
@@ -344,6 +416,12 @@ public class PaperService {
         while (current != null) {
             String message = current.getMessage();
             if (message != null && !message.isBlank()) {
+                if (current instanceof MinerUUnavailableException) {
+                    return message;
+                }
+                if (current instanceof PaperParsingException && message.startsWith("MinerU ")) {
+                    return message;
+                }
                 deepestMessage = message;
                 if (message.contains("余额不足")) {
                     return message;
@@ -498,6 +576,14 @@ public class PaperService {
      * @return 预签名下载URL
      */
     public String generateDownloadUrl(String paperId) {
+        return generateDownloadUrl(paperId, PdfDownloadHeaders.Disposition.INLINE);
+    }
+
+    public String generateAttachmentDownloadUrl(String paperId) {
+        return generateDownloadUrl(paperId, PdfDownloadHeaders.Disposition.ATTACHMENT);
+    }
+
+    private String generateDownloadUrl(String paperId, PdfDownloadHeaders.Disposition disposition) {
         logger.info("生成论文 PDF 下载链接: paperId={}", paperId);
 
         try {
@@ -511,6 +597,11 @@ public class PaperService {
                             .bucket("uploads")
                             .object(objectName)
                             .expiry(3600)
+                            .extraQueryParams(PdfDownloadHeaders.presignedQueryParams(
+                                    paper.getOriginalFilename(),
+                                    paperId,
+                                    disposition
+                            ))
                             .build()
             );
             logger.info("成功生成论文 PDF 下载链接: paperId={}, paperTitle={}, objectName={}",

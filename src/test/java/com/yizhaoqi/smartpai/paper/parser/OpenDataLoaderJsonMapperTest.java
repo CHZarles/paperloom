@@ -79,6 +79,8 @@ class OpenDataLoaderJsonMapperTest {
         assertEquals("Vaswani et al.", paper.metadata().authors());
         assertEquals(2, paper.metadata().pageCount());
         assertEquals(3, paper.elements().size());
+        assertNotNull(paper.rawParserJson());
+        assertTrue(paper.rawParserJson().contains("\"Attention Is All You Need\""));
 
         ParsedPaperElement heading = paper.elements().get(0);
         assertEquals("1", heading.elementId());
@@ -95,5 +97,17 @@ class OpenDataLoaderJsonMapperTest {
         assertTrue(table.text().contains("Metric\tValue"));
         assertTrue(table.text().contains("BLEU\t28.4"));
         assertTrue(table.rawAttributes().containsKey("number of rows"));
+
+        assertEquals(1, paper.tables().size());
+        ParsedPaperTable parsedTable = paper.tables().get(0);
+        assertEquals("table-3", parsedTable.tableId());
+        assertEquals("3", parsedTable.elementId());
+        assertEquals(2, parsedTable.pageNumber());
+        assertEquals(2, parsedTable.rowCount());
+        assertEquals(2, parsedTable.columnCount());
+        assertTrue(parsedTable.tableText().contains("Metric: Value"));
+        assertTrue(parsedTable.tableText().contains("BLEU: 28.4"));
+        assertTrue(parsedTable.tableMarkdown().contains("| Metric | Value |"));
+        assertNotNull(parsedTable.boundingBox());
     }
 }

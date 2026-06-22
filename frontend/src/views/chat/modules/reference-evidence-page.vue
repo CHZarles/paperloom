@@ -30,6 +30,17 @@ const sectionLevel = ref<number | null>(null);
 const bboxJson = ref('');
 const parserName = ref('');
 const parserVersion = ref('');
+const sourceKind = ref<Api.Chat.ReferenceEvidence['sourceKind']>(null);
+const tableId = ref('');
+const figureId = ref('');
+const formulaId = ref('');
+const evidenceRole = ref('');
+const retrievalRoute = ref('');
+const intent = ref('');
+const rankReason = ref('');
+const tableText = ref('');
+const tableMarkdown = ref('');
+const tableScreenshotAvailable = ref<boolean | null>(null);
 const referenceNumber = ref<number | undefined>(undefined);
 const conversationRecordId = ref<number | undefined>(undefined);
 const evidenceKey = computed(() => String(route.query.evidenceKey || ''));
@@ -87,6 +98,17 @@ function syncFromStorage() {
     bboxJson.value = payload.bboxJson || bboxJson.value;
     parserName.value = payload.parserName || parserName.value;
     parserVersion.value = payload.parserVersion || parserVersion.value;
+    sourceKind.value = payload.sourceKind ?? sourceKind.value;
+    tableId.value = payload.tableId || tableId.value;
+    figureId.value = payload.figureId || figureId.value;
+    formulaId.value = payload.formulaId || formulaId.value;
+    evidenceRole.value = payload.evidenceRole || evidenceRole.value;
+    retrievalRoute.value = payload.retrievalRoute || retrievalRoute.value;
+    intent.value = payload.intent || intent.value;
+    rankReason.value = payload.rankReason || rankReason.value;
+    tableText.value = payload.tableText || tableText.value;
+    tableMarkdown.value = payload.tableMarkdown || tableMarkdown.value;
+    tableScreenshotAvailable.value = payload.tableScreenshotAvailable ?? tableScreenshotAvailable.value;
     conversationRecordId.value = payload.conversationRecordId || conversationRecordId.value;
     referenceNumber.value = payload.referenceNumber || referenceNumber.value;
     return true;
@@ -144,6 +166,17 @@ async function loadReferenceDetail() {
     bboxJson.value = data.bboxJson || '';
     parserName.value = data.parserName || '';
     parserVersion.value = data.parserVersion || '';
+    sourceKind.value = data.sourceKind ?? null;
+    tableId.value = data.tableId || '';
+    figureId.value = data.figureId || '';
+    formulaId.value = data.formulaId || '';
+    evidenceRole.value = data.evidenceRole || '';
+    retrievalRoute.value = data.retrievalRoute || '';
+    intent.value = data.intent || '';
+    rankReason.value = data.rankReason || '';
+    tableText.value = data.tableText || '';
+    tableMarkdown.value = data.tableMarkdown || '';
+    tableScreenshotAvailable.value = data.tableScreenshotAvailable ?? null;
   } catch (error: any) {
     loadError.value = error?.message || '引用详情加载失败';
   } finally {
@@ -190,20 +223,16 @@ watch(
         :original-filename="originalFilename"
         :paper-id="paperId || undefined"
         :page-number="pageNumber"
-        :anchor-text="anchorText"
-        :retrieval-mode="retrievalMode"
-        :retrieval-label="retrievalLabel"
-        :retrieval-query="retrievalQuery"
         :evidence-snippet="evidenceSnippet"
         :matched-chunk-text="matchedChunkText"
-        :score="score"
-        :chunk-id="chunkId"
-        :element-type="elementType"
-        :section-title="sectionTitle"
-        :section-level="sectionLevel"
         :bbox-json="bboxJson"
-        :parser-name="parserName"
-        :parser-version="parserVersion"
+        :source-kind="sourceKind"
+        :table-id="tableId"
+        :figure-id="figureId"
+        :formula-id="formulaId"
+        :table-text="tableText"
+        :table-markdown="tableMarkdown"
+        :table-screenshot-available="tableScreenshotAvailable"
       />
       <NButton secondary class="evidence-page-back" @click="handleBack">
         <template #icon>

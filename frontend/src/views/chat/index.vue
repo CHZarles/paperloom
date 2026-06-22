@@ -27,6 +27,17 @@ const referencePayload = ref<{
   bboxJson?: string | null;
   parserName?: string | null;
   parserVersion?: string | null;
+  sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
+  tableId?: string | null;
+  figureId?: string | null;
+  formulaId?: string | null;
+  evidenceRole?: string | null;
+  retrievalRoute?: string | null;
+  intent?: string | null;
+  rankReason?: string | null;
+  tableText?: string | null;
+  tableMarkdown?: string | null;
+  tableScreenshotAvailable?: boolean | null;
   paperTitle: string;
   paperId?: string | null;
   originalFilename?: string | null;
@@ -123,7 +134,7 @@ onBeforeUnmount(() => {
           <div class="reference-panel__header">
             <div>
               <div class="reference-panel__title">Source Evidence</div>
-              <div class="reference-panel__subtitle">核对回答依据、页码与 chunk</div>
+              <div class="reference-panel__subtitle">核对引用对应的论文原文</div>
             </div>
             <NButton quaternary circle size="small" @click="closeReferencePanel">
               <template #icon>
@@ -139,20 +150,16 @@ onBeforeUnmount(() => {
             :paper-id="referencePayload.paperId || undefined"
             :original-filename="referencePayload.originalFilename || undefined"
             :page-number="referencePayload.pageNumber || undefined"
-            :anchor-text="referencePayload.anchorText || undefined"
-            :retrieval-mode="referencePayload.retrievalMode"
-            :retrieval-label="referencePayload.retrievalLabel || undefined"
-            :retrieval-query="referencePayload.retrievalQuery || undefined"
             :evidence-snippet="referencePayload.evidenceSnippet || undefined"
             :matched-chunk-text="referencePayload.matchedChunkText || undefined"
-            :score="referencePayload.score"
-            :chunk-id="referencePayload.chunkId"
-            :element-type="referencePayload.elementType || undefined"
-            :section-title="referencePayload.sectionTitle || undefined"
-            :section-level="referencePayload.sectionLevel"
             :bbox-json="referencePayload.bboxJson || undefined"
-            :parser-name="referencePayload.parserName || undefined"
-            :parser-version="referencePayload.parserVersion || undefined"
+            :source-kind="referencePayload.sourceKind || undefined"
+            :table-id="referencePayload.tableId || undefined"
+            :figure-id="referencePayload.figureId || undefined"
+            :formula-id="referencePayload.formulaId || undefined"
+            :table-text="referencePayload.tableText || undefined"
+            :table-markdown="referencePayload.tableMarkdown || undefined"
+            :table-screenshot-available="referencePayload.tableScreenshotAvailable"
           />
           <div v-else class="reference-panel__empty">
             <icon-lucide:file-text class="text-34px" />

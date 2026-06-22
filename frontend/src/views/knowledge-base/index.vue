@@ -15,6 +15,10 @@ const authStore = useAuthStore();
 const previewVisible = ref(false);
 const previewPaperTitle = ref('');
 const previewPaperId = ref('');
+const tableModalVisible = ref(false);
+const tableModalLoading = ref(false);
+const tableModalTitle = ref('');
+const tableModalRows = ref<Api.Paper.TableItem[]>([]);
 
 function mapUploadStatusToTaskStatus(uploadStatus?: Api.Paper.UploadTask['uploadStatus']) {
   if (uploadStatus === 'COMPLETED' || uploadStatus === 1) return UploadStatus.Completed;
@@ -150,7 +154,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
     {
       key: 'estimatedEmbeddingTokens',
       title: 'Index Budget / 索引',
-      width: 230,
+      width: 270,
       render: row => renderIndexUsage(row)
     },
     {
@@ -188,7 +192,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
     {
       key: 'operate',
       title: 'Actions / 操作',
-      width: 170,
+      width: 260,
       render: row => (
         <div class="library-action-group">
           {canManageFile(row) ? renderResumeUploadButton(row) : null}
@@ -203,6 +207,30 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
               default: () => '预览'
             }}
           </NButton>
+          <NButton
+            secondary
+            size="small"
+            disabled={!row.tableAsset?.tableCount}
+            onClick={() => handleOpenTables(row)}
+          >
+            {{
+              icon: () => <SvgIcon icon="lucide:table-2" class="text-14px" />,
+              default: () => 'Tables'
+            }}
+          </NButton>
+          {canManageFile(row) ? (
+            <NButton
+              secondary
+              size="small"
+              disabled={!row.parserArtifact?.available}
+              onClick={() => handleOpenParserArtifact(row)}
+            >
+              {{
+                icon: () => <SvgIcon icon="lucide:file-json" class="text-14px" />,
+                default: () => 'Parser JSON'
+              }}
+            </NButton>
+          ) : null}
           {canManageFile(row) ? (
             <NPopconfirm onPositiveClick={() => handleDelete(row.paperId)}>
               {{
@@ -294,7 +322,12 @@ function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.Uplo
     actualEmbeddingTokens: source.actualEmbeddingTokens,
     actualChunkCount: source.actualChunkCount,
     processingStatus: source.processingStatus,
-    processingErrorMessage: source.processingErrorMessage
+    processingErrorMessage: source.processingErrorMessage,
+    parserArtifact: source.parserArtifact,
+    tableAsset: source.tableAsset,
+    figureAsset: source.figureAsset,
+    formulaAsset: source.formulaAsset,
+    visualAsset: source.visualAsset
   });
 }
 
@@ -338,6 +371,47 @@ async function handleDelete(paperId: string) {
     window.$message?.success('删除成功');
     await getData();
   }
+}
+
+async function handleOpenParserArtifact(row: Api.Paper.UploadTask) {
+  const { error, data } = await request<Api.Paper.ParserArtifactResponse>({
+    url: `/papers/${row.paperId}/parser-artifact`
+  });
+
+  if (error || !data?.downloadUrl) {
+    window.$message?.error(error?.message || 'Parser JSON 不存在');
+    return;
+  }
+
+  openExternalUrl(data.downloadUrl);
+}
+
+async function handleOpenTables(row: Api.Paper.UploadTask) {
+  tableModalVisible.value = true;
+  tableModalLoading.value = true;
+  tableModalTitle.value = row.paperTitle || row.originalFilename;
+  tableModalRows.value = [];
+
+  const { error, data } = await request<Api.Paper.TableItem[]>({
+    url: `/papers/${row.paperId}/tables`
+  });
+
+  tableModalLoading.value = false;
+  if (error) {
+    window.$message?.error(error.message || '表格列表加载失败');
+    return;
+  }
+  tableModalRows.value = data || [];
+}
+
+function openExternalUrl(url: string) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function isLocalOnlyPendingUpload(task: Api.Paper.UploadTask, paperId: string) {
@@ -397,6 +471,26 @@ function renderIndexUsage(row: Api.Paper.UploadTask) {
     <div class="library-index-cell">
       {renderIndexLine('EST', row.estimatedEmbeddingTokens, row.estimatedChunkCount)}
       {renderActualIndexLine(row)}
+      {renderAssetStatus(row)}
+    </div>
+  );
+}
+
+function renderAssetStatus(row: Api.Paper.UploadTask) {
+  const parserSaved = Boolean(row.parserArtifact?.available);
+  const tableCount = Number(row.tableAsset?.tableCount || 0);
+  const figureCount = Number(row.figureAsset?.figureCount || 0);
+  const formulaCount = Number(row.formulaAsset?.formulaCount || 0);
+  const pageCount = Number(row.visualAsset?.pageScreenshotCount || 0);
+  return (
+    <div class="library-asset-strip">
+      <span class={parserSaved ? 'library-asset-pill library-asset-pill--ok' : 'library-asset-pill'}>
+        Parser: {parserSaved ? 'saved' : 'missing'}
+      </span>
+      <span class="library-asset-pill">Tables: {tableCount}</span>
+      <span class="library-asset-pill">Figures: {figureCount}</span>
+      <span class="library-asset-pill">Formulas: {formulaCount}</span>
+      <span class="library-asset-pill">Pages: {pageCount}</span>
     </div>
   );
 }
@@ -688,7 +782,7 @@ async function onBeforeUpload(
         :columns="columns"
         :data="tableTasks"
         size="small"
-        :scroll-x="1182"
+        :scroll-x="1280"
         :loading="loading"
         remote
         :row-key="row => row.id"
@@ -698,6 +792,39 @@ async function onBeforeUpload(
     </NCard>
     <UploadDialog v-model:visible="uploadVisible" />
     <SearchDialog v-model:visible="searchVisible" />
+
+    <NModal v-model:show="tableModalVisible" class="paper-table-modal-shell" :auto-focus="false">
+      <div class="paper-table-modal">
+        <header class="paper-table-modal__header">
+          <div>
+            <div class="paper-table-modal__title">Extracted Tables</div>
+            <div class="paper-table-modal__subtitle">{{ tableModalTitle }}</div>
+          </div>
+          <NButton quaternary circle size="small" @click="tableModalVisible = false">
+            <template #icon>
+              <icon-lucide:x />
+            </template>
+          </NButton>
+        </header>
+
+        <div v-if="tableModalLoading" class="paper-table-modal__state">Loading tables...</div>
+        <div v-else-if="!tableModalRows.length" class="paper-table-modal__state">No extracted tables.</div>
+        <div v-else class="paper-table-modal__list">
+          <article v-for="table in tableModalRows" :key="table.tableId" class="paper-table-modal__item">
+            <div class="paper-table-modal__item-head">
+              <strong>{{ table.caption || table.tableId }}</strong>
+              <span>Page {{ table.pageNumber || 'N/A' }}</span>
+            </div>
+            <div class="paper-table-modal__meta">
+              <span>{{ table.rowCount || 0 }} rows</span>
+              <span>{{ table.columnCount || 0 }} cols</span>
+              <span>{{ table.screenshotAvailable ? 'screenshot saved' : 'no screenshot' }}</span>
+            </div>
+            <pre>{{ table.tableMarkdown || table.tableText || 'No table text captured.' }}</pre>
+          </article>
+        </div>
+      </div>
+    </NModal>
 
     <!-- 文件预览弹窗 -->
     <NModal v-model:show="previewVisible" class="document-preview-modal" :auto-focus="false">
@@ -981,6 +1108,33 @@ async function onBeforeUpload(
   font-size: 11px;
 }
 
+.library-asset-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.library-asset-pill {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-card-band);
+  padding: 1px 6px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.library-asset-pill--ok {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
 .library-pipeline-status {
   gap: 7px;
 }
@@ -1064,6 +1218,110 @@ async function onBeforeUpload(
   border-radius: 8px;
   background: var(--color-bg);
   box-shadow: 10px 10px 0 var(--color-border);
+}
+
+.paper-table-modal-shell {
+  width: min(92vw, 860px);
+}
+
+.paper-table-modal {
+  max-height: min(82vh, 760px);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  box-shadow: 10px 10px 0 var(--color-border);
+}
+
+.paper-table-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card-band);
+  padding: 14px 16px;
+}
+
+.paper-table-modal__title {
+  color: var(--color-primary);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.paper-table-modal__subtitle {
+  max-width: 680px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paper-table-modal__state {
+  padding: 28px 16px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.paper-table-modal__list {
+  display: grid;
+  max-height: calc(min(82vh, 760px) - 62px);
+  gap: 12px;
+  overflow: auto;
+  padding: 14px 16px 18px;
+}
+
+.paper-table-modal__item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 12px;
+}
+
+.paper-table-modal__item-head,
+.paper-table-modal__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.paper-table-modal__item-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paper-table-modal__item-head span,
+.paper-table-modal__meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.paper-table-modal__meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.paper-table-modal__item pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  padding: 10px;
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 1180px) {

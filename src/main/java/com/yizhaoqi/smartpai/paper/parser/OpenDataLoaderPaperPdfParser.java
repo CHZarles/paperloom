@@ -2,6 +2,7 @@ package com.yizhaoqi.smartpai.paper.parser;
 
 import org.opendataloader.pdf.api.Config;
 import org.opendataloader.pdf.api.OpenDataLoaderPDF;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 
 @Component
+@ConditionalOnProperty(prefix = "paper.parsing", name = "provider", havingValue = "opendataloader")
 public class OpenDataLoaderPaperPdfParser implements PaperPdfParser {
 
     private static final String PROVIDER_NAME = "opendataloader-pdf";

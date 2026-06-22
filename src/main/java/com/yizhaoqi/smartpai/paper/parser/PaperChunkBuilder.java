@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 public class PaperChunkBuilder {
@@ -24,6 +26,21 @@ public class PaperChunkBuilder {
         String currentSectionTitle = null;
         Integer currentSectionLevel = null;
         int nextChunkId = 1;
+        Map<String, ParsedPaperTable> tablesByElementId = paper.tables() == null
+                ? Map.of()
+                : paper.tables().stream()
+                .filter(table -> table != null && table.elementId() != null)
+                .collect(Collectors.toMap(ParsedPaperTable::elementId, Function.identity(), (first, replacement) -> first));
+        Map<String, ParsedPaperFigure> figuresByElementId = paper.figures() == null
+                ? Map.of()
+                : paper.figures().stream()
+                .filter(figure -> figure != null && figure.elementId() != null)
+                .collect(Collectors.toMap(ParsedPaperFigure::elementId, Function.identity(), (first, replacement) -> first));
+        Map<String, ParsedPaperFormula> formulasByElementId = paper.formulas() == null
+                ? Map.of()
+                : paper.formulas().stream()
+                .filter(formula -> formula != null && formula.elementId() != null)
+                .collect(Collectors.toMap(ParsedPaperFormula::elementId, Function.identity(), (first, replacement) -> first));
 
         for (ParsedPaperElement element : paper.elements()) {
             if (element == null) {
@@ -43,10 +60,18 @@ public class PaperChunkBuilder {
                 continue;
             }
 
-            String text = normalizeText(element.text());
+            ParsedPaperTable parsedTable = tablesByElementId.get(element.elementId());
+            ParsedPaperFigure parsedFigure = figuresByElementId.get(element.elementId());
+            ParsedPaperFormula parsedFormula = formulasByElementId.get(element.elementId());
+            String text = normalizeText(resolveChunkText(element, parsedTable, parsedFigure, parsedFormula));
             if (text.isBlank()) {
                 continue;
             }
+            String sourceKind = resolveSourceKind(element);
+            String tableId = parsedTable != null ? parsedTable.tableId() : null;
+            String figureId = parsedFigure != null ? parsedFigure.figureId() : null;
+            String formulaId = parsedFormula != null ? parsedFormula.formulaId() : null;
+            String evidenceRole = resolveEvidenceRole(element, text);
 
             for (String chunkText : splitIntoChunks(text, chunkSize)) {
                 chunks.add(new PaperChunkCandidate(
@@ -60,7 +85,12 @@ public class PaperChunkBuilder {
                         toJson(element.boundingBox()),
                         paper.parserName(),
                         paper.parserVersion(),
-                        toRawProvenanceJson(element)
+                        toRawProvenanceJson(element),
+                        sourceKind,
+                        tableId,
+                        figureId,
+                        formulaId,
+                        evidenceRole
                 ));
             }
         }
@@ -70,9 +100,67 @@ public class PaperChunkBuilder {
 
     private boolean isChunkable(ParsedPaperElement element) {
         return switch (element.elementType()) {
-            case PARAGRAPH, TEXT_BLOCK, CAPTION, TABLE, LIST, LIST_ITEM -> true;
+            case PARAGRAPH, TEXT_BLOCK, CAPTION, TABLE, FIGURE, CHART, FORMULA, LIST, LIST_ITEM -> true;
             case TITLE, HEADING, IMAGE, HEADER, FOOTER, UNKNOWN -> false;
         };
+    }
+
+    private String resolveChunkText(ParsedPaperElement element,
+                                    ParsedPaperTable parsedTable,
+                                    ParsedPaperFigure parsedFigure,
+                                    ParsedPaperFormula parsedFormula) {
+        if (parsedTable != null) {
+            return parsedTable.tableText();
+        }
+        if (parsedFigure != null) {
+            return firstNonBlank(parsedFigure.figureText(), parsedFigure.caption(), element.text());
+        }
+        if (parsedFormula != null) {
+            return firstNonBlank(parsedFormula.latex(), parsedFormula.contextText(), element.text());
+        }
+        return element.text();
+    }
+
+    private String resolveSourceKind(ParsedPaperElement element) {
+        return switch (element.elementType()) {
+            case TABLE -> "TABLE";
+            case FIGURE -> "FIGURE";
+            case CHART -> "CHART";
+            case FORMULA -> "FORMULA";
+            default -> "TEXT";
+        };
+    }
+
+    private String resolveEvidenceRole(ParsedPaperElement element, String text) {
+        String lower = text == null ? "" : text.toLowerCase();
+        if (element.elementType() == ParsedPaperElementType.FIGURE
+                || element.elementType() == ParsedPaperElementType.CHART) {
+            return "FIGURE_CAPTION";
+        }
+        if (element.elementType() == ParsedPaperElementType.FORMULA) {
+            return "FORMULA";
+        }
+        if (element.elementType() == ParsedPaperElementType.TABLE
+                || lower.contains("accuracy")
+                || lower.contains("experiment")
+                || lower.contains("evaluation")
+                || lower.contains("benchmark")
+                || lower.contains("table ")) {
+            return "EXPERIMENT_RESULT";
+        }
+        return "NORMAL_TEXT";
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
     }
 
     private List<String> splitIntoChunks(String text, int chunkSize) {

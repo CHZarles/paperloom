@@ -20,6 +20,11 @@ public class PaperChunkDocument {
     private String bboxJson;
     private String parserName;
     private String parserVersion;
+    private String sourceKind;
+    private String tableId;
+    private String figureId;
+    private String formulaId;
+    private String evidenceRole;
     private float[] vector;
     private String modelVersion;
     private String userId;
@@ -35,6 +40,31 @@ public class PaperChunkDocument {
                               String bboxJson, String parserName, String parserVersion,
                               float[] vector, String modelVersion,
                               String userId, String orgTag, boolean isPublic) {
+        this(id, paperId, chunkId, content, pageNumber, anchorText, elementType, sectionTitle, sectionLevel,
+                bboxJson, parserName, parserVersion, "TEXT", null, null, null, "NORMAL_TEXT",
+                vector, modelVersion, userId, orgTag, isPublic);
+    }
+
+    public PaperChunkDocument(String id, String paperId, int chunkId, String content,
+                              Integer pageNumber, String anchorText,
+                              String elementType, String sectionTitle, Integer sectionLevel,
+                              String bboxJson, String parserName, String parserVersion,
+                              String sourceKind, String tableId,
+                              float[] vector, String modelVersion,
+                              String userId, String orgTag, boolean isPublic) {
+        this(id, paperId, chunkId, content, pageNumber, anchorText, elementType, sectionTitle, sectionLevel,
+                bboxJson, parserName, parserVersion, sourceKind, tableId, null, null, "NORMAL_TEXT",
+                vector, modelVersion, userId, orgTag, isPublic);
+    }
+
+    public PaperChunkDocument(String id, String paperId, int chunkId, String content,
+                              Integer pageNumber, String anchorText,
+                              String elementType, String sectionTitle, Integer sectionLevel,
+                              String bboxJson, String parserName, String parserVersion,
+                              String sourceKind, String tableId,
+                              String figureId, String formulaId, String evidenceRole,
+                              float[] vector, String modelVersion,
+                              String userId, String orgTag, boolean isPublic) {
         this.id = id;
         this.paperId = paperId;
         this.chunkId = chunkId;
@@ -47,6 +77,11 @@ public class PaperChunkDocument {
         this.bboxJson = bboxJson;
         this.parserName = parserName;
         this.parserVersion = parserVersion;
+        this.sourceKind = sourceKind;
+        this.tableId = tableId;
+        this.figureId = figureId;
+        this.formulaId = formulaId;
+        this.evidenceRole = evidenceRole;
         this.vector = vector;
         this.modelVersion = modelVersion;
         this.userId = userId;

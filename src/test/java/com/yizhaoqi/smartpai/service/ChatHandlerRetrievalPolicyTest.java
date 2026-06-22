@@ -21,6 +21,22 @@ class ChatHandlerRetrievalPolicyTest {
     void shouldSkipInitialPaperSearchForExplicitBypassAndGreeting() {
         assertFalse(ChatHandler.shouldUseInitialPaperSearch("不要查论文，直接回答你懂单臂老虎机吗"));
         assertFalse(ChatHandler.shouldUseInitialPaperSearch("你好"));
+        assertFalse(ChatHandler.shouldUseInitialPaperSearch("hi"));
+        assertFalse(ChatHandler.shouldUseInitialPaperSearch("在吗？"));
+        assertFalse(ChatHandler.shouldUseInitialPaperSearch("OK."));
+        assertFalse(ChatHandler.shouldUseInitialPaperSearch("好的"));
+    }
+
+    @Test
+    void shouldOnlyClassifyExactSmalltalkAsSmalltalk() {
+        assertTrue(ChatHandler.isSmalltalkMessage("hi"));
+        assertTrue(ChatHandler.isSmalltalkMessage("你好！"));
+        assertTrue(ChatHandler.isSmalltalkMessage("在吗？"));
+
+        assertFalse(ChatHandler.isSmalltalkMessage("论文实验数据"));
+        assertFalse(ChatHandler.isSmalltalkMessage("我说论文实验数据"));
+        assertFalse(ChatHandler.isSmalltalkMessage("这篇论文讲了什么"));
+        assertFalse(ChatHandler.isSmalltalkMessage("agent 相关内容"));
     }
 
     @Test
@@ -31,7 +47,7 @@ class ChatHandlerRetrievalPolicyTest {
     }
 
     @Test
-    void shouldKeepOnlyReferencesActuallyCitedInFinalResponse() {
+    void shouldIgnoreLegacyChineseSourceReferencesInFinalResponse() {
         Map<Integer, ChatHandler.ReferenceInfo> mappings = Map.of(
                 1, referenceInfo("one.pdf"),
                 2, referenceInfo("two.pdf")
@@ -42,8 +58,38 @@ class ChatHandlerRetrievalPolicyTest {
                 "结论来自课程讲义 (来源#2: two.pdf)。"
         );
 
+        assertTrue(filtered.isEmpty());
+    }
+
+    @Test
+    void shouldKeepCompactBracketReferencesActuallyCitedInFinalResponse() {
+        Map<Integer, ChatHandler.ReferenceInfo> mappings = Map.of(
+                1, referenceInfo("one.pdf"),
+                2, referenceInfo("two.pdf")
+        );
+
+        Map<Integer, ChatHandler.ReferenceInfo> filtered = ChatHandler.filterReferenceMappingsForResponse(
+                mappings,
+                "实验设置来自论文正文。[2]"
+        );
+
         assertEquals(1, filtered.size());
         assertTrue(filtered.containsKey(2));
+    }
+
+    @Test
+    void shouldIgnoreLegacyEnglishSourceReferencesInFinalResponse() {
+        Map<Integer, ChatHandler.ReferenceInfo> mappings = Map.of(
+                1, referenceInfo("one.pdf"),
+                2, referenceInfo("two.pdf")
+        );
+
+        Map<Integer, ChatHandler.ReferenceInfo> filtered = ChatHandler.filterReferenceMappingsForResponse(
+                mappings,
+                "The claim is supported by source #1."
+        );
+
+        assertTrue(filtered.isEmpty());
     }
 
     @Test

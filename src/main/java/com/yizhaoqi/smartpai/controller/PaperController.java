@@ -2,11 +2,21 @@ package com.yizhaoqi.smartpai.controller;
 
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.OrganizationTag;
+import com.yizhaoqi.smartpai.model.PaperFigure;
+import com.yizhaoqi.smartpai.model.PaperFormula;
+import com.yizhaoqi.smartpai.model.PaperParserArtifact;
+import com.yizhaoqi.smartpai.model.PaperTable;
+import com.yizhaoqi.smartpai.model.PaperVisualAsset;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.OrganizationTagRepository;
 import com.yizhaoqi.smartpai.service.ChatHandler;
 import com.yizhaoqi.smartpai.service.ConversationService;
+import com.yizhaoqi.smartpai.service.PaperFigureService;
+import com.yizhaoqi.smartpai.service.PaperFormulaService;
+import com.yizhaoqi.smartpai.service.PaperParserArtifactService;
 import com.yizhaoqi.smartpai.service.PaperService;
+import com.yizhaoqi.smartpai.service.PaperTableService;
+import com.yizhaoqi.smartpai.service.PaperVisualAssetService;
 import com.yizhaoqi.smartpai.utils.LogUtils;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +60,21 @@ public class PaperController {
 
     @Autowired
     private ConversationService conversationService;
+
+    @Autowired
+    private PaperParserArtifactService paperParserArtifactService;
+
+    @Autowired
+    private PaperTableService paperTableService;
+
+    @Autowired
+    private PaperFigureService paperFigureService;
+
+    @Autowired
+    private PaperFormulaService paperFormulaService;
+
+    @Autowired
+    private PaperVisualAssetService paperVisualAssetService;
 
     /**
      * 删除论文及其相关数据。
@@ -368,8 +394,370 @@ public class PaperController {
             dto.put("doi", file.getDoi());
             dto.put("arxivId", file.getArxivId());
             dto.put("orgTagName", getOrgTagName(file.getOrgTag()));
+            dto.put("parserArtifact", buildParserArtifactStatus(file.getPaperId()));
+            dto.put("tableAsset", buildTableAssetStatus(file.getPaperId()));
+            dto.put("figureAsset", buildFigureAssetStatus(file.getPaperId()));
+            dto.put("formulaAsset", buildFormulaAssetStatus(file.getPaperId()));
+            dto.put("visualAsset", buildVisualAssetStatus(file.getPaperId()));
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    @GetMapping("/{paperId}/parser-artifact")
+    public ResponseEntity<?> getParserArtifact(
+            @PathVariable String paperId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("role") String role) {
+        try {
+            paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
+                    .orElseThrow(() -> new RuntimeException("论文不存在"));
+            boolean canDownloadArtifact = "ADMIN".equalsIgnoreCase(role)
+                    || paperRepository.countByPaperIdAndUserId(paperId, userId) > 0;
+            if (!canDownloadArtifact) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "code", HttpStatus.FORBIDDEN.value(),
+                        "message", "只有论文拥有者或管理员可以下载 parser artifact"
+                ));
+            }
+
+            Optional<PaperParserArtifact> artifactOpt = paperParserArtifactService.findLatestParserArtifact(paperId);
+            if (artifactOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "code", HttpStatus.NOT_FOUND.value(),
+                        "message", "parser artifact 不存在"
+                ));
+            }
+
+            PaperParserArtifact artifact = artifactOpt.get();
+            String downloadUrl = paperParserArtifactService.generateDownloadUrl(artifact);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("paperId", paperId);
+            data.put("parserName", artifact.getParserName());
+            data.put("parserVersion", artifact.getParserVersion());
+            data.put("artifactType", artifact.getArtifactType());
+            data.put("downloadUrl", downloadUrl);
+            data.put("sizeBytes", artifact.getSizeBytes());
+            return ResponseEntity.ok(Map.of(
+                    "code", 200,
+                    "message", "parser artifact 下载链接生成成功",
+                    "data", data
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "code", HttpStatus.NOT_FOUND.value(),
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/{paperId}/tables")
+    public ResponseEntity<?> listTables(
+            @PathVariable String paperId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        List<Map<String, Object>> tables = paperTableService.listTables(paperId).stream()
+                .map(this::buildTableResponse)
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", "获取论文表格成功",
+                "data", tables
+        ));
+    }
+
+    @GetMapping("/{paperId}/tables/{tableId}")
+    public ResponseEntity<?> getTable(
+            @PathVariable String paperId,
+            @PathVariable String tableId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        return paperTableService.findTable(paperId, tableId)
+                .<ResponseEntity<?>>map(table -> ResponseEntity.ok(Map.of(
+                        "code", 200,
+                        "message", "获取论文表格成功",
+                        "data", buildTableResponse(table)
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "code", HttpStatus.NOT_FOUND.value(),
+                        "message", "表格不存在"
+                )));
+    }
+
+    @GetMapping("/{paperId}/tables/{tableId}/screenshot")
+    public ResponseEntity<?> getTableScreenshot(
+            @PathVariable String paperId,
+            @PathVariable String tableId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        return paperVisualAssetService.findTableCrop(paperId, tableId)
+                .<ResponseEntity<?>>map(asset -> visualAssetUrlResponse(asset, "表格截图链接生成成功"))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "code", HttpStatus.NOT_FOUND.value(),
+                        "message", "表格截图不存在"
+                )));
+    }
+
+    @GetMapping("/{paperId}/pages/{pageNumber}/screenshot")
+    public ResponseEntity<?> getPageScreenshot(
+            @PathVariable String paperId,
+            @PathVariable Integer pageNumber,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        return paperVisualAssetService.findPageScreenshot(paperId, pageNumber)
+                .<ResponseEntity<?>>map(asset -> visualAssetUrlResponse(asset, "页面截图链接生成成功"))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "code", HttpStatus.NOT_FOUND.value(),
+                        "message", "页面截图不存在"
+                )));
+    }
+
+    @GetMapping("/{paperId}/figures")
+    public ResponseEntity<?> listFigures(
+            @PathVariable String paperId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        List<Map<String, Object>> figures = paperFigureService.listFigures(paperId).stream()
+                .map(this::buildFigureResponse)
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", "获取论文图像成功",
+                "data", figures
+        ));
+    }
+
+    @GetMapping("/{paperId}/figures/{figureId}")
+    public ResponseEntity<?> getFigure(
+            @PathVariable String paperId,
+            @PathVariable String figureId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        return paperFigureService.findFigure(paperId, figureId)
+                .<ResponseEntity<?>>map(figure -> ResponseEntity.ok(Map.of(
+                        "code", 200,
+                        "message", "获取论文图像成功",
+                        "data", buildFigureResponse(figure)
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "code", HttpStatus.NOT_FOUND.value(),
+                        "message", "图像不存在"
+                )));
+    }
+
+    @GetMapping("/{paperId}/figures/{figureId}/screenshot")
+    public ResponseEntity<?> getFigureScreenshot(
+            @PathVariable String paperId,
+            @PathVariable String figureId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        return paperVisualAssetService.findFigureCrop(paperId, figureId)
+                .<ResponseEntity<?>>map(asset -> visualAssetUrlResponse(asset, "图像截图链接生成成功"))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "code", HttpStatus.NOT_FOUND.value(),
+                        "message", "图像截图不存在"
+                )));
+    }
+
+    @GetMapping("/{paperId}/formulas")
+    public ResponseEntity<?> listFormulas(
+            @PathVariable String paperId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        List<Map<String, Object>> formulas = paperFormulaService.listFormulas(paperId).stream()
+                .map(this::buildFormulaResponse)
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", "获取论文公式成功",
+                "data", formulas
+        ));
+    }
+
+    @GetMapping("/{paperId}/formulas/{formulaId}")
+    public ResponseEntity<?> getFormula(
+            @PathVariable String paperId,
+            @PathVariable String formulaId,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+        if (paper.isEmpty()) {
+            return paperNotFoundOrForbidden();
+        }
+
+        return paperFormulaService.findFormula(paperId, formulaId)
+                .<ResponseEntity<?>>map(formula -> ResponseEntity.ok(Map.of(
+                        "code", 200,
+                        "message", "获取论文公式成功",
+                        "data", buildFormulaResponse(formula)
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "code", HttpStatus.NOT_FOUND.value(),
+                        "message", "公式不存在"
+                )));
+    }
+
+    private Map<String, Object> buildParserArtifactStatus(String paperId) {
+        Map<String, Object> status = new LinkedHashMap<>();
+        Optional<PaperParserArtifact> artifactOpt = paperParserArtifactService.findLatestParserArtifact(paperId);
+        status.put("available", artifactOpt.isPresent());
+        artifactOpt.ifPresent(artifact -> {
+            status.put("parserName", artifact.getParserName());
+            status.put("parserVersion", artifact.getParserVersion());
+        });
+        return status;
+    }
+
+    private Map<String, Object> buildTableAssetStatus(String paperId) {
+        long tableCount = paperTableService.countByPaperId(paperId);
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("tableCount", tableCount);
+        status.put("tableSearchable", tableCount > 0);
+        return status;
+    }
+
+    private Map<String, Object> buildFigureAssetStatus(String paperId) {
+        long figureCount = paperFigureService.countByPaperId(paperId);
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("figureCount", figureCount);
+        status.put("figureSearchable", figureCount > 0);
+        return status;
+    }
+
+    private Map<String, Object> buildFormulaAssetStatus(String paperId) {
+        long formulaCount = paperFormulaService.countByPaperId(paperId);
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("formulaCount", formulaCount);
+        status.put("formulaSearchable", formulaCount > 0);
+        return status;
+    }
+
+    private Map<String, Object> buildVisualAssetStatus(String paperId) {
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("pageScreenshotCount", paperVisualAssetService.countPageScreenshots(paperId));
+        status.put("tableCropCount", paperVisualAssetService.countTableCrops(paperId));
+        status.put("figureCropCount", paperVisualAssetService.countFigureCrops(paperId));
+        return status;
+    }
+
+    private Optional<Paper> findAccessiblePaper(String paperId, String userId, String orgTags) {
+        return paperService.getAccessiblePapers(userId, orgTags).stream()
+                .filter(paper -> paper.getPaperId().equals(paperId))
+                .findFirst();
+    }
+
+    private ResponseEntity<?> paperNotFoundOrForbidden() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "code", HttpStatus.NOT_FOUND.value(),
+                "message", "论文不存在或无权限访问"
+        ));
+    }
+
+    private Map<String, Object> buildTableResponse(PaperTable table) {
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("paperId", table.getPaperId());
+        dto.put("tableId", table.getTableId());
+        dto.put("pageNumber", table.getPageNumber());
+        dto.put("caption", table.getCaption());
+        dto.put("sectionTitle", table.getSectionTitle());
+        dto.put("rowCount", table.getRowCount());
+        dto.put("columnCount", table.getColumnCount());
+        dto.put("tableText", table.getTableText());
+        dto.put("tableMarkdown", table.getTableMarkdown());
+        dto.put("bboxJson", table.getBboxJson());
+        dto.put("parserName", table.getParserName());
+        dto.put("parserVersion", table.getParserVersion());
+        dto.put("screenshotAvailable", table.getScreenshotObjectKey() != null && !table.getScreenshotObjectKey().isBlank());
+        return dto;
+    }
+
+    private Map<String, Object> buildFigureResponse(PaperFigure figure) {
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("paperId", figure.getPaperId());
+        dto.put("figureId", figure.getFigureId());
+        dto.put("pageNumber", figure.getPageNumber());
+        dto.put("caption", figure.getCaption());
+        dto.put("sectionTitle", figure.getSectionTitle());
+        dto.put("figureText", figure.getFigureText());
+        dto.put("bboxJson", figure.getBboxJson());
+        dto.put("detectionSource", figure.getDetectionSource());
+        dto.put("confidence", figure.getConfidence());
+        dto.put("parserName", figure.getParserName());
+        dto.put("parserVersion", figure.getParserVersion());
+        dto.put("screenshotAvailable", figure.getScreenshotObjectKey() != null && !figure.getScreenshotObjectKey().isBlank());
+        return dto;
+    }
+
+    private Map<String, Object> buildFormulaResponse(PaperFormula formula) {
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("paperId", formula.getPaperId());
+        dto.put("formulaId", formula.getFormulaId());
+        dto.put("pageNumber", formula.getPageNumber());
+        dto.put("latex", formula.getLatex());
+        dto.put("contextText", formula.getContextText());
+        dto.put("sectionTitle", formula.getSectionTitle());
+        dto.put("bboxJson", formula.getBboxJson());
+        dto.put("parserName", formula.getParserName());
+        dto.put("parserVersion", formula.getParserVersion());
+        return dto;
+    }
+
+    private ResponseEntity<?> visualAssetUrlResponse(PaperVisualAsset asset, String message) {
+        String url = paperVisualAssetService.generateDownloadUrl(asset);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("paperId", asset.getPaperId());
+        data.put("assetType", asset.getAssetType());
+        data.put("pageNumber", asset.getPageNumber());
+        data.put("tableId", asset.getTableId());
+        data.put("figureId", asset.getFigureId());
+        data.put("downloadUrl", url);
+        data.put("contentType", asset.getContentType());
+        data.put("widthPx", asset.getWidthPx());
+        data.put("heightPx", asset.getHeightPx());
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", message,
+                "data", data
+        ));
     }
 
     @PatchMapping("/{paperId}/metadata")
@@ -454,7 +842,7 @@ public class PaperController {
                 }
 
                 Paper file = publicFile.get();
-                String downloadUrl = paperService.generateDownloadUrl(file.getPaperId());
+                String downloadUrl = paperService.generateAttachmentDownloadUrl(file.getPaperId());
 
                 if (downloadUrl == null) {
                     Map<String, Object> response = new HashMap<>();
@@ -493,7 +881,7 @@ public class PaperController {
 
             Paper file = targetFile.get();
 
-            String downloadUrl = paperService.generateDownloadUrl(file.getPaperId());
+            String downloadUrl = paperService.generateAttachmentDownloadUrl(file.getPaperId());
 
             if (downloadUrl == null) {
                 LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "FAILED_GENERATE_URL");

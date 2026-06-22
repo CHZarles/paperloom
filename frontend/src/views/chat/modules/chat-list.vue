@@ -25,6 +25,17 @@ const emit = defineEmits<{
       bboxJson?: string | null;
       parserName?: string | null;
       parserVersion?: string | null;
+      sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
+      tableId?: string | null;
+      figureId?: string | null;
+      formulaId?: string | null;
+      evidenceRole?: string | null;
+      retrievalRoute?: string | null;
+      intent?: string | null;
+      rankReason?: string | null;
+      tableText?: string | null;
+      tableMarkdown?: string | null;
+      tableScreenshotAvailable?: boolean | null;
       paperTitle: string;
       originalFilename?: string | null;
       paperId?: string | null;
@@ -104,7 +115,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
         <div class="welcome-copy">
           <div class="welcome-kicker">evidence-grounded paper reading desk</div>
           <h1>Ask papers with cited evidence</h1>
-          <p>围绕论文、PDF、方法、实验和结论提问，回答会保留来源编号、页码、chunk 与原文证据。</p>
+          <p>围绕论文、PDF、方法、实验和结论提问，回答会用 citation chip 连接页码、chunk 与原文证据。</p>
           <div class="welcome-tags" aria-label="example scopes">
             <span>[PDF]</span>
             <span>[METHOD]</span>

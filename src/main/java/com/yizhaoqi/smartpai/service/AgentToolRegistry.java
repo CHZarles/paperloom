@@ -29,6 +29,7 @@ public class AgentToolRegistry {
     private static final int MAX_SEARCH_DOCS = 20;
 
     private final HybridSearchService hybridSearchService;
+    private final PaperRetrievalService paperRetrievalService;
     private final DeepSeekClient deepSeekClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final ElasticsearchClient elasticsearchClient;
@@ -37,11 +38,13 @@ public class AgentToolRegistry {
     private final Map<String, ToolHandler> handlers;
 
     public AgentToolRegistry(HybridSearchService hybridSearchService,
+                             PaperRetrievalService paperRetrievalService,
                              DeepSeekClient deepSeekClient,
                              StringRedisTemplate stringRedisTemplate,
                              ElasticsearchClient elasticsearchClient,
                              PaperRepository paperRepository) {
         this.hybridSearchService = hybridSearchService;
+        this.paperRetrievalService = paperRetrievalService;
         this.deepSeekClient = deepSeekClient;
         this.stringRedisTemplate = stringRedisTemplate;
         this.elasticsearchClient = elasticsearchClient;
@@ -92,12 +95,19 @@ public class AgentToolRegistry {
         String query = getRequiredString(arguments, "query");
         int topK = getInt(arguments, "topK", DEFAULT_TOP_K, 1, MAX_SEARCH_DOCS);
 
-        List<SearchResult> results = hybridSearchService.searchWithPermission(query, userId, topK);
+        PaperRetrievalService.RetrievalResult retrievalResult = paperRetrievalService.retrieve(query, userId, topK);
+        List<SearchResult> results = retrievalResult.results();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("query", query);
         data.put("topK", topK);
+        data.put("intent", retrievalResult.plan().intent().name());
+        data.put("attemptedQueries", retrievalResult.attemptedQueries());
+        data.put("retrievalRoutes", List.copyOf(retrievalResult.routeHitCounts().keySet()));
+        data.put("routeHitCounts", retrievalResult.routeHitCounts());
+        data.put("finalHitCount", retrievalResult.finalHitCount());
+        data.put("fallbackUsed", retrievalResult.finalHitCount() == 0 && retrievalResult.attemptedQueries().size() > 1);
         data.put("results", results);
-        return new ToolExecutionResult("search_papers", true, formatSearchResults(results), data);
+        return new ToolExecutionResult("search_papers", true, formatSearchResults(results, retrievalResult), data);
     }
 
     private ToolExecutionResult executeGenerateSummary(Map<String, Object> arguments,
@@ -107,7 +117,7 @@ public class AgentToolRegistry {
         String topic = getRequiredString(arguments, "topic");
         int maxDocs = getInt(arguments, "maxDocs", DEFAULT_TOP_K, 1, MAX_SEARCH_DOCS);
 
-        List<SearchResult> results = hybridSearchService.searchWithPermission(topic, userId, maxDocs);
+        List<SearchResult> results = paperRetrievalService.retrieve(topic, userId, maxDocs).results();
         String summary = deepSeekClient.summarize(userId, topic, results, onChunk);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("topic", topic);
@@ -182,7 +192,10 @@ public class AgentToolRegistry {
                 "在论文库中搜索与用户问题相关的论文片段。当问题涉及论文观点、方法、实验、结论、限制、术语、对比或引用依据时应调用；普通问候、闲聊、纯创作、翻译、通用代码/常识问题，或用户明确要求不要查论文时不要调用。",
                 objectSchema(Map.of(
                         "query", stringSchema("用于论文检索的查询语句。应保留用户原话中的核心术语、方法名、数据集、指标和限定词，可包含必要的等价改写。"),
-                        "topK", integerSchema("返回的片段数量，默认 5。")
+                        "topK", integerSchema("返回的片段数量，默认 5。"),
+                        "intent", stringSchema("可选检索意图，例如 experiment_result、method、limitation、summary、general。后端会自动规划和扩展。"),
+                        "expand", booleanSchema("是否允许后端进行多查询扩展，默认 true。"),
+                        "preferredSourceKinds", arrayStringSchema("可选偏好的证据类型，例如 TEXT、TABLE、FIGURE、CHART、FORMULA。")
                 ), List.of("query"))
         );
     }
@@ -242,14 +255,37 @@ public class AgentToolRegistry {
         return schema;
     }
 
-    private String formatSearchResults(List<SearchResult> results) {
+    private Map<String, Object> booleanSchema(String description) {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "boolean");
+        schema.put("description", description);
+        return schema;
+    }
+
+    private Map<String, Object> arrayStringSchema(String description) {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "array");
+        schema.put("description", description);
+        schema.put("items", Map.of("type", "string"));
+        return schema;
+    }
+
+    private String formatSearchResults(List<SearchResult> results, PaperRetrievalService.RetrievalResult retrievalResult) {
         if (results == null || results.isEmpty()) {
-            return "未检索到相关论文片段。";
+            return "我没有找到足够可靠的论文证据来回答这个问题。"
+                    + "\n已尝试查询：" + String.join(" | ", retrievalResult.attemptedQueries())
+                    + "\n各路由命中数：" + retrievalResult.routeHitCounts();
         }
 
         StringBuilder output = new StringBuilder("检索到 ").append(results.size()).append(" 个论文片段。")
-                .append("请基于这些片段回答用户问题；不得声称论文库暂无相关信息。")
-                .append("如果片段信息不足，请说明“基于已检索片段只能确认……”并标注来源编号。");
+                .append("\n意图：").append(retrievalResult.plan().intent())
+                .append("\n已尝试查询：").append(String.join(" | ", retrievalResult.attemptedQueries()))
+                .append("\n")
+                .append("请先判断问题类型（summary/method/experiment/limitation/comparison/factual lookup），只选择最能回答问题的 3-5 条证据。")
+                .append("最终回答使用 **结论** / **依据** / **限制**，不要按检索片段顺序机械罗列。")
+                .append("如果用户是在推荐或查找相关论文，必须列出论文标题和推荐理由，每个推荐项末尾放 [n]。")
+                .append("如果证据不足，请在限制中说明不确定性；不得声称论文库暂无相关信息。")
+                .append("引用标记只输出 [1]、[2] 这类紧凑锚点；不要把论文标题、页码、paperId、chunk、score 或 References 列表塞进引用标记，也不要在结尾堆叠所有引用。正文可以写论文标题、方法名、数据集和推荐理由。");
         for (int i = 0; i < results.size(); i++) {
             SearchResult result = results.get(i);
             output.append("\n\n[").append(i + 1).append("] ");
@@ -258,6 +294,15 @@ public class AgentToolRegistry {
             }
             output.append("(paperId=").append(result.getPaperId())
                     .append(", chunkId=").append(result.getChunkId());
+            if (result.getSourceKind() != null) {
+                output.append(", sourceKind=").append(result.getSourceKind());
+            }
+            if (result.getRetrievalQuery() != null) {
+                output.append(", retrievalQuery=").append(result.getRetrievalQuery());
+            }
+            if (result.getRetrievalRoute() != null) {
+                output.append(", retrievalRoute=").append(result.getRetrievalRoute());
+            }
             if (result.getPageNumber() != null) {
                 output.append(", page=").append(result.getPageNumber());
             }

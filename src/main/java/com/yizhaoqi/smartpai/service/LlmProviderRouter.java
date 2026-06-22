@@ -135,7 +135,12 @@ public class LlmProviderRouter {
                 .append("- 通用编程语法、数学计算等完全不依赖任何专有信息的常识题；\n")
                 .append("- 用户在本轮明确表示「不要查论文 / 直接回答」。\n\n")
                 .append("回答与异常处理：\n")
-                .append("- 只要 search_papers 返回了片段，必须基于片段作答并按来源编号标注，禁止回答「论文库暂无相关信息」。\n")
+                .append("- 只要 search_papers 返回了片段，必须基于片段作答并用紧凑引用标记标注证据，例如 [1]、[2]；禁止回答「论文库暂无相关信息」。\n")
+                .append("- 引用标记只输出 [n] 锚点，不要写「来源#1: 论文标题 | 第7页」、paperId、chunk、score 或 References 列表；正文可以写论文标题、方法名、数据集和推荐理由，完整证据由前端 Source Evidence 面板展示。\n")
+                .append("- 默认回答结构为 **结论** / **依据** / **限制**：结论直接回答问题，依据按论点组织而不是按片段顺序罗列，限制说明证据不足或论文未覆盖的部分。\n")
+                .append("- 当用户要求推荐论文、找相关论文或问有哪些论文时，必须列出论文标题和推荐理由；每个推荐项末尾用 [n] 标证据，不要只输出引用锚点。\n")
+                .append("- 每条依据必须服务于结论，合并重复证据；同一条依据最多放 1-2 个引用，不要在结尾堆叠 [1][2][3][4][5]。\n")
+                .append("- 禁止使用「基于已检索片段」「以下为与...相关的论文内容摘要」「已检索到的内容显示」「这些内容共同揭示」这类模板化开头或收尾。\n")
                 .append("- 只有工具明确返回零片段时，才说明暂无相关材料并提示用户补充线索。\n")
                 .append("- 工具失败时根据错误信息决定下一步（重试 / 换 query / 继续推理），不要直接中断。\n")
                 .append("- 如需记录反馈或查看论文库统计，通过 tool_calls 调用对应工具。\n")
@@ -164,6 +169,9 @@ public class LlmProviderRouter {
                     continue;
                 }
                 if ("user".equals(role) || "assistant".equals(role) || "system".equals(role)) {
+                    if ("assistant".equals(role) && isCitationOnlyAssistantHistory(content)) {
+                        continue;
+                    }
                     messages.add(newMessage(role, limitText(content, REACT_HISTORY_MAX_CONTENT_CHARS)));
                 }
             }
@@ -286,6 +294,7 @@ public class LlmProviderRouter {
         request.put("messages", messages);
         request.put("stream", stream);
         request.put("max_tokens", Math.max(maxCompletionTokens, 1));
+        disableMiniMaxM3Thinking(model, request);
         if (stream) {
             request.put("stream_options", Map.of("include_usage", true));
         }
@@ -324,7 +333,14 @@ public class LlmProviderRouter {
         if (gen.getMaxTokens() != null) {
             request.put("max_tokens", gen.getMaxTokens());
         }
+        disableMiniMaxM3Thinking(model, request);
         return request;
+    }
+
+    private void disableMiniMaxM3Thinking(String model, Map<String, Object> request) {
+        if ("MiniMax-M3".equalsIgnoreCase(model)) {
+            request.put("thinking", Map.of("type", "disabled"));
+        }
     }
 
     private List<Map<String, String>> buildMessages(String userMessage,
@@ -361,6 +377,22 @@ public class LlmProviderRouter {
         message.put("role", role);
         message.put("content", content == null ? "" : content);
         return message;
+    }
+
+    private boolean isCitationOnlyAssistantHistory(String content) {
+        if (content == null || !content.matches("(?s).*\\[\\d+].*")) {
+            return false;
+        }
+        String remaining = content
+                .replaceAll("\\[\\d+]", "")
+                .replaceAll("[\\s\\p{Punct}，。！？；：、（）【】《》“”‘’*#\\-—_`>]+", "")
+                .replace("结论", "")
+                .replace("依据", "")
+                .replace("限制", "")
+                .replace("推荐", "")
+                .replace("核心", "")
+                .replace("关键", "");
+        return remaining.length() < 8;
     }
 
     private String limitText(String text, int maxChars) {
