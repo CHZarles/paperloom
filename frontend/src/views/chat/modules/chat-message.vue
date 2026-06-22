@@ -11,7 +11,7 @@ const props = defineProps<{
   msg: Api.Chat.Message;
   sessionId?: string;
   retrievalQueryFallback?: string;
-  previewMode?: 'page' | 'drawer';
+  evidenceMode?: 'page' | 'drawer';
 }>();
 
 const emit = defineEmits<{
@@ -25,7 +25,14 @@ const emit = defineEmits<{
       matchedChunkText?: string | null;
       score?: number | null;
       chunkId?: number | null;
+      elementType?: string | null;
+      sectionTitle?: string | null;
+      sectionLevel?: number | null;
+      bboxJson?: string | null;
+      parserName?: string | null;
+      parserVersion?: string | null;
       paperTitle: string;
+      originalFilename?: string | null;
       paperId?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
@@ -91,7 +98,14 @@ async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad')
 
 // 存储文件名和对应的事件处理
 const sourceFiles = ref<
-  Array<{ paperTitle: string; id: string; referenceNumber: number; paperId?: string; pageNumber?: number }>
+  Array<{
+    paperTitle: string;
+    originalFilename?: string | null;
+    id: string;
+    referenceNumber: number;
+    paperId?: string;
+    pageNumber?: number;
+  }>
 >([]);
 // eslint-disable-next-line no-useless-escape
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
@@ -213,6 +227,7 @@ function createSourceLink(
 
   sourceFiles.value.push({
     paperTitle: trimmedFileName,
+    originalFilename: persistedDetail?.originalFilename,
     id: fileId,
     referenceNumber,
     paperId,
@@ -286,7 +301,7 @@ function extractContextAnchorText(target: HTMLElement) {
     .trim();
 }
 
-function openReferencePreviewPage(payload: {
+function openReferenceEvidencePage(payload: {
   retrievalMode?: Api.Chat.ReferenceEvidence['retrievalMode'];
   retrievalLabel?: string | null;
   retrievalQuery?: string | null;
@@ -294,26 +309,33 @@ function openReferencePreviewPage(payload: {
   matchedChunkText?: string | null;
   score?: number | null;
   chunkId?: number | null;
+  elementType?: string | null;
+  sectionTitle?: string | null;
+  sectionLevel?: number | null;
+  bboxJson?: string | null;
+  parserName?: string | null;
+  parserVersion?: string | null;
   paperTitle: string;
+  originalFilename?: string | null;
   paperId?: string | null;
   pageNumber?: number | null;
   anchorText?: string | null;
   conversationRecordId?: number;
   referenceNumber: number;
 }) {
-  if (props.previewMode === 'drawer') {
+  if (props.evidenceMode === 'drawer') {
     emit('openReference', payload);
     return;
   }
 
-  const previewKey = `reference-preview:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-  localStorage.setItem(previewKey, JSON.stringify(payload));
+  const evidenceKey = `reference-evidence:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  localStorage.setItem(evidenceKey, JSON.stringify(payload));
 
   const routeLocation = router.resolve({
     path: '/chat',
     query: {
-      preview: 'reference',
-      previewKey
+      evidence: 'reference',
+      evidenceKey
     }
   });
 
@@ -337,6 +359,7 @@ function handleContentClick(event: MouseEvent) {
         const contextAnchorText = extractContextAnchorText(sourceTarget);
         handleSourceFileClick({
           paperTitle: file.paperTitle,
+          originalFilename: file.originalFilename,
           referenceNumber: file.referenceNumber,
           paperId: file.paperId,
           pageNumber: file.pageNumber,
@@ -347,11 +370,12 @@ function handleContentClick(event: MouseEvent) {
   }
 }
 
-// 处理来源文件点击事件
-// Existing reference resolution has several fallback branches because older persisted messages may miss detail fields.
+// 处理来源证据点击事件
+// 引用详情优先使用当前消息中的持久化映射，缺少证据文本时再从 MySQL 历史记录刷新。
 // eslint-disable-next-line complexity
 async function handleSourceFileClick(fileInfo: {
   paperTitle: string;
+  originalFilename?: string | null;
   referenceNumber: number;
   paperId?: string;
   pageNumber?: number;
@@ -359,6 +383,7 @@ async function handleSourceFileClick(fileInfo: {
 }) {
   const {
     paperTitle,
+    originalFilename,
     referenceNumber,
     paperId: extractedPaperId,
     pageNumber: extractedPageNumber,
@@ -394,8 +419,9 @@ async function handleSourceFileClick(fileInfo: {
     }
 
     if (persistedDetail?.paperId && !detail) {
-      openReferencePreviewPage({
+      openReferenceEvidencePage({
         paperTitle: persistedDetail.paperTitle || paperTitle,
+        originalFilename: persistedDetail.originalFilename || originalFilename,
         paperId: persistedDetail.paperId,
         pageNumber: persistedDetail.pageNumber,
         anchorText: persistedDetail.anchorText || clickedAnchorText || '',
@@ -406,6 +432,12 @@ async function handleSourceFileClick(fileInfo: {
         matchedChunkText: persistedDetail.matchedChunkText,
         score: persistedDetail.score,
         chunkId: persistedDetail.chunkId,
+        elementType: persistedDetail.elementType,
+        sectionTitle: persistedDetail.sectionTitle,
+        sectionLevel: persistedDetail.sectionLevel,
+        bboxJson: persistedDetail.bboxJson,
+        parserName: persistedDetail.parserName,
+        parserVersion: persistedDetail.parserVersion,
         conversationRecordId,
         referenceNumber
       });
@@ -413,8 +445,9 @@ async function handleSourceFileClick(fileInfo: {
     }
 
     const targetPaperId = detail?.paperId || extractedPaperId || null;
-    openReferencePreviewPage({
+    openReferenceEvidencePage({
       paperTitle: detail?.paperTitle || paperTitle,
+      originalFilename: detail?.originalFilename || originalFilename,
       paperId: targetPaperId,
       pageNumber: detail?.pageNumber ?? extractedPageNumber,
       anchorText: detail?.anchorText || clickedAnchorText || '',
@@ -425,17 +458,24 @@ async function handleSourceFileClick(fileInfo: {
       matchedChunkText: detail?.matchedChunkText,
       score: detail?.score,
       chunkId: detail?.chunkId,
+      elementType: detail?.elementType,
+      sectionTitle: detail?.sectionTitle,
+      sectionLevel: detail?.sectionLevel,
+      bboxJson: detail?.bboxJson,
+      parserName: detail?.parserName,
+      parserVersion: detail?.parserVersion,
       conversationRecordId,
       referenceNumber
     });
   } catch {
-    window.$message?.error(`论文预览失败: ${paperTitle}`);
+    window.$message?.error(`引用证据打开失败: ${paperTitle}`);
   }
 }
 
 function openMappedReference(referenceNumber: number, detail: Api.Chat.ReferenceEvidence) {
-  openReferencePreviewPage({
+  openReferenceEvidencePage({
     paperTitle: detail.paperTitle,
+    originalFilename: detail.originalFilename,
     paperId: detail.paperId,
     pageNumber: detail.pageNumber,
     anchorText: detail.anchorText || '',
@@ -446,6 +486,12 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
     matchedChunkText: detail.matchedChunkText,
     score: detail.score,
     chunkId: detail.chunkId,
+    elementType: detail.elementType,
+    sectionTitle: detail.sectionTitle,
+    sectionLevel: detail.sectionLevel,
+    bboxJson: detail.bboxJson,
+    parserName: detail.parserName,
+    parserVersion: detail.parserVersion,
     conversationRecordId: props.msg.conversationRecordId,
     referenceNumber
   });
@@ -607,7 +653,14 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
 
 .message-block--assistant .message-author {
   color: var(--color-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 17px;
 }
 
@@ -641,7 +694,14 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
 }
 
 .reference-list__item {
@@ -668,7 +728,14 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   border-right: 1px solid var(--color-border);
   color: var(--color-primary);
   padding-right: 8px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -804,6 +871,13 @@ function openMappedReference(referenceNumber: number, detail: Api.Chat.Reference
   --vp-code-block-color: var(--color-text);
   --vp-code-line-number-color: var(--color-text-muted);
   --vp-code-line-highlight-color: var(--color-primary-soft-bg);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
 }
 </style>

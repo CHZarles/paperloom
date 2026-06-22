@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -93,7 +94,7 @@ class BootstrapPaperInitializerTest {
 
         initializer.run();
 
-        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyBoolean());
+        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyString(), anyBoolean());
         verify(vectorizationService, never()).vectorize(anyString(), anyString(), anyString(), anyBoolean(), anyString());
         verify(paperRepository, never()).save(any(Paper.class));
         verify(minioClient, never()).putObject(any(PutObjectArgs.class));
@@ -120,7 +121,7 @@ class BootstrapPaperInitializerTest {
         initializer.run();
 
         verify(minioClient).putObject(any(PutObjectArgs.class));
-        verify(parseService).parseAndSave(anyString(), any(), anyString(), anyString(), anyBoolean());
+        verify(parseService).parseAndSave(eq(fileMd5), any(), eq("paismart.pdf"), eq("1"), eq("default"), eq(true));
         verify(vectorizationService).vectorize(fileMd5, "1", "default", true, "system-bootstrap");
 
         ArgumentCaptor<Paper> captor = ArgumentCaptor.forClass(Paper.class);
@@ -171,7 +172,7 @@ class BootstrapPaperInitializerTest {
         initializer.run();
 
         verify(paperRepository).deleteAll(List.of(duplicate));
-        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyBoolean());
+        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyString(), anyBoolean());
         verify(vectorizationService, never()).vectorize(anyString(), anyString(), anyString(), anyBoolean(), anyString());
     }
 

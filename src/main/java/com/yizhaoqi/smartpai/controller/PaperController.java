@@ -19,8 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,8 +68,9 @@ public class PaperController {
         try {
             LogUtils.logBusiness("DELETE_PAPER", userId, "接收到删除论文请求: paperId=%s, role=%s", paperId, role);
 
-            // 获取论文记录
-            Optional<Paper> fileOpt = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId);
+            Optional<Paper> fileOpt = "ADMIN".equalsIgnoreCase(role)
+                    ? paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
+                    : paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId);
             if (fileOpt.isEmpty()) {
                 LogUtils.logUserOperation(userId, "DELETE_PAPER", paperId, "FAILED_NOT_FOUND");
                 monitor.end("删除失败：论文不存在");
@@ -82,8 +81,6 @@ public class PaperController {
             }
 
             Paper file = fileOpt.get();
-
-            // 权限检查：只有论文所有者或管理员可以删除
             if (!file.getUserId().equals(userId) && !"ADMIN".equals(role)) {
                 LogUtils.logUserOperation(userId, "DELETE_PAPER", paperId, "FAILED_PERMISSION_DENIED");
                 LogUtils.logBusiness("DELETE_PAPER", userId, "用户无权删除论文: paperId=%s, owner=%s", paperId, file.getUserId());
@@ -94,8 +91,7 @@ public class PaperController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
 
-            // 执行删除操作
-            paperService.deletePaper(paperId, userId);
+            paperService.deletePaper(paperId, userId, role);
 
             LogUtils.logFileOperation(userId, "DELETE", file.getOriginalFilename(), paperId, "SUCCESS");
             monitor.end("论文删除成功");
@@ -570,7 +566,7 @@ public class PaperController {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
                 }
 
-                Map<String, Object> previewData = buildPreviewResponse(file, pageNumber, false);
+                Map<String, Object> previewData = buildPreviewResponse(file);
                 if (previewData == null) {
                     Map<String, Object> response = new HashMap<>();
                     response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -583,9 +579,8 @@ public class PaperController {
                 response.put("message", "论文预览内容获取成功");
                 response.put("data", previewData);
                 LogUtils.logBusiness("PREVIEW_PAPER", "anonymous",
-                        "论文预览响应已生成: paperId=%s, mode=%s, pageNumber=%s",
+                        "论文预览响应已生成: paperId=%s, mode=full-document, pageNumber=%s",
                         file.getPaperId(),
-                        Boolean.TRUE.equals(previewData.get("singlePageMode")) ? "single-page" : "full-document",
                         pageNumber);
                 return ResponseEntity.ok(response);
             }
@@ -607,7 +602,7 @@ public class PaperController {
 
             file = targetFile.get();
 
-            Map<String, Object> previewData = buildPreviewResponse(file, pageNumber, true);
+            Map<String, Object> previewData = buildPreviewResponse(file);
             if (previewData == null) {
                 LogUtils.logUserOperation(userId, "PREVIEW_PAPER", paperId, "FAILED_GET_CONTENT");
                 monitor.end("预览失败：无法获取论文内容");
@@ -626,9 +621,8 @@ public class PaperController {
             response.put("message", "论文预览内容获取成功");
             response.put("data", previewData);
             LogUtils.logBusiness("PREVIEW_PAPER", userId,
-                    "论文预览响应已生成: paperId=%s, mode=%s, pageNumber=%s",
+                    "论文预览响应已生成: paperId=%s, mode=full-document, pageNumber=%s",
                     file.getPaperId(),
-                    Boolean.TRUE.equals(previewData.get("singlePageMode")) ? "single-page" : "full-document",
                     pageNumber);
             return ResponseEntity.ok(response);
 
@@ -664,83 +658,6 @@ public class PaperController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestParam(required = false) String token) {
         return previewPaper(paperId, pageNumber, authorization, token);
-    }
-
-    @GetMapping("/page-preview")
-    public ResponseEntity<?> previewPdfPage(
-            @RequestParam String paperId,
-            @RequestParam Integer pageNumber,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("PREVIEW_PDF_PAGE");
-        try {
-            LogUtils.logBusiness("PREVIEW_PDF_PAGE", userId,
-                    "接收到论文 PDF 单页预览请求: paperId=%s, pageNumber=%s", paperId, pageNumber);
-
-            Paper file = paperService.getAccessiblePapers(userId, orgTags).stream()
-                    .filter(item -> item.getPaperId().equals(paperId))
-                    .findFirst()
-                    .orElse(null);
-
-            if (file == null) {
-                monitor.end("预览失败：论文不存在或无权限访问");
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", HttpStatus.NOT_FOUND.value());
-                response.put("message", "论文不存在或无权限访问");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            }
-
-            if (!"pdf".equalsIgnoreCase(getFileExtension(file.getOriginalFilename()))) {
-                monitor.end("预览失败：仅支持 PDF 单页预览");
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", HttpStatus.BAD_REQUEST.value());
-                response.put("message", "仅支持 PDF 单页预览");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-
-            PaperService.PdfSinglePagePreview preview = paperService.getPdfSinglePagePreview(paperId, pageNumber);
-            byte[] pdfBytes = preview.content();
-            String cacheStatus = preview.cacheHit() ? "HIT" : "MISS";
-
-            LogUtils.logBusiness("PREVIEW_PDF_PAGE", userId,
-                    "论文 PDF 单页预览响应: paperId=%s, pageNumber=%s, cache=%s, contentLength=%s",
-                    paperId, pageNumber, cacheStatus, pdfBytes.length);
-
-            monitor.end("论文 PDF 单页预览生成成功");
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CACHE_CONTROL, "private, max-age=1800")
-                    .header(HttpHeaders.ETAG, "\"" + paperId + ":" + pageNumber + "\"")
-                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(pdfBytes.length))
-                    .header("X-Preview-Mode", "single-page")
-                    .header("X-Preview-Cache", cacheStatus)
-                    .header("X-Preview-Page", String.valueOf(pageNumber))
-                    .body(pdfBytes);
-        } catch (IllegalArgumentException e) {
-            monitor.end("预览失败: " + e.getMessage());
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", HttpStatus.BAD_REQUEST.value());
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        } catch (Exception e) {
-            LogUtils.logBusinessError("PREVIEW_PDF_PAGE", userId,
-                    "论文 PDF 单页预览失败: paperId=%s, pageNumber=%s", e, paperId, pageNumber);
-            monitor.end("预览失败: " + e.getMessage());
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            response.put("message", "论文 PDF 单页预览失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
-
-    @GetMapping("/{paperId}/page-preview")
-    public ResponseEntity<?> previewPdfPageByPath(
-            @PathVariable String paperId,
-            @RequestParam Integer pageNumber,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        return previewPdfPage(paperId, pageNumber, userId, orgTags);
     }
 
     @GetMapping("/reference-detail")
@@ -802,7 +719,7 @@ public class PaperController {
         }
     }
 
-    private Map<String, Object> buildPreviewResponse(Paper file, Integer pageNumber, boolean preferSinglePagePreview) {
+    private Map<String, Object> buildPreviewResponse(Paper file) {
         String fileName = file.getOriginalFilename();
         String extension = getFileExtension(fileName);
         String previewType = getPreviewType(extension);
@@ -823,13 +740,6 @@ public class PaperController {
             return payload;
         }
 
-        if ("pdf".equals(previewType) && preferSinglePagePreview && pageNumber != null && pageNumber > 0) {
-            payload.put("previewUrl", buildSinglePagePreviewUrl(file.getPaperId(), pageNumber));
-            payload.put("singlePageMode", true);
-            payload.put("sourcePageNumber", pageNumber);
-            return payload;
-        }
-
         String previewUrl = paperService.generateDownloadUrl(file.getPaperId());
         if (previewUrl == null) {
             return null;
@@ -837,13 +747,6 @@ public class PaperController {
 
         payload.put("previewUrl", previewUrl);
         return payload;
-    }
-
-    private String buildSinglePagePreviewUrl(String paperId, Integer pageNumber) {
-        return "/api/v1/papers/"
-                + URLEncoder.encode(paperId, StandardCharsets.UTF_8)
-                + "/page-preview?pageNumber="
-                + pageNumber;
     }
 
     private String normalizeProcessingStatus(String vectorizationStatus, int uploadStatus) {

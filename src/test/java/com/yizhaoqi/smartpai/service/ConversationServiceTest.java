@@ -15,13 +15,16 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
@@ -128,5 +131,54 @@ class ConversationServiceTest {
 
         assertEquals("对话不存在", exception.getMessage());
         verify(sessionRepository, never()).save(any(ConversationSession.class));
+    }
+
+    @Test
+    void findReferenceDetailRestoresPaperEvidenceFieldsFromMysqlHistory() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "paperId": "paper-1",
+                    "paperTitle": "Parsed Paper Title",
+                    "originalFilename": "uploaded-paper.pdf",
+                    "pageNumber": 3,
+                    "anchorText": "anchor text",
+                    "retrievalMode": "HYBRID",
+                    "retrievalLabel": "混合召回",
+                    "retrievalQuery": "bandit method",
+                    "matchedChunkText": "matched chunk text",
+                    "evidenceSnippet": "evidence snippet",
+                    "score": 0.82,
+                    "chunkId": 17,
+                    "elementType": "PARAGRAPH",
+                    "sectionTitle": "Method",
+                    "sectionLevel": 2,
+                    "bboxJson": "{\\"x1\\":10,\\"y1\\":20,\\"x2\\":300,\\"y2\\":360}",
+                    "parserName": "OpenDataLoader",
+                    "parserVersion": "2.4.7"
+                  }
+                }
+                """);
+        when(conversationRepository.findByIdAndUserId(10L, 2L)).thenReturn(Optional.of(conversation));
+
+        Optional<Map<String, Object>> detailOpt = conversationService.findReferenceDetail(2L, 10L, 1);
+
+        assertTrue(detailOpt.isPresent());
+        Map<String, Object> detail = detailOpt.get();
+        assertEquals(1, detail.get("referenceNumber"));
+        assertEquals("paper-1", detail.get("paperId"));
+        assertEquals("Parsed Paper Title", detail.get("paperTitle"));
+        assertEquals("uploaded-paper.pdf", detail.get("originalFilename"));
+        assertEquals(3, detail.get("pageNumber"));
+        assertEquals(17, detail.get("chunkId"));
+        assertEquals("PARAGRAPH", detail.get("elementType"));
+        assertEquals("Method", detail.get("sectionTitle"));
+        assertEquals(2, detail.get("sectionLevel"));
+        assertEquals("{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}", detail.get("bboxJson"));
+        assertEquals("OpenDataLoader", detail.get("parserName"));
+        assertEquals("2.4.7", detail.get("parserVersion"));
     }
 }

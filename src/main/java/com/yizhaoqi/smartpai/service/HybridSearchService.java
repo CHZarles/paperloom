@@ -156,7 +156,13 @@ public class HybridSearchService {
                                 hit.source().getPageNumber(),
                                 hit.source().getAnchorText(),
                                 "HYBRID",
-                                hit.source().getTextContent()
+                                hit.source().getTextContent(),
+                                hit.source().getElementType(),
+                                hit.source().getSectionTitle(),
+                                hit.source().getSectionLevel(),
+                                hit.source().getBboxJson(),
+                                hit.source().getParserName(),
+                                hit.source().getParserVersion()
                         );
                     })
                     .toList();
@@ -265,7 +271,13 @@ public class HybridSearchService {
                                 hit.source().getPageNumber(),
                                 hit.source().getAnchorText(),
                                 "TEXT_ONLY",
-                                hit.source().getTextContent()
+                                hit.source().getTextContent(),
+                                hit.source().getElementType(),
+                                hit.source().getSectionTitle(),
+                                hit.source().getSectionLevel(),
+                                hit.source().getBboxJson(),
+                                hit.source().getParserName(),
+                                hit.source().getParserVersion()
                         );
                     })
                     .toList();
@@ -342,7 +354,13 @@ public class HybridSearchService {
                                 hit.source().getPageNumber(),
                                 hit.source().getAnchorText(),
                                 "HYBRID",
-                                hit.source().getTextContent()
+                                hit.source().getTextContent(),
+                                hit.source().getElementType(),
+                                hit.source().getSectionTitle(),
+                                hit.source().getSectionLevel(),
+                                hit.source().getBboxJson(),
+                                hit.source().getParserName(),
+                                hit.source().getParserVersion()
                         );
                     })
                     .toList();
@@ -391,7 +409,13 @@ public class HybridSearchService {
                             hit.source().getPageNumber(),
                             hit.source().getAnchorText(),
                             "TEXT_ONLY",
-                            hit.source().getTextContent()
+                            hit.source().getTextContent(),
+                            hit.source().getElementType(),
+                            hit.source().getSectionTitle(),
+                            hit.source().getSectionLevel(),
+                            hit.source().getBboxJson(),
+                            hit.source().getParserName(),
+                            hit.source().getParserVersion()
                     );
                 })
                 .toList();
@@ -489,9 +513,15 @@ public class HybridSearchService {
                     .map(SearchResult::getPaperId)
                     .collect(Collectors.toSet());
             List<Paper> uploads = paperRepository.findByPaperIdIn(new java.util.ArrayList<>(paperIds));
-            Map<String, String> paperIdToTitle = uploads.stream()
-                    .collect(Collectors.toMap(Paper::getPaperId, Paper::getOriginalFilename, (existing, replacement) -> existing));
-            results.forEach(r -> r.setPaperTitle(paperIdToTitle.get(r.getPaperId())));
+            Map<String, Paper> paperById = uploads.stream()
+                    .collect(Collectors.toMap(Paper::getPaperId, paper -> paper, (existing, replacement) -> existing));
+            results.forEach(result -> {
+                Paper paper = paperById.get(result.getPaperId());
+                if (paper != null) {
+                    result.setPaperTitle(paper.getPaperTitle());
+                    result.setOriginalFilename(paper.getOriginalFilename());
+                }
+            });
         } catch (Exception e) {
             logger.error("补充论文标题失败", e);
         }

@@ -65,6 +65,7 @@ class ChatHandlerRetrievalPolicyTest {
         return new ChatHandler.ReferenceInfo(
                 "md5-" + paperTitle,
                 paperTitle,
+                paperTitle,
                 null,
                 "",
                 "hybrid",
@@ -73,7 +74,13 @@ class ChatHandlerRetrievalPolicyTest {
                 "matched text",
                 "snippet",
                 1.0,
-                1
+                1,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 }

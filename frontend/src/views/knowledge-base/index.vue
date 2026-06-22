@@ -317,25 +317,37 @@ async function getList() {
 
 async function handleDelete(paperId: string) {
   const index = tasks.value.findIndex(task => task.paperId === paperId);
+  const task = index !== -1 ? tasks.value[index] : null;
 
-  if (index !== -1) {
-    tasks.value[index].requestIds?.forEach(requestId => {
+  if (task) {
+    task.requestIds?.forEach(requestId => {
       request.cancelRequest(requestId);
     });
   }
 
-  // 如果文件一个分片也没有上传完成，则直接删除
-  if (tasks.value[index].uploadedChunks && tasks.value[index].uploadedChunks.length === 0) {
+  if (task && isLocalOnlyPendingUpload(task, paperId)) {
     tasks.value.splice(index, 1);
     return;
   }
 
   const { error } = await request({ url: `/papers/${paperId}`, method: 'DELETE' });
   if (!error) {
-    tasks.value.splice(index, 1);
+    if (index !== -1) {
+      tasks.value.splice(index, 1);
+    }
     window.$message?.success('删除成功');
     await getData();
   }
+}
+
+function isLocalOnlyPendingUpload(task: Api.Paper.UploadTask, paperId: string) {
+  const hasRemoteRecord =
+    data.value.some(item => item.paperId === paperId) ||
+    Boolean(task.createdAt || task.userId || task.uploadStatus !== undefined);
+
+  return (
+    Boolean(task.file) && !hasRemoteRecord && task.status === UploadStatus.Pending && task.uploadedChunks.length === 0
+  );
 }
 
 // #region 文件上传

@@ -14,6 +14,27 @@
         "type": "text",
         "index": false
       },
+      "elementType": {
+        "type": "keyword"
+      },
+      "sectionTitle": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "sectionLevel": {
+        "type": "integer"
+      },
+      "bboxJson": {
+        "type": "text",
+        "index": false
+      },
+      "parserName": {
+        "type": "keyword"
+      },
+      "parserVersion": {
+        "type": "keyword"
+      },
       "textContent": {
         "type": "text",
         "analyzer": "ik_max_word",

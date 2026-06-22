@@ -436,6 +436,12 @@ declare namespace Api {
       evidenceSnippet?: string | null;
       score?: number | null;
       chunkId?: number | null;
+      elementType?: string | null;
+      sectionTitle?: string | null;
+      sectionLevel?: number | null;
+      bboxJson?: string | null;
+      parserName?: string | null;
+      parserVersion?: string | null;
     }
 
     interface Input {

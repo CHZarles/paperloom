@@ -137,6 +137,10 @@ paper:
     min-chunk-size: 100
     buffer-size: 8192
     max-memory-threshold: 0.8
+    opendataloader:
+      reading-order: ${PAPER_PARSING_OPENDATALOADER_READING_ORDER:xycut}
+      hybrid: ${PAPER_PARSING_OPENDATALOADER_HYBRID:off}
+      image-output: ${PAPER_PARSING_OPENDATALOADER_IMAGE_OUTPUT:off}
   bootstrap:
     enabled: ${PAPER_BOOTSTRAP_ENABLED:true}
     path: ${PAPER_BOOTSTRAP_PATH:docs/paismart.pdf}

@@ -102,7 +102,7 @@ function onUpdate(option: unknown) {
   <NModal
     v-model:show="visible"
     preset="dialog"
-    title="文件上传"
+    title="上传论文 PDF"
     :show-icon="false"
     :mask-closable="false"
     class="w-500px!"
@@ -132,7 +132,7 @@ function onUpdate(option: unknown) {
           </NSpace>
         </NRadioGroup>
       </NFormItem>
-      <NFormItem label="标签描述" path="fileList">
+      <NFormItem label="论文 PDF" path="fileList">
         <NUpload
           v-model:file-list="model.fileList"
           :accept="uploadAccept"
@@ -140,7 +140,7 @@ function onUpdate(option: unknown) {
           :multiple="false"
           :default-upload="false"
         >
-          <NButton>上传文件</NButton>
+          <NButton>选择 PDF</NButton>
         </NUpload>
         <div v-if="fileSizeLimitError" class="mt-8px text-12px" style="color: var(--color-error)">
           {{ fileSizeLimitError }}
@@ -157,7 +157,7 @@ function onUpdate(option: unknown) {
     <template #action>
       <NSpace :size="16">
         <NButton @click="close">取消</NButton>
-        <NButton type="primary" :disabled="submitDisabled" @click="handleSubmit">保存</NButton>
+        <NButton type="primary" :disabled="submitDisabled" @click="handleSubmit">上传</NButton>
       </NSpace>
     </template>
   </NModal>

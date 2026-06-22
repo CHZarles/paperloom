@@ -32,6 +32,29 @@ public class PaperTextChunk {
     @Column(name = "anchor_text", length = 512)
     private String anchorText;
 
+    @Column(name = "element_type", length = 64)
+    private String elementType;
+
+    @Column(name = "section_title", length = 500)
+    private String sectionTitle;
+
+    @Column(name = "section_level")
+    private Integer sectionLevel;
+
+    @Lob
+    @Column(name = "bbox_json")
+    private String bboxJson;
+
+    @Column(name = "parser_name", length = 64)
+    private String parserName;
+
+    @Column(name = "parser_version", length = 64)
+    private String parserVersion;
+
+    @Lob
+    @Column(name = "raw_provenance_json")
+    private String rawProvenanceJson;
+
     @Column(length = 32)
     private String modelVersion;
     

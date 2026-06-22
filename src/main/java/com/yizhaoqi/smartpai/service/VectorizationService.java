@@ -78,6 +78,12 @@ public class VectorizationService {
                             chunks.get(i).getContent(),
                             chunks.get(i).getPageNumber(),
                             chunks.get(i).getAnchorText(),
+                            chunks.get(i).getElementType(),
+                            chunks.get(i).getSectionTitle(),
+                            chunks.get(i).getSectionLevel(),
+                            chunks.get(i).getBboxJson(),
+                            chunks.get(i).getParserName(),
+                            chunks.get(i).getParserVersion(),
                             vectors.get(i),
                             embeddingResult.modelVersion(),
                             userId,
@@ -121,7 +127,13 @@ public class VectorizationService {
                         vector.getChunkId(),
                         vector.getTextContent(),
                         vector.getPageNumber(),
-                        vector.getAnchorText()
+                        vector.getAnchorText(),
+                        vector.getElementType(),
+                        vector.getSectionTitle(),
+                        vector.getSectionLevel(),
+                        vector.getBboxJson(),
+                        vector.getParserName(),
+                        vector.getParserVersion()
                 ))
                 .toList();
     }

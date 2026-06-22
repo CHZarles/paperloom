@@ -115,6 +115,10 @@ paper:
     chunk-size: 512
     overlap-size: 100
     min-chunk-size: 100
+    opendataloader:
+      reading-order: ${PAPER_PARSING_OPENDATALOADER_READING_ORDER:xycut}
+      hybrid: ${PAPER_PARSING_OPENDATALOADER_HYBRID:off}
+      image-output: ${PAPER_PARSING_OPENDATALOADER_IMAGE_OUTPUT:off}
 
 elasticsearch:
   # dev 下允许按需使用 https + 自签名证书

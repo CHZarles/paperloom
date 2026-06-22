@@ -20,6 +20,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaperControllerContractTest {
@@ -87,5 +89,32 @@ class PaperControllerContractTest {
         assertFalse(item.containsKey("sourceFileName"));
         assertFalse(item.containsKey("public"));
         assertFalse(item.containsKey("vectorizationStatus"));
+    }
+
+    @Test
+    void adminCanDeletePaperOwnedByAnotherUser() {
+        Paper paper = new Paper();
+        paper.setPaperId("0123456789abcdef0123456789abcdef");
+        paper.setOriginalFilename("other-user-paper.pdf");
+        paper.setUserId("2");
+
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("0123456789abcdef0123456789abcdef"))
+                .thenReturn(Optional.of(paper));
+
+        var response = paperController.deletePaper("0123456789abcdef0123456789abcdef", "1", "ADMIN");
+
+        assertEquals(200, response.getStatusCode().value());
+        verify(paperService).deletePaper("0123456789abcdef0123456789abcdef", "1", "ADMIN");
+    }
+
+    @Test
+    void nonAdminCannotDeletePaperOwnedByAnotherUser() {
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("0123456789abcdef0123456789abcdef", "1"))
+                .thenReturn(Optional.empty());
+
+        var response = paperController.deletePaper("0123456789abcdef0123456789abcdef", "1", "USER");
+
+        assertEquals(404, response.getStatusCode().value());
+        verify(paperService, never()).deletePaper("0123456789abcdef0123456789abcdef", "1", "USER");
     }
 }

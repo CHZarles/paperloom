@@ -831,7 +831,7 @@ public class ChatHandler {
             Map<String, Object> item = new HashMap<>();
             item.put("paperId", detail.paperId());
             item.put("paperTitle", detail.paperTitle());
-            item.put("originalFilename", detail.paperTitle());
+            item.put("originalFilename", detail.originalFilename());
             item.put("pageNumber", detail.pageNumber());
             item.put("anchorText", detail.anchorText());
             item.put("retrievalMode", detail.retrievalMode());
@@ -841,6 +841,12 @@ public class ChatHandler {
             item.put("evidenceSnippet", detail.evidenceSnippet());
             item.put("score", detail.score());
             item.put("chunkId", detail.chunkId());
+            item.put("elementType", detail.elementType());
+            item.put("sectionTitle", detail.sectionTitle());
+            item.put("sectionLevel", detail.sectionLevel());
+            item.put("bboxJson", detail.bboxJson());
+            item.put("parserName", detail.parserName());
+            item.put("parserVersion", detail.parserVersion());
             serialized.put(String.valueOf(entry.getKey()), item);
         }
         return serialized;
@@ -887,7 +893,7 @@ public class ChatHandler {
             String paperLabel = result.getPaperTitle() != null ? result.getPaperTitle() : "unknown";
             String paperId = result.getPaperId();
 
-            // 格式：[1] (test1.txt | 第5页) 文件内容... 或 [1] (test1.txt) 文件内容...
+            // 格式：[1] (paper.pdf | 第5页) 论文片段... 或 [1] (paper.pdf) 论文片段...
             // 有页码时显示页码，方便AI引用
             Integer pageNum = result.getPageNumber();
             if (pageNum != null && pageNum > 0) {
@@ -1126,6 +1132,7 @@ public class ChatHandler {
             referenceMap.put(Integer.parseInt(entry.getKey()), new ReferenceInfo(
                     (String) item.get("paperId"),
                     (String) item.get("paperTitle"),
+                    (String) item.get("originalFilename"),
                     item.get("pageNumber") instanceof Number number ? number.intValue() : null,
                     (String) item.get("anchorText"),
                     (String) item.get("retrievalMode"),
@@ -1134,7 +1141,13 @@ public class ChatHandler {
                     (String) item.get("matchedChunkText"),
                     (String) item.get("evidenceSnippet"),
                     item.get("score") instanceof Number number ? number.doubleValue() : null,
-                    item.get("chunkId") instanceof Number number ? number.intValue() : null
+                    item.get("chunkId") instanceof Number number ? number.intValue() : null,
+                    (String) item.get("elementType"),
+                    (String) item.get("sectionTitle"),
+                    item.get("sectionLevel") instanceof Number number ? number.intValue() : null,
+                    (String) item.get("bboxJson"),
+                    (String) item.get("parserName"),
+                    (String) item.get("parserVersion")
             ));
         }
         return referenceMap;
@@ -1150,6 +1163,7 @@ public class ChatHandler {
         return new ReferenceInfo(
                 result.getPaperId(),
                 paperLabel,
+                result.getOriginalFilename(),
                 result.getPageNumber(),
                 result.getAnchorText(),
                 result.getRetrievalMode(),
@@ -1158,7 +1172,13 @@ public class ChatHandler {
                 matchedChunkText,
                 evidenceSnippet,
                 result.getScore(),
-                result.getChunkId()
+                result.getChunkId(),
+                result.getElementType(),
+                result.getSectionTitle(),
+                result.getSectionLevel(),
+                result.getBboxJson(),
+                result.getParserName(),
+                result.getParserVersion()
         );
     }
 
@@ -1214,6 +1234,7 @@ public class ChatHandler {
     public record ReferenceInfo(
             String paperId,
             String paperTitle,
+            String originalFilename,
             Integer pageNumber,
             String anchorText,
             String retrievalMode,
@@ -1222,7 +1243,13 @@ public class ChatHandler {
             String matchedChunkText,
             String evidenceSnippet,
             Double score,
-            Integer chunkId
+            Integer chunkId,
+            String elementType,
+            String sectionTitle,
+            Integer sectionLevel,
+            String bboxJson,
+            String parserName,
+            String parserVersion
     ) {
     }
 

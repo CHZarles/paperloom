@@ -24,6 +24,12 @@ class EsMappingContractTest {
                 "content",
                 1,
                 "anchor",
+                "PARAGRAPH",
+                "Methods",
+                1,
+                "{\"pageNumber\":1}",
+                "opendataloader-pdf",
+                "2.4.7",
                 new float[]{0.1f, 0.2f},
                 "text-embedding-v4",
                 "1",
@@ -36,6 +42,12 @@ class EsMappingContractTest {
         assertFalse(serializedDocument.has("fileMd5"));
         assertTrue(serializedDocument.has("public"));
         assertFalse(serializedDocument.has("isPublic"));
+        assertTrue(serializedDocument.has("elementType"));
+        assertTrue(serializedDocument.has("sectionTitle"));
+        assertTrue(serializedDocument.has("sectionLevel"));
+        assertTrue(serializedDocument.has("bboxJson"));
+        assertTrue(serializedDocument.has("parserName"));
+        assertTrue(serializedDocument.has("parserVersion"));
 
         InputStream mappingStream = getClass().getResourceAsStream("/es-mappings/paper_chunks.json");
         assertNotNull(mappingStream);
@@ -47,5 +59,11 @@ class EsMappingContractTest {
         assertFalse(properties.has("fileMd5"));
         assertTrue(properties.has("public"));
         assertFalse(properties.has("isPublic"));
+        assertTrue(properties.has("elementType"));
+        assertTrue(properties.has("sectionTitle"));
+        assertTrue(properties.has("sectionLevel"));
+        assertTrue(properties.has("bboxJson"));
+        assertTrue(properties.has("parserName"));
+        assertTrue(properties.has("parserVersion"));
     }
 }
