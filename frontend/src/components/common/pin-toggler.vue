@@ -10,9 +10,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const icon = computed(() =>
-  props.pin ? 'lucide:pin' : 'lucide:pin-off'
-);
+const icon = computed(() => (props.pin ? 'lucide:pin' : 'lucide:pin-off'));
 </script>
 
 <template>

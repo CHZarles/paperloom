@@ -415,7 +415,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 }
 
 .user-registry-summary__label {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -424,7 +431,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   display: block;
   margin: 4px 0 3px;
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 22px;
   line-height: 1.05;
 }
@@ -439,7 +453,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 
 .user-index {
   color: var(--color-accent);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -465,7 +486,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 }
 
 .user-identity__meta {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
 }
 
 .user-scope-list,
@@ -504,7 +532,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   padding: 3px 9px;
   border: 1px solid;
   border-radius: 999px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 700;
 }
@@ -546,7 +581,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 .user-metric-cell__value,
 .user-date-cell span:first-child {
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -575,7 +617,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   align-items: center;
   gap: 8px;
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 700;
 }
@@ -589,7 +638,14 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
 
 .user-budget-line__label {
   color: var(--color-accent);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 800;
 }
