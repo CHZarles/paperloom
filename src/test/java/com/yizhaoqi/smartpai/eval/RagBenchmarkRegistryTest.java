@@ -49,6 +49,11 @@ class RagBenchmarkRegistryTest {
                         && "scoped-paper-diverse-window-k7".equals(harness.retrieval())
                         && "scientific-qa-diverse-windows".equals(harness.planner())
                         && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "product-pdf-parser-smoke".equals(harness.id())
+                        && "runnable-parser-smoke".equals(harness.status())
+                        && "parser-output-check".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("product-pdf-parser-smoke"))));
         assertTrue(registry.benchmarks().stream()
                 .anyMatch(benchmark -> "qasper-dev-200".equals(benchmark.id())
                         && "professional".equals(benchmark.tier())
@@ -66,6 +71,20 @@ class RagBenchmarkRegistryTest {
                         && harness.benchmarkIds().contains("litsearch-service-slice-k5")));
         assertEquals("597 queries / 5,060 imported candidate papers",
                 registry.benchmark("litsearch-service-slice-k5").cases());
+    }
+
+    @Test
+    void registersRealPdfParserSmokeAsSeparateProductGate() throws Exception {
+        RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
+
+        RagBenchmarkRegistry.BenchmarkDefinition benchmark = registry.benchmark("product-pdf-parser-smoke");
+
+        assertEquals("Product PDF Parser Smoke", benchmark.name());
+        assertEquals("product", benchmark.tier());
+        assertEquals("real PDF parser and evidence-asset smoke", benchmark.task());
+        assertEquals("eval/rag/pdf-parser/product-pdf-smoke-manifest.jsonl", benchmark.path());
+        assertEquals("passRate", benchmark.primaryMetric());
+        assertEquals("1", benchmark.cases());
     }
 
     @Test

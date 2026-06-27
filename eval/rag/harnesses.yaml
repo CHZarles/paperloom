@@ -63,6 +63,14 @@ harnesses:
     verifier: enabled
     status: runnable-paper-qa
     benchmarkIds: product-rescue-paper-qa,qasper-dev-200
+  - id: product-pdf-parser-smoke
+    name: Product PDF Parser Smoke
+    description: Test-scoped database gate for real PDF-derived parser outputs, chunks, parser artifacts, and visual assets.
+    retrieval: parser-output-check
+    planner: none
+    verifier: parser-smoke
+    status: runnable-parser-smoke
+    benchmarkIds: product-pdf-parser-smoke
   - id: semantic-only-baseline
     name: Semantic Only Baseline
     description: Semantic retrieval only with the same answer and evidence verifier.
@@ -91,6 +99,15 @@ benchmarks:
     source: local
     primaryMetric: passRate
     cases: "10"
+  - id: product-pdf-parser-smoke
+    name: Product PDF Parser Smoke
+    tier: product
+    task: real PDF parser and evidence-asset smoke
+    status: runnable
+    path: eval/rag/pdf-parser/product-pdf-smoke-manifest.jsonl
+    source: local committed PDF manifest
+    primaryMetric: passRate
+    cases: "1"
   - id: qasper-dev-200
     name: QASPER Dev 200
     tier: professional

@@ -9,7 +9,7 @@ This directory is the long-lived RAG evaluation ledger for PaperLoom. It keeps:
 - `RETRIEVAL_STRATEGY_DECISION.md`: current routed retrieval decision and promotion guardrails
 - `STRATEGY_READINESS.md`: completion audit for what is proven, pending, or blocking final strategy promotion
 - `runs/`: ignored local run artifacts with `run.json`, `scorecard.json`, and `report.md`
-- benchmark source notes under `qasper/` and `litsearch/`
+- benchmark source notes under `qasper/`, `litsearch/`, and `pdf-parser/`
 
 The cheatsheet is intentionally short. Raw evidence, per-case failures, and diagnostics belong in
 `runs/<run-id>/`, not in the top-level table.
@@ -89,6 +89,7 @@ Page-location input rows are intentionally small:
 |---|---|---|---|---|
 | `product-rescue-smoke` | product | Paper chat regression | `passRate` | runnable |
 | `product-rescue-paper-qa` | product | Scoped paper-QA slice | `passRate` | runnable |
+| `product-pdf-parser-smoke` | product | Real PDF parser smoke | `passRate` | runnable |
 | `qasper-dev-200` | professional | Research-paper evidence QA | `passRate` | runnable |
 | `litsearch-full` | professional | Literature-search retrieval | `recallAt20` | offline full scored; service-backed full scored |
 
@@ -180,6 +181,10 @@ source-of-truth flow is:
 Use OCR only for a separate PDF-ingestion benchmark. Mixing OCR errors into QASPER or LitSearch
 would make the score measure parsing quality instead of RAG retrieval, evidence grounding, and
 answer behavior.
+
+The real PDF parser smoke is that separate gate. It lives under `eval/rag/pdf-parser/`, checks
+already processed PDF rows in MySQL, and rejects `Paper.isEval`, `sourceDataset`, and `.json`
+structured imports. Use it before claiming PDF parser/OCR/page visual evidence quality.
 
 Eval import markers now belong on `Paper` rows, with chunk rows linked by `paperId`:
 
