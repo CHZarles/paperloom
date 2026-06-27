@@ -1,0 +1,41 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-20-knowledge-base-ui-polish.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Card Framework Polish",
+      "status": "completed",
+      "description": "Apply Section 1 visual tweaks (border-radius, box-shadow, padding, title sizing/letter-spacing) to the paper library card.\n\n**Files:**\n- Modify: `frontend/src/views/knowledge-base/index.vue` (~4 SCSS selectors)\n\n**Acceptance Criteria:**\n- [ ] `.paper-library-card` border-radius is 10px\n- [ ] `.paper-library-card` box-shadow is `5px 5px 0 rgba(201, 193, 178, 0.42)`\n- [ ] `.paper-library-card > .n-card-header` padding is `14px 20px`\n- [ ] `.paper-library-card .n-card__content` padding is `16px 20px`\n- [ ] `.paper-library-card .n-card-header__main` font-size is `22px` with `letter-spacing: 0.2px`\n- [ ] `pnpm typecheck` exits 0\n\n**Verify:** `cd frontend && pnpm typecheck` → exits 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/knowledge-base/index.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck\", \"acceptanceCriteria\": [\"border-radius 10px\", \"box-shadow softened\", \"header padding 14px 20px\", \"content padding 16px 20px\", \"title 22px + letter-spacing 0.2px\", \"pnpm typecheck passes\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: Table Polish",
+      "status": "completed",
+      "blockedBy": [0],
+      "description": "Apply Section 2 visual tweaks (cell padding, hover softness, transitions, Index Budget density, badge sizing, failed-state markup tweak).\n\n**Files:**\n- Modify: `frontend/src/views/knowledge-base/index.vue` (1 TSX inline-style swap + 5 SCSS selector edits)\n\n**Acceptance Criteria:**\n- [ ] `.n-data-table-th` and `.n-data-table-td` have padding 12px 12px\n- [ ] `.n-data-table-td` has `transition: background-color 120ms ease`\n- [ ] Row hover background is `#f1ebd9`\n- [ ] `.library-index-cell` gap is 6px\n- [ ] `.library-index-line__label` has letter-spacing 0.4px\n- [ ] Failed-state `<NEllipsis>` uses `style=\"color: #8c4034\"` instead of `class=\"text-stone-500\"`\n- [ ] Badge group has `min-height: 23px` and `padding: 2px 9px`\n- [ ] `pnpm typecheck` exits 0\n\n**Verify:** `cd frontend && pnpm typecheck` → exits 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/knowledge-base/index.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck\", \"acceptanceCriteria\": [\"cell padding 12px\", \"row hover soft tint + transition\", \"index cell gap 6px\", \"index label letter-spacing\", \"failed-state inline color\", \"badge sizing updated\", \"pnpm typecheck passes\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: Visual Verification",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "Confirm the UI polish matches the approved design spec and that the page still renders correctly across desktop / tablet / mobile breakpoints, with explicit user sign-off.\n\n**Files:** (none modified — verification only)\n\n**User Verification Required:**\nBefore marking this task complete, you MUST call AskUserQuestion:\n```yaml\nAskUserQuestion:\n  question: \"知识库页面 UI 打磨结果如何?对照设计 spec 检查卡片与表格细节。\"\n  header: \"Verification\"\n  options:\n    - label: \"看起来更舒服了\"\n      description: \"保留复古风,只打磨了细节 — 符合预期,可以收尾\"\n    - label: \"还需要调整\"\n      description: \"某些细节没达到预期,需要再调\"\n```\n\n**Acceptance Criteria:**\n- [ ] Dev server runs without console errors\n- [ ] Card title at 22px with letter-spacing\n- [ ] Card padding balanced, border-radius 10px, softer shadow\n- [ ] Table rows have breathing room, soft hover, smooth transition\n- [ ] Index Budget column slightly tighter\n- [ ] Badges consistent at 23px min-height\n- [ ] Failed-state error in rust color\n- [ ] No overlap at desktop/tablet/mobile\n- [ ] User confirms polish looks good\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"\", \"acceptanceCriteria\": [\"user visual sign-off\", \"all polish details visible across breakpoints\"], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"知识库页面 UI 打磨结果如何?对照设计 spec 检查卡片与表格细节。\"}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-21T03:30:00Z",
+  "followUpFixes": [
+    {
+      "id": "fu-1",
+      "subject": "Page padding so card clears sidebar (initial fix)",
+      "rationale": "User verification reported the card was touching the sidebar. .paper-library-page had only 2px padding, no breathing room. Increased to padding: 16px 20px.",
+      "commit": "9d9113019e2e91d59df6bb745029de057f4a0160",
+      "supersededBy": "fu-2"
+    },
+    {
+      "id": "fu-2",
+      "subject": "Align page padding with user page layout",
+      "rationale": "User asked to match the /user page layout. The user page uses just padding-bottom: 8px and relies on the global layout's 32px left padding. Reverted horizontal padding and matched the user page's padding-bottom: 8px pattern.",
+      "commit": "a48f2710a46bf5b12c1f2c7264ade267f501574b"
+    }
+  ]
+}

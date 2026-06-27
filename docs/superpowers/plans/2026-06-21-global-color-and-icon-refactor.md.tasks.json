@@ -1,0 +1,47 @@
+{
+  "planPath": "docs/superpowers/plans/2026-06-21-global-color-and-icon-refactor.md",
+  "tasks": [
+    {
+      "id": 0,
+      "subject": "Task 1: Foundation - Token System",
+      "status": "completed",
+      "description": "**Goal:** Define color token system in new tokens.css, import globally, migrate global.css to use tokens.\n\n**Files:**\n- Create: `frontend/src/styles/css/tokens.css`\n- Modify: `frontend/src/styles/css/index.css` (global styles entry)\n- Modify: `frontend/src/styles/css/global.css`\n\n**Acceptance Criteria:**\n- tokens.css has all light + dark --color-* tokens per spec\n- tokens.css imported by global styles entry\n- global.css uses var(--color-*) instead of hardcoded Journal Ink hex\n- pnpm typecheck exits 0\n- dev server renders /user correctly in light + dark mode\n\n**Verify:** `cd /home/charles/PaiSmart/frontend && pnpm typecheck` → exit 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/styles/css/tokens.css\", \"frontend/src/styles/css/index.css\", \"frontend/src/styles/css/global.css\"], \"verifyCommand\": \"cd /home/charles/PaiSmart/frontend && pnpm typecheck\", \"acceptanceCriteria\": [\"tokens.css created with all --color-* tokens (light + dark)\", \"tokens.css imported by global entry\", \"global.css references var(--color-*) instead of Journal Ink hex\", \"pnpm typecheck exit 0\", \"dev server renders /user in both modes\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 1,
+      "subject": "Task 2: Layouts + Global Components",
+      "status": "completed",
+      "blockedBy": [0],
+      "description": "**Goal:** Migrate all layout + global/common/advanced/custom components to color tokens + Material Symbols.\n\n**Files:**\n- Modify: frontend/src/layouts/** (all subdirs)\n- Modify: frontend/src/components/common/**, advanced/**, custom/**\n\n**Acceptance Criteria:**\n- All Journal Ink hex values replaced with var(--color-*)\n- All non-Material-Symbols icons replaced per spec mapping\n- pnpm typecheck exits 0\n- /knowledge-base, /chat, /user, /login render in both modes\n\n**Verify:** pnpm typecheck exit 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/layouts/**\", \"frontend/src/components/**\"], \"verifyCommand\": \"cd /home/charles/PaiSmart/frontend && pnpm typecheck\", \"acceptanceCriteria\": [\"all Journal Ink hex replaced with tokens\", \"all icon-mdi/ph/heroicons/ant-design replaced with material-symbols\", \"pnpm typecheck exit 0\", \"browser smoke test in light + dark mode\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Task 3: Knowledge Base + Chat",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** Migrate knowledge-base + chat pages to color tokens + Material Symbols.\n\n**Files:**\n- Modify: frontend/src/views/knowledge-base/** (3 files)\n- Modify: frontend/src/views/chat/** (6 files)\n\n**Acceptance Criteria:**\n- All Journal Ink hex replaced\n- All icons migrated per spec\n- pnpm typecheck exit 0\n- /knowledge-base and /chat render correctly in both modes\n\n**Verify:** pnpm typecheck exit 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/knowledge-base/**\", \"frontend/src/views/chat/**\"], \"verifyCommand\": \"cd /home/charles/PaiSmart/frontend && pnpm typecheck\", \"acceptanceCriteria\": [\"Journal Ink hex replaced with tokens\", \"icons migrated to Material Symbols\", \"pnpm typecheck exit 0\", \"both pages render in light + dark mode\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Task 4: Admin Pages",
+      "status": "pending",
+      "blockedBy": [2],
+      "description": "**Goal:** Migrate all admin pages (user, org-tag, model-provider, invite-code, usage-monitor, recharge, recharge-manage, chat-history) to tokens + Material Symbols.\n\n**Files:**\n- Modify: frontend/src/views/user/**, org-tag/**, model-provider/**, invite-code/**, usage-monitor/**, recharge/**, recharge-manage/**, chat-history/**\n\n**Acceptance Criteria:**\n- All Journal Ink hex replaced\n- All icons migrated per spec\n- pnpm typecheck exit 0\n- All admin pages render in both modes\n\n**Verify:** pnpm typecheck exit 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/user/**\", \"frontend/src/views/org-tag/**\", \"frontend/src/views/model-provider/**\", \"frontend/src/views/invite-code/**\", \"frontend/src/views/usage-monitor/**\", \"frontend/src/views/recharge/**\", \"frontend/src/views/recharge-manage/**\", \"frontend/src/views/chat-history/**\"], \"verifyCommand\": \"cd /home/charles/PaiSmart/frontend && pnpm typecheck\", \"acceptanceCriteria\": [\"all admin pages use tokens + Material Symbols\", \"pnpm typecheck exit 0\", \"browser smoke test in light + dark mode\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Task 5: Login / Built-in / Personal Center",
+      "status": "pending",
+      "blockedBy": [3],
+      "description": "**Goal:** Migrate login flow, error pages, iframe, and personal center to tokens + Material Symbols.\n\n**Files:**\n- Modify: frontend/src/views/_builtin/** (login + 403/404/500 + iframe)\n- Modify: frontend/src/views/personal-center/**\n\n**Acceptance Criteria:**\n- All Journal Ink hex replaced\n- All icons migrated per spec\n- pnpm typecheck exit 0\n- /login, /404, /personal-center render in both modes\n\n**Verify:** pnpm typecheck exit 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/_builtin/**\", \"frontend/src/views/personal-center/**\"], \"verifyCommand\": \"cd /home/charles/PaiSmart/frontend && pnpm typecheck\", \"acceptanceCriteria\": [\"login + built-in + personal center use tokens + Material Symbols\", \"pnpm typecheck exit 0\", \"browser smoke test in light + dark mode\"], \"requiresUserVerification\": false}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Task 6: Final Sweep + Verification",
+      "status": "pending",
+      "blockedBy": [4],
+      "description": "**Goal:** Final sweep for remaining hardcoded colors and mixed icon families. Run final verification across all key pages in light + dark mode. Get user sign-off.\n\n**Files:** (depends on grep findings)\n\n**User Verification Required:**\nBefore marking this task complete, you MUST call AskUserQuestion:\n```yaml\nAskUserQuestion:\n  question: \"整个项目的配色和 icon 统一重构完成。在亮色/暗色模式下浏览各页(knowledge-base / chat / model-provider / invite-code / user / login 等)后,整体效果如何?\"\n  header: \"Verification\"\n  options:\n    - label: \"整体好看,可以收尾\"\n      description: \"学术蓝 + 焦橙 + Material Symbols 符合预期,亮/暗模式都 OK\"\n    - label: \"需要调整\"\n      description: \"某些页面/某些颜色/某些 icon 还需要调,告诉我哪里\"\n```\n\n**Acceptance Criteria:**\n- grep finds no remaining non-Material-Symbols icon calls in .vue/.ts/.tsx\n- grep finds no remaining Journal Ink hex (with documented exceptions)\n- pnpm typecheck exit 0\n- pnpm build succeeds\n- pnpm lint no new errors\n- All key pages render in light + dark mode\n- User confirms overall look\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm build\", \"acceptanceCriteria\": [\"no remaining non-Material-Symbols icon calls\", \"no remaining Journal Ink hex\", \"pnpm typecheck + build + lint pass\", \"browser walkthrough in light + dark\", \"user sign-off on overall look\"], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"整个项目的配色和 icon 统一重构完成。在亮色/暗色模式下浏览各页(knowledge-base / chat / model-provider / invite-code / user / login 等)后,整体效果如何?\"}\n```"
+    }
+  ],
+  "lastUpdated": "2026-06-21T04:00:00Z"
+}
