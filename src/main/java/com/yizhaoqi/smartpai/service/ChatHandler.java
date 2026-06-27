@@ -1000,6 +1000,14 @@ public class ChatHandler {
             item.put("tableText", detail.tableText());
             item.put("tableMarkdown", detail.tableMarkdown());
             item.put("tableScreenshotAvailable", detail.tableScreenshotAvailable());
+            item.put("sourceType", detail.sourceType());
+            item.put("evidenceAssetLevel", detail.evidenceAssetLevel());
+            item.put("pdfEvidenceAvailable", detail.pdfEvidenceAvailable());
+            item.put("structuredImport", detail.structuredImport());
+            item.put("evalImport", detail.evalImport());
+            item.put("pageScreenshotAvailable", detail.pageScreenshotAvailable());
+            item.put("figureScreenshotAvailable", detail.figureScreenshotAvailable());
+            item.put("assetWarnings", detail.assetWarnings());
             serialized.put(String.valueOf(entry.getKey()), item);
         }
         return serialized;
@@ -1330,10 +1338,28 @@ public class ChatHandler {
                     (String) item.get("rankReason"),
                     (String) item.get("tableText"),
                     (String) item.get("tableMarkdown"),
-                    item.get("tableScreenshotAvailable") instanceof Boolean value && value
+                    item.get("tableScreenshotAvailable") instanceof Boolean value && value,
+                    (String) item.get("sourceType"),
+                    (String) item.get("evidenceAssetLevel"),
+                    item.get("pdfEvidenceAvailable") instanceof Boolean value && value,
+                    item.get("structuredImport") instanceof Boolean value && value,
+                    item.get("evalImport") instanceof Boolean value && value,
+                    item.get("pageScreenshotAvailable") instanceof Boolean value && value,
+                    item.get("figureScreenshotAvailable") instanceof Boolean value && value,
+                    stringListValue(item.get("assetWarnings"))
             ));
         }
         return referenceMap;
+    }
+
+    private List<String> stringListValue(Object raw) {
+        if (!(raw instanceof List<?> rawList)) {
+            return List.of();
+        }
+        return rawList.stream()
+                .filter(value -> value != null && !String.valueOf(value).isBlank())
+                .map(String::valueOf)
+                .toList();
     }
 
     private ReferenceInfo buildReferenceInfo(SearchResult result, String paperLabel, String userMessage) {
@@ -1372,7 +1398,15 @@ public class ChatHandler {
                 result.getRankReason(),
                 result.getTableText(),
                 result.getTableMarkdown(),
-                Boolean.TRUE.equals(result.getTableScreenshotAvailable())
+                Boolean.TRUE.equals(result.getTableScreenshotAvailable()),
+                result.getSourceType(),
+                result.getEvidenceAssetLevel(),
+                Boolean.TRUE.equals(result.getPdfEvidenceAvailable()),
+                Boolean.TRUE.equals(result.getStructuredImport()),
+                Boolean.TRUE.equals(result.getEvalImport()),
+                Boolean.TRUE.equals(result.getPageScreenshotAvailable()),
+                Boolean.TRUE.equals(result.getFigureScreenshotAvailable()),
+                result.getAssetWarnings()
         );
     }
 
@@ -1516,12 +1550,102 @@ public class ChatHandler {
             String rankReason,
             String tableText,
             String tableMarkdown,
-            Boolean tableScreenshotAvailable
+            Boolean tableScreenshotAvailable,
+            String sourceType,
+            String evidenceAssetLevel,
+            Boolean pdfEvidenceAvailable,
+            Boolean structuredImport,
+            Boolean evalImport,
+            Boolean pageScreenshotAvailable,
+            Boolean figureScreenshotAvailable,
+            List<String> assetWarnings
     ) {
         public ReferenceInfo {
             sourceKind = sourceKind == null || sourceKind.isBlank() ? "TEXT" : sourceKind;
             evidenceRole = evidenceRole == null || evidenceRole.isBlank() ? "NORMAL_TEXT" : evidenceRole;
             tableScreenshotAvailable = Boolean.TRUE.equals(tableScreenshotAvailable);
+            sourceType = sourceType == null || sourceType.isBlank() ? "PDF" : sourceType;
+            structuredImport = Boolean.TRUE.equals(structuredImport);
+            evalImport = Boolean.TRUE.equals(evalImport);
+            pdfEvidenceAvailable = Boolean.TRUE.equals(pdfEvidenceAvailable);
+            pageScreenshotAvailable = Boolean.TRUE.equals(pageScreenshotAvailable);
+            figureScreenshotAvailable = Boolean.TRUE.equals(figureScreenshotAvailable);
+            evidenceAssetLevel = evidenceAssetLevel == null || evidenceAssetLevel.isBlank()
+                    ? (structuredImport ? "TEXT_ONLY" : pdfEvidenceAvailable ? "PDF_VISUAL" : "PDF_PENDING_ASSETS")
+                    : evidenceAssetLevel;
+            assetWarnings = assetWarnings == null ? List.of() : assetWarnings.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .toList();
+        }
+
+        public ReferenceInfo(String paperId,
+                             String paperTitle,
+                             String originalFilename,
+                             Integer pageNumber,
+                             String anchorText,
+                             String retrievalMode,
+                             String retrievalLabel,
+                             String retrievalQuery,
+                             String matchedChunkText,
+                             String evidenceSnippet,
+                             Double score,
+                             Integer chunkId,
+                             String elementType,
+                             String sectionTitle,
+                             Integer sectionLevel,
+                             String bboxJson,
+                             String parserName,
+                             String parserVersion,
+                             String sourceKind,
+                             String tableId,
+                             String figureId,
+                             String formulaId,
+                             String evidenceRole,
+                             String retrievalRoute,
+                             String intent,
+                             String rankReason,
+                             String tableText,
+                             String tableMarkdown,
+                             Boolean tableScreenshotAvailable) {
+            this(
+                    paperId,
+                    paperTitle,
+                    originalFilename,
+                    pageNumber,
+                    anchorText,
+                    retrievalMode,
+                    retrievalLabel,
+                    retrievalQuery,
+                    matchedChunkText,
+                    evidenceSnippet,
+                    score,
+                    chunkId,
+                    elementType,
+                    sectionTitle,
+                    sectionLevel,
+                    bboxJson,
+                    parserName,
+                    parserVersion,
+                    sourceKind,
+                    tableId,
+                    figureId,
+                    formulaId,
+                    evidenceRole,
+                    retrievalRoute,
+                    intent,
+                    rankReason,
+                    tableText,
+                    tableMarkdown,
+                    tableScreenshotAvailable,
+                    null,
+                    null,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    List.of()
+            );
         }
 
         public ReferenceInfo(String paperId,
@@ -1576,7 +1700,87 @@ public class ChatHandler {
                     null,
                     tableText,
                     tableMarkdown,
-                    tableScreenshotAvailable
+                    tableScreenshotAvailable,
+                    null,
+                    null,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    List.of()
+            );
+        }
+
+        public ReferenceInfo(String paperId,
+                             String paperTitle,
+                             String originalFilename,
+                             Integer pageNumber,
+                             String anchorText,
+                             String retrievalMode,
+                             String retrievalLabel,
+                             String retrievalQuery,
+                             String matchedChunkText,
+                             String evidenceSnippet,
+                             Double score,
+                             Integer chunkId,
+                             String elementType,
+                             String sectionTitle,
+                             Integer sectionLevel,
+                             String bboxJson,
+                             String parserName,
+                             String parserVersion,
+                             String sourceKind,
+                             String tableId,
+                             String tableText,
+                             String tableMarkdown,
+                             Boolean tableScreenshotAvailable,
+                             String sourceType,
+                             String evidenceAssetLevel,
+                             Boolean pdfEvidenceAvailable,
+                             Boolean structuredImport,
+                             Boolean evalImport,
+                             Boolean pageScreenshotAvailable,
+                             Boolean figureScreenshotAvailable,
+                             List<String> assetWarnings) {
+            this(
+                    paperId,
+                    paperTitle,
+                    originalFilename,
+                    pageNumber,
+                    anchorText,
+                    retrievalMode,
+                    retrievalLabel,
+                    retrievalQuery,
+                    matchedChunkText,
+                    evidenceSnippet,
+                    score,
+                    chunkId,
+                    elementType,
+                    sectionTitle,
+                    sectionLevel,
+                    bboxJson,
+                    parserName,
+                    parserVersion,
+                    sourceKind,
+                    tableId,
+                    null,
+                    null,
+                    "NORMAL_TEXT",
+                    null,
+                    null,
+                    null,
+                    tableText,
+                    tableMarkdown,
+                    tableScreenshotAvailable,
+                    sourceType,
+                    evidenceAssetLevel,
+                    pdfEvidenceAvailable,
+                    structuredImport,
+                    evalImport,
+                    pageScreenshotAvailable,
+                    figureScreenshotAvailable,
+                    assetWarnings
             );
         }
 
@@ -1627,7 +1831,15 @@ public class ChatHandler {
                     null,
                     null,
                     null,
-                    false
+                    false,
+                    null,
+                    null,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    List.of()
             );
         }
     }

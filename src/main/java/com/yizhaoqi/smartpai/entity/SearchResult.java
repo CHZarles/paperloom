@@ -2,6 +2,8 @@ package com.yizhaoqi.smartpai.entity;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class SearchResult {
     private String paperId;    // 论文标识，当前使用内容哈希生成
@@ -36,6 +38,14 @@ public class SearchResult {
     private String tableText;
     private String tableMarkdown;
     private Boolean tableScreenshotAvailable;
+    private String sourceType;
+    private String evidenceAssetLevel;
+    private Boolean pdfEvidenceAvailable;
+    private Boolean structuredImport;
+    private Boolean evalImport;
+    private Boolean pageScreenshotAvailable;
+    private Boolean figureScreenshotAvailable;
+    private List<String> assetWarnings;
 
     public SearchResult(String paperId, Integer chunkId, String textContent, Double score) {
         this(paperId, chunkId, textContent, score, null, null, false, null, null, null, null, null,

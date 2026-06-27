@@ -46,7 +46,15 @@ public class EvidenceLedgerService {
                     result.getSectionTitle(),
                     matchedText,
                     result.getBboxJson(),
-                    result.getScore()
+                    result.getScore(),
+                    result.getSourceType(),
+                    result.getEvidenceAssetLevel(),
+                    result.getPdfEvidenceAvailable(),
+                    result.getStructuredImport(),
+                    result.getEvalImport(),
+                    result.getPageScreenshotAvailable(),
+                    result.getFigureScreenshotAvailable(),
+                    result.getAssetWarnings()
             ));
             tokenEstimate += nextTokens;
         }

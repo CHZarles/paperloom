@@ -205,6 +205,14 @@ public class EvidenceToolExecutor {
         result.setFigureId(stringValue(detail.get("figureId")));
         result.setFormulaId(stringValue(detail.get("formulaId")));
         result.setEvidenceRole(stringValue(detail.get("evidenceRole")));
+        result.setSourceType(stringValue(detail.get("sourceType")));
+        result.setEvidenceAssetLevel(stringValue(detail.get("evidenceAssetLevel")));
+        result.setPdfEvidenceAvailable(booleanValue(detail.get("pdfEvidenceAvailable")));
+        result.setStructuredImport(booleanValue(detail.get("structuredImport")));
+        result.setEvalImport(booleanValue(detail.get("evalImport")));
+        result.setPageScreenshotAvailable(booleanValue(detail.get("pageScreenshotAvailable")));
+        result.setFigureScreenshotAvailable(booleanValue(detail.get("figureScreenshotAvailable")));
+        result.setAssetWarnings(stringListValue(detail.get("assetWarnings")));
         result.setRetrievalRoute("REFERENCE_SOURCE");
         result.setIntent(PaperAnswerService.Intent.REFERENCE_QA.name());
         return result;
@@ -274,5 +282,15 @@ public class EvidenceToolExecutor {
             return bool;
         }
         return value == null ? null : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private List<String> stringListValue(Object raw) {
+        if (!(raw instanceof List<?> rawList)) {
+            return List.of();
+        }
+        return rawList.stream()
+                .filter(value -> value != null && !String.valueOf(value).isBlank())
+                .map(String::valueOf)
+                .toList();
     }
 }

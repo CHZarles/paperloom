@@ -158,7 +158,15 @@ class ConversationServiceTest {
                     "sectionLevel": 2,
                     "bboxJson": "{\\"x1\\":10,\\"y1\\":20,\\"x2\\":300,\\"y2\\":360}",
                     "parserName": "OpenDataLoader",
-                    "parserVersion": "2.4.7"
+                    "parserVersion": "2.4.7",
+                    "sourceType": "EVAL_IMPORT",
+                    "evidenceAssetLevel": "TEXT_ONLY",
+                    "pdfEvidenceAvailable": false,
+                    "structuredImport": true,
+                    "evalImport": true,
+                    "pageScreenshotAvailable": false,
+                    "figureScreenshotAvailable": false,
+                    "assetWarnings": ["structured_import_text_only"]
                   }
                 }
                 """);
@@ -180,5 +188,13 @@ class ConversationServiceTest {
         assertEquals("{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}", detail.get("bboxJson"));
         assertEquals("OpenDataLoader", detail.get("parserName"));
         assertEquals("2.4.7", detail.get("parserVersion"));
+        assertEquals("EVAL_IMPORT", detail.get("sourceType"));
+        assertEquals("TEXT_ONLY", detail.get("evidenceAssetLevel"));
+        assertEquals(false, detail.get("pdfEvidenceAvailable"));
+        assertEquals(true, detail.get("structuredImport"));
+        assertEquals(true, detail.get("evalImport"));
+        assertEquals(false, detail.get("pageScreenshotAvailable"));
+        assertEquals(false, detail.get("figureScreenshotAvailable"));
+        assertEquals(List.of("structured_import_text_only"), detail.get("assetWarnings"));
     }
 }

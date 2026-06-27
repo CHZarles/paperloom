@@ -234,6 +234,7 @@ public class HybridSearchService {
             }
             attachPaperTitles(accepted);
             attachTableEvidence(accepted);
+            finalizeReferenceEvidenceReadiness(accepted);
             return adaptiveResult(accepted, scannedCount, stopReason);
         } catch (Exception e) {
             logger.error("自适应纯文本搜索失败", e);
@@ -323,6 +324,7 @@ public class HybridSearchService {
             }
             attachPaperTitles(accepted);
             attachTableEvidence(accepted);
+            finalizeReferenceEvidenceReadiness(accepted);
             return adaptiveResult(accepted, scannedCount, stopReason);
         } catch (Exception e) {
             logger.error("自适应语义搜索失败", e);
@@ -687,7 +689,9 @@ public class HybridSearchService {
                 if (paper != null) {
                     result.setPaperTitle(paper.getPaperTitle());
                     result.setOriginalFilename(paper.getOriginalFilename());
+                    applySourceProvenance(result, paper);
                 }
+                applyVisualAssetAvailability(result);
             });
         } catch (Exception e) {
             logger.error("补充论文标题失败", e);
@@ -728,5 +732,94 @@ public class HybridSearchService {
         if (table.getScreenshotObjectKey() != null && !table.getScreenshotObjectKey().isBlank()) {
             result.setTableScreenshotAvailable(true);
         }
+    }
+
+    private void applySourceProvenance(SearchResult result, Paper paper) {
+        boolean evalImport = paper.isEval();
+        boolean structuredImport = evalImport || hasText(paper.getSourceDataset()) || isJsonImport(paper);
+        String sourceType = evalImport ? "EVAL_IMPORT" : structuredImport ? "STRUCTURED_IMPORT" : "PDF";
+        result.setSourceType(sourceType);
+        result.setStructuredImport(structuredImport);
+        result.setEvalImport(evalImport);
+    }
+
+    private void applyVisualAssetAvailability(SearchResult result) {
+        if (result.getPaperId() == null || result.getPaperId().isBlank()) {
+            return;
+        }
+        if (result.getPageNumber() != null) {
+            boolean pageAvailable = paperVisualAssetRepository
+                    .findFirstByPaperIdAndAssetTypeAndPageNumber(
+                            result.getPaperId(),
+                            PaperVisualAsset.TYPE_PAGE_SCREENSHOT,
+                            result.getPageNumber()
+                    )
+                    .isPresent();
+            result.setPageScreenshotAvailable(pageAvailable);
+        }
+        if (result.getFigureId() != null && !result.getFigureId().isBlank()) {
+            boolean figureAvailable = paperVisualAssetRepository
+                    .findFirstByPaperIdAndAssetTypeAndFigureId(
+                            result.getPaperId(),
+                            PaperVisualAsset.TYPE_FIGURE_CROP,
+                            result.getFigureId()
+                    )
+                    .isPresent()
+                    || paperVisualAssetRepository
+                    .findFirstByPaperIdAndAssetTypeAndFigureId(
+                            result.getPaperId(),
+                            PaperVisualAsset.TYPE_CHART_CROP,
+                            result.getFigureId()
+                    )
+                    .isPresent();
+            result.setFigureScreenshotAvailable(figureAvailable);
+        }
+    }
+
+    private void finalizeReferenceEvidenceReadiness(List<SearchResult> results) {
+        if (results == null || results.isEmpty()) {
+            return;
+        }
+        for (SearchResult result : results) {
+            boolean structuredImport = Boolean.TRUE.equals(result.getStructuredImport());
+            boolean pageAvailable = Boolean.TRUE.equals(result.getPageScreenshotAvailable());
+            boolean pdfEvidenceAvailable = "PDF".equals(result.getSourceType()) && pageAvailable;
+            result.setPdfEvidenceAvailable(pdfEvidenceAvailable);
+            result.setEvidenceAssetLevel(pdfEvidenceAvailable
+                    ? "PDF_VISUAL"
+                    : structuredImport ? "TEXT_ONLY" : "PDF_PENDING_ASSETS");
+            result.setAssetWarnings(referenceAssetWarnings(result, structuredImport, pageAvailable));
+        }
+    }
+
+    private List<String> referenceAssetWarnings(SearchResult result, boolean structuredImport, boolean pageAvailable) {
+        List<String> warnings = new ArrayList<>();
+        if (structuredImport) {
+            warnings.add("structured_import_text_only");
+            return warnings;
+        }
+        if (result.getPageNumber() != null && !pageAvailable) {
+            warnings.add("page_screenshots_missing");
+        }
+        if ("TABLE".equalsIgnoreCase(result.getSourceKind())
+                && result.getTableId() != null
+                && !Boolean.TRUE.equals(result.getTableScreenshotAvailable())) {
+            warnings.add("table_screenshot_missing");
+        }
+        if (("FIGURE".equalsIgnoreCase(result.getSourceKind()) || "CHART".equalsIgnoreCase(result.getSourceKind()))
+                && result.getFigureId() != null
+                && !Boolean.TRUE.equals(result.getFigureScreenshotAvailable())) {
+            warnings.add("figure_screenshot_missing");
+        }
+        return warnings;
+    }
+
+    private boolean isJsonImport(Paper paper) {
+        String originalFilename = paper.getOriginalFilename();
+        return originalFilename != null && originalFilename.toLowerCase().endsWith(".json");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

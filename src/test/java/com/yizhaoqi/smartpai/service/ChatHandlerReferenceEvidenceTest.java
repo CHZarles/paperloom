@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,6 +42,14 @@ class ChatHandlerReferenceEvidenceTest {
                 "| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |",
                 true
         );
+        result.setSourceType("PDF");
+        result.setEvidenceAssetLevel("PDF_VISUAL");
+        result.setPdfEvidenceAvailable(true);
+        result.setStructuredImport(false);
+        result.setEvalImport(false);
+        result.setPageScreenshotAvailable(true);
+        result.setFigureScreenshotAvailable(false);
+        result.setAssetWarnings(List.of());
 
         ChatHandler.ReferenceInfo detail = ReflectionTestUtils.invokeMethod(
                 handler,
@@ -68,6 +77,14 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("Metric: Accuracy PaperLoom: 91.2", detail.tableText());
         assertEquals("| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |", detail.tableMarkdown());
         assertEquals(true, detail.tableScreenshotAvailable());
+        assertEquals("PDF", detail.sourceType());
+        assertEquals("PDF_VISUAL", detail.evidenceAssetLevel());
+        assertEquals(true, detail.pdfEvidenceAvailable());
+        assertEquals(false, detail.structuredImport());
+        assertEquals(false, detail.evalImport());
+        assertEquals(true, detail.pageScreenshotAvailable());
+        assertEquals(false, detail.figureScreenshotAvailable());
+        assertEquals(List.of(), detail.assetWarnings());
     }
 
     @Test
@@ -98,7 +115,15 @@ class ChatHandlerReferenceEvidenceTest {
                         "table-17",
                         "Metric: Accuracy PaperLoom: 91.2",
                         "| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |",
-                        true
+                        true,
+                        "EVAL_IMPORT",
+                        "TEXT_ONLY",
+                        false,
+                        true,
+                        true,
+                        false,
+                        false,
+                        List.of("structured_import_text_only")
                 )
         );
 
@@ -127,6 +152,14 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("Metric: Accuracy PaperLoom: 91.2", detail.get("tableText"));
         assertEquals("| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |", detail.get("tableMarkdown"));
         assertEquals(true, detail.get("tableScreenshotAvailable"));
+        assertEquals("EVAL_IMPORT", detail.get("sourceType"));
+        assertEquals("TEXT_ONLY", detail.get("evidenceAssetLevel"));
+        assertEquals(false, detail.get("pdfEvidenceAvailable"));
+        assertEquals(true, detail.get("structuredImport"));
+        assertEquals(true, detail.get("evalImport"));
+        assertEquals(false, detail.get("pageScreenshotAvailable"));
+        assertEquals(false, detail.get("figureScreenshotAvailable"));
+        assertEquals(List.of("structured_import_text_only"), detail.get("assetWarnings"));
     }
 
     @Test
@@ -157,6 +190,14 @@ class ChatHandlerReferenceEvidenceTest {
         serializedDetail.put("tableText", "Metric: Accuracy PaperLoom: 91.2");
         serializedDetail.put("tableMarkdown", "| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |");
         serializedDetail.put("tableScreenshotAvailable", true);
+        serializedDetail.put("sourceType", "EVAL_IMPORT");
+        serializedDetail.put("evidenceAssetLevel", "TEXT_ONLY");
+        serializedDetail.put("pdfEvidenceAvailable", false);
+        serializedDetail.put("structuredImport", true);
+        serializedDetail.put("evalImport", true);
+        serializedDetail.put("pageScreenshotAvailable", false);
+        serializedDetail.put("figureScreenshotAvailable", false);
+        serializedDetail.put("assetWarnings", List.of("structured_import_text_only"));
 
         Map<Integer, ChatHandler.ReferenceInfo> restored = ReflectionTestUtils.invokeMethod(
                 handler,
@@ -183,6 +224,40 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("Metric: Accuracy PaperLoom: 91.2", detail.tableText());
         assertEquals("| Metric | Accuracy |\n| --- | --- |\n| PaperLoom | 91.2 |", detail.tableMarkdown());
         assertEquals(true, detail.tableScreenshotAvailable());
+        assertEquals("EVAL_IMPORT", detail.sourceType());
+        assertEquals("TEXT_ONLY", detail.evidenceAssetLevel());
+        assertEquals(false, detail.pdfEvidenceAvailable());
+        assertEquals(true, detail.structuredImport());
+        assertEquals(true, detail.evalImport());
+        assertEquals(false, detail.pageScreenshotAvailable());
+        assertEquals(false, detail.figureScreenshotAvailable());
+        assertEquals(List.of("structured_import_text_only"), detail.assetWarnings());
+    }
+
+    @Test
+    void restoresLegacyReferenceEvidenceWithConservativeDefaults() {
+        ChatHandler handler = newHandler();
+        Map<String, Object> serializedDetail = new LinkedHashMap<>();
+        serializedDetail.put("paperId", "paper-1");
+        serializedDetail.put("paperTitle", "Parsed Paper Title");
+        serializedDetail.put("originalFilename", "uploaded-paper.pdf");
+        serializedDetail.put("matchedChunkText", "matched chunk text");
+
+        Map<Integer, ChatHandler.ReferenceInfo> restored = ReflectionTestUtils.invokeMethod(
+                handler,
+                "toReferenceInfoMap",
+                Map.of("1", serializedDetail)
+        );
+
+        ChatHandler.ReferenceInfo detail = restored.get(1);
+        assertEquals("PDF", detail.sourceType());
+        assertEquals("PDF_PENDING_ASSETS", detail.evidenceAssetLevel());
+        assertEquals(false, detail.pdfEvidenceAvailable());
+        assertEquals(false, detail.structuredImport());
+        assertEquals(false, detail.evalImport());
+        assertEquals(false, detail.pageScreenshotAvailable());
+        assertEquals(false, detail.figureScreenshotAvailable());
+        assertEquals(List.of(), detail.assetWarnings());
     }
 
     @Test

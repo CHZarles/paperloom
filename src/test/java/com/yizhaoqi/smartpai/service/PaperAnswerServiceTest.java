@@ -401,6 +401,45 @@ class PaperAnswerServiceTest {
     }
 
     @Test
+    void qaReferenceMappingPreservesStructuredImportReadiness() {
+        SearchResult evalResult = result("paper-eval", 1, "Structured eval evidence about agent benchmarks.", 0.9);
+        evalResult.setOriginalFilename("litsearch:123.json");
+        evalResult.setSourceType("EVAL_IMPORT");
+        evalResult.setEvidenceAssetLevel("TEXT_ONLY");
+        evalResult.setPdfEvidenceAvailable(false);
+        evalResult.setStructuredImport(true);
+        evalResult.setEvalImport(true);
+        evalResult.setPageScreenshotAvailable(false);
+        evalResult.setFigureScreenshotAvailable(false);
+        evalResult.setAssetWarnings(List.of("structured_import_text_only"));
+        when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
+                evalResult
+        )));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(new LlmProviderRouter.ReActTurn(
+                        "**结论**\n结构化评测证据说明 agent benchmark 设置。{{E1}}",
+                        List.of(),
+                        Map.of("role", "assistant", "content", "**结论**\n结构化评测证据说明 agent benchmark 设置。{{E1}}"),
+                        "stop",
+                        10,
+                        5
+                ));
+
+        PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "agent benchmark 怎么设置");
+        ChatHandler.ReferenceInfo reference = answer.referenceMappings().get(1);
+
+        assertEquals("paper-eval", reference.paperId());
+        assertEquals("EVAL_IMPORT", reference.sourceType());
+        assertEquals("TEXT_ONLY", reference.evidenceAssetLevel());
+        assertEquals(false, reference.pdfEvidenceAvailable());
+        assertEquals(true, reference.structuredImport());
+        assertEquals(true, reference.evalImport());
+        assertEquals(false, reference.pageScreenshotAvailable());
+        assertEquals(false, reference.figureScreenshotAvailable());
+        assertEquals(List.of("structured_import_text_only"), reference.assetWarnings());
+    }
+
+    @Test
     void qaRendersImportantSectionTitleNextToCitationWhenModelOmittedIt() {
         SearchResult highNoiseTable = result(
                 "paper-a",

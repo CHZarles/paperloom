@@ -29,6 +29,14 @@ interface Props {
   tableText?: string | null;
   tableMarkdown?: string | null;
   tableScreenshotAvailable?: boolean | null;
+  sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
+  evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
+  pdfEvidenceAvailable?: boolean | null;
+  structuredImport?: boolean | null;
+  evalImport?: boolean | null;
+  pageScreenshotAvailable?: boolean | null;
+  figureScreenshotAvailable?: boolean | null;
+  assetWarnings?: string[] | null;
   conversationRecordId?: number | null;
 }
 
@@ -50,9 +58,24 @@ const evidenceImageKind = ref<'page' | 'asset'>('asset');
 const evidenceImageElement = ref<HTMLImageElement | null>(null);
 const evidenceImageDisplaySize = ref({ width: 0, height: 0 });
 
+const assetWarningLabels: Record<string, string> = {
+  structured_import_text_only: 'PDF/page visual assets are unavailable for this import.',
+  page_screenshots_missing: 'Page screenshot is unavailable.',
+  table_screenshot_missing: 'Table image is unavailable.',
+  figure_screenshot_missing: 'Figure image is unavailable.',
+  parser_artifact_missing: 'Parser artifact is unavailable.'
+};
+
 const displayPaper = computed(() => props.paperTitle || props.originalFilename || 'Unknown paper');
 const displayFilename = computed(() => props.originalFilename || props.paperTitle || '');
 const displayPage = computed(() => (props.pageNumber ? `Page ${props.pageNumber}` : 'Not captured'));
+const isStructuredEvidence = computed(
+  () =>
+    props.evalImport ||
+    props.structuredImport ||
+    props.sourceType === 'EVAL_IMPORT' ||
+    props.sourceType === 'STRUCTURED_IMPORT'
+);
 const isTableSource = computed(() => props.sourceKind === 'TABLE' || Boolean(props.tableId));
 const isFigureSource = computed(
   () => props.sourceKind === 'FIGURE' || props.sourceKind === 'CHART' || Boolean(props.figureId)
@@ -66,10 +89,31 @@ const displaySourceKind = computed(() => {
 });
 const matchedText = computed(() => props.matchedChunkText || props.evidenceSnippet || '');
 const tableEvidenceText = computed(() => props.tableMarkdown || props.tableText || '');
+const sourceTypeLabel = computed(() => {
+  if (props.evalImport || props.sourceType === 'EVAL_IMPORT') return 'Eval import';
+  if (props.structuredImport || props.sourceType === 'STRUCTURED_IMPORT') return 'Structured import';
+  return 'PDF';
+});
+const evidenceReadinessLabel = computed(() => {
+  if (isStructuredEvidence.value) return `${sourceTypeLabel.value}: text evidence`;
+  if (props.pdfEvidenceAvailable || props.evidenceAssetLevel === 'PDF_VISUAL') return 'PDF visual evidence available';
+  return 'PDF visual assets unavailable';
+});
+const readableAssetWarnings = computed(() =>
+  (props.assetWarnings || []).map(warning => assetWarningLabels[warning] || warning)
+);
+const canDownloadOriginalPdf = computed(() => Boolean(props.paperId) && !isStructuredEvidence.value);
+const canOpenPageEvidence = computed(
+  () =>
+    !isStructuredEvidence.value && Boolean(props.paperId && props.pageNumber) && props.pageScreenshotAvailable !== false
+);
+const tableImageUnavailable = computed(() => isTableSource.value && props.tableScreenshotAvailable === false);
+const figureImageUnavailable = computed(() => isFigureSource.value && props.figureScreenshotAvailable === false);
 const evidenceRows = computed(() =>
   [
     { label: 'Paper', value: displayPaper.value },
     { label: 'Page', value: displayPage.value },
+    { label: 'Source type', value: sourceTypeLabel.value },
     { label: 'Source', value: displaySourceKind.value }
   ].filter(row => row.value)
 );
@@ -133,6 +177,11 @@ function showEvidenceImage(options: {
 }
 
 async function openPageScreenshot() {
+  if (isStructuredEvidence.value) {
+    window.$message?.warning('This reference is text-only and has no PDF page evidence.');
+    return;
+  }
+
   if (!props.paperId) {
     window.$message?.warning('Missing paper id.');
     return;
@@ -257,6 +306,11 @@ async function openFigureScreenshot() {
 }
 
 async function downloadOriginalPdf() {
+  if (isStructuredEvidence.value) {
+    window.$message?.warning('This reference is text-only and has no original PDF recovery path.');
+    return;
+  }
+
   if (!props.paperId) {
     window.$message?.warning('Missing paper id.');
     return;
@@ -391,6 +445,26 @@ onBeforeUnmount(() => {
       </template>
     </dl>
 
+    <div class="source-evidence__asset-state">
+      <span
+        class="source-evidence__asset-pill"
+        :class="{
+          'source-evidence__asset-pill--ok': pdfEvidenceAvailable || evidenceAssetLevel === 'PDF_VISUAL',
+          'source-evidence__asset-pill--muted': isStructuredEvidence,
+          'source-evidence__asset-pill--warning': !isStructuredEvidence && !pdfEvidenceAvailable
+        }"
+      >
+        {{ evidenceReadinessLabel }}
+      </span>
+      <span
+        v-for="warning in readableAssetWarnings"
+        :key="warning"
+        class="source-evidence__asset-pill source-evidence__asset-pill--warning"
+      >
+        {{ warning }}
+      </span>
+    </div>
+
     <div class="source-evidence__text-block">
       <div class="source-evidence__text-label">Original text</div>
       <p v-if="matchedText">{{ matchedText }}</p>
@@ -400,6 +474,11 @@ onBeforeUnmount(() => {
     <div v-if="isTableSource && tableEvidenceText" class="source-evidence__text-block">
       <div class="source-evidence__text-label">Table evidence</div>
       <pre class="source-evidence__table-text">{{ tableEvidenceText }}</pre>
+    </div>
+
+    <div v-if="tableImageUnavailable || figureImageUnavailable" class="source-evidence__missing-asset">
+      <span v-if="tableImageUnavailable">Table image unavailable. Extracted table text remains available.</span>
+      <span v-if="figureImageUnavailable">Figure image unavailable. Caption or matched text remains available.</span>
     </div>
 
     <div class="source-evidence__actions">
@@ -427,7 +506,7 @@ onBeforeUnmount(() => {
         type="primary"
         secondary
         :loading="openingFigureScreenshot"
-        :disabled="!paperId || !figureId"
+        :disabled="!paperId || !figureId || figureScreenshotAvailable === false"
         @click="openFigureScreenshot"
       >
         <template #icon>
@@ -439,7 +518,7 @@ onBeforeUnmount(() => {
         :type="isTableSource || isFigureSource ? 'default' : 'primary'"
         secondary
         :loading="openingPageScreenshot"
-        :disabled="!paperId || !pageNumber"
+        :disabled="!canOpenPageEvidence"
         @click="openPageScreenshot"
       >
         <template #icon>
@@ -447,7 +526,7 @@ onBeforeUnmount(() => {
         </template>
         View page evidence
       </NButton>
-      <NButton secondary :loading="openingOriginal" :disabled="!paperId" @click="downloadOriginalPdf">
+      <NButton v-if="canDownloadOriginalPdf" secondary :loading="openingOriginal" @click="downloadOriginalPdf">
         <template #icon>
           <icon-lucide:download />
         </template>
@@ -470,10 +549,10 @@ onBeforeUnmount(() => {
               Open image in new tab
             </NButton>
             <NButton
+              v-if="canDownloadOriginalPdf"
               secondary
               size="small"
               :loading="openingOriginal"
-              :disabled="!paperId"
               @click="downloadOriginalPdf"
             >
               <template #icon>
@@ -582,6 +661,40 @@ onBeforeUnmount(() => {
   line-height: 18px;
 }
 
+.source-evidence__asset-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.source-evidence__asset-pill {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-card-band);
+  padding: 3px 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.source-evidence__asset-pill--ok {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.source-evidence__asset-pill--warning {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.source-evidence__asset-pill--muted {
+  color: var(--color-text-muted);
+}
+
 .source-evidence__text-block {
   display: flex;
   min-width: 0;
@@ -625,6 +738,18 @@ onBeforeUnmount(() => {
 
 .source-evidence__empty-text {
   color: var(--color-text-muted) !important;
+}
+
+.source-evidence__missing-asset {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card-band);
+  padding: 10px 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .source-evidence__actions {

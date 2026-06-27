@@ -519,7 +519,15 @@ public class PaperAnswerService {
                     item.sectionTitle(),
                     item.matchedText(),
                     item.bboxJson(),
-                    item.score()
+                    item.score(),
+                    item.sourceType(),
+                    item.evidenceAssetLevel(),
+                    item.pdfEvidenceAvailable(),
+                    item.structuredImport(),
+                    item.evalImport(),
+                    item.pageScreenshotAvailable(),
+                    item.figureScreenshotAvailable(),
+                    item.assetWarnings()
             ));
         }
         LedgerDiagnostics diagnostics = new LedgerDiagnostics(
@@ -1078,7 +1086,15 @@ public class PaperAnswerService {
                 result.getRankReason(),
                 result.getTableText(),
                 result.getTableMarkdown(),
-                result.getTableScreenshotAvailable()
+                result.getTableScreenshotAvailable(),
+                result.getSourceType(),
+                result.getEvidenceAssetLevel(),
+                result.getPdfEvidenceAvailable(),
+                result.getStructuredImport(),
+                result.getEvalImport(),
+                result.getPageScreenshotAvailable(),
+                result.getFigureScreenshotAvailable(),
+                result.getAssetWarnings()
         );
     }
 
@@ -1112,7 +1128,15 @@ public class PaperAnswerService {
                 null,
                 null,
                 null,
-                false
+                false,
+                item.sourceType(),
+                item.evidenceAssetLevel(),
+                item.pdfEvidenceAvailable(),
+                item.structuredImport(),
+                item.evalImport(),
+                item.pageScreenshotAvailable(),
+                item.figureScreenshotAvailable(),
+                item.assetWarnings()
         );
     }
 
@@ -1223,6 +1247,14 @@ public class PaperAnswerService {
         result.setFigureId(stringValue(detail.get("figureId")));
         result.setFormulaId(stringValue(detail.get("formulaId")));
         result.setEvidenceRole(stringValue(detail.get("evidenceRole")));
+        result.setSourceType(stringValue(detail.get("sourceType")));
+        result.setEvidenceAssetLevel(stringValue(detail.get("evidenceAssetLevel")));
+        result.setPdfEvidenceAvailable(booleanValue(detail.get("pdfEvidenceAvailable")));
+        result.setStructuredImport(booleanValue(detail.get("structuredImport")));
+        result.setEvalImport(booleanValue(detail.get("evalImport")));
+        result.setPageScreenshotAvailable(booleanValue(detail.get("pageScreenshotAvailable")));
+        result.setFigureScreenshotAvailable(booleanValue(detail.get("figureScreenshotAvailable")));
+        result.setAssetWarnings(stringListValue(detail.get("assetWarnings")));
         result.setRetrievalRoute("REFERENCE_SOURCE");
         result.setIntent(Intent.REFERENCE_QA.name());
         return result;
@@ -1349,6 +1381,16 @@ public class PaperAnswerService {
             return bool;
         }
         return value == null ? null : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private List<String> stringListValue(Object raw) {
+        if (!(raw instanceof List<?> rawList)) {
+            return List.of();
+        }
+        return rawList.stream()
+                .filter(value -> value != null && !String.valueOf(value).isBlank())
+                .map(String::valueOf)
+                .toList();
     }
 
     private int distinctPaperCount(List<EvidenceItem> ledger) {

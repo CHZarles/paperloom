@@ -13,39 +13,13 @@ const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth <
 const chatStore = useChatStore();
 const { connectionStatus, list } = storeToRefs(chatStore);
 const referencePanelVisible = ref(false);
-const referencePayload = ref<{
-  retrievalMode?: Api.Chat.ReferenceEvidence['retrievalMode'];
-  retrievalLabel?: string | null;
-  retrievalQuery?: string | null;
-  evidenceSnippet?: string | null;
-  matchedChunkText?: string | null;
-  score?: number | null;
-  chunkId?: number | null;
-  elementType?: string | null;
-  sectionTitle?: string | null;
-  sectionLevel?: number | null;
-  bboxJson?: string | null;
-  parserName?: string | null;
-  parserVersion?: string | null;
-  sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
-  tableId?: string | null;
-  figureId?: string | null;
-  formulaId?: string | null;
-  evidenceRole?: string | null;
-  retrievalRoute?: string | null;
-  intent?: string | null;
-  rankReason?: string | null;
-  tableText?: string | null;
-  tableMarkdown?: string | null;
-  tableScreenshotAvailable?: boolean | null;
+type ReferencePanelPayload = Partial<Omit<Api.Chat.ReferenceEvidence, 'paperId' | 'paperTitle'>> & {
   paperTitle: string;
   paperId?: string | null;
-  originalFilename?: string | null;
-  pageNumber?: number | null;
-  anchorText?: string | null;
   conversationRecordId?: number;
   referenceNumber: number;
-} | null>(null);
+};
+const referencePayload = ref<ReferencePanelPayload | null>(null);
 
 const showDockInput = computed(() => list.value.length > 0);
 const referenceEvidenceKey = computed(() => {
@@ -172,6 +146,14 @@ onBeforeUnmount(() => {
             :table-text="referencePayload.tableText || undefined"
             :table-markdown="referencePayload.tableMarkdown || undefined"
             :table-screenshot-available="referencePayload.tableScreenshotAvailable"
+            :source-type="referencePayload.sourceType"
+            :evidence-asset-level="referencePayload.evidenceAssetLevel"
+            :pdf-evidence-available="referencePayload.pdfEvidenceAvailable"
+            :structured-import="referencePayload.structuredImport"
+            :eval-import="referencePayload.evalImport"
+            :page-screenshot-available="referencePayload.pageScreenshotAvailable"
+            :figure-screenshot-available="referencePayload.figureScreenshotAvailable"
+            :asset-warnings="referencePayload.assetWarnings"
             :conversation-record-id="referencePayload.conversationRecordId"
             @ask-about-this="handleAskAboutReference"
           />

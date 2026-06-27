@@ -530,6 +530,14 @@ declare namespace Api {
       tableText?: string | null;
       tableMarkdown?: string | null;
       tableScreenshotAvailable?: boolean | null;
+      sourceType?: 'PDF' | 'STRUCTURED_IMPORT' | 'EVAL_IMPORT' | null;
+      evidenceAssetLevel?: 'PDF_VISUAL' | 'PDF_PENDING_ASSETS' | 'TEXT_ONLY' | null;
+      pdfEvidenceAvailable?: boolean | null;
+      structuredImport?: boolean | null;
+      evalImport?: boolean | null;
+      pageScreenshotAvailable?: boolean | null;
+      figureScreenshotAvailable?: boolean | null;
+      assetWarnings?: string[] | null;
     }
 
     interface Input {

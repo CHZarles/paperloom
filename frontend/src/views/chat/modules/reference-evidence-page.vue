@@ -42,6 +42,14 @@ const rankReason = ref('');
 const tableText = ref('');
 const tableMarkdown = ref('');
 const tableScreenshotAvailable = ref<boolean | null>(null);
+const sourceType = ref<Api.Chat.ReferenceEvidence['sourceType']>(null);
+const evidenceAssetLevel = ref<Api.Chat.ReferenceEvidence['evidenceAssetLevel']>(null);
+const pdfEvidenceAvailable = ref<boolean | null>(null);
+const structuredImport = ref<boolean | null>(null);
+const evalImport = ref<boolean | null>(null);
+const pageScreenshotAvailable = ref<boolean | null>(null);
+const figureScreenshotAvailable = ref<boolean | null>(null);
+const assetWarnings = ref<string[]>([]);
 const referenceNumber = ref<number | undefined>(undefined);
 const conversationRecordId = ref<number | undefined>(undefined);
 const evidenceKey = computed(() => String(route.query.evidenceKey || ''));
@@ -110,6 +118,14 @@ function syncFromStorage() {
     tableText.value = payload.tableText || tableText.value;
     tableMarkdown.value = payload.tableMarkdown || tableMarkdown.value;
     tableScreenshotAvailable.value = payload.tableScreenshotAvailable ?? tableScreenshotAvailable.value;
+    sourceType.value = payload.sourceType ?? sourceType.value;
+    evidenceAssetLevel.value = payload.evidenceAssetLevel ?? evidenceAssetLevel.value;
+    pdfEvidenceAvailable.value = payload.pdfEvidenceAvailable ?? pdfEvidenceAvailable.value;
+    structuredImport.value = payload.structuredImport ?? structuredImport.value;
+    evalImport.value = payload.evalImport ?? evalImport.value;
+    pageScreenshotAvailable.value = payload.pageScreenshotAvailable ?? pageScreenshotAvailable.value;
+    figureScreenshotAvailable.value = payload.figureScreenshotAvailable ?? figureScreenshotAvailable.value;
+    assetWarnings.value = payload.assetWarnings || assetWarnings.value;
     conversationRecordId.value = payload.conversationRecordId || conversationRecordId.value;
     referenceNumber.value = payload.referenceNumber || referenceNumber.value;
     return true;
@@ -178,6 +194,14 @@ async function loadReferenceDetail() {
     tableText.value = data.tableText || '';
     tableMarkdown.value = data.tableMarkdown || '';
     tableScreenshotAvailable.value = data.tableScreenshotAvailable ?? null;
+    sourceType.value = data.sourceType ?? null;
+    evidenceAssetLevel.value = data.evidenceAssetLevel ?? null;
+    pdfEvidenceAvailable.value = data.pdfEvidenceAvailable ?? null;
+    structuredImport.value = data.structuredImport ?? null;
+    evalImport.value = data.evalImport ?? null;
+    pageScreenshotAvailable.value = data.pageScreenshotAvailable ?? null;
+    figureScreenshotAvailable.value = data.figureScreenshotAvailable ?? null;
+    assetWarnings.value = data.assetWarnings || [];
   } catch (error: any) {
     loadError.value = error?.message || '引用详情加载失败';
   } finally {
@@ -243,6 +267,14 @@ watch(
         :table-text="tableText"
         :table-markdown="tableMarkdown"
         :table-screenshot-available="tableScreenshotAvailable"
+        :source-type="sourceType"
+        :evidence-asset-level="evidenceAssetLevel"
+        :pdf-evidence-available="pdfEvidenceAvailable"
+        :structured-import="structuredImport"
+        :eval-import="evalImport"
+        :page-screenshot-available="pageScreenshotAvailable"
+        :figure-screenshot-available="figureScreenshotAvailable"
+        :asset-warnings="assetWarnings"
         :conversation-record-id="conversationRecordId"
         @ask-about-this="handleAskAboutReference"
       />
