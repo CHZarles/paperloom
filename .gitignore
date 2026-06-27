@@ -80,3 +80,6 @@ src/main/resources/cert
 
 .code*
 .understand-anything/
+.claude/
+.superpowers/
+youtube_scripts/jwt-mini-lab/
