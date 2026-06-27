@@ -3,7 +3,6 @@ package com.yizhaoqi.smartpai.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.entity.SearchResult;
-import com.yizhaoqi.smartpai.model.Paper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.slf4j.Logger;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -44,6 +42,7 @@ public class PaperAnswerService {
                     + "outperform|superior|significant|significantly)",
             Pattern.CASE_INSENSITIVE
     );
+    private static final int MAX_RECOMMENDED_PAPERS = 15;
     private static final int FALLBACK_EVIDENCE_CHAR_BUDGET = 900;
     private static final int FALLBACK_SNIPPET_CHARS = 180;
 
@@ -231,7 +230,7 @@ public class PaperAnswerService {
             if (action.type() == PlannerActionType.LIST_LIBRARY) {
                 return renderLibraryFromLedger(conversationId, ledger, plannerRounds, attemptedQueries);
             }
-            if (responseIntent == Intent.LIBRARY_SEARCH && action.type() == PlannerActionType.DISCOVER_PAPERS) {
+            if (action.type() == PlannerActionType.DISCOVER_PAPERS) {
                 return renderRecommendationFromLedger(conversationId, userMessage, ledger, plannerRounds, attemptedQueries);
             }
             if (action.type() == PlannerActionType.INSPECT_REFERENCE && ledger.evidence().isEmpty()) {
@@ -324,8 +323,16 @@ public class PaperAnswerService {
 
         StringBuilder markdown = new StringBuilder("**结论**\n");
         int paperCount = firstEvidenceByPaper.size();
+        List<com.yizhaoqi.smartpai.service.EvidenceItem> displayedRecommendations = firstEvidenceByPaper.values().stream()
+                .limit(MAX_RECOMMENDED_PAPERS)
+                .toList();
         if (paperCount == 1) {
             markdown.append("当前可访问论文库中，我只找到 1 篇与「").append(userMessage).append("」相关的论文。\n\n");
+        } else if (paperCount > MAX_RECOMMENDED_PAPERS) {
+            markdown.append("当前可访问论文库中，我找到 ").append(paperCount)
+                    .append(" 篇与「").append(userMessage).append("」相关的论文，先列出相关性最高的 ")
+                    .append(MAX_RECOMMENDED_PAPERS)
+                    .append(" 篇。\n\n");
         } else {
             markdown.append("当前可访问论文库中，我找到 ").append(paperCount)
                     .append(" 篇与「").append(userMessage).append("」相关的论文。\n\n");
@@ -333,11 +340,11 @@ public class PaperAnswerService {
         markdown.append("**推荐**\n");
         Map<Integer, ChatHandler.ReferenceInfo> references = new LinkedHashMap<>();
         int referenceNumber = 1;
-        for (com.yizhaoqi.smartpai.service.EvidenceItem item : firstEvidenceByPaper.values()) {
+        for (com.yizhaoqi.smartpai.service.EvidenceItem item : displayedRecommendations) {
             markdown.append(referenceNumber)
                     .append(". 《").append(displayTitle(item)).append("》\n")
                     .append("   这篇论文与该问题相关，主要证据是：")
-                    .append(shortText(item.matchedText(), 96))
+                    .append(shortText(recommendationEvidenceText(item), 96))
                     .append("。[")
                     .append(referenceNumber)
                     .append("]\n");
@@ -347,8 +354,8 @@ public class PaperAnswerService {
         markdown.append("\n**限制**\n推荐只基于当前已上传且你有权限访问的论文库，不是全网论文推荐。");
         writeFocus(conversationId, new FocusState(
                 Intent.LIBRARY_SEARCH.name(),
-                firstEvidenceByPaper.values().stream().map(com.yizhaoqi.smartpai.service.EvidenceItem::paperId).toList(),
-                firstEvidenceByPaper.values().stream().map(this::displayTitle).toList()
+                displayedRecommendations.stream().map(com.yizhaoqi.smartpai.service.EvidenceItem::paperId).toList(),
+                displayedRecommendations.stream().map(this::displayTitle).toList()
         ));
         return new AnswerResult(
                 markdown.toString(),
@@ -360,6 +367,17 @@ public class PaperAnswerService {
                 diagnostics(Intent.LIBRARY_SEARCH, ScopeMode.AUTO_SOURCE, safeLedger.diagnostics(), safeLedger.evidence().size(), paperCount,
                         plannerRounds, attemptedQueries, false)
         );
+    }
+
+    private String recommendationEvidenceText(com.yizhaoqi.smartpai.service.EvidenceItem item) {
+        String text = item == null ? "" : item.matchedText();
+        String cleaned = text == null ? "" : text
+                .replaceAll("(?i)\\s+filename:\\s*\\S+", " ")
+                .replaceAll("(?i)^title\\s*:\\s*", "题名：")
+                .replaceAll("(?i)\\s+abstract\\s*:\\s*", " 摘要：")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return cleaned.isBlank() ? (item == null ? "" : displayTitle(item)) : cleaned;
     }
 
     private AnswerResult answerFromHarnessLedger(String userId,
@@ -515,97 +533,6 @@ public class PaperAnswerService {
 
     private String evidenceKey(com.yizhaoqi.smartpai.service.EvidenceItem item) {
         return item.paperId() + ":" + item.chunkId() + ":" + shortText(item.matchedText(), 64);
-    }
-
-    private AnswerResult answerRecommendation(String userId, String conversationId, String userMessage) {
-        if (isPaperInventoryQuery(userMessage)) {
-            return answerPaperInventory(userId, conversationId);
-        }
-        String retrievalQuery = recommendationQuery(userMessage);
-        RetrievalBudget budget = RetrievalBudget.forLibrarySearch();
-        PaperRetrievalService.RetrievalResult retrieval = paperRetrievalService.retrieve(retrievalQuery, userId, budget);
-        List<SearchResult> results = retrieval.results();
-        List<PaperCandidate> candidates = groupPaperCandidates(results);
-        if (candidates.isEmpty()) {
-            writeFocus(conversationId, new FocusState(Intent.LIBRARY_SEARCH.name(), List.of(), List.of()));
-            return new AnswerResult(
-                    "**结论**\n当前可访问论文库中，我没有找到与「" + userMessage + "」足够相关的论文。\n\n"
-                            + "**限制**\n推荐只基于当前已上传且你有权限访问的论文库。",
-                    Map.of(),
-                    Intent.LIBRARY_SEARCH,
-                    0,
-                    0,
-                    false,
-                    diagnostics(Intent.LIBRARY_SEARCH, ScopeMode.AUTO_SOURCE, retrieval.diagnostics(), 0, 0)
-            );
-        }
-
-        Map<Integer, ChatHandler.ReferenceInfo> mappings = new LinkedHashMap<>();
-        StringBuilder markdown = new StringBuilder();
-        markdown.append("**结论**\n");
-        if (candidates.size() == 1) {
-            markdown.append("当前可访问论文库中，我只找到 1 篇与「").append(userMessage).append("」相关的论文。\n\n");
-        } else {
-            markdown.append("当前可访问论文库中，我找到 ").append(candidates.size())
-                    .append(" 篇与「").append(userMessage).append("」相关的论文。\n\n");
-        }
-        markdown.append("**推荐**\n");
-        int referenceNumber = 1;
-        for (PaperCandidate candidate : candidates) {
-            EvidenceItem evidence = candidate.evidence().get(0);
-            markdown.append(referenceNumber)
-                    .append(". 《").append(candidate.paperTitle()).append("》\n")
-                    .append("   这篇论文与该问题相关，主要证据是：")
-                    .append(shortText(evidence.matchedText(), 96))
-                    .append("。[")
-                    .append(referenceNumber)
-                    .append("]\n");
-            mappings.put(referenceNumber, toReferenceInfo(evidence.result(), evidence.matchedText()));
-            referenceNumber++;
-        }
-        markdown.append("\n**限制**\n推荐只基于当前已上传且你有权限访问的论文库，不是全网论文推荐。");
-        writeFocus(conversationId, new FocusState(
-                Intent.LIBRARY_SEARCH.name(),
-                candidates.stream().map(PaperCandidate::paperId).toList(),
-                candidates.stream().map(PaperCandidate::paperTitle).toList()
-        ));
-        int evidenceCount = candidates.stream().mapToInt(candidate -> candidate.evidence().size()).sum();
-        return new AnswerResult(markdown.toString(), mappings, Intent.LIBRARY_SEARCH,
-                evidenceCount, candidates.size(), false,
-                diagnostics(Intent.LIBRARY_SEARCH, ScopeMode.AUTO_SOURCE, retrieval.diagnostics(), evidenceCount, candidates.size()));
-    }
-
-    private AnswerResult answerPaperInventory(String userId, String conversationId) {
-        List<Paper> papers = paperService.getAccessiblePapers(userId, null);
-        if (papers == null || papers.isEmpty()) {
-            writeFocus(conversationId, new FocusState(Intent.LIBRARY_SEARCH.name(), List.of(), List.of()));
-            return new AnswerResult(
-                    "**结论**\n当前可访问论文库中还没有论文。\n\n**限制**\n上传并完成解析后，论文才会出现在这里。",
-                    Map.of(),
-                    Intent.LIBRARY_SEARCH,
-                    0,
-                    0,
-                    false
-            );
-        }
-
-        StringBuilder markdown = new StringBuilder()
-                .append("**结论**\n当前可访问论文库中有 ")
-                .append(papers.size())
-                .append(" 篇论文。");
-        markdown.append("\n\n**论文**\n");
-        for (int i = 0; i < papers.size(); i++) {
-            markdown.append(i + 1).append(". 《").append(displayTitle(papers.get(i))).append("》\n");
-        }
-        markdown.append("\n**限制**\n这是当前可访问论文库列表，不是全网论文推荐。");
-
-        writeFocus(conversationId, new FocusState(
-                Intent.LIBRARY_SEARCH.name(),
-                papers.stream().map(Paper::getPaperId).toList(),
-                papers.stream().map(this::displayTitle).toList()
-        ));
-        return new AnswerResult(markdown.toString(), Map.of(), Intent.LIBRARY_SEARCH,
-                0, papers.size(), false);
     }
 
     private AnswerResult answerReferenceQa(String conversationId,
@@ -1083,35 +1010,6 @@ public class PaperAnswerService {
                 Map.of(), Intent.CLARIFY, 0, 0, false);
     }
 
-    private List<PaperCandidate> groupPaperCandidates(List<SearchResult> results) {
-        Map<String, List<SearchResult>> byPaper = new LinkedHashMap<>();
-        for (SearchResult result : results == null ? List.<SearchResult>of() : results) {
-            if (result.getPaperId() == null
-                    || displayTitle(result).isBlank()
-                    || !EvidenceQuality.isUsable(result, 0.3d)) {
-                continue;
-            }
-            byPaper.computeIfAbsent(result.getPaperId(), ignored -> new ArrayList<>()).add(result);
-        }
-        return byPaper.values().stream()
-                .map(this::toPaperCandidate)
-                .sorted(Comparator.comparingDouble(PaperCandidate::aggregateScore).reversed())
-                .toList();
-    }
-
-    private PaperCandidate toPaperCandidate(List<SearchResult> results) {
-        List<SearchResult> sorted = results.stream()
-                .sorted(Comparator.comparingDouble((SearchResult result) -> score(result)).reversed())
-                .toList();
-        List<EvidenceItem> evidence = new ArrayList<>();
-        for (int i = 0; i < sorted.size(); i++) {
-            evidence.add(toEvidenceItem("E" + (i + 1), sorted.get(i)));
-        }
-        double aggregate = sorted.stream().mapToDouble(this::score).sum();
-        SearchResult first = sorted.get(0);
-        return new PaperCandidate(first.getPaperId(), displayTitle(first), aggregate, evidence);
-    }
-
     private List<EvidenceItem> buildQaLedger(List<SearchResult> results, RetrievalBudget budget) {
         List<EvidenceItem> ledger = new ArrayList<>();
         int tokenEstimate = 0;
@@ -1330,79 +1228,6 @@ public class PaperAnswerService {
         return result;
     }
 
-    private Intent classifyIntent(String userMessage, AnswerScope scope) {
-        String normalized = normalize(userMessage);
-        if (Set.of("hi", "hello", "hey", "你好", "您好", "谢谢", "thanks", "ok", "好的", "在吗").contains(normalized)) {
-            return Intent.SMALLTALK;
-        }
-        if (scope != null && (scope.referenceNumber() != null || scope.hasReferenceSeed())) {
-            return Intent.REFERENCE_QA;
-        }
-        if (scope != null && !scope.paperIds().isEmpty()) {
-            return Intent.MANUAL_SOURCE_QA;
-        }
-        String lower = userMessage == null ? "" : userMessage.toLowerCase(Locale.ROOT);
-        if (isPaperInventoryQuery(userMessage)
-                || normalized.startsWith("推荐")
-                || (lower.contains("推荐") && lower.contains("论文"))
-                || lower.contains("相关论文")
-                || lower.contains("有哪些论文")
-                || lower.contains("related papers")
-                || lower.contains("recommend papers")) {
-            return Intent.LIBRARY_SEARCH;
-        }
-        if (isNonPaperSystemQuestion(lower, normalized)) {
-            return Intent.CLARIFY;
-        }
-        if (USER_REFERENCE_PATTERN.matcher(userMessage == null ? "" : userMessage).find()
-                || lower.contains("这个引用")
-                || lower.contains("第一个引用")
-                || lower.contains("第二个引用")) {
-            return Intent.REFERENCE_QA;
-        }
-        if (lower.contains("进一步解释")
-                || lower.contains("继续")
-                || lower.contains("展开说")
-                || lower.contains("再详细点")
-                || lower.contains("为什么")
-                || lower.contains("什么意思")
-                || lower.contains("详细讲解")
-                || lower.contains("展开")
-                || lower.contains("讲第一个")
-                || lower.contains("这篇呢")) {
-            return Intent.FOLLOW_UP;
-        }
-        return Intent.AUTO_SOURCE_QA;
-    }
-
-    private boolean isNonPaperSystemQuestion(String lower, String normalized) {
-        return lower.contains("session")
-                || normalized.contains("会话id")
-                || normalized.contains("当前会话")
-                || normalized.contains("我的id");
-    }
-
-    private boolean isPaperInventoryQuery(String userMessage) {
-        String normalized = normalize(userMessage);
-        return normalized.contains("有什么论文")
-                || normalized.contains("有哪些论文")
-                || normalized.contains("论文列表")
-                || normalized.contains("论文库有什么")
-                || normalized.contains("当前论文");
-    }
-
-    private String recommendationQuery(String userMessage) {
-        if (userMessage == null || userMessage.isBlank()) {
-            return "";
-        }
-        String cleaned = userMessage.trim()
-                .replaceFirst("^(请|帮我|麻烦)?\\s*(推荐一下|推荐一些|推荐几个|推荐下|推荐)\\s*", "")
-                .replaceFirst("^和\\s*", "")
-                .replaceFirst("(相关的?论文|相关论文|论文)$", "")
-                .trim();
-        return cleaned.isBlank() ? userMessage.trim() : cleaned;
-    }
-
     private String scopedQuery(String userMessage, FocusState focus) {
         if (focus != null && focus.lastPaperTitles().size() == 1) {
             return focus.lastPaperTitles().get(0) + " " + userMessage;
@@ -1530,10 +1355,6 @@ public class PaperAnswerService {
         return (int) ledger.stream().map(EvidenceItem::paperId).distinct().count();
     }
 
-    private double score(SearchResult result) {
-        return result.getScore() == null ? 0.0d : result.getScore();
-    }
-
     private String displayTitle(SearchResult result) {
         if (result == null) {
             return "";
@@ -1542,10 +1363,6 @@ public class PaperAnswerService {
             return result.getPaperTitle();
         }
         return result.getOriginalFilename() == null ? "" : result.getOriginalFilename();
-    }
-
-    private String displayTitle(Paper paper) {
-        return paper == null ? "" : paper.getPaperTitle();
     }
 
     private String displayTitle(PaperSource source) {
@@ -1566,14 +1383,6 @@ public class PaperAnswerService {
             return item.paperTitle();
         }
         return item.originalFilename() == null ? "" : item.originalFilename();
-    }
-
-    private String normalize(String text) {
-        if (text == null) {
-            return "";
-        }
-        return text.trim().toLowerCase(Locale.ROOT)
-                .replaceAll("[\\s!！?？。,.，;；:：、\"'“”‘’()（）\\[\\]{}<>《》]+", "");
     }
 
     private String shortText(String text, int maxChars) {
@@ -1799,14 +1608,6 @@ public class PaperAnswerService {
             String bboxJson,
             Double score,
             SearchResult result
-    ) {
-    }
-
-    private record PaperCandidate(
-            String paperId,
-            String paperTitle,
-            double aggregateScore,
-            List<EvidenceItem> evidence
     ) {
     }
 

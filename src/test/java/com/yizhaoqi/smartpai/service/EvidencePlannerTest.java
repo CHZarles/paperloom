@@ -35,6 +35,15 @@ class EvidencePlannerTest {
     @Test
     void autoSourceQaPlansSearchEvidence() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        when(llm.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(new LlmProviderRouter.ReActTurn(
+                        "{\"action\":\"SEARCH_EVIDENCE\",\"query\":\"这篇论文讲了什么\",\"reason\":\"paper qa\"}",
+                        List.of(),
+                        Map.of(),
+                        "stop",
+                        10,
+                        5
+                ));
         EvidencePlanner planner = new EvidencePlanner(llm, new ObjectMapper());
 
         PlannerAction action = planner.plan(new PlannerContext(
@@ -47,6 +56,32 @@ class EvidencePlannerTest {
 
         assertEquals(PlannerActionType.SEARCH_EVIDENCE, action.type());
         assertEquals("这篇论文讲了什么", action.query());
+    }
+
+    @Test
+    void autoSourceQaLetsPlannerChoosePaperDiscoveryForNaturalTopicRequest() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        when(llm.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(new LlmProviderRouter.ReActTurn(
+                        "{\"action\":\"DISCOVER_PAPERS\",\"query\":\"agent\",\"reason\":\"topic discovery\"}",
+                        List.of(),
+                        Map.of(),
+                        "stop",
+                        10,
+                        5
+                ));
+        EvidencePlanner planner = new EvidencePlanner(llm, new ObjectMapper());
+
+        PlannerAction action = planner.plan(new PlannerContext(
+                "u1",
+                "有什么agent相关的论文吗？",
+                PaperAnswerService.Intent.AUTO_SOURCE_QA,
+                SourceScope.auto(),
+                EvidenceLedger.empty()
+        ));
+
+        assertEquals(PlannerActionType.DISCOVER_PAPERS, action.type());
+        assertEquals("agent", action.query());
     }
 
     @Test

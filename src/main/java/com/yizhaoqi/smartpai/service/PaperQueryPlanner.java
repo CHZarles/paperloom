@@ -12,8 +12,12 @@ import java.util.Set;
 public class PaperQueryPlanner {
 
     public RetrievalPlan plan(String userQuery) {
+        return plan(userQuery, null);
+    }
+
+    public RetrievalPlan plan(String userQuery, RetrievalIntent forcedIntent) {
         String normalizedForIntent = normalizeQuery(userQuery);
-        RetrievalIntent intent = detectIntent(normalizedForIntent);
+        RetrievalIntent intent = forcedIntent == null ? detectIntent(normalizedForIntent) : forcedIntent;
         String normalized = intent == RetrievalIntent.LITERATURE_SEARCH
                 ? normalizeLiteratureSearchQuery(normalizedForIntent)
                 : normalizedForIntent;
@@ -54,11 +58,9 @@ public class PaperQueryPlanner {
                 queries.add("conclusion");
             }
             case LITERATURE_SEARCH -> {
-                if (!normalized.isBlank()) {
-                    queries.add(normalized + " title abstract");
-                    queries.add(normalized + " related work");
-                    queries.add(normalized + " method dataset");
-                }
+                // paper_search already targets title/abstract/facet metadata. Adding field-label
+                // words such as "title" or "abstract" to the user topic makes those labels match
+                // nearly every metadata document and drowns the actual topic signal.
             }
             case GENERAL -> {
                 // Keep the original query dominant for general questions.

@@ -18,7 +18,8 @@ class PaperChatRouterTest {
 
     @Test
     void routesLibraryManualAndReferenceScopes() {
-        assertEquals(PaperAnswerService.Intent.LIBRARY_SEARCH, router.route("推荐一些 grep", null));
+        assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, router.route("推荐一些 grep", null));
+        assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, router.route("有什么agent相关的论文吗？", null));
         assertEquals(PaperAnswerService.Intent.MANUAL_SOURCE_QA, router.route(
                 "这篇论文讲了什么",
                 new PaperAnswerService.AnswerScope(

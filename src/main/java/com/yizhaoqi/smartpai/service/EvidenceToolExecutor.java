@@ -75,7 +75,7 @@ public class EvidenceToolExecutor {
     }
 
     private EvidenceToolResult discoverPapers(String userId, PlannerAction action) {
-        PaperRetrievalService.RetrievalResult retrieval = paperRetrievalService.retrieve(
+        PaperRetrievalService.RetrievalResult retrieval = paperRetrievalService.discoverPapers(
                 action.query(),
                 userId,
                 RetrievalBudget.forLibrarySearch()

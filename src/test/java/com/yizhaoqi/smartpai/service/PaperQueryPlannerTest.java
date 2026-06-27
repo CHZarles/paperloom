@@ -58,9 +58,7 @@ class PaperQueryPlannerTest {
 
         assertEquals(PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH, plan.intent());
         assertTrue(plan.paperLevelSearch());
-        assertTrue(plan.queryTexts().contains("post-hoc hallucination detection"));
-        assertTrue(plan.queryTexts().contains("post-hoc hallucination detection title abstract"));
-        assertTrue(plan.queryTexts().contains("post-hoc hallucination detection related work"));
+        assertEquals(java.util.List.of("post-hoc hallucination detection"), plan.queryTexts());
         assertTrue(plan.preferredSections().contains("abstract"));
         assertTrue(plan.preferredSections().contains("related work"));
     }
