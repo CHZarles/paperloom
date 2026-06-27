@@ -1,10 +1,15 @@
 package com.yizhaoqi.smartpai.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.util.ObjectBuilder;
 import com.yizhaoqi.smartpai.client.EmbeddingClient;
 import com.yizhaoqi.smartpai.config.PaperSearchIndex;
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
+import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
 import com.yizhaoqi.smartpai.entity.SearchResult;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.exception.CustomException;
@@ -22,9 +27,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,9 +42,9 @@ import java.util.stream.Collectors;
 @Service
 public class HybridSearchService {
 
-    private static final Logger logger = LoggerFactory.getLogger(HybridSearchService.class);
-    private static final double MIN_RELEVANCE_SCORE = 0.3d;
+    static final String KEYWORD_MATCH_FIELD = "retrievalTextContent";
 
+    private static final Logger logger = LoggerFactory.getLogger(HybridSearchService.class);
     @Autowired
     private ElasticsearchClient esClient;
 
@@ -63,415 +70,341 @@ public class HybridSearchService {
     private PaperVisualAssetRepository paperVisualAssetRepository;
 
     /**
-     * 使用文本匹配和向量相似度进行论文混合搜索，支持权限过滤。
-     *
-     * @param query  查询字符串
-     * @param userId 用户ID
-     * @param topK   返回结果数量
-     * @return 搜索结果列表
+     * 自适应检索入口，返回检索结果和本轮扫描/停止原因诊断。
      */
-    public List<SearchResult> searchWithPermission(String query, String userId, int topK) {
-        logger.debug("开始带权限搜索，查询: {}, 用户ID: {}", query, userId);
+    public AdaptiveSearchResult adaptiveSearchWithPermission(String query, String userId, RetrievalBudget budget) {
+        return adaptiveSearchWithPermission(query, userId, budget, List.of());
+    }
+
+    public AdaptiveSearchResult adaptiveSearchWithPermission(String query,
+                                                             String userId,
+                                                             RetrievalBudget budget,
+                                                             List<String> scopePaperIds) {
+        RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
+        List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
+        logger.debug("开始自适应带权限搜索，查询: {}, 用户ID: {}, batch: {}", query, userId, effectiveBudget.pageBatchSize());
 
         try {
-            // 获取用户有效的组织标签（包含层级关系）
             List<String> userEffectiveTags = getUserEffectiveOrgTags(userId);
-            logger.debug("用户 {} 的有效组织标签: {}", userId, userEffectiveTags);
-
-            // 获取用户的数据库ID用于权限过滤
             String userDbId = getUserDbId(userId);
-            logger.debug("用户 {} 的数据库ID: {}", userId, userDbId);
-
-            // 生成查询向量
-            final List<Float> queryVector = embedToVectorList(query, userId);
-
-            // 如果向量生成失败，仅使用文本匹配
+            final List<Float> queryVector = embedToVectorList(query, userId, queryEmbeddingTimeout(effectiveBudget));
             if (queryVector == null) {
-                logger.warn("向量生成失败，仅使用文本匹配进行搜索");
-                return textOnlySearchWithPermission(query, userDbId, userEffectiveTags, topK);
+                logger.warn("向量生成失败，使用自适应纯文本搜索");
+                return adaptiveTextOnlySearchWithPermission(query, userDbId, userEffectiveTags, effectiveBudget, effectiveScopePaperIds);
             }
 
-            logger.debug("向量生成成功，开始执行混合搜索 KNN");
-
-            SearchResponse<PaperChunkDocument> response = esClient.search(s -> {
-                        s.index(PaperSearchIndex.INDEX_NAME);
-                        // KNN 召回
-                        int recallK = topK * 30; // KNN 召回窗口
-                        s.knn(kn -> kn
-                                .field("vector")
-                                .queryVector(queryVector)
-                                .k(recallK)
-                                .numCandidates(recallK)
-                        );
-                        // 必须命中关键词 + 权限过滤
-                        s.query(q -> q.bool(b -> b
-                                .must(mst -> mst.match(m -> m.field("textContent").query(query)))
-                                .filter(f -> f.bool(bf -> bf
-                                        // 条件1: 用户可访问自己的论文
-                                        .should(s1 -> s1.term(t -> t.field("userId").value(userDbId)))
-                                        // 条件2: 公开论文
-                                        .should(s2 -> s2.term(t -> t.field("public").value(true)))
-                                        // 条件3: 组织标签
-                                        .should(s3 -> {
-                                            if (userEffectiveTags.isEmpty()) {
-                                                return s3.matchNone(mn -> mn);
-                                            } else if (userEffectiveTags.size() == 1) {
-                                                return s3.term(t -> t.field("orgTag").value(userEffectiveTags.get(0)));
-                                            } else {
-                                                return s3.bool(inner -> {
-                                                    userEffectiveTags.forEach(tag -> inner.should(sh2 -> sh2.term(t -> t.field("orgTag").value(tag))));
-                                                    return inner;
-                                                });
-                                            }
-                                        })
-                                ))
-                        ));
-
-                        // 第二阶段 BM25 rescore
-                        s.rescore(r -> r
-                                .windowSize(recallK)
-                                .query(rq -> rq
-                                        .queryWeight(0.2d)               // 保留部分 KNN 分
-                                        .rescoreQueryWeight(1.0d)        // BM25 主导
-                                        .query(rqq -> rqq.match(m -> m
-                                                .field("textContent")
-                                                .query(query)
-                                                .operator(Operator.And)
-                                        ))
-                                )
-                        );
-                        s.size(topK);
-                        return s;
-                    }, PaperChunkDocument.class);
-
-            logger.debug("Elasticsearch查询执行完成，命中数量: {}, 最大分数: {}",
-                response.hits().total().value(), response.hits().maxScore());
-
-            List<SearchResult> results = response.hits().hits().stream()
-                    .map(hit -> {
-                        assert hit.source() != null;
-                        logger.debug("搜索结果 - 论文: {}, chunk: {}, 分数: {}, 内容: {}",
-                            hit.source().getPaperId(), hit.source().getChunkId(), hit.score(),
-                            hit.source().getTextContent().substring(0, Math.min(50, hit.source().getTextContent().length())));
-                        SearchResult result = new SearchResult(
-                                hit.source().getPaperId(),
-                                hit.source().getChunkId(),
-                                hit.source().getTextContent(),
-                                hit.score(),
-                                hit.source().getUserId(),
-                                hit.source().getOrgTag(),
-                                hit.source().isPublic(),
-                                null,
-                                hit.source().getPageNumber(),
-                                hit.source().getAnchorText(),
-                                "HYBRID",
-                                hit.source().getTextContent(),
-                                hit.source().getElementType(),
-                                hit.source().getSectionTitle(),
-                                hit.source().getSectionLevel(),
-                                hit.source().getBboxJson(),
-                                hit.source().getParserName(),
-                                hit.source().getParserVersion(),
-                                hit.source().getSourceKind(),
-                                hit.source().getTableId(),
-                                null,
-                                null,
-                                false
-                        );
-                        applyExtendedEvidenceFields(result, hit.source());
-                        return result;
-                    })
-                    .toList();
-
-            logger.debug("返回搜索结果数量: {}", results.size());
-            attachPaperTitles(results);
-            attachTableEvidence(results);
-            return results;
-        } catch (Exception e) {
-            logger.error("带权限的搜索失败", e);
-            // 发生异常时尝试使用纯文本搜索作为后备方案
-            try {
-                logger.info("尝试使用纯文本搜索作为后备方案");
-                return textOnlySearchWithPermission(query, getUserDbId(userId), getUserEffectiveOrgTags(userId), topK);
-            } catch (Exception fallbackError) {
-                logger.error("后备搜索也失败", fallbackError);
-                return Collections.emptyList();
-            }
-        }
-    }
-
-    /**
-     * 仅使用文本匹配的带权限搜索方法
-     */
-    private List<SearchResult> textOnlySearchWithPermission(String query, String userDbId, List<String> userEffectiveTags, int topK) {
-        try {
-            logger.debug("开始执行纯文本搜索，用户数据库ID: {}, 标签: {}", userDbId, userEffectiveTags);
-
-            SearchResponse<PaperChunkDocument> response = esClient.search(s -> s
-                    .index(PaperSearchIndex.INDEX_NAME)
-                    .query(q -> q
-                            .bool(b -> b
-                                    // 匹配内容相关性
-                                    .must(m -> m
-                                            .match(ma -> ma
-                                                    .field("textContent")
-                                                    .query(query)
-                                            )
-                                    )
-                                    // 权限过滤
-                                    .filter(f -> f
-                                            .bool(bf -> bf
-                                                    // 条件1: 用户可以访问自己的文档
-                                                    .should(s1 -> s1
-                                                            .term(t -> t
-                                                                    .field("userId")
-                                                                    .value(userDbId)
-                                                            )
-                                                    )
-                                                    // 条件2: 用户可以访问公开的文档
-                                                    .should(s2 -> s2
-                                                            .term(t -> t
-                                                                    .field("public")
-                                                                    .value(true)
-                                                            )
-                                                    )
-                                                    // 条件3: 用户可以访问其所属组织的文档（包含层级关系）
-                                                    .should(s3 -> {
-                                                        if (userEffectiveTags.isEmpty()) {
-                                                            return s3.matchNone(mn -> mn);
-                                                        } else if (userEffectiveTags.size() == 1) {
-                                                            // 单个标签使用 term 查询
-                                                            return s3.term(t -> t
-                                                                    .field("orgTag")
-                                                                    .value(userEffectiveTags.get(0))
-                                                            );
-                                                        } else {
-                                                            // 多个标签使用 bool should 组合多个 term 查询
-                                                            return s3.bool(innerBool -> {
-                                                                userEffectiveTags.forEach(tag ->
-                                                                        innerBool.should(sh -> sh.term(t -> t
-                                                                                .field("orgTag")
-                                                                                .value(tag)
-                                                                        ))
-                                                                );
-                                                                return innerBool;
-                                                            });
-                                                        }
-                                                    })
-                                            )
-                                    )
-                            )
-                    )
-                    .minScore(0.3d)
-                    .size(topK),
-                    PaperChunkDocument.class
+            AdaptiveSearchResult semanticResult = adaptiveSemanticSearchWithPermission(
+                    query,
+                    userDbId,
+                    userEffectiveTags,
+                    effectiveBudget,
+                    effectiveScopePaperIds,
+                    queryVector
             );
-
-            logger.debug("纯文本查询执行完成，命中数量: {}, 最大分数: {}",
-                response.hits().total().value(), response.hits().maxScore());
-
-            List<SearchResult> results = response.hits().hits().stream()
-                    .map(hit -> {
-                        assert hit.source() != null;
-                        logger.debug("纯文本搜索结果 - 论文: {}, chunk: {}, 分数: {}, 内容: {}",
-                            hit.source().getPaperId(), hit.source().getChunkId(), hit.score(),
-                            hit.source().getTextContent().substring(0, Math.min(50, hit.source().getTextContent().length())));
-                        SearchResult result = new SearchResult(
-                                hit.source().getPaperId(),
-                                hit.source().getChunkId(),
-                                hit.source().getTextContent(),
-                                hit.score(),
-                                hit.source().getUserId(),
-                                hit.source().getOrgTag(),
-                                hit.source().isPublic(),
-                                null,
-                                hit.source().getPageNumber(),
-                                hit.source().getAnchorText(),
-                                "TEXT_ONLY",
-                                hit.source().getTextContent(),
-                                hit.source().getElementType(),
-                                hit.source().getSectionTitle(),
-                                hit.source().getSectionLevel(),
-                                hit.source().getBboxJson(),
-                                hit.source().getParserName(),
-                                hit.source().getParserVersion(),
-                                hit.source().getSourceKind(),
-                                hit.source().getTableId(),
-                                null,
-                                null,
-                                false
-                        );
-                        applyExtendedEvidenceFields(result, hit.source());
-                        return result;
-                    })
-                    .toList();
-
-            logger.debug("返回纯文本搜索结果数量: {}", results.size());
-            attachPaperTitles(results);
-            attachTableEvidence(results);
-            return results;
+            AdaptiveSearchResult keywordResult = adaptiveTextOnlySearchWithPermission(
+                    query,
+                    userDbId,
+                    userEffectiveTags,
+                    effectiveBudget,
+                    effectiveScopePaperIds
+            );
+            return fuseAdaptiveResults(semanticResult, keywordResult);
         } catch (Exception e) {
-            logger.error("纯文本搜索失败", e);
-            return new ArrayList<>();
-        }
-    }
-
-    /**
-     * 系统级搜索方法，不包含用户权限过滤。
-     */
-    public List<SearchResult> search(String query, int topK) {
-        try {
-            logger.debug("开始混合检索，查询: {}, topK: {}", query, topK);
-            logger.warn("使用了没有权限过滤的搜索方法，建议使用 searchWithPermission 方法");
-
-            // 生成查询向量
-            final List<Float> queryVector = embedToVectorList(query, "system");
-
-            // 如果向量生成失败，仅使用文本匹配
-            if (queryVector == null) {
-                logger.warn("向量生成失败，仅使用文本匹配进行搜索");
-                return textOnlySearch(query, topK);
-            }
-
-            SearchResponse<PaperChunkDocument> response = esClient.search(s -> {
-                        s.index(PaperSearchIndex.INDEX_NAME);
-                        int recallK = topK * 30;
-                        s.knn(kn -> kn
-                                .field("vector")
-                                .queryVector(queryVector)
-                                .k(recallK)
-                                .numCandidates(recallK)
-                        );
-
-                        // 过滤仅保留包含关键词的文本
-                        s.query(q -> q.match(m -> m.field("textContent").query(query)));
-
-                        // rescore BM25
-                        s.rescore(r -> r
-                                .windowSize(recallK)
-                                .query(rq -> rq
-                                        .queryWeight(0.2d)
-                                        .rescoreQueryWeight(1.0d)
-                                        .query(rqq -> rqq.match(m -> m
-                                                .field("textContent")
-                                                .query(query)
-                                                .operator(Operator.And)
-                                        ))
-                                )
-                        );
-                        s.size(topK);
-                        return s;
-                    }, PaperChunkDocument.class);
-
-            List<SearchResult> results = response.hits().hits().stream()
-                    .filter(hit -> hit.score() == null || hit.score() >= MIN_RELEVANCE_SCORE)
-                    .map(hit -> {
-                        assert hit.source() != null;
-                        SearchResult result = new SearchResult(
-                                hit.source().getPaperId(),
-                                hit.source().getChunkId(),
-                                hit.source().getTextContent(),
-                                hit.score(),
-                                null,
-                                null,
-                                false,
-                                null,
-                                hit.source().getPageNumber(),
-                                hit.source().getAnchorText(),
-                                "HYBRID",
-                                hit.source().getTextContent(),
-                                hit.source().getElementType(),
-                                hit.source().getSectionTitle(),
-                                hit.source().getSectionLevel(),
-                                hit.source().getBboxJson(),
-                                hit.source().getParserName(),
-                                hit.source().getParserVersion(),
-                                hit.source().getSourceKind(),
-                                hit.source().getTableId(),
-                                null,
-                                null,
-                                false
-                        );
-                        applyExtendedEvidenceFields(result, hit.source());
-                        return result;
-                    })
-                    .toList();
-            attachPaperTitles(results);
-            attachTableEvidence(results);
-            return results;
-        } catch (Exception e) {
-            logger.error("搜索失败", e);
-            // 发生异常时尝试使用纯文本搜索作为后备方案
+            logger.error("自适应带权限搜索失败", e);
             try {
-                logger.info("尝试使用纯文本搜索作为后备方案");
-                return textOnlySearch(query, topK);
+                return adaptiveTextOnlySearchWithPermission(
+                        query,
+                        getUserDbId(userId),
+                        getUserEffectiveOrgTags(userId),
+                        effectiveBudget,
+                        effectiveScopePaperIds
+                );
             } catch (Exception fallbackError) {
-                logger.error("后备搜索也失败", fallbackError);
-                throw new RuntimeException("搜索完全失败", fallbackError);
+                logger.error("自适应后备搜索也失败", fallbackError);
+                return adaptiveResult(Collections.emptyList(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
             }
         }
     }
 
-    /**
-     * 仅使用文本匹配的搜索方法
-     */
-    private List<SearchResult> textOnlySearch(String query, int topK) throws Exception {
-        SearchResponse<PaperChunkDocument> response = esClient.search(s -> s
-                .index(PaperSearchIndex.INDEX_NAME)
-                .query(q -> q
-                        .match(m -> m
-                                .field("textContent")
-                                .query(query)
-                        )
-                )
-                .minScore(MIN_RELEVANCE_SCORE)
-                .size(topK),
-                PaperChunkDocument.class
-        );
+    public AdaptiveSearchResult searchPaperCandidatesWithPermission(String query,
+                                                                    String userId,
+                                                                    RetrievalBudget budget,
+                                                                    List<String> scopePaperIds) {
+        RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forLibrarySearch() : budget;
+        List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
+        try {
+            List<String> userEffectiveTags = getUserEffectiveOrgTags(userId);
+            String userDbId = getUserDbId(userId);
+            SearchRequest request = SearchRequest.of(s -> s
+                            .index(PaperSearchIndex.PAPER_INDEX_NAME)
+                            .size(effectiveBudget.pageBatchSize())
+                            .query(q -> q.bool(b -> b
+                                    .must(m -> m.match(ma -> ma.field("searchText").query(query)))
+                                    .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
+                                    .filter(f -> paperScopeFilter(f, effectiveScopePaperIds))
+                            ))
+                            .minScore(effectiveBudget.minScore())
+            );
+            SearchResponse<PaperSearchDocument> response = esClient.search(request, PaperSearchDocument.class);
+            List<SearchResult> candidates = response.hits().hits().stream()
+                    .map(hit -> toPaperCandidateResult(hit.source(), hit.score()))
+                    .filter(result -> result.getPaperId() != null && !result.getPaperId().isBlank())
+                    .toList();
+            PaperRetrievalService.StopReason stopReason = candidates.isEmpty()
+                    ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+                    : PaperRetrievalService.StopReason.EXHAUSTED;
+            return adaptiveResult(candidates, response.hits().hits().size(), stopReason);
+        } catch (Exception e) {
+            logger.error("论文元数据候选搜索失败", e);
+            return adaptiveResult(List.of(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
+        }
+    }
 
-        List<SearchResult> results = response.hits().hits().stream()
-                .map(hit -> {
-                    assert hit.source() != null;
-                    SearchResult result = new SearchResult(
-                            hit.source().getPaperId(),
-                            hit.source().getChunkId(),
-                            hit.source().getTextContent(),
-                            hit.score(),
-                            null,
-                            null,
-                            false,
-                            null,
-                            hit.source().getPageNumber(),
-                            hit.source().getAnchorText(),
-                            "TEXT_ONLY",
-                            hit.source().getTextContent(),
-                            hit.source().getElementType(),
-                            hit.source().getSectionTitle(),
-                            hit.source().getSectionLevel(),
-                            hit.source().getBboxJson(),
-                            hit.source().getParserName(),
-                            hit.source().getParserVersion(),
-                            hit.source().getSourceKind(),
-                            hit.source().getTableId(),
-                            null,
-                            null,
-                            false
-                    );
-                    applyExtendedEvidenceFields(result, hit.source());
-                    return result;
-                })
-                .toList();
-        attachPaperTitles(results);
-        attachTableEvidence(results);
-        return results;
+    private AdaptiveSearchResult adaptiveTextOnlySearchWithPermission(String query,
+                                                                      String userDbId,
+                                                                      List<String> userEffectiveTags,
+                                                                      RetrievalBudget budget,
+                                                                      List<String> scopePaperIds) {
+        try {
+            List<SearchResult> accepted = new ArrayList<>();
+            long startedAt = System.nanoTime();
+            int offset = 0;
+            int acceptedTokenEstimate = 0;
+            int scannedCount = 0;
+            PaperRetrievalService.StopReason stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
+            boolean contextBudgetReached = false;
+            SearchBranchPlan branchPlan = SearchBranchPlan.forQuery(query);
+            while (withinLatencyBudget(startedAt, budget)) {
+                int pageOffset = offset;
+                SearchResponse<PaperChunkDocument> response = esClient.search(s -> s
+                                .index(PaperSearchIndex.INDEX_NAME)
+                                .from(pageOffset)
+                                .size(budget.pageBatchSize())
+                                .query(q -> q.bool(b -> b
+                                        .must(m -> m.match(ma -> ma.field(branchPlan.keywordMatchField()).query(query)))
+                                        .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
+                                        .filter(f -> paperScopeFilter(f, scopePaperIds))
+                                ))
+                                .minScore(budget.minScore()),
+                        PaperChunkDocument.class
+                );
+                if (response.hits().hits().isEmpty()) {
+                    stopReason = accepted.isEmpty()
+                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+                            : PaperRetrievalService.StopReason.EXHAUSTED;
+                    break;
+                }
+                scannedCount += response.hits().hits().size();
+                int acceptedBeforePage = accepted.size();
+                for (var hit : response.hits().hits()) {
+                    SearchResult result = toSearchResult(hit.source(), hit.score(), "TEXT_ONLY");
+                    if (!EvidenceQuality.isUsable(result, budget.minScore())) {
+                        continue;
+                    }
+                    int tokenEstimate = estimateTokens(EvidenceQuality.bestEvidenceText(result));
+                    if (acceptedTokenEstimate + tokenEstimate > budget.contextTokenBudget()) {
+                        contextBudgetReached = true;
+                        stopReason = PaperRetrievalService.StopReason.CONTEXT_BUDGET;
+                        break;
+                    }
+                    accepted.add(result);
+                    acceptedTokenEstimate += tokenEstimate;
+                }
+                if (contextBudgetReached) {
+                    break;
+                }
+                if (accepted.size() == acceptedBeforePage) {
+                    stopReason = accepted.isEmpty()
+                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+                            : PaperRetrievalService.StopReason.PLATEAU;
+                    break;
+                }
+                offset += response.hits().hits().size();
+                Long total = response.hits().total() == null ? null : response.hits().total().value();
+                if (total != null && offset >= total) {
+                    stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
+                    break;
+                }
+            }
+            if (!withinLatencyBudget(startedAt, budget)) {
+                stopReason = PaperRetrievalService.StopReason.LATENCY_BUDGET;
+            }
+            if (accepted.isEmpty() && stopReason == PaperRetrievalService.StopReason.EXHAUSTED) {
+                stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
+            }
+            attachPaperTitles(accepted);
+            attachTableEvidence(accepted);
+            return adaptiveResult(accepted, scannedCount, stopReason);
+        } catch (Exception e) {
+            logger.error("自适应纯文本搜索失败", e);
+            return adaptiveResult(new ArrayList<>(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
+        }
+    }
+
+    private AdaptiveSearchResult adaptiveSemanticSearchWithPermission(String query,
+                                                                      String userDbId,
+                                                                      List<String> userEffectiveTags,
+                                                                      RetrievalBudget budget,
+                                                                      List<String> scopePaperIds,
+                                                                      List<Float> queryVector) {
+        try {
+            List<SearchResult> accepted = new ArrayList<>();
+            long startedAt = System.nanoTime();
+            int offset = 0;
+            int acceptedTokenEstimate = 0;
+            int scannedCount = 0;
+            PaperRetrievalService.StopReason stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
+            boolean contextBudgetReached = false;
+            while (withinLatencyBudget(startedAt, budget)) {
+                int pageOffset = offset;
+                int recallK = Math.max(budget.pageBatchSize() * 30, pageOffset + budget.pageBatchSize());
+                SearchResponse<PaperChunkDocument> response = esClient.search(s -> {
+                            s.index(PaperSearchIndex.INDEX_NAME);
+                            s.from(pageOffset);
+                            s.size(budget.pageBatchSize());
+                            s.knn(kn -> kn
+                                    .field("vector")
+                                    .queryVector(queryVector)
+                                    .k(recallK)
+                                    .numCandidates(recallK)
+                                    .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
+                                    .filter(f -> paperScopeFilter(f, scopePaperIds))
+                            );
+                            s.query(q -> q.bool(b -> b
+                                    .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
+                                    .filter(f -> paperScopeFilter(f, scopePaperIds))
+                            ));
+                            return s;
+                        }, PaperChunkDocument.class);
+
+                if (response.hits().hits().isEmpty()) {
+                    stopReason = accepted.isEmpty()
+                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+                            : PaperRetrievalService.StopReason.EXHAUSTED;
+                    break;
+                }
+                scannedCount += response.hits().hits().size();
+                int acceptedBeforePage = accepted.size();
+                for (var hit : response.hits().hits()) {
+                    SearchResult result = toSearchResult(hit.source(), hit.score(), "SEMANTIC");
+                    if (!EvidenceQuality.isUsable(result, budget.minScore())) {
+                        continue;
+                    }
+                    int tokenEstimate = estimateTokens(EvidenceQuality.bestEvidenceText(result));
+                    if (acceptedTokenEstimate + tokenEstimate > budget.contextTokenBudget()) {
+                        contextBudgetReached = true;
+                        stopReason = PaperRetrievalService.StopReason.CONTEXT_BUDGET;
+                        break;
+                    }
+                    accepted.add(result);
+                    acceptedTokenEstimate += tokenEstimate;
+                }
+                if (contextBudgetReached) {
+                    break;
+                }
+                if (accepted.size() == acceptedBeforePage) {
+                    stopReason = accepted.isEmpty()
+                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+                            : PaperRetrievalService.StopReason.PLATEAU;
+                    break;
+                }
+                offset += response.hits().hits().size();
+                Long total = response.hits().total() == null ? null : response.hits().total().value();
+                if (total != null && offset >= total) {
+                    stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
+                    break;
+                }
+            }
+            if (!withinLatencyBudget(startedAt, budget)) {
+                stopReason = PaperRetrievalService.StopReason.LATENCY_BUDGET;
+            }
+            if (accepted.isEmpty() && stopReason == PaperRetrievalService.StopReason.EXHAUSTED) {
+                stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
+            }
+            attachPaperTitles(accepted);
+            attachTableEvidence(accepted);
+            return adaptiveResult(accepted, scannedCount, stopReason);
+        } catch (Exception e) {
+            logger.error("自适应语义搜索失败", e);
+            return adaptiveResult(new ArrayList<>(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
+        }
+    }
+
+    private AdaptiveSearchResult fuseAdaptiveResults(AdaptiveSearchResult semanticResult,
+                                                     AdaptiveSearchResult keywordResult) {
+        Map<String, SearchResult> fused = new LinkedHashMap<>();
+        int scannedCount = 0;
+        PaperRetrievalService.StopReason stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
+        if (semanticResult != null) {
+            scannedCount += semanticResult.scannedCount();
+            stopReason = mergeStopReason(stopReason, semanticResult.stopReason());
+            for (SearchResult result : semanticResult.results()) {
+                fused.putIfAbsent(resultKey(result), result);
+            }
+        }
+        if (keywordResult != null) {
+            scannedCount += keywordResult.scannedCount();
+            stopReason = mergeStopReason(stopReason, keywordResult.stopReason());
+            for (SearchResult result : keywordResult.results()) {
+                fused.putIfAbsent(resultKey(result), result);
+            }
+        }
+        List<SearchResult> results = new ArrayList<>(fused.values());
+        if (results.isEmpty()) {
+            stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
+        }
+        return adaptiveResult(results, scannedCount, stopReason);
+    }
+
+    private PaperRetrievalService.StopReason mergeStopReason(PaperRetrievalService.StopReason current,
+                                                             PaperRetrievalService.StopReason next) {
+        if (next == null) {
+            return current == null ? PaperRetrievalService.StopReason.EXHAUSTED : current;
+        }
+        if (next == PaperRetrievalService.StopReason.LATENCY_BUDGET
+                || current == PaperRetrievalService.StopReason.LATENCY_BUDGET) {
+            return PaperRetrievalService.StopReason.LATENCY_BUDGET;
+        }
+        if (next == PaperRetrievalService.StopReason.CONTEXT_BUDGET
+                || current == PaperRetrievalService.StopReason.CONTEXT_BUDGET) {
+            return PaperRetrievalService.StopReason.CONTEXT_BUDGET;
+        }
+        if (next == PaperRetrievalService.StopReason.PLATEAU
+                || current == PaperRetrievalService.StopReason.PLATEAU) {
+            return PaperRetrievalService.StopReason.PLATEAU;
+        }
+        if (current == null || current == PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE) {
+            return next;
+        }
+        return current;
+    }
+
+    private String resultKey(SearchResult result) {
+        if (result == null) {
+            return "";
+        }
+        return result.getPaperId() + ":" + result.getChunkId();
+    }
+
+    private AdaptiveSearchResult adaptiveResult(List<SearchResult> results,
+                                                int scannedCount,
+                                                PaperRetrievalService.StopReason stopReason) {
+        List<SearchResult> safeResults = results == null ? List.of() : results;
+        return new AdaptiveSearchResult(
+                safeResults,
+                scannedCount,
+                safeResults.size(),
+                (int) safeResults.stream().map(SearchResult::getPaperId).filter(id -> id != null && !id.isBlank()).distinct().count(),
+                stopReason == null ? PaperRetrievalService.StopReason.EXHAUSTED : stopReason
+        );
     }
 
     /**
      * 生成查询向量，返回 List<Float>，失败时返回 null
      */
-    private List<Float> embedToVectorList(String text, String requesterId) {
+    private List<Float> embedToVectorList(String text, String requesterId, Duration timeout) {
         try {
-            List<float[]> vecs = embeddingClient.embed(List.of(text), requesterId, EmbeddingClient.UsageType.QUERY);
+            List<float[]> vecs = embeddingClient.embed(List.of(text), requesterId, EmbeddingClient.UsageType.QUERY, timeout);
             if (vecs == null || vecs.isEmpty()) {
                 logger.warn("生成的向量为空");
                 return null;
@@ -488,10 +421,193 @@ public class HybridSearchService {
         }
     }
 
+    static Duration queryEmbeddingTimeout(RetrievalBudget budget) {
+        RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
+        Duration byBudget = effectiveBudget.latencyBudget().dividedBy(3);
+        Duration min = Duration.ofMillis(500);
+        Duration max = Duration.ofSeconds(2);
+        if (byBudget.compareTo(min) < 0) {
+            return min;
+        }
+        return byBudget.compareTo(max) > 0 ? max : byBudget;
+    }
+
     private void applyExtendedEvidenceFields(SearchResult result, PaperChunkDocument source) {
         result.setFigureId(source.getFigureId());
         result.setFormulaId(source.getFormulaId());
         result.setEvidenceRole(source.getEvidenceRole());
+    }
+
+    private SearchResult toSearchResult(PaperChunkDocument source, Double score, String retrievalMode) {
+        if (source == null) {
+            return new SearchResult(null, null, "", score);
+        }
+        String text = source.getTextContent() == null ? "" : source.getTextContent();
+        SearchResult result = new SearchResult(
+                source.getPaperId(),
+                source.getChunkId(),
+                text,
+                score,
+                source.getUserId(),
+                source.getOrgTag(),
+                source.isPublic(),
+                null,
+                source.getPageNumber(),
+                source.getAnchorText(),
+                retrievalMode,
+                text,
+                source.getElementType(),
+                source.getSectionTitle(),
+                source.getSectionLevel(),
+                source.getBboxJson(),
+                source.getParserName(),
+                source.getParserVersion(),
+                source.getSourceKind(),
+                source.getTableId(),
+                null,
+                null,
+                false
+        );
+        applyExtendedEvidenceFields(result, source);
+        return result;
+    }
+
+    private SearchResult toPaperCandidateResult(PaperSearchDocument source, Double score) {
+        if (source == null) {
+            return new SearchResult(null, null, "", score);
+        }
+        String text = paperCandidateText(source);
+        SearchResult result = new SearchResult(
+                source.getPaperId(),
+                0,
+                text,
+                score,
+                source.getUserId(),
+                source.getOrgTag(),
+                source.isPublic(),
+                source.getPaperTitle(),
+                source.getOriginalFilename(),
+                null,
+                null,
+                "PAPER_METADATA",
+                source.getSearchText(),
+                "PAPER",
+                "title/abstract",
+                null,
+                null,
+                "paper_search",
+                null,
+                "TEXT",
+                null,
+                null,
+                null,
+                false
+        );
+        result.setEvidenceRole("PAPER_METADATA");
+        return result;
+    }
+
+    private String paperCandidateText(PaperSearchDocument source) {
+        List<String> parts = new ArrayList<>();
+        if (source.getPaperTitle() != null && !source.getPaperTitle().isBlank()) {
+            parts.add("Title: " + source.getPaperTitle().trim());
+        }
+        if (source.getAbstractText() != null && !source.getAbstractText().isBlank()) {
+            parts.add("Abstract: " + source.getAbstractText().trim());
+        }
+        if (source.getAuthors() != null && !source.getAuthors().isBlank()) {
+            parts.add("Authors: " + source.getAuthors().trim());
+        }
+        if (source.getVenue() != null && !source.getVenue().isBlank()) {
+            parts.add("Venue: " + source.getVenue().trim());
+        }
+        if (source.getYear() != null) {
+            parts.add("Year: " + source.getYear());
+        }
+        if (parts.isEmpty()) {
+            return source.getSearchText() == null ? "" : source.getSearchText();
+        }
+        return String.join("\n", parts);
+    }
+
+    private ObjectBuilder<Query> permissionFilter(Query.Builder f, String userDbId, List<String> userEffectiveTags) {
+        return f.bool(bf -> bf
+                .should(s1 -> s1.term(t -> t.field("userId").value(userDbId)))
+                .should(s2 -> s2.term(t -> t.field("public").value(true)))
+                .should(s3 -> {
+                    if (userEffectiveTags.isEmpty()) {
+                        return s3.matchNone(mn -> mn);
+                    } else if (userEffectiveTags.size() == 1) {
+                        return s3.term(t -> t.field("orgTag").value(userEffectiveTags.get(0)));
+                    }
+                    return s3.bool(inner -> {
+                        userEffectiveTags.forEach(tag ->
+                                inner.should(sh2 -> sh2.term(t -> t.field("orgTag").value(tag))));
+                        return inner;
+                    });
+                })
+        );
+    }
+
+    private ObjectBuilder<Query> paperScopeFilter(Query.Builder f, List<String> paperIds) {
+        List<String> effectivePaperIds = normalizeScopePaperIds(paperIds);
+        if (effectivePaperIds.isEmpty()) {
+            return f.matchAll(m -> m);
+        }
+        if (effectivePaperIds.size() == 1) {
+            return f.term(t -> t.field("paperId").value(effectivePaperIds.get(0)));
+        }
+        return f.terms(t -> t
+                .field("paperId")
+                .terms(v -> v.value(effectivePaperIds.stream().map(FieldValue::of).toList()))
+        );
+    }
+
+    private List<String> normalizeScopePaperIds(List<String> paperIds) {
+        if (paperIds == null || paperIds.isEmpty()) {
+            return List.of();
+        }
+        return paperIds.stream()
+                .filter(paperId -> paperId != null && !paperId.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private boolean withinLatencyBudget(long startedAtNanos, RetrievalBudget budget) {
+        return System.nanoTime() - startedAtNanos < budget.latencyBudget().toNanos();
+    }
+
+    private int estimateTokens(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+        return Math.max(1, text.length() / 4);
+    }
+
+    public record AdaptiveSearchResult(
+            List<SearchResult> results,
+            int scannedCount,
+            int acceptedEvidenceCount,
+            int sourceCount,
+            PaperRetrievalService.StopReason stopReason
+    ) {
+        public AdaptiveSearchResult {
+            results = results == null ? List.of() : results;
+            stopReason = stopReason == null ? PaperRetrievalService.StopReason.EXHAUSTED : stopReason;
+        }
+    }
+
+    public record SearchBranchPlan(
+            boolean semanticEnabled,
+            boolean semanticRequiresTextMatch,
+            boolean keywordEnabled,
+            boolean keywordRequiresTextMatch,
+            String keywordMatchField
+    ) {
+        public static SearchBranchPlan forQuery(String query) {
+            boolean hasQuery = query != null && !query.isBlank();
+            return new SearchBranchPlan(hasQuery, false, hasQuery, true, KEYWORD_MATCH_FIELD);
+        }
     }
 
     /**

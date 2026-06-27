@@ -6,9 +6,11 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PaperRetrievalService {
@@ -22,35 +24,209 @@ public class PaperRetrievalService {
         this.hybridSearchService = hybridSearchService;
     }
 
-    public RetrievalResult retrieve(String query, String userId, int topK) {
+    public RetrievalResult retrieve(String query, String userId, RetrievalBudget budget) {
+        return retrieve(query, userId, budget, List.of());
+    }
+
+    public RetrievalResult retrieve(String query, String userId, RetrievalBudget budget, List<String> scopePaperIds) {
+        RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
+        List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
         PaperQueryPlanner.RetrievalPlan plan = paperQueryPlanner.plan(query);
         Map<String, SearchResult> uniqueResults = new LinkedHashMap<>();
         Map<String, Integer> routeHitCounts = new LinkedHashMap<>();
+        int scannedCount = 0;
+        StopReason combinedStopReason = StopReason.EXHAUSTED;
 
         for (String plannedQuery : plan.queryTexts()) {
-            List<SearchResult> results = hybridSearchService.searchWithPermission(plannedQuery, userId, topK);
-            routeHitCounts.put(plannedQuery, results.size());
+            HybridSearchService.AdaptiveSearchResult searchResult =
+                    searchForPlan(plan, plannedQuery, userId, effectiveBudget, effectiveScopePaperIds);
+            if (searchResult == null) {
+                searchResult = new HybridSearchService.AdaptiveSearchResult(
+                        List.of(),
+                        0,
+                        0,
+                        0,
+                        StopReason.NO_USABLE_EVIDENCE
+                );
+            }
+            List<SearchResult> results = filterResultsByScope(searchResult.results(), effectiveScopePaperIds);
+            scannedCount += searchResult.scannedCount();
+            combinedStopReason = mergeStopReason(combinedStopReason, searchResult.stopReason());
             for (SearchResult result : results) {
-                if (result.getPaperId() == null || result.getChunkId() == null) {
+                if (result == null
+                        || result.getPaperId() == null
+                        || result.getChunkId() == null
+                        || !EvidenceQuality.isUsable(result, effectiveBudget.minScore())) {
                     continue;
                 }
                 result.setRetrievalQuery(plannedQuery);
                 result.setOriginalQuery(plan.originalQuery());
-                result.setRetrievalRoute(plannedQuery.equals(plan.normalizedQuery()) ? "HYBRID" : "EXPANDED_HYBRID");
+                result.setRetrievalRoute(retrievalRoute(plan, plannedQuery));
                 result.setIntent(plan.intent().name());
                 result.setRankReason(rankReason(plan, result));
                 uniqueResults.putIfAbsent(result.getPaperId() + ":" + result.getChunkId(), result);
             }
+            routeHitCounts.put(plannedQuery, uniqueResults.size());
         }
 
         List<SearchResult> ranked = new ArrayList<>(uniqueResults.values());
         ranked.sort(Comparator
                 .comparingDouble((SearchResult result) -> rerankScore(plan, result)).reversed()
                 .thenComparing(result -> result.getScore() == null ? 0.0d : result.getScore(), Comparator.reverseOrder()));
-        if (ranked.size() > topK) {
-            ranked = ranked.subList(0, topK);
+        if (plan.paperLevelSearch()) {
+            ranked = collapseBestResultPerPaper(ranked);
         }
-        return new RetrievalResult(plan, ranked, routeHitCounts);
+        RetrievalDiagnostics diagnostics = new RetrievalDiagnostics(
+                scannedCount,
+                ranked.size(),
+                (int) ranked.stream().map(SearchResult::getPaperId).distinct().count(),
+                ranked.isEmpty() ? StopReason.NO_USABLE_EVIDENCE : combinedStopReason
+        );
+        return new RetrievalResult(plan, ranked, routeHitCounts, diagnostics);
+    }
+
+    private HybridSearchService.AdaptiveSearchResult searchForPlan(PaperQueryPlanner.RetrievalPlan plan,
+                                                                   String plannedQuery,
+                                                                   String userId,
+                                                                   RetrievalBudget budget,
+                                                                   List<String> scopePaperIds) {
+        if (!plan.paperLevelSearch()) {
+            return filterAdaptiveResultByScope(
+                    hybridSearchService.adaptiveSearchWithPermission(plannedQuery, userId, budget, scopePaperIds),
+                    scopePaperIds
+            );
+        }
+        HybridSearchService.AdaptiveSearchResult paperCandidates =
+                filterAdaptiveResultByScope(
+                        hybridSearchService.searchPaperCandidatesWithPermission(plannedQuery, userId, budget, scopePaperIds),
+                        scopePaperIds
+                );
+        List<String> candidatePaperIds = paperCandidateIds(paperCandidates);
+        if (candidatePaperIds.isEmpty()) {
+            return filterAdaptiveResultByScope(
+                    hybridSearchService.adaptiveSearchWithPermission(plannedQuery, userId, budget, scopePaperIds),
+                    scopePaperIds
+            );
+        }
+        HybridSearchService.AdaptiveSearchResult scopedEvidence =
+                filterAdaptiveResultByScope(
+                        hybridSearchService.adaptiveSearchWithPermission(plannedQuery, userId, budget, candidatePaperIds),
+                        candidatePaperIds
+                );
+        if (scopedEvidence == null) {
+            scopedEvidence = new HybridSearchService.AdaptiveSearchResult(
+                    List.of(),
+                    0,
+                    0,
+                    0,
+                    StopReason.NO_USABLE_EVIDENCE
+            );
+        }
+        List<SearchResult> combinedResults = scopedEvidenceWithMissingPaperCandidates(paperCandidates, scopedEvidence);
+        return new HybridSearchService.AdaptiveSearchResult(
+                combinedResults,
+                paperCandidates.scannedCount() + scopedEvidence.scannedCount(),
+                combinedResults.size(),
+                (int) combinedResults.stream()
+                        .map(SearchResult::getPaperId)
+                        .filter(paperId -> paperId != null && !paperId.isBlank())
+                        .distinct()
+                        .count(),
+                mergeStopReason(paperCandidates.stopReason(), scopedEvidence.stopReason())
+        );
+    }
+
+    private List<SearchResult> scopedEvidenceWithMissingPaperCandidates(
+            HybridSearchService.AdaptiveSearchResult paperCandidates,
+            HybridSearchService.AdaptiveSearchResult scopedEvidence
+    ) {
+        List<SearchResult> combined = new ArrayList<>();
+        Set<String> papersWithEvidence = new LinkedHashSet<>();
+        for (SearchResult evidence : scopedEvidence == null ? List.<SearchResult>of() : scopedEvidence.results()) {
+            combined.add(evidence);
+            if (evidence != null && evidence.getPaperId() != null && !evidence.getPaperId().isBlank()) {
+                papersWithEvidence.add(evidence.getPaperId());
+            }
+        }
+        for (SearchResult candidate : paperCandidates == null ? List.<SearchResult>of() : paperCandidates.results()) {
+            if (candidate == null || candidate.getPaperId() == null || candidate.getPaperId().isBlank()) {
+                continue;
+            }
+            if (!papersWithEvidence.contains(candidate.getPaperId())) {
+                combined.add(candidate);
+                papersWithEvidence.add(candidate.getPaperId());
+            }
+        }
+        return combined;
+    }
+
+    private HybridSearchService.AdaptiveSearchResult filterAdaptiveResultByScope(
+            HybridSearchService.AdaptiveSearchResult searchResult,
+            List<String> scopePaperIds
+    ) {
+        if (searchResult == null) {
+            return null;
+        }
+        List<SearchResult> filteredResults = filterResultsByScope(searchResult.results(), scopePaperIds);
+        if (filteredResults.size() == searchResult.results().size()) {
+            return searchResult;
+        }
+        PaperRetrievalService.StopReason stopReason = filteredResults.isEmpty()
+                ? StopReason.NO_USABLE_EVIDENCE
+                : searchResult.stopReason();
+        return new HybridSearchService.AdaptiveSearchResult(
+                filteredResults,
+                searchResult.scannedCount(),
+                filteredResults.size(),
+                (int) filteredResults.stream().map(SearchResult::getPaperId).filter(id -> id != null && !id.isBlank()).distinct().count(),
+                stopReason
+        );
+    }
+
+    private List<SearchResult> filterResultsByScope(List<SearchResult> results, List<String> scopePaperIds) {
+        if (results == null || results.isEmpty()) {
+            return List.of();
+        }
+        List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
+        if (effectiveScopePaperIds.isEmpty()) {
+            return results;
+        }
+        Set<String> allowedPaperIds = Set.copyOf(effectiveScopePaperIds);
+        return results.stream()
+                .filter(result -> result != null && allowedPaperIds.contains(result.getPaperId()))
+                .toList();
+    }
+
+    private List<String> paperCandidateIds(HybridSearchService.AdaptiveSearchResult paperCandidates) {
+        if (paperCandidates == null || paperCandidates.results().isEmpty()) {
+            return List.of();
+        }
+        return paperCandidates.results().stream()
+                .filter(result -> result != null && result.getPaperId() != null && !result.getPaperId().isBlank())
+                .map(SearchResult::getPaperId)
+                .distinct()
+                .toList();
+    }
+
+    private List<SearchResult> collapseBestResultPerPaper(List<SearchResult> rankedResults) {
+        Map<String, SearchResult> bestByPaper = new LinkedHashMap<>();
+        for (SearchResult result : rankedResults == null ? List.<SearchResult>of() : rankedResults) {
+            if (result == null || result.getPaperId() == null || result.getPaperId().isBlank()) {
+                continue;
+            }
+            bestByPaper.putIfAbsent(result.getPaperId(), result);
+        }
+        return new ArrayList<>(bestByPaper.values());
+    }
+
+    private List<String> normalizeScopePaperIds(List<String> paperIds) {
+        if (paperIds == null || paperIds.isEmpty()) {
+            return List.of();
+        }
+        return paperIds.stream()
+                .filter(paperId -> paperId != null && !paperId.isBlank())
+                .distinct()
+                .toList();
     }
 
     private double rerankScore(PaperQueryPlanner.RetrievalPlan plan, SearchResult result) {
@@ -75,14 +251,83 @@ public class PaperRetrievalService {
                 score += 0.8d;
             }
         }
+        if (plan.intent() == PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH) {
+            String query = lower(plan.normalizedQuery());
+            String title = lower(result.getPaperTitle());
+            String evidence = lower(EvidenceQuality.bestEvidenceText(result));
+            score += 0.7d * tokenCoverage(query, title);
+            score += 1.4d * tokenCoverage(query, title + " " + evidence);
+            if (containsAny(section, "title", "abstract", "introduction", "related work")) {
+                score += 1.2d;
+            }
+            if (containsAny(evidence, "abstract:", "abstract", "introduction", "related work")) {
+                score += 0.8d;
+            }
+        }
         return score;
+    }
+
+    private String retrievalRoute(PaperQueryPlanner.RetrievalPlan plan, String plannedQuery) {
+        if (plan.paperLevelSearch()) {
+            return plannedQuery.equals(plan.normalizedQuery()) ? "PAPER_LEVEL" : "EXPANDED_PAPER_LEVEL";
+        }
+        return plannedQuery.equals(plan.normalizedQuery()) ? "HYBRID" : "EXPANDED_HYBRID";
+    }
+
+    private StopReason mergeStopReason(StopReason current, StopReason next) {
+        if (next == null) {
+            return current == null ? StopReason.EXHAUSTED : current;
+        }
+        if (next == StopReason.LATENCY_BUDGET || current == StopReason.LATENCY_BUDGET) {
+            return StopReason.LATENCY_BUDGET;
+        }
+        if (next == StopReason.CONTEXT_BUDGET || current == StopReason.CONTEXT_BUDGET) {
+            return StopReason.CONTEXT_BUDGET;
+        }
+        if (next == StopReason.PLATEAU || current == StopReason.PLATEAU) {
+            return StopReason.PLATEAU;
+        }
+        if (next == StopReason.NO_USABLE_EVIDENCE) {
+            return current == null ? StopReason.NO_USABLE_EVIDENCE : current;
+        }
+        return current == null || current == StopReason.NO_USABLE_EVIDENCE ? next : current;
     }
 
     private String rankReason(PaperQueryPlanner.RetrievalPlan plan, SearchResult result) {
         if (plan.intent() == PaperQueryPlanner.RetrievalIntent.EXPERIMENT_RESULT) {
             return "experiment-intent:" + nullToText(result.getSourceKind()) + ":" + nullToText(result.getEvidenceRole());
         }
+        if (plan.intent() == PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH) {
+            return "literature-search:" + nullToText(result.getPaperTitle());
+        }
         return plan.intent().name().toLowerCase(Locale.ROOT);
+    }
+
+    private double tokenCoverage(String query, String text) {
+        if (query == null || query.isBlank() || text == null || text.isBlank()) {
+            return 0.0d;
+        }
+        String[] queryTokens = query.toLowerCase(Locale.ROOT).split("[^\\p{IsAlphabetic}\\p{IsDigit}]+");
+        int usefulCount = 0;
+        int hitCount = 0;
+        String lowerText = text.toLowerCase(Locale.ROOT);
+        for (String token : queryTokens) {
+            if (token.length() < 3 || isStopword(token)) {
+                continue;
+            }
+            usefulCount++;
+            if (lowerText.contains(token)) {
+                hitCount++;
+            }
+        }
+        return usefulCount == 0 ? 0.0d : (double) hitCount / usefulCount;
+    }
+
+    private boolean isStopword(String token) {
+        return switch (token) {
+            case "the", "and", "for", "with", "paper", "papers", "research", "study", "studies", "method", "methods" -> true;
+            default -> false;
+        };
     }
 
     private boolean containsAny(String text, String... needles) {
@@ -112,8 +357,25 @@ public class PaperRetrievalService {
     public record RetrievalResult(
             PaperQueryPlanner.RetrievalPlan plan,
             List<SearchResult> results,
-            Map<String, Integer> routeHitCounts
+            Map<String, Integer> routeHitCounts,
+            RetrievalDiagnostics diagnostics
     ) {
+        public RetrievalResult(PaperQueryPlanner.RetrievalPlan plan,
+                               List<SearchResult> results,
+                               Map<String, Integer> routeHitCounts) {
+            this(
+                    plan,
+                    results,
+                    routeHitCounts,
+                    new RetrievalDiagnostics(
+                            results == null ? 0 : results.size(),
+                            results == null ? 0 : results.size(),
+                            results == null ? 0 : (int) results.stream().map(SearchResult::getPaperId).distinct().count(),
+                            results == null || results.isEmpty() ? StopReason.NO_USABLE_EVIDENCE : StopReason.EXHAUSTED
+                    )
+            );
+        }
+
         public List<String> attemptedQueries() {
             return plan.queryTexts();
         }
@@ -121,5 +383,21 @@ public class PaperRetrievalService {
         public int finalHitCount() {
             return results == null ? 0 : results.size();
         }
+    }
+
+    public record RetrievalDiagnostics(
+            int scannedCount,
+            int acceptedEvidenceCount,
+            int sourceCount,
+            StopReason stopReason
+    ) {
+    }
+
+    public enum StopReason {
+        EXHAUSTED,
+        PLATEAU,
+        CONTEXT_BUDGET,
+        LATENCY_BUDGET,
+        NO_USABLE_EVIDENCE
     }
 }

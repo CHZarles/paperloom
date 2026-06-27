@@ -9,6 +9,7 @@ defineOptions({ name: 'ReferenceEvidencePage' });
 
 const route = useRoute();
 const router = useRouter();
+const chatStore = useChatStore();
 
 const loading = ref(false);
 const loadError = ref('');
@@ -193,6 +194,14 @@ function handleBack() {
   router.push('/chat');
 }
 
+function handleAskAboutReference(scope: Api.Chat.Scope) {
+  chatStore.input.scope = scope;
+  if (!chatStore.input.message.trim()) {
+    chatStore.input.message = '解释这个引用';
+  }
+  router.push('/chat');
+}
+
 watch(
   () => route.query,
   () => {
@@ -225,6 +234,7 @@ watch(
         :page-number="pageNumber"
         :evidence-snippet="evidenceSnippet"
         :matched-chunk-text="matchedChunkText"
+        :chunk-id="chunkId"
         :bbox-json="bboxJson"
         :source-kind="sourceKind"
         :table-id="tableId"
@@ -233,6 +243,8 @@ watch(
         :table-text="tableText"
         :table-markdown="tableMarkdown"
         :table-screenshot-available="tableScreenshotAvailable"
+        :conversation-record-id="conversationRecordId"
+        @ask-about-this="handleAskAboutReference"
       />
       <NButton secondary class="evidence-page-back" @click="handleBack">
         <template #icon>

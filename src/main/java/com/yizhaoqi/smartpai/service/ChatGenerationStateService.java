@@ -21,6 +21,8 @@ public class ChatGenerationStateService {
     private static final Duration GENERATION_TTL = Duration.ofMinutes(30);
     private static final TypeReference<Map<String, Map<String, Object>>> REFERENCE_MAP_TYPE =
             new TypeReference<Map<String, Map<String, Object>>>() {};
+    private static final TypeReference<Map<String, Object>> DIAGNOSTICS_MAP_TYPE =
+            new TypeReference<Map<String, Object>>() {};
 
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -37,10 +39,11 @@ public class ChatGenerationStateService {
 
         // 写入顺序：先把可读子项准备好，最后再发布 active key，避免读取者拿到 active key 后却查不到 meta/content。
         redisTemplate.delete(referenceKey(generationId));
+        redisTemplate.delete(diagnosticsKey(generationId));
         redisTemplate.opsForValue().set(contentKey(generationId), "", GENERATION_TTL);
         writeMeta(meta);
         redisTemplate.opsForValue().set(activeGenerationKey(userId), generationId, GENERATION_TTL);
-        return toSnapshot(meta, "", Collections.emptyMap());
+        return toSnapshot(meta, "", Collections.emptyMap(), Collections.emptyMap());
     }
 
     public void appendChunk(String generationId, String chunk) {
@@ -70,6 +73,23 @@ public class ChatGenerationStateService {
         }
     }
 
+    public void updateDiagnostics(String generationId, Map<String, Object> diagnostics) {
+        try {
+            if (diagnostics == null || diagnostics.isEmpty()) {
+                redisTemplate.delete(diagnosticsKey(generationId));
+            } else {
+                redisTemplate.opsForValue().set(
+                        diagnosticsKey(generationId),
+                        objectMapper.writeValueAsString(diagnostics),
+                        GENERATION_TTL
+                );
+            }
+            touch(generationId);
+        } catch (Exception e) {
+            logger.warn("保存生成态诊断信息失败: generationId={}", generationId, e);
+        }
+    }
+
     public void markCompleted(String generationId, Map<String, Map<String, Object>> referenceMappings) {
         updateTerminalState(generationId, GenerationStatus.COMPLETED, null, referenceMappings);
     }
@@ -90,7 +110,8 @@ public class ChatGenerationStateService {
 
         String content = Optional.ofNullable(redisTemplate.opsForValue().get(contentKey(generationId))).orElse("");
         Map<String, Map<String, Object>> references = readReferenceMappings(generationId);
-        return Optional.of(toSnapshot(meta, content, references));
+        Map<String, Object> diagnostics = readDiagnostics(generationId);
+        return Optional.of(toSnapshot(meta, content, references, diagnostics));
     }
 
     public Optional<GenerationSnapshot> getGenerationForUser(String generationId, String userId) {
@@ -154,6 +175,7 @@ public class ChatGenerationStateService {
         writeMeta(updated);
         redisTemplate.expire(contentKey(generationId), GENERATION_TTL);
         redisTemplate.expire(referenceKey(generationId), GENERATION_TTL);
+        redisTemplate.expire(diagnosticsKey(generationId), GENERATION_TTL);
         redisTemplate.opsForValue().set(activeGenerationKey(meta.userId()), generationId, GENERATION_TTL);
     }
 
@@ -200,9 +222,24 @@ public class ChatGenerationStateService {
         }
     }
 
+    private Map<String, Object> readDiagnostics(String generationId) {
+        String raw = redisTemplate.opsForValue().get(diagnosticsKey(generationId));
+        if (raw == null || raw.isBlank()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            return objectMapper.readValue(raw, DIAGNOSTICS_MAP_TYPE);
+        } catch (Exception e) {
+            logger.warn("解析生成态诊断信息失败: generationId={}", generationId, e);
+            return Collections.emptyMap();
+        }
+    }
+
     private GenerationSnapshot toSnapshot(GenerationMeta meta,
                                           String content,
-                                          Map<String, Map<String, Object>> referenceMappings) {
+                                          Map<String, Map<String, Object>> referenceMappings,
+                                          Map<String, Object> diagnostics) {
         return new GenerationSnapshot(
                 meta.generationId(),
                 meta.userId(),
@@ -213,7 +250,8 @@ public class ChatGenerationStateService {
                 meta.createdAt(),
                 meta.updatedAt(),
                 meta.errorMessage(),
-                referenceMappings == null ? Collections.emptyMap() : referenceMappings
+                referenceMappings == null ? Collections.emptyMap() : referenceMappings,
+                diagnostics == null ? Collections.emptyMap() : diagnostics
         );
     }
 
@@ -227,6 +265,10 @@ public class ChatGenerationStateService {
 
     private String referenceKey(String generationId) {
         return "chat:generation:" + generationId + ":refs";
+    }
+
+    private String diagnosticsKey(String generationId) {
+        return "chat:generation:" + generationId + ":diagnostics";
     }
 
     private String activeGenerationKey(String userId) {
@@ -262,7 +304,8 @@ public class ChatGenerationStateService {
             String createdAt,
             String updatedAt,
             String errorMessage,
-            Map<String, Map<String, Object>> referenceMappings
+            Map<String, Map<String, Object>> referenceMappings,
+            Map<String, Object> diagnostics
     ) {
     }
 }

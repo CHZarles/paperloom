@@ -9,6 +9,7 @@ import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import com.yizhaoqi.smartpai.config.PaperSearchIndex;
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
+import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,17 +67,46 @@ public class ElasticsearchService {
     }
 
     /**
+     * 批量索引论文元数据到 paper_search，用于文献搜索候选召回。
+     */
+    public void bulkIndexPaperSearch(List<PaperSearchDocument> documents) {
+        try {
+            logger.info("开始批量索引论文元数据到 Elasticsearch，数量: {}", documents.size());
+            List<BulkOperation> bulkOperations = documents.stream()
+                    .map(doc -> BulkOperation.of(op -> op.index(idx -> idx
+                            .index(PaperSearchIndex.PAPER_INDEX_NAME)
+                            .id(paperSearchDocumentId(doc))
+                            .document(doc)
+                    )))
+                    .toList();
+
+            BulkRequest request = BulkRequest.of(b -> b.operations(bulkOperations));
+            BulkResponse response = esClient.bulk(request);
+            if (response.errors()) {
+                logger.error("批量索引论文元数据过程中发生错误:");
+                for (BulkResponseItem item : response.items()) {
+                    if (item.error() != null) {
+                        logger.error("论文元数据索引失败 - ID: {}, 错误: {}", item.id(), item.error().reason());
+                    }
+                }
+                throw new RuntimeException("批量索引论文元数据部分失败，请检查日志");
+            }
+            logger.info("批量索引论文元数据成功完成，数量: {}", documents.size());
+        } catch (Exception e) {
+            logger.error("批量索引论文元数据失败，数量: {}", documents.size(), e);
+            throw new RuntimeException("批量索引论文元数据失败", e);
+        }
+    }
+
+    /**
      * 根据 paperId 删除论文 chunk。
      */
     public void deleteByPaperId(String paperId) {
         try {
-            DeleteByQueryRequest request = DeleteByQueryRequest.of(d -> d
-                    .index(PaperSearchIndex.INDEX_NAME)
-                    .query(q -> q.term(t -> t.field("paperId").value(paperId)))
-            );
-            esClient.deleteByQuery(request);
+            deleteByPaperIdFromIndex(PaperSearchIndex.INDEX_NAME, paperId);
+            deleteByPaperIdFromIndex(PaperSearchIndex.PAPER_INDEX_NAME, paperId);
         } catch (Exception e) {
-            throw new RuntimeException("删除论文 chunk 失败", e);
+            throw new RuntimeException("删除论文搜索索引失败", e);
         }
     }
 
@@ -90,5 +120,20 @@ public class ElasticsearchService {
         } catch (Exception e) {
             throw new RuntimeException("统计论文 chunk 失败", e);
         }
+    }
+
+    private void deleteByPaperIdFromIndex(String indexName, String paperId) throws Exception {
+        DeleteByQueryRequest request = DeleteByQueryRequest.of(d -> d
+                .index(indexName)
+                .query(q -> q.term(t -> t.field("paperId").value(paperId)))
+        );
+        esClient.deleteByQuery(request);
+    }
+
+    private String paperSearchDocumentId(PaperSearchDocument document) {
+        if (document.getId() != null && !document.getId().isBlank()) {
+            return document.getId();
+        }
+        return document.getPaperId();
     }
 }

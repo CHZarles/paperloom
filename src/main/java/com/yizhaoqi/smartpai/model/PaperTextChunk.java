@@ -11,7 +11,11 @@ import java.sql.Blob;
  */
 @Data
 @Entity
-@Table(name = "paper_text_chunks")
+@Table(name = "paper_text_chunks",
+        indexes = {
+                @Index(name = "idx_paper_text_chunks_paper_page", columnList = "paper_id,page_number,chunk_id"),
+                @Index(name = "idx_paper_text_chunks_paper_chunk", columnList = "paper_id,chunk_id")
+        })
 public class PaperTextChunk {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,7 +24,7 @@ public class PaperTextChunk {
     @Column(name = "paper_id", nullable = false, length = 32)
     private String paperId;
 
-    @Column(nullable = false)
+    @Column(name = "chunk_id", nullable = false)
     private Integer chunkId;
 
     @Lob

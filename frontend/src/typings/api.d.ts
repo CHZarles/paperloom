@@ -323,7 +323,7 @@ declare namespace Api {
     interface SearchParams {
       userId: string;
       query: string;
-      topK: number;
+      pageBatchSize: number;
     }
 
     interface SearchResult {
@@ -529,6 +529,8 @@ declare namespace Api {
     interface Input {
       message: string;
       conversationId?: string;
+      scope?: Scope | null;
+      retrievalBudgetProfile?: Scope['retrievalBudgetProfile'];
     }
 
     interface Output {
@@ -546,6 +548,16 @@ declare namespace Api {
       conversationId: string;
     }
 
+    type Route =
+      | 'SMALLTALK'
+      | 'LIBRARY_SEARCH'
+      | 'AUTO_SOURCE_QA'
+      | 'MANUAL_SOURCE_QA'
+      | 'REFERENCE_QA'
+      | 'FOLLOW_UP'
+      | 'CLARIFY'
+      | 'PAPER_QA';
+
     interface Message {
       role: 'user' | 'assistant';
       content: string;
@@ -555,10 +567,41 @@ declare namespace Api {
       conversationRecordId?: number;
       generationId?: string;
       username?: string;
-      route?: 'SMALLTALK' | 'PAPER_QA';
+      route?: Route;
       referenceMappings?: Record<string, ReferenceEvidence>;
+      diagnostics?: Diagnostics;
       toolEvents?: AgentToolEvent[];
       feedbackRating?: 'good' | 'bad';
+    }
+
+    interface Diagnostics {
+      route?: string;
+      scopeMode?: string;
+      scannedCount?: number;
+      acceptedEvidenceCount?: number;
+      sourceCount?: number;
+      stopReason?: 'EXHAUSTED' | 'PLATEAU' | 'CONTEXT_BUDGET' | 'LATENCY_BUDGET' | 'NO_USABLE_EVIDENCE' | string;
+      plannerRounds?: number;
+      attemptedQueries?: string[];
+      fallbackUsed?: boolean;
+    }
+
+    interface Scope {
+      paperIds?: string[];
+      paperTitles?: string[];
+      referenceNumber?: number;
+      conversationRecordId?: number;
+      chunkId?: number;
+      pageNumber?: number;
+      paperId?: string;
+      paperTitle?: string;
+      originalFilename?: string;
+      matchedText?: string;
+      matchedChunkText?: string;
+      evidenceSnippet?: string;
+      bboxJson?: string;
+      sourceKind?: ReferenceEvidence['sourceKind'];
+      retrievalBudgetProfile?: 'interactive' | 'high_recall' | 'deep_audit';
     }
 
     interface Token {
@@ -576,6 +619,7 @@ declare namespace Api {
       updatedAt: string;
       errorMessage?: string | null;
       referenceMappings?: Record<string, ReferenceEvidence>;
+      diagnostics?: Diagnostics;
     }
 
     interface ConversationSession {

@@ -48,6 +48,8 @@ public class KafkaConfig {
     @Value("${spring.kafka.consumer.properties.spring.json.trusted.packages}")
     private String trustedPackages;
 
+    @Value("${spring.kafka.listener.auto-startup:true}")
+    private boolean listenerAutoStartup;
 
     public String getPaperProcessingTopic() {
         return paperProcessingTopic;
@@ -124,6 +126,7 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.setCommonErrorHandler(errorHandler);
+        factory.setAutoStartup(listenerAutoStartup);
         return factory;
     }
 }

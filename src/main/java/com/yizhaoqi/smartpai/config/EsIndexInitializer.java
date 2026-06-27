@@ -34,7 +34,10 @@ public class EsIndexInitializer implements CommandLineRunner {
     private ElasticsearchClient esClient;
 
     @Value("classpath:es-mappings/paper_chunks.json")
-    private org.springframework.core.io.Resource mappingResource;
+    private org.springframework.core.io.Resource chunkMappingResource;
+
+    @Value("classpath:es-mappings/paper_search.json")
+    private org.springframework.core.io.Resource paperSearchMappingResource;
 
     @Value("${elasticsearch.host}")
     private String host;
@@ -51,9 +54,10 @@ public class EsIndexInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         try {
-            logger.info("正在初始化索引 '{}'... endpoint={}://{}:{}, username={}",
-                    PaperSearchIndex.INDEX_NAME, scheme, host, port, maskUsername(username));
-            initializeIndex();
+            logger.info("正在初始化论文检索索引... endpoint={}://{}:{}, username={}",
+                    scheme, host, port, maskUsername(username));
+            initializeIndex(PaperSearchIndex.INDEX_NAME, chunkMappingResource);
+            initializeIndex(PaperSearchIndex.PAPER_INDEX_NAME, paperSearchMappingResource);
         } catch (Exception exception) {
             // 特别处理连接关闭异常，尝试重新连接
             if (exception instanceof ConnectionClosedException || (exception.getCause() != null && exception.getCause() instanceof ConnectionClosedException)) {
@@ -61,7 +65,8 @@ public class EsIndexInitializer implements CommandLineRunner {
                 try {
                     Thread.sleep(5000); // 等待5秒后重试
                     // 重新尝试初始化索引
-                    initializeIndex();
+                    initializeIndex(PaperSearchIndex.INDEX_NAME, chunkMappingResource);
+                    initializeIndex(PaperSearchIndex.PAPER_INDEX_NAME, paperSearchMappingResource);
                 } catch (Exception retryException) {
                     String diagnostic = buildDiagnosticMessage(retryException);
                     logger.error("重试初始化索引失败。{}", diagnostic, retryException);
@@ -76,24 +81,22 @@ public class EsIndexInitializer implements CommandLineRunner {
     }
 
     /**
-     * 初始化索引的核心逻辑
-     * @throws Exception
+     * 初始化索引的核心逻辑。
      */
-    private void initializeIndex() throws Exception {
+    private void initializeIndex(String indexName, org.springframework.core.io.Resource mappingResource) throws Exception {
         // 检查索引是否存在
-        BooleanResponse existsResponse = esClient.indices().exists(ExistsRequest.of(e -> e.index(PaperSearchIndex.INDEX_NAME)));
+        BooleanResponse existsResponse = esClient.indices().exists(ExistsRequest.of(e -> e.index(indexName)));
         if (!existsResponse.value()) {
-            createIndex();
+            createIndex(indexName, mappingResource);
         } else {
-            logger.info("索引 '{}' 已存在", PaperSearchIndex.INDEX_NAME);
+            logger.info("索引 '{}' 已存在", indexName);
         }
     }
 
     /**
-     * 创建索引
-     * @throws Exception
+     * 创建索引。
      */
-    private void createIndex() throws Exception {
+    private void createIndex(String indexName, org.springframework.core.io.Resource mappingResource) throws Exception {
         // 读取 JSON 文件内容，使用 InputStream 方式支持 JAR 包内资源
         String mappingJson;
         try (var inputStream = mappingResource.getInputStream()) {
@@ -101,11 +104,11 @@ public class EsIndexInitializer implements CommandLineRunner {
         }
         // 创建索引并应用映射
         CreateIndexRequest createIndexRequest = CreateIndexRequest.of(c -> c
-                .index(PaperSearchIndex.INDEX_NAME)
+                .index(indexName)
                 .withJson(new StringReader(mappingJson))
         );
         esClient.indices().create(createIndexRequest);
-        logger.info("索引 '{}' 已创建", PaperSearchIndex.INDEX_NAME);
+        logger.info("索引 '{}' 已创建", indexName);
     }
 
     private String buildDiagnosticMessage(Exception exception) {

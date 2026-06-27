@@ -15,7 +15,7 @@ function createDefaultModel(): Api.Paper.SearchParams {
   return {
     userId: `${store.userInfo.id}`,
     query: '',
-    topK: 10
+    pageBatchSize: 32
   };
 }
 
@@ -73,14 +73,14 @@ watch(visible, () => {
       :show-feedback="false"
     >
       <NGrid>
-        <NFormItemGi label="topK" path="topK" class="pr-24px" span="6">
+        <NFormItemGi label="Batch" path="pageBatchSize" class="pr-24px" span="6">
           <NInputNumber
-            v-model:value="model.topK"
-            placeholder="请输入topK"
+            v-model:value="model.pageBatchSize"
+            placeholder="分页批次"
             clearable
             :min="1"
             :precision="0"
-            :step="10"
+            :step="8"
           />
         </NFormItemGi>
         <NFormItemGi label="关键字" path="query" class="pr-24px" span="12">

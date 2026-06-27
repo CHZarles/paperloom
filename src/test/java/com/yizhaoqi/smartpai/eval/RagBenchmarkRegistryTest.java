@@ -1,0 +1,104 @@
+package com.yizhaoqi.smartpai.eval;
+
+import org.junit.jupiter.api.Test;
+
+import java.nio.file.Path;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class RagBenchmarkRegistryTest {
+
+    @Test
+    void loadsHarnessesAndProfessionalBenchmarksFromYaml() throws Exception {
+        RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
+
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "current-evidence-ledger".equals(harness.id()) && "runnable".equals(harness.status())));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "keyword-only-baseline".equals(harness.id())
+                        && "runnable-litsearch".equals(harness.status())
+                        && "keyword".equals(harness.retrieval())));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "service-backed-page-window".equals(harness.id())
+                        && "runnable-paper-qa".equals(harness.status())
+                        && "hybrid-plus-page-window".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "service-backed-scoped-page-window".equals(harness.id())
+                        && "runnable-paper-qa".equals(harness.status())
+                        && "scoped-paper-page-window".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "service-backed-scoped-diverse-window".equals(harness.id())
+                        && "runnable-paper-qa".equals(harness.status())
+                        && "scoped-paper-diverse-window".equals(harness.retrieval())
+                        && "scientific-qa-diverse-windows".equals(harness.planner())
+                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "service-backed-scoped-diverse-window-k5".equals(harness.id())
+                        && "runnable-paper-qa".equals(harness.status())
+                        && "scoped-paper-diverse-window-k5".equals(harness.retrieval())
+                        && "scientific-qa-diverse-windows".equals(harness.planner())
+                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "service-backed-scoped-diverse-window-k7".equals(harness.id())
+                        && "runnable-paper-qa".equals(harness.status())
+                        && "scoped-paper-diverse-window-k7".equals(harness.retrieval())
+                        && "scientific-qa-diverse-windows".equals(harness.planner())
+                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
+        assertTrue(registry.benchmarks().stream()
+                .anyMatch(benchmark -> "qasper-dev-200".equals(benchmark.id())
+                        && "professional".equals(benchmark.tier())
+                        && "passRate".equals(benchmark.primaryMetric())));
+        assertTrue(registry.benchmarks().stream()
+                .anyMatch(benchmark -> "litsearch-full".equals(benchmark.id())
+                        && "professional".equals(benchmark.tier())
+                        && "runnable".equals(benchmark.status())
+                        && "eval/rag/litsearch/generated/litsearch-full-query.jsonl".equals(benchmark.path())
+                        && "recallAt20".equals(benchmark.primaryMetric())
+                        && benchmark.source().contains("princeton-nlp/LitSearch")));
+        assertEquals("597 queries / 64,183 papers", registry.benchmark("litsearch-full").cases());
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "current-evidence-ledger".equals(harness.id())
+                        && harness.benchmarkIds().contains("litsearch-service-slice-k5")));
+        assertEquals("597 queries / 5,060 imported candidate papers",
+                registry.benchmark("litsearch-service-slice-k5").cases());
+    }
+
+    @Test
+    void registersProductPaperQaSliceForServiceBackedPageWindowRuns() throws Exception {
+        RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
+
+        RagBenchmarkRegistry.BenchmarkDefinition benchmark = registry.benchmark("product-rescue-paper-qa");
+
+        assertEquals("Product Paper-QA Slice", benchmark.name());
+        assertEquals("product", benchmark.tier());
+        assertEquals("source-grounded scoped paper QA", benchmark.task());
+        assertEquals("eval/rag/product-rescue-paper-qa.jsonl", benchmark.path());
+        assertEquals("passRate", benchmark.primaryMetric());
+        assertEquals("10", benchmark.cases());
+    }
+
+    @Test
+    void productPaperQaSliceContainsOnlyScopedPaperQaCases() throws Exception {
+        List<RagBenchmarkCase> cases = RagBenchmarkDataset.load(Path.of("eval/rag/product-rescue-paper-qa.jsonl"));
+
+        assertEquals(10, cases.size());
+        assertTrue(cases.stream().allMatch(testCase -> "MANUAL_SOURCE".equals(testCase.scopeMode())));
+        assertTrue(cases.stream().allMatch(testCase -> "MANUAL_SOURCE_QA".equals(testCase.expectedRoute())));
+        assertTrue(cases.stream().allMatch(testCase -> !testCase.scope().paperIds().isEmpty()));
+        assertTrue(cases.stream().allMatch(testCase -> !testCase.requiredEvidenceRegex().isEmpty()));
+        assertTrue(cases.stream().anyMatch(testCase -> "TABLE_QA".equals(testCase.taskType())));
+        assertTrue(cases.stream().anyMatch(testCase -> "LIMITATION_QA".equals(testCase.taskType())));
+        assertTrue(cases.stream().anyMatch(testCase -> "REFERENCE_CONTEXT_QA".equals(testCase.taskType())));
+        assertTrue(cases.stream().anyMatch(testCase -> "MULTI_PAPER_DISAMBIGUATION_QA".equals(testCase.taskType())));
+        assertFalse(cases.stream().anyMatch(testCase -> List.of(
+                "NON_PAPER_SYSTEM",
+                "LIBRARY_INVENTORY",
+                "REFERENCE_QA"
+        ).contains(testCase.taskType())));
+    }
+}

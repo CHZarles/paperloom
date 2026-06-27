@@ -8,6 +8,21 @@ function createChatClientId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
+const CHAT_ROUTES = new Set<Api.Chat.Route>([
+  'SMALLTALK',
+  'LIBRARY_SEARCH',
+  'AUTO_SOURCE_QA',
+  'MANUAL_SOURCE_QA',
+  'REFERENCE_QA',
+  'FOLLOW_UP',
+  'CLARIFY',
+  'PAPER_QA'
+]);
+
+function normalizeChatRoute(route: unknown): Api.Chat.Route | undefined {
+  return typeof route === 'string' && CHAT_ROUTES.has(route as Api.Chat.Route) ? (route as Api.Chat.Route) : undefined;
+}
+
 export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const NON_RETRYABLE_CLOSE_CODES = new Set([1002, 1003, 1007, 1008]);
   const WS_HEARTBEAT_PING = '__chat_ping__';
@@ -15,7 +30,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const chatClientId = createChatClientId();
 
   const conversationId = ref<string>('');
-  const input = ref<Api.Chat.Input>({ message: '' });
+  const input = ref<Api.Chat.Input>({ message: '', retrievalBudgetProfile: 'interactive' });
   const list = ref<Api.Chat.Message[]>([]);
   const sessions = ref<Api.Chat.ConversationSession[]>([]);
   const sessionsLoading = ref(false);
@@ -87,6 +102,10 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (snapshot.referenceMappings && Object.keys(snapshot.referenceMappings).length > 0) {
         assistant.referenceMappings = snapshot.referenceMappings;
       }
+      if (snapshot.diagnostics) {
+        assistant.diagnostics = snapshot.diagnostics;
+        assistant.route = normalizeChatRoute(snapshot.diagnostics.route) || assistant.route;
+      }
       return;
     }
 
@@ -104,7 +123,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       conversationId: snapshot.conversationId,
       generationId: snapshot.generationId,
       timestamp: snapshot.updatedAt,
-      referenceMappings: snapshot.referenceMappings
+      referenceMappings: snapshot.referenceMappings,
+      diagnostics: snapshot.diagnostics,
+      route: normalizeChatRoute(snapshot.diagnostics?.route)
     });
   }
 
@@ -349,7 +370,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     clearRateLimitCountdown();
     resetConnectionState();
     conversationId.value = '';
-    input.value = { message: '' };
+    input.value = { message: '', retrievalBudgetProfile: 'interactive' };
     list.value = [];
     sessions.value = [];
     wsClose(1000, 'auth-reset');

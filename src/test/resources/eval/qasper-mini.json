@@ -1,0 +1,73 @@
+{
+  "1912.01214": {
+    "title": "Cross-lingual Pre-training Based Transfer for Zero-shot Neural Machine Translation",
+    "abstract": [
+      "This paper studies zero-shot neural machine translation."
+    ],
+    "full_text": [
+      {
+        "section_name": "Experiments",
+        "paragraphs": [
+          "We compare our approaches with related approaches of pivoting, multilingual NMT (MNMT), and cross-lingual transfer without pretraining. The results show that our approaches consistently outperform other approaches across languages and datasets."
+        ]
+      }
+    ],
+    "figures_and_tables": [],
+    "qas": [
+      {
+        "question": "which multilingual approaches do they compare with?",
+        "question_id": "b6f15fb6279b82e34a5bf4828b7b5ddabfdf1d54",
+        "answers": [
+          {
+            "answer": {
+              "unanswerable": false,
+              "extractive_spans": [
+                "BIBREF19"
+              ],
+              "yes_no": null,
+              "free_form_answer": "",
+              "evidence": [
+                "We compare our approaches with related approaches of pivoting, multilingual NMT (MNMT), and cross-lingual transfer without pretraining. The results show that our approaches consistently outperform other approaches across languages and datasets."
+              ],
+              "highlighted_evidence": [
+                "We compare our approaches with related approaches of pivoting, multilingual NMT (MNMT), and cross-lingual transfer without pretraining."
+              ]
+            }
+          },
+          {
+            "answer": {
+              "unanswerable": false,
+              "extractive_spans": [
+                "multilingual NMT (MNMT) BIBREF19"
+              ],
+              "yes_no": null,
+              "free_form_answer": "",
+              "evidence": [
+                "We compare our approaches with related approaches of pivoting, multilingual NMT (MNMT), and cross-lingual transfer without pretraining. The results show that our approaches consistently outperform other approaches across languages and datasets."
+              ],
+              "highlighted_evidence": [
+                "We compare our approaches with related approaches of pivoting, multilingual NMT (MNMT), and cross-lingual transfer without pretraining."
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "question": "what dataset was not reported?",
+        "question_id": "9f59e6125d7ab1981c6df6ed7ad4b40ffc52d067",
+        "answers": [
+          {
+            "answer": {
+              "unanswerable": true,
+              "extractive_spans": [],
+              "yes_no": null,
+              "free_form_answer": "",
+              "evidence": [],
+              "highlighted_evidence": []
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

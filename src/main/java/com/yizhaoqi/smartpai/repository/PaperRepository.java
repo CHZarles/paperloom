@@ -33,8 +33,10 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
 
     long countByPaperIdAndUserId(String paperId, String userId);
 
+    @Transactional
     void deleteByPaperId(String paperId);
 
+    @Transactional
     void deleteByPaperIdAndUserId(String paperId, String userId);
 
     List<Paper> findByUserIdOrIsPublicTrue(String userId);
@@ -50,6 +52,8 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
     List<Paper> findByUserIdAndOriginalFilenameOrderByCreatedAtDesc(String userId, String originalFilename);
 
     List<Paper> findByPaperIdIn(List<String> md5List);
+
+    List<Paper> findByEvalTrueAndSourceDatasetAndEvalSplit(String sourceDataset, String evalSplit);
 
     @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)

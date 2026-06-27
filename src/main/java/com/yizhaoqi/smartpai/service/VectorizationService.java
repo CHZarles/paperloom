@@ -4,6 +4,7 @@ import com.yizhaoqi.smartpai.client.EmbeddingClient;
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.PaperTextChunk;
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
+import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
 import com.yizhaoqi.smartpai.entity.TextChunk;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -60,6 +62,7 @@ public class VectorizationService {
                 logger.warn("未找到论文 chunk 内容，paperId: {}", paperId);
                 return new VectorizationUsageResult(0, 0, embeddingClient.currentModelVersion());
             }
+            Paper paperMetadata = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId).orElse(null);
 
             // 提取文本内容
             List<String> texts = chunks.stream()
@@ -77,34 +80,44 @@ public class VectorizationService {
 
             // 构建 Elasticsearch 论文 chunk 并存储
             List<PaperChunkDocument> esDocuments = IntStream.range(0, chunks.size())
-                    .mapToObj(i -> new PaperChunkDocument(
-                            UUID.randomUUID().toString(),
-                            paperId,
-                            chunks.get(i).getChunkId(),
-                            chunks.get(i).getContent(),
-                            chunks.get(i).getPageNumber(),
-                            chunks.get(i).getAnchorText(),
-                            chunks.get(i).getElementType(),
-                            chunks.get(i).getSectionTitle(),
-                            chunks.get(i).getSectionLevel(),
-                            chunks.get(i).getBboxJson(),
-                            chunks.get(i).getParserName(),
-                            chunks.get(i).getParserVersion(),
-                            chunks.get(i).getSourceKind(),
-                            chunks.get(i).getTableId(),
-                            chunks.get(i).getFigureId(),
-                            chunks.get(i).getFormulaId(),
-                            chunks.get(i).getEvidenceRole(),
-                            vectors.get(i),
-                            embeddingResult.modelVersion(),
-                            userId,
-                            orgTag,
-                            isPublic
-                    ))
+                    .mapToObj(i -> {
+                        TextChunk chunk = chunks.get(i);
+                        PaperChunkDocument document = new PaperChunkDocument(
+                                UUID.randomUUID().toString(),
+                                paperId,
+                                chunk.getChunkId(),
+                                chunk.getContent(),
+                                chunk.getPageNumber(),
+                                chunk.getAnchorText(),
+                                chunk.getElementType(),
+                                chunk.getSectionTitle(),
+                                chunk.getSectionLevel(),
+                                chunk.getBboxJson(),
+                                chunk.getParserName(),
+                                chunk.getParserVersion(),
+                                chunk.getSourceKind(),
+                                chunk.getTableId(),
+                                chunk.getFigureId(),
+                                chunk.getFormulaId(),
+                                chunk.getEvidenceRole(),
+                                vectors.get(i),
+                                embeddingResult.modelVersion(),
+                                userId,
+                                orgTag,
+                                isPublic
+                        );
+                        document.setRetrievalTextContent(buildRetrievalTextContent(paperMetadata, chunk));
+                        return document;
+                    })
                     .toList();
 
             updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_INDEXING);
             elasticsearchService.bulkIndex(esDocuments); // 批量存储到 Elasticsearch
+            if (paperMetadata != null) {
+                elasticsearchService.bulkIndexPaperSearch(List.of(
+                        PaperSearchDocument.from(paperMetadata, userId, orgTag, isPublic)
+                ));
+            }
 
             logger.info("论文向量化完成，paperId: {}", paperId);
             return new VectorizationUsageResult(
@@ -164,6 +177,33 @@ public class VectorizationService {
             paper.setVectorizationErrorMessage(null);
             paperRepository.save(paper);
         });
+    }
+
+    static String buildRetrievalTextContent(Paper paper, TextChunk chunk) {
+        List<String> parts = new ArrayList<>();
+        if (paper != null) {
+            appendRetrievalPart(parts, "title", paper.getPaperTitle());
+            appendRetrievalPart(parts, "filename", paper.getOriginalFilename());
+            appendRetrievalPart(parts, "abstract", paper.getAbstractText());
+            appendRetrievalPart(parts, "authors", paper.getAuthors());
+            appendRetrievalPart(parts, "venue", paper.getVenue());
+            appendRetrievalPart(parts, "year", paper.getPublicationYear() == null ? null : paper.getPublicationYear().toString());
+        }
+        if (chunk != null) {
+            appendRetrievalPart(parts, "section", chunk.getSectionTitle());
+            appendRetrievalPart(parts, "element", chunk.getElementType());
+            appendRetrievalPart(parts, "source", chunk.getSourceKind());
+            appendRetrievalPart(parts, "evidence", chunk.getEvidenceRole());
+            appendRetrievalPart(parts, "text", chunk.getContent());
+        }
+        return String.join("\n", parts);
+    }
+
+    private static void appendRetrievalPart(List<String> parts, String label, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        parts.add(label + ": " + value.trim());
     }
 
     public record VectorizationUsageResult(int actualEmbeddingTokens, int actualChunkCount, String modelVersion) {

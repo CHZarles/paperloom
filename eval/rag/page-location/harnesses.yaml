@@ -1,0 +1,33 @@
+harnesses:
+  - id: page-index-offline
+    name: Page Index Offline
+    description: Offline page locator prototype over exported PaperLoom chunks.
+    retrieval: page-index
+    planner: none
+    verifier: disabled
+    status: prototype
+  - id: page-index-planned
+    name: Page Index With Locator Planner
+    description: Offline page locator with query expansion from titles, keyword-like lines, and section navigation hints.
+    retrieval: page-index
+    planner: page-locator
+    verifier: disabled
+    status: prototype
+  - id: service-backed-page-window
+    name: Service Backed Page Window
+    description: Production first-stage retrieval plus MySQL page-window inspection and evidence-ledger packing.
+    retrieval: adaptive-hybrid + page-window
+    planner: scientific-qa
+    verifier: evidence-ledger
+    status: prototype
+
+benchmarks:
+  - id: product-rescue-curated-page-location
+    name: Product Rescue Curated Page Location
+    tier: prototype
+    task: exact page-window retrieval for one PaperLoom product smoke paper
+    status: runnable
+    path: eval/rag/page-location/product-rescue-curated-page-cases.jsonl
+    source: curated exact pages over exported PaperLoom chunks
+    primaryMetric: positivePageRecallAt3
+    cases: "6"

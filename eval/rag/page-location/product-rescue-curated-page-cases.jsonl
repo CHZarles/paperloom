@@ -1,0 +1,6 @@
+{"id":"grep_curated_related_concepts","query":"在论文里找相关概念","goldPageKeys":["6da506ce952a2c4d85928b3e0052f4f6:1"]}
+{"id":"grep_curated_retrieval_strategies","query":"论文比较了哪些检索策略","goldPageKeys":["6da506ce952a2c4d85928b3e0052f4f6:2"]}
+{"id":"grep_curated_method_dataset","query":"方法部分的数据集和任务设置在哪里","goldPageKeys":["6da506ce952a2c4d85928b3e0052f4f6:3"]}
+{"id":"grep_curated_experiment1_table","query":"实验1整体准确率表在哪里","goldPageKeys":["6da506ce952a2c4d85928b3e0052f4f6:5"]}
+{"id":"grep_curated_noise_tables","query":"高噪声或 session limit 扩展的结果表在哪里","goldPageKeys":["6da506ce952a2c4d85928b3e0052f4f6:7"]}
+{"id":"grep_curated_limitations_conclusion","query":"论文的局限性和结论在哪里","goldPageKeys":["6da506ce952a2c4d85928b3e0052f4f6:7"]}

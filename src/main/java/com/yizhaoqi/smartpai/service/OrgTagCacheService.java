@@ -7,8 +7,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.yizhaoqi.smartpai.model.OrganizationTag;
+import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.OrganizationTagRepository;
+import com.yizhaoqi.smartpai.repository.UserRepository;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
@@ -37,6 +40,9 @@ public class OrgTagCacheService {
     
     @Autowired
     private OrganizationTagRepository organizationTagRepository;
+
+    @Autowired
+    private UserRepository userRepository;
     
     /**
      * 缓存用户的组织标签
@@ -74,7 +80,28 @@ public class OrgTagCacheService {
         } catch (Exception e) {
             logger.error("Failed to get organization tags for user: {}", username, e);
         }
+        List<String> databaseTags = loadUserOrgTagsFromDatabase(username);
+        if (!databaseTags.isEmpty()) {
+            cacheUserOrgTags(username, databaseTags);
+            return databaseTags;
+        }
         return null;
+    }
+
+    private List<String> loadUserOrgTagsFromDatabase(String username) {
+        try {
+            return userRepository.findByUsername(username)
+                    .map(User::getOrgTags)
+                    .stream()
+                    .flatMap(tags -> Arrays.stream(tags.split(",")))
+                    .map(String::trim)
+                    .filter(tag -> !tag.isEmpty())
+                    .distinct()
+                    .toList();
+        } catch (Exception e) {
+            logger.error("Failed to load organization tags from database for user: {}", username, e);
+            return List.of();
+        }
     }
     
     /**
@@ -229,4 +256,4 @@ public class OrgTagCacheService {
             logger.error("Failed to invalidate effective organization tags cache", e);
         }
     }
-} 
+}

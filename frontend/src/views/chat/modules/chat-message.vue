@@ -50,6 +50,7 @@ const emit = defineEmits<{
       referenceNumber: number;
     }
   ): void;
+  (e: 'selectSourceScope', payload: Api.Chat.Scope): void;
 }>();
 
 const authStore = useAuthStore();
@@ -138,6 +139,41 @@ const thinkingTitle = computed(() => (props.msg.route === 'SMALLTALK' ? '正在�
 const thinkingDescription = computed(() =>
   props.msg.route === 'SMALLTALK' ? '准备简短回应' : '检索片段、页码与引用来源'
 );
+const sourcesUsed = computed(() => {
+  if (props.msg.role !== 'assistant' || !props.msg.referenceMappings) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const sources: Array<{ paperId?: string; paperTitle: string; originalFilename?: string | null }> = [];
+  Object.values(props.msg.referenceMappings).forEach(detail => {
+    const title = (detail.paperTitle || detail.originalFilename || '').trim();
+    if (!title) {
+      return;
+    }
+    const key = detail.paperId || title;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    sources.push({
+      paperId: detail.paperId,
+      paperTitle: title,
+      originalFilename: detail.originalFilename
+    });
+  });
+  return sources;
+});
+
+const sourceSetScope = computed<Api.Chat.Scope | null>(() => {
+  const sources = sourcesUsed.value.filter(source => source.paperId);
+  if (!sources.length) {
+    return null;
+  }
+  return {
+    paperIds: sources.map(source => source.paperId as string),
+    paperTitles: sources.map(source => source.paperTitle)
+  };
+});
 
 function getToolLabel(tool: string) {
   return toolNameLabels[tool] || tool;
@@ -145,6 +181,32 @@ function getToolLabel(tool: string) {
 
 function getToolStatusLabel(status: Api.Chat.AgentToolEvent['status']) {
   return toolStatusLabels[status] || status;
+}
+
+function getSourceLabel(source: { paperTitle: string; originalFilename?: string | null }) {
+  return source.paperTitle || source.originalFilename || 'Untitled paper';
+}
+
+function selectSourceSet() {
+  if (!sourceSetScope.value) {
+    return;
+  }
+  emit('selectSourceScope', sourceSetScope.value);
+  window.$message?.success('已将本轮来源设为提问范围');
+}
+
+function selectSingleSource(source: { paperId?: string; paperTitle: string; originalFilename?: string | null }) {
+  if (!source.paperId) {
+    return;
+  }
+  emit('selectSourceScope', {
+    paperIds: [source.paperId],
+    paperTitles: [source.paperTitle],
+    paperId: source.paperId,
+    paperTitle: source.paperTitle,
+    originalFilename: source.originalFilename || undefined
+  });
+  window.$message?.success('已将该论文设为提问范围');
 }
 
 function splitTrailingUrlPunctuation(rawUrl: string) {
@@ -603,6 +665,31 @@ async function handleSourceFileClick(fileInfo: {
     >
       <VueMarkdownIt :content="content" />
     </div>
+    <div v-if="sourcesUsed.length" class="sources-used">
+      <span>Sources used</span>
+      <div>
+        <button
+          v-for="source in sourcesUsed"
+          :key="source.paperId || source.paperTitle"
+          type="button"
+          :disabled="!source.paperId"
+          :title="source.paperId ? 'Use this paper as scope' : 'Source id unavailable'"
+          @click="selectSingleSource(source)"
+        >
+          {{ getSourceLabel(source) }}
+        </button>
+      </div>
+      <button
+        v-if="sourceSetScope"
+        type="button"
+        class="sources-used__set-action"
+        title="Use all sources from this answer as the next question scope"
+        @click="selectSourceSet"
+      >
+        <icon-lucide:quote class="text-13px" />
+        Use sources
+      </button>
+    </div>
     <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
     <NDivider class="message-divider" />
     <div class="message-actions">
@@ -750,6 +837,76 @@ async function handleSourceFileClick(fileInfo: {
   margin-top: 8px;
   color: var(--color-error);
   font-style: italic;
+}
+
+.sources-used {
+  margin-left: 52px;
+  display: flex;
+  max-width: min(860px, calc(100% - 52px));
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.sources-used > span {
+  flex: 0 0 auto;
+  font-weight: 650;
+}
+
+.sources-used > div {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sources-used > div > button,
+.sources-used__set-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 280px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  padding: 1px 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.sources-used > div > button:hover,
+.sources-used__set-action:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  background: var(--color-primary-soft-bg);
+  color: var(--color-primary);
+}
+
+.sources-used > div > button:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.sources-used > div > button:disabled:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.sources-used__set-action {
+  flex: 0 0 auto;
+  max-width: none;
+  color: var(--color-primary);
+  font-weight: 650;
 }
 
 .message-block--assistant .message-author {

@@ -1,0 +1,58 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "paperId": {
+        "type": "keyword"
+      },
+      "paperTitle": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "originalFilename": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "abstractText": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "authors": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "venue": {
+        "type": "keyword"
+      },
+      "year": {
+        "type": "integer"
+      },
+      "doi": {
+        "type": "keyword"
+      },
+      "arxivId": {
+        "type": "keyword"
+      },
+      "searchText": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "userId": {
+        "type": "keyword"
+      },
+      "orgTag": {
+        "type": "keyword"
+      },
+      "public": {
+        "type": "boolean"
+      }
+    }
+  }
+}

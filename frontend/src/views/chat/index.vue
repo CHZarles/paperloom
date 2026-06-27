@@ -74,6 +74,17 @@ function closeReferencePanel() {
   referencePanelVisible.value = false;
 }
 
+function handleAskAboutReference(scope: Api.Chat.Scope) {
+  chatStore.input.scope = scope;
+  if (!chatStore.input.message.trim()) {
+    chatStore.input.message = '解释这个引用';
+  }
+}
+
+function handleSelectSourceScope(scope: Api.Chat.Scope) {
+  chatStore.input.scope = scope;
+}
+
 function syncSidebarForViewport() {
   sidebarCollapsed.value = window.innerWidth <= 960;
 }
@@ -126,7 +137,7 @@ onBeforeUnmount(() => {
 
       <section class="chat-workspace">
         <div class="chat-conversation">
-          <ChatList @open-reference="handleOpenReference" />
+          <ChatList @open-reference="handleOpenReference" @select-source-scope="handleSelectSourceScope" />
           <InputBox v-if="showDockInput" />
         </div>
 
@@ -152,6 +163,7 @@ onBeforeUnmount(() => {
             :page-number="referencePayload.pageNumber || undefined"
             :evidence-snippet="referencePayload.evidenceSnippet || undefined"
             :matched-chunk-text="referencePayload.matchedChunkText || undefined"
+            :chunk-id="referencePayload.chunkId || undefined"
             :bbox-json="referencePayload.bboxJson || undefined"
             :source-kind="referencePayload.sourceKind || undefined"
             :table-id="referencePayload.tableId || undefined"
@@ -160,6 +172,8 @@ onBeforeUnmount(() => {
             :table-text="referencePayload.tableText || undefined"
             :table-markdown="referencePayload.tableMarkdown || undefined"
             :table-screenshot-available="referencePayload.tableScreenshotAvailable"
+            :conversation-record-id="referencePayload.conversationRecordId"
+            @ask-about-this="handleAskAboutReference"
           />
           <div v-else class="reference-panel__empty">
             <icon-lucide:file-text class="text-34px" />

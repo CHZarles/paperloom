@@ -25,8 +25,10 @@ import java.util.function.Consumer;
 @Service
 public class AgentToolRegistry {
 
-    private static final int DEFAULT_TOP_K = 5;
-    private static final int MAX_SEARCH_DOCS = 20;
+    private static final int DEFAULT_PAGE_BATCH_SIZE = 5;
+    private static final int MAX_PAGE_BATCH_SIZE = 20;
+    private static final int DEFAULT_SUMMARY_BATCH_SIZE = 5;
+    private static final int MAX_SUMMARY_BATCH_SIZE = 20;
 
     private final HybridSearchService hybridSearchService;
     private final PaperRetrievalService paperRetrievalService;
@@ -93,18 +95,20 @@ public class AgentToolRegistry {
                                                     Consumer<String> onChunk) {
         requireUserId(userId);
         String query = getRequiredString(arguments, "query");
-        int topK = getInt(arguments, "topK", DEFAULT_TOP_K, 1, MAX_SEARCH_DOCS);
+        int pageBatchSize = getInt(arguments, "pageBatchSize", DEFAULT_PAGE_BATCH_SIZE, 1, MAX_PAGE_BATCH_SIZE);
 
-        PaperRetrievalService.RetrievalResult retrievalResult = paperRetrievalService.retrieve(query, userId, topK);
+        PaperRetrievalService.RetrievalResult retrievalResult =
+                paperRetrievalService.retrieve(query, userId, RetrievalBudget.forPageBatch(pageBatchSize));
         List<SearchResult> results = retrievalResult.results();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("query", query);
-        data.put("topK", topK);
+        data.put("pageBatchSize", pageBatchSize);
         data.put("intent", retrievalResult.plan().intent().name());
         data.put("attemptedQueries", retrievalResult.attemptedQueries());
         data.put("retrievalRoutes", List.copyOf(retrievalResult.routeHitCounts().keySet()));
         data.put("routeHitCounts", retrievalResult.routeHitCounts());
         data.put("finalHitCount", retrievalResult.finalHitCount());
+        data.put("diagnostics", retrievalResult.diagnostics());
         data.put("fallbackUsed", retrievalResult.finalHitCount() == 0 && retrievalResult.attemptedQueries().size() > 1);
         data.put("results", results);
         return new ToolExecutionResult("search_papers", true, formatSearchResults(results, retrievalResult), data);
@@ -115,13 +119,13 @@ public class AgentToolRegistry {
                                                        Consumer<String> onChunk) {
         requireUserId(userId);
         String topic = getRequiredString(arguments, "topic");
-        int maxDocs = getInt(arguments, "maxDocs", DEFAULT_TOP_K, 1, MAX_SEARCH_DOCS);
+        int pageBatchSize = getInt(arguments, "pageBatchSize", DEFAULT_SUMMARY_BATCH_SIZE, 1, MAX_SUMMARY_BATCH_SIZE);
 
-        List<SearchResult> results = paperRetrievalService.retrieve(topic, userId, maxDocs).results();
+        List<SearchResult> results = paperRetrievalService.retrieve(topic, userId, RetrievalBudget.forPageBatch(pageBatchSize)).results();
         String summary = deepSeekClient.summarize(userId, topic, results, onChunk);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("topic", topic);
-        data.put("maxDocs", maxDocs);
+        data.put("pageBatchSize", pageBatchSize);
         data.put("sourceCount", results.size());
         data.put("sources", results);
 
@@ -192,7 +196,7 @@ public class AgentToolRegistry {
                 "在论文库中搜索与用户问题相关的论文片段。当问题涉及论文观点、方法、实验、结论、限制、术语、对比或引用依据时应调用；普通问候、闲聊、纯创作、翻译、通用代码/常识问题，或用户明确要求不要查论文时不要调用。",
                 objectSchema(Map.of(
                         "query", stringSchema("用于论文检索的查询语句。应保留用户原话中的核心术语、方法名、数据集、指标和限定词，可包含必要的等价改写。"),
-                        "topK", integerSchema("返回的片段数量，默认 5。"),
+                        "pageBatchSize", integerSchema("ES 技术分页批次，默认 5。不是答案候选数量上限。"),
                         "intent", stringSchema("可选检索意图，例如 experiment_result、method、limitation、summary、general。后端会自动规划和扩展。"),
                         "expand", booleanSchema("是否允许后端进行多查询扩展，默认 true。"),
                         "preferredSourceKinds", arrayStringSchema("可选偏好的证据类型，例如 TEXT、TABLE、FIGURE、CHART、FORMULA。")
@@ -206,7 +210,7 @@ public class AgentToolRegistry {
                 "对指定主题的论文片段生成结构化摘要。适合用户要求整理、总结、归纳、提炼论文内容时调用；本工具内部会二次调用大模型完成摘要，外层 ReAct 循环只应接收结果，不要把内部摘要过程当作新的工具计划。",
                 objectSchema(Map.of(
                         "topic", stringSchema("需要从论文库中整理和总结的主题。"),
-                        "maxDocs", integerSchema("用于生成摘要的最多相关片段数量，默认 5。")
+                        "pageBatchSize", integerSchema("ES 技术分页批次，默认 5。不是摘要来源数量上限。")
                 ), List.of("topic"))
         );
     }
@@ -281,7 +285,7 @@ public class AgentToolRegistry {
                 .append("\n意图：").append(retrievalResult.plan().intent())
                 .append("\n已尝试查询：").append(String.join(" | ", retrievalResult.attemptedQueries()))
                 .append("\n")
-                .append("请先判断问题类型（summary/method/experiment/limitation/comparison/factual lookup），只选择最能回答问题的 3-5 条证据。")
+                .append("请先判断问题类型（summary/method/experiment/limitation/comparison/factual lookup），在上下文预算内选择足够回答问题的证据，并合并重复证据。")
                 .append("最终回答使用 **结论** / **依据** / **限制**，不要按检索片段顺序机械罗列。")
                 .append("如果用户是在推荐或查找相关论文，必须列出论文标题和推荐理由，每个推荐项末尾放 [n]。")
                 .append("如果证据不足，请在限制中说明不确定性；不得声称论文库暂无相关信息。")

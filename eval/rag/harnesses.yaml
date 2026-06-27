@@ -1,0 +1,120 @@
+harnesses:
+  - id: current-evidence-ledger
+    name: Current Evidence Ledger
+    description: Router plus deterministic-first planner, adaptive hybrid retrieval, evidence ledger, and verifier.
+    retrieval: adaptive-hybrid
+    planner: deterministic-first
+    verifier: enabled
+    status: runnable
+    benchmarkIds: product-rescue-smoke,qasper-dev-200,litsearch-full,litsearch-service-slice-k5
+  - id: keyword-only-baseline
+    name: Keyword Only Baseline
+    description: Offline keyword/BM25-style retrieval baseline for LitSearch; product-chat answer harness is still planned.
+    retrieval: keyword
+    planner: none
+    verifier: disabled
+    status: runnable-litsearch
+    benchmarkIds: litsearch-full
+  - id: facet-paper-baseline
+    name: Facet Paper Baseline
+    description: Offline LitSearch baseline that rewards query-facet coverage in title and abstract while capping body-term repetition.
+    retrieval: paper-facet
+    planner: none
+    verifier: disabled
+    status: runnable-litsearch
+    benchmarkIds: litsearch-full
+  - id: service-backed-page-window
+    name: Service Backed Page Window
+    description: Production PaperRetrievalService followed by deterministic page-window inspection and evidence-ledger packing.
+    retrieval: hybrid-plus-page-window
+    planner: scientific-qa
+    verifier: enabled
+    status: runnable-paper-qa
+    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
+  - id: service-backed-scoped-page-window
+    name: Service Backed Scoped Page Window
+    description: Scoped-paper MySQL page locator followed by deterministic page-window inspection and evidence-ledger packing.
+    retrieval: scoped-paper-page-window
+    planner: scientific-qa
+    verifier: enabled
+    status: runnable-paper-qa
+    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
+  - id: service-backed-scoped-diverse-window
+    name: Service Backed Scoped Diverse Window
+    description: Scoped-paper MySQL page locator with non-overlapping page-window selection before deterministic inspection.
+    retrieval: scoped-paper-diverse-window
+    planner: scientific-qa-diverse-windows
+    verifier: enabled
+    status: runnable-paper-qa
+    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
+  - id: service-backed-scoped-diverse-window-k5
+    name: Service Backed Scoped Diverse Window K5
+    description: High-recall scoped-paper diverse-window selector using five inspected windows per query.
+    retrieval: scoped-paper-diverse-window-k5
+    planner: scientific-qa-diverse-windows
+    verifier: enabled
+    status: runnable-paper-qa
+    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
+  - id: service-backed-scoped-diverse-window-k7
+    name: Service Backed Scoped Diverse Window K7
+    description: Deep-recall scoped-paper diverse-window selector using seven inspected windows per query.
+    retrieval: scoped-paper-diverse-window-k7
+    planner: scientific-qa-diverse-windows
+    verifier: enabled
+    status: runnable-paper-qa
+    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
+  - id: semantic-only-baseline
+    name: Semantic Only Baseline
+    description: Semantic retrieval only with the same answer and evidence verifier.
+    retrieval: semantic-only
+    planner: deterministic-first
+    verifier: enabled
+    status: planned
+    benchmarkIds: product-rescue-smoke,qasper-dev-200
+
+benchmarks:
+  - id: product-rescue-smoke
+    name: Product Rescue Smoke
+    tier: product
+    task: source-grounded paper chat regression
+    status: runnable
+    path: eval/rag/product-rescue-smoke.jsonl
+    source: local
+    primaryMetric: passRate
+    cases: "6"
+  - id: product-rescue-paper-qa
+    name: Product Paper-QA Slice
+    tier: product
+    task: source-grounded scoped paper QA
+    status: runnable
+    path: eval/rag/product-rescue-paper-qa.jsonl
+    source: local
+    primaryMetric: passRate
+    cases: "10"
+  - id: qasper-dev-200
+    name: QASPER Dev 200
+    tier: professional
+    task: research-paper evidence QA
+    status: runnable
+    path: eval/rag/qasper/generated/qasper-dev-200.jsonl
+    source: https://allenai.org/data/qasper
+    primaryMetric: passRate
+    cases: "200"
+  - id: litsearch-full
+    name: LitSearch Full
+    tier: professional
+    task: literature search retrieval
+    status: runnable
+    path: eval/rag/litsearch/generated/litsearch-full-query.jsonl
+    source: https://huggingface.co/datasets/princeton-nlp/LitSearch
+    primaryMetric: recallAt20
+    cases: "597 queries / 64,183 papers"
+  - id: litsearch-service-slice-k5
+    name: LitSearch Service Slice K5
+    tier: professional
+    task: service-backed literature search retrieval over imported candidate papers
+    status: runnable
+    path: eval/rag/litsearch/generated/litsearch-full-query.jsonl
+    source: https://huggingface.co/datasets/princeton-nlp/LitSearch
+    primaryMetric: recallAt20
+    cases: "597 queries / 5,060 imported candidate papers"

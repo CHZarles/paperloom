@@ -20,6 +20,7 @@ interface Props {
   pageNumber?: number | null;
   evidenceSnippet?: string | null;
   matchedChunkText?: string | null;
+  chunkId?: number | null;
   bboxJson?: string | null;
   sourceKind?: Api.Chat.ReferenceEvidence['sourceKind'];
   tableId?: string | null;
@@ -28,9 +29,13 @@ interface Props {
   tableText?: string | null;
   tableMarkdown?: string | null;
   tableScreenshotAvailable?: boolean | null;
+  conversationRecordId?: number | null;
 }
 
 const props = defineProps<Props>();
+const emit = defineEmits<{
+  (e: 'askAboutThis', payload: Api.Chat.Scope): void;
+}>();
 
 const openingOriginal = ref(false);
 const openingTableScreenshot = ref(false);
@@ -292,6 +297,29 @@ function openEvidenceImageInNewTab() {
   window.open(evidenceImageUrl.value, '_blank', 'noopener,noreferrer');
 }
 
+function askAboutThisEvidence() {
+  if (!props.paperId) {
+    window.$message?.warning('Missing paper id.');
+    return;
+  }
+  emit('askAboutThis', {
+    paperIds: [props.paperId],
+    paperTitles: [displayPaper.value],
+    referenceNumber: props.referenceNumber,
+    conversationRecordId: props.conversationRecordId || undefined,
+    chunkId: props.chunkId || undefined,
+    pageNumber: props.pageNumber || undefined,
+    paperId: props.paperId,
+    paperTitle: displayPaper.value,
+    originalFilename: props.originalFilename || undefined,
+    matchedText: matchedText.value,
+    matchedChunkText: props.matchedChunkText || undefined,
+    evidenceSnippet: props.evidenceSnippet || undefined,
+    bboxJson: props.bboxJson || undefined,
+    sourceKind: props.sourceKind || undefined
+  });
+}
+
 function normalizePdfFilename(filename: string) {
   const normalized = filename.trim().replace(/[\\/\r\n\t"]/g, '_') || 'paper.pdf';
   return normalized.toLowerCase().endsWith('.pdf') ? normalized : `${normalized}.pdf`;
@@ -375,6 +403,12 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="source-evidence__actions">
+      <NButton type="primary" secondary :disabled="!paperId || !matchedText" @click="askAboutThisEvidence">
+        <template #icon>
+          <icon-lucide:message-square-plus />
+        </template>
+        Ask about this
+      </NButton>
       <NButton
         v-if="isTableSource"
         type="primary"

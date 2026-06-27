@@ -12,6 +12,7 @@ public class PaperChunkDocument {
     private String paperId;
     private Integer chunkId;
     private String textContent;
+    private String retrievalTextContent;
     private Integer pageNumber;
     private String anchorText;
     private String elementType;
@@ -69,6 +70,7 @@ public class PaperChunkDocument {
         this.paperId = paperId;
         this.chunkId = chunkId;
         this.textContent = content;
+        this.retrievalTextContent = content;
         this.pageNumber = pageNumber;
         this.anchorText = anchorText;
         this.elementType = elementType;

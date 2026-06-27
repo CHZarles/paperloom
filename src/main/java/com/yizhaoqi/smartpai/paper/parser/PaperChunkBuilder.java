@@ -2,6 +2,7 @@ package com.yizhaoqi.smartpai.paper.parser;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yizhaoqi.smartpai.service.EvidenceQuality;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -64,7 +65,7 @@ public class PaperChunkBuilder {
             ParsedPaperFigure parsedFigure = figuresByElementId.get(element.elementId());
             ParsedPaperFormula parsedFormula = formulasByElementId.get(element.elementId());
             String text = normalizeText(resolveChunkText(element, parsedTable, parsedFigure, parsedFormula));
-            if (text.isBlank()) {
+            if (!EvidenceQuality.isUsable(text)) {
                 continue;
             }
             String sourceKind = resolveSourceKind(element);
@@ -74,6 +75,9 @@ public class PaperChunkBuilder {
             String evidenceRole = resolveEvidenceRole(element, text);
 
             for (String chunkText : splitIntoChunks(text, chunkSize)) {
+                if (!EvidenceQuality.isUsable(chunkText)) {
+                    continue;
+                }
                 chunks.add(new PaperChunkCandidate(
                         nextChunkId++,
                         chunkText,

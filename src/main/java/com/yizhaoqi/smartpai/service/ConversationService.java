@@ -338,6 +338,41 @@ public class ConversationService {
                 .map(detail -> normalizeReferenceDetail(detail, referenceNumber));
     }
 
+    public Optional<Map<String, Object>> findLatestReferenceDetail(Long userId, String conversationId, Integer referenceNumber) {
+        if (userId == null || conversationId == null || conversationId.isBlank() || referenceNumber == null) {
+            return Optional.empty();
+        }
+
+        List<Conversation> conversations = conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(userId, conversationId);
+        for (int i = conversations.size() - 1; i >= 0; i -= 1) {
+            Map<String, Map<String, Object>> mappings = parseReferenceMappings(conversations.get(i).getReferenceMappingsJson());
+            if (mappings == null || mappings.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> detail = mappings.get(String.valueOf(referenceNumber));
+            if (detail != null && !detail.isEmpty()) {
+                return Optional.of(normalizeReferenceDetail(detail, referenceNumber));
+            }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<Map<String, Object>> findLatestReferenceFocus(Long userId, String conversationId) {
+        if (userId == null || conversationId == null || conversationId.isBlank()) {
+            return Optional.empty();
+        }
+
+        List<Conversation> conversations = conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(userId, conversationId);
+        for (int i = conversations.size() - 1; i >= 0; i -= 1) {
+            Map<String, Map<String, Object>> mappings = parseReferenceMappings(conversations.get(i).getReferenceMappingsJson());
+            if (mappings == null || mappings.isEmpty()) {
+                continue;
+            }
+            return Optional.of(new LinkedHashMap<>(mappings));
+        }
+        return Optional.empty();
+    }
+
     private Map<String, Object> normalizeReferenceDetail(Map<String, Object> detail, Integer referenceNumber) {
         Map<String, Object> normalized = new LinkedHashMap<>(detail);
         normalized.put("referenceNumber", referenceNumber);

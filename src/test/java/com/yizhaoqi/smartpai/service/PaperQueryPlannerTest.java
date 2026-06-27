@@ -37,4 +37,31 @@ class PaperQueryPlannerTest {
         assertTrue(plan.queryTexts().contains("method"));
         assertTrue(plan.queryTexts().contains("approach"));
     }
+
+    @Test
+    void expandsChineseHighNoiseQueriesToEnglishNoiseEvidenceTerms() {
+        PaperQueryPlanner planner = new PaperQueryPlanner();
+
+        PaperQueryPlanner.RetrievalPlan plan = planner.plan("讲一讲高噪声场景");
+
+        assertEquals(PaperQueryPlanner.RetrievalIntent.EXPERIMENT_RESULT, plan.intent());
+        assertTrue(plan.queryTexts().contains("high noise"));
+        assertTrue(plan.queryTexts().contains("increasing noise"));
+        assertTrue(plan.queryTexts().contains("context scaling"));
+    }
+
+    @Test
+    void plansLiteratureSearchAsPaperLevelRetrieval() {
+        PaperQueryPlanner planner = new PaperQueryPlanner();
+
+        PaperQueryPlanner.RetrievalPlan plan = planner.plan("推荐一些 post-hoc hallucination detection 相关论文");
+
+        assertEquals(PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH, plan.intent());
+        assertTrue(plan.paperLevelSearch());
+        assertTrue(plan.queryTexts().contains("post-hoc hallucination detection"));
+        assertTrue(plan.queryTexts().contains("post-hoc hallucination detection title abstract"));
+        assertTrue(plan.queryTexts().contains("post-hoc hallucination detection related work"));
+        assertTrue(plan.preferredSections().contains("abstract"));
+        assertTrue(plan.preferredSections().contains("related work"));
+    }
 }

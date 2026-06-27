@@ -74,7 +74,15 @@ public class EmbeddingClient {
         return embedWithUsage(texts, requesterId, usageType).vectors();
     }
 
+    public List<float[]> embed(List<String> texts, String requesterId, UsageType usageType, Duration timeout) {
+        return embedWithUsage(texts, requesterId, usageType, timeout).vectors();
+    }
+
     public EmbeddingUsageResult embedWithUsage(List<String> texts, String requesterId, UsageType usageType) {
+        return embedWithUsage(texts, requesterId, usageType, Duration.ofSeconds(30));
+    }
+
+    public EmbeddingUsageResult embedWithUsage(List<String> texts, String requesterId, UsageType usageType, Duration timeout) {
         try {
             String normalizedRequesterId = requesterId == null || requesterId.isBlank() ? "unknown" : requesterId;
             logger.info("开始生成向量，文本数量: {}", texts.size());
@@ -89,7 +97,7 @@ public class EmbeddingClient {
                         : rateLimitService.reserveEmbeddingUploadUsage(normalizedRequesterId, sub);
                 logger.debug("调用向量 API, 批次: {}-{} (size={})", start, end - 1, sub.size());
                 try {
-                    String response = callApiOnce(sub);
+                    String response = callApiOnce(sub, timeout);
                     EmbeddingApiResponse parsedResponse = parseEmbeddingResponse(response, sub);
                     usageQuotaService.settleReservation(reservation, parsedResponse.totalTokens());
                     all.addAll(parsedResponse.vectors());
@@ -120,6 +128,10 @@ public class EmbeddingClient {
     }
 
     private String callApiOnce(List<String> batch) {
+        return callApiOnce(batch, Duration.ofSeconds(30));
+    }
+
+    private String callApiOnce(List<String> batch, Duration timeout) {
         ModelProviderConfigService.ActiveProviderView provider = modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", provider.model());
@@ -142,7 +154,14 @@ public class EmbeddingClient {
                         .filter(e -> e instanceof WebClientResponseException)
                         .doBeforeRetry(signal -> logger.warn("重试API调用 - 尝试: {}, 错误: {}",
                                 signal.totalRetries() + 1, signal.failure().getMessage())))
-                .block(Duration.ofSeconds(30));
+                .block(safeTimeout(timeout));
+    }
+
+    private Duration safeTimeout(Duration timeout) {
+        if (timeout == null || timeout.isNegative() || timeout.isZero()) {
+            return Duration.ofSeconds(30);
+        }
+        return timeout;
     }
 
     private WebClient buildClient(ModelProviderConfigService.ActiveProviderView provider) {

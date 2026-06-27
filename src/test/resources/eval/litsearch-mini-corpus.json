@@ -1,0 +1,27 @@
+{
+  "dataset": "princeton-nlp/LitSearch",
+  "config": "corpus_clean",
+  "split": "full",
+  "rows": [
+    {
+      "row_idx": 0,
+      "row": {
+        "corpusid": 202719327,
+        "title": "Task-Agnostic Knowledge Distillation for Compressing Large Language Models",
+        "abstract": "We study task-agnostic knowledge distillation for compressing large-scale language models.",
+        "citations": [123, 456],
+        "full_paper": "Task-Agnostic Knowledge Distillation\n\nWe introduce a compression method for large-scale language models."
+      }
+    },
+    {
+      "row_idx": 1,
+      "row": {
+        "corpusid": 226254579,
+        "title": "Token and Sentence Level Hallucination Detection",
+        "abstract": "This paper studies post-hoc hallucination detection for neural sequence generation.",
+        "citations": [],
+        "full_paper": "Hallucination Detection\n\nWe detect hallucinations at token and sentence levels."
+      }
+    }
+  ]
+}

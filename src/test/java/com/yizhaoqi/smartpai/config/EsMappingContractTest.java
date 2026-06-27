@@ -58,6 +58,7 @@ class EsMappingContractTest {
         assertTrue(serializedDocument.has("figureId"));
         assertTrue(serializedDocument.has("formulaId"));
         assertTrue(serializedDocument.has("evidenceRole"));
+        assertTrue(serializedDocument.has("retrievalTextContent"));
 
         InputStream mappingStream = getClass().getResourceAsStream("/es-mappings/paper_chunks.json");
         assertNotNull(mappingStream);
@@ -80,5 +81,6 @@ class EsMappingContractTest {
         assertTrue(properties.has("figureId"));
         assertTrue(properties.has("formulaId"));
         assertTrue(properties.has("evidenceRole"));
+        assertTrue(properties.has("retrievalTextContent"));
     }
 }

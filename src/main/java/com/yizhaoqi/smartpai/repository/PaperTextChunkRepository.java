@@ -13,6 +13,10 @@ public interface PaperTextChunkRepository extends JpaRepository<PaperTextChunk, 
 
     List<PaperTextChunk> findByPaperIdOrderByChunkIdAsc(String paperId);
 
+    List<PaperTextChunk> findByPaperIdAndPageNumberBetweenOrderByPageNumberAscChunkIdAsc(String paperId,
+                                                                                        Integer startPage,
+                                                                                        Integer endPage);
+
     long countByPaperId(String paperId);
 
     long countByPaperIdAndPageNumberIsNotNull(String paperId);

@@ -1,6 +1,7 @@
 package com.yizhaoqi.smartpai.controller;
 
 import com.yizhaoqi.smartpai.service.HybridSearchService;
+import com.yizhaoqi.smartpai.service.RetrievalBudget;
 import com.yizhaoqi.smartpai.utils.LogUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -26,9 +27,9 @@ public class PaperSearchController {
      * Method: GET
      * Parameters:
      *   - query: 搜索查询字符串（必需）
-     *   - topK: 返回结果数量（可选，默认10）
+     *   - pageBatchSize: ES 技术分页批次（可选，默认32）
      * 
-     * 示例: /api/v1/papers/search/hybrid?query=attention mechanism&topK=10
+     * 示例: /api/v1/papers/search/hybrid?query=attention mechanism&pageBatchSize=32
      * 
      * Response:
      * [
@@ -45,21 +46,19 @@ public class PaperSearchController {
      */
     @GetMapping("/hybrid")
     public Map<String, Object> hybridSearch(@RequestParam String query,
-                                            @RequestParam(defaultValue = "10") int topK,
-                                            @RequestAttribute(value = "userId", required = false) String userId) {
+                                            @RequestParam(defaultValue = "32") int pageBatchSize,
+                                            @RequestAttribute("userId") String userId) {
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("HYBRID_SEARCH");
         try {
             LogUtils.logBusiness("HYBRID_SEARCH", userId != null ? userId : "anonymous", 
-                    "开始论文混合检索: query=%s, topK=%d", query, topK);
+                    "开始论文混合检索: query=%s, pageBatchSize=%d", query, pageBatchSize);
             
-            List<SearchResult> results;
-            if (userId != null) {
-                // 如果有用户ID，使用带权限的搜索
-                results = hybridSearchService.searchWithPermission(query, userId, topK);
-            } else {
-                // 如果没有用户ID，使用普通搜索（仅公开内容）
-                results = hybridSearchService.search(query, topK);
-            }
+            HybridSearchService.AdaptiveSearchResult searchResult = hybridSearchService.adaptiveSearchWithPermission(
+                    query,
+                    userId,
+                    RetrievalBudget.forPageBatch(pageBatchSize)
+            );
+            List<SearchResult> results = searchResult.results();
             
             LogUtils.logUserOperation(userId != null ? userId : "anonymous", "HYBRID_SEARCH", 
                     "search_query", "SUCCESS");
@@ -72,6 +71,12 @@ public class PaperSearchController {
             responseBody.put("code", 200);
             responseBody.put("message", "success");
             responseBody.put("data", results);
+            responseBody.put("diagnostics", Map.of(
+                    "scannedCount", searchResult.scannedCount(),
+                    "acceptedEvidenceCount", searchResult.acceptedEvidenceCount(),
+                    "sourceCount", searchResult.sourceCount(),
+                    "stopReason", searchResult.stopReason().name()
+            ));
             
             return responseBody;
         } catch (Exception e) {

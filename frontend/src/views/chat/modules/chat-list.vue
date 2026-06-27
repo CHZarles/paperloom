@@ -45,6 +45,7 @@ const emit = defineEmits<{
       referenceNumber: number;
     }
   ): void;
+  (e: 'selectSourceScope', payload: Api.Chat.Scope): void;
 }>();
 
 const chatStore = useChatStore();
@@ -140,6 +141,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
                 :retrieval-query-fallback="getRetrievalQueryFallback(index)"
                 evidence-mode="drawer"
                 @open-reference="emit('openReference', $event)"
+                @select-source-scope="emit('selectSourceScope', $event)"
               />
             </VueMarkdownItProvider>
           </div>

@@ -1,0 +1,7 @@
+config	split	shard	filename	url
+corpus_clean	full	0	full-00000-of-00006.parquet	https://huggingface.co/datasets/princeton-nlp/LitSearch/resolve/main/corpus_clean/full-00000-of-00006.parquet
+corpus_clean	full	1	full-00001-of-00006.parquet	https://huggingface.co/datasets/princeton-nlp/LitSearch/resolve/main/corpus_clean/full-00001-of-00006.parquet
+corpus_clean	full	2	full-00002-of-00006.parquet	https://huggingface.co/datasets/princeton-nlp/LitSearch/resolve/main/corpus_clean/full-00002-of-00006.parquet
+corpus_clean	full	3	full-00003-of-00006.parquet	https://huggingface.co/datasets/princeton-nlp/LitSearch/resolve/main/corpus_clean/full-00003-of-00006.parquet
+corpus_clean	full	4	full-00004-of-00006.parquet	https://huggingface.co/datasets/princeton-nlp/LitSearch/resolve/main/corpus_clean/full-00004-of-00006.parquet
+corpus_clean	full	5	full-00005-of-00006.parquet	https://huggingface.co/datasets/princeton-nlp/LitSearch/resolve/main/corpus_clean/full-00005-of-00006.parquet

@@ -11,7 +11,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.service.ChatHandler;
 import com.yizhaoqi.smartpai.service.ChatSessionRegistry;
+import com.yizhaoqi.smartpai.service.PaperAnswerService;
+import com.yizhaoqi.smartpai.service.RetrievalBudgetProfile;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -112,6 +115,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                         chatHandler.stopResponse(userId, generationId, session);
                         return;
                     }
+
+                    Object messageText = jsonMessage.get("message");
+                    if (messageText instanceof String chatText && !chatText.isBlank()) {
+                        chatHandler.processMessage(
+                                userId,
+                                new ChatHandler.ChatRequest(chatText, parseAnswerScope(jsonMessage.get("scope"))),
+                                session
+                        );
+                        return;
+                    }
                     
                     // 其他JSON消息当作普通消息处理
                     logger.debug("收到JSON格式的聊天消息，当作普通消息处理");
@@ -184,6 +197,77 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .getQueryParams()
                 .getFirst("clientId");
         return clientId == null || clientId.isBlank() ? null : clientId.trim();
+    }
+
+    @SuppressWarnings("unchecked")
+    private PaperAnswerService.AnswerScope parseAnswerScope(Object rawScope) {
+        if (!(rawScope instanceof Map<?, ?> rawMap)) {
+            return null;
+        }
+        Map<String, Object> scope = (Map<String, Object>) rawMap;
+        return new PaperAnswerService.AnswerScope(
+                stringList(scope.get("paperIds")),
+                stringList(scope.get("paperTitles")),
+                integerValue(scope.get("referenceNumber")),
+                longValue(scope.get("conversationRecordId")),
+                integerValue(scope.get("chunkId")),
+                integerValue(scope.get("pageNumber")),
+                stringValue(scope.get("paperId")),
+                stringValue(scope.get("paperTitle")),
+                stringValue(scope.get("originalFilename")),
+                stringValue(firstPresent(scope, "matchedText", "matchedChunkText", "evidenceSnippet")),
+                stringValue(scope.get("bboxJson")),
+                stringValue(scope.get("sourceKind")),
+                RetrievalBudgetProfile.fromToken(stringValue(scope.get("retrievalBudgetProfile")))
+        );
+    }
+
+    private Object firstPresent(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object value = map.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private List<String> stringList(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        return list.stream()
+                .filter(item -> item != null && !String.valueOf(item).isBlank())
+                .map(String::valueOf)
+                .toList();
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private Integer integerValue(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            String text = stringValue(value);
+            return text == null || text.isBlank() ? null : Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Long longValue(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            String text = stringValue(value);
+            return text == null || text.isBlank() ? null : Long.parseLong(text);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private void sendErrorMessage(WebSocketSession session, String errorMessage) {

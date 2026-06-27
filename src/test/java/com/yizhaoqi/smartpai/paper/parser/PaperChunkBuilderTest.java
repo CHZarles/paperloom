@@ -83,6 +83,28 @@ class PaperChunkBuilderTest {
     }
 
     @Test
+    void doesNotBuildChunksFromPageNumberFragments() {
+        ParsedPaper paper = new ParsedPaper(
+                "MinerU",
+                "1.3.0",
+                new ParsedPaperMetadata("paper.pdf", "A Study", "Ada", 2, null, null),
+                List.of(
+                        element("page-number", 5, 1, ParsedPaperElementType.TEXT_BLOCK, "5", null, bbox(5, 300, 20, 320, 40)),
+                        element("page-marker", 6, 2, ParsedPaperElementType.PARAGRAPH, "Page 6", null, bbox(6, 300, 20, 340, 40)),
+                        element("content", 6, 3, ParsedPaperElementType.PARAGRAPH,
+                                "Agent harnesses reshape retrieval by deciding which tools to call and when to stop searching.",
+                                null, bbox(6, 72, 500, 520, 560))
+                ),
+                Map.of()
+        );
+
+        List<PaperChunkCandidate> chunks = new PaperChunkBuilder().buildChunks(paper, 512);
+
+        assertEquals(1, chunks.size());
+        assertTrue(chunks.get(0).text().contains("Agent harnesses reshape retrieval"));
+    }
+
+    @Test
     void buildsFigureChartAndFormulaChunksWithSourceIds() {
         ParsedPaper paper = new ParsedPaper(
                 "MinerU",

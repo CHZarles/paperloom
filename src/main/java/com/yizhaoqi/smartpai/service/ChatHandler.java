@@ -52,7 +52,7 @@ public class ChatHandler {
     private static final int MAX_REACT_ROUNDS = 4;
     private static final int MAX_REACT_TOOL_CALLS = 8;
     private static final int REACT_MAX_COMPLETION_TOKENS = 2000;
-    private static final int INITIAL_SEARCH_TOP_K = 5;
+    private static final int INITIAL_SEARCH_PAGE_BATCH_SIZE = 5;
     private static final String INITIAL_SEARCH_TOOL_CALL_ID = "initial-search";
     private static final String SMALLTALK_RESPONSE = "我在。你可以直接问论文的方法、实验、结论、表格或某个引用点。";
     private static final Pattern CITED_REFERENCE_PATTERN =
@@ -84,6 +84,7 @@ public class ChatHandler {
     private final Map<String, String> generationClientIds = new ConcurrentHashMap<>();
     // 用于存储每次生成任务的引用映射：generationId -> {referenceNumber -> detail}
     private final Map<String, Map<Integer, ReferenceInfo>> generationReferenceMappings = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Object>> generationDiagnostics = new ConcurrentHashMap<>();
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
     public ChatHandler(RedisTemplate<String, String> redisTemplate,
@@ -113,6 +114,12 @@ public class ChatHandler {
     }
 
     public void processMessage(String userId, String userMessage, WebSocketSession session) {
+        processMessage(userId, new ChatRequest(userMessage, null), session);
+    }
+
+    public void processMessage(String userId, ChatRequest request, WebSocketSession session) {
+        String userMessage = request == null ? "" : request.message();
+        PaperAnswerService.AnswerScope scope = request == null ? null : request.scope();
         logger.info("开始处理消息，用户ID: {}, 会话ID: {}", userId, session.getId());
         String requestClientId = resolveClientId(session);
         String conversationId = null;
@@ -152,7 +159,7 @@ public class ChatHandler {
             // 2. 异步执行 Evidence Harness；默认用户聊天不再让模型自由调度工具和 citation。
             try {
                 chatMonitorExecutor.execute(() ->
-                        runEvidenceHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, responseFuture));
+                        runEvidenceHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, scope, responseFuture));
             } catch (RejectedExecutionException ex) {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
@@ -212,9 +219,10 @@ public class ChatHandler {
                                           String userMessage,
                                           String conversationId,
                                           String generationId,
+                                          PaperAnswerService.AnswerScope scope,
                                           CompletableFuture<String> responseFuture) {
         try {
-            runEvidenceHarness(userId, userMessage, conversationId, generationId, responseFuture);
+            runEvidenceHarness(userId, userMessage, conversationId, generationId, scope, responseFuture);
         } catch (Exception e) {
             logger.error("Evidence Harness 执行失败: generationId={}", generationId, e);
             chatGenerationStateService.markFailed(generationId, e.getMessage());
@@ -228,12 +236,13 @@ public class ChatHandler {
                                     String userMessage,
                                     String conversationId,
                                     String generationId,
+                                    PaperAnswerService.AnswerScope scope,
                                     CompletableFuture<String> responseFuture) {
         ChatRequestTiming timing = generationTimings.get(generationId);
         if (timing != null) {
             timing.begin("harness");
         }
-        PaperAnswerService.AnswerResult answer = paperAnswerService.answer(userId, conversationId, userMessage);
+        PaperAnswerService.AnswerResult answer = paperAnswerService.answer(userId, conversationId, userMessage, scope);
         if (timing != null) {
             timing.end("harness");
             timing.route(answer.intent().name());
@@ -242,6 +251,11 @@ public class ChatHandler {
         if (!answer.referenceMappings().isEmpty()) {
             generationReferenceMappings.put(generationId, answer.referenceMappings());
             chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(answer.referenceMappings()));
+        }
+        Map<String, Object> diagnostics = toSerializableDiagnostics(answer.diagnostics());
+        if (!diagnostics.isEmpty()) {
+            generationDiagnostics.put(generationId, diagnostics);
+            chatGenerationStateService.updateDiagnostics(generationId, diagnostics);
         }
         appendStreamChunk(userId, generationId, conversationId, answer.markdown());
         finalizeResponse(
@@ -487,14 +501,14 @@ public class ChatHandler {
         LlmProviderRouter.ToolCallDecision toolCall = new LlmProviderRouter.ToolCallDecision(
                 INITIAL_SEARCH_TOOL_CALL_ID,
                 "search_papers",
-                Map.of("query", userMessage, "topK", INITIAL_SEARCH_TOP_K)
+                Map.of("query", userMessage, "pageBatchSize", INITIAL_SEARCH_PAGE_BATCH_SIZE)
         );
         sendToolCallStatus(userId, generationId, conversationId, toolCall, "executing");
 
         PaperRetrievalService.RetrievalResult retrievalResult = paperRetrievalService.retrieve(
                 userMessage,
                 userId,
-                INITIAL_SEARCH_TOP_K
+                RetrievalBudget.forPageBatch(INITIAL_SEARCH_PAGE_BATCH_SIZE)
         );
         List<String> queries = retrievalResult.attemptedQueries();
 
@@ -791,6 +805,7 @@ public class ChatHandler {
         responseBuilders.remove(generationId);
         generationClientIds.remove(generationId);
         generationReferenceMappings.remove(generationId);
+        generationDiagnostics.remove(generationId);
         generationTimings.remove(generationId);
         stopFlags.remove(generationId);
         activeStreams.remove(generationId);
@@ -990,6 +1005,13 @@ public class ChatHandler {
         return serialized;
     }
 
+    private Map<String, Object> toSerializableDiagnostics(PaperAnswerService.AnswerDiagnostics diagnostics) {
+        if (diagnostics == null) {
+            return Map.of();
+        }
+        return objectMapper.convertValue(diagnostics, new TypeReference<Map<String, Object>>() {});
+    }
+
     static Map<Integer, ReferenceInfo> filterReferenceMappingsForResponse(Map<Integer, ReferenceInfo> referenceMapping,
                                                                           String response) {
         Map<Integer, ReferenceInfo> filtered = new LinkedHashMap<>();
@@ -1121,6 +1143,10 @@ public class ChatHandler {
             Map<Integer, ReferenceInfo> referenceMappings = generationReferenceMappings.get(generationId);
             if (referenceMappings != null && !referenceMappings.isEmpty()) {
                 notification.put("referenceMappings", toSerializableReferenceMappings(referenceMappings));
+            }
+            Map<String, Object> diagnostics = generationDiagnostics.get(generationId);
+            if (diagnostics != null && !diagnostics.isEmpty()) {
+                notification.put("diagnostics", diagnostics);
             }
         }
         if (persistenceDegraded) {
@@ -1606,4 +1632,9 @@ public class ChatHandler {
         }
     }
 
+    public record ChatRequest(
+            String message,
+            PaperAnswerService.AnswerScope scope
+    ) {
+    }
 }

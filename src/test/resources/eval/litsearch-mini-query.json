@@ -1,0 +1,27 @@
+{
+  "dataset": "princeton-nlp/LitSearch",
+  "config": "query",
+  "split": "full",
+  "rows": [
+    {
+      "row_idx": 0,
+      "row": {
+        "query_set": "inline_acl",
+        "query": "Are there any research papers on methods to compress large-scale language models using task-agnostic knowledge distillation techniques?",
+        "specificity": 0,
+        "quality": 2,
+        "corpusids": [202719327]
+      }
+    },
+    {
+      "row_idx": 1,
+      "row": {
+        "query_set": "inline_acl",
+        "query": "Are there any studies that explore post-hoc techniques for hallucination detection at both the token- and sentence-level in neural sequence generation tasks?",
+        "specificity": 0,
+        "quality": 2,
+        "corpusids": [226254579, 204976362]
+      }
+    }
+  ]
+}

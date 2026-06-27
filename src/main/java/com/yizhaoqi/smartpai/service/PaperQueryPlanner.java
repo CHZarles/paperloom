@@ -12,8 +12,11 @@ import java.util.Set;
 public class PaperQueryPlanner {
 
     public RetrievalPlan plan(String userQuery) {
-        String normalized = normalizeQuery(userQuery);
-        RetrievalIntent intent = detectIntent(normalized);
+        String normalizedForIntent = normalizeQuery(userQuery);
+        RetrievalIntent intent = detectIntent(normalizedForIntent);
+        String normalized = intent == RetrievalIntent.LITERATURE_SEARCH
+                ? normalizeLiteratureSearchQuery(normalizedForIntent)
+                : normalizedForIntent;
         LinkedHashSet<String> queries = new LinkedHashSet<>();
         if (!normalized.isBlank()) {
             queries.add(normalized);
@@ -28,6 +31,11 @@ public class PaperQueryPlanner {
                 queries.add("dataset");
                 queries.add("table");
                 queries.add("chart");
+                if (containsAny(normalized.toLowerCase(Locale.ROOT), "噪声", "noise")) {
+                    queries.add("high noise");
+                    queries.add("increasing noise");
+                    queries.add("context scaling");
+                }
             }
             case METHOD -> {
                 queries.add("method");
@@ -44,6 +52,13 @@ public class PaperQueryPlanner {
                 queries.add("abstract");
                 queries.add("introduction");
                 queries.add("conclusion");
+            }
+            case LITERATURE_SEARCH -> {
+                if (!normalized.isBlank()) {
+                    queries.add(normalized + " title abstract");
+                    queries.add(normalized + " related work");
+                    queries.add(normalized + " method dataset");
+                }
             }
             case GENERAL -> {
                 // Keep the original query dominant for general questions.
@@ -71,11 +86,39 @@ public class PaperQueryPlanner {
         return normalized;
     }
 
+    private String normalizeLiteratureSearchQuery(String query) {
+        if (query == null) {
+            return "";
+        }
+        String cleaned = query
+                .replaceAll("(?i)recommend papers|related papers|research papers|papers about|papers on", " ")
+                .replace("推荐一下", " ")
+                .replace("推荐一些", " ")
+                .replace("推荐", " ")
+                .replace("相关论文", " ")
+                .replace("有哪些论文", " ")
+                .replace("有什么论文", " ")
+                .replace("研究论文", " ")
+                .replace("论文", " ")
+                .replace("文章", " ")
+                .replace("和", " ")
+                .replace("的", " ")
+                .replace("相关", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return cleaned.isBlank() ? query : cleaned;
+    }
+
     private RetrievalIntent detectIntent(String query) {
         String lower = query == null ? "" : query.toLowerCase(Locale.ROOT);
+        if (containsAny(lower, "推荐", "相关论文", "有哪些论文", "有什么论文", "研究论文",
+                "related papers", "recommend papers", "research papers", "papers about", "papers on")) {
+            return RetrievalIntent.LITERATURE_SEARCH;
+        }
         if (containsAny(lower, "实验", "数据", "结果", "指标", "准确率", "表格", "图表",
+                "噪声", "高噪声",
                 "experiment", "experimental", "evaluation", "result", "accuracy", "benchmark",
-                "dataset", "table", "chart")) {
+                "dataset", "table", "chart", "noise")) {
             return RetrievalIntent.EXPERIMENT_RESULT;
         }
         if (containsAny(lower, "方法", "模型", "算法", "架构", "method", "approach", "algorithm", "architecture")) {
@@ -105,7 +148,7 @@ public class PaperQueryPlanner {
     private List<String> preferredSourceKinds(RetrievalIntent intent) {
         return switch (intent) {
             case EXPERIMENT_RESULT -> List.of("TABLE", "CHART", "FIGURE", "TEXT");
-            case METHOD, LIMITATION, SUMMARY, GENERAL -> List.of("TEXT", "TABLE", "FIGURE", "CHART", "FORMULA");
+            case METHOD, LIMITATION, SUMMARY, LITERATURE_SEARCH, GENERAL -> List.of("TEXT", "TABLE", "FIGURE", "CHART", "FORMULA");
         };
     }
 
@@ -115,6 +158,7 @@ public class PaperQueryPlanner {
             case METHOD -> List.of("method", "approach", "model", "architecture");
             case LIMITATION -> List.of("limitation", "discussion", "future work");
             case SUMMARY -> List.of("abstract", "introduction", "conclusion");
+            case LITERATURE_SEARCH -> List.of("title", "abstract", "introduction", "related work");
             case GENERAL -> List.of();
         };
     }
@@ -124,6 +168,7 @@ public class PaperQueryPlanner {
         METHOD,
         LIMITATION,
         SUMMARY,
+        LITERATURE_SEARCH,
         GENERAL
     }
 
@@ -139,6 +184,10 @@ public class PaperQueryPlanner {
             queryTexts = queryTexts == null ? List.of() : dedupe(queryTexts);
             preferredSourceKinds = preferredSourceKinds == null ? List.of() : dedupe(preferredSourceKinds);
             preferredSections = preferredSections == null ? List.of() : dedupe(preferredSections);
+        }
+
+        public boolean paperLevelSearch() {
+            return intent == RetrievalIntent.LITERATURE_SEARCH;
         }
 
         private static List<String> dedupe(List<String> values) {
