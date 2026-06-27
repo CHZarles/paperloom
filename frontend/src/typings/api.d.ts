@@ -387,6 +387,12 @@ declare namespace Api {
         | 'FAILED'
         | null;
       processingErrorMessage?: string | null;
+      sourceType?: 'PDF' | 'STRUCTURED_IMPORT' | 'EVAL_IMPORT';
+      evidenceAssetLevel?: 'PDF_VISUAL' | 'PDF_PENDING_ASSETS' | 'TEXT_ONLY';
+      assetWarnings?: string[];
+      pdfEvidenceAvailable?: boolean;
+      structuredImport?: boolean;
+      evalImport?: boolean;
       authors?: string | null;
       publicationYear?: number | null;
       venue?: string | null;

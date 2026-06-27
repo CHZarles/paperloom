@@ -29,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -370,7 +371,13 @@ public class PaperController {
 
     private List<Map<String, Object>> convertPapersToResponse(List<Paper> files) {
         return files.stream().map(file -> {
-            Map<String, Object> dto = new HashMap<>();
+            Map<String, Object> dto = new LinkedHashMap<>();
+            Map<String, Object> parserArtifact = buildParserArtifactStatus(file.getPaperId());
+            Map<String, Object> tableAsset = buildTableAssetStatus(file.getPaperId());
+            Map<String, Object> figureAsset = buildFigureAssetStatus(file.getPaperId());
+            Map<String, Object> formulaAsset = buildFormulaAssetStatus(file.getPaperId());
+            Map<String, Object> visualAsset = buildVisualAssetStatus(file.getPaperId());
+
             dto.put("paperId", file.getPaperId());
             dto.put("paperTitle", file.getPaperTitle());
             dto.put("originalFilename", file.getOriginalFilename());
@@ -394,11 +401,12 @@ public class PaperController {
             dto.put("doi", file.getDoi());
             dto.put("arxivId", file.getArxivId());
             dto.put("orgTagName", getOrgTagName(file.getOrgTag()));
-            dto.put("parserArtifact", buildParserArtifactStatus(file.getPaperId()));
-            dto.put("tableAsset", buildTableAssetStatus(file.getPaperId()));
-            dto.put("figureAsset", buildFigureAssetStatus(file.getPaperId()));
-            dto.put("formulaAsset", buildFormulaAssetStatus(file.getPaperId()));
-            dto.put("visualAsset", buildVisualAssetStatus(file.getPaperId()));
+            dto.put("parserArtifact", parserArtifact);
+            dto.put("tableAsset", tableAsset);
+            dto.put("figureAsset", figureAsset);
+            dto.put("formulaAsset", formulaAsset);
+            dto.put("visualAsset", visualAsset);
+            dto.putAll(buildEvidenceReadiness(file, parserArtifact, visualAsset));
             return dto;
         }).collect(Collectors.toList());
     }
@@ -677,6 +685,65 @@ public class PaperController {
         status.put("tableCropCount", paperVisualAssetService.countTableCrops(paperId));
         status.put("figureCropCount", paperVisualAssetService.countFigureCrops(paperId));
         return status;
+    }
+
+    private Map<String, Object> buildEvidenceReadiness(
+            Paper paper,
+            Map<String, Object> parserArtifact,
+            Map<String, Object> visualAsset) {
+        boolean evalImport = paper.isEval();
+        boolean structuredImport = evalImport || hasText(paper.getSourceDataset()) || isJsonImport(paper);
+        String sourceType = evalImport ? "EVAL_IMPORT" : structuredImport ? "STRUCTURED_IMPORT" : "PDF";
+        long pageScreenshotCount = longValue(visualAsset, "pageScreenshotCount");
+        boolean pdfEvidenceAvailable = "PDF".equals(sourceType) && pageScreenshotCount > 0;
+        String evidenceAssetLevel = pdfEvidenceAvailable
+                ? "PDF_VISUAL"
+                : structuredImport ? "TEXT_ONLY" : "PDF_PENDING_ASSETS";
+
+        List<String> assetWarnings = new ArrayList<>();
+        if (structuredImport) {
+            assetWarnings.add("structured_import_text_only");
+        } else {
+            if (!Boolean.TRUE.equals(parserArtifact.get("available"))) {
+                assetWarnings.add("parser_artifact_missing");
+            }
+            if (pageScreenshotCount <= 0) {
+                assetWarnings.add("page_screenshots_missing");
+            }
+        }
+
+        Map<String, Object> readiness = new LinkedHashMap<>();
+        readiness.put("sourceType", sourceType);
+        readiness.put("evidenceAssetLevel", evidenceAssetLevel);
+        readiness.put("assetWarnings", assetWarnings);
+        readiness.put("pdfEvidenceAvailable", pdfEvidenceAvailable);
+        readiness.put("structuredImport", structuredImport);
+        readiness.put("evalImport", evalImport);
+        return readiness;
+    }
+
+    private boolean isJsonImport(Paper paper) {
+        String originalFilename = paper.getOriginalFilename();
+        return originalFilename != null && originalFilename.toLowerCase().endsWith(".json");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private long longValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String stringValue && !stringValue.isBlank()) {
+            try {
+                return Long.parseLong(stringValue);
+            } catch (NumberFormatException ignored) {
+                return 0L;
+            }
+        }
+        return 0L;
     }
 
     private Optional<Paper> findAccessiblePaper(String paperId, String userId, String orgTags) {

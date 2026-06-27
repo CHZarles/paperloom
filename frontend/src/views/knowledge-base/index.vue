@@ -20,6 +20,12 @@ const tableModalLoading = ref(false);
 const tableModalTitle = ref('');
 const tableModalRows = ref<Api.Paper.TableItem[]>([]);
 
+const assetWarningLabels: Record<string, string> = {
+  structured_import_text_only: 'PDF/page visuals unavailable',
+  parser_artifact_missing: 'Parser artifact missing',
+  page_screenshots_missing: 'Page screenshots missing'
+};
+
 function mapUploadStatusToTaskStatus(uploadStatus?: Api.Paper.UploadTask['uploadStatus']) {
   if (uploadStatus === 'COMPLETED' || uploadStatus === 1) return UploadStatus.Completed;
   if (uploadStatus === 'MERGING' || uploadStatus === 2) return UploadStatus.Uploading;
@@ -113,6 +119,8 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
           <button
             class="library-file-cell__icon"
             type="button"
+            disabled={!canPreviewPaper(row)}
+            title={canPreviewPaper(row) ? '预览 PDF' : 'Text-only import has no PDF preview'}
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {renderIcon(row.originalFilename)}
@@ -122,6 +130,8 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
               <button
                 type="button"
                 class="library-file-cell__name"
+                disabled={!canPreviewPaper(row)}
+                title={canPreviewPaper(row) ? '预览 PDF' : 'Text-only import has no PDF preview'}
                 onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
               >
                 {row.originalFilename}
@@ -200,6 +210,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
             type="primary"
             secondary
             size="small"
+            disabled={!canPreviewPaper(row)}
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {{
@@ -318,6 +329,12 @@ function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.Uplo
     actualChunkCount: source.actualChunkCount,
     processingStatus: source.processingStatus,
     processingErrorMessage: source.processingErrorMessage,
+    sourceType: source.sourceType,
+    evidenceAssetLevel: source.evidenceAssetLevel,
+    assetWarnings: source.assetWarnings,
+    pdfEvidenceAvailable: source.pdfEvidenceAvailable,
+    structuredImport: source.structuredImport,
+    evalImport: source.evalImport,
     parserArtifact: source.parserArtifact,
     tableAsset: source.tableAsset,
     figureAsset: source.figureAsset,
@@ -477,8 +494,10 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
   const figureCount = Number(row.figureAsset?.figureCount || 0);
   const formulaCount = Number(row.formulaAsset?.formulaCount || 0);
   const pageCount = Number(row.visualAsset?.pageScreenshotCount || 0);
+  const warningText = formatAssetWarnings(row.assetWarnings);
   return (
     <div class="library-asset-strip">
+      {renderEvidenceReadiness(row, warningText)}
       <span class={parserSaved ? 'library-asset-pill library-asset-pill--ok' : 'library-asset-pill'}>
         Parser: {parserSaved ? 'saved' : 'missing'}
       </span>
@@ -486,7 +505,59 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
       <span class="library-asset-pill">Figures: {figureCount}</span>
       <span class="library-asset-pill">Formulas: {formulaCount}</span>
       <span class="library-asset-pill">Pages: {pageCount}</span>
+      {warningText ? (
+        <span class="library-asset-pill library-asset-pill--warning" title={warningText}>
+          Warnings: {row.assetWarnings?.length || 0}
+        </span>
+      ) : null}
     </div>
+  );
+}
+
+function renderEvidenceReadiness(row: Api.Paper.UploadTask, warningText: string) {
+  const title = warningText || 'Evidence assets ready';
+
+  if (row.evalImport || row.sourceType === 'EVAL_IMPORT') {
+    return (
+      <span class="library-asset-pill library-asset-pill--muted" title={title}>
+        Eval import: text only
+      </span>
+    );
+  }
+
+  if (row.structuredImport || row.sourceType === 'STRUCTURED_IMPORT') {
+    return (
+      <span class="library-asset-pill library-asset-pill--muted" title={title}>
+        Structured import: text only
+      </span>
+    );
+  }
+
+  if (row.pdfEvidenceAvailable || row.evidenceAssetLevel === 'PDF_VISUAL') {
+    return (
+      <span class="library-asset-pill library-asset-pill--ok" title={title}>
+        PDF evidence: ready
+      </span>
+    );
+  }
+
+  return (
+    <span class="library-asset-pill library-asset-pill--warning" title={title}>
+      PDF evidence: pending
+    </span>
+  );
+}
+
+function formatAssetWarnings(warnings?: string[]) {
+  return (warnings || []).map(warning => assetWarningLabels[warning] || warning).join('; ');
+}
+
+function canPreviewPaper(row: Api.Paper.UploadTask) {
+  return !(
+    row.structuredImport ||
+    row.evalImport ||
+    row.sourceType === 'STRUCTURED_IMPORT' ||
+    row.sourceType === 'EVAL_IMPORT'
   );
 }
 
@@ -1000,6 +1071,16 @@ async function onBeforeUpload(
   background: var(--color-card-band);
 }
 
+.library-file-cell__icon:disabled,
+.library-file-cell__name:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.library-file-cell__icon:disabled:hover {
+  border-color: var(--color-border);
+}
+
 .library-file-icon {
   font-size: 28px;
 }
@@ -1184,6 +1265,16 @@ async function onBeforeUpload(
 .library-asset-pill--ok {
   border-color: var(--color-success);
   color: var(--color-success);
+}
+
+.library-asset-pill--warning {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.library-asset-pill--muted {
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .library-pipeline-status {
