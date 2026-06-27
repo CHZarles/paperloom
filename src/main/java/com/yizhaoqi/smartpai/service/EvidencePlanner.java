@@ -38,7 +38,7 @@ public class EvidencePlanner {
             );
             return parseAction(turn.content(), safeContext);
         } catch (Exception exception) {
-            return PlannerAction.clarify("planner_failed");
+            return fallbackAction(safeContext, "planner_failed");
         }
     }
 
@@ -79,8 +79,10 @@ public class EvidencePlanner {
                     context.scope().referenceNumber()
             );
         }
-        if (context.route() == PaperAnswerService.Intent.AUTO_SOURCE_QA
-                || context.route() == PaperAnswerService.Intent.MANUAL_SOURCE_QA
+        if (context.route() == PaperAnswerService.Intent.AUTO_SOURCE_QA) {
+            return null;
+        }
+        if (context.route() == PaperAnswerService.Intent.MANUAL_SOURCE_QA
                 || context.route() == PaperAnswerService.Intent.FOLLOW_UP) {
             return new PlannerAction(
                     PlannerActionType.SEARCH_EVIDENCE,
@@ -131,10 +133,12 @@ public class EvidencePlanner {
                 Return exactly one JSON object and no prose.
                 Allowed action values: LIST_LIBRARY, DISCOVER_PAPERS, SEARCH_EVIDENCE, INSPECT_PAGE, INSPECT_REFERENCE, ASK_CLARIFICATION, ANSWER_WITH_LEDGER.
                 Do not write final answers, citations, paper ids, chunk ids, or reference mappings.
-                Use DISCOVER_PAPERS for recommendation/library discovery.
-                Use SEARCH_EVIDENCE when a source set exists or the user asks a paper QA question.
+                Classify by the user's task semantics, not by fixed surface phrases.
+                Use DISCOVER_PAPERS when the user asks what papers exist, asks for recommendations, or asks to find papers about a topic.
+                Use SEARCH_EVIDENCE when a source set exists or the user asks a question that requires reading paper content.
                 Use INSPECT_PAGE only after a paper id and page number are already known.
                 Use ASK_CLARIFICATION only when the query cannot be answered without user choice.
+                The query field must be the core retrieval topic, with conversational filler and generic paper/article words removed.
                 JSON fields: action, query, reason, optional pageNumber, optional windowRadius.
                 """;
         String user = "route=" + context.route()
@@ -152,20 +156,48 @@ public class EvidencePlanner {
         if (rawJson == null || rawJson.isBlank()
                 || rawJson.contains("[1]")
                 || rawJson.contains("来源#")) {
-            return PlannerAction.clarify("planner_invalid_output");
+            return fallbackAction(context, "planner_invalid_output");
         }
         try {
-            JsonNode node = objectMapper.readTree(rawJson);
+            JsonNode node = objectMapper.readTree(extractJsonObject(rawJson));
             String actionText = node.path("action").asText("");
             PlannerActionType type = PlannerActionType.valueOf(actionText);
             String query = node.path("query").asText(context.userQuery());
+            if (query == null || query.isBlank()) {
+                query = context.userQuery();
+            }
             String reason = node.path("reason").asText("");
             Integer referenceNumber = node.hasNonNull("referenceNumber") ? node.get("referenceNumber").asInt() : null;
             Integer pageNumber = node.hasNonNull("pageNumber") ? node.get("pageNumber").asInt() : null;
             Integer windowRadius = node.hasNonNull("windowRadius") ? node.get("windowRadius").asInt() : null;
             return new PlannerAction(type, query, reason, context.scope().paperIds(), referenceNumber, pageNumber, windowRadius);
         } catch (Exception exception) {
-            return PlannerAction.clarify("planner_invalid_json");
+            return fallbackAction(context, "planner_invalid_json");
         }
+    }
+
+    private String extractJsonObject(String rawJson) {
+        String text = rawJson == null ? "" : rawJson.trim();
+        int start = text.indexOf('{');
+        int end = text.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return text.substring(start, end + 1);
+        }
+        return text;
+    }
+
+    private PlannerAction fallbackAction(PlannerContext context, String reason) {
+        if (context != null && (context.route() == PaperAnswerService.Intent.AUTO_SOURCE_QA
+                || context.route() == PaperAnswerService.Intent.MANUAL_SOURCE_QA
+                || context.route() == PaperAnswerService.Intent.FOLLOW_UP)) {
+            return new PlannerAction(
+                    PlannerActionType.SEARCH_EVIDENCE,
+                    context.userQuery(),
+                    reason,
+                    context.scope().paperIds(),
+                    context.scope().referenceNumber()
+            );
+        }
+        return PlannerAction.clarify(reason);
     }
 }

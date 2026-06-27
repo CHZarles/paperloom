@@ -66,8 +66,9 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void recommendationGroupsChunksByPaperAndDoesNotCallLlm() {
-        when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
+    void recommendationGroupsChunksByPaperAfterPlannerChoosesDiscovery() {
+        plannerReturns(PlannerActionType.DISCOVER_PAPERS, "agent");
+        when(retrievalService.discoverPapers(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Agent Harness evidence one", 0.9),
                 result("paper-a", 2, "Agent Harness evidence two", 0.8),
                 result("paper-a", 3, "Agent Harness evidence three", 0.7)
@@ -81,12 +82,12 @@ class PaperAnswerServiceTest {
         assertTrue(answer.markdown().contains("只找到 1 篇"));
         assertTrue(answer.markdown().contains("《Title paper-a》"));
         assertTrue(answer.markdown().contains("[1]"));
-        verifyNoInteractions(llmProviderRouter);
     }
 
     @Test
-    void recommendationKeywordWithoutPaperStillUsesRecommendationRoute() {
-        when(retrievalService.retrieve(eq("grep"), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
+    void recommendationKeywordWithoutPaperStillUsesDiscoveryWhenPlannerChoosesIt() {
+        plannerReturns(PlannerActionType.DISCOVER_PAPERS, "grep");
+        when(retrievalService.discoverPapers(eq("grep"), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "grep can be used by agent harnesses as a native bash search primitive.", 0.9)
         )));
 
@@ -94,11 +95,11 @@ class PaperAnswerServiceTest {
 
         assertEquals(PaperAnswerService.Intent.LIBRARY_SEARCH, answer.intent());
         assertTrue(answer.markdown().contains("《Title paper-a》"));
-        verifyNoInteractions(llmProviderRouter);
     }
 
     @Test
     void paperInventoryQuestionUsesRecommendationRoute() {
+        plannerReturns(PlannerActionType.LIST_LIBRARY, "");
         when(paperService.getAccessiblePapers("u1", null)).thenReturn(List.of(paper("paper-a", "Agent Harness Paper")));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "现在有什么论文");
@@ -107,7 +108,7 @@ class PaperAnswerServiceTest {
         assertTrue(answer.markdown().contains("当前可访问论文库中有 1 篇论文"));
         assertTrue(answer.markdown().contains("《Agent Harness Paper》"));
         assertEquals(0, answer.referenceMappings().size());
-        verifyNoInteractions(retrievalService, llmProviderRouter);
+        verifyNoInteractions(retrievalService);
     }
 
     @Test
@@ -122,7 +123,8 @@ class PaperAnswerServiceTest {
 
     @Test
     void recommendationDeduplicatesMultiplePapers() {
-        when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
+        plannerReturns(PlannerActionType.DISCOVER_PAPERS, "agent");
+        when(retrievalService.discoverPapers(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Agent Harness evidence one", 0.9),
                 result("paper-a", 2, "Agent Harness evidence two", 0.8),
                 result("paper-b", 1, "Tool calling evidence describes how agents invoke retrieval tools during multi-step tasks.", 0.7)
@@ -134,27 +136,27 @@ class PaperAnswerServiceTest {
         assertEquals(2, answer.referenceMappings().size());
         assertTrue(answer.markdown().contains("《Title paper-a》"));
         assertTrue(answer.markdown().contains("《Title paper-b》"));
-        verifyNoInteractions(llmProviderRouter);
     }
 
     @Test
     void recommendationFallsBackToOriginalFilenameWhenTitleIsMissing() {
+        plannerReturns(PlannerActionType.DISCOVER_PAPERS, "agent");
         SearchResult result = result("paper-a", 1, "Agent Harness evidence one", 0.9);
         result.setPaperTitle(null);
         result.setOriginalFilename("agent-harness.pdf");
-        when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(result)));
+        when(retrievalService.discoverPapers(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(result)));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "推荐一下和 agent 相关的论文");
 
         assertEquals(1, answer.uniquePaperCount());
         assertTrue(answer.markdown().contains("《agent-harness.pdf》"));
         assertEquals("agent-harness.pdf", answer.referenceMappings().get(1).paperTitle());
-        verifyNoInteractions(llmProviderRouter);
     }
 
     @Test
     void recommendationStoresPaperFocusForFollowUp() {
-        when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
+        plannerReturns(PlannerActionType.DISCOVER_PAPERS, "agent");
+        when(retrievalService.discoverPapers(anyString(), eq("u1"), any(RetrievalBudget.class))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Agent Harness evidence one", 0.9)
         )));
 
@@ -319,7 +321,7 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void qaDoesNotCallLlmWhenOnlyUnusableEvidenceIsRetrieved() {
+    void qaDoesNotGenerateAnswerWhenOnlyUnusableEvidenceIsRetrieved() {
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "5", 0.9)
         )));
@@ -329,7 +331,6 @@ class PaperAnswerServiceTest {
         assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, answer.intent());
         assertEquals(0, answer.referenceMappings().size());
         assertTrue(answer.markdown().contains("足够可靠"));
-        verifyNoInteractions(llmProviderRouter);
     }
 
     @Test
@@ -668,6 +669,66 @@ class PaperAnswerServiceTest {
     }
 
     @Test
+    void naturalTopicDiscoveryFromAutoSourceRendersLibrarySearchRecommendation() {
+        EvidencePlanner planner = mock(EvidencePlanner.class);
+        EvidenceToolExecutor toolExecutor = mock(EvidenceToolExecutor.class);
+        EvidenceAnswerGenerator answerGenerator = mock(EvidenceAnswerGenerator.class);
+        PaperAnswerService harnessService = new PaperAnswerService(
+                retrievalService,
+                paperService,
+                conversationService,
+                llmProviderRouter,
+                redisTemplate,
+                new ObjectMapper(),
+                new PaperChatRouter(),
+                planner,
+                new EvidenceLedgerService(),
+                answerGenerator,
+                new EvidenceVerifier(),
+                toolExecutor
+        );
+        PlannerAction discoverAction = new PlannerAction(
+                PlannerActionType.DISCOVER_PAPERS,
+                "agent",
+                "topic discovery",
+                List.of(),
+                null
+        );
+        EvidenceLedger ledger = new EvidenceLedger(
+                List.of(new PaperSource("paper-agent", "Agent Paper", "agent.pdf")),
+                List.of(new com.yizhaoqi.smartpai.service.EvidenceItem(
+                        "E1",
+                        "paper-agent",
+                        "Agent Paper",
+                        "agent.pdf",
+                        null,
+                        0,
+                        "PAPER",
+                        "title/abstract",
+                        "Title: Agent Paper\nAbstract: This paper studies agent coordination and tool use.",
+                        null,
+                        3.2d
+                )),
+                new LedgerDiagnostics(1, 1, 1, "EXHAUSTED")
+        );
+        when(planner.plan(any())).thenReturn(discoverAction);
+        when(toolExecutor.execute(eq("u1"), eq("c1"), eq(discoverAction), any(SourceScope.class)))
+                .thenReturn(new EvidenceToolResult(PlannerActionType.DISCOVER_PAPERS, ledger, ""));
+
+        PaperAnswerService.AnswerResult answer = harnessService.answer(
+                "u1",
+                "c1",
+                "有什么agent相关的论文吗？"
+        );
+
+        assertEquals(PaperAnswerService.Intent.LIBRARY_SEARCH, answer.intent());
+        assertEquals(1, answer.uniquePaperCount());
+        assertTrue(answer.markdown().contains("《Agent Paper》"));
+        assertTrue(answer.markdown().contains("题名：Agent Paper"));
+        verifyNoInteractions(answerGenerator);
+    }
+
+    @Test
     void manualSourceQaPassesRetrievalBudgetProfileToToolExecutor() {
         EvidencePlanner planner = mock(EvidencePlanner.class);
         EvidenceToolExecutor toolExecutor = mock(EvidenceToolExecutor.class);
@@ -765,6 +826,21 @@ class PaperAnswerServiceTest {
                 List.of()
         );
         return new PaperRetrievalService.RetrievalResult(plan, results, Map.of("query", results.size()));
+    }
+
+    private void plannerReturns(PlannerActionType actionType, String query) {
+        String json = "{\"action\":\"" + actionType.name() + "\",\"query\":\""
+                + (query == null ? "" : query)
+                + "\",\"reason\":\"test\"}";
+        when(llmProviderRouter.completeReActTurn(anyString(), any(), eq(List.of()), anyInt()))
+                .thenReturn(new LlmProviderRouter.ReActTurn(
+                        json,
+                        List.of(),
+                        Map.of("role", "assistant", "content", json),
+                        "stop",
+                        10,
+                        5
+                ));
     }
 
     private SearchResult result(String paperId, int chunkId, String text, double score) {

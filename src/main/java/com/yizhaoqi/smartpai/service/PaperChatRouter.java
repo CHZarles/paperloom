@@ -23,15 +23,6 @@ public class PaperChatRouter {
             return PaperAnswerService.Intent.MANUAL_SOURCE_QA;
         }
         String lower = userMessage == null ? "" : userMessage.toLowerCase(Locale.ROOT);
-        if (isPaperInventoryQuery(normalized)
-                || normalized.startsWith("推荐")
-                || (lower.contains("推荐") && lower.contains("论文"))
-                || lower.contains("相关论文")
-                || lower.contains("有哪些论文")
-                || lower.contains("related papers")
-                || lower.contains("recommend papers")) {
-            return PaperAnswerService.Intent.LIBRARY_SEARCH;
-        }
         if (isNonPaperSystemQuestion(lower, normalized)) {
             return PaperAnswerService.Intent.CLARIFY;
         }
@@ -54,14 +45,6 @@ public class PaperChatRouter {
             return PaperAnswerService.Intent.FOLLOW_UP;
         }
         return PaperAnswerService.Intent.AUTO_SOURCE_QA;
-    }
-
-    private boolean isPaperInventoryQuery(String normalized) {
-        return normalized.contains("有什么论文")
-                || normalized.contains("有哪些论文")
-                || normalized.contains("论文列表")
-                || normalized.contains("论文库有什么")
-                || normalized.contains("当前论文");
     }
 
     private boolean isNonPaperSystemQuestion(String lower, String normalized) {

@@ -29,9 +29,27 @@ public class PaperRetrievalService {
     }
 
     public RetrievalResult retrieve(String query, String userId, RetrievalBudget budget, List<String> scopePaperIds) {
+        return retrieve(query, userId, budget, scopePaperIds, null);
+    }
+
+    public RetrievalResult discoverPapers(String query, String userId, RetrievalBudget budget) {
+        return discoverPapers(query, userId, budget, List.of());
+    }
+
+    public RetrievalResult discoverPapers(String query, String userId, RetrievalBudget budget, List<String> scopePaperIds) {
+        return retrieve(query, userId, budget, scopePaperIds, PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH);
+    }
+
+    private RetrievalResult retrieve(String query,
+                                     String userId,
+                                     RetrievalBudget budget,
+                                     List<String> scopePaperIds,
+                                     PaperQueryPlanner.RetrievalIntent forcedIntent) {
         RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
         List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
-        PaperQueryPlanner.RetrievalPlan plan = paperQueryPlanner.plan(query);
+        PaperQueryPlanner.RetrievalPlan plan = forcedIntent == null
+                ? paperQueryPlanner.plan(query)
+                : paperQueryPlanner.plan(query, forcedIntent);
         Map<String, SearchResult> uniqueResults = new LinkedHashMap<>();
         Map<String, Integer> routeHitCounts = new LinkedHashMap<>();
         int scannedCount = 0;
@@ -141,21 +159,14 @@ public class PaperRetrievalService {
             HybridSearchService.AdaptiveSearchResult scopedEvidence
     ) {
         List<SearchResult> combined = new ArrayList<>();
-        Set<String> papersWithEvidence = new LinkedHashSet<>();
-        for (SearchResult evidence : scopedEvidence == null ? List.<SearchResult>of() : scopedEvidence.results()) {
-            combined.add(evidence);
-            if (evidence != null && evidence.getPaperId() != null && !evidence.getPaperId().isBlank()) {
-                papersWithEvidence.add(evidence.getPaperId());
-            }
-        }
         for (SearchResult candidate : paperCandidates == null ? List.<SearchResult>of() : paperCandidates.results()) {
             if (candidate == null || candidate.getPaperId() == null || candidate.getPaperId().isBlank()) {
                 continue;
             }
-            if (!papersWithEvidence.contains(candidate.getPaperId())) {
-                combined.add(candidate);
-                papersWithEvidence.add(candidate.getPaperId());
-            }
+            combined.add(candidate);
+        }
+        for (SearchResult evidence : scopedEvidence == null ? List.<SearchResult>of() : scopedEvidence.results()) {
+            combined.add(evidence);
         }
         return combined;
     }
@@ -255,7 +266,12 @@ public class PaperRetrievalService {
             String query = lower(plan.normalizedQuery());
             String title = lower(result.getPaperTitle());
             String evidence = lower(EvidenceQuality.bestEvidenceText(result));
-            score += 0.7d * tokenCoverage(query, title);
+            if ("PAPER".equals(sourceKind)
+                    || "PAPER_METADATA".equals(evidenceRole)
+                    || "PAPER_METADATA".equals(upper(result.getRetrievalMode()))) {
+                score += 2.0d;
+            }
+            score += 2.5d * tokenCoverage(query, title);
             score += 1.4d * tokenCoverage(query, title + " " + evidence);
             if (containsAny(section, "title", "abstract", "introduction", "related work")) {
                 score += 1.2d;

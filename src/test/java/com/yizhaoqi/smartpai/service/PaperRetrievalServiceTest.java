@@ -276,7 +276,7 @@ class PaperRetrievalServiceTest {
                 .filter(result -> "paper-decoy".equals(result.getPaperId()))
                 .findFirst()
                 .orElseThrow();
-        assertEquals(7, goldResult.getChunkId());
+        assertEquals(0, goldResult.getChunkId());
         assertEquals(0, decoyResult.getChunkId());
         assertEquals("PAPER_LEVEL", goldResult.getRetrievalRoute());
         assertEquals("PAPER_LEVEL", decoyResult.getRetrievalRoute());
@@ -285,6 +285,51 @@ class PaperRetrievalServiceTest {
                 .searchPaperCandidatesWithPermission("post-hoc hallucination detection", "u1", budget, List.of());
         verify(hybridSearchService)
                 .adaptiveSearchWithPermission("post-hoc hallucination detection", "u1", budget, List.of("paper-gold", "paper-decoy"));
+    }
+
+    @Test
+    void discoverPapersForBareTopicForcesPaperLevelSearch() {
+        PaperQueryPlanner planner = new PaperQueryPlanner();
+        HybridSearchService hybridSearchService = mock(HybridSearchService.class);
+        RetrievalBudget budget = RetrievalBudget.forLibrarySearch();
+        SearchResult candidate = result(
+                "paper-agent",
+                0,
+                "Title: Agent Coordination\nAbstract: Multi-agent coordination with tool use.",
+                3.4
+        );
+        candidate.setSourceKind("PAPER");
+        candidate.setRetrievalMode("PAPER_METADATA");
+        when(hybridSearchService.searchPaperCandidatesWithPermission(
+                eq("agent"),
+                eq("u1"),
+                eq(budget),
+                eq(List.of())
+        )).thenReturn(adaptiveResult(
+                List.of(candidate),
+                1,
+                PaperRetrievalService.StopReason.EXHAUSTED
+        ));
+        when(hybridSearchService.adaptiveSearchWithPermission(
+                eq("agent"),
+                eq("u1"),
+                eq(budget),
+                eq(List.of("paper-agent"))
+        )).thenReturn(adaptiveResult(
+                List.of(),
+                0,
+                PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+        ));
+
+        PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService);
+
+        PaperRetrievalService.RetrievalResult retrieval = service.discoverPapers("agent", "u1", budget);
+
+        assertEquals(PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH, retrieval.plan().intent());
+        assertTrue(retrieval.plan().paperLevelSearch());
+        assertEquals("paper-agent", retrieval.results().get(0).getPaperId());
+        assertEquals("PAPER_LEVEL", retrieval.results().get(0).getRetrievalRoute());
+        verify(hybridSearchService).searchPaperCandidatesWithPermission("agent", "u1", budget, List.of());
     }
 
     @Test

@@ -30,7 +30,7 @@ class EvidenceToolExecutorTest {
                 conversationService,
                 new EvidenceLedgerService()
         );
-        when(retrievalService.retrieve(eq("agent grep"), eq("u1"), any(RetrievalBudget.class)))
+        when(retrievalService.discoverPapers(eq("agent grep"), eq("u1"), any(RetrievalBudget.class)))
                 .thenReturn(retrievalResult(List.of(
                         result("paper-a", 1, "Agent harnesses can invoke grep as a native lexical search tool.", 0.9),
                         result("paper-b", 1, "Tool-using agents combine search actions with intermediate reasoning.", 0.8)
@@ -45,7 +45,7 @@ class EvidenceToolExecutorTest {
 
         assertEquals(2, result.ledger().sourceSet().size());
         assertEquals(2, result.ledger().evidence().size());
-        verify(retrievalService).retrieve(eq("agent grep"), eq("u1"), any(RetrievalBudget.class));
+        verify(retrievalService).discoverPapers(eq("agent grep"), eq("u1"), any(RetrievalBudget.class));
     }
 
     @Test
