@@ -24,9 +24,11 @@ When a new agent thread starts in this repo, check these in order:
 
 1. `AGENTS.md`
 2. `CLAUDE.md`
-3. repo root `.env` and `src/main/resources/application*.yml`
-4. `frontend/.env*`
-5. current runtime state: frontend dev server, backend process, ports, and browser behavior
+3. `docs/PAPERLOOM_PRODUCT_REQUIREMENTS.md`
+4. `docs/PAPERLOOM_IMPLEMENTATION_ALIGNMENT.md`
+5. repo root `.env` and `src/main/resources/application*.yml`
+6. `frontend/.env*`
+7. current runtime state: frontend dev server, backend process, ports, and browser behavior
 
 Do not assume generic Spring Boot conventions before checking the actual local setup.
 
