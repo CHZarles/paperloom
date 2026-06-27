@@ -54,7 +54,14 @@ public class EvidenceLedgerService {
                     result.getEvalImport(),
                     result.getPageScreenshotAvailable(),
                     result.getFigureScreenshotAvailable(),
-                    result.getAssetWarnings()
+                    result.getAssetWarnings(),
+                    result.getTableId(),
+                    result.getFigureId(),
+                    result.getFormulaId(),
+                    result.getEvidenceRole(),
+                    result.getTableText(),
+                    result.getTableMarkdown(),
+                    result.getTableScreenshotAvailable()
             ));
             tokenEstimate += nextTokens;
         }

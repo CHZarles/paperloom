@@ -69,8 +69,37 @@ class RagBenchmarkRegistryTest {
         assertTrue(registry.harnesses().stream()
                 .anyMatch(harness -> "current-evidence-ledger".equals(harness.id())
                         && harness.benchmarkIds().contains("litsearch-service-slice-k5")));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "current-evidence-ledger".equals(harness.id())
+                        && harness.benchmarkIds().contains("product-figure-table-smoke")));
         assertEquals("597 queries / 5,060 imported candidate papers",
                 registry.benchmark("litsearch-service-slice-k5").cases());
+    }
+
+    @Test
+    void registersFigureTableSmokeAsTableOnlyUntilFigureFixtureExists() throws Exception {
+        RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
+
+        RagBenchmarkRegistry.BenchmarkDefinition benchmark = registry.benchmark("product-figure-table-smoke");
+
+        assertEquals("Product Figure/Table Smoke", benchmark.name());
+        assertEquals("product", benchmark.tier());
+        assertEquals("table and figure evidence claim gate", benchmark.task());
+        assertEquals("runnable-table-only", benchmark.status());
+        assertEquals("eval/rag/figure-table/product-figure-table-smoke.jsonl", benchmark.path());
+        assertEquals("passRate", benchmark.primaryMetric());
+        assertEquals("2 table cases / figure fixture pending", benchmark.cases());
+    }
+
+    @Test
+    void figureTableSmokeCurrentlyContainsOnlyScopedTableCases() throws Exception {
+        List<RagBenchmarkCase> cases = RagBenchmarkDataset.load(Path.of("eval/rag/figure-table/product-figure-table-smoke.jsonl"));
+
+        assertEquals(2, cases.size());
+        assertTrue(cases.stream().allMatch(testCase -> "TABLE_QA".equals(testCase.taskType())));
+        assertTrue(cases.stream().allMatch(testCase -> "MANUAL_SOURCE".equals(testCase.scopeMode())));
+        assertTrue(cases.stream().allMatch(RagBenchmarkCase::requiresCitation));
+        assertTrue(cases.stream().allMatch(testCase -> !testCase.requiredEvidenceRegex().isEmpty()));
     }
 
     @Test

@@ -6,7 +6,7 @@ harnesses:
     planner: deterministic-first
     verifier: enabled
     status: runnable
-    benchmarkIds: product-rescue-smoke,qasper-dev-200,litsearch-full,litsearch-service-slice-k5
+    benchmarkIds: product-rescue-smoke,product-figure-table-smoke,qasper-dev-200,litsearch-full,litsearch-service-slice-k5
   - id: keyword-only-baseline
     name: Keyword Only Baseline
     description: Offline keyword/BM25-style retrieval baseline for LitSearch; product-chat answer harness is still planned.
@@ -108,6 +108,15 @@ benchmarks:
     source: local committed PDF manifest
     primaryMetric: passRate
     cases: "1"
+  - id: product-figure-table-smoke
+    name: Product Figure/Table Smoke
+    tier: product
+    task: table and figure evidence claim gate
+    status: runnable-table-only
+    path: eval/rag/figure-table/product-figure-table-smoke.jsonl
+    source: local committed product paper
+    primaryMetric: passRate
+    cases: "2 table cases / figure fixture pending"
   - id: qasper-dev-200
     name: QASPER Dev 200
     tier: professional

@@ -440,6 +440,72 @@ class PaperAnswerServiceTest {
     }
 
     @Test
+    void qaReferenceMappingPreservesTableEvidenceAndCropAvailability() {
+        SearchResult tableResult = result("paper-table", 12, "Table 1 reports overall accuracy for grep and vector search.", 0.9);
+        tableResult.setSourceKind("TABLE");
+        tableResult.setTableId("table-1");
+        tableResult.setTableText("Metric: Overall accuracy\ngrep: 91.2\nvector: 89.4");
+        tableResult.setTableMarkdown("| Metric | grep | vector |\n| --- | ---: | ---: |\n| Overall accuracy | 91.2 | 89.4 |");
+        tableResult.setTableScreenshotAvailable(true);
+        tableResult.setPdfEvidenceAvailable(true);
+        tableResult.setEvidenceAssetLevel("PDF_VISUAL");
+        when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
+                tableResult
+        )));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(new LlmProviderRouter.ReActTurn(
+                        "**结论**\n表 1 报告了 grep 和 vector 的整体准确率。{{E1}}",
+                        List.of(),
+                        Map.of("role", "assistant", "content", "**结论**\n表 1 报告了 grep 和 vector 的整体准确率。{{E1}}"),
+                        "stop",
+                        10,
+                        5
+                ));
+
+        PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "实验1的表1报告了什么？");
+        ChatHandler.ReferenceInfo reference = answer.referenceMappings().get(1);
+
+        assertEquals("TABLE", reference.sourceKind());
+        assertEquals("table-1", reference.tableId());
+        assertEquals("Metric: Overall accuracy\ngrep: 91.2\nvector: 89.4", reference.tableText());
+        assertEquals("| Metric | grep | vector |\n| --- | ---: | ---: |\n| Overall accuracy | 91.2 | 89.4 |", reference.tableMarkdown());
+        assertEquals(true, reference.tableScreenshotAvailable());
+        assertEquals("PDF_VISUAL", reference.evidenceAssetLevel());
+    }
+
+    @Test
+    void qaFallbackForFigureTextOnlyEvidenceDoesNotClaimVisualInspection() {
+        SearchResult figureResult = result("paper-figure", 9, "Figure 2 caption: agent harness accuracy rises after scoped retrieval.", 0.9);
+        figureResult.setSourceKind("FIGURE");
+        figureResult.setFigureId("figure-2");
+        figureResult.setEvidenceRole("FIGURE_CAPTION");
+        figureResult.setPdfEvidenceAvailable(true);
+        figureResult.setEvidenceAssetLevel("PDF_PENDING_ASSETS");
+        figureResult.setPageScreenshotAvailable(true);
+        figureResult.setFigureScreenshotAvailable(false);
+        figureResult.setAssetWarnings(List.of("figure_screenshot_missing"));
+        when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
+                figureResult
+        )));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenThrow(new RateLimitExceededException("LLM Token 余额不足", 60));
+
+        PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这张图说明什么？");
+        ChatHandler.ReferenceInfo reference = answer.referenceMappings().get(1);
+
+        assertTrue(answer.fallbackUsed());
+        assertEquals("FIGURE", reference.sourceKind());
+        assertEquals("figure-2", reference.figureId());
+        assertEquals("FIGURE_CAPTION", reference.evidenceRole());
+        assertEquals(false, reference.figureScreenshotAvailable());
+        assertEquals(List.of("figure_screenshot_missing"), reference.assetWarnings());
+        assertTrue(!answer.markdown().contains("截图"));
+        assertTrue(!answer.markdown().contains("视觉"));
+        assertTrue(!answer.markdown().toLowerCase(java.util.Locale.ROOT).contains("visual"));
+        assertTrue(!answer.markdown().toLowerCase(java.util.Locale.ROOT).contains("image"));
+    }
+
+    @Test
     void qaRendersImportantSectionTitleNextToCitationWhenModelOmittedIt() {
         SearchResult highNoiseTable = result(
                 "paper-a",

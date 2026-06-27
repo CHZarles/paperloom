@@ -297,6 +297,11 @@ class ChatHandlerReferenceEvidenceTest {
         result.setRetrievalRoute("EXPANDED_HYBRID");
         result.setIntent("EXPERIMENT_RESULT");
         result.setRankReason("experiment-intent:FIGURE:FIGURE_CAPTION");
+        result.setSourceType("PDF");
+        result.setEvidenceAssetLevel("PDF_VISUAL");
+        result.setPdfEvidenceAvailable(true);
+        result.setPageScreenshotAvailable(true);
+        result.setFigureScreenshotAvailable(true);
 
         ChatHandler.ReferenceInfo reference = ReflectionTestUtils.invokeMethod(
                 handler,
@@ -326,6 +331,9 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("EXPANDED_HYBRID", detail.retrievalRoute());
         assertEquals("EXPERIMENT_RESULT", detail.intent());
         assertEquals("experiment-intent:FIGURE:FIGURE_CAPTION", detail.rankReason());
+        assertEquals("PDF_VISUAL", detail.evidenceAssetLevel());
+        assertEquals(true, detail.pageScreenshotAvailable());
+        assertEquals(true, detail.figureScreenshotAvailable());
     }
 
     private static ChatHandler newHandler() {
