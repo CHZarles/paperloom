@@ -207,12 +207,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
               default: () => '预览'
             }}
           </NButton>
-          <NButton
-            secondary
-            size="small"
-            disabled={!row.tableAsset?.tableCount}
-            onClick={() => handleOpenTables(row)}
-          >
+          <NButton secondary size="small" disabled={!row.tableAsset?.tableCount} onClick={() => handleOpenTables(row)}>
             {{
               icon: () => <SvgIcon icon="lucide:table-2" class="text-14px" />,
               default: () => 'Tables'
@@ -374,16 +369,16 @@ async function handleDelete(paperId: string) {
 }
 
 async function handleOpenParserArtifact(row: Api.Paper.UploadTask) {
-  const { error, data } = await request<Api.Paper.ParserArtifactResponse>({
+  const { error, data: parserArtifact } = await request<Api.Paper.ParserArtifactResponse>({
     url: `/papers/${row.paperId}/parser-artifact`
   });
 
-  if (error || !data?.downloadUrl) {
+  if (error || !parserArtifact?.downloadUrl) {
     window.$message?.error(error?.message || 'Parser JSON 不存在');
     return;
   }
 
-  openExternalUrl(data.downloadUrl);
+  openExternalUrl(parserArtifact.downloadUrl);
 }
 
 async function handleOpenTables(row: Api.Paper.UploadTask) {
@@ -392,7 +387,7 @@ async function handleOpenTables(row: Api.Paper.UploadTask) {
   tableModalTitle.value = row.paperTitle || row.originalFilename;
   tableModalRows.value = [];
 
-  const { error, data } = await request<Api.Paper.TableItem[]>({
+  const { error, data: tables } = await request<Api.Paper.TableItem[]>({
     url: `/papers/${row.paperId}/tables`
   });
 
@@ -401,7 +396,7 @@ async function handleOpenTables(row: Api.Paper.UploadTask) {
     window.$message?.error(error.message || '表格列表加载失败');
     return;
   }
-  tableModalRows.value = data || [];
+  tableModalRows.value = tables || [];
 }
 
 function openExternalUrl(url: string) {
@@ -431,7 +426,7 @@ function handleUpload() {
 }
 // #endregion
 
-// #region 检索知识库
+// #region 检索论文库
 const searchVisible = ref(false);
 function handleSearch() {
   searchVisible.value = true;
@@ -866,7 +861,14 @@ async function onBeforeUpload(
 
 .paper-library-card .n-card-header__main {
   color: var(--color-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.2px;
@@ -910,7 +912,14 @@ async function onBeforeUpload(
 }
 
 .library-summary__label {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -919,7 +928,14 @@ async function onBeforeUpload(
   display: block;
   margin: 4px 0 3px;
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 22px;
   line-height: 1.05;
 }
@@ -935,7 +951,14 @@ async function onBeforeUpload(
 .paper-library-card .n-data-table-th {
   background: var(--color-card-band-pressed);
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
   padding: 12px 12px;
 }
@@ -1031,7 +1054,14 @@ async function onBeforeUpload(
   border-radius: 999px;
   background: var(--color-card-band);
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -1049,7 +1079,14 @@ async function onBeforeUpload(
 .library-size-cell,
 .library-date-cell span:first-child {
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -1071,7 +1108,14 @@ async function onBeforeUpload(
   align-items: center;
   gap: 8px;
   color: var(--color-text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 700;
 }
@@ -1085,7 +1129,14 @@ async function onBeforeUpload(
 
 .library-index-line__label {
   color: var(--color-accent);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.4px;
@@ -1171,7 +1222,14 @@ async function onBeforeUpload(
   align-items: center;
   gap: 8px;
   color: var(--color-accent);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   font-weight: 700;
 }

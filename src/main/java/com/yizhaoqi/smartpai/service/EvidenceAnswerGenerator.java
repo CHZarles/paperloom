@@ -111,7 +111,7 @@ public class EvidenceAnswerGenerator {
 
     private List<Map<String, Object>> buildEvidenceMessages(String userMessage, EvidenceLedger ledger) {
         StringBuilder system = new StringBuilder()
-                .append("你是 CiteWeave 论文阅读助手。只能基于给定 evidence 回答。\n")
+                .append("你是 PaperLoom 论文阅读助手。只能基于给定 evidence 回答。\n")
                 .append("引用只能写 {{E1}}、{{E2}} 这种 token，禁止写 [1]、来源#1、paperId、chunk 或 References 列表。\n")
                 .append("不要编造论文标题；如果要写论文标题，只能写 evidence 中出现的 paperTitle。\n")
                 .append("Evidence 已按可信度从高到低排序，优先使用编号小的 evidence。\n")

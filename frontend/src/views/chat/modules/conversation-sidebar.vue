@@ -146,7 +146,7 @@ function formatDate(dateStr?: string) {
           <SystemLogo class="text-36px" />
         </div>
         <div class="min-w-0 flex-1">
-          <div class="brand-title">CiteWeave</div>
+          <div class="brand-title">PaperLoom</div>
           <div class="brand-subtitle">structured paper reading</div>
         </div>
         <NButton text size="tiny" class="collapse-button" @click="handleCollapse">
@@ -221,10 +221,7 @@ function formatDate(dateStr?: string) {
                     @click.stop
                   >
                     <template #icon>
-                      <icon-lucide:archive
-                        class="text-15px"
-                        style="color: var(--color-text-muted)"
-                      />
+                      <icon-lucide:archive class="text-15px" style="color: var(--color-text-muted)" />
                     </template>
                   </NButton>
                 </template>
@@ -238,10 +235,7 @@ function formatDate(dateStr?: string) {
                 @click.stop="handleUnarchive(session.conversationId)"
               >
                 <template #icon>
-                  <icon-lucide:archive-restore
-                    class="text-15px"
-                    style="color: var(--color-text-muted)"
-                  />
+                  <icon-lucide:archive-restore class="text-15px" style="color: var(--color-text-muted)" />
                 </template>
               </NButton>
             </div>
@@ -315,7 +309,14 @@ function formatDate(dateStr?: string) {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 18px;
   font-weight: 700;
 }
@@ -323,7 +324,14 @@ function formatDate(dateStr?: string) {
 .brand-subtitle {
   margin-top: 1px;
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
 }
 
@@ -343,7 +351,14 @@ function formatDate(dateStr?: string) {
   justify-content: space-between;
   padding: 16px 14px 8px;
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -452,7 +467,14 @@ function formatDate(dateStr?: string) {
 .session-date {
   margin-top: 2px;
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
 }
 
@@ -521,7 +543,14 @@ function formatDate(dateStr?: string) {
 .footer-action__copy small {
   overflow: hidden;
   color: var(--color-text-muted);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
   font-size: 11px;
   line-height: 1.25;
   text-overflow: ellipsis;

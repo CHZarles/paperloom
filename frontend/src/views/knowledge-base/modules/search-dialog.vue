@@ -58,7 +58,7 @@ watch(visible, () => {
   <NModal
     v-model:show="visible"
     preset="dialog"
-    title="知识库检索"
+    title="论文库检索"
     :show-icon="false"
     :mask-closable="false"
     class="w-1000px!"

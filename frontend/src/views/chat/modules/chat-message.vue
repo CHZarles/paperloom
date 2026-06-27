@@ -620,7 +620,7 @@ async function handleSourceFileClick(fileInfo: {
         <SystemLogo class="text-36px" />
       </NAvatar>
       <div class="flex-col gap-1">
-        <NText class="message-author">CiteWeave</NText>
+        <NText class="message-author">PaperLoom</NText>
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>

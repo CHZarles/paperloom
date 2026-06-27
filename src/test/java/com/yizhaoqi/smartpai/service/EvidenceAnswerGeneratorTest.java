@@ -137,6 +137,34 @@ class EvidenceAnswerGeneratorTest {
     }
 
     @Test
+    void systemPromptUsesPaperLoomProductName() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        when(llm.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(new LlmProviderRouter.ReActTurn(
+                        "**结论**\ngrep 是 agent 可调用的搜索工具。{{E1}}",
+                        List.of(),
+                        Map.of("role", "assistant", "content", "ok"),
+                        "stop",
+                        120,
+                        20
+                ));
+        EvidenceAnswerGenerator generator = new EvidenceAnswerGenerator(llm, new EvidenceVerifier());
+
+        generator.generate(
+                "u1",
+                "介绍一下grep",
+                ledger(evidence("E1", "paper-a", "Grep is available as a native bash search primitive."))
+        );
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Map<String, Object>>> messagesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(llm).completeReActTurn(eq("u1"), messagesCaptor.capture(), eq(List.of()), anyInt());
+        String systemPrompt = String.valueOf(messagesCaptor.getValue().get(0).get("content"));
+        assertTrue(systemPrompt.contains("PaperLoom"));
+        assertTrue(!systemPrompt.contains("CiteWeave"));
+    }
+
+    @Test
     void reportsQuotaFailureSeparatelyFromGenericLlmFailure() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         when(llm.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
