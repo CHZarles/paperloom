@@ -41,6 +41,14 @@ const emit = defineEmits<{
       tableText?: string | null;
       tableMarkdown?: string | null;
       tableScreenshotAvailable?: boolean | null;
+      sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
+      evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
+      pdfEvidenceAvailable?: boolean | null;
+      structuredImport?: boolean | null;
+      evalImport?: boolean | null;
+      pageScreenshotAvailable?: boolean | null;
+      figureScreenshotAvailable?: boolean | null;
+      assetWarnings?: string[] | null;
       paperTitle: string;
       originalFilename?: string | null;
       paperId?: string | null;
@@ -408,6 +416,14 @@ function openReferenceEvidencePage(payload: {
   tableText?: string | null;
   tableMarkdown?: string | null;
   tableScreenshotAvailable?: boolean | null;
+  sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
+  evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
+  pdfEvidenceAvailable?: boolean | null;
+  structuredImport?: boolean | null;
+  evalImport?: boolean | null;
+  pageScreenshotAvailable?: boolean | null;
+  figureScreenshotAvailable?: boolean | null;
+  assetWarnings?: string[] | null;
   paperTitle: string;
   originalFilename?: string | null;
   paperId?: string | null;
@@ -558,6 +574,14 @@ async function handleSourceFileClick(fileInfo: {
         tableText: persistedDetail.tableText,
         tableMarkdown: persistedDetail.tableMarkdown,
         tableScreenshotAvailable: persistedDetail.tableScreenshotAvailable,
+        sourceType: persistedDetail.sourceType,
+        evidenceAssetLevel: persistedDetail.evidenceAssetLevel,
+        pdfEvidenceAvailable: persistedDetail.pdfEvidenceAvailable,
+        structuredImport: persistedDetail.structuredImport,
+        evalImport: persistedDetail.evalImport,
+        pageScreenshotAvailable: persistedDetail.pageScreenshotAvailable,
+        figureScreenshotAvailable: persistedDetail.figureScreenshotAvailable,
+        assetWarnings: persistedDetail.assetWarnings,
         conversationRecordId,
         referenceNumber
       });
@@ -595,6 +619,14 @@ async function handleSourceFileClick(fileInfo: {
       tableText: detail?.tableText,
       tableMarkdown: detail?.tableMarkdown,
       tableScreenshotAvailable: detail?.tableScreenshotAvailable,
+      sourceType: detail?.sourceType,
+      evidenceAssetLevel: detail?.evidenceAssetLevel,
+      pdfEvidenceAvailable: detail?.pdfEvidenceAvailable,
+      structuredImport: detail?.structuredImport,
+      evalImport: detail?.evalImport,
+      pageScreenshotAvailable: detail?.pageScreenshotAvailable,
+      figureScreenshotAvailable: detail?.figureScreenshotAvailable,
+      assetWarnings: detail?.assetWarnings,
       conversationRecordId,
       referenceNumber
     });

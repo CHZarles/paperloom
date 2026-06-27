@@ -150,6 +150,8 @@ public class HybridSearchService {
                     .map(hit -> toPaperCandidateResult(hit.source(), hit.score()))
                     .filter(result -> result.getPaperId() != null && !result.getPaperId().isBlank())
                     .toList();
+            attachPaperTitles(candidates);
+            finalizeReferenceEvidenceReadiness(candidates);
             PaperRetrievalService.StopReason stopReason = candidates.isEmpty()
                     ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
                     : PaperRetrievalService.StopReason.EXHAUSTED;

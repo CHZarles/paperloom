@@ -36,6 +36,14 @@ const emit = defineEmits<{
       tableText?: string | null;
       tableMarkdown?: string | null;
       tableScreenshotAvailable?: boolean | null;
+      sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
+      evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
+      pdfEvidenceAvailable?: boolean | null;
+      structuredImport?: boolean | null;
+      evalImport?: boolean | null;
+      pageScreenshotAvailable?: boolean | null;
+      figureScreenshotAvailable?: boolean | null;
+      assetWarnings?: string[] | null;
       paperTitle: string;
       originalFilename?: string | null;
       paperId?: string | null;

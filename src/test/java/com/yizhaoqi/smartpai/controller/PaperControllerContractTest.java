@@ -15,10 +15,13 @@ import com.yizhaoqi.smartpai.service.PaperVisualAssetService;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,7 +30,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -138,6 +143,37 @@ class PaperControllerContractTest {
         assertEquals(false, item.get("structuredImport"));
         assertEquals(false, item.get("evalImport"));
         assertEquals(List.of(), item.get("assetWarnings"));
+    }
+
+    @Test
+    void accessiblePaperPaginationBuildsEvidenceStateForCurrentPageOnly() {
+        List<Paper> pageRows = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Paper paper = new Paper();
+            paper.setPaperId("paper-%02d".formatted(i));
+            paper.setOriginalFilename("paper-%02d.pdf".formatted(i));
+            paper.setPaperTitle("Paper %02d".formatted(i));
+            paper.setStatus(Paper.STATUS_COMPLETED);
+            paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
+            paper.setUserId("1");
+            paper.setPublic(true);
+            pageRows.add(paper);
+        }
+
+        when(paperService.getAccessiblePapersPage(eq("1"), eq("default"), eq(PageRequest.of(0, 10))))
+                .thenReturn(new PageImpl<>(pageRows, PageRequest.of(0, 10), 25));
+
+        var response = paperController.getAccessiblePapers("1", "default", 1, 10);
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+        List<?> content = (List<?>) data.get("content");
+
+        assertEquals(10, content.size());
+        assertEquals(25L, data.get("totalElements"));
+        assertEquals(1, data.get("number"));
+        assertEquals(10, data.get("size"));
+        verify(paperParserArtifactService, times(10)).findLatestParserArtifact(anyString());
+        verify(paperService, never()).getAccessiblePapers("1", "default");
     }
 
     @Test

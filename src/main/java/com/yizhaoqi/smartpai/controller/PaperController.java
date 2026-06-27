@@ -20,6 +20,8 @@ import com.yizhaoqi.smartpai.service.PaperVisualAssetService;
 import com.yizhaoqi.smartpai.utils.LogUtils;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -43,6 +45,9 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/papers")
 public class PaperController {
+
+    private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final int MAX_PAGE_SIZE = 100;
 
     @Autowired
     private PaperService paperService;
@@ -260,12 +265,21 @@ public class PaperController {
         try {
             LogUtils.logBusiness("GET_ACCESSIBLE_PAPERS", userId, "接收到获取可访问论文请求: orgTags=%s", orgTags);
 
-            List<Paper> files = paperService.getAccessiblePapers(userId, orgTags);
-            List<Map<String, Object>> paperData = convertPapersToResponse(files);
-            Object data = (page != null || size != null) ? paginateList(paperData, page, size) : paperData;
+            Object data;
+            long total;
+            if (isPagedRequest(page, size)) {
+                Page<Paper> paperPage = paperService.getAccessiblePapersPage(userId, orgTags, toPageRequest(page, size));
+                List<Map<String, Object>> paperData = convertPapersToResponse(paperPage.getContent());
+                data = buildPageResponse(paperData, page, size, paperPage.getTotalElements());
+                total = paperPage.getTotalElements();
+            } else {
+                List<Paper> files = paperService.getAccessiblePapers(userId, orgTags);
+                data = convertPapersToResponse(files);
+                total = files.size();
+            }
 
             LogUtils.logUserOperation(userId, "GET_ACCESSIBLE_PAPERS", "paper_list", "SUCCESS");
-            LogUtils.logBusiness("GET_ACCESSIBLE_PAPERS", userId, "成功获取可访问论文: paperCount=%d", files.size());
+            LogUtils.logBusiness("GET_ACCESSIBLE_PAPERS", userId, "成功获取可访问论文: paperCount=%d", total);
             monitor.end("获取可访问论文成功");
 
             Map<String, Object> response = new HashMap<>();
@@ -307,9 +321,38 @@ public class PaperController {
         return getAccessiblePapers(userId, orgTags, page, size);
     }
 
+    private boolean isPagedRequest(Integer page, Integer size) {
+        return page != null || size != null;
+    }
+
+    private PageRequest toPageRequest(Integer page, Integer size) {
+        int pageNumber = normalizePage(page);
+        int pageSize = normalizePageSize(size);
+        return PageRequest.of(pageNumber - 1, pageSize);
+    }
+
+    private int normalizePage(Integer page) {
+        return page == null || page < 1 ? 1 : page;
+    }
+
+    private int normalizePageSize(Integer size) {
+        int requested = size == null || size < 1 ? DEFAULT_PAGE_SIZE : size;
+        return Math.min(requested, MAX_PAGE_SIZE);
+    }
+
+    private Map<String, Object> buildPageResponse(List<Map<String, Object>> pageData, Integer page, Integer size, long total) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("data", pageData);
+        result.put("content", pageData);
+        result.put("number", normalizePage(page));
+        result.put("size", normalizePageSize(size));
+        result.put("totalElements", total);
+        return result;
+    }
+
     private Map<String, Object> paginateList(List<Map<String, Object>> records, Integer page, Integer size) {
-        int pageNumber = page == null || page < 1 ? 1 : page;
-        int pageSize = size == null || size < 1 ? 10 : size;
+        int pageNumber = normalizePage(page);
+        int pageSize = normalizePageSize(size);
         int total = records.size();
         int fromIndex = Math.min((pageNumber - 1) * pageSize, total);
         int toIndex = Math.min(fromIndex + pageSize, total);

@@ -18,6 +18,8 @@ import io.minio.RemoveObjectArgs;
 import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -485,6 +487,30 @@ public class PaperService {
         } catch (Exception e) {
             logger.error("获取用户可访问论文列表失败: userId={}", userId, e);
             throw new RuntimeException("获取可访问论文列表失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Page<Paper> getAccessiblePapersPage(String userId, String orgTags, Pageable pageable) {
+        logger.info("分页获取用户可访问论文列表: userId={}, page={}, size={}",
+                userId,
+                pageable == null ? null : pageable.getPageNumber(),
+                pageable == null ? null : pageable.getPageSize());
+
+        try {
+            backfillLegacyVectorizationStatuses();
+
+            User user = resolveUser(userId);
+            String userDbId = String.valueOf(user.getId());
+            Pageable effectivePageable = pageable == null ? Pageable.ofSize(10) : pageable;
+
+            List<String> userEffectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
+            if (userEffectiveTags.isEmpty()) {
+                return paperRepository.findByUserIdOrIsPublicTrue(userDbId, effectivePageable);
+            }
+            return paperRepository.findAccessiblePapersPageWithTags(userDbId, userEffectiveTags, effectivePageable);
+        } catch (Exception e) {
+            logger.error("分页获取用户可访问论文列表失败: userId={}", userId, e);
+            throw new RuntimeException("分页获取可访问论文列表失败: " + e.getMessage(), e);
         }
     }
 

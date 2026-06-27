@@ -46,23 +46,26 @@ function normalizeRemotePaper(row: Api.Paper.UploadTask): Api.Paper.UploadTask {
 }
 
 async function apiFn(params: Api.Common.CommonSearchParams = {}): Promise<FlatResponseData<Api.Paper.List>> {
+  const page = params.page && params.page > 0 ? params.page : 1;
+  const size = params.size && params.size > 0 ? params.size : 10;
+  const requestParams = { ...params, page, size };
   const response = await request<Api.Paper.UploadTask[] | Api.Paper.List>({
     url: '/papers?scope=accessible',
-    params
+    params: requestParams
   });
   if (response.error) return response as FlatResponseData<Api.Paper.List>;
 
   const payload = response.data;
   if (!Array.isArray(payload)) {
-    if (payload?.data) {
-      payload.data = payload.data.map(normalizeRemotePaper);
-      payload.content = payload.content.map(normalizeRemotePaper);
+    const rows = payload?.data || payload?.content || [];
+    if (payload) {
+      const normalizedRows = rows.map(normalizeRemotePaper);
+      payload.data = normalizedRows;
+      payload.content = normalizedRows;
     }
     return response as FlatResponseData<Api.Paper.List>;
   }
 
-  const page = params.page && params.page > 0 ? params.page : 1;
-  const size = params.size && params.size > 0 ? params.size : 10;
   const start = (page - 1) * size;
   const pageData = payload.slice(start, start + size).map(normalizeRemotePaper);
 

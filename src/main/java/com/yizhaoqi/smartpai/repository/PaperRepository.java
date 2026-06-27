@@ -1,6 +1,8 @@
 package com.yizhaoqi.smartpai.repository;
 
 import com.yizhaoqi.smartpai.model.Paper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -41,8 +43,15 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
 
     List<Paper> findByUserIdOrIsPublicTrue(String userId);
 
+    Page<Paper> findByUserIdOrIsPublicTrue(String userId, Pageable pageable);
+
     @Query("SELECT f FROM Paper f WHERE f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false)")
     List<Paper> findAccessiblePapersWithTags(@Param("userId") String userId, @Param("orgTagList") List<String> orgTagList);
+
+    @Query("SELECT f FROM Paper f WHERE f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false)")
+    Page<Paper> findAccessiblePapersPageWithTags(@Param("userId") String userId,
+                                                 @Param("orgTagList") List<String> orgTagList,
+                                                 Pageable pageable);
 
     @Query("SELECT f FROM Paper f WHERE f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false)")
     List<Paper> findAccessiblePapers(@Param("userId") String userId, @Param("orgTagList") List<String> orgTagList);

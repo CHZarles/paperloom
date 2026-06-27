@@ -186,10 +186,18 @@ async function loadSourcePapers() {
   sourcePickerLoading.value = true;
   try {
     const { error, data } = await request<Api.Paper.UploadTask[] | Api.Paper.List>({
-      url: '/papers?scope=accessible'
+      url: '/papers?scope=accessible',
+      params: {
+        page: 1,
+        size: 50
+      }
     });
     if (!error) {
-      sourcePapers.value = normalizePaperPayload(data);
+      sourcePapers.value = normalizePaperPayload(data).map(paper => ({
+        ...paper,
+        paperTitle: paper.paperTitle || paper.originalFilename,
+        originalFilename: paper.originalFilename || paper.paperTitle
+      }));
     }
   } finally {
     sourcePickerLoading.value = false;

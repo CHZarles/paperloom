@@ -13,6 +13,7 @@ import com.yizhaoqi.smartpai.config.PaperSearchIndex;
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
 import com.yizhaoqi.smartpai.entity.SearchResult;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.PaperTableRepository;
@@ -119,6 +120,65 @@ class HybridSearchServicePaperSearchTest {
         verify(esClient).search(requestCaptor.capture(), eq(PaperSearchDocument.class));
         SearchRequest request = requestCaptor.getValue();
         assertEquals(List.of(PaperSearchIndex.PAPER_INDEX_NAME), request.index());
+    }
+
+    @Test
+    void paperCandidateSearchCarriesStructuredImportReadiness() throws Exception {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("alice");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(orgTagCacheService.getUserEffectiveOrgTags("alice")).thenReturn(List.of("eval-litsearch"));
+
+        PaperSearchDocument source = new PaperSearchDocument();
+        source.setPaperId("litsearch:123");
+        source.setPaperTitle("Agent Benchmarks");
+        source.setOriginalFilename("litsearch:123.json");
+        source.setAbstractText("Structured benchmark import about agents.");
+        source.setSearchText("title: Agent Benchmarks\nabstract: Structured benchmark import about agents.");
+        source.setUserId("1");
+        source.setOrgTag("eval-litsearch");
+        source.setPublic(true);
+
+        Paper importedPaper = new Paper();
+        importedPaper.setPaperId("litsearch:123");
+        importedPaper.setOriginalFilename("litsearch:123.json");
+        importedPaper.setPaperTitle("Agent Benchmarks");
+        importedPaper.setSourceDataset("litsearch");
+        importedPaper.setEval(true);
+
+        SearchResponse<PaperSearchDocument> response = SearchResponse.of(search -> search
+                .took(1)
+                .timedOut(false)
+                .shards(ShardStatistics.of(shards -> shards.total(1).successful(1).failed(0)))
+                .hits(hits -> hits
+                        .total(total -> total.value(1).relation(TotalHitsRelation.Eq))
+                        .hits(List.of(Hit.of(hit -> hit
+                                .index(PaperSearchIndex.PAPER_INDEX_NAME)
+                                .id("litsearch:123")
+                                .score(4.2d)
+                                .source(source)
+                        )))
+                )
+        );
+        when(esClient.search(any(SearchRequest.class), eq(PaperSearchDocument.class))).thenReturn(response);
+        when(paperRepository.findByPaperIdIn(List.of("litsearch:123"))).thenReturn(List.of(importedPaper));
+
+        HybridSearchService.AdaptiveSearchResult result = hybridSearchService.searchPaperCandidatesWithPermission(
+                "agent benchmarks",
+                "1",
+                RetrievalBudget.forLibrarySearch(),
+                List.of()
+        );
+
+        assertEquals(1, result.results().size());
+        SearchResult candidate = result.results().get(0);
+        assertEquals("EVAL_IMPORT", candidate.getSourceType());
+        assertEquals("TEXT_ONLY", candidate.getEvidenceAssetLevel());
+        assertEquals(false, candidate.getPdfEvidenceAvailable());
+        assertEquals(true, candidate.getStructuredImport());
+        assertEquals(true, candidate.getEvalImport());
+        assertEquals(List.of("structured_import_text_only"), candidate.getAssetWarnings());
     }
 
     @Test
