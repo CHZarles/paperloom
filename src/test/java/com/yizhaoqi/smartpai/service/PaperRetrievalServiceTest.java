@@ -136,27 +136,21 @@ class PaperRetrievalServiceTest {
     }
 
     @Test
-    void literatureSearchPrefersPaperLevelTitleAndAbstractCoverage() {
+    void discoverPapersPrefersPaperLevelTitleAndAbstractCoverage() {
         PaperQueryPlanner planner = new PaperQueryPlanner();
         HybridSearchService hybridSearchService = mock(HybridSearchService.class);
         RetrievalBudget budget = RetrievalBudget.forLibrarySearch();
-        when(hybridSearchService.adaptiveSearchWithPermission(eq("post-hoc hallucination detection"), eq("u1"), eq(budget), eq(List.of())))
-                .thenReturn(adaptiveResult(List.of(
-                        result("paper-decoy", 1, "hallucination hallucination hallucination hallucination hallucination", 0.95),
-                        result("paper-gold", 1, "Abstract: post-hoc hallucination detection at token and sentence level for neural sequence generation.", 0.8)
-                ), 2, PaperRetrievalService.StopReason.EXHAUSTED));
-
         SearchResult decoy = result("paper-decoy", 1, "hallucination hallucination hallucination hallucination hallucination", 0.95);
         decoy.setPaperTitle("Hallucination in generation");
         SearchResult gold = result("paper-gold", 1, "Abstract: post-hoc hallucination detection at token and sentence level for neural sequence generation.", 0.8);
         gold.setPaperTitle("Token and sentence level hallucination detection");
-        when(hybridSearchService.adaptiveSearchWithPermission(eq("post-hoc hallucination detection title abstract"), eq("u1"), eq(budget), eq(List.of())))
+        when(hybridSearchService.searchPaperCandidatesWithPermission(eq("post-hoc hallucination detection"), eq("u1"), eq(budget), eq(List.of())))
                 .thenReturn(adaptiveResult(List.of(gold, decoy), 2, PaperRetrievalService.StopReason.EXHAUSTED));
 
         PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService);
 
-        PaperRetrievalService.RetrievalResult retrieval = service.retrieve(
-                "推荐一些 post-hoc hallucination detection 相关论文",
+        PaperRetrievalService.RetrievalResult retrieval = service.discoverPapers(
+                "post-hoc hallucination detection",
                 "u1",
                 budget
         );
@@ -193,13 +187,13 @@ class PaperRetrievalServiceTest {
                 0.7
         );
         otherPaper.setPaperTitle("Retrieval Agents for Papers");
-        when(hybridSearchService.adaptiveSearchWithPermission(eq("agent harness retrieval"), eq("u1"), eq(budget), eq(List.of())))
+        when(hybridSearchService.searchPaperCandidatesWithPermission(eq("agent harness retrieval"), eq("u1"), eq(budget), eq(List.of())))
                 .thenReturn(adaptiveResult(List.of(weakerSamePaper, strongerSamePaper, otherPaper), 3, PaperRetrievalService.StopReason.EXHAUSTED));
 
         PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService);
 
-        PaperRetrievalService.RetrievalResult retrieval = service.retrieve(
-                "推荐一些 agent harness retrieval 相关论文",
+        PaperRetrievalService.RetrievalResult retrieval = service.discoverPapers(
+                "agent harness retrieval",
                 "u1",
                 budget
         );
@@ -258,8 +252,8 @@ class PaperRetrievalServiceTest {
 
         PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService);
 
-        PaperRetrievalService.RetrievalResult retrieval = service.retrieve(
-                "推荐一些 post-hoc hallucination detection 相关论文",
+        PaperRetrievalService.RetrievalResult retrieval = service.discoverPapers(
+                "post-hoc hallucination detection",
                 "u1",
                 budget
         );
@@ -366,8 +360,8 @@ class PaperRetrievalServiceTest {
 
         PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService);
 
-        PaperRetrievalService.RetrievalResult retrieval = service.retrieve(
-                "推荐 retrieval augmented generation 相关论文",
+        PaperRetrievalService.RetrievalResult retrieval = service.discoverPapers(
+                "retrieval augmented generation",
                 "u1",
                 budget
         );

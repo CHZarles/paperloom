@@ -3,6 +3,7 @@ package com.yizhaoqi.smartpai.service;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PaperQueryPlannerTest {
@@ -51,10 +52,23 @@ class PaperQueryPlannerTest {
     }
 
     @Test
-    void plansLiteratureSearchAsPaperLevelRetrieval() {
+    void unforcedRecommendationQueryDoesNotOwnTopLevelPaperDiscovery() {
         PaperQueryPlanner planner = new PaperQueryPlanner();
 
         PaperQueryPlanner.RetrievalPlan plan = planner.plan("推荐一些 post-hoc hallucination detection 相关论文");
+
+        assertEquals(PaperQueryPlanner.RetrievalIntent.GENERAL, plan.intent());
+        assertFalse(plan.paperLevelSearch());
+    }
+
+    @Test
+    void forcedLiteratureSearchNormalizesTopicForPaperLevelRetrieval() {
+        PaperQueryPlanner planner = new PaperQueryPlanner();
+
+        PaperQueryPlanner.RetrievalPlan plan = planner.plan(
+                "推荐一些 post-hoc hallucination detection 相关论文",
+                PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH
+        );
 
         assertEquals(PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH, plan.intent());
         assertTrue(plan.paperLevelSearch());

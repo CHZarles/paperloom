@@ -113,10 +113,6 @@ public class PaperQueryPlanner {
 
     private RetrievalIntent detectIntent(String query) {
         String lower = query == null ? "" : query.toLowerCase(Locale.ROOT);
-        if (containsAny(lower, "推荐", "相关论文", "有哪些论文", "有什么论文", "研究论文",
-                "related papers", "recommend papers", "research papers", "papers about", "papers on")) {
-            return RetrievalIntent.LITERATURE_SEARCH;
-        }
         if (containsAny(lower, "实验", "数据", "结果", "指标", "准确率", "表格", "图表",
                 "噪声", "高噪声",
                 "experiment", "experimental", "evaluation", "result", "accuracy", "benchmark",
