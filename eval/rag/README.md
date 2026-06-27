@@ -304,6 +304,28 @@ Each JSONL row describes one user-facing behavior:
 
 ## Run
 
+Gate runner:
+
+```bash
+scripts/paperloom-rag-gates.sh product-smoke
+scripts/paperloom-rag-gates.sh all-light
+scripts/paperloom-rag-gates.sh litsearch-full-summary
+```
+
+Use `all-light` for daily development. It runs unit and dataset gates only and does not create a
+benchmark run artifact. Use `product-smoke`, `qasper-dev-200`, and `pdf-parser-smoke` when the
+required runtime/database preconditions are available; those modes print the expected `runDir` and
+check the resulting scorecard. `pdf-parser-smoke` requires a real uploaded/parsed PDF row and parser
+artifacts in the active database. `litsearch-full-summary` summarizes existing full import and
+benchmark state only; it is not a fresh LitSearch Full run unless the full benchmark command is
+explicitly invoked by the LitSearch pipeline. Do not report a partial sample as `litsearch-full`.
+
+Preview commands without running them:
+
+```bash
+scripts/paperloom-rag-gates.sh --dry-run all-light
+```
+
 Targeted smoke:
 
 ```bash

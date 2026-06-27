@@ -89,6 +89,7 @@ benchmarks:
     path: eval/rag/product-rescue-smoke.jsonl
     source: local
     primaryMetric: passRate
+    gateMode: product-smoke
     cases: "6"
   - id: product-rescue-paper-qa
     name: Product Paper-QA Slice
@@ -107,6 +108,7 @@ benchmarks:
     path: eval/rag/pdf-parser/product-pdf-smoke-manifest.jsonl
     source: local committed PDF manifest
     primaryMetric: passRate
+    gateMode: pdf-parser-smoke
     cases: "1"
   - id: product-figure-table-smoke
     name: Product Figure/Table Smoke
@@ -125,6 +127,7 @@ benchmarks:
     path: eval/rag/qasper/generated/qasper-dev-200.jsonl
     source: https://allenai.org/data/qasper
     primaryMetric: passRate
+    gateMode: qasper-dev-200
     cases: "200"
   - id: litsearch-full
     name: LitSearch Full
@@ -134,6 +137,7 @@ benchmarks:
     path: eval/rag/litsearch/generated/litsearch-full-query.jsonl
     source: https://huggingface.co/datasets/princeton-nlp/LitSearch
     primaryMetric: recallAt20
+    gateMode: litsearch-full-summary
     cases: "597 queries / 64,183 papers"
   - id: litsearch-service-slice-k5
     name: LitSearch Service Slice K5
