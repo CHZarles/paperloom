@@ -307,7 +307,7 @@ public class ChatHandler {
             Long userId,
             String conversationId,
             PaperAnswerService.AnswerScope referenceFocus) {
-        if (referenceFocus == null || trimToNull(referenceFocus.paperId()) != null) {
+        if (referenceFocus == null) {
             return referenceFocus;
         }
         if (referenceFocus.referenceNumber() == null) {
@@ -330,14 +330,14 @@ public class ChatHandler {
             PaperAnswerService.AnswerScope referenceFocus,
             Map<String, Object> detail,
             String paperId) {
-        String paperTitle = firstNonBlank(referenceFocus.paperTitle(), stringDetail(detail, "paperTitle"));
-        String originalFilename = firstNonBlank(referenceFocus.originalFilename(), stringDetail(detail, "originalFilename"));
+        String paperTitle = firstNonBlank(stringDetail(detail, "paperTitle"), referenceFocus.paperTitle());
+        String originalFilename = firstNonBlank(stringDetail(detail, "originalFilename"), referenceFocus.originalFilename());
         String matchedText = firstNonBlank(
-                referenceFocus.matchedText(),
                 stringDetail(detail, "matchedChunkText"),
                 stringDetail(detail, "evidenceSnippet"),
                 stringDetail(detail, "anchorText"),
-                stringDetail(detail, "matchedText")
+                stringDetail(detail, "matchedText"),
+                referenceFocus.matchedText()
         );
         return new PaperAnswerService.AnswerScope(
                 List.of(paperId),
@@ -350,8 +350,8 @@ public class ChatHandler {
                 paperTitle,
                 originalFilename,
                 matchedText,
-                firstNonBlank(referenceFocus.bboxJson(), stringDetail(detail, "bboxJson")),
-                firstNonBlank(referenceFocus.sourceKind(), stringDetail(detail, "sourceKind")),
+                firstNonBlank(stringDetail(detail, "bboxJson"), referenceFocus.bboxJson()),
+                firstNonBlank(stringDetail(detail, "sourceKind"), referenceFocus.sourceKind()),
                 referenceFocus.retrievalBudgetProfile()
         );
     }
