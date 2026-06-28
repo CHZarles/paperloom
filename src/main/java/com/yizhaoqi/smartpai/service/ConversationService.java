@@ -54,28 +54,37 @@ public class ConversationService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
-        saveConversation(user, question, answer, null, null);
+        saveConversation(user, question, answer, null, null, null);
     }
 
     @Transactional
     public void recordConversation(Long userId, String question, String answer, String conversationId,
                                    Map<String, Map<String, Object>> referenceMappings) {
+        recordConversation(userId, question, answer, conversationId, referenceMappings, null);
+    }
+
+    @Transactional
+    public void recordConversation(Long userId, String question, String answer, String conversationId,
+                                   Map<String, Map<String, Object>> referenceMappings,
+                                   Map<String, Object> effectiveScope) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
-        saveConversation(user, question, answer, conversationId, referenceMappings);
+        saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope);
         updateSessionTitleIfDefault(userId, conversationId, question);
         touchSessionUpdatedAt(userId, conversationId);
     }
 
     private void saveConversation(User user, String question, String answer, String conversationId,
-                                  Map<String, Map<String, Object>> referenceMappings) {
+                                  Map<String, Map<String, Object>> referenceMappings,
+                                  Map<String, Object> effectiveScope) {
         Conversation conversation = new Conversation();
         conversation.setUser(user);
         conversation.setQuestion(question);
         conversation.setAnswer(answer);
         conversation.setConversationId(conversationId);
         conversation.setReferenceMappingsJson(writeReferenceMappings(referenceMappings));
+        conversation.setEffectiveScopeJson(writeEffectiveScope(effectiveScope));
 
         conversationRepository.save(conversation);
     }
@@ -314,7 +323,8 @@ public class ConversationService {
                             messageConversationId,
                             conversation.getId(),
                             null,
-                            includeUsername ? conversation.getUser().getUsername() : null
+                            includeUsername ? conversation.getUser().getUsername() : null,
+                            parseEffectiveScope(conversation.getEffectiveScopeJson())
                     ));
                     messages.add(buildMessage(
                             "assistant",
@@ -323,7 +333,8 @@ public class ConversationService {
                             messageConversationId,
                             conversation.getId(),
                             parseReferenceMappings(conversation.getReferenceMappingsJson()),
-                            includeUsername ? conversation.getUser().getUsername() : null
+                            includeUsername ? conversation.getUser().getUsername() : null,
+                            null
                     ));
                 });
 
@@ -332,7 +343,9 @@ public class ConversationService {
 
     private Map<String, Object> buildMessage(String role, String content, String timestamp, String conversationId,
                                              Long conversationRecordId,
-                                             Map<String, Map<String, Object>> referenceMappings, String username) {
+                                             Map<String, Map<String, Object>> referenceMappings,
+                                             String username,
+                                             Map<String, Object> effectiveScope) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
         message.put("content", content);
@@ -350,6 +363,9 @@ public class ConversationService {
         }
         if (username != null && !username.isBlank()) {
             message.put("username", username);
+        }
+        if (effectiveScope != null && !effectiveScope.isEmpty()) {
+            message.put("effectiveScope", effectiveScope);
         }
         return message;
     }
@@ -470,6 +486,37 @@ public class ConversationService {
             return objectMapper.writeValueAsString(referenceMappings);
         } catch (Exception e) {
             logger.warn("序列化引用映射失败，将跳过持久化引用详情", e);
+            return null;
+        }
+    }
+
+    private String writeEffectiveScope(Map<String, Object> effectiveScope) {
+        if (effectiveScope == null || effectiveScope.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return objectMapper.writeValueAsString(effectiveScope);
+        } catch (Exception e) {
+            logger.warn("序列化有效检索范围失败，将跳过持久化范围审计", e);
+            return null;
+        }
+    }
+
+    private Map<String, Object> parseEffectiveScope(String effectiveScopeJson) {
+        if (effectiveScopeJson == null || effectiveScopeJson.isBlank()) {
+            return null;
+        }
+
+        try {
+            Map<String, Object> parsed = objectMapper.readValue(
+                    effectiveScopeJson,
+                    new TypeReference<LinkedHashMap<String, Object>>() {
+                    }
+            );
+            return parsed == null || parsed.isEmpty() ? null : parsed;
+        } catch (Exception e) {
+            logger.warn("解析有效检索范围失败，将返回无范围审计的历史记录", e);
             return null;
         }
     }

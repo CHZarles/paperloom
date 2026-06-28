@@ -2,14 +2,29 @@ package com.yizhaoqi.smartpai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.entity.SearchResult;
+import com.yizhaoqi.smartpai.model.ConversationScopeMode;
+import com.yizhaoqi.smartpai.model.ConversationScopeStatus;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ChatHandlerReferenceEvidenceTest {
 
@@ -17,6 +32,150 @@ class ChatHandlerReferenceEvidenceTest {
     private static final String LEGACY_STRUCTURED_FIELD = "structured" + "Import";
     private static final String LEGACY_EVAL_FIELD = "eval" + "Import";
     private static final String LEGACY_ASSET_WARNING = "structured_" + "import_text_only";
+
+    @Test
+    void firstAcceptedMessageLocksAutoLibraryScope() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(new ConversationScopeService.EffectiveConversationScope(
+                        ConversationScopeMode.AUTO_LIBRARY,
+                        ConversationScopeStatus.READY,
+                        true,
+                        "All searchable papers",
+                        List.of(),
+                        Map.of()
+                ));
+        PaperAnswerService.AnswerScope frontendScope = new PaperAnswerService.AnswerScope(
+                List.of("frontend-paper"),
+                List.of("Frontend Paper"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                RetrievalBudgetProfile.HIGH_RECALL
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("What does agent routing do?", frontendScope),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.conversationScopeService).lockForFirstMessage(1L, "conversation-1");
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("What does agent routing do?"), scopeCaptor.capture());
+        assertEquals(List.of(), scopeCaptor.getValue().paperIds());
+        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, scopeCaptor.getValue().retrievalBudgetProfile());
+    }
+
+    @Test
+    void firstAcceptedMessageLocksSnapshotScope() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(snapshotScope(List.of("paper-a", "paper-c"), false));
+        PaperAnswerService.AnswerScope frontendScope = new PaperAnswerService.AnswerScope(
+                List.of("frontend-paper"),
+                List.of("Frontend Paper"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                RetrievalBudgetProfile.INTERACTIVE
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Compare their methods", frontendScope),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("Compare their methods"), scopeCaptor.capture());
+        assertEquals(List.of("paper-a", "paper-c"), scopeCaptor.getValue().paperIds());
+    }
+
+    @Test
+    void laterMessageUsesLockedScopeEvenWhenPayloadContainsDifferentPaperIds() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(snapshotScope(List.of("paper-a"), true));
+        PaperAnswerService.AnswerScope frontendOverride = new PaperAnswerService.AnswerScope(
+                List.of("paper-b"),
+                List.of("Paper B"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                RetrievalBudgetProfile.DEEP_AUDIT
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain the ablation", frontendOverride),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("Explain the ablation"), scopeCaptor.capture());
+        assertEquals(List.of("paper-a"), scopeCaptor.getValue().paperIds());
+        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, scopeCaptor.getValue().retrievalBudgetProfile());
+    }
+
+    @Test
+    void referenceFocusDoesNotChangeLockedScope() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
+                List.of("paper-b"),
+                List.of("Paper B"),
+                2,
+                51L,
+                7,
+                4,
+                "paper-a",
+                "Paper A",
+                "paper-a.pdf",
+                "Reference evidence text from the locked paper.",
+                "{\"coordinateSystem\":\"top_left_1000\"}",
+                "TEXT",
+                RetrievalBudgetProfile.HIGH_RECALL
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain this citation", referenceFocus),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(lockedScope), any());
+        verify(fixture.conversationScopeService, never()).updateUnlockedScope(any(), anyString(), any());
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("Explain this citation"), scopeCaptor.capture());
+        PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
+        assertEquals(List.of("paper-a"), answerScope.paperIds());
+        assertEquals("paper-a", answerScope.paperId());
+        assertEquals(2, answerScope.referenceNumber());
+        assertEquals(51L, answerScope.conversationRecordId());
+        assertEquals(7, answerScope.chunkId());
+        assertEquals("Reference evidence text from the locked paper.", answerScope.matchedText());
+        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, answerScope.retrievalBudgetProfile());
+    }
 
     @Test
     void buildsReferenceEvidenceFromSearchResultWithStructuredProvenance() {
@@ -343,8 +502,89 @@ class ChatHandlerReferenceEvidenceTest {
                 null,
                 null,
                 null,
+                null,
                 new ObjectMapper(),
                 null
         );
+    }
+
+    private static ConversationScopeService.EffectiveConversationScope snapshotScope(List<String> paperIds, boolean locked) {
+        return new ConversationScopeService.EffectiveConversationScope(
+                ConversationScopeMode.SOURCE_SET_SNAPSHOT,
+                ConversationScopeStatus.READY,
+                locked,
+                "Agent papers",
+                paperIds,
+                Map.of("recipe", "test")
+        );
+    }
+
+    private static ChatHandlerFixture chatHandlerFixture() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("user:1:current_conversation")).thenReturn("conversation-1");
+
+        PaperAnswerService paperAnswerService = mock(PaperAnswerService.class);
+        when(paperAnswerService.answer(anyString(), anyString(), anyString(), any()))
+                .thenReturn(new PaperAnswerService.AnswerResult(
+                        "Evidence answer",
+                        Map.of(),
+                        PaperAnswerService.Intent.AUTO_SOURCE_QA,
+                        0,
+                        0,
+                        false
+                ));
+
+        ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
+        when(generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+                .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
+                        "generation-1",
+                        "1",
+                        "conversation-1",
+                        "question",
+                        ChatGenerationStateService.GenerationStatus.STREAMING,
+                        "",
+                        "2026-06-28T12:00:00",
+                        "2026-06-28T12:00:00",
+                        null,
+                        Map.of(),
+                        Map.of()
+                ));
+
+        ThreadPoolTaskExecutor executor = mock(ThreadPoolTaskExecutor.class);
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(executor).execute(any(Runnable.class));
+
+        ConversationScopeService conversationScopeService = mock(ConversationScopeService.class);
+        ChatHandler handler = new ChatHandler(
+                redisTemplate,
+                null,
+                null,
+                paperAnswerService,
+                null,
+                mock(RateLimitService.class),
+                mock(ConversationService.class),
+                conversationScopeService,
+                generationStateService,
+                mock(ChatSessionRegistry.class),
+                null,
+                new ObjectMapper(),
+                executor
+        );
+
+        WebSocketSession session = mock(WebSocketSession.class);
+        when(session.getId()).thenReturn("socket-1");
+        return new ChatHandlerFixture(handler, paperAnswerService, conversationScopeService, session);
+    }
+
+    private record ChatHandlerFixture(
+            ChatHandler handler,
+            PaperAnswerService paperAnswerService,
+            ConversationScopeService conversationScopeService,
+            WebSocketSession session
+    ) {
     }
 }

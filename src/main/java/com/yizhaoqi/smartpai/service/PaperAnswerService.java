@@ -1604,6 +1604,24 @@ public class PaperAnswerService {
             return paperId != null && !paperId.isBlank() && matchedText != null && !matchedText.isBlank();
         }
 
+        public AnswerScope withPaperIds(List<String> controlledPaperIds) {
+            return new AnswerScope(
+                    controlledPaperIds,
+                    paperTitles,
+                    referenceNumber,
+                    conversationRecordId,
+                    chunkId,
+                    pageNumber,
+                    paperId,
+                    paperTitle,
+                    originalFilename,
+                    matchedText,
+                    bboxJson,
+                    sourceKind,
+                    retrievalBudgetProfile
+            );
+        }
+
         SearchResult toSearchResult() {
             SearchResult result = new SearchResult(
                     paperId,

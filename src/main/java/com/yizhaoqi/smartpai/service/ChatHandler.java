@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.entity.SearchResult;
 import com.yizhaoqi.smartpai.exception.RateLimitExceededException;
+import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -64,6 +65,7 @@ public class ChatHandler {
     private final LlmProviderRouter llmProviderRouter;
     private final RateLimitService rateLimitService;
     private final ConversationService conversationService;
+    private final ConversationScopeService conversationScopeService;
     private final ChatGenerationStateService chatGenerationStateService;
     private final ChatSessionRegistry chatSessionRegistry;
     private final AgentToolRegistry agentToolRegistry;
@@ -85,6 +87,7 @@ public class ChatHandler {
     // 用于存储每次生成任务的引用映射：generationId -> {referenceNumber -> detail}
     private final Map<String, Map<Integer, ReferenceInfo>> generationReferenceMappings = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> generationDiagnostics = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Object>> generationEffectiveScopes = new ConcurrentHashMap<>();
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
     public ChatHandler(RedisTemplate<String, String> redisTemplate,
@@ -94,6 +97,7 @@ public class ChatHandler {
                       LlmProviderRouter llmProviderRouter,
                       RateLimitService rateLimitService,
                       ConversationService conversationService,
+                      ConversationScopeService conversationScopeService,
                       ChatGenerationStateService chatGenerationStateService,
                       ChatSessionRegistry chatSessionRegistry,
                       AgentToolRegistry agentToolRegistry,
@@ -106,6 +110,7 @@ public class ChatHandler {
         this.llmProviderRouter = llmProviderRouter;
         this.rateLimitService = rateLimitService;
         this.conversationService = conversationService;
+        this.conversationScopeService = conversationScopeService;
         this.chatGenerationStateService = chatGenerationStateService;
         this.chatSessionRegistry = chatSessionRegistry;
         this.agentToolRegistry = agentToolRegistry;
@@ -129,13 +134,23 @@ public class ChatHandler {
 
             // 1. 获取或创建会话 ID
             conversationId = getOrCreateConversationId(userId);
-            conversationService.ensureConversationSession(Long.parseLong(userId), conversationId, userMessage);
+            Long userIdLong = Long.parseLong(userId);
+            conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
+            ConversationScopeService.EffectiveConversationScope effectiveScope =
+                    conversationScopeService.lockForFirstMessage(userIdLong, conversationId);
+            PaperAnswerService.AnswerScope referenceFocus = referenceFocus(scope);
+            if (referenceFocus != null) {
+                conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
+            }
+            PaperAnswerService.AnswerScope controlledScope = controlledAnswerScope(effectiveScope, scope, referenceFocus);
+            Map<String, Object> effectiveScopeMap = effectiveScopeMap(effectiveScope);
             ChatGenerationStateService.GenerationSnapshot generation =
                     chatGenerationStateService.createGeneration(userId, conversationId, userMessage);
             generationId = generation.generationId();
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
             generationClientIds.put(finalGenerationId, requestClientId);
+            generationEffectiveScopes.put(finalGenerationId, effectiveScopeMap);
             logger.info("会话ID: {}, 用户ID: {}", conversationId, userId);
             sendGenerationStart(userId, finalGenerationId, finalConversationId);
             ChatRequestTiming timing = ChatRequestTiming.start(userMessage);
@@ -159,7 +174,7 @@ public class ChatHandler {
             // 2. 异步执行 Evidence Harness；默认用户聊天不再让模型自由调度工具和 citation。
             try {
                 chatMonitorExecutor.execute(() ->
-                        runEvidenceHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, scope, responseFuture));
+                        runEvidenceHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, controlledScope, responseFuture));
             } catch (RejectedExecutionException ex) {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
@@ -215,6 +230,90 @@ public class ChatHandler {
         );
     }
 
+    private PaperAnswerService.AnswerScope controlledAnswerScope(
+            ConversationScopeService.EffectiveConversationScope effectiveScope,
+            PaperAnswerService.AnswerScope incomingScope,
+            PaperAnswerService.AnswerScope referenceFocus) {
+        List<String> controlledPaperIds = effectiveScope != null
+                && effectiveScope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT
+                ? effectiveScope.paperIds()
+                : List.of();
+        PaperAnswerService.AnswerScope base = referenceFocus != null ? referenceFocus : incomingScope;
+        if (base == null) {
+            return new PaperAnswerService.AnswerScope(
+                    controlledPaperIds,
+                    List.of(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+        }
+        return base.withPaperIds(controlledPaperIds);
+    }
+
+    private PaperAnswerService.AnswerScope referenceFocus(PaperAnswerService.AnswerScope incomingScope) {
+        if (!hasReferenceFocus(incomingScope)) {
+            return null;
+        }
+        String focusPaperId = trimToNull(incomingScope.paperId());
+        List<String> focusPaperIds = focusPaperId == null
+                ? incomingScope.paperIds()
+                : List.of(focusPaperId);
+        String focusPaperTitle = trimToNull(incomingScope.paperTitle());
+        List<String> focusPaperTitles = focusPaperTitle == null
+                ? incomingScope.paperTitles()
+                : List.of(focusPaperTitle);
+        return new PaperAnswerService.AnswerScope(
+                focusPaperIds,
+                focusPaperTitles,
+                incomingScope.referenceNumber(),
+                incomingScope.conversationRecordId(),
+                incomingScope.chunkId(),
+                incomingScope.pageNumber(),
+                incomingScope.paperId(),
+                incomingScope.paperTitle(),
+                incomingScope.originalFilename(),
+                incomingScope.matchedText(),
+                incomingScope.bboxJson(),
+                incomingScope.sourceKind(),
+                incomingScope.retrievalBudgetProfile()
+        );
+    }
+
+    private boolean hasReferenceFocus(PaperAnswerService.AnswerScope scope) {
+        if (scope == null) {
+            return false;
+        }
+        return scope.referenceNumber() != null
+                || scope.conversationRecordId() != null
+                || scope.chunkId() != null
+                || scope.pageNumber() != null
+                || trimToNull(scope.matchedText()) != null
+                || trimToNull(scope.bboxJson()) != null
+                || trimToNull(scope.sourceKind()) != null
+                || (trimToNull(scope.paperId()) != null && trimToNull(scope.matchedText()) != null);
+    }
+
+    private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope) {
+        ConversationScopeMode mode = effectiveScope == null ? ConversationScopeMode.AUTO_LIBRARY : effectiveScope.mode();
+        List<String> paperIds = effectiveScope == null ? List.of() : effectiveScope.paperIds();
+        Map<String, Object> scope = new LinkedHashMap<>();
+        scope.put("scopeMode", mode.name());
+        scope.put("sourceLabel", effectiveScope == null
+                ? ConversationScopeService.DEFAULT_AUTO_LIBRARY_LABEL
+                : effectiveScope.label());
+        scope.put("paperIds", paperIds);
+        scope.put("paperCount", mode == ConversationScopeMode.SOURCE_SET_SNAPSHOT ? paperIds.size() : 0);
+        return scope;
+    }
+
     private void runEvidenceHarnessSafely(String userId,
                                           String userMessage,
                                           String conversationId,
@@ -230,6 +329,14 @@ public class ChatHandler {
             sendCompletionNotification(userId, generationId, conversationId, true, false);
             cleanupGenerationState(generationId, e);
         }
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void runEvidenceHarness(String userId,
@@ -765,9 +872,15 @@ public class ChatHandler {
         }
         // 先把消息事务性地落 MySQL；只有 MySQL 成功后才写 Redis 短期会话历史，
         // 否则两个数据源会出现一边有记录、一边没有的不一致状态。
-        boolean persisted = persistConversation(userId, userMessage, completeResponse, conversationId, referenceMappings);
+        boolean persisted = persistConversation(userId, userMessage, completeResponse, conversationId, generationId, referenceMappings);
         if (persisted) {
-            updateConversationHistory(conversationId, userMessage, completeResponse, referenceMappings);
+            updateConversationHistory(
+                    conversationId,
+                    userMessage,
+                    completeResponse,
+                    referenceMappings,
+                    generationEffectiveScopes.get(generationId)
+            );
         } else {
             logger.warn("MySQL 落库失败，跳过 Redis 会话历史写入以保持两端一致: generationId={}, conversationId={}",
                     generationId, conversationId);
@@ -784,6 +897,7 @@ public class ChatHandler {
     }
 
     private boolean persistConversation(String userId, String userMessage, String completeResponse, String conversationId,
+                                        String generationId,
                                         Map<Integer, ReferenceInfo> referenceMappings) {
         try {
             Long userIdLong = Long.parseLong(userId);
@@ -792,7 +906,8 @@ public class ChatHandler {
                     userMessage,
                     completeResponse,
                     conversationId,
-                    toSerializableReferenceMappings(referenceMappings)
+                    toSerializableReferenceMappings(referenceMappings),
+                    generationEffectiveScopes.get(generationId)
             );
             return true;
         } catch (Exception e) {
@@ -806,6 +921,7 @@ public class ChatHandler {
         generationClientIds.remove(generationId);
         generationReferenceMappings.remove(generationId);
         generationDiagnostics.remove(generationId);
+        generationEffectiveScopes.remove(generationId);
         generationTimings.remove(generationId);
         stopFlags.remove(generationId);
         activeStreams.remove(generationId);
@@ -925,7 +1041,8 @@ public class ChatHandler {
     }
 
     private void updateConversationHistory(String conversationId, String userMessage, String response,
-                                           Map<Integer, ReferenceInfo> referenceMapping) {
+                                           Map<Integer, ReferenceInfo> referenceMapping,
+                                           Map<String, Object> effectiveScope) {
         String key = "conversation:" + conversationId;
         List<Map<String, Object>> history = getConversationHistoryRecords(conversationId);
 
@@ -937,6 +1054,9 @@ public class ChatHandler {
         userMsgMap.put("role", "user");
         userMsgMap.put("content", userMessage);
         userMsgMap.put("timestamp", currentTimestamp);
+        if (effectiveScope != null && !effectiveScope.isEmpty()) {
+            userMsgMap.put("effectiveScope", effectiveScope);
+        }
         history.add(userMsgMap);
 
         // 添加助手回复（带时间戳）

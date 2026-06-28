@@ -633,6 +633,36 @@ class PaperAnswerServiceTest {
     }
 
     @Test
+    void answerScopeWithPaperIdsPreservesReferenceFocusAndBudget() {
+        PaperAnswerService.AnswerScope incomingFocus = new PaperAnswerService.AnswerScope(
+                List.of("mutable-paper"),
+                List.of("Mutable paper"),
+                3,
+                42L,
+                7,
+                5,
+                "paper-a",
+                "Paper A",
+                "paper-a.pdf",
+                "Focused reference text",
+                "{\"coordinateSystem\":\"top_left_1000\"}",
+                "TEXT",
+                RetrievalBudgetProfile.DEEP_AUDIT
+        );
+
+        PaperAnswerService.AnswerScope controlled = incomingFocus.withPaperIds(List.of("paper-a", "paper-c"));
+
+        assertEquals(List.of("paper-a", "paper-c"), controlled.paperIds());
+        assertEquals(3, controlled.referenceNumber());
+        assertEquals(42L, controlled.conversationRecordId());
+        assertEquals(7, controlled.chunkId());
+        assertEquals(5, controlled.pageNumber());
+        assertEquals("paper-a", controlled.paperId());
+        assertEquals("Focused reference text", controlled.matchedText());
+        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, controlled.retrievalBudgetProfile());
+    }
+
+    @Test
     void referenceScopeUsesProvidedEvidenceEvenWithoutReferenceNumber() {
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
                 .thenReturn(new LlmProviderRouter.ReActTurn(

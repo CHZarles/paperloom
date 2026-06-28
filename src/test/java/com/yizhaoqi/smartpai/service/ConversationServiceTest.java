@@ -10,6 +10,7 @@ import com.yizhaoqi.smartpai.repository.ConversationSessionRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -18,6 +19,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -100,6 +102,72 @@ class ConversationServiceTest {
 
         assertEquals(0, result.size());
         verify(conversationRepository).findByUserIdAndConversationIdOrderByTimestampAsc(2L, "conversation-1");
+    }
+
+    @Test
+    void recordConversationPersistsEffectiveScopeJson() throws Exception {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        User user = new User();
+        user.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        Map<String, Object> effectiveScope = new LinkedHashMap<>();
+        effectiveScope.put("scopeMode", "SOURCE_SET_SNAPSHOT");
+        effectiveScope.put("sourceLabel", "Agent papers");
+        effectiveScope.put("paperIds", List.of("p1", "p2"));
+        effectiveScope.put("paperCount", 2);
+
+        conversationService.recordConversation(
+                1L,
+                "Question",
+                "Answer",
+                "conversation-1",
+                Map.of(),
+                effectiveScope
+        );
+
+        ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
+        verify(conversationRepository).save(conversationCaptor.capture());
+        Map<String, Object> persistedScope = new ObjectMapper().readValue(
+                conversationCaptor.getValue().getEffectiveScopeJson(),
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                }
+        );
+        assertEquals("SOURCE_SET_SNAPSHOT", persistedScope.get("scopeMode"));
+        assertEquals("Agent papers", persistedScope.get("sourceLabel"));
+        assertEquals(List.of("p1", "p2"), persistedScope.get("paperIds"));
+        assertEquals(2, persistedScope.get("paperCount"));
+    }
+
+    @Test
+    void messageHistoryIncludesEffectiveScopeOnUserMessageOnly() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setQuestion("Question");
+        conversation.setAnswer("Answer");
+        conversation.setConversationId("conversation-1");
+        conversation.setEffectiveScopeJson("""
+                {
+                  "scopeMode": "SOURCE_SET_SNAPSHOT",
+                  "sourceLabel": "Agent papers",
+                  "paperIds": ["p1", "p2"],
+                  "paperCount": 2
+                }
+                """);
+        ReflectionTestUtils.setField(conversation, "timestamp", LocalDateTime.of(2026, 6, 28, 12, 0));
+
+        List<Map<String, Object>> messages = conversationService.toMessageHistory(List.of(conversation), false);
+
+        assertEquals(2, messages.size());
+        Map<String, Object> userMessage = messages.get(0);
+        Map<String, Object> assistantMessage = messages.get(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> effectiveScope = (Map<String, Object>) userMessage.get("effectiveScope");
+        assertEquals("SOURCE_SET_SNAPSHOT", effectiveScope.get("scopeMode"));
+        assertEquals("Agent papers", effectiveScope.get("sourceLabel"));
+        assertEquals(List.of("p1", "p2"), effectiveScope.get("paperIds"));
+        assertEquals(2, effectiveScope.get("paperCount"));
+        assertEquals(false, assistantMessage.containsKey("effectiveScope"));
     }
 
     @Test
