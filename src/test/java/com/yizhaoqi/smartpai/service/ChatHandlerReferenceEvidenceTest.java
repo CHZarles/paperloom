@@ -74,6 +74,47 @@ class ChatHandlerReferenceEvidenceTest {
     }
 
     @Test
+    void autoLibraryScopeStripsScalarPaperIdWhenNotReferenceFocus() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(new ConversationScopeService.EffectiveConversationScope(
+                        ConversationScopeMode.AUTO_LIBRARY,
+                        ConversationScopeStatus.READY,
+                        true,
+                        "All searchable papers",
+                        List.of(),
+                        Map.of()
+                ));
+        PaperAnswerService.AnswerScope frontendScope = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of("Frontend Paper"),
+                null,
+                null,
+                null,
+                null,
+                "frontend-paper",
+                "Frontend Paper",
+                "frontend-paper.pdf",
+                null,
+                null,
+                null,
+                RetrievalBudgetProfile.DEEP_AUDIT
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("What does this paper say?", frontendScope),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("What does this paper say?"), scopeCaptor.capture());
+        PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
+        assertEquals(List.of(), answerScope.paperIds());
+        assertEquals(null, answerScope.paperId());
+        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, answerScope.retrievalBudgetProfile());
+    }
+
+    @Test
     void firstAcceptedMessageLocksSnapshotScope() {
         ChatHandlerFixture fixture = chatHandlerFixture();
         when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))

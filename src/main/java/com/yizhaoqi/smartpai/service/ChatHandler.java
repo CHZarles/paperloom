@@ -238,24 +238,33 @@ public class ChatHandler {
                 && effectiveScope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT
                 ? effectiveScope.paperIds()
                 : List.of();
-        PaperAnswerService.AnswerScope base = referenceFocus != null ? referenceFocus : incomingScope;
-        if (base == null) {
-            return new PaperAnswerService.AnswerScope(
-                    controlledPaperIds,
-                    List.of(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null
-            );
+        if (referenceFocus != null) {
+            return referenceFocus.withPaperIds(controlledPaperIds);
         }
-        return base.withPaperIds(controlledPaperIds);
+        return sessionOnlyAnswerScope(controlledPaperIds, incomingScope);
+    }
+
+    private PaperAnswerService.AnswerScope sessionOnlyAnswerScope(
+            List<String> controlledPaperIds,
+            PaperAnswerService.AnswerScope incomingScope) {
+        RetrievalBudgetProfile budgetProfile = incomingScope == null
+                ? RetrievalBudgetProfile.INTERACTIVE
+                : incomingScope.retrievalBudgetProfile();
+        return new PaperAnswerService.AnswerScope(
+                controlledPaperIds,
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                budgetProfile
+        );
     }
 
     private PaperAnswerService.AnswerScope referenceFocus(PaperAnswerService.AnswerScope incomingScope) {
