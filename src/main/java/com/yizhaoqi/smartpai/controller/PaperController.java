@@ -259,16 +259,25 @@ public class PaperController {
             @RequestAttribute("userId") String userId,
             @RequestAttribute("orgTags") String orgTags,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size) {
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String readiness) {
 
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_ACCESSIBLE_PAPERS");
         try {
-            LogUtils.logBusiness("GET_ACCESSIBLE_PAPERS", userId, "接收到获取可访问论文请求: orgTags=%s", orgTags);
+            LogUtils.logBusiness("GET_ACCESSIBLE_PAPERS", userId,
+                    "接收到获取可访问论文请求: orgTags=%s, query=%s, readiness=%s",
+                    orgTags,
+                    query,
+                    readiness);
 
             Object data;
             long total;
-            if (isPagedRequest(page, size)) {
-                Page<Paper> paperPage = paperService.getAccessiblePapersPage(userId, orgTags, toPageRequest(page, size));
+            if (isPagedRequest(page, size) || isCandidateSearchRequest(query, readiness)) {
+                PageRequest pageRequest = toPageRequest(page, size);
+                Page<Paper> paperPage = isCandidateSearchRequest(query, readiness)
+                        ? paperService.searchAccessiblePaperCandidates(userId, orgTags, query, readiness, pageRequest)
+                        : paperService.getAccessiblePapersPage(userId, orgTags, pageRequest);
                 List<Map<String, Object>> paperData = convertPapersToResponse(paperPage.getContent());
                 data = buildPageResponse(paperData, page, size, paperPage.getTotalElements());
                 total = paperPage.getTotalElements();
@@ -303,7 +312,9 @@ public class PaperController {
             @RequestAttribute("orgTags") String orgTags,
             @RequestParam(defaultValue = "accessible") String scope,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size) {
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String readiness) {
         if ("mine".equalsIgnoreCase(scope)) {
             ResponseEntity<?> response = getUserUploadedPapers(userId);
             if (!(response.getBody() instanceof Map<?, ?> body) || page == null && size == null) {
@@ -318,11 +329,19 @@ public class PaperController {
             }
             return response;
         }
-        return getAccessiblePapers(userId, orgTags, page, size);
+        return getAccessiblePapers(userId, orgTags, page, size, query, readiness);
     }
 
     private boolean isPagedRequest(Integer page, Integer size) {
         return page != null || size != null;
+    }
+
+    private boolean isCandidateSearchRequest(String query, String readiness) {
+        return hasText(query) || hasText(readiness);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private PageRequest toPageRequest(Integer page, Integer size) {

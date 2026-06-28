@@ -19,6 +19,7 @@ import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -59,6 +60,9 @@ public class PaperService {
 
     @Autowired
     private OrgTagCacheService orgTagCacheService;
+
+    @Autowired
+    private PaperSearchabilityService paperSearchabilityService;
 
     @Autowired
     private UserRepository userRepository;
@@ -512,6 +516,81 @@ public class PaperService {
             logger.error("分页获取用户可访问论文列表失败: userId={}", userId, e);
             throw new RuntimeException("分页获取可访问论文列表失败: " + e.getMessage(), e);
         }
+    }
+
+    public Page<Paper> searchAccessiblePaperCandidates(String userId,
+                                                       String orgTags,
+                                                       String query,
+                                                       String readiness,
+                                                       Pageable pageable) {
+        logger.info("分页搜索用户可访问论文候选: userId={}, query={}, readiness={}, page={}, size={}",
+                userId,
+                query,
+                readiness,
+                pageable == null ? null : pageable.getPageNumber(),
+                pageable == null ? null : pageable.getPageSize());
+
+        try {
+            backfillLegacyVectorizationStatuses();
+
+            User user = resolveUser(userId);
+            String userDbId = String.valueOf(user.getId());
+            Pageable effectivePageable = pageable == null ? Pageable.ofSize(10) : pageable;
+            String normalizedQuery = normalizeSearchQuery(query);
+
+            List<String> userEffectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
+            Page<Paper> candidatePage = userEffectiveTags.isEmpty()
+                    ? paperRepository.searchAccessiblePaperCandidatesWithoutOrgTags(
+                            userDbId,
+                            normalizedQuery,
+                            effectivePageable
+                    )
+                    : paperRepository.searchAccessiblePaperCandidates(
+                            userDbId,
+                            userEffectiveTags,
+                            normalizedQuery,
+                            effectivePageable
+                    );
+
+            if (!isSearchableReadiness(readiness)) {
+                return candidatePage;
+            }
+
+            List<Paper> searchableContent = candidatePage.getContent().stream()
+                    .filter(paperSearchabilityService::isSearchable)
+                    .collect(Collectors.toList());
+            return pageWithFilteredContent(candidatePage, searchableContent);
+        } catch (Exception e) {
+            logger.error("分页搜索用户可访问论文候选失败: userId={}", userId, e);
+            throw new RuntimeException("分页搜索可访问论文候选失败: " + e.getMessage(), e);
+        }
+    }
+
+    private Page<Paper> pageWithFilteredContent(Page<Paper> originalPage, List<Paper> filteredContent) {
+        long originalTotalElements = originalPage.getTotalElements();
+        int originalTotalPages = originalPage.getTotalPages();
+        return new PageImpl<>(filteredContent, originalPage.getPageable(), originalTotalElements) {
+            @Override
+            public long getTotalElements() {
+                return originalTotalElements;
+            }
+
+            @Override
+            public int getTotalPages() {
+                return originalTotalPages;
+            }
+        };
+    }
+
+    private String normalizeSearchQuery(String query) {
+        if (query == null) {
+            return null;
+        }
+        return query.trim();
+    }
+
+    private boolean isSearchableReadiness(String readiness) {
+        return readiness != null && "searchable".equalsIgnoreCase(readiness.trim());
     }
 
     /**

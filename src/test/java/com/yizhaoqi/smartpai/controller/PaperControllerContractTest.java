@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -40,6 +41,13 @@ class PaperControllerContractTest {
 
     private static final String LEGACY_STRUCTURED_FIELD = "structured" + "Import";
     private static final String LEGACY_EVAL_FIELD = "eval" + "Import";
+    private static final List<String> FORBIDDEN_EVAL_FIELDS = List.of(
+            LEGACY_EVAL_FIELD,
+            LEGACY_STRUCTURED_FIELD,
+            "sourceDataset",
+            "evalSplit",
+            "isEval"
+    );
 
     @Mock
     private PaperService paperService;
@@ -166,7 +174,7 @@ class PaperControllerContractTest {
         when(paperService.getAccessiblePapersPage(eq("1"), eq("default"), eq(PageRequest.of(0, 10))))
                 .thenReturn(new PageImpl<>(pageRows, PageRequest.of(0, 10), 25));
 
-        var response = paperController.getAccessiblePapers("1", "default", 1, 10);
+        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, null);
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         Map<?, ?> data = (Map<?, ?>) body.get("data");
         List<?> content = (List<?>) data.get("content");
@@ -177,6 +185,126 @@ class PaperControllerContractTest {
         assertEquals(10, data.get("size"));
         verify(paperParserArtifactService, times(10)).findLatestParserArtifact(anyString());
         verify(paperService, never()).getAccessiblePapers("1", "default");
+    }
+
+    @Test
+    void accessiblePapersSupportsPaperLevelQuery() {
+        Paper matchingPaper = paper(
+                "paper-agent-rag",
+                "Adaptive Agent RAG",
+                "adaptive-agent-rag.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        Paper nonMatchingPaper = paper(
+                "paper-vision",
+                "Vision Transformer Survey",
+                "vision-transformers.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+
+        when(paperService.searchAccessiblePaperCandidates(
+                eq("1"),
+                eq("default"),
+                eq("agent"),
+                isNull(),
+                eq(PageRequest.of(0, 10))
+        )).thenReturn(new PageImpl<>(List.of(matchingPaper), PageRequest.of(0, 10), 1));
+
+        var response = paperController.getAccessiblePapers("1", "default", 1, 10, "agent", null);
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+        List<?> content = (List<?>) data.get("content");
+        Map<?, ?> item = (Map<?, ?>) content.get(0);
+
+        assertEquals(1, content.size());
+        assertEquals("paper-agent-rag", item.get("paperId"));
+        assertFalse(content.stream()
+                .map(Map.class::cast)
+                .anyMatch(row -> nonMatchingPaper.getPaperId().equals(row.get("paperId"))));
+        verify(paperService).searchAccessiblePaperCandidates(
+                eq("1"),
+                eq("default"),
+                eq("agent"),
+                isNull(),
+                eq(PageRequest.of(0, 10))
+        );
+    }
+
+    @Test
+    void accessiblePapersReadinessSearchableHidesUnsearchablePapers() {
+        Paper searchablePaper = paper(
+                "paper-searchable",
+                "Searchable Paper",
+                "searchable-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        Paper unsearchablePaper = paper(
+                "paper-processing",
+                "Processing Paper",
+                "processing-paper.pdf",
+                Paper.VECTORIZATION_STATUS_FAILED,
+                Paper.STATUS_UPLOADING
+        );
+
+        when(paperService.searchAccessiblePaperCandidates(
+                eq("1"),
+                eq("default"),
+                isNull(),
+                eq("searchable"),
+                eq(PageRequest.of(0, 10))
+        )).thenReturn(new PageImpl<>(List.of(searchablePaper), PageRequest.of(0, 10), 2) {
+            @Override
+            public long getTotalElements() {
+                return 2;
+            }
+        });
+
+        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, "searchable");
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+        List<?> content = (List<?>) data.get("content");
+        Map<?, ?> item = (Map<?, ?>) content.get(0);
+
+        assertEquals(1, content.size());
+        assertEquals("paper-searchable", item.get("paperId"));
+        assertEquals(2L, data.get("totalElements"));
+        assertFalse(content.stream()
+                .map(Map.class::cast)
+                .anyMatch(row -> unsearchablePaper.getPaperId().equals(row.get("paperId"))));
+        verify(paperService).searchAccessiblePaperCandidates(
+                eq("1"),
+                eq("default"),
+                isNull(),
+                eq("searchable"),
+                eq(PageRequest.of(0, 10))
+        );
+    }
+
+    @Test
+    void accessiblePapersResponseContainsNoEvalFields() {
+        Paper paper = paper(
+                "paper-product",
+                "Product Paper",
+                "product-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+
+        when(paperService.getAccessiblePapersPage(eq("1"), eq("default"), eq(PageRequest.of(0, 10))))
+                .thenReturn(new PageImpl<>(List.of(paper), PageRequest.of(0, 10), 1));
+
+        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, null);
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+        List<?> content = (List<?>) data.get("content");
+        Map<?, ?> item = (Map<?, ?>) content.get(0);
+
+        for (String forbiddenField : FORBIDDEN_EVAL_FIELDS) {
+            assertFalse(item.containsKey(forbiddenField), "response row exposed " + forbiddenField);
+        }
     }
 
     @Test
@@ -236,5 +364,22 @@ class PaperControllerContractTest {
 
         assertEquals(404, response.getStatusCode().value());
         verify(paperService, never()).deletePaper("0123456789abcdef0123456789abcdef", "1", "USER");
+    }
+
+    private Paper paper(
+            String paperId,
+            String paperTitle,
+            String originalFilename,
+            String vectorizationStatus,
+            int status) {
+        Paper paper = new Paper();
+        paper.setPaperId(paperId);
+        paper.setPaperTitle(paperTitle);
+        paper.setOriginalFilename(originalFilename);
+        paper.setVectorizationStatus(vectorizationStatus);
+        paper.setStatus(status);
+        paper.setUserId("1");
+        paper.setPublic(true);
+        return paper;
     }
 }

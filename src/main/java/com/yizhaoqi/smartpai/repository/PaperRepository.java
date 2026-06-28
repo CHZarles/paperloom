@@ -53,6 +53,45 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
                                                  @Param("orgTagList") List<String> orgTagList,
                                                  Pageable pageable);
 
+    @Query("""
+            SELECT f FROM Paper f
+            WHERE (f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false))
+              AND (
+                :query IS NULL OR :query = '' OR
+                LOWER(COALESCE(f.paperTitle, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.originalFilename, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.authors, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.venue, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.doi, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.arxivId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.paperId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                CAST(f.publicationYear AS string) LIKE CONCAT('%', :query, '%')
+              )
+            """)
+    Page<Paper> searchAccessiblePaperCandidates(@Param("userId") String userId,
+                                                @Param("orgTagList") List<String> orgTagList,
+                                                @Param("query") String query,
+                                                Pageable pageable);
+
+    @Query("""
+            SELECT f FROM Paper f
+            WHERE (f.userId = :userId OR f.isPublic = true)
+              AND (
+                :query IS NULL OR :query = '' OR
+                LOWER(COALESCE(f.paperTitle, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.originalFilename, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.authors, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.venue, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.doi, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.arxivId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.paperId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                CAST(f.publicationYear AS string) LIKE CONCAT('%', :query, '%')
+              )
+            """)
+    Page<Paper> searchAccessiblePaperCandidatesWithoutOrgTags(@Param("userId") String userId,
+                                                              @Param("query") String query,
+                                                              Pageable pageable);
+
     @Query("SELECT f FROM Paper f WHERE f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false)")
     List<Paper> findAccessiblePapers(@Param("userId") String userId, @Param("orgTagList") List<String> orgTagList);
 
