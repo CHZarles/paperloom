@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -136,6 +137,55 @@ class ConversationServiceTest {
 
         assertEquals("对话不存在", exception.getMessage());
         verify(sessionRepository, never()).save(any(ConversationSession.class));
+    }
+
+    @Test
+    void createConversationSessionIncludesDefaultScopeFields() {
+        User user = new User();
+        user.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(sessionRepository.save(any(ConversationSession.class))).thenAnswer(invocation -> {
+            ConversationSession session = invocation.getArgument(0);
+            ReflectionTestUtils.setField(session, "id", 10L);
+            ReflectionTestUtils.setField(session, "createdAt", LocalDateTime.of(2026, 6, 28, 12, 0));
+            ReflectionTestUtils.setField(session, "updatedAt", LocalDateTime.of(2026, 6, 28, 12, 0));
+            return session;
+        });
+
+        Map<String, Object> result = conversationService.createConversationSession(1L);
+
+        assertEquals("AUTO_LIBRARY", result.get("scopeMode"));
+        assertEquals(false, result.get("scopeLocked"));
+        assertEquals("READY", result.get("scopeStatus"));
+        assertEquals("All searchable papers", result.get("sourceLabel"));
+        assertNull(result.get("sourcePaperCount"));
+    }
+
+    @Test
+    void getConversationSessionsIncludesStoredSnapshotSummaryFields() {
+        ConversationSession session = new ConversationSession();
+        ReflectionTestUtils.setField(session, "id", 10L);
+        session.setConversationId("conversation-1");
+        session.setTitle("Reading set");
+        session.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        session.setScopeMode(com.yizhaoqi.smartpai.model.ConversationScopeMode.SOURCE_SET_SNAPSHOT);
+        session.setScopeLocked(true);
+        session.setScopeStatus(com.yizhaoqi.smartpai.model.ConversationScopeStatus.READY);
+        session.setSourceLabel("Custom reading set");
+        session.setSourcePaperCount(2);
+        ReflectionTestUtils.setField(session, "createdAt", LocalDateTime.of(2026, 6, 28, 12, 0));
+        ReflectionTestUtils.setField(session, "updatedAt", LocalDateTime.of(2026, 6, 28, 12, 5));
+        when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(session));
+
+        List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
+
+        assertEquals(1, result.size());
+        Map<String, Object> item = result.get(0);
+        assertEquals("SOURCE_SET_SNAPSHOT", item.get("scopeMode"));
+        assertEquals(true, item.get("scopeLocked"));
+        assertEquals("READY", item.get("scopeStatus"));
+        assertEquals("Custom reading set", item.get("sourceLabel"));
+        assertEquals(2, item.get("sourcePaperCount"));
     }
 
     @Test

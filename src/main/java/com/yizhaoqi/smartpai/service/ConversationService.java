@@ -92,8 +92,9 @@ public class ConversationService {
             item.put("conversationId", session.getConversationId());
             item.put("title", session.getTitle() != null ? session.getTitle() : "新对话");
             item.put("status", session.getStatus().name());
-            item.put("createdAt", session.getCreatedAt() != null ? session.getCreatedAt().format(TIMESTAMP_FORMATTER) : null);
-            item.put("updatedAt", session.getUpdatedAt() != null ? session.getUpdatedAt().format(TIMESTAMP_FORMATTER) : null);
+            item.put("createdAt", formatTimestamp(session.getCreatedAt()));
+            item.put("updatedAt", formatTimestamp(session.getUpdatedAt()));
+            appendScopeSummary(item, session);
             result.add(item);
         }
 
@@ -121,8 +122,9 @@ public class ConversationService {
         result.put("conversationId", conversationId);
         result.put("title", "新对话");
         result.put("status", "ACTIVE");
-        result.put("createdAt", session.getCreatedAt().format(TIMESTAMP_FORMATTER));
-        result.put("updatedAt", session.getUpdatedAt().format(TIMESTAMP_FORMATTER));
+        result.put("createdAt", formatTimestamp(session.getCreatedAt()));
+        result.put("updatedAt", formatTimestamp(session.getUpdatedAt()));
+        appendScopeSummary(result, session);
         return result;
     }
 
@@ -214,6 +216,32 @@ public class ConversationService {
             return Optional.empty();
         }
         return sessionRepository.findByConversationIdAndUserId(conversationId, userId);
+    }
+
+    private void appendScopeSummary(Map<String, Object> item, ConversationSession session) {
+        item.put("scopeMode", session.getScopeMode() == null
+                ? "AUTO_LIBRARY"
+                : session.getScopeMode().name());
+        item.put("scopeLocked", session.isScopeLocked());
+        item.put("scopeStatus", session.getScopeStatus() == null
+                ? "READY"
+                : session.getScopeStatus().name());
+        item.put("sourceLabel", sourceLabel(session));
+        item.put("sourcePaperCount", session.getSourcePaperCount());
+    }
+
+    private String sourceLabel(ConversationSession session) {
+        if (session.getSourceLabel() != null && !session.getSourceLabel().isBlank()) {
+            return session.getSourceLabel();
+        }
+        if (session.getScopeMode() != null && "SOURCE_SET_SNAPSHOT".equals(session.getScopeMode().name())) {
+            return "Selected papers";
+        }
+        return ConversationScopeService.DEFAULT_AUTO_LIBRARY_LABEL;
+    }
+
+    private String formatTimestamp(LocalDateTime timestamp) {
+        return timestamp != null ? timestamp.format(TIMESTAMP_FORMATTER) : null;
     }
 
     public List<Conversation> getConversations(String username, LocalDateTime startDate, LocalDateTime endDate) {

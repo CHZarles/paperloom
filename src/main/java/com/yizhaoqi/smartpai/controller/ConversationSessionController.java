@@ -1,6 +1,8 @@
 package com.yizhaoqi.smartpai.controller;
 
+import com.yizhaoqi.smartpai.controller.dto.ConversationScopeRequests.UpdateConversationScopeRequest;
 import com.yizhaoqi.smartpai.exception.CustomException;
+import com.yizhaoqi.smartpai.service.ConversationScopeService;
 import com.yizhaoqi.smartpai.service.ConversationService;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import com.yizhaoqi.smartpai.utils.LogUtils;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +30,9 @@ public class ConversationSessionController {
 
     @Autowired
     private ConversationService conversationService;
+
+    @Autowired
+    private ConversationScopeService conversationScopeService;
 
     @GetMapping
     public ResponseEntity<?> listSessions(@RequestHeader("Authorization") String token) {
@@ -67,6 +73,59 @@ public class ConversationSessionController {
             return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
         } catch (Exception e) {
             LogUtils.logBusinessError("CREATE_SESSION", username, "创建对话异常: %s", e, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("code", 500, "message", "服务器内部错误: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{conversationId}/scope")
+    public ResponseEntity<?> getScope(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String conversationId) {
+        String username = null;
+        try {
+            String rawToken = token.replace("Bearer ", "");
+            username = jwtUtils.extractUsernameFromToken(rawToken);
+            if (username == null || username.isEmpty()) {
+                throw new CustomException("无效的token", HttpStatus.UNAUTHORIZED);
+            }
+
+            Long userId = Long.parseLong(jwtUtils.extractUserIdFromToken(rawToken));
+            Map<String, Object> scope = conversationScopeService.scopeResponse(
+                    conversationScopeService.resolveForChat(userId, conversationId)
+            );
+
+            return ResponseEntity.ok(Map.of("code", 200, "message", "获取对话范围成功", "data", scope));
+        } catch (CustomException e) {
+            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
+        } catch (Exception e) {
+            LogUtils.logBusinessError("GET_CONVERSATION_SCOPE", username, "获取对话范围异常: %s", e, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("code", 500, "message", "服务器内部错误: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{conversationId}/scope")
+    public ResponseEntity<?> updateScope(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String conversationId,
+            @RequestBody UpdateConversationScopeRequest request) {
+        String username = null;
+        try {
+            String rawToken = token.replace("Bearer ", "");
+            username = jwtUtils.extractUsernameFromToken(rawToken);
+            if (username == null || username.isEmpty()) {
+                throw new CustomException("无效的token", HttpStatus.UNAUTHORIZED);
+            }
+
+            Long userId = Long.parseLong(jwtUtils.extractUserIdFromToken(rawToken));
+            Map<String, Object> scope = conversationScopeService.updateUnlockedScope(userId, conversationId, request);
+
+            return ResponseEntity.ok(Map.of("code", 200, "message", "更新对话范围成功", "data", scope));
+        } catch (CustomException e) {
+            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
+        } catch (Exception e) {
+            LogUtils.logBusinessError("UPDATE_CONVERSATION_SCOPE", username, "更新对话范围异常: %s", e, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("code", 500, "message", "服务器内部错误: " + e.getMessage()));
         }
