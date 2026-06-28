@@ -15,6 +15,7 @@ defineOptions({
 });
 
 const PAPER_SEARCH_PAGE_SIZE = 20;
+const DETAIL_PAGE_SIZE = 50;
 
 interface CollectionFormModel {
   name: string;
@@ -25,6 +26,7 @@ interface CollectionFormModel {
 
 const chatStore = useChatStore();
 const authStore = useAuthStore();
+const router = useRouter();
 
 const collections = ref<Api.PaperCollection.Item[]>([]);
 const collectionsLoading = ref(false);
@@ -45,6 +47,10 @@ const addSearchLoading = ref(false);
 const addSubmitLoading = ref(false);
 const addCandidates = ref<Api.Paper.UploadTask[]>([]);
 const selectedPaperIds = ref<string[]>([]);
+const detailPaperPage = ref(1);
+
+let detailRequestSeq = 0;
+let paperSearchRequestSeq = 0;
 
 const selectedCollection = computed(() => {
   if (!selectedCollectionId.value) return null;
@@ -52,13 +58,21 @@ const selectedCollection = computed(() => {
 });
 
 const selectedPaperIdSet = computed(() => new Set(detail.value?.paperIds || []));
+const selectedAddPaperIds = computed(() =>
+  selectedPaperIds.value.filter(paperId => !selectedPaperIdSet.value.has(paperId))
+);
+const pagedDetailPaperIds = computed(() => {
+  const paperIds = detail.value?.paperIds || [];
+  const start = (detailPaperPage.value - 1) * DETAIL_PAGE_SIZE;
+  return paperIds.slice(start, start + DETAIL_PAGE_SIZE);
+});
 const formTitle = computed(() => (formMode.value === 'create' ? 'Create Collection' : 'Edit Collection'));
 const canSubmitForm = computed(() => {
   if (!formModel.value.name.trim() || formLoading.value) return false;
   if (formModel.value.visibility === 'ORG') return Boolean(formModel.value.orgTag?.trim());
   return true;
 });
-const canAddPapers = computed(() => selectedPaperIds.value.length > 0 && !addSubmitLoading.value);
+const canAddPapers = computed(() => selectedAddPaperIds.value.length > 0 && !addSubmitLoading.value);
 
 onMounted(async () => {
   await loadCollections();
@@ -95,6 +109,23 @@ function normalizePaperPage(payload?: Api.Paper.List | null) {
   };
 }
 
+function clearDetailSelection() {
+  detailRequestSeq += 1;
+  selectedCollectionId.value = null;
+  detail.value = null;
+  detailLoading.value = false;
+  detailPaperPage.value = 1;
+}
+
+function canEditCollection(collection?: Api.PaperCollection.Item | null) {
+  if (!collection) return false;
+  if (authStore.isAdmin) return true;
+  if (collection.ownerUserId !== undefined && collection.ownerUserId !== null) {
+    return String(collection.ownerUserId) === String(authStore.userInfo.id);
+  }
+  return collection.visibility === 'PRIVATE';
+}
+
 async function loadCollections() {
   collectionsLoading.value = true;
   const { error, data } = await fetchPaperCollections();
@@ -104,8 +135,7 @@ async function loadCollections() {
 
   collections.value = data || [];
   if (selectedCollectionId.value && !collections.value.some(item => item.id === selectedCollectionId.value)) {
-    selectedCollectionId.value = null;
-    detail.value = null;
+    clearDetailSelection();
   }
   if (!selectedCollectionId.value && collections.value.length > 0) {
     await openDetail(collections.value[0]);
@@ -117,17 +147,27 @@ async function loadCollections() {
 }
 
 async function loadDetail(collectionId: number) {
+  detailRequestSeq += 1;
+  const requestSeq = detailRequestSeq;
   detailLoading.value = true;
   const { error, data } = await fetchPaperCollection(collectionId);
+
+  if (requestSeq !== detailRequestSeq || selectedCollectionId.value !== collectionId) {
+    return;
+  }
+
   detailLoading.value = false;
 
   if (!error && data) {
     detail.value = data;
+    detailPaperPage.value = 1;
   }
 }
 
 async function openDetail(collection: Api.PaperCollection.Item) {
   selectedCollectionId.value = collection.id;
+  detail.value = null;
+  detailPaperPage.value = 1;
   await loadDetail(collection.id);
 }
 
@@ -138,6 +178,7 @@ function openCreateForm() {
 }
 
 function openEditForm(collection: Api.PaperCollection.Item) {
+  if (!canEditCollection(collection)) return;
   formMode.value = 'edit';
   formModel.value = {
     name: collection.name,
@@ -145,7 +186,6 @@ function openEditForm(collection: Api.PaperCollection.Item) {
     visibility: collection.visibility,
     orgTag: collection.orgTag || null
   };
-  selectedCollectionId.value = collection.id;
   formVisible.value = true;
 }
 
@@ -182,13 +222,14 @@ async function submitForm() {
 }
 
 async function removeCollection(collection: Api.PaperCollection.Item) {
+  if (!canEditCollection(collection)) return;
+
   const { error } = await deletePaperCollection(collection.id);
   if (error) return;
 
   window.$message?.success('Collection deleted');
   if (selectedCollectionId.value === collection.id) {
-    selectedCollectionId.value = null;
-    detail.value = null;
+    clearDetailSelection();
   }
   await loadCollections();
 }
@@ -206,12 +247,16 @@ async function startSession(collection: Api.PaperCollection.Item) {
     sourceRecipe: { type: 'collection', collectionIds: [collection.id] }
   });
 
-  if (ok) window.$message?.success('Scoped session created');
-  else window.$message?.error('Failed to create scoped session');
+  if (ok) {
+    window.$message?.success('Scoped session created');
+    await router.push({ name: 'chat' });
+  } else {
+    window.$message?.error('Failed to create scoped session');
+  }
 }
 
 function openAddPapers() {
-  if (!detail.value) return;
+  if (!detail.value || !canEditCollection(detail.value)) return;
 
   addVisible.value = true;
   addQuery.value = '';
@@ -224,10 +269,14 @@ function openAddPapers() {
 
 function closeAddPapers() {
   if (addSubmitLoading.value) return;
+  paperSearchRequestSeq += 1;
+  addSearchLoading.value = false;
   addVisible.value = false;
 }
 
 async function searchCandidates(page = 1) {
+  paperSearchRequestSeq += 1;
+  const requestSeq = paperSearchRequestSeq;
   addPage.value = page;
   addSearchLoading.value = true;
   const query = addQuery.value.trim();
@@ -235,6 +284,11 @@ async function searchCandidates(page = 1) {
     url: '/papers?scope=accessible',
     params: { page, size: 20, query, readiness: 'searchable' }
   });
+
+  if (requestSeq !== paperSearchRequestSeq || !addVisible.value) {
+    return;
+  }
+
   addSearchLoading.value = false;
 
   if (error) return;
@@ -243,16 +297,13 @@ async function searchCandidates(page = 1) {
   addCandidates.value = normalized.rows;
   addTotal.value = normalized.total;
   addPage.value = normalized.page;
-  selectedPaperIds.value = selectedPaperIds.value.filter(paperId =>
-    addCandidates.value.some(candidate => candidate.paperId === paperId)
-  );
 }
 
 async function submitAddPapers() {
   if (!detail.value || !canAddPapers.value) return;
 
   addSubmitLoading.value = true;
-  const { error, data } = await addPapersToCollection(detail.value.id, selectedPaperIds.value);
+  const { error, data } = await addPapersToCollection(detail.value.id, selectedAddPaperIds.value);
   addSubmitLoading.value = false;
 
   if (error) return;
@@ -265,7 +316,7 @@ async function submitAddPapers() {
 }
 
 async function removePaper(paperId: string) {
-  if (!detail.value) return;
+  if (!detail.value || !canEditCollection(detail.value)) return;
 
   const { error } = await removePaperFromCollection(detail.value.id, paperId);
   if (error) return;
@@ -289,6 +340,16 @@ watch(
   visibility => {
     if (visibility === 'PRIVATE') {
       formModel.value.orgTag = null;
+    }
+  }
+);
+
+watch(
+  () => detail.value?.paperIds.length || 0,
+  paperCount => {
+    const maxPage = Math.max(1, Math.ceil(paperCount / DETAIL_PAGE_SIZE));
+    if (detailPaperPage.value > maxPage) {
+      detailPaperPage.value = maxPage;
     }
   }
 );
@@ -352,13 +413,13 @@ watch(
                 </template>
                 Start
               </NButton>
-              <NButton size="tiny" secondary @click="openEditForm(collection)">
+              <NButton v-if="canEditCollection(collection)" size="tiny" secondary @click="openEditForm(collection)">
                 <template #icon>
                   <icon-lucide:pencil class="text-icon" />
                 </template>
                 Edit
               </NButton>
-              <NPopconfirm @positive-click="removeCollection(collection)">
+              <NPopconfirm v-if="canEditCollection(collection)" @positive-click="removeCollection(collection)">
                 <template #trigger>
                   <NButton size="tiny" type="error" secondary>
                     <template #icon>
@@ -384,7 +445,13 @@ watch(
                   <p>{{ collectionDescription(detail) }}</p>
                 </div>
                 <div class="collection-detail__actions">
-                  <NButton size="small" type="primary" secondary @click="openAddPapers">
+                  <NButton
+                    v-if="canEditCollection(detail)"
+                    size="small"
+                    type="primary"
+                    secondary
+                    @click="openAddPapers"
+                  >
                     <template #icon>
                       <icon-lucide:file-plus-2 class="text-icon" />
                     </template>
@@ -418,11 +485,11 @@ watch(
               </div>
 
               <div v-else class="collection-paper-list">
-                <div v-for="paperId in detail.paperIds" :key="paperId" class="collection-paper-row">
+                <div v-for="paperId in pagedDetailPaperIds" :key="paperId" class="collection-paper-row">
                   <button type="button" class="collection-paper-row__id" :title="paperId" @click="copyPaperId(paperId)">
                     {{ shortPaperId(paperId) }}
                   </button>
-                  <NPopconfirm @positive-click="removePaper(paperId)">
+                  <NPopconfirm v-if="canEditCollection(detail)" @positive-click="removePaper(paperId)">
                     <template #trigger>
                       <NButton size="tiny" type="error" secondary>
                         <template #icon>
@@ -433,6 +500,15 @@ watch(
                     </template>
                     Remove this paper?
                   </NPopconfirm>
+                </div>
+                <div v-if="detail.paperIds.length > DETAIL_PAGE_SIZE" class="collection-detail__pagination">
+                  <span>{{ detail.paperIds.length }} papers</span>
+                  <NPagination
+                    v-model:page="detailPaperPage"
+                    :page-size="DETAIL_PAGE_SIZE"
+                    :item-count="detail.paperIds.length"
+                    size="small"
+                  />
                 </div>
               </div>
             </template>
@@ -523,7 +599,7 @@ watch(
         </NSpin>
 
         <div class="collection-add-pagination">
-          <span>{{ selectedPaperIds.length }} selected</span>
+          <span>{{ selectedAddPaperIds.length }} selected</span>
           <NPagination
             v-model:page="addPage"
             :page-size="PAPER_SEARCH_PAGE_SIZE"
@@ -559,7 +635,8 @@ watch(
 .collection-detail__actions,
 .collection-detail__stats,
 .collection-add-search,
-.collection-add-pagination {
+.collection-add-pagination,
+.collection-detail__pagination {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -782,6 +859,13 @@ watch(
 .collection-add-pagination {
   justify-content: space-between;
   min-height: 32px;
+}
+
+.collection-detail__pagination {
+  justify-content: space-between;
+  padding-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 .collections-empty {

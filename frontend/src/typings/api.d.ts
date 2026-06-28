@@ -504,6 +504,7 @@ declare namespace Api {
       description?: string | null;
       visibility: Visibility;
       orgTag?: string | null;
+      ownerUserId?: number | string | null;
       paperCount: number;
       searchablePaperCount: number;
       createdAt?: string;
