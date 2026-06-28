@@ -48,6 +48,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const rateLimitUntil = ref<number | null>(null);
   const rateLimitRemainingSeconds = ref(0);
   let rateLimitTimer: ReturnType<typeof setInterval> | null = null;
+  let scopedSessionCreationInFlight = false;
 
   function mapGenerationStatus(status?: Api.Chat.GenerationStatus): Api.Chat.Message['status'] {
     if (status === 'COMPLETED' || status === 'CANCELLED') {
@@ -206,35 +207,42 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   }
 
   async function createSessionFromScope(payload: Api.Chat.UpdateConversationScopePayload) {
+    if (scopedSessionCreationInFlight) return false;
+
+    scopedSessionCreationInFlight = true;
     const previousConversationId = conversationId.value;
     const previousList = [...list.value];
     const previousScope = currentScope.value;
     const previousReferenceFocus = referenceFocus.value;
 
-    const created = await createNewSession();
-    if (!created || !conversationId.value) return false;
-    const scoped = await updateConversationScope(conversationId.value, payload);
-    if (scoped) {
-      return true;
-    }
+    try {
+      const createdConversationId = await createNewSession();
+      if (!createdConversationId) return false;
+      const scoped = await updateConversationScope(createdConversationId, payload);
+      if (scoped) {
+        return true;
+      }
 
-    currentScope.value = null;
-    referenceFocus.value = null;
-    if (previousConversationId) {
-      const restored = await switchSession(previousConversationId);
-      if (restored) {
-        list.value = previousList;
-        currentScope.value = previousScope;
-        referenceFocus.value = previousReferenceFocus;
+      currentScope.value = null;
+      referenceFocus.value = null;
+      if (previousConversationId) {
+        const restored = await switchSession(previousConversationId);
+        if (restored) {
+          list.value = previousList;
+          currentScope.value = previousScope;
+          referenceFocus.value = previousReferenceFocus;
+        } else {
+          list.value = [];
+          await loadSessions();
+        }
       } else {
         list.value = [];
         await loadSessions();
       }
-    } else {
-      list.value = [];
-      await loadSessions();
+      return false;
+    } finally {
+      scopedSessionCreationInFlight = false;
     }
-    return false;
   }
 
   function setReferenceFocus(scope: Api.Chat.Scope | null) {
@@ -253,7 +261,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       await loadSessions();
       await loadConversationScope(data.conversationId);
     }
-    return !error;
+    return !error && data ? data.conversationId : '';
   }
 
   async function switchSession(targetConversationId: string) {

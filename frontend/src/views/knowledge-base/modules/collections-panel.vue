@@ -33,6 +33,7 @@ const collectionsLoading = ref(false);
 const selectedCollectionId = ref<number | null>(null);
 const detail = ref<Api.PaperCollection.Detail | null>(null);
 const detailLoading = ref(false);
+const startingCollectionId = ref<number | null>(null);
 
 const formVisible = ref(false);
 const formLoading = ref(false);
@@ -52,6 +53,7 @@ const detailPaperPage = ref(1);
 
 let detailRequestSeq = 0;
 let paperSearchRequestSeq = 0;
+let collectionsRequestSeq = 0;
 
 const selectedCollection = computed(() => {
   if (!selectedCollectionId.value) return null;
@@ -127,9 +129,24 @@ function canEditCollection(collection?: Api.PaperCollection.Item | null) {
   return collection.visibility === 'PRIVATE';
 }
 
+function isStartingCollection(collection: Api.PaperCollection.Item) {
+  return startingCollectionId.value === collection.id;
+}
+
+function canStartCollection(collection: Api.PaperCollection.Item) {
+  return !startingCollectionId.value && Boolean(collection.searchablePaperCount);
+}
+
 async function loadCollections() {
+  collectionsRequestSeq += 1;
+  const requestSeq = collectionsRequestSeq;
   collectionsLoading.value = true;
   const { error, data } = await fetchPaperCollections();
+
+  if (requestSeq !== collectionsRequestSeq) {
+    return;
+  }
+
   collectionsLoading.value = false;
 
   if (error) return;
@@ -238,17 +255,25 @@ async function removeCollection(collection: Api.PaperCollection.Item) {
 }
 
 async function startSession(collection: Api.PaperCollection.Item) {
+  if (startingCollectionId.value) return;
+
   if (!collection.searchablePaperCount) {
     window.$message?.warning('No searchable papers in this collection');
     return;
   }
 
-  const ok = await chatStore.createSessionFromScope({
-    scopeMode: 'SOURCE_SET_SNAPSHOT',
-    collectionIds: [collection.id],
-    sourceLabel: collection.name,
-    sourceRecipe: { type: 'collection', collectionIds: [collection.id] }
-  });
+  startingCollectionId.value = collection.id;
+  let ok = false;
+  try {
+    ok = await chatStore.createSessionFromScope({
+      scopeMode: 'SOURCE_SET_SNAPSHOT',
+      collectionIds: [collection.id],
+      sourceLabel: collection.name,
+      sourceRecipe: { type: 'collection', collectionIds: [collection.id] }
+    });
+  } finally {
+    startingCollectionId.value = null;
+  }
 
   if (ok) {
     window.$message?.success('Scoped session created');
@@ -294,7 +319,12 @@ async function searchCandidates(page = 1) {
 
   addSearchLoading.value = false;
 
-  if (error) return;
+  if (error) {
+    addCandidates.value = [];
+    addTotal.value = 0;
+    selectedPaperIds.value = [];
+    return;
+  }
 
   const normalized = normalizePaperPage(data);
   addCandidates.value = normalized.rows;
@@ -408,7 +438,8 @@ watch(
                 size="tiny"
                 type="primary"
                 secondary
-                :disabled="!collection.searchablePaperCount"
+                :loading="isStartingCollection(collection)"
+                :disabled="!canStartCollection(collection)"
                 @click="startSession(collection)"
               >
                 <template #icon>
@@ -464,7 +495,8 @@ watch(
                     size="small"
                     type="primary"
                     secondary
-                    :disabled="!detail.searchablePaperCount"
+                    :loading="isStartingCollection(detail)"
+                    :disabled="!canStartCollection(detail)"
                     @click="startSession(detail)"
                   >
                     <template #icon>
