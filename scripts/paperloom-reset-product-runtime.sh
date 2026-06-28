@@ -548,10 +548,22 @@ verify_admin_count() {
 verify_product_db_counts() {
   local table
   local count
+  local label
 
   for table in "${PRODUCT_DB_TABLES[@]}"; do
     count="$(mysql_count_table paismart "$table")"
-    print_assert_zero "$table" "$count"
+    case "$table" in
+      file_upload)
+        label="product_papers"
+        ;;
+      paper_text_chunks)
+        label="product_chunks"
+        ;;
+      *)
+        label="$table"
+        ;;
+    esac
+    print_assert_zero "$label" "$count"
   done
 
   for table in "${OPTIONAL_PRODUCT_DB_TABLES[@]}"; do
