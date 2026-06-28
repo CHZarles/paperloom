@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -209,6 +210,80 @@ class ServiceBackedPageWindowBenchmarkCliTest {
                 .contains("| service-backed-page-window | Product Rescue Smoke | product | 1 | Pass 100.0% |"));
         verify(retrievalService).retrieve("Which table reports F1?", "eval-user", budget, List.of("paper-a"));
         verify(pageWindowService).inspectPageWindow("paper-a", 4, 1);
+    }
+
+    @Test
+    void runsQasperPageWindowThroughEvalCorpusReader() throws Exception {
+        Path cases = tempDir.resolve("qasper-cases.jsonl");
+        Files.writeString(cases, """
+                {"id":"hit","query":"Which table reports F1?","scope":{"paperIds":["qasper:paper-a"],"paperTitles":[]},"expectedRoute":"PAGE_WINDOW_LEDGER","requiredEvidenceRegex":["reports F1"],"expectedPaperIds":["qasper:paper-a"],"requiresCitation":true}
+                """);
+        Path registry = tempDir.resolve("harnesses-qasper.yaml");
+        Files.writeString(registry, """
+                harnesses:
+                  - id: service-backed-scoped-diverse-window
+                    name: Service Backed Scoped Diverse Window
+                    description: Eval corpus scoped-paper page windows.
+                    retrieval: scoped-paper-diverse-window
+                    planner: scientific-qa-diverse-windows
+                    verifier: enabled
+                    status: runnable
+                benchmarks:
+                  - id: qasper-dev-200
+                    name: QASPER Dev 200
+                    tier: professional
+                    task: scoped paper QA
+                    status: runnable
+                    path: qasper-cases.jsonl
+                    source: local
+                    primaryMetric: passRate
+                    cases: "1"
+                """);
+        PaperRetrievalService retrievalService = mock(PaperRetrievalService.class);
+        PaperPageWindowService pageWindowService = mock(PaperPageWindowService.class);
+        EvalCorpusPageWindowService evalPageWindowService = mock(EvalCorpusPageWindowService.class);
+        RetrievalBudget budget = RetrievalBudget.forQa();
+        SearchResult intro = result("qasper:paper-a", 1, 1, "Intro", "TEXT",
+                "This paper studies retrieval.", 0.5d);
+        SearchResult inspected = result("qasper:paper-a", 5, 4, "Evaluation", "TABLE",
+                "Table 2 reports F1 improvements for the retrieval baseline.", 1.0d);
+        when(evalPageWindowService.inspectPaper(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a"))
+                .thenReturn(List.of(intro, inspected));
+        when(evalPageWindowService.inspectPageWindow(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a", 4, 1))
+                .thenReturn(List.of(inspected));
+
+        Path runDir = ServiceBackedPageWindowBenchmarkCli.run(
+                retrievalService,
+                pageWindowService,
+                evalPageWindowService,
+                new EvidenceLedgerService(),
+                new ServiceBackedPageWindowBenchmarkCli.Options(
+                        cases,
+                        tempDir.resolve("qasper-runs"),
+                        registry,
+                        tempDir.resolve("QASPER_CHEATSHEET.md"),
+                        "service-backed-scoped-diverse-window",
+                        "qasper-dev-200",
+                        "service-page-window-qasper",
+                        "2026-06-24T20:45:00Z",
+                        "eval-user",
+                        RetrievalCorpus.EVAL_QASPER,
+                        budget,
+                        1,
+                        1,
+                        "scientific-qa-diverse-windows",
+                        "scoped-paper"
+                )
+        );
+
+        JsonNode scorecard = OBJECT_MAPPER.readTree(runDir.resolve("scorecard.json").toFile());
+        assertEquals("qasper-dev-200", scorecard.path("datasetId").asText());
+        assertEquals(1.0d, scorecard.path("passRate").asDouble());
+        verify(retrievalService, never()).retrieve("Which table reports F1?", "eval-user", budget, List.of("qasper:paper-a"));
+        verify(pageWindowService, never()).inspectPaper("qasper:paper-a");
+        verify(pageWindowService, never()).inspectPageWindow("qasper:paper-a", 4, 1);
+        verify(evalPageWindowService).inspectPaper(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a");
+        verify(evalPageWindowService).inspectPageWindow(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a", 4, 1);
     }
 
     private SearchResult result(String paperId,

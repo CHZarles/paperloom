@@ -38,6 +38,7 @@ public final class ServiceBackedPageWindowBenchmarkCli {
             Path runDir = run(
                     context.getBean(PaperRetrievalService.class),
                     context.getBean(PaperPageWindowService.class),
+                    context.getBean(EvalCorpusPageWindowService.class),
                     context.getBean(EvidenceLedgerService.class),
                     options
             );
@@ -58,9 +59,18 @@ public final class ServiceBackedPageWindowBenchmarkCli {
                            PaperPageWindowService pageWindowService,
                            EvidenceLedgerService evidenceLedgerService,
                            Options options) throws Exception {
+        return run(retrievalService, pageWindowService, null, evidenceLedgerService, options);
+    }
+
+    public static Path run(PaperRetrievalService retrievalService,
+                           PaperPageWindowService pageWindowService,
+                           EvalCorpusPageWindowService evalPageWindowService,
+                           EvidenceLedgerService evidenceLedgerService,
+                           Options options) throws Exception {
         ServiceBackedPageWindowHarness harness = new ServiceBackedPageWindowHarness(
                 retrievalService,
                 pageWindowService,
+                evalPageWindowService,
                 evidenceLedgerService
         );
         ServiceBackedPageWindowBenchmarkRunner runner = new ServiceBackedPageWindowBenchmarkRunner(harness);
@@ -77,7 +87,8 @@ public final class ServiceBackedPageWindowBenchmarkCli {
                         options.topK(),
                         options.windowRadius(),
                         options.queryPlanner(),
-                        options.candidateSource()
+                        options.candidateSource(),
+                        options.retrievalCorpus()
                 )
         ));
         RagCheatsheetWriter.write(

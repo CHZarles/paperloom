@@ -10,6 +10,13 @@ public interface EvalChunkRepository extends JpaRepository<EvalChunk, Long> {
 
     List<EvalChunk> findByCorpusAndPaperIdOrderByChunkIdAsc(String corpus, String paperId);
 
+    List<EvalChunk> findByCorpusAndPaperIdAndPageNumberBetweenOrderByPageNumberAscChunkIdAsc(
+            String corpus,
+            String paperId,
+            Integer startPage,
+            Integer endPage
+    );
+
     List<EvalChunk> findByCorpusAndPaperIdIn(String corpus, List<String> paperIds);
 
     long countByCorpusAndSplit(String corpus, String split);

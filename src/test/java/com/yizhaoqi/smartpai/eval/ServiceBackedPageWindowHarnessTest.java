@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -122,6 +123,103 @@ class ServiceBackedPageWindowHarnessTest {
         verify(retrievalService, never()).retrieve(query, "u1", budget, List.of("paper-a"));
         verify(pageWindowService).inspectPaper("paper-a");
         verify(pageWindowService).inspectPageWindow("paper-a", 5, 1);
+    }
+
+    @Test
+    void evalScopedPaperUsesEvalCorpusPageWindowReader() {
+        PaperRetrievalService retrievalService = mock(PaperRetrievalService.class);
+        PaperPageWindowService pageWindowService = mock(PaperPageWindowService.class);
+        EvalCorpusPageWindowService evalPageWindowService = mock(EvalCorpusPageWindowService.class);
+        RetrievalBudget budget = RetrievalBudget.forQa();
+        String query = "Which baseline improves F1?";
+        SearchResult intro = result(
+                "qasper:paper-a",
+                1,
+                1,
+                "Introduction",
+                "TEXT",
+                "The paper introduces the retrieval problem.",
+                0.5
+        );
+        SearchResult evidencePage = result(
+                "qasper:paper-a",
+                9,
+                5,
+                "Experiments",
+                "TABLE",
+                "Table 2 reports the retrieval baseline improves F1 by four points.",
+                1.0
+        );
+        when(evalPageWindowService.inspectPaper(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a"))
+                .thenReturn(List.of(intro, evidencePage));
+        when(evalPageWindowService.inspectPageWindow(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a", 5, 1))
+                .thenReturn(List.of(evidencePage));
+
+        ServiceBackedPageWindowHarness harness = new ServiceBackedPageWindowHarness(
+                retrievalService,
+                pageWindowService,
+                evalPageWindowService,
+                new EvidenceLedgerService()
+        );
+
+        ServiceBackedPageWindowHarness.HarnessResult result = harness.run(
+                query,
+                "eval-user",
+                budget,
+                List.of("qasper:paper-a"),
+                new ServiceBackedPageWindowHarness.Options(
+                        1,
+                        1,
+                        "scientific-qa",
+                        "scoped-paper",
+                        RetrievalCorpus.EVAL_QASPER
+                )
+        );
+
+        assertEquals("SCOPED_PAPER", result.candidateSource());
+        assertEquals("qasper:paper-a:5", result.windows().get(0).centerPageKey());
+        assertTrue(result.ledger().evidence().get(0).matchedText().contains("improves F1"));
+        verify(retrievalService, never()).retrieve(query, "eval-user", budget, List.of("qasper:paper-a"));
+        verify(pageWindowService, never()).inspectPaper("qasper:paper-a");
+        verify(pageWindowService, never()).inspectPageWindow("qasper:paper-a", 5, 1);
+        verify(evalPageWindowService).inspectPaper(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a");
+        verify(evalPageWindowService).inspectPageWindow(RetrievalCorpus.EVAL_QASPER, "qasper:paper-a", 5, 1);
+    }
+
+    @Test
+    void evalScopedPaperFailsFastWithoutEvalCorpusReader() {
+        PaperRetrievalService retrievalService = mock(PaperRetrievalService.class);
+        PaperPageWindowService pageWindowService = mock(PaperPageWindowService.class);
+        ServiceBackedPageWindowHarness harness = new ServiceBackedPageWindowHarness(
+                retrievalService,
+                pageWindowService,
+                new EvidenceLedgerService()
+        );
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () ->
+                harness.run(
+                        "Which baseline improves F1?",
+                        "eval-user",
+                        RetrievalBudget.forQa(),
+                        List.of("qasper:paper-a"),
+                        new ServiceBackedPageWindowHarness.Options(
+                                1,
+                                1,
+                                "scientific-qa",
+                                "scoped-paper",
+                                RetrievalCorpus.EVAL_QASPER
+                        )
+                )
+        );
+
+        assertTrue(error.getMessage().contains("EvalCorpusPageWindowService"));
+        verify(retrievalService, never()).retrieve(
+                "Which baseline improves F1?",
+                "eval-user",
+                RetrievalBudget.forQa(),
+                List.of("qasper:paper-a")
+        );
+        verify(pageWindowService, never()).inspectPaper("qasper:paper-a");
     }
 
     @Test

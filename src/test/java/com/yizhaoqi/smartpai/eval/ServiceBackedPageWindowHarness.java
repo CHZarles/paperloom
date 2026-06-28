@@ -21,13 +21,22 @@ public class ServiceBackedPageWindowHarness {
 
     private final PaperRetrievalService paperRetrievalService;
     private final PaperPageWindowService pageWindowService;
+    private final EvalCorpusPageWindowService evalPageWindowService;
     private final EvidenceLedgerService evidenceLedgerService;
 
     public ServiceBackedPageWindowHarness(PaperRetrievalService paperRetrievalService,
                                           PaperPageWindowService pageWindowService,
                                           EvidenceLedgerService evidenceLedgerService) {
+        this(paperRetrievalService, pageWindowService, null, evidenceLedgerService);
+    }
+
+    public ServiceBackedPageWindowHarness(PaperRetrievalService paperRetrievalService,
+                                          PaperPageWindowService pageWindowService,
+                                          EvalCorpusPageWindowService evalPageWindowService,
+                                          EvidenceLedgerService evidenceLedgerService) {
         this.paperRetrievalService = paperRetrievalService;
         this.pageWindowService = pageWindowService;
+        this.evalPageWindowService = evalPageWindowService;
         this.evidenceLedgerService = evidenceLedgerService;
     }
 
@@ -39,6 +48,8 @@ public class ServiceBackedPageWindowHarness {
         RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
         Options effectiveOptions = options == null ? Options.defaults() : options;
         List<String> effectiveScopePaperIds = scopePaperIds == null ? List.of() : scopePaperIds;
+        validateRetrievalCorpus(effectiveOptions);
+        RetrievalCorpus retrievalCorpus = effectiveOptions.retrievalCorpus();
         PaperRetrievalService.RetrievalResult firstStage = shouldUseScopedPaperCandidates(effectiveOptions, effectiveScopePaperIds)
                 ? null
                 : paperRetrievalService.retrieve(
@@ -49,7 +60,7 @@ public class ServiceBackedPageWindowHarness {
         );
         List<SearchResult> firstStageHits = firstStage == null ? List.of() : firstStage.results();
         List<SearchResult> candidateHits = shouldUseScopedPaperCandidates(effectiveOptions, effectiveScopePaperIds)
-                ? scopedPaperHits(effectiveScopePaperIds)
+                ? scopedPaperHits(retrievalCorpus, effectiveScopePaperIds)
                 : firstStageHits;
         List<PaperPageDocument> candidatePages = PaperPageIndexBuilder.fromSearchResults(candidateHits);
         PaperPageLocatorQueryPlanner.PlannedQuery plannedQuery = plannedQuery(
@@ -76,7 +87,8 @@ public class ServiceBackedPageWindowHarness {
         List<PaperPageInspection> inspections = new ArrayList<>();
         Map<String, SearchResult> inspectedChunks = new LinkedHashMap<>();
         for (PaperPageWindow window : windows) {
-            List<SearchResult> chunks = pageWindowService.inspectPageWindow(
+            List<SearchResult> chunks = inspectPageWindow(
+                    retrievalCorpus,
                     window.centerPage().paperId(),
                     window.centerPage().pageNumber(),
                     effectiveOptions.windowRadius()
@@ -111,10 +123,10 @@ public class ServiceBackedPageWindowHarness {
                 && !scopePaperIds.isEmpty();
     }
 
-    private List<SearchResult> scopedPaperHits(List<String> scopePaperIds) {
+    private List<SearchResult> scopedPaperHits(RetrievalCorpus retrievalCorpus, List<String> scopePaperIds) {
         Map<String, SearchResult> hits = new LinkedHashMap<>();
         for (String paperId : scopePaperIds == null ? List.<String>of() : scopePaperIds) {
-            for (SearchResult chunk : pageWindowService.inspectPaper(paperId)) {
+            for (SearchResult chunk : inspectPaper(retrievalCorpus, paperId)) {
                 if (chunk == null || chunk.getPaperId() == null || chunk.getChunkId() == null) {
                     continue;
                 }
@@ -122,6 +134,39 @@ public class ServiceBackedPageWindowHarness {
             }
         }
         return List.copyOf(hits.values());
+    }
+
+    private List<SearchResult> inspectPaper(RetrievalCorpus retrievalCorpus, String paperId) {
+        return switch (retrievalCorpus) {
+            case PRODUCT_LIBRARY -> pageWindowService.inspectPaper(paperId);
+            case EVAL_LITSEARCH, EVAL_QASPER -> requireEvalPageWindowService()
+                    .inspectPaper(retrievalCorpus, paperId);
+        };
+    }
+
+    private List<SearchResult> inspectPageWindow(RetrievalCorpus retrievalCorpus,
+                                                 String paperId,
+                                                 Integer pageNumber,
+                                                 int radius) {
+        return switch (retrievalCorpus) {
+            case PRODUCT_LIBRARY -> pageWindowService.inspectPageWindow(paperId, pageNumber, radius);
+            case EVAL_LITSEARCH, EVAL_QASPER -> requireEvalPageWindowService()
+                    .inspectPageWindow(retrievalCorpus, paperId, pageNumber, radius);
+        };
+    }
+
+    private EvalCorpusPageWindowService requireEvalPageWindowService() {
+        if (evalPageWindowService == null) {
+            throw new IllegalStateException("EvalCorpusPageWindowService is required for eval page-window benchmarks");
+        }
+        return evalPageWindowService;
+    }
+
+    private void validateRetrievalCorpus(Options options) {
+        if (options.retrievalCorpus() != RetrievalCorpus.PRODUCT_LIBRARY
+                && !"scoped-paper".equalsIgnoreCase(options.candidateSource())) {
+            throw new IllegalArgumentException("eval page-window benchmarks require candidate-source scoped-paper");
+        }
     }
 
     private PaperPageLocatorQueryPlanner.PlannedQuery plannedQuery(String query,
@@ -350,10 +395,15 @@ public class ServiceBackedPageWindowHarness {
             int topK,
             int windowRadius,
             String queryPlanner,
-            String candidateSource
+            String candidateSource,
+            RetrievalCorpus retrievalCorpus
     ) {
         public Options(int topK, int windowRadius, String queryPlanner) {
-            this(topK, windowRadius, queryPlanner, "first-stage");
+            this(topK, windowRadius, queryPlanner, "first-stage", RetrievalCorpus.PRODUCT_LIBRARY);
+        }
+
+        public Options(int topK, int windowRadius, String queryPlanner, String candidateSource) {
+            this(topK, windowRadius, queryPlanner, candidateSource, RetrievalCorpus.PRODUCT_LIBRARY);
         }
 
         public Options {
@@ -361,10 +411,11 @@ public class ServiceBackedPageWindowHarness {
             windowRadius = Math.max(0, windowRadius);
             queryPlanner = queryPlanner == null ? "none" : queryPlanner;
             candidateSource = candidateSource == null || candidateSource.isBlank() ? "first-stage" : candidateSource;
+            retrievalCorpus = retrievalCorpus == null ? RetrievalCorpus.PRODUCT_LIBRARY : retrievalCorpus;
         }
 
         public static Options defaults() {
-            return new Options(3, 1, "scientific-qa", "first-stage");
+            return new Options(3, 1, "scientific-qa", "first-stage", RetrievalCorpus.PRODUCT_LIBRARY);
         }
     }
 
