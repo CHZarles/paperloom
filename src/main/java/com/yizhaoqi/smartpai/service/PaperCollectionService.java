@@ -50,6 +50,12 @@ public class PaperCollectionService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listCollections(Long userId) {
         User user = resolveUser(userId);
+        if (isAdmin(user)) {
+            return collectionRepository.findAllByOrderByUpdatedAtDesc().stream()
+                    .map(this::toSummaryDto)
+                    .toList();
+        }
+
         Map<Long, PaperCollection> visibleById = new LinkedHashMap<>();
 
         collectionRepository.findByOwnerIdOrderByUpdatedAtDesc(user.getId())

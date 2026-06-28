@@ -103,6 +103,10 @@ class PaperCollectionServiceTest {
                             Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                     .toList();
         });
+        when(collectionRepository.findAllByOrderByUpdatedAtDesc()).thenAnswer(invocation -> collections.stream()
+                .sorted(Comparator.comparing(PaperCollection::getUpdatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList());
         when(collectionRepository.findOrgVisibleCollections(anyList())).thenAnswer(invocation -> {
             List<String> orgTags = invocation.getArgument(0);
             return collections.stream()
@@ -218,6 +222,42 @@ class PaperCollectionServiceTest {
 
         assertEquals("Updated Lab RAG", updated.get("name"));
         assertEquals("Admin update", updated.get("description"));
+    }
+
+    @Test
+    void adminCanSeeAllCollectionsInList() {
+        service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Owner private", "Private set", "PRIVATE", null)
+        );
+        service.createCollection(
+                labUser.getId(),
+                new CreateCollectionRequest("Lab org", "Lab shared set", "ORG", "lab")
+        );
+
+        List<Map<String, Object>> adminVisible = service.listCollections(admin.getId());
+
+        assertEquals(2, adminVisible.size());
+        assertEquals(List.of("Lab org", "Owner private"),
+                adminVisible.stream().map(item -> item.get("name")).toList());
+    }
+
+    @Test
+    void adminCanEditPrivateCollectionById() {
+        Map<String, Object> created = service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Owner private", "Private set", "PRIVATE", null)
+        );
+
+        Map<String, Object> updated = service.updateCollection(
+                admin.getId(),
+                (Long) created.get("id"),
+                new UpdateCollectionRequest("Admin edited private", "Documented admin policy", "PRIVATE", null)
+        );
+
+        assertEquals("Admin edited private", updated.get("name"));
+        assertEquals("Documented admin policy", updated.get("description"));
+        assertEquals("PRIVATE", updated.get("visibility"));
     }
 
     @Test
