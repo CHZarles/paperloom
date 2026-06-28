@@ -6,6 +6,7 @@ import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import com.yizhaoqi.smartpai.model.ConversationScopeStatus;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -207,7 +209,7 @@ class ChatHandlerReferenceEvidenceTest {
 
         ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
                 ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
-        verify(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(lockedScope), any());
+        verify(fixture.conversationScopeService, times(2)).assertReferenceFocusWithinScope(eq(lockedScope), any());
         verify(fixture.conversationScopeService, never()).updateUnlockedScope(any(), anyString(), any());
         verify(fixture.paperAnswerService)
                 .answer(eq("1"), eq("conversation-1"), eq("Explain this citation"), scopeCaptor.capture());
@@ -315,7 +317,7 @@ class ChatHandlerReferenceEvidenceTest {
 
         ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
                 ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
-        verify(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(autoScope), any());
+        verify(fixture.conversationScopeService, times(2)).assertReferenceFocusWithinScope(eq(autoScope), any());
         verify(fixture.paperAnswerService)
                 .answer(eq("1"), eq("conversation-1"), eq("Explain this evidence"), scopeCaptor.capture());
         PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
@@ -324,6 +326,49 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals("Reference seed text from paper A.", answerScope.matchedText());
         assertEquals(7, answerScope.chunkId());
         assertEquals(RetrievalBudgetProfile.HIGH_RECALL, answerScope.retrievalBudgetProfile());
+    }
+
+    @Test
+    void referenceFocusIsRevalidatedAgainstFinalLockedScopeBeforeAnswering() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope resolvedScope = snapshotScope(List.of("paper-a"), false);
+        ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-b"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(resolvedScope);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                null,
+                null,
+                7,
+                null,
+                "paper-a",
+                "Paper A",
+                "paper-a.pdf",
+                "Reference seed text from paper A.",
+                null,
+                "TEXT",
+                RetrievalBudgetProfile.INTERACTIVE
+        );
+        doThrow(new RuntimeException("Reference focus is outside the final locked scope"))
+                .when(fixture.conversationScopeService)
+                .assertReferenceFocusWithinScope(eq(lockedScope), any());
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain this evidence", referenceFocus),
+                fixture.session);
+
+        InOrder inOrder = org.mockito.Mockito.inOrder(
+                fixture.conversationScopeService,
+                fixture.generationStateService
+        );
+        inOrder.verify(fixture.conversationScopeService).resolveForChat(1L, "conversation-1");
+        inOrder.verify(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(resolvedScope), any());
+        inOrder.verify(fixture.generationStateService).createGeneration(eq("1"), eq("conversation-1"), anyString());
+        inOrder.verify(fixture.conversationScopeService).lockForFirstMessage(1L, "conversation-1");
+        inOrder.verify(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(lockedScope), any());
+        verify(fixture.paperAnswerService, never()).answer(anyString(), anyString(), anyString(), any());
     }
 
     @Test

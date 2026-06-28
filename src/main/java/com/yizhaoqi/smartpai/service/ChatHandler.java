@@ -147,6 +147,9 @@ public class ChatHandler {
             generationId = generation.generationId();
             ConversationScopeService.EffectiveConversationScope effectiveScope =
                     conversationScopeService.lockForFirstMessage(userIdLong, conversationId);
+            if (referenceFocus != null) {
+                conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
+            }
             PaperAnswerService.AnswerScope controlledScope = controlledAnswerScope(effectiveScope, scope, referenceFocus);
             Map<String, Object> effectiveScopeMap = effectiveScopeMap(effectiveScope);
             final String finalConversationId = conversationId;
