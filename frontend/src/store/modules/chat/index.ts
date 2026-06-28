@@ -206,9 +206,27 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   }
 
   async function createSessionFromScope(payload: Api.Chat.UpdateConversationScopePayload) {
+    const previousConversationId = conversationId.value;
+    const previousList = [...list.value];
+    const previousScope = currentScope.value;
+    const previousReferenceFocus = referenceFocus.value;
+
     const created = await createNewSession();
     if (!created || !conversationId.value) return false;
-    return updateConversationScope(conversationId.value, payload);
+    const scoped = await updateConversationScope(conversationId.value, payload);
+    if (scoped) {
+      return true;
+    }
+
+    currentScope.value = null;
+    referenceFocus.value = null;
+    if (previousConversationId) {
+      await switchSession(previousConversationId);
+      list.value = previousList;
+      currentScope.value = previousScope;
+      referenceFocus.value = previousReferenceFocus;
+    }
+    return false;
   }
 
   function setReferenceFocus(scope: Api.Chat.Scope | null) {
@@ -223,6 +241,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     if (!error && data) {
       conversationId.value = data.conversationId;
       list.value = [];
+      referenceFocus.value = null;
       await loadSessions();
       await loadConversationScope(data.conversationId);
     }
@@ -242,6 +261,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
     conversationId.value = targetConversationId;
     list.value = [];
+    referenceFocus.value = null;
     await loadConversationScope(targetConversationId);
     await loadMessages(targetConversationId);
   }

@@ -29,7 +29,7 @@ export function addPapersToCollection(id: number, paperIds: string[]) {
 }
 
 export function removePaperFromCollection(id: number, paperId: string) {
-  return request<Api.PaperCollection.Detail>({
+  return request({
     url: `/paper-collections/${id}/papers/${paperId}`,
     method: 'DELETE'
   });

@@ -511,7 +511,7 @@ declare namespace Api {
     }
 
     interface Detail extends Item {
-      papers: Paper.UploadTask[];
+      paperIds: string[];
     }
 
     interface UpsertPayload {
