@@ -8,8 +8,14 @@ import SvgIcon from '@/components/custom/svg-icon.vue';
 import FilePreview from '@/components/custom/file-preview.vue';
 import UploadDialog from './modules/upload-dialog.vue';
 import SearchDialog from './modules/search-dialog.vue';
+import CollectionsPanel from './modules/collections-panel.vue';
 
 const authStore = useAuthStore();
+const libraryView = ref<'papers' | 'collections'>('papers');
+const libraryViewOptions = [
+  { label: 'Papers', value: 'papers' },
+  { label: 'Collections', value: 'collections' }
+] as const;
 
 // 文件预览相关状态
 const previewVisible = ref(false);
@@ -788,45 +794,58 @@ async function onBeforeUpload(
   <div class="paper-library-page min-h-500px flex-col-stretch gap-16px overflow-auto">
     <NCard title="Paper Library / 文献库" :bordered="false" size="small" class="paper-library-card card-wrapper">
       <template #header-extra>
-        <TableHeaderOperation v-model:columns="columnChecks" :addable="false" :loading="loading" @refresh="getList">
-          <template #prefix>
-            <NButton size="small" secondary type="primary" @click="handleSearch">
-              <template #icon>
-                <icon-lucide:search class="text-icon" />
-              </template>
-              检索文献库
-            </NButton>
-          </template>
-          <template #default>
-            <NButton size="small" secondary type="primary" @click="handleUpload">
-              <template #icon>
-                <icon-lucide:upload class="text-icon" />
-              </template>
-              上传文献
-            </NButton>
-          </template>
-        </TableHeaderOperation>
+        <div class="library-header-extra">
+          <NSegmented v-model:value="libraryView" size="small" :options="libraryViewOptions" />
+          <TableHeaderOperation
+            v-if="libraryView === 'papers'"
+            v-model:columns="columnChecks"
+            :addable="false"
+            :loading="loading"
+            @refresh="getList"
+          >
+            <template #prefix>
+              <NButton size="small" secondary type="primary" @click="handleSearch">
+                <template #icon>
+                  <icon-lucide:search class="text-icon" />
+                </template>
+                检索文献库
+              </NButton>
+            </template>
+            <template #default>
+              <NButton size="small" secondary type="primary" @click="handleUpload">
+                <template #icon>
+                  <icon-lucide:upload class="text-icon" />
+                </template>
+                上传文献
+              </NButton>
+            </template>
+          </TableHeaderOperation>
+        </div>
       </template>
 
-      <div class="library-summary">
-        <div v-for="item in libraryStats" :key="item.label" class="library-summary__item">
-          <span class="library-summary__label">{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-          <span>{{ item.detail }}</span>
+      <template v-if="libraryView === 'papers'">
+        <div class="library-summary">
+          <div v-for="item in libraryStats" :key="item.label" class="library-summary__item">
+            <span class="library-summary__label">{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <span>{{ item.detail }}</span>
+          </div>
         </div>
-      </div>
 
-      <NDataTable
-        :columns="columns"
-        :data="tableTasks"
-        size="small"
-        :scroll-x="1280"
-        :loading="loading"
-        remote
-        :row-key="row => row.id"
-        :pagination="mobilePagination"
-        class="library-table"
-      />
+        <NDataTable
+          :columns="columns"
+          :data="tableTasks"
+          size="small"
+          :scroll-x="1280"
+          :loading="loading"
+          remote
+          :row-key="row => row.id"
+          :pagination="mobilePagination"
+          class="library-table"
+        />
+      </template>
+
+      <CollectionsPanel v-else />
     </NCard>
     <UploadDialog v-model:visible="uploadVisible" />
     <SearchDialog v-model:visible="searchVisible" />
@@ -919,6 +938,15 @@ async function onBeforeUpload(
 
 .paper-library-card .n-card-header__extra {
   min-width: 0;
+}
+
+.library-header-extra {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .paper-library-card .n-card__content {
