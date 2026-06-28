@@ -22,6 +22,7 @@ import com.yizhaoqi.smartpai.entity.SearchResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.yizhaoqi.smartpai.config.AiProperties;
+import com.yizhaoqi.smartpai.config.OutboundWebClientFactory;
 import com.yizhaoqi.smartpai.service.ModelProviderConfigService;
 import com.yizhaoqi.smartpai.service.UsageQuotaService;
 import reactor.core.Disposable;
@@ -36,15 +37,17 @@ public class DeepSeekClient {
     private final UsageQuotaService usageQuotaService;
     private final ModelProviderConfigService modelProviderConfigService;
     private final ObjectMapper objectMapper;
+    private final OutboundWebClientFactory outboundWebClientFactory;
     private static final Logger logger = LoggerFactory.getLogger(DeepSeekClient.class);
-    
+
     public DeepSeekClient(@Value("${deepseek.api.url}") String apiUrl,
                          @Value("${deepseek.api.key}") String apiKey,
                          @Value("${deepseek.api.model}") String model,
                          AiProperties aiProperties,
                          UsageQuotaService usageQuotaService,
-                         ModelProviderConfigService modelProviderConfigService) {
-        WebClient.Builder builder = WebClient.builder().baseUrl(apiUrl);
+                         ModelProviderConfigService modelProviderConfigService,
+                         OutboundWebClientFactory outboundWebClientFactory) {
+        WebClient.Builder builder = outboundWebClientFactory.builder(apiUrl);
         
         // 只有当 API key 不为空时才添加 Authorization header
         if (apiKey != null && !apiKey.trim().isEmpty()) {
@@ -58,6 +61,7 @@ public class DeepSeekClient {
         this.usageQuotaService = usageQuotaService;
         this.modelProviderConfigService = modelProviderConfigService;
         this.objectMapper = new ObjectMapper();
+        this.outboundWebClientFactory = outboundWebClientFactory;
     }
     
     public void streamResponse(String requesterId,
@@ -234,8 +238,8 @@ public class DeepSeekClient {
         try {
             ModelProviderConfigService.ActiveProviderView provider =
                     modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM);
-            WebClient.Builder builder = WebClient.builder()
-                    .baseUrl(ModelProviderConfigService.normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()));
+            WebClient.Builder builder = outboundWebClientFactory
+                    .builder(ModelProviderConfigService.normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()));
             if (provider.apiKey() != null && !provider.apiKey().isBlank()) {
                 builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + provider.apiKey());
             }

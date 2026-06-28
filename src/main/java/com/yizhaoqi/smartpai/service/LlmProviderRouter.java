@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.config.AiProperties;
+import com.yizhaoqi.smartpai.config.OutboundWebClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -33,17 +35,30 @@ public class LlmProviderRouter {
     private final UsageQuotaService usageQuotaService;
     private final ModelProviderConfigService modelProviderConfigService;
     private final ObjectMapper objectMapper;
+    private final OutboundWebClientFactory outboundWebClientFactory;
 
     public LlmProviderRouter(AiProperties aiProperties,
                              RateLimitService rateLimitService,
                              UsageQuotaService usageQuotaService,
                              ModelProviderConfigService modelProviderConfigService,
                              ObjectMapper objectMapper) {
+        this(aiProperties, rateLimitService, usageQuotaService, modelProviderConfigService, objectMapper,
+                new OutboundWebClientFactory());
+    }
+
+    @Autowired
+    public LlmProviderRouter(AiProperties aiProperties,
+                             RateLimitService rateLimitService,
+                             UsageQuotaService usageQuotaService,
+                             ModelProviderConfigService modelProviderConfigService,
+                             ObjectMapper objectMapper,
+                             OutboundWebClientFactory outboundWebClientFactory) {
         this.aiProperties = aiProperties;
         this.rateLimitService = rateLimitService;
         this.usageQuotaService = usageQuotaService;
         this.modelProviderConfigService = modelProviderConfigService;
         this.objectMapper = objectMapper;
+        this.outboundWebClientFactory = outboundWebClientFactory;
     }
 
     public StreamHandle streamResponse(String requesterId,
@@ -264,8 +279,8 @@ public class LlmProviderRouter {
     }
 
     private WebClient buildClient(ModelProviderConfigService.ActiveProviderView provider) {
-        WebClient.Builder builder = WebClient.builder()
-                .baseUrl(ModelProviderConfigService.normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()));
+        WebClient.Builder builder = outboundWebClientFactory
+                .builder(ModelProviderConfigService.normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()));
         if (provider.apiKey() != null && !provider.apiKey().isBlank()) {
             builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + provider.apiKey());
         }

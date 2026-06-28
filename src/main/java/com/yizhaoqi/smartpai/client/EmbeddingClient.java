@@ -2,6 +2,7 @@ package com.yizhaoqi.smartpai.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yizhaoqi.smartpai.config.OutboundWebClientFactory;
 import com.yizhaoqi.smartpai.service.ModelProviderConfigService;
 import com.yizhaoqi.smartpai.service.RateLimitService;
 import com.yizhaoqi.smartpai.service.UsageQuotaService;
@@ -39,15 +40,18 @@ public class EmbeddingClient {
     private final RateLimitService rateLimitService;
     private final UsageQuotaService usageQuotaService;
     private final ModelProviderConfigService modelProviderConfigService;
+    private final OutboundWebClientFactory outboundWebClientFactory;
 
     public EmbeddingClient(ObjectMapper objectMapper,
                            RateLimitService rateLimitService,
                            UsageQuotaService usageQuotaService,
-                           ModelProviderConfigService modelProviderConfigService) {
+                           ModelProviderConfigService modelProviderConfigService,
+                           OutboundWebClientFactory outboundWebClientFactory) {
         this.objectMapper = objectMapper;
         this.rateLimitService = rateLimitService;
         this.usageQuotaService = usageQuotaService;
         this.modelProviderConfigService = modelProviderConfigService;
+        this.outboundWebClientFactory = outboundWebClientFactory;
     }
 
     @PostConstruct
@@ -165,8 +169,8 @@ public class EmbeddingClient {
     }
 
     private WebClient buildClient(ModelProviderConfigService.ActiveProviderView provider) {
-        WebClient.Builder builder = WebClient.builder()
-                .baseUrl(ModelProviderConfigService.normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()))
+        WebClient.Builder builder = outboundWebClientFactory
+                .builder(ModelProviderConfigService.normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()))
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 // WebClient 的默认缓冲区大小限制（256KB）, 这里调高到 16MB
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024));

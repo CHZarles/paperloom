@@ -1,10 +1,12 @@
 package com.yizhaoqi.smartpai.service;
 
+import com.yizhaoqi.smartpai.config.OutboundWebClientFactory;
 import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.model.ModelProviderConfig;
 import com.yizhaoqi.smartpai.repository.ModelProviderConfigRepository;
 import com.yizhaoqi.smartpai.utils.SecretCryptoService;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,6 +35,7 @@ public class ModelProviderConfigService {
 
     private final ModelProviderConfigRepository repository;
     private final SecretCryptoService secretCryptoService;
+    private final OutboundWebClientFactory outboundWebClientFactory;
     private volatile ModelProviderSettingsView currentSettings;
 
     @Value("${deepseek.api.url:https://api.deepseek.com/v1}")
@@ -57,8 +60,16 @@ public class ModelProviderConfigService {
     private Integer embeddingDimension;
 
     public ModelProviderConfigService(ModelProviderConfigRepository repository, SecretCryptoService secretCryptoService) {
+        this(repository, secretCryptoService, new OutboundWebClientFactory());
+    }
+
+    @Autowired
+    public ModelProviderConfigService(ModelProviderConfigRepository repository,
+                                      SecretCryptoService secretCryptoService,
+                                      OutboundWebClientFactory outboundWebClientFactory) {
         this.repository = repository;
         this.secretCryptoService = secretCryptoService;
+        this.outboundWebClientFactory = outboundWebClientFactory;
         this.currentSettings = buildDefaultSettings();
     }
 
@@ -148,8 +159,8 @@ public class ModelProviderConfigService {
         long startAt = System.currentTimeMillis();
         String provider = normalizeOptionalProvider(request.provider());
         try {
-            WebClient.Builder builder = WebClient.builder()
-                    .baseUrl(normalizeOpenAiCompatibleBaseUrl(request.apiBaseUrl()))
+            WebClient.Builder builder = outboundWebClientFactory
+                    .builder(normalizeOpenAiCompatibleBaseUrl(request.apiBaseUrl()))
                     .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE);
 
             String apiKey = resolveConnectionTestApiKey(normalizedScope, provider, request.apiKey());
