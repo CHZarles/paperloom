@@ -308,6 +308,22 @@ class PaperControllerContractTest {
     }
 
     @Test
+    void accessiblePapersRejectsUnsupportedReadiness() {
+        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, "indexed");
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals(400, body.get("code"));
+        verify(paperService, never()).searchAccessiblePaperCandidates(
+                eq("1"),
+                eq("default"),
+                isNull(),
+                eq("indexed"),
+                eq(PageRequest.of(0, 10))
+        );
+    }
+
+    @Test
     void metadataDetailUsesPdfReadinessOnly() {
         Paper paper = new Paper();
         paper.setPaperId("fedcba9876543210fedcba9876543210");

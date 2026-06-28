@@ -271,6 +271,14 @@ public class PaperController {
                     query,
                     readiness);
 
+            if (hasText(readiness) && !isSupportedReadiness(readiness)) {
+                monitor.end("获取可访问论文失败：不支持的 readiness 参数");
+                return ResponseEntity.badRequest().body(Map.of(
+                        "code", HttpStatus.BAD_REQUEST.value(),
+                        "message", "不支持的 readiness 参数: " + readiness
+                ));
+            }
+
             Object data;
             long total;
             if (isPagedRequest(page, size) || isCandidateSearchRequest(query, readiness)) {
@@ -338,6 +346,10 @@ public class PaperController {
 
     private boolean isCandidateSearchRequest(String query, String readiness) {
         return hasText(query) || hasText(readiness);
+    }
+
+    private boolean isSupportedReadiness(String readiness) {
+        return "searchable".equalsIgnoreCase(readiness.trim());
     }
 
     private boolean hasText(String value) {

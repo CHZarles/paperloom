@@ -17,10 +17,16 @@ public class PaperSearchabilityService {
         if (paper == null || paper.getPaperId() == null || paper.getPaperId().isBlank()) {
             return false;
         }
-        if (!Paper.VECTORIZATION_STATUS_COMPLETED.equalsIgnoreCase(String.valueOf(paper.getVectorizationStatus()))
-                && paper.getStatus() != Paper.STATUS_COMPLETED) {
+
+        String vectorizationStatus = paper.getVectorizationStatus();
+        if (vectorizationStatus != null && !vectorizationStatus.isBlank()) {
+            if (!Paper.VECTORIZATION_STATUS_COMPLETED.equalsIgnoreCase(vectorizationStatus.trim())) {
+                return false;
+            }
+        } else if (paper.getStatus() != Paper.STATUS_COMPLETED) {
             return false;
         }
+
         return chunkRepository.countByPaperId(paper.getPaperId()) > 0;
     }
 }

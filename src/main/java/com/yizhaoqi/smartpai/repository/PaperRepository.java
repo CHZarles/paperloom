@@ -62,6 +62,7 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
                 LOWER(COALESCE(f.originalFilename, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.authors, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.venue, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.abstractText, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.doi, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.arxivId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.paperId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
@@ -82,6 +83,7 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
                 LOWER(COALESCE(f.originalFilename, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.authors, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.venue, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
+                LOWER(COALESCE(f.abstractText, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.doi, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.arxivId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR
                 LOWER(COALESCE(f.paperId, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR

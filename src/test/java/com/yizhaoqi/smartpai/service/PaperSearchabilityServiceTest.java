@@ -48,6 +48,50 @@ class PaperSearchabilityServiceTest {
         assertFalse(service.isSearchable(paper));
     }
 
+    @Test
+    void failedVectorizationStatusOverridesCompletedUploadStatus() {
+        Paper paper = paper("paper-a", "FAILED", Paper.STATUS_COMPLETED);
+        when(chunkRepository.countByPaperId("paper-a")).thenReturn(12L);
+
+        assertFalse(service.isSearchable(paper));
+    }
+
+    @Test
+    void processingVectorizationStatusOverridesCompletedUploadStatus() {
+        Paper paper = paper("paper-a", "PROCESSING", Paper.STATUS_COMPLETED);
+        when(chunkRepository.countByPaperId("paper-a")).thenReturn(12L);
+
+        assertFalse(service.isSearchable(paper));
+    }
+
+    @Test
+    void nullPaperIsNotSearchable() {
+        assertFalse(service.isSearchable(null));
+    }
+
+    @Test
+    void blankPaperIdIsNotSearchable() {
+        Paper paper = paper(" ", "COMPLETED", Paper.STATUS_COMPLETED);
+
+        assertFalse(service.isSearchable(paper));
+    }
+
+    @Test
+    void nullVectorizationStatusFallsBackToCompletedUploadStatusForLegacyPapers() {
+        Paper paper = paper("paper-a", null, Paper.STATUS_COMPLETED);
+        when(chunkRepository.countByPaperId("paper-a")).thenReturn(12L);
+
+        assertTrue(service.isSearchable(paper));
+    }
+
+    @Test
+    void blankVectorizationStatusFallsBackToCompletedUploadStatusForLegacyPapers() {
+        Paper paper = paper("paper-a", " ", Paper.STATUS_COMPLETED);
+        when(chunkRepository.countByPaperId("paper-a")).thenReturn(12L);
+
+        assertTrue(service.isSearchable(paper));
+    }
+
     private Paper paper(String paperId, String vectorizationStatus, int status) {
         Paper paper = new Paper();
         paper.setPaperId(paperId);
