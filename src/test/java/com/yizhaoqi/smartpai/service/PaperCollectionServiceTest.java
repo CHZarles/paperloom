@@ -36,6 +36,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaperCollectionServiceTest {
@@ -54,6 +57,9 @@ class PaperCollectionServiceTest {
 
     @Mock
     private PaperSearchabilityService paperSearchabilityService;
+
+    @Mock
+    private OrgTagCacheService orgTagCacheService;
 
     private final List<PaperCollection> collections = new ArrayList<>();
     private final List<PaperCollectionPaper> memberships = new ArrayList<>();
@@ -79,6 +85,10 @@ class PaperCollectionServiceTest {
         when(userRepository.findById(2L)).thenReturn(Optional.of(otherUser));
         when(userRepository.findById(3L)).thenReturn(Optional.of(labUser));
         when(userRepository.findById(4L)).thenReturn(Optional.of(admin));
+        when(orgTagCacheService.getUserEffectiveOrgTags("owner")).thenReturn(List.of("default"));
+        when(orgTagCacheService.getUserEffectiveOrgTags("other")).thenReturn(List.of("other"));
+        when(orgTagCacheService.getUserEffectiveOrgTags("lab-user")).thenReturn(List.of("lab", "ml"));
+        when(orgTagCacheService.getUserEffectiveOrgTags("admin")).thenReturn(List.of("admin"));
 
         when(collectionRepository.save(any(PaperCollection.class))).thenAnswer(invocation -> {
             PaperCollection collection = invocation.getArgument(0);
@@ -154,7 +164,8 @@ class PaperCollectionServiceTest {
                 collectionPaperRepository,
                 userRepository,
                 paperRepository,
-                paperSearchabilityService
+                paperSearchabilityService,
+                orgTagCacheService
         );
     }
 
@@ -179,7 +190,7 @@ class PaperCollectionServiceTest {
     @Test
     void orgCollectionIsVisibleToSameOrgUser() {
         service.createCollection(
-                owner.getId(),
+                admin.getId(),
                 new CreateCollectionRequest("Lab RAG", "Shared lab reading set", "ORG", "lab")
         );
 
@@ -194,7 +205,7 @@ class PaperCollectionServiceTest {
     @Test
     void ordinaryOrgUserCannotEditOrgCollection() {
         Map<String, Object> created = service.createCollection(
-                owner.getId(),
+                admin.getId(),
                 new CreateCollectionRequest("Lab RAG", "Shared lab reading set", "ORG", "lab")
         );
 
@@ -210,7 +221,7 @@ class PaperCollectionServiceTest {
     @Test
     void adminCanEditOrgCollection() {
         Map<String, Object> created = service.createCollection(
-                owner.getId(),
+                labUser.getId(),
                 new CreateCollectionRequest("Lab RAG", "Shared lab reading set", "ORG", "lab")
         );
 
@@ -261,6 +272,32 @@ class PaperCollectionServiceTest {
     }
 
     @Test
+    void nonAdminCannotCreateOrgCollectionOutsideOwnOrg() {
+        CustomException exception = assertThrows(CustomException.class, () -> service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Other org", "Outside tenant", "ORG", "other")
+        ));
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+    }
+
+    @Test
+    void nonAdminCannotMoveOrgCollectionOutsideOwnOrg() {
+        Map<String, Object> created = service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Default org", "Inside tenant", "ORG", "default")
+        );
+
+        CustomException exception = assertThrows(CustomException.class, () -> service.updateCollection(
+                owner.getId(),
+                (Long) created.get("id"),
+                new UpdateCollectionRequest("Moved org", "Outside tenant", "ORG", "other")
+        ));
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+    }
+
+    @Test
     void addPapersStoresStaticPaperIds() {
         Map<String, Object> created = service.createCollection(
                 owner.getId(),
@@ -292,6 +329,113 @@ class PaperCollectionServiceTest {
         assertIterableEquals(List.of("paper-1", "paper-2", "paper-3"), (List<?>) detail.get("paperIds"));
     }
 
+    @Test
+    void nonAdminCannotAddInaccessiblePrivatePaper() {
+        Map<String, Object> created = service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Agent papers", "Static set", "PRIVATE", null)
+        );
+        papers.add(paper("private-other", true, "2", false, "other"));
+
+        CustomException exception = assertThrows(CustomException.class, () -> service.addPapers(
+                owner.getId(),
+                (Long) created.get("id"),
+                new AddCollectionPapersRequest(List.of("private-other"))
+        ));
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+    }
+
+    @Test
+    void addRejectsMissingPaperId() {
+        Map<String, Object> created = service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Agent papers", "Static set", "PRIVATE", null)
+        );
+
+        CustomException exception = assertThrows(CustomException.class, () -> service.addPapers(
+                owner.getId(),
+                (Long) created.get("id"),
+                new AddCollectionPapersRequest(List.of("missing-paper"))
+        ));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+    }
+
+    @Test
+    void canAddAccessibleUnsearchablePaperAndSearchableCountOnlyCountsSearchable() {
+        Map<String, Object> created = service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Agent papers", "Static set", "PRIVATE", null)
+        );
+        Long collectionId = (Long) created.get("id");
+        Paper searchable = paper("searchable-paper", true, "1", false, "default");
+        Paper unsearchable = paper("unsearchable-paper", false, "1", false, "default");
+        papers.addAll(List.of(searchable, unsearchable));
+        when(paperSearchabilityService.isSearchable(searchable)).thenReturn(true);
+        when(paperSearchabilityService.isSearchable(unsearchable)).thenReturn(false);
+
+        Map<String, Object> afterAdd = service.addPapers(
+                owner.getId(),
+                collectionId,
+                new AddCollectionPapersRequest(List.of("searchable-paper", "unsearchable-paper"))
+        );
+
+        assertEquals(2, afterAdd.get("paperCount"));
+        assertEquals(1L, afterAdd.get("searchablePaperCount"));
+        assertIterableEquals(List.of("searchable-paper", "unsearchable-paper"), (List<?>) afterAdd.get("paperIds"));
+    }
+
+    @Test
+    void orgViewerDetailDoesNotLeakOrCountInaccessibleMemberPaperIds() {
+        Map<String, Object> created = service.createCollection(
+                admin.getId(),
+                new CreateCollectionRequest("Lab org", "Mixed membership", "ORG", "lab")
+        );
+        Long collectionId = (Long) created.get("id");
+        Paper labPaper = paper("lab-paper", true, "9", false, "lab");
+        Paper ownerPrivatePaper = paper("owner-private", true, "1", false, "default");
+        papers.addAll(List.of(labPaper, ownerPrivatePaper));
+        when(paperSearchabilityService.isSearchable(labPaper)).thenReturn(true);
+        when(paperSearchabilityService.isSearchable(ownerPrivatePaper)).thenReturn(true);
+
+        service.addPapers(
+                admin.getId(),
+                collectionId,
+                new AddCollectionPapersRequest(List.of("lab-paper", "owner-private"))
+        );
+
+        Map<String, Object> detail = service.getCollection(labUser.getId(), collectionId);
+
+        assertEquals(2, detail.get("paperCount"));
+        assertEquals(1L, detail.get("searchablePaperCount"));
+        assertIterableEquals(List.of("lab-paper"), (List<?>) detail.get("paperIds"));
+    }
+
+    @Test
+    void membershipEditsSaveParentCollectionForUpdatedAt() {
+        Map<String, Object> created = service.createCollection(
+                owner.getId(),
+                new CreateCollectionRequest("Agent papers", "Static set", "PRIVATE", null)
+        );
+        Long collectionId = (Long) created.get("id");
+        Paper paper = paper("paper-1", true, "1", false, "default");
+        papers.add(paper);
+        when(paperSearchabilityService.isSearchable(paper)).thenReturn(true);
+        PaperCollection collection = collections.stream()
+                .filter(item -> item.getId().equals(collectionId))
+                .findFirst()
+                .orElseThrow();
+
+        clearInvocations(collectionRepository);
+        service.addPapers(owner.getId(), collectionId, new AddCollectionPapersRequest(List.of("paper-1")));
+        verify(collectionRepository, times(1)).save(collection);
+
+        clearInvocations(collectionRepository);
+        service.removePaper(owner.getId(), collectionId, "paper-1");
+        verify(collectionRepository, times(1)).save(collection);
+    }
+
     private User user(Long id, String username, User.Role role, String primaryOrg, String orgTags) {
         User user = new User();
         user.setId(id);
@@ -303,10 +447,17 @@ class PaperCollectionServiceTest {
     }
 
     private Paper paper(String paperId, boolean searchable) {
+        return paper(paperId, searchable, "1", false, "default");
+    }
+
+    private Paper paper(String paperId, boolean searchable, String userId, boolean isPublic, String orgTag) {
         Paper paper = new Paper();
         paper.setPaperId(paperId);
         paper.setPaperTitle(paperId);
         paper.setOriginalFilename(paperId + ".pdf");
+        paper.setUserId(userId);
+        paper.setPublic(isPublic);
+        paper.setOrgTag(orgTag);
         paper.setStatus(searchable ? Paper.STATUS_COMPLETED : Paper.STATUS_UPLOADING);
         paper.setVectorizationStatus(searchable
                 ? Paper.VECTORIZATION_STATUS_COMPLETED
