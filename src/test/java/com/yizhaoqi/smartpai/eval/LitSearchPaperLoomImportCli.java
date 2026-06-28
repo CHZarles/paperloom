@@ -1,9 +1,8 @@
 package com.yizhaoqi.smartpai.eval;
 
 import com.yizhaoqi.smartpai.SmartPaiApplication;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.service.ElasticsearchService;
+import com.yizhaoqi.smartpai.eval.repository.EvalChunkRepository;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -34,18 +33,15 @@ public final class LitSearchPaperLoomImportCli {
                 .web(WebApplicationType.NONE)
                 .run(springStartupArgs())) {
             LitSearchPaperLoomImporter importer = new LitSearchPaperLoomImporter(
-                    context.getBean(PaperRepository.class),
-                    context.getBean(PaperTextChunkRepository.class),
-                    context.getBean(ElasticsearchService.class)
+                    context.getBean(EvalPaperRepository.class),
+                    context.getBean(EvalChunkRepository.class),
+                    context.getBean(EvalCorpusIndexService.class)
             );
             LitSearchPaperLoomImporter.ImportSummary summary = importer.importJsonl(
                     options.corpusPath(),
                     new LitSearchPaperLoomImporter.Options(
-                            options.userId(),
-                            options.orgTag(),
-                            options.isPublic(),
-                            options.maxChunkCharacters(),
                             options.evalSplit(),
+                            options.maxChunkCharacters(),
                             options.indexBatchSize()
                     ),
                     options.startOffset(),
@@ -66,15 +62,13 @@ public final class LitSearchPaperLoomImportCli {
                 "--spring.jpa.show-sql=false",
                 "--logging.level.root=WARN",
                 "--logging.level.org.hibernate.SQL=WARN",
-                "--logging.level.com.yizhaoqi.smartpai.service.ElasticsearchService=WARN"
+                "--logging.level.com.yizhaoqi.smartpai.eval.EvalCorpusIndexService=WARN"
         };
     }
 
     public record Options(
             Path corpusPath,
-            String userId,
-            String orgTag,
-            boolean isPublic,
+            RetrievalCorpus retrievalCorpus,
             int startOffset,
             int limit,
             int maxChunkCharacters,
@@ -95,9 +89,7 @@ public final class LitSearchPaperLoomImportCli {
             }
             return new Options(
                     Path.of(required(values, "corpus")),
-                    values.getOrDefault("user-id", "eval-litsearch-user"),
-                    values.getOrDefault("org-tag", "eval-litsearch"),
-                    Boolean.parseBoolean(values.getOrDefault("public", "true")),
+                    requiredCorpus(values, RetrievalCorpus.EVAL_LITSEARCH),
                     Integer.parseInt(values.getOrDefault("start-offset", "0")),
                     Integer.parseInt(values.getOrDefault("limit", "0")),
                     Integer.parseInt(values.getOrDefault("max-chunk-characters", "1800")),
@@ -112,6 +104,20 @@ public final class LitSearchPaperLoomImportCli {
                 throw new IllegalArgumentException("Missing --" + key);
             }
             return value;
+        }
+
+        private static RetrievalCorpus requiredCorpus(Map<String, String> values, RetrievalCorpus expected) {
+            String value = required(values, "retrieval-corpus");
+            RetrievalCorpus corpus;
+            try {
+                corpus = RetrievalCorpus.valueOf(value);
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("--retrieval-corpus must be " + expected);
+            }
+            if (corpus != expected) {
+                throw new IllegalArgumentException("--retrieval-corpus must be " + expected);
+            }
+            return corpus;
         }
     }
 }

@@ -3,8 +3,8 @@ package com.yizhaoqi.smartpai.eval;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.entity.SearchResult;
-import com.yizhaoqi.smartpai.model.Paper;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.eval.model.EvalPaper;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 import com.yizhaoqi.smartpai.service.PaperQueryPlanner;
 import com.yizhaoqi.smartpai.service.PaperRetrievalService;
 import com.yizhaoqi.smartpai.service.RetrievalBudget;
@@ -59,7 +59,7 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                 "--user-id", "eval-user",
                 "--top-k", "7",
                 "--scope-imported-only", "true",
-                "--source-dataset", "litsearch",
+                "--retrieval-corpus", "EVAL_LITSEARCH",
                 "--eval-split", "sample-20"
         });
 
@@ -76,15 +76,54 @@ class ServiceBackedLitSearchBenchmarkCliTest {
         assertEquals(7, options.topK());
         assertEquals(RetrievalBudget.forLibrarySearch(), options.budget());
         assertTrue(options.scopeImportedOnly());
-        assertEquals("litsearch", options.sourceDataset());
+        assertEquals(RetrievalCorpus.EVAL_LITSEARCH, options.retrievalCorpus());
         assertEquals("sample-20", options.evalSplit());
     }
 
     @Test
-    void defaultsToCurrentLedgerLitSearchFullRunShape() {
+    void refusesMissingRetrievalCorpus() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                ServiceBackedLitSearchBenchmarkCli.Options.parse(new String[]{
+                        "--gold", "gold.jsonl",
+                        "--retrieved", "retrieved.jsonl"
+                })
+        );
+
+        assertTrue(error.getMessage().contains("Missing --retrieval-corpus"));
+    }
+
+    @Test
+    void refusesProductLibraryForLitSearchBenchmark() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                ServiceBackedLitSearchBenchmarkCli.Options.parse(new String[]{
+                        "--gold", "gold.jsonl",
+                        "--retrieved", "retrieved.jsonl",
+                        "--retrieval-corpus", "PRODUCT_LIBRARY"
+                })
+        );
+
+        assertTrue(error.getMessage().contains("EVAL_LITSEARCH"));
+    }
+
+    @Test
+    void refusesQasperCorpusForLitSearchBenchmark() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                ServiceBackedLitSearchBenchmarkCli.Options.parse(new String[]{
+                        "--gold", "gold.jsonl",
+                        "--retrieved", "retrieved.jsonl",
+                        "--retrieval-corpus", "EVAL_QASPER"
+                })
+        );
+
+        assertTrue(error.getMessage().contains("EVAL_LITSEARCH"));
+    }
+
+    @Test
+    void defaultsToCurrentLedgerLitSearchFullRunShapeAfterCorpusIsExplicit() {
         ServiceBackedLitSearchBenchmarkCli.Options options = ServiceBackedLitSearchBenchmarkCli.Options.parse(new String[]{
                 "--gold", "gold.jsonl",
                 "--retrieved", "retrieved.jsonl",
+                "--retrieval-corpus", "EVAL_LITSEARCH",
                 "--started-at", "2026-06-24T17:05:00Z"
         });
 
@@ -97,7 +136,7 @@ class ServiceBackedLitSearchBenchmarkCliTest {
         assertEquals("eval-litsearch-user", options.userId());
         assertEquals(20, options.topK());
         assertFalse(options.scopeImportedOnly());
-        assertEquals("litsearch", options.sourceDataset());
+        assertEquals(RetrievalCorpus.EVAL_LITSEARCH, options.retrievalCorpus());
         assertEquals("full", options.evalSplit());
     }
 
@@ -146,7 +185,10 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                 "2026-06-24T17:10:00Z",
                 "eval-user",
                 budget,
-                20
+                20,
+                false,
+                RetrievalCorpus.EVAL_LITSEARCH,
+                "full"
         ));
 
         JsonNode retrieved = OBJECT_MAPPER.readTree(Files.readString(tempDir.resolve("retrieved.jsonl")).trim());
@@ -189,11 +231,11 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                     cases: "1"
                 """);
         PaperRetrievalService retrievalService = mock(PaperRetrievalService.class);
-        PaperRepository paperRepository = mock(PaperRepository.class);
+        EvalPaperRepository evalPaperRepository = mock(EvalPaperRepository.class);
         RetrievalBudget budget = RetrievalBudget.forLibrarySearch();
-        Paper scopedPaper = new Paper();
+        EvalPaper scopedPaper = new EvalPaper();
         scopedPaper.setPaperId("litsearch:paper-1");
-        when(paperRepository.findByEvalTrueAndSourceDatasetAndEvalSplit("litsearch", "sample-20"))
+        when(evalPaperRepository.findByCorpusAndSplit("litsearch", "sample-20"))
                 .thenReturn(List.of(scopedPaper));
         SearchResult hit = new SearchResult("litsearch:paper-1", 1, "RAG benchmark abstract.", 0.91d);
         when(retrievalService.retrieve(
@@ -203,7 +245,7 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                 List.of("litsearch:paper-1")
         )).thenReturn(retrievalResult("papers about retrieval augmented generation benchmarks", List.of(hit)));
 
-        ServiceBackedLitSearchBenchmarkCli.run(retrievalService, paperRepository, new ServiceBackedLitSearchBenchmarkCli.Options(
+        ServiceBackedLitSearchBenchmarkCli.run(retrievalService, evalPaperRepository, new ServiceBackedLitSearchBenchmarkCli.Options(
                 gold,
                 tempDir.resolve("retrieved-scoped.jsonl"),
                 tempDir.resolve("runs"),
@@ -217,11 +259,11 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                 budget,
                 20,
                 true,
-                "litsearch",
+                RetrievalCorpus.EVAL_LITSEARCH,
                 "sample-20"
         ));
 
-        verify(paperRepository).findByEvalTrueAndSourceDatasetAndEvalSplit("litsearch", "sample-20");
+        verify(evalPaperRepository).findByCorpusAndSplit("litsearch", "sample-20");
         verify(retrievalService).retrieve(
                 "papers about retrieval augmented generation benchmarks",
                 "eval-user",
@@ -237,12 +279,12 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                 {"id":"q1","query":"papers about retrieval augmented generation benchmarks","goldCorpusIds":["paper-1"]}
                 """);
         PaperRetrievalService retrievalService = mock(PaperRetrievalService.class);
-        PaperRepository paperRepository = mock(PaperRepository.class);
-        when(paperRepository.findByEvalTrueAndSourceDatasetAndEvalSplit("litsearch", "missing-sample"))
+        EvalPaperRepository evalPaperRepository = mock(EvalPaperRepository.class);
+        when(evalPaperRepository.findByCorpusAndSplit("litsearch", "missing-sample"))
                 .thenReturn(List.of());
 
         IllegalStateException error = assertThrows(IllegalStateException.class, () ->
-                ServiceBackedLitSearchBenchmarkCli.run(retrievalService, paperRepository, new ServiceBackedLitSearchBenchmarkCli.Options(
+                ServiceBackedLitSearchBenchmarkCli.run(retrievalService, evalPaperRepository, new ServiceBackedLitSearchBenchmarkCli.Options(
                         gold,
                         tempDir.resolve("retrieved-empty-scope.jsonl"),
                         tempDir.resolve("runs"),
@@ -256,7 +298,7 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                         RetrievalBudget.forLibrarySearch(),
                         20,
                         true,
-                        "litsearch",
+                        RetrievalCorpus.EVAL_LITSEARCH,
                         "missing-sample"
                 )));
 
@@ -265,7 +307,7 @@ class ServiceBackedLitSearchBenchmarkCliTest {
         verify(retrievalService, never()).retrieve(
                 "papers about retrieval augmented generation benchmarks",
                 "eval-user",
-            RetrievalBudget.forLibrarySearch()
+                RetrievalBudget.forLibrarySearch()
         );
     }
 
@@ -276,14 +318,14 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                 {"id":"q1","query":"papers about retrieval augmented generation benchmarks","goldCorpusIds":["paper-1"]}
                 """);
         PaperRetrievalService retrievalService = mock(PaperRetrievalService.class);
-        PaperRepository paperRepository = mock(PaperRepository.class);
-        Paper scopedPaper = new Paper();
+        EvalPaperRepository evalPaperRepository = mock(EvalPaperRepository.class);
+        EvalPaper scopedPaper = new EvalPaper();
         scopedPaper.setPaperId("litsearch:paper-1");
-        when(paperRepository.findByEvalTrueAndSourceDatasetAndEvalSplit("litsearch", "full"))
+        when(evalPaperRepository.findByCorpusAndSplit("litsearch", "full"))
                 .thenReturn(List.of(scopedPaper));
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
-                ServiceBackedLitSearchBenchmarkCli.run(retrievalService, paperRepository, new ServiceBackedLitSearchBenchmarkCli.Options(
+                ServiceBackedLitSearchBenchmarkCli.run(retrievalService, evalPaperRepository, new ServiceBackedLitSearchBenchmarkCli.Options(
                         gold,
                         tempDir.resolve("retrieved-partial-full.jsonl"),
                         tempDir.resolve("runs"),
@@ -297,7 +339,7 @@ class ServiceBackedLitSearchBenchmarkCliTest {
                         RetrievalBudget.forLibrarySearch(),
                         20,
                         true,
-                        "litsearch",
+                        RetrievalCorpus.EVAL_LITSEARCH,
                         "full"
                 )));
 

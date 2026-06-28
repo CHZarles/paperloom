@@ -11,13 +11,16 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 MODE="${1:-}"
+if [[ -n "${1:-}" ]]; then
+  shift
+fi
 
 usage() {
   cat <<USAGE
 Usage:
-  scripts/paperloom-rag-gates.sh [--dry-run] product-smoke
-  scripts/paperloom-rag-gates.sh [--dry-run] qasper-dev-200
-  scripts/paperloom-rag-gates.sh [--dry-run] litsearch-full-summary
+  scripts/paperloom-rag-gates.sh [--dry-run] product-smoke --retrieval-corpus PRODUCT_LIBRARY
+  scripts/paperloom-rag-gates.sh [--dry-run] qasper-dev-200 --retrieval-corpus EVAL_QASPER
+  scripts/paperloom-rag-gates.sh [--dry-run] litsearch-full-summary --retrieval-corpus EVAL_LITSEARCH
   scripts/paperloom-rag-gates.sh [--dry-run] pdf-parser-smoke
   scripts/paperloom-rag-gates.sh [--dry-run] all-light
 
@@ -51,6 +54,25 @@ run_cmd() {
 
 timestamp() {
   date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+require_retrieval_corpus() {
+  local expected="$1"
+  shift
+  local actual=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --retrieval-corpus)
+        actual="${2:-}"
+        shift 2
+        ;;
+      *)
+        fail "unknown option for $MODE: $1"
+        ;;
+    esac
+  done
+  [[ -n "$actual" ]] || fail "missing --retrieval-corpus $expected"
+  [[ "$actual" == "$expected" ]] || fail "--retrieval-corpus must be $expected for $MODE"
 }
 
 run_id() {
@@ -116,6 +138,7 @@ PY
 }
 
 product_smoke() {
+  require_retrieval_corpus PRODUCT_LIBRARY "$@"
   local started_at harness_id dataset_id id run_dir
   started_at=$(timestamp)
   harness_id="current-evidence-ledger"
@@ -138,6 +161,7 @@ product_smoke() {
 }
 
 qasper_dev_200() {
+  require_retrieval_corpus EVAL_QASPER "$@"
   local started_at harness_id dataset_id id run_dir cases
   cases="eval/rag/qasper/generated/qasper-dev-200-service-cases.jsonl"
   [[ "$DRY_RUN" == "1" || -f "$cases" ]] || fail "missing QASPER service cases: $cases"
@@ -159,6 +183,7 @@ qasper_dev_200() {
     --run-id "$id" \
     --started-at "$started_at" \
     --user-id 1 \
+    --retrieval-corpus EVAL_QASPER \
     --query-planner scientific-qa-diverse-windows \
     --candidate-source scoped-paper \
     --window-radius 1 \
@@ -187,6 +212,7 @@ pdf_parser_smoke() {
 }
 
 litsearch_full_summary() {
+  require_retrieval_corpus EVAL_LITSEARCH "$@"
   if [[ "$DRY_RUN" == "1" ]]; then
     run_cmd scripts/litsearch-full-pipeline.sh summary
     echo "runDir=not-created (summary only)"
@@ -211,18 +237,20 @@ all_light() {
 
 case "$MODE" in
   product-smoke)
-    product_smoke
+    product_smoke "$@"
     ;;
   qasper-dev-200)
-    qasper_dev_200
+    qasper_dev_200 "$@"
     ;;
   litsearch-full-summary)
-    litsearch_full_summary
+    litsearch_full_summary "$@"
     ;;
   pdf-parser-smoke)
+    [[ $# -eq 0 ]] || fail "unknown option for $MODE: $1"
     pdf_parser_smoke
     ;;
   all-light)
+    [[ $# -eq 0 ]] || fail "unknown option for $MODE: $1"
     all_light
     ;;
   ""|-h|--help|help)

@@ -2,11 +2,10 @@ package com.yizhaoqi.smartpai.eval;
 
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
-import com.yizhaoqi.smartpai.model.Paper;
-import com.yizhaoqi.smartpai.model.PaperTextChunk;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.service.ElasticsearchService;
+import com.yizhaoqi.smartpai.eval.model.EvalChunk;
+import com.yizhaoqi.smartpai.eval.model.EvalPaper;
+import com.yizhaoqi.smartpai.eval.repository.EvalChunkRepository;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,6 +17,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,22 +26,22 @@ import static org.mockito.Mockito.when;
 class QasperPaperLoomImporterTest {
 
     @Mock
-    private PaperRepository paperRepository;
+    private EvalPaperRepository evalPaperRepository;
 
     @Mock
-    private PaperTextChunkRepository paperTextChunkRepository;
+    private EvalChunkRepository evalChunkRepository;
 
     @Mock
-    private ElasticsearchService elasticsearchService;
+    private EvalCorpusIndexService evalCorpusIndexService;
 
     @Test
-    void importsQasperChunksAsPrefixedEvalScopedPaperLoomRowsAndSearchDocuments() {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    void importsQasperChunksIntoEvalSchemaAndEvalSearchIndices() {
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         QasperPaperLoomImporter importer = new QasperPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
 
         QasperPaperLoomImporter.ImportSummary summary = importer.importChunks(
@@ -71,36 +71,31 @@ class QasperPaperLoomImporterTest {
                                 "We compare pivoting, multilingual NMT, and cross-lingual transfer."
                         )
                 ),
-                new QasperPaperLoomImporter.Options("eval-user", "eval-qasper", true, "dev")
+                new QasperPaperLoomImporter.Options("dev")
         );
 
         assertEquals(1, summary.paperCount());
         assertEquals(2, summary.chunkCount());
 
-        ArgumentCaptor<Paper> paperCaptor = ArgumentCaptor.forClass(Paper.class);
-        verify(paperRepository).save(paperCaptor.capture());
-        Paper savedPaper = paperCaptor.getValue();
+        ArgumentCaptor<EvalPaper> paperCaptor = ArgumentCaptor.forClass(EvalPaper.class);
+        verify(evalPaperRepository).save(paperCaptor.capture());
+        EvalPaper savedPaper = paperCaptor.getValue();
+        assertEquals("qasper", savedPaper.getCorpus());
+        assertEquals("dev", savedPaper.getSplit());
+        assertEquals("1912.01214", savedPaper.getExternalPaperId());
         assertEquals("qasper:1912.01214", savedPaper.getPaperId());
-        assertEquals("qasper:1912.01214.json", savedPaper.getOriginalFilename());
-        assertEquals("Cross-lingual Pre-training", savedPaper.getPaperTitle());
+        assertEquals("qasper:1912.01214.json", savedPaper.getSourceJson());
+        assertEquals("Cross-lingual Pre-training", savedPaper.getTitle());
         assertTrue(savedPaper.getAbstractText().contains("zero-shot neural machine translation"));
-        assertEquals("eval-user", savedPaper.getUserId());
-        assertEquals("eval-qasper", savedPaper.getOrgTag());
-        assertTrue(savedPaper.isPublic());
-        assertTrue(savedPaper.isEval());
-        assertEquals("qasper", savedPaper.getSourceDataset());
-        assertEquals("1912.01214", savedPaper.getExternalCorpusId());
         assertEquals("1912.01214", savedPaper.getArxivId());
-        assertEquals("dev", savedPaper.getEvalSplit());
-        assertEquals(Paper.STATUS_COMPLETED, savedPaper.getStatus());
-        assertEquals(Paper.VECTORIZATION_STATUS_COMPLETED, savedPaper.getVectorizationStatus());
-        assertEquals(2, savedPaper.getActualChunkCount());
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<PaperTextChunk>> chunksCaptor = ArgumentCaptor.forClass(List.class);
-        verify(paperTextChunkRepository).saveAll(chunksCaptor.capture());
-        List<PaperTextChunk> chunks = chunksCaptor.getValue();
+        ArgumentCaptor<List<EvalChunk>> chunksCaptor = ArgumentCaptor.forClass(List.class);
+        verify(evalChunkRepository).saveAll(chunksCaptor.capture());
+        List<EvalChunk> chunks = chunksCaptor.getValue();
         assertEquals(2, chunks.size());
+        assertEquals("qasper", chunks.get(0).getCorpus());
+        assertEquals("dev", chunks.get(0).getSplit());
         assertEquals("qasper:1912.01214", chunks.get(0).getPaperId());
         assertEquals(1, chunks.get(0).getPageNumber());
         assertEquals(1, chunks.get(0).getChunkId());
@@ -112,7 +107,7 @@ class QasperPaperLoomImporterTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<PaperSearchDocument>> paperDocumentsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(elasticsearchService).bulkIndexPaperSearch(paperDocumentsCaptor.capture());
+        verify(evalCorpusIndexService).bulkIndexPaperSearch(eq("qasper"), paperDocumentsCaptor.capture());
         PaperSearchDocument paperSearchDocument = paperDocumentsCaptor.getValue().get(0);
         assertEquals("qasper:1912.01214", paperSearchDocument.getPaperId());
         assertEquals("Cross-lingual Pre-training", paperSearchDocument.getPaperTitle());
@@ -120,7 +115,7 @@ class QasperPaperLoomImporterTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<PaperChunkDocument>> chunkDocumentsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(elasticsearchService).bulkIndex(chunkDocumentsCaptor.capture());
+        verify(evalCorpusIndexService).bulkIndexChunks(eq("qasper"), chunkDocumentsCaptor.capture());
         List<PaperChunkDocument> chunkDocuments = chunkDocumentsCaptor.getValue();
         assertEquals(2, chunkDocuments.size());
         assertEquals("qasper:1912.01214", chunkDocuments.get(0).getPaperId());
@@ -132,12 +127,12 @@ class QasperPaperLoomImporterTest {
 
     @Test
     void clearsExistingImportedQasperRowsBeforeImportingPaper() {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         QasperPaperLoomImporter importer = new QasperPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
 
         importer.importChunks(
@@ -153,14 +148,14 @@ class QasperPaperLoomImporterTest {
                         null,
                         "This paper studies zero-shot neural machine translation."
                 )),
-                new QasperPaperLoomImporter.Options("eval-user", "eval-qasper", true, "dev")
+                new QasperPaperLoomImporter.Options("dev")
         );
 
-        var inOrder = inOrder(elasticsearchService, paperTextChunkRepository, paperRepository);
-        inOrder.verify(elasticsearchService).deleteByPaperId("qasper:1912.01214");
-        inOrder.verify(paperTextChunkRepository).deleteByPaperId("qasper:1912.01214");
-        inOrder.verify(paperRepository).deleteByPaperId("qasper:1912.01214");
-        inOrder.verify(paperRepository).save(any(Paper.class));
+        var inOrder = inOrder(evalCorpusIndexService, evalChunkRepository, evalPaperRepository);
+        inOrder.verify(evalCorpusIndexService).deleteByPaperId("qasper", "qasper:1912.01214");
+        inOrder.verify(evalChunkRepository).deleteByCorpusAndPaperId("qasper", "qasper:1912.01214");
+        inOrder.verify(evalPaperRepository).deleteByCorpusAndPaperId("qasper", "qasper:1912.01214");
+        inOrder.verify(evalPaperRepository).save(any(EvalPaper.class));
     }
 
     @Test

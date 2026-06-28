@@ -99,6 +99,7 @@ public final class ServiceBackedPageWindowBenchmarkCli {
             String runId,
             String startedAt,
             String userId,
+            RetrievalCorpus retrievalCorpus,
             RetrievalBudget budget,
             int topK,
             int windowRadius,
@@ -114,6 +115,7 @@ public final class ServiceBackedPageWindowBenchmarkCli {
                        String runId,
                        String startedAt,
                        String userId,
+                       RetrievalCorpus retrievalCorpus,
                        RetrievalBudget budget,
                        int topK,
                        int windowRadius,
@@ -128,6 +130,7 @@ public final class ServiceBackedPageWindowBenchmarkCli {
                     runId,
                     startedAt,
                     userId,
+                    retrievalCorpus,
                     budget,
                     topK,
                     windowRadius,
@@ -137,6 +140,8 @@ public final class ServiceBackedPageWindowBenchmarkCli {
         }
 
         public Options {
+            retrievalCorpus = retrievalCorpus == null ? null : retrievalCorpus;
+            validateRetrievalCorpusForDataset(retrievalCorpus, datasetId);
             budget = budget == null ? RetrievalBudget.forQa() : budget;
             topK = topK <= 0 ? 3 : topK;
             windowRadius = Math.max(0, windowRadius);
@@ -169,6 +174,7 @@ public final class ServiceBackedPageWindowBenchmarkCli {
                     values.getOrDefault("run-id", defaultRunId(startedAt, harnessId, datasetId)),
                     startedAt,
                     values.getOrDefault("user-id", "eval-page-window-user"),
+                    requiredCorpus(values, datasetId),
                     RetrievalBudget.forQa(),
                     Integer.parseInt(values.getOrDefault("top-k", "3")),
                     Integer.parseInt(values.getOrDefault("window-radius", "1")),
@@ -183,6 +189,31 @@ public final class ServiceBackedPageWindowBenchmarkCli {
                 throw new IllegalArgumentException("Missing --" + key);
             }
             return value;
+        }
+
+        private static RetrievalCorpus requiredCorpus(Map<String, String> values, String datasetId) {
+            String value = required(values, "retrieval-corpus");
+            RetrievalCorpus corpus;
+            try {
+                corpus = RetrievalCorpus.valueOf(value);
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("--retrieval-corpus is invalid");
+            }
+            validateRetrievalCorpusForDataset(corpus, datasetId);
+            return corpus;
+        }
+
+        private static void validateRetrievalCorpusForDataset(RetrievalCorpus retrievalCorpus, String datasetId) {
+            if (retrievalCorpus == null) {
+                throw new IllegalArgumentException("Missing --retrieval-corpus");
+            }
+            String normalizedDatasetId = datasetId == null ? "" : datasetId.toLowerCase();
+            if (normalizedDatasetId.contains("qasper") && retrievalCorpus != RetrievalCorpus.EVAL_QASPER) {
+                throw new IllegalArgumentException("--retrieval-corpus must be EVAL_QASPER for QASPER benchmarks");
+            }
+            if (normalizedDatasetId.startsWith("product-") && retrievalCorpus != RetrievalCorpus.PRODUCT_LIBRARY) {
+                throw new IllegalArgumentException("--retrieval-corpus must be PRODUCT_LIBRARY for product benchmarks");
+            }
         }
 
         private static String defaultRunId(String startedAt, String harnessId, String datasetId) {

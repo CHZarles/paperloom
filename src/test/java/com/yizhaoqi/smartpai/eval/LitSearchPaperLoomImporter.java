@@ -2,11 +2,10 @@ package com.yizhaoqi.smartpai.eval;
 
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
-import com.yizhaoqi.smartpai.model.Paper;
-import com.yizhaoqi.smartpai.model.PaperTextChunk;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.service.ElasticsearchService;
+import com.yizhaoqi.smartpai.eval.model.EvalChunk;
+import com.yizhaoqi.smartpai.eval.model.EvalPaper;
+import com.yizhaoqi.smartpai.eval.repository.EvalChunkRepository;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -16,25 +15,24 @@ import java.util.UUID;
 
 public class LitSearchPaperLoomImporter {
 
-    private static final String DATASET_PREFIX = "litsearch:";
-    private static final String SOURCE_DATASET = "litsearch";
+    private static final String CORPUS = "litsearch";
+    private static final String DATASET_PREFIX = CORPUS + ":";
     private static final String PARSER_NAME = "litsearch";
     private static final String PARSER_VERSION = "corpus_clean";
     private static final String MODEL_VERSION = "eval:litsearch:no-embedding";
     private static final int VECTOR_DIMS = 2048;
     private static final int DEFAULT_INDEX_BATCH_SIZE = 500;
-    private static final int MYSQL_VARCHAR_DEFAULT_LIMIT = 255;
 
-    private final PaperRepository paperRepository;
-    private final PaperTextChunkRepository paperTextChunkRepository;
-    private final ElasticsearchService elasticsearchService;
+    private final EvalPaperRepository evalPaperRepository;
+    private final EvalChunkRepository evalChunkRepository;
+    private final EvalCorpusIndexService evalCorpusIndexService;
 
-    public LitSearchPaperLoomImporter(PaperRepository paperRepository,
-                                      PaperTextChunkRepository paperTextChunkRepository,
-                                      ElasticsearchService elasticsearchService) {
-        this.paperRepository = paperRepository;
-        this.paperTextChunkRepository = paperTextChunkRepository;
-        this.elasticsearchService = elasticsearchService;
+    public LitSearchPaperLoomImporter(EvalPaperRepository evalPaperRepository,
+                                      EvalChunkRepository evalChunkRepository,
+                                      EvalCorpusIndexService evalCorpusIndexService) {
+        this.evalPaperRepository = evalPaperRepository;
+        this.evalChunkRepository = evalChunkRepository;
+        this.evalCorpusIndexService = evalCorpusIndexService;
     }
 
     public ImportSummary importPapers(List<LitSearchPaperDocument> papers, Options options) {
@@ -79,22 +77,16 @@ public class LitSearchPaperLoomImporter {
             }
             String paperId = paperId(source);
             clearExistingPaper(paperId);
-            Paper paper = toPaper(source, options);
-            List<PaperTextChunk> chunks = toChunks(source, paper.getPaperId(), options);
-            paper.setEstimatedChunkCount(chunks.size());
-            paper.setActualChunkCount(chunks.size());
-            paperRepository.save(paper);
-            paperTextChunkRepository.saveAll(chunks);
-            paperDocuments.add(toPaperSearchDocument(source, paper, options));
-            chunkDocuments.addAll(toChunkDocuments(paper, chunks, options));
+            EvalPaper paper = toEvalPaper(source, options);
+            List<EvalChunk> chunks = toChunks(source, paper.getPaperId(), options);
+            evalPaperRepository.save(paper);
+            evalChunkRepository.saveAll(chunks);
+            paperDocuments.add(toPaperSearchDocument(source, paper));
+            chunkDocuments.addAll(toChunkDocuments(paper, chunks));
             paperCount++;
             chunkCount += chunks.size();
             flushPaperDocumentsIfNeeded(paperDocuments, options.indexBatchSize());
             flushChunkDocumentsIfNeeded(chunkDocuments, options.indexBatchSize());
-        }
-
-        private int paperCount() {
-            return paperCount;
         }
 
         private ImportSummary finish() {
@@ -120,7 +112,7 @@ public class LitSearchPaperLoomImporter {
         if (documents.isEmpty()) {
             return;
         }
-        elasticsearchService.bulkIndexPaperSearch(List.copyOf(documents));
+        evalCorpusIndexService.bulkIndexPaperSearch(CORPUS, List.copyOf(documents));
         documents.clear();
     }
 
@@ -128,51 +120,45 @@ public class LitSearchPaperLoomImporter {
         if (documents.isEmpty()) {
             return;
         }
-        elasticsearchService.bulkIndex(List.copyOf(documents));
+        evalCorpusIndexService.bulkIndexChunks(CORPUS, List.copyOf(documents));
         documents.clear();
     }
 
-    private Paper toPaper(LitSearchPaperDocument source, Options options) {
-        String paperId = paperId(source);
-        Paper paper = new Paper();
-        paper.setPaperId(paperId);
-        paper.setOriginalFilename(paperId + ".json");
-        paper.setPaperTitle(truncate(source.title(), MYSQL_VARCHAR_DEFAULT_LIMIT));
+    private EvalPaper toEvalPaper(LitSearchPaperDocument source, Options options) {
+        EvalPaper paper = new EvalPaper();
+        paper.setCorpus(CORPUS);
+        paper.setSplit(options.evalSplit());
+        paper.setExternalPaperId(source.paperId());
+        paper.setPaperId(paperId(source));
+        paper.setTitle(source.title());
         paper.setAbstractText(source.abstractText());
-        paper.setSourceDataset(SOURCE_DATASET);
-        paper.setExternalCorpusId(source.paperId());
-        paper.setEvalSplit(options.evalSplit());
-        paper.setEval(true);
-        paper.setUserId(options.userId());
-        paper.setOrgTag(options.orgTag());
-        paper.setPublic(options.isPublic());
-        paper.setStatus(Paper.STATUS_COMPLETED);
-        paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
-        paper.setVectorizationErrorMessage(null);
-        paper.setActualEmbeddingTokens(0L);
+        paper.setFullText(source.fullPaperText());
+        paper.setSourceJson("{\"source\":\"litsearch\",\"externalPaperId\":\"" + escapeJson(source.paperId()) + "\"}");
         return paper;
     }
 
-    private PaperSearchDocument toPaperSearchDocument(LitSearchPaperDocument source, Paper paper, Options options) {
-        PaperSearchDocument document = PaperSearchDocument.from(
-                paper,
-                options.userId(),
-                options.orgTag(),
-                options.isPublic()
-        );
+    private PaperSearchDocument toPaperSearchDocument(LitSearchPaperDocument source, EvalPaper paper) {
+        PaperSearchDocument document = new PaperSearchDocument();
+        document.setId(paper.getPaperId());
+        document.setPaperId(paper.getPaperId());
         document.setPaperTitle(source.title());
-        document.setSearchText(paperSearchText(source, paper));
+        document.setOriginalFilename(paper.getPaperId() + ".json");
+        document.setAbstractText(source.abstractText());
+        document.setSearchText(paperSearchText(source, paper.getPaperId()));
+        document.setUserId("eval-litsearch-user");
+        document.setOrgTag("eval-litsearch");
+        document.setPublic(true);
         return document;
     }
 
     private void clearExistingPaper(String paperId) {
-        elasticsearchService.deleteByPaperId(paperId);
-        paperTextChunkRepository.deleteByPaperId(paperId);
-        paperRepository.deleteByPaperId(paperId);
+        evalCorpusIndexService.deleteByPaperId(CORPUS, paperId);
+        evalChunkRepository.deleteByCorpusAndPaperId(CORPUS, paperId);
+        evalPaperRepository.deleteByCorpusAndPaperId(CORPUS, paperId);
     }
 
-    private List<PaperTextChunk> toChunks(LitSearchPaperDocument source, String paperId, Options options) {
-        List<PaperTextChunk> chunks = new ArrayList<>();
+    private List<EvalChunk> toChunks(LitSearchPaperDocument source, String paperId, Options options) {
+        List<EvalChunk> chunks = new ArrayList<>();
         chunks.add(chunk(
                 paperId,
                 1,
@@ -195,58 +181,53 @@ public class LitSearchPaperLoomImporter {
         return chunks;
     }
 
-    private PaperTextChunk chunk(String paperId,
-                                 int chunkId,
-                                 String text,
-                                 String sectionTitle,
-                                 String evidenceRole,
-                                 Options options) {
-        PaperTextChunk chunk = new PaperTextChunk();
+    private EvalChunk chunk(String paperId,
+                            int chunkId,
+                            String text,
+                            String sectionTitle,
+                            String evidenceRole,
+                            Options options) {
+        EvalChunk chunk = new EvalChunk();
+        chunk.setCorpus(CORPUS);
+        chunk.setSplit(options.evalSplit());
         chunk.setPaperId(paperId);
         chunk.setChunkId(chunkId);
         chunk.setTextContent(text);
+        chunk.setRetrievalTextContent(retrievalText(paperId, sectionTitle, evidenceRole, text));
         chunk.setPageNumber(chunkId);
-        chunk.setAnchorText(sectionTitle);
-        chunk.setElementType("PARAGRAPH");
         chunk.setSectionTitle(sectionTitle);
-        chunk.setSectionLevel(1);
-        chunk.setParserName(PARSER_NAME);
-        chunk.setParserVersion(PARSER_VERSION);
         chunk.setSourceKind("TEXT");
         chunk.setEvidenceRole(evidenceRole);
-        chunk.setModelVersion(MODEL_VERSION);
-        chunk.setUserId(options.userId());
-        chunk.setOrgTag(options.orgTag());
-        chunk.setPublic(options.isPublic());
+        chunk.setSourceJson("{\"source\":\"litsearch\"}");
         return chunk;
     }
 
-    private List<PaperChunkDocument> toChunkDocuments(Paper paper, List<PaperTextChunk> chunks, Options options) {
+    private List<PaperChunkDocument> toChunkDocuments(EvalPaper paper, List<EvalChunk> chunks) {
         List<PaperChunkDocument> documents = new ArrayList<>();
-        for (PaperTextChunk chunk : chunks) {
+        for (EvalChunk chunk : chunks) {
             PaperChunkDocument document = new PaperChunkDocument(
                     UUID.randomUUID().toString(),
                     chunk.getPaperId(),
                     chunk.getChunkId(),
                     chunk.getTextContent(),
                     chunk.getPageNumber(),
-                    chunk.getAnchorText(),
-                    chunk.getElementType(),
                     chunk.getSectionTitle(),
-                    chunk.getSectionLevel(),
-                    chunk.getBboxJson(),
-                    chunk.getParserName(),
-                    chunk.getParserVersion(),
+                    "PARAGRAPH",
+                    chunk.getSectionTitle(),
+                    1,
+                    null,
+                    PARSER_NAME,
+                    PARSER_VERSION,
                     chunk.getSourceKind(),
-                    chunk.getTableId(),
-                    chunk.getFigureId(),
-                    chunk.getFormulaId(),
+                    null,
+                    null,
+                    null,
                     chunk.getEvidenceRole(),
                     placeholderVector(),
                     MODEL_VERSION,
-                    options.userId(),
-                    options.orgTag(),
-                    options.isPublic()
+                    "eval-litsearch-user",
+                    "eval-litsearch",
+                    true
             );
             document.setRetrievalTextContent(retrievalText(paper, chunk));
             documents.add(document);
@@ -272,10 +253,10 @@ public class LitSearchPaperLoomImporter {
         return chunks;
     }
 
-    private static String retrievalText(Paper paper, PaperTextChunk chunk) {
+    private static String retrievalText(EvalPaper paper, EvalChunk chunk) {
         List<String> parts = new ArrayList<>();
-        append(parts, "title", paper.getPaperTitle());
-        append(parts, "filename", paper.getOriginalFilename());
+        append(parts, "title", paper.getTitle());
+        append(parts, "filename", paper.getPaperId() + ".json");
         append(parts, "abstract", paper.getAbstractText());
         append(parts, "section", chunk.getSectionTitle());
         append(parts, "source", chunk.getSourceKind());
@@ -284,10 +265,19 @@ public class LitSearchPaperLoomImporter {
         return String.join("\n", parts);
     }
 
-    private static String paperSearchText(LitSearchPaperDocument source, Paper paper) {
+    private static String retrievalText(String paperId, String sectionTitle, String evidenceRole, String text) {
+        List<String> parts = new ArrayList<>();
+        append(parts, "paperId", paperId);
+        append(parts, "section", sectionTitle);
+        append(parts, "evidence", evidenceRole);
+        append(parts, "text", text);
+        return String.join("\n", parts);
+    }
+
+    private static String paperSearchText(LitSearchPaperDocument source, String paperId) {
         List<String> parts = new ArrayList<>();
         append(parts, "title", source.title());
-        append(parts, "filename", paper.getOriginalFilename());
+        append(parts, "filename", paperId + ".json");
         append(parts, "abstract", source.abstractText());
         append(parts, "corpusid", source.paperId());
         return String.join("\n", parts);
@@ -304,11 +294,8 @@ public class LitSearchPaperLoomImporter {
         return DATASET_PREFIX + source.paperId();
     }
 
-    private static String truncate(String value, int maxLength) {
-        if (value == null || value.length() <= maxLength) {
-            return value;
-        }
-        return value.substring(0, maxLength);
+    private static String escapeJson(String value) {
+        return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private static float[] placeholderVector() {
@@ -318,42 +305,18 @@ public class LitSearchPaperLoomImporter {
     }
 
     public record Options(
-            String userId,
-            String orgTag,
-            boolean isPublic,
-            int maxChunkCharacters,
             String evalSplit,
+            int maxChunkCharacters,
             int indexBatchSize
     ) {
-        public Options(String userId, String orgTag, boolean isPublic, int maxChunkCharacters) {
-            this(userId, orgTag, isPublic, maxChunkCharacters, "full", DEFAULT_INDEX_BATCH_SIZE);
-        }
-
-        public Options(String userId,
-                       String orgTag,
-                       boolean isPublic,
-                       int maxChunkCharacters,
-                       String evalSplit) {
-            this(userId, orgTag, isPublic, maxChunkCharacters, evalSplit, DEFAULT_INDEX_BATCH_SIZE);
-        }
-
         public Options {
-            userId = userId == null || userId.isBlank() ? "eval-litsearch-user" : userId;
-            orgTag = orgTag == null || orgTag.isBlank() ? "eval-litsearch" : orgTag;
-            maxChunkCharacters = maxChunkCharacters <= 0 ? 1800 : maxChunkCharacters;
             evalSplit = evalSplit == null || evalSplit.isBlank() ? "full" : evalSplit;
+            maxChunkCharacters = maxChunkCharacters <= 0 ? 1800 : maxChunkCharacters;
             indexBatchSize = indexBatchSize <= 0 ? DEFAULT_INDEX_BATCH_SIZE : indexBatchSize;
         }
 
         public static Options defaults() {
-            return new Options(
-                    "eval-litsearch-user",
-                    "eval-litsearch",
-                    true,
-                    1800,
-                    "full",
-                    DEFAULT_INDEX_BATCH_SIZE
-            );
+            return new Options("full", 1800, DEFAULT_INDEX_BATCH_SIZE);
         }
     }
 

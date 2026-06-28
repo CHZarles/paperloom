@@ -1,8 +1,8 @@
 package com.yizhaoqi.smartpai.eval;
 
 import com.yizhaoqi.smartpai.SmartPaiApplication;
-import com.yizhaoqi.smartpai.model.Paper;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.eval.model.EvalPaper;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 import com.yizhaoqi.smartpai.service.PaperRetrievalService;
 import com.yizhaoqi.smartpai.service.RetrievalBudget;
 import org.springframework.boot.WebApplicationType;
@@ -38,7 +38,7 @@ public final class ServiceBackedLitSearchBenchmarkCli {
                 .run(springStartupArgs())) {
             Path runDir = run(
                     context.getBean(PaperRetrievalService.class),
-                    context.getBean(PaperRepository.class),
+                    context.getBean(EvalPaperRepository.class),
                     options
             );
             System.out.println("retrieved=" + options.retrievedPath());
@@ -61,22 +61,22 @@ public final class ServiceBackedLitSearchBenchmarkCli {
     }
 
     public static Path run(PaperRetrievalService retrievalService,
-                           PaperRepository paperRepository,
+                           EvalPaperRepository evalPaperRepository,
                            Options options) throws Exception {
         List<String> scopePaperIds = options.scopeImportedOnly()
-                ? importedPaperIds(paperRepository, options.sourceDataset(), options.evalSplit())
+                ? importedPaperIds(evalPaperRepository, options.retrievalCorpus(), options.evalSplit())
                 : List.of();
         if (options.scopeImportedOnly()) {
             LitSearchDatasetIdGuard.rejectPartialCorpusSizeAsFull(
                     options.datasetId(),
                     scopePaperIds.size(),
-                    "imported eval papers sourceDataset=" + options.sourceDataset()
+                    "imported eval papers retrievalCorpus=" + options.retrievalCorpus()
                             + ", evalSplit=" + options.evalSplit()
             );
         }
         if (options.scopeImportedOnly() && scopePaperIds.isEmpty()) {
             throw new IllegalStateException(
-                    "No imported eval papers found for sourceDataset=" + options.sourceDataset()
+                    "No imported eval papers found for retrievalCorpus=" + options.retrievalCorpus()
                             + ", evalSplit=" + options.evalSplit()
                             + ". Import the benchmark corpus first or disable --scope-imported-only."
             );
@@ -104,15 +104,24 @@ public final class ServiceBackedLitSearchBenchmarkCli {
         ));
     }
 
-    private static List<String> importedPaperIds(PaperRepository paperRepository, String sourceDataset, String evalSplit) {
-        if (paperRepository == null) {
+    private static List<String> importedPaperIds(EvalPaperRepository evalPaperRepository,
+                                                 RetrievalCorpus retrievalCorpus,
+                                                 String evalSplit) {
+        if (evalPaperRepository == null) {
             return List.of();
         }
-        return paperRepository.findByEvalTrueAndSourceDatasetAndEvalSplit(sourceDataset, evalSplit).stream()
-                .map(Paper::getPaperId)
+        return evalPaperRepository.findByCorpusAndSplit(corpusName(retrievalCorpus), evalSplit).stream()
+                .map(EvalPaper::getPaperId)
                 .filter(paperId -> paperId != null && !paperId.isBlank())
                 .distinct()
                 .toList();
+    }
+
+    private static String corpusName(RetrievalCorpus retrievalCorpus) {
+        if (retrievalCorpus != RetrievalCorpus.EVAL_LITSEARCH) {
+            throw new IllegalArgumentException("--retrieval-corpus must be EVAL_LITSEARCH");
+        }
+        return "litsearch";
     }
 
     public record Options(
@@ -129,7 +138,7 @@ public final class ServiceBackedLitSearchBenchmarkCli {
             RetrievalBudget budget,
             int topK,
             boolean scopeImportedOnly,
-            String sourceDataset,
+            RetrievalCorpus retrievalCorpus,
             String evalSplit
     ) {
         public Options(Path goldPath,
@@ -145,13 +154,14 @@ public final class ServiceBackedLitSearchBenchmarkCli {
                        RetrievalBudget budget,
                        int topK) {
             this(goldPath, retrievedPath, runsRoot, registryPath, cheatsheetPath, harnessId, datasetId,
-                    runId, startedAt, userId, budget, topK, false, "litsearch", "full");
+                    runId, startedAt, userId, budget, topK, false, RetrievalCorpus.EVAL_LITSEARCH, "full");
         }
 
         public Options {
             budget = budget == null ? RetrievalBudget.forLibrarySearch() : budget;
             topK = topK <= 0 ? 20 : topK;
-            sourceDataset = sourceDataset == null || sourceDataset.isBlank() ? "litsearch" : sourceDataset;
+            retrievalCorpus = retrievalCorpus == null ? RetrievalCorpus.EVAL_LITSEARCH : retrievalCorpus;
+            corpusName(retrievalCorpus);
             evalSplit = evalSplit == null || evalSplit.isBlank() ? "full" : evalSplit;
         }
 
@@ -184,7 +194,7 @@ public final class ServiceBackedLitSearchBenchmarkCli {
                     RetrievalBudget.forLibrarySearch(),
                     Integer.parseInt(values.getOrDefault("top-k", "20")),
                     Boolean.parseBoolean(values.getOrDefault("scope-imported-only", "false")),
-                    values.getOrDefault("source-dataset", "litsearch"),
+                    requiredCorpus(values),
                     values.getOrDefault("eval-split", "full")
             );
         }
@@ -195,6 +205,20 @@ public final class ServiceBackedLitSearchBenchmarkCli {
                 throw new IllegalArgumentException("Missing --" + key);
             }
             return value;
+        }
+
+        private static RetrievalCorpus requiredCorpus(Map<String, String> values) {
+            String value = required(values, "retrieval-corpus");
+            RetrievalCorpus corpus;
+            try {
+                corpus = RetrievalCorpus.valueOf(value);
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("--retrieval-corpus must be EVAL_LITSEARCH");
+            }
+            if (corpus != RetrievalCorpus.EVAL_LITSEARCH) {
+                throw new IllegalArgumentException("--retrieval-corpus must be EVAL_LITSEARCH");
+            }
+            return corpus;
         }
 
         private static String defaultRunId(String startedAt, String harnessId, String datasetId) {

@@ -2,11 +2,10 @@ package com.yizhaoqi.smartpai.eval;
 
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
-import com.yizhaoqi.smartpai.model.Paper;
-import com.yizhaoqi.smartpai.model.PaperTextChunk;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.service.ElasticsearchService;
+import com.yizhaoqi.smartpai.eval.model.EvalChunk;
+import com.yizhaoqi.smartpai.eval.model.EvalPaper;
+import com.yizhaoqi.smartpai.eval.repository.EvalChunkRepository;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,23 +17,23 @@ import java.util.UUID;
 
 public class QasperPaperLoomImporter {
 
-    private static final String DATASET_PREFIX = "qasper:";
-    private static final String SOURCE_DATASET = "qasper";
+    private static final String CORPUS = "qasper";
+    private static final String DATASET_PREFIX = CORPUS + ":";
     private static final String PARSER_NAME = "qasper";
     private static final String PARSER_VERSION = "v0.3-structured-text";
     private static final String MODEL_VERSION = "eval:qasper:no-embedding";
     private static final int VECTOR_DIMS = 2048;
 
-    private final PaperRepository paperRepository;
-    private final PaperTextChunkRepository paperTextChunkRepository;
-    private final ElasticsearchService elasticsearchService;
+    private final EvalPaperRepository evalPaperRepository;
+    private final EvalChunkRepository evalChunkRepository;
+    private final EvalCorpusIndexService evalCorpusIndexService;
 
-    public QasperPaperLoomImporter(PaperRepository paperRepository,
-                                   PaperTextChunkRepository paperTextChunkRepository,
-                                   ElasticsearchService elasticsearchService) {
-        this.paperRepository = paperRepository;
-        this.paperTextChunkRepository = paperTextChunkRepository;
-        this.elasticsearchService = elasticsearchService;
+    public QasperPaperLoomImporter(EvalPaperRepository evalPaperRepository,
+                                   EvalChunkRepository evalChunkRepository,
+                                   EvalCorpusIndexService evalCorpusIndexService) {
+        this.evalPaperRepository = evalPaperRepository;
+        this.evalChunkRepository = evalChunkRepository;
+        this.evalCorpusIndexService = evalCorpusIndexService;
     }
 
     public ImportSummary importChunks(List<PaperPageChunk> chunks, Options options) {
@@ -48,26 +47,19 @@ public class QasperPaperLoomImporter {
             String importedPaperId = importedPaperId(rawPaperId, effectiveOptions);
             List<PaperPageChunk> paperChunks = entry.getValue();
             clearExistingPaper(importedPaperId);
-            Paper paper = toPaper(rawPaperId, importedPaperId, paperChunks, effectiveOptions);
-            List<PaperTextChunk> storedChunks = toChunks(importedPaperId, paperChunks, effectiveOptions);
-            paper.setEstimatedChunkCount(storedChunks.size());
-            paper.setActualChunkCount(storedChunks.size());
-            paperRepository.save(paper);
-            paperTextChunkRepository.saveAll(storedChunks);
-            paperDocuments.add(PaperSearchDocument.from(
-                    paper,
-                    effectiveOptions.userId(),
-                    effectiveOptions.orgTag(),
-                    effectiveOptions.isPublic()
-            ));
-            chunkDocuments.addAll(toChunkDocuments(paper, storedChunks, effectiveOptions));
+            EvalPaper paper = toPaper(rawPaperId, importedPaperId, paperChunks, effectiveOptions);
+            List<EvalChunk> storedChunks = toChunks(importedPaperId, paperChunks, effectiveOptions);
+            evalPaperRepository.save(paper);
+            evalChunkRepository.saveAll(storedChunks);
+            paperDocuments.add(toPaperSearchDocument(paper));
+            chunkDocuments.addAll(toChunkDocuments(paper, storedChunks));
             chunkCount += storedChunks.size();
         }
         if (!paperDocuments.isEmpty()) {
-            elasticsearchService.bulkIndexPaperSearch(paperDocuments);
+            evalCorpusIndexService.bulkIndexPaperSearch(CORPUS, paperDocuments);
         }
         if (!chunkDocuments.isEmpty()) {
-            elasticsearchService.bulkIndex(chunkDocuments);
+            evalCorpusIndexService.bulkIndexChunks(CORPUS, chunkDocuments);
         }
         return new ImportSummary(paperDocuments.size(), chunkCount);
     }
@@ -144,88 +136,88 @@ public class QasperPaperLoomImporter {
         return chunksByPaper;
     }
 
-    private Paper toPaper(String rawPaperId,
-                          String importedPaperId,
-                          List<PaperPageChunk> chunks,
-                          Options options) {
+    private EvalPaper toPaper(String rawPaperId,
+                              String importedPaperId,
+                              List<PaperPageChunk> chunks,
+                              Options options) {
         PaperPageChunk first = chunks.get(0);
-        Paper paper = new Paper();
+        EvalPaper paper = new EvalPaper();
+        paper.setCorpus(CORPUS);
+        paper.setSplit(options.evalSplit());
+        paper.setExternalPaperId(rawPaperId);
         paper.setPaperId(importedPaperId);
-        paper.setOriginalFilename(originalFilename(first, importedPaperId));
-        paper.setPaperTitle(first.paperTitle());
+        paper.setTitle(first.paperTitle());
         paper.setAbstractText(abstractText(chunks));
         paper.setArxivId(rawPaperId);
-        paper.setSourceDataset(SOURCE_DATASET);
-        paper.setExternalCorpusId(rawPaperId);
-        paper.setEvalSplit(options.evalSplit());
-        paper.setEval(true);
-        paper.setUserId(options.userId());
-        paper.setOrgTag(options.orgTag());
-        paper.setPublic(options.isPublic());
-        paper.setStatus(Paper.STATUS_COMPLETED);
-        paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
-        paper.setVectorizationErrorMessage(null);
-        paper.setActualEmbeddingTokens(0L);
+        paper.setSourceJson(originalFilename(first, importedPaperId));
         return paper;
     }
 
-    private List<PaperTextChunk> toChunks(String importedPaperId,
-                                          List<PaperPageChunk> sourceChunks,
-                                          Options options) {
-        List<PaperTextChunk> chunks = new ArrayList<>();
+    private List<EvalChunk> toChunks(String importedPaperId,
+                                     List<PaperPageChunk> sourceChunks,
+                                     Options options) {
+        List<EvalChunk> chunks = new ArrayList<>();
         int fallbackChunkId = 1;
         for (PaperPageChunk source : sourceChunks) {
-            PaperTextChunk chunk = new PaperTextChunk();
+            EvalChunk chunk = new EvalChunk();
+            chunk.setCorpus(CORPUS);
+            chunk.setSplit(options.evalSplit());
             chunk.setPaperId(importedPaperId);
             chunk.setChunkId(source.chunkId() == null ? fallbackChunkId : source.chunkId());
             chunk.setTextContent(source.text());
+            chunk.setRetrievalTextContent(retrievalText(source.paperTitle(), source.sectionTitle(), source.sourceKind(), evidenceRole(source.sectionTitle()), source.text()));
             chunk.setPageNumber(source.pageNumber());
-            chunk.setAnchorText(source.sectionTitle());
-            chunk.setElementType("PARAGRAPH");
             chunk.setSectionTitle(source.sectionTitle());
-            chunk.setSectionLevel(1);
-            chunk.setParserName(PARSER_NAME);
-            chunk.setParserVersion(PARSER_VERSION);
             chunk.setSourceKind(source.sourceKind());
-            chunk.setTableId(source.tableId());
-            chunk.setFigureId(source.figureId());
             chunk.setEvidenceRole(evidenceRole(source.sectionTitle()));
-            chunk.setModelVersion(MODEL_VERSION);
-            chunk.setUserId(options.userId());
-            chunk.setOrgTag(options.orgTag());
-            chunk.setPublic(options.isPublic());
+            chunk.setSourceJson(originalFilename(source, importedPaperId));
             chunks.add(chunk);
             fallbackChunkId++;
         }
         return chunks;
     }
 
-    private List<PaperChunkDocument> toChunkDocuments(Paper paper, List<PaperTextChunk> chunks, Options options) {
+    private PaperSearchDocument toPaperSearchDocument(EvalPaper paper) {
+        PaperSearchDocument document = new PaperSearchDocument();
+        document.setId(paper.getPaperId());
+        document.setPaperId(paper.getPaperId());
+        document.setPaperTitle(paper.getTitle());
+        document.setOriginalFilename(paper.getSourceJson());
+        document.setAbstractText(paper.getAbstractText());
+        document.setArxivId(paper.getArxivId());
+        document.setSearchText(paperSearchText(paper));
+        document.setUserId("eval-qasper-user");
+        document.setOrgTag("eval-qasper");
+        document.setPublic(true);
+        return document;
+    }
+
+    private List<PaperChunkDocument> toChunkDocuments(EvalPaper paper, List<EvalChunk> chunks) {
         List<PaperChunkDocument> documents = new ArrayList<>();
-        for (PaperTextChunk chunk : chunks) {
+        for (EvalChunk chunk : chunks) {
             PaperChunkDocument document = new PaperChunkDocument(
                     UUID.randomUUID().toString(),
                     chunk.getPaperId(),
                     chunk.getChunkId(),
                     chunk.getTextContent(),
                     chunk.getPageNumber(),
-                    chunk.getAnchorText(),
-                    chunk.getElementType(),
                     chunk.getSectionTitle(),
-                    chunk.getSectionLevel(),
-                    chunk.getBboxJson(),
-                    chunk.getParserName(),
-                    chunk.getParserVersion(),
+                    "PARAGRAPH",
+                    chunk.getSectionTitle(),
+                    1,
+                    null,
+                    PARSER_NAME,
+                    PARSER_VERSION,
                     chunk.getSourceKind(),
-                    chunk.getTableId(),
-                    chunk.getFigureId(),
-                    chunk.getFormulaId(),
+                    null,
+                    null,
+                    null,
                     chunk.getEvidenceRole(),
                     placeholderVector(),
                     MODEL_VERSION,
-                    options.userId(),
-                    options.orgTag(),
-                    options.isPublic()
+                    "eval-qasper-user",
+                    "eval-qasper",
+                    true
             );
             document.setRetrievalTextContent(retrievalText(paper, chunk));
             documents.add(document);
@@ -234,9 +226,9 @@ public class QasperPaperLoomImporter {
     }
 
     private void clearExistingPaper(String paperId) {
-        elasticsearchService.deleteByPaperId(paperId);
-        paperTextChunkRepository.deleteByPaperId(paperId);
-        paperRepository.deleteByPaperId(paperId);
+        evalCorpusIndexService.deleteByPaperId(CORPUS, paperId);
+        evalChunkRepository.deleteByCorpusAndPaperId(CORPUS, paperId);
+        evalPaperRepository.deleteByCorpusAndPaperId(CORPUS, paperId);
     }
 
     private static String originalFilename(PaperPageChunk chunk, String importedPaperId) {
@@ -261,16 +253,30 @@ public class QasperPaperLoomImporter {
         return "abstract".equalsIgnoreCase(sectionTitle) ? "PAPER_METADATA" : "FULL_TEXT";
     }
 
-    private static String retrievalText(Paper paper, PaperTextChunk chunk) {
+    private static String retrievalText(EvalPaper paper, EvalChunk chunk) {
+        return retrievalText(paper.getTitle(), chunk.getSectionTitle(), chunk.getSourceKind(), chunk.getEvidenceRole(), chunk.getTextContent());
+    }
+
+    private static String retrievalText(String title,
+                                        String sectionTitle,
+                                        String sourceKind,
+                                        String evidenceRole,
+                                        String text) {
         List<String> parts = new ArrayList<>();
-        append(parts, "title", paper.getPaperTitle());
-        append(parts, "filename", paper.getOriginalFilename());
+        append(parts, "title", title);
+        append(parts, "section", sectionTitle);
+        append(parts, "source", sourceKind);
+        append(parts, "evidence", evidenceRole);
+        append(parts, "text", text);
+        return String.join("\n", parts);
+    }
+
+    private static String paperSearchText(EvalPaper paper) {
+        List<String> parts = new ArrayList<>();
+        append(parts, "title", paper.getTitle());
+        append(parts, "filename", paper.getSourceJson());
         append(parts, "abstract", paper.getAbstractText());
         append(parts, "arxiv", paper.getArxivId());
-        append(parts, "section", chunk.getSectionTitle());
-        append(parts, "source", chunk.getSourceKind());
-        append(parts, "evidence", chunk.getEvidenceRole());
-        append(parts, "text", chunk.getTextContent());
         return String.join("\n", parts);
     }
 
@@ -307,25 +313,20 @@ public class QasperPaperLoomImporter {
     }
 
     public record Options(
-            String userId,
-            String orgTag,
-            boolean isPublic,
             String evalSplit,
             String paperIdPrefix
     ) {
-        public Options(String userId, String orgTag, boolean isPublic, String evalSplit) {
-            this(userId, orgTag, isPublic, evalSplit, DATASET_PREFIX);
+        public Options(String evalSplit) {
+            this(evalSplit, DATASET_PREFIX);
         }
 
         public Options {
-            userId = userId == null || userId.isBlank() ? "eval-qasper-user" : userId;
-            orgTag = orgTag == null || orgTag.isBlank() ? "eval-qasper" : orgTag;
             evalSplit = evalSplit == null || evalSplit.isBlank() ? "dev" : evalSplit;
             paperIdPrefix = paperIdPrefix == null || paperIdPrefix.isBlank() ? DATASET_PREFIX : paperIdPrefix;
         }
 
         public static Options defaults() {
-            return new Options("eval-qasper-user", "eval-qasper", true, "dev", DATASET_PREFIX);
+            return new Options("dev", DATASET_PREFIX);
         }
     }
 

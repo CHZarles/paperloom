@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LitSearchPaperLoomImportCliTest {
@@ -24,16 +24,14 @@ class LitSearchPaperLoomImportCliTest {
         assertTrue(args.contains("--spring.jpa.show-sql=false"));
         assertTrue(args.contains("--logging.level.root=WARN"));
         assertTrue(args.contains("--logging.level.org.hibernate.SQL=WARN"));
-        assertTrue(args.contains("--logging.level.com.yizhaoqi.smartpai.service.ElasticsearchService=WARN"));
+        assertTrue(args.contains("--logging.level.com.yizhaoqi.smartpai.eval.EvalCorpusIndexService=WARN"));
     }
 
     @Test
-    void parsesImportOptionsForEvalScopedLitSearchRows() {
+    void parsesImportOptionsForEvalLitSearchCorpus() {
         LitSearchPaperLoomImportCli.Options options = LitSearchPaperLoomImportCli.Options.parse(new String[]{
                 "--corpus", "eval/rag/litsearch/generated/litsearch-corpus-clean-sample-20.jsonl",
-                "--user-id", "eval-user",
-                "--org-tag", "eval-litsearch",
-                "--public", "false",
+                "--retrieval-corpus", "EVAL_LITSEARCH",
                 "--start-offset", "1000",
                 "--limit", "20",
                 "--max-chunk-characters", "1200",
@@ -42,9 +40,7 @@ class LitSearchPaperLoomImportCliTest {
         });
 
         assertEquals(Path.of("eval/rag/litsearch/generated/litsearch-corpus-clean-sample-20.jsonl"), options.corpusPath());
-        assertEquals("eval-user", options.userId());
-        assertEquals("eval-litsearch", options.orgTag());
-        assertFalse(options.isPublic());
+        assertEquals(RetrievalCorpus.EVAL_LITSEARCH, options.retrievalCorpus());
         assertEquals(1000, options.startOffset());
         assertEquals(20, options.limit());
         assertEquals(1200, options.maxChunkCharacters());
@@ -53,18 +49,25 @@ class LitSearchPaperLoomImportCliTest {
     }
 
     @Test
-    void defaultsToEvalLitSearchImportMarkers() {
-        LitSearchPaperLoomImportCli.Options options = LitSearchPaperLoomImportCli.Options.parse(new String[]{
-                "--corpus", "sample.jsonl"
-        });
+    void refusesMissingRetrievalCorpus() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                LitSearchPaperLoomImportCli.Options.parse(new String[]{
+                        "--corpus", "sample.jsonl"
+                })
+        );
 
-        assertEquals("eval-litsearch-user", options.userId());
-        assertEquals("eval-litsearch", options.orgTag());
-        assertTrue(options.isPublic());
-        assertEquals(0, options.startOffset());
-        assertEquals(0, options.limit());
-        assertEquals(1800, options.maxChunkCharacters());
-        assertEquals("full", options.evalSplit());
-        assertEquals(500, options.indexBatchSize());
+        assertTrue(error.getMessage().contains("Missing --retrieval-corpus"));
+    }
+
+    @Test
+    void refusesNonLitSearchRetrievalCorpus() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                LitSearchPaperLoomImportCli.Options.parse(new String[]{
+                        "--corpus", "sample.jsonl",
+                        "--retrieval-corpus", "PRODUCT_LIBRARY"
+                })
+        );
+
+        assertTrue(error.getMessage().contains("EVAL_LITSEARCH"));
     }
 }

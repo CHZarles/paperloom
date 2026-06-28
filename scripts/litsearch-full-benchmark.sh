@@ -118,9 +118,11 @@ url = env.get("SPRING_DATASOURCE_URL", "")
 match = re.search(r"jdbc:mysql://([^/:?]+)(?::(\d+))?/([^?]+)", url)
 db = match.group(3) if match else "PaiSmart"
 query = (
-    "select eval_split, count(*) as papers, coalesce(sum(actual_chunk_count),0) as chunks "
-    "from file_upload where is_eval=1 and source_dataset='litsearch' "
-    "group by eval_split order by eval_split;"
+    "select p.split, count(distinct p.id) as papers, count(c.id) as chunks "
+    "from paperloom_eval.eval_papers p "
+    "left join paperloom_eval.eval_chunks c on c.corpus=p.corpus and c.paper_id=p.paper_id "
+    "where p.corpus='litsearch' "
+    "group by p.split order by p.split;"
 )
 cmd = [
     "docker", "exec",
@@ -232,8 +234,8 @@ start_benchmark() {
       --run-id "$RUN_ID" \
       --started-at "$STARTED_AT" \
       --user-id eval-litsearch-user \
+      --retrieval-corpus EVAL_LITSEARCH \
       --scope-imported-only true \
-      --source-dataset litsearch \
       --eval-split full \
       --top-k 20
   ' bash "$MAIN_ROOT" "$(classpath)" "$GOLD" "$retrieved" "$RUNS_ROOT" "$REGISTRY" "$CHEATSHEET" "$run_id" "$started_at" >> "$LOG" 2>&1 &

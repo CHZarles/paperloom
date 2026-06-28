@@ -3,11 +3,10 @@ package com.yizhaoqi.smartpai.eval;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
-import com.yizhaoqi.smartpai.model.Paper;
-import com.yizhaoqi.smartpai.model.PaperTextChunk;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.service.ElasticsearchService;
+import com.yizhaoqi.smartpai.eval.model.EvalChunk;
+import com.yizhaoqi.smartpai.eval.model.EvalPaper;
+import com.yizhaoqi.smartpai.eval.repository.EvalChunkRepository;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -22,6 +21,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,25 +33,25 @@ class LitSearchPaperLoomImporterTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Mock
-    private PaperRepository paperRepository;
+    private EvalPaperRepository evalPaperRepository;
 
     @Mock
-    private PaperTextChunkRepository paperTextChunkRepository;
+    private EvalChunkRepository evalChunkRepository;
 
     @Mock
-    private ElasticsearchService elasticsearchService;
+    private EvalCorpusIndexService evalCorpusIndexService;
 
     @TempDir
     private Path tempDir;
 
     @Test
-    void importsLitSearchPaperRowsAsEvalScopedPaperLoomRowsAndSearchDocuments() {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    void importsLitSearchPaperRowsIntoEvalSchemaAndEvalSearchIndices() {
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         LitSearchPaperLoomImporter importer = new LitSearchPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
         LitSearchPaperDocument paper = new LitSearchPaperDocument(
                 "gold-1",
@@ -63,35 +63,31 @@ class LitSearchPaperLoomImporterTest {
 
         LitSearchPaperLoomImporter.ImportSummary summary = importer.importPapers(
                 List.of(paper),
-                new LitSearchPaperLoomImporter.Options("eval-user", "eval-litsearch", true, 80, "dev-sample")
+                new LitSearchPaperLoomImporter.Options("dev-sample", 80, 500)
         );
 
         assertEquals(1, summary.paperCount());
         assertEquals(2, summary.chunkCount());
 
-        ArgumentCaptor<Paper> paperCaptor = ArgumentCaptor.forClass(Paper.class);
-        verify(paperRepository).save(paperCaptor.capture());
-        Paper savedPaper = paperCaptor.getValue();
+        ArgumentCaptor<EvalPaper> paperCaptor = ArgumentCaptor.forClass(EvalPaper.class);
+        verify(evalPaperRepository).save(paperCaptor.capture());
+        EvalPaper savedPaper = paperCaptor.getValue();
+        assertEquals("litsearch", savedPaper.getCorpus());
+        assertEquals("dev-sample", savedPaper.getSplit());
+        assertEquals("gold-1", savedPaper.getExternalPaperId());
         assertEquals("litsearch:gold-1", savedPaper.getPaperId());
-        assertEquals("litsearch:gold-1.json", savedPaper.getOriginalFilename());
-        assertEquals("Post-hoc Hallucination Detection", savedPaper.getPaperTitle());
+        assertEquals("Post-hoc Hallucination Detection", savedPaper.getTitle());
         assertEquals("Detects hallucinations after generation.", savedPaper.getAbstractText());
-        assertEquals("eval-user", savedPaper.getUserId());
-        assertEquals("eval-litsearch", savedPaper.getOrgTag());
-        assertTrue(savedPaper.isPublic());
-        assertTrue(savedPaper.isEval());
-        assertEquals("litsearch", savedPaper.getSourceDataset());
-        assertEquals("gold-1", savedPaper.getExternalCorpusId());
-        assertEquals("dev-sample", savedPaper.getEvalSplit());
-        assertEquals(Paper.STATUS_COMPLETED, savedPaper.getStatus());
-        assertEquals(Paper.VECTORIZATION_STATUS_COMPLETED, savedPaper.getVectorizationStatus());
-        assertEquals(2, savedPaper.getActualChunkCount());
+        assertEquals("The full paper discusses evidence retrieval and claim verification.", savedPaper.getFullText());
+        assertTrue(savedPaper.getSourceJson().contains("gold-1"));
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<PaperTextChunk>> chunksCaptor = ArgumentCaptor.forClass(List.class);
-        verify(paperTextChunkRepository).saveAll(chunksCaptor.capture());
-        List<PaperTextChunk> chunks = chunksCaptor.getValue();
+        ArgumentCaptor<List<EvalChunk>> chunksCaptor = ArgumentCaptor.forClass(List.class);
+        verify(evalChunkRepository).saveAll(chunksCaptor.capture());
+        List<EvalChunk> chunks = chunksCaptor.getValue();
         assertEquals(2, chunks.size());
+        assertEquals("litsearch", chunks.get(0).getCorpus());
+        assertEquals("dev-sample", chunks.get(0).getSplit());
         assertEquals("litsearch:gold-1", chunks.get(0).getPaperId());
         assertEquals(1, chunks.get(0).getChunkId());
         assertEquals("Abstract", chunks.get(0).getSectionTitle());
@@ -103,7 +99,7 @@ class LitSearchPaperLoomImporterTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<PaperSearchDocument>> paperDocumentsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(elasticsearchService).bulkIndexPaperSearch(paperDocumentsCaptor.capture());
+        verify(evalCorpusIndexService).bulkIndexPaperSearch(eq("litsearch"), paperDocumentsCaptor.capture());
         PaperSearchDocument paperSearchDocument = paperDocumentsCaptor.getValue().get(0);
         assertEquals("litsearch:gold-1", paperSearchDocument.getPaperId());
         assertEquals("Post-hoc Hallucination Detection", paperSearchDocument.getPaperTitle());
@@ -111,7 +107,7 @@ class LitSearchPaperLoomImporterTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<PaperChunkDocument>> chunkDocumentsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(elasticsearchService).bulkIndex(chunkDocumentsCaptor.capture());
+        verify(evalCorpusIndexService).bulkIndexChunks(eq("litsearch"), chunkDocumentsCaptor.capture());
         List<PaperChunkDocument> chunkDocuments = chunkDocumentsCaptor.getValue();
         assertEquals(2, chunkDocuments.size());
         assertEquals("litsearch:gold-1", chunkDocuments.get(0).getPaperId());
@@ -122,13 +118,13 @@ class LitSearchPaperLoomImporterTest {
     }
 
     @Test
-    void clearsExistingEvalRowsAndSearchDocumentsBeforeImportingPaper() {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    void clearsExistingEvalRowsAndEvalSearchDocumentsBeforeImportingPaper() {
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         LitSearchPaperLoomImporter importer = new LitSearchPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
         LitSearchPaperDocument paper = new LitSearchPaperDocument(
                 "gold-1",
@@ -140,24 +136,24 @@ class LitSearchPaperLoomImporterTest {
 
         importer.importPapers(
                 List.of(paper),
-                new LitSearchPaperLoomImporter.Options("eval-user", "eval-litsearch", true, 80, "dev-sample")
+                new LitSearchPaperLoomImporter.Options("dev-sample", 80, 500)
         );
 
-        var inOrder = inOrder(elasticsearchService, paperTextChunkRepository, paperRepository);
-        inOrder.verify(elasticsearchService).deleteByPaperId("litsearch:gold-1");
-        inOrder.verify(paperTextChunkRepository).deleteByPaperId("litsearch:gold-1");
-        inOrder.verify(paperRepository).deleteByPaperId("litsearch:gold-1");
-        inOrder.verify(paperRepository).save(any(Paper.class));
+        var inOrder = inOrder(evalCorpusIndexService, evalChunkRepository, evalPaperRepository);
+        inOrder.verify(evalCorpusIndexService).deleteByPaperId("litsearch", "litsearch:gold-1");
+        inOrder.verify(evalChunkRepository).deleteByCorpusAndPaperId("litsearch", "litsearch:gold-1");
+        inOrder.verify(evalPaperRepository).deleteByCorpusAndPaperId("litsearch", "litsearch:gold-1");
+        inOrder.verify(evalPaperRepository).save(any(EvalPaper.class));
     }
 
     @Test
     void indexesSearchAndChunkDocumentsInBatches() {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         LitSearchPaperLoomImporter importer = new LitSearchPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
 
         importer.importPapers(
@@ -166,50 +162,43 @@ class LitSearchPaperLoomImporterTest {
                         paper("p2"),
                         paper("p3")
                 ),
-                new LitSearchPaperLoomImporter.Options(
-                        "eval-user",
-                        "eval-litsearch",
-                        true,
-                        80,
-                        "service-slice",
-                        2
-                )
+                new LitSearchPaperLoomImporter.Options("service-slice", 80, 2)
         );
 
-        verify(elasticsearchService, times(2)).bulkIndexPaperSearch(any());
-        verify(elasticsearchService, times(3)).bulkIndex(any());
+        verify(evalCorpusIndexService, times(2)).bulkIndexPaperSearch(any(), any());
+        verify(evalCorpusIndexService, times(3)).bulkIndexChunks(any(), any());
     }
 
     @Test
     void importsJsonlCorpusFromPathWithoutPreloadingWholeDataset() throws Exception {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         Path corpus = tempDir.resolve("litsearch-corpus.jsonl");
         Files.write(corpus, List.of(
                 OBJECT_MAPPER.writeValueAsString(paper("p1")),
                 OBJECT_MAPPER.writeValueAsString(paper("p2"))
         ));
         LitSearchPaperLoomImporter importer = new LitSearchPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
 
         LitSearchPaperLoomImporter.ImportSummary summary = importer.importJsonl(
                 corpus,
-                new LitSearchPaperLoomImporter.Options("eval-user", "eval-litsearch", true, 80, "full")
+                new LitSearchPaperLoomImporter.Options("full", 80, 500)
         );
 
         assertEquals(2, summary.paperCount());
         assertEquals(4, summary.chunkCount());
-        verify(paperRepository, times(2)).save(any(Paper.class));
-        verify(paperTextChunkRepository, times(2)).saveAll(any());
+        verify(evalPaperRepository, times(2)).save(any(EvalPaper.class));
+        verify(evalChunkRepository, times(2)).saveAll(any());
     }
 
     @Test
     void importsOnlyRequestedJsonlWindow() throws Exception {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         Path corpus = tempDir.resolve("litsearch-corpus-window.jsonl");
         Files.write(corpus, List.of(
                 OBJECT_MAPPER.writeValueAsString(paper("p1")),
@@ -217,32 +206,32 @@ class LitSearchPaperLoomImporterTest {
                 OBJECT_MAPPER.writeValueAsString(paper("p3"))
         ));
         LitSearchPaperLoomImporter importer = new LitSearchPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
 
         LitSearchPaperLoomImporter.ImportSummary summary = importer.importJsonl(
                 corpus,
-                new LitSearchPaperLoomImporter.Options("eval-user", "eval-litsearch", true, 80, "full"),
+                new LitSearchPaperLoomImporter.Options("full", 80, 500),
                 1,
                 1
         );
 
         assertEquals(1, summary.paperCount());
-        ArgumentCaptor<Paper> paperCaptor = ArgumentCaptor.forClass(Paper.class);
-        verify(paperRepository).save(paperCaptor.capture());
+        ArgumentCaptor<EvalPaper> paperCaptor = ArgumentCaptor.forClass(EvalPaper.class);
+        verify(evalPaperRepository).save(paperCaptor.capture());
         assertEquals("litsearch:p2", paperCaptor.getValue().getPaperId());
     }
 
     @Test
-    void truncatesDatabaseTitleWhileKeepingFullTitleInSearchDocument() {
-        when(paperRepository.save(any(Paper.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(paperTextChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    void keepsFullTitleInEvalRowsAndSearchDocument() {
+        when(evalPaperRepository.save(any(EvalPaper.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(evalChunkRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         LitSearchPaperLoomImporter importer = new LitSearchPaperLoomImporter(
-                paperRepository,
-                paperTextChunkRepository,
-                elasticsearchService
+                evalPaperRepository,
+                evalChunkRepository,
+                evalCorpusIndexService
         );
         String longTitle = "A".repeat(255) + " UNIQUE_LONG_TITLE_SUFFIX";
 
@@ -254,16 +243,16 @@ class LitSearchPaperLoomImporterTest {
                         "Body",
                         List.of()
                 )),
-                new LitSearchPaperLoomImporter.Options("eval-user", "eval-litsearch", true, 80, "service-slice")
+                new LitSearchPaperLoomImporter.Options("service-slice", 80, 500)
         );
 
-        ArgumentCaptor<Paper> paperCaptor = ArgumentCaptor.forClass(Paper.class);
-        verify(paperRepository).save(paperCaptor.capture());
-        assertEquals(255, paperCaptor.getValue().getPaperTitle().length());
+        ArgumentCaptor<EvalPaper> paperCaptor = ArgumentCaptor.forClass(EvalPaper.class);
+        verify(evalPaperRepository).save(paperCaptor.capture());
+        assertTrue(paperCaptor.getValue().getTitle().contains("UNIQUE_LONG_TITLE_SUFFIX"));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<PaperSearchDocument>> paperDocumentsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(elasticsearchService).bulkIndexPaperSearch(paperDocumentsCaptor.capture());
+        verify(evalCorpusIndexService).bulkIndexPaperSearch(eq("litsearch"), paperDocumentsCaptor.capture());
         assertTrue(paperDocumentsCaptor.getValue().get(0).getSearchText().contains("UNIQUE_LONG_TITLE_SUFFIX"));
     }
 

@@ -2,9 +2,8 @@ package com.yizhaoqi.smartpai.eval;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.SmartPaiApplication;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
-import com.yizhaoqi.smartpai.service.ElasticsearchService;
+import com.yizhaoqi.smartpai.eval.repository.EvalChunkRepository;
+import com.yizhaoqi.smartpai.eval.repository.EvalPaperRepository;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -44,14 +43,11 @@ public final class QasperPaperLoomImportCli {
             List<PaperPageChunk> chunks = loadChunks(options.chunksPath());
             chunks = limitPapers(chunks, options.limitPapers());
             QasperPaperLoomImporter importer = new QasperPaperLoomImporter(
-                    context.getBean(PaperRepository.class),
-                    context.getBean(PaperTextChunkRepository.class),
-                    context.getBean(ElasticsearchService.class)
+                    context.getBean(EvalPaperRepository.class),
+                    context.getBean(EvalChunkRepository.class),
+                    context.getBean(EvalCorpusIndexService.class)
             );
             QasperPaperLoomImporter.Options importOptions = new QasperPaperLoomImporter.Options(
-                    options.userId(),
-                    options.orgTag(),
-                    options.isPublic(),
                     options.evalSplit()
             );
             QasperPaperLoomImporter.ImportSummary summary = importer.importChunks(chunks, importOptions);
@@ -133,9 +129,7 @@ public final class QasperPaperLoomImportCli {
             Path chunksPath,
             Path ragCasesPath,
             Path casesOutputPath,
-            String userId,
-            String orgTag,
-            boolean isPublic,
+            RetrievalCorpus retrievalCorpus,
             int limitPapers,
             String evalSplit
     ) {
@@ -155,9 +149,7 @@ public final class QasperPaperLoomImportCli {
                     Path.of(required(values, "chunks")),
                     optionalPath(values.get("rag-cases")),
                     optionalPath(values.get("cases-output")),
-                    values.getOrDefault("user-id", "eval-qasper-user"),
-                    values.getOrDefault("org-tag", "eval-qasper"),
-                    Boolean.parseBoolean(values.getOrDefault("public", "true")),
+                    requiredCorpus(values, RetrievalCorpus.EVAL_QASPER),
                     Integer.parseInt(values.getOrDefault("limit-papers", "0")),
                     values.getOrDefault("eval-split", "dev")
             );
@@ -173,6 +165,20 @@ public final class QasperPaperLoomImportCli {
                 throw new IllegalArgumentException("Missing --" + key);
             }
             return value;
+        }
+
+        private static RetrievalCorpus requiredCorpus(Map<String, String> values, RetrievalCorpus expected) {
+            String value = required(values, "retrieval-corpus");
+            RetrievalCorpus corpus;
+            try {
+                corpus = RetrievalCorpus.valueOf(value);
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("--retrieval-corpus must be " + expected);
+            }
+            if (corpus != expected) {
+                throw new IllegalArgumentException("--retrieval-corpus must be " + expected);
+            }
+            return corpus;
         }
     }
 }

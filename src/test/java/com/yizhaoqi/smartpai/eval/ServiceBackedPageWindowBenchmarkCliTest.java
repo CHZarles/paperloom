@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -53,6 +54,7 @@ class ServiceBackedPageWindowBenchmarkCliTest {
                         "--run-id", "service-page-window-product",
                         "--started-at", "2026-06-24T20:30:00Z",
                         "--user-id", "eval-user",
+                        "--retrieval-corpus", "PRODUCT_LIBRARY",
                         "--top-k", "5",
                         "--window-radius", "2",
                         "--query-planner", "scientific-qa",
@@ -68,6 +70,7 @@ class ServiceBackedPageWindowBenchmarkCliTest {
         assertEquals("service-page-window-product", options.runId());
         assertEquals("2026-06-24T20:30:00Z", options.startedAt());
         assertEquals("eval-user", options.userId());
+        assertEquals(RetrievalCorpus.PRODUCT_LIBRARY, options.retrievalCorpus());
         assertEquals(RetrievalBudget.forQa(), options.budget());
         assertEquals(5, options.topK());
         assertEquals(2, options.windowRadius());
@@ -80,6 +83,7 @@ class ServiceBackedPageWindowBenchmarkCliTest {
         ServiceBackedPageWindowBenchmarkCli.Options options =
                 ServiceBackedPageWindowBenchmarkCli.Options.parse(new String[]{
                         "--cases", "cases.jsonl",
+                        "--retrieval-corpus", "PRODUCT_LIBRARY",
                         "--started-at", "2026-06-24T20:35:00Z"
                 });
 
@@ -90,10 +94,49 @@ class ServiceBackedPageWindowBenchmarkCliTest {
         assertEquals("product-rescue-smoke", options.datasetId());
         assertEquals("2026-06-24T203500Z-service-backed-page-window-product-rescue-smoke", options.runId());
         assertEquals("eval-page-window-user", options.userId());
+        assertEquals(RetrievalCorpus.PRODUCT_LIBRARY, options.retrievalCorpus());
         assertEquals(3, options.topK());
         assertEquals(1, options.windowRadius());
         assertEquals("scientific-qa", options.queryPlanner());
         assertEquals("first-stage", options.candidateSource());
+    }
+
+    @Test
+    void parsesQasperPageWindowRunOnlyWithEvalQasperCorpus() {
+        ServiceBackedPageWindowBenchmarkCli.Options options =
+                ServiceBackedPageWindowBenchmarkCli.Options.parse(new String[]{
+                        "--cases", "eval/rag/qasper/generated/qasper-dev-200-service-cases.jsonl",
+                        "--dataset-id", "qasper-dev-200",
+                        "--retrieval-corpus", "EVAL_QASPER",
+                        "--started-at", "2026-06-24T20:35:00Z"
+                });
+
+        assertEquals("qasper-dev-200", options.datasetId());
+        assertEquals(RetrievalCorpus.EVAL_QASPER, options.retrievalCorpus());
+    }
+
+    @Test
+    void refusesMissingRetrievalCorpus() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                ServiceBackedPageWindowBenchmarkCli.Options.parse(new String[]{
+                        "--cases", "cases.jsonl"
+                })
+        );
+
+        assertTrue(error.getMessage().contains("Missing --retrieval-corpus"));
+    }
+
+    @Test
+    void refusesProductLibraryForQasperBenchmark() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () ->
+                ServiceBackedPageWindowBenchmarkCli.Options.parse(new String[]{
+                        "--cases", "cases.jsonl",
+                        "--dataset-id", "qasper-dev-200",
+                        "--retrieval-corpus", "PRODUCT_LIBRARY"
+                })
+        );
+
+        assertTrue(error.getMessage().contains("EVAL_QASPER"));
     }
 
     @Test
@@ -149,6 +192,7 @@ class ServiceBackedPageWindowBenchmarkCliTest {
                         "service-page-window-product",
                         "2026-06-24T20:40:00Z",
                         "eval-user",
+                        RetrievalCorpus.PRODUCT_LIBRARY,
                         budget,
                         3,
                         1,
