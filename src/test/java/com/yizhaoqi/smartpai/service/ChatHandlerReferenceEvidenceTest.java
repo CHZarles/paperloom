@@ -360,6 +360,51 @@ class ChatHandlerReferenceEvidenceTest {
     }
 
     @Test
+    void persistedReferenceProvenanceOverridesConflictingClientChunkAndPage() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationService.findReferenceDetail(1L, 10L, 1))
+                .thenReturn(Optional.of(referenceDetail(
+                        "paper-a",
+                        "Resolved Paper paper-a",
+                        "paper-a.pdf",
+                        7,
+                        3,
+                        "Persisted matched chunk for paper-a"
+                )));
+        PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                1,
+                10L,
+                99,
+                42,
+                "paper-a",
+                "Paper A",
+                "paper-a.pdf",
+                null,
+                null,
+                null,
+                RetrievalBudgetProfile.INTERACTIVE
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain saved reference", referenceFocus),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("Explain saved reference"), scopeCaptor.capture());
+        PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
+        assertEquals(7, answerScope.chunkId());
+        assertEquals(3, answerScope.pageNumber());
+    }
+
+    @Test
     void referenceFocusFromPersistedRecordInsideLockedScopeIsEnrichedBeforeAnswering() {
         ChatHandlerFixture fixture = chatHandlerFixture();
         ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
