@@ -38,6 +38,7 @@ const formVisible = ref(false);
 const formLoading = ref(false);
 const formMode = ref<'create' | 'edit'>('create');
 const formModel = ref<CollectionFormModel>(createDefaultForm());
+const editingCollectionId = ref<number | null>(null);
 
 const addVisible = ref(false);
 const addQuery = ref('');
@@ -174,6 +175,7 @@ async function openDetail(collection: Api.PaperCollection.Item) {
 function openCreateForm() {
   formMode.value = 'create';
   formModel.value = createDefaultForm();
+  editingCollectionId.value = null;
   formVisible.value = true;
 }
 
@@ -186,6 +188,7 @@ function openEditForm(collection: Api.PaperCollection.Item) {
     visibility: collection.visibility,
     orgTag: collection.orgTag || null
   };
+  editingCollectionId.value = collection.id;
   formVisible.value = true;
 }
 
@@ -208,7 +211,7 @@ async function submitForm() {
   const requestResult =
     formMode.value === 'create'
       ? await createPaperCollection(payload)
-      : await updatePaperCollection(selectedCollectionId.value!, payload);
+      : await updatePaperCollection(editingCollectionId.value!, payload);
   formLoading.value = false;
 
   if (requestResult.error) return;
