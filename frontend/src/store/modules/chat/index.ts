@@ -221,10 +221,18 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     currentScope.value = null;
     referenceFocus.value = null;
     if (previousConversationId) {
-      await switchSession(previousConversationId);
-      list.value = previousList;
-      currentScope.value = previousScope;
-      referenceFocus.value = previousReferenceFocus;
+      const restored = await switchSession(previousConversationId);
+      if (restored) {
+        list.value = previousList;
+        currentScope.value = previousScope;
+        referenceFocus.value = previousReferenceFocus;
+      } else {
+        list.value = [];
+        await loadSessions();
+      }
+    } else {
+      list.value = [];
+      await loadSessions();
     }
     return false;
   }
@@ -250,20 +258,21 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
 
   async function switchSession(targetConversationId: string) {
     if (targetConversationId === conversationId.value) {
-      return;
+      return true;
     }
     const { error } = await request({
       url: `users/conversations/${targetConversationId}/switch`,
       method: 'PUT'
     });
     if (error) {
-      return;
+      return false;
     }
     conversationId.value = targetConversationId;
     list.value = [];
     referenceFocus.value = null;
     await loadConversationScope(targetConversationId);
     await loadMessages(targetConversationId);
+    return true;
   }
 
   async function loadMessages(targetConversationId?: string) {
