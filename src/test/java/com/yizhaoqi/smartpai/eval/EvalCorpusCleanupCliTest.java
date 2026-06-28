@@ -74,6 +74,7 @@ class EvalCorpusCleanupCliTest {
         assertTrue(text.contains("paper_text_chunks rows: 1480777"));
         assertTrue(text.contains("product paper_search docs: 64254"));
         assertTrue(text.contains("legacy eval columns: 4"));
+        assertTrue(text.contains("product eval tables: 4"));
     }
 
     @Test
@@ -128,6 +129,7 @@ class EvalCorpusCleanupCliTest {
                     12,
                     64254,
                     1480777,
+                    4,
                     4
             );
         }

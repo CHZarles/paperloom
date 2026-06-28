@@ -14,7 +14,7 @@ import lombok.Data;
 @Entity
 @Table(
         name = "eval_queries",
-        schema = "paperloom_eval",
+        catalog = "paperloom_eval",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_eval_queries_corpus_query", columnNames = {"corpus", "split", "query_id"})
         },

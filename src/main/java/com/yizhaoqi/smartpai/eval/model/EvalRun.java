@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "eval_runs",
-        schema = "paperloom_eval",
+        catalog = "paperloom_eval",
         indexes = {
                 @Index(name = "idx_eval_runs_corpus_split", columnList = "corpus,split"),
                 @Index(name = "idx_eval_runs_created_at", columnList = "created_at")

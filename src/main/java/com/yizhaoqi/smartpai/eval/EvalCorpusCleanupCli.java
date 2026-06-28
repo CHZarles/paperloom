@@ -46,6 +46,12 @@ public final class EvalCorpusCleanupCli {
             "external_corpus_id",
             "eval_split"
     );
+    private static final List<String> STRAY_PRODUCT_EVAL_TABLES = List.of(
+            "eval_chunks",
+            "eval_papers",
+            "eval_queries",
+            "eval_runs"
+    );
 
     private EvalCorpusCleanupCli() {
     }
@@ -91,6 +97,7 @@ public final class EvalCorpusCleanupCli {
         output.println("product paper_search docs: " + counts.paperSearchDocs());
         output.println("product paper_chunks docs: " + counts.paperChunkDocs());
         output.println("legacy eval columns: " + counts.legacyEvalColumns());
+        output.println("product eval tables: " + counts.productEvalTables());
     }
 
     public interface CleanupStore {
@@ -112,7 +119,8 @@ public final class EvalCorpusCleanupCli {
             long conversationRows,
             long paperSearchDocs,
             long paperChunkDocs,
-            long legacyEvalColumns
+            long legacyEvalColumns,
+            long productEvalTables
     ) {
     }
 
@@ -196,7 +204,8 @@ public final class EvalCorpusCleanupCli {
                         countConversationRows(connection, options.sourceSchema(), prefixes),
                         productSearchStore.count(PRODUCT_PAPER_INDEX, prefixes),
                         productSearchStore.count(PRODUCT_CHUNK_INDEX, prefixes),
-                        countLegacyColumns(connection, options.sourceSchema())
+                        countLegacyColumns(connection, options.sourceSchema()),
+                        countProductEvalTables(connection, options.sourceSchema())
                 );
             } catch (SQLException exception) {
                 throw new IllegalStateException("Failed to count product eval cleanup targets", exception);
@@ -217,6 +226,7 @@ public final class EvalCorpusCleanupCli {
                 long papers = deletePrefixRowsInBatches(connection, options.sourceSchema(), "file_upload", "file_md5", prefixes);
                 long conversations = deleteConversationRows(connection, options.sourceSchema(), prefixes);
                 long droppedColumns = dropLegacyEvalColumns(connection, options.sourceSchema());
+                long droppedTables = dropProductEvalTables(connection, options.sourceSchema());
                 long paperDocs = productSearchStore.delete(PRODUCT_PAPER_INDEX, prefixes);
                 long chunkDocs = productSearchStore.delete(PRODUCT_CHUNK_INDEX, prefixes);
                 return new CleanupCounts(
@@ -232,7 +242,8 @@ public final class EvalCorpusCleanupCli {
                         conversations,
                         paperDocs,
                         chunkDocs,
-                        droppedColumns
+                        droppedColumns,
+                        droppedTables
                 );
             } catch (SQLException exception) {
                 throw new IllegalStateException("Failed to clean eval records from product corpus", exception);
@@ -487,6 +498,29 @@ public final class EvalCorpusCleanupCli {
         return dropped;
     }
 
+    private static long countProductEvalTables(Connection connection, String sourceSchema) throws SQLException {
+        long count = 0L;
+        for (String table : STRAY_PRODUCT_EVAL_TABLES) {
+            if (tableExists(connection, sourceSchema, table)) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+    private static long dropProductEvalTables(Connection connection, String sourceSchema) throws SQLException {
+        long dropped = 0L;
+        for (String table : STRAY_PRODUCT_EVAL_TABLES) {
+            if (tableExists(connection, sourceSchema, table)) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate("DROP TABLE " + quoteIdentifier(sourceSchema) + "." + quoteIdentifier(table));
+                    dropped += 1;
+                }
+            }
+        }
+        return dropped;
+    }
+
     private static boolean columnExists(Connection connection, String schema, String table, String column) throws SQLException {
         String sql = """
                 SELECT COUNT(*)
@@ -499,6 +533,23 @@ public final class EvalCorpusCleanupCli {
             statement.setString(1, schema);
             statement.setString(2, table);
             statement.setString(3, column);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getLong(1) > 0;
+            }
+        }
+    }
+
+    private static boolean tableExists(Connection connection, String schema, String table) throws SQLException {
+        String sql = """
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = ?
+                  AND TABLE_NAME = ?
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, schema);
+            statement.setString(2, table);
             try (ResultSet resultSet = statement.executeQuery()) {
                 resultSet.next();
                 return resultSet.getLong(1) > 0;

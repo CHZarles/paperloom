@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "eval_papers",
-        schema = "paperloom_eval",
+        catalog = "paperloom_eval",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_eval_papers_corpus_paper", columnNames = {"corpus", "paper_id"})
         },

@@ -14,7 +14,7 @@ import lombok.Data;
 @Entity
 @Table(
         name = "eval_chunks",
-        schema = "paperloom_eval",
+        catalog = "paperloom_eval",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_eval_chunks_corpus_paper_chunk", columnNames = {"corpus", "paper_id", "chunk_id"})
         },

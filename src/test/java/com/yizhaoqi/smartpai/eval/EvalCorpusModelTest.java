@@ -29,6 +29,6 @@ class EvalCorpusModelTest {
     private static void assertTable(Class<?> entityClass, String tableName) {
         Table table = entityClass.getAnnotation(Table.class);
         assertEquals(tableName, table.name());
-        assertEquals("paperloom_eval", table.schema());
+        assertEquals("paperloom_eval", table.catalog());
     }
 }
