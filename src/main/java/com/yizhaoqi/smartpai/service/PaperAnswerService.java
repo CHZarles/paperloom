@@ -471,6 +471,7 @@ public class PaperAnswerService {
         if (intent == Intent.REFERENCE_QA) {
             return SourceScope.reference(referenceNumberFor(scope, userMessage),
                     scope == null ? null : scope.conversationRecordId(),
+                    scope == null ? List.of() : scope.paperIds(),
                     budgetProfile);
         }
         if (scope != null && !scope.paperIds().isEmpty()) {

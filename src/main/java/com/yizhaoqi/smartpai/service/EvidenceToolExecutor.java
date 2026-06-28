@@ -151,8 +151,15 @@ public class EvidenceToolExecutor {
         if (detail.isEmpty()) {
             return new EvidenceToolResult(PlannerActionType.INSPECT_REFERENCE, EvidenceLedger.empty(), "reference_not_found");
         }
-        EvidenceLedger ledger = evidenceLedgerService.fromSearchResults(
+        List<SearchResult> scopedResults = filterByScope(
                 List.of(referenceDetailToSearchResult(detail.get())),
+                scope.paperIds()
+        );
+        if (scopedResults.isEmpty() && !scope.paperIds().isEmpty()) {
+            return new EvidenceToolResult(PlannerActionType.INSPECT_REFERENCE, EvidenceLedger.empty(), "reference_out_of_scope");
+        }
+        EvidenceLedger ledger = evidenceLedgerService.fromSearchResults(
+                scopedResults,
                 qaBudget(scope)
         );
         return new EvidenceToolResult(PlannerActionType.INSPECT_REFERENCE, ledger, "");

@@ -51,4 +51,12 @@ public record SourceScope(
         return new SourceScope(ScopeMode.REFERENCE_SOURCE, List.of(), referenceNumber, conversationRecordId,
                 retrievalBudgetProfile);
     }
+
+    public static SourceScope reference(Integer referenceNumber,
+                                        Long conversationRecordId,
+                                        List<String> paperIds,
+                                        RetrievalBudgetProfile retrievalBudgetProfile) {
+        return new SourceScope(ScopeMode.REFERENCE_SOURCE, paperIds, referenceNumber, conversationRecordId,
+                retrievalBudgetProfile);
+    }
 }

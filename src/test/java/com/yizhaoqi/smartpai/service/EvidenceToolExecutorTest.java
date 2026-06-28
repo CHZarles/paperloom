@@ -132,6 +132,36 @@ class EvidenceToolExecutorTest {
     }
 
     @Test
+    void inspectReferenceRejectsResolvedDetailOutsideReferenceScope() {
+        ConversationService conversationService = mock(ConversationService.class);
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("paperId", "paper-b");
+        detail.put("paperTitle", "Title paper-b");
+        detail.put("originalFilename", "paper-b.pdf");
+        detail.put("matchedChunkText", "This reference belongs to a paper outside the locked source set.");
+        detail.put("chunkId", 7);
+        detail.put("pageNumber", 5);
+        when(conversationService.findLatestReferenceDetail(1L, "c1", 1)).thenReturn(Optional.of(detail));
+        EvidenceToolExecutor executor = new EvidenceToolExecutor(
+                mock(PaperRetrievalService.class),
+                mock(PaperService.class),
+                conversationService,
+                new EvidenceLedgerService()
+        );
+
+        EvidenceToolResult result = executor.execute(
+                "1",
+                "c1",
+                new PlannerAction(PlannerActionType.INSPECT_REFERENCE, "解释 [1]", "reference", List.of(), 1),
+                SourceScope.reference(1, null, List.of("paper-a"), RetrievalBudgetProfile.INTERACTIVE)
+        );
+
+        assertEquals("reference_out_of_scope", result.message());
+        assertEquals(0, result.ledger().evidence().size());
+        assertEquals(0, result.ledger().sourceSet().size());
+    }
+
+    @Test
     void inspectPageBuildsLedgerFromPageWindowChunks() {
         PaperPageWindowService pageWindowService = mock(PaperPageWindowService.class);
         SearchResult pageChunk = result("paper-a", 7, "Table 2 reports the benchmark result on page four.", 1.0);

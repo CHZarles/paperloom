@@ -675,6 +675,40 @@ class PaperAnswerServiceTest {
     }
 
     @Test
+    void referenceScopeWithoutUsableSeedDoesNotReturnOutOfScopeReinspectionEvidence() {
+        when(conversationService.findLatestReferenceDetail(1L, "c1", 1))
+                .thenReturn(java.util.Optional.of(Map.of(
+                        "paperId", "paper-b",
+                        "paperTitle", "Out of scope paper",
+                        "originalFilename", "paper-b.pdf",
+                        "matchedChunkText", "Out-of-scope persisted evidence must not be used.",
+                        "chunkId", 7,
+                        "pageNumber", 5
+                )));
+        PaperAnswerService.AnswerScope scope = new PaperAnswerService.AnswerScope(
+                List.of("paper-a"),
+                List.of("Title paper-a"),
+                1,
+                null,
+                null,
+                null,
+                "paper-a",
+                "Title paper-a",
+                "paper-a.pdf",
+                null,
+                null,
+                "TEXT"
+        );
+
+        PaperAnswerService.AnswerResult answer = service.answer("1", "c1", "解释 [1]", scope);
+
+        assertEquals(PaperAnswerService.Intent.CLARIFY, answer.intent());
+        assertEquals(0, answer.referenceMappings().size());
+        verify(conversationService).findLatestReferenceDetail(1L, "c1", 1);
+        verifyNoInteractions(retrievalService, llmProviderRouter);
+    }
+
+    @Test
     void answerScopeWithPaperIdsPreservesReferenceFocusAndBudget() {
         PaperAnswerService.AnswerScope incomingFocus = new PaperAnswerService.AnswerScope(
                 List.of("mutable-paper"),
