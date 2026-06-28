@@ -35,6 +35,9 @@ public class Conversation {
     @Column(name = "reference_mappings_json", columnDefinition = "LONGTEXT")
     private String referenceMappingsJson; // 助手回复对应的引用映射
 
+    @Column(name = "effective_scope_json", columnDefinition = "LONGTEXT")
+    private String effectiveScopeJson;
+
     @CreationTimestamp
     private LocalDateTime timestamp; // 对话时间戳
 }

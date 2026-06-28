@@ -34,6 +34,29 @@ public class ConversationSession {
     @Enumerated(EnumType.STRING)
     private SessionStatus status = SessionStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope_mode", nullable = false, length = 32)
+    private ConversationScopeMode scopeMode = ConversationScopeMode.AUTO_LIBRARY;
+
+    @Column(name = "scope_locked", nullable = false)
+    private boolean scopeLocked = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope_status", nullable = false, length = 32)
+    private ConversationScopeStatus scopeStatus = ConversationScopeStatus.READY;
+
+    @Column(name = "source_label", length = 255)
+    private String sourceLabel;
+
+    @Column(name = "source_recipe_json", columnDefinition = "LONGTEXT")
+    private String sourceRecipeJson;
+
+    @Column(name = "source_snapshot_json", columnDefinition = "LONGTEXT")
+    private String sourceSnapshotJson;
+
+    @Column(name = "source_paper_count")
+    private Integer sourcePaperCount;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
