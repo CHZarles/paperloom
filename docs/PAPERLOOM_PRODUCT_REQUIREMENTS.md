@@ -1,6 +1,6 @@
 # PaperLoom Product Requirements
 
-Status: user-confirmed on 2026-06-27.
+Status: user-confirmed on 2026-06-27; eval data isolation update confirmed on 2026-06-28.
 
 This document is an AI-visible product standard for future PaperLoom development. When old code,
 UI copy, or implementation shortcuts conflict with this document, treat this document as the product
@@ -38,31 +38,33 @@ Confirmed non-goals:
 - no production route hardcoding based on fixed phrases
 - no default page-location guessing before benchmarks justify it
 
-The product may recommend papers, but recommendations are limited to papers already uploaded,
-imported, and accessible to the current user.
+The product may recommend papers, but recommendations are limited to papers already uploaded from
+PDF, parsed, indexed, and accessible to the current user.
+
+Benchmark and eval corpora are not part of the product paper library. LitSearch, QASPER, PageIndex
+experiments, and similar structured datasets must live in an eval-only data domain and must not be
+returned by product paper search, source selection, chat retrieval, or chat history recovery.
 
 ## Accepted Literature Data
 
-Production input is research paper PDF.
+Production input is research paper PDF only.
 
 A production PDF should pass through parsing or OCR, structured extraction, chunking, indexing, and
 evidence-asset generation before the UI treats it as fully searchable and fully traceable.
 
-Structured literature data is allowed only for these cases:
+Structured literature data is not a product ingestion path. Benchmark or eval datasets such as
+QASPER and LitSearch must be stored in an isolated eval corpus, for example the `paperloom_eval`
+MySQL schema and eval-only Elasticsearch indices. Administrator-controlled structured batch import
+is not part of the current product; if it is needed later, it requires a separate PRD and a separate
+data-domain design rather than reuse of the product paper library.
 
-- benchmark or eval imports such as QASPER and LitSearch
-- administrator-controlled batch import of already structured paper data, such as title, abstract,
-  authors, full text, venue, year, DOI, arXiv id, or external corpus id
+Product tables must not contain eval-only columns such as `is_eval`, `source_dataset`,
+`external_corpus_id`, or `eval_split`. Product APIs must not expose `evalImport`,
+`structuredImport`, `EVAL_IMPORT`, or `STRUCTURED_IMPORT`.
 
-Structured imports must keep source provenance. They must not pretend to have PDF page screenshots,
-bounding boxes, table crops, or figure crops when those assets were not generated from a real PDF.
-
-Practical UI rule:
-
-- PDF-derived paper: may expose PDF preview, page evidence, bbox, table crop, figure crop, and parser
-  artifacts when present.
-- Structured or eval-imported paper: may expose metadata and text evidence, but must clearly mark
-  missing PDF/page/visual assets.
+Practical UI rule: product papers are PDF-derived papers. They may expose PDF preview, page
+evidence, bbox, table crop, figure crop, and parser artifacts when present. Missing product visual
+assets should be shown as missing PDF evidence, not as structured-import or eval-import state.
 
 ## Parser And OCR Policy
 
@@ -92,7 +94,8 @@ Required user-visible states include:
 - parsed but not indexed
 - indexing
 - searchable
-- partially available, for example structured import or missing visual assets
+- partially available because PDF visual assets, parser artifacts, table crops, or figure crops are
+  missing
 
 ## Retrieval Strategy
 
@@ -149,6 +152,10 @@ Policy:
 
 All retrieval must pass permission filtering.
 
+Product retrieval must use the product paper library only. Eval retrieval must select an explicit
+eval corpus such as `EVAL_LITSEARCH` or `EVAL_QASPER`. Do not add an `includeEval` switch to product
+controllers or product chat paths; eval data must be unreachable from those paths by construction.
+
 Routing must be semantic and state-aware. Debug-only hardcoded probes are acceptable during diagnosis,
 but production routing must not depend on a fixed list of phrases such as "有什么 agent 相关论文".
 
@@ -194,7 +201,6 @@ When a user clicks a citation, the UI should display the evidence type accuratel
 - table evidence: table text and table crop when available
 - figure or chart evidence: caption, related text, and figure crop when available
 - formula evidence: LaTeX, context, and page when available
-- structured or eval-import evidence: text evidence and metadata, with no fake PDF/page asset
 - missing visual asset: explicit "text evidence only" or equivalent state
 
 Reference follow-up must work from persisted referenceMappings after chat history is reloaded.
@@ -203,9 +209,14 @@ Reference follow-up must work from persisted referenceMappings after chat histor
 
 Benchmarks are layered. One layer must not be used to claim another layer's capability.
 
+Benchmark data must not share product tables or product Elasticsearch indices. Eval harnesses may
+reuse retrieval planning, query expansion, reranking, and metric logic, but they must read from
+eval-native tables and eval-only Elasticsearch indices and write run results to eval artifacts or
+`eval_runs`, not product `conversations`.
+
 ### LitSearch
 
-Use LitSearch to measure paper discovery and literature-search retrieval.
+Use LitSearch to measure paper discovery and literature-search retrieval over an eval corpus.
 
 LitSearch can validate paper-level retrieval over title, abstract, metadata, and structured text. It
 does not validate PDF OCR, parser quality, page screenshots, table crops, or figure crops.
@@ -214,7 +225,8 @@ Do not report a partial sample as LitSearch Full.
 
 ### QASPER
 
-Use QASPER to measure scoped paper QA and evidence selection on structured paper text.
+Use QASPER to measure scoped paper QA and evidence selection on structured paper text in an eval
+corpus.
 
 QASPER does not validate OCR/parser behavior or real PDF page evidence. It should not be routed
 through OCR for normal retrieval evaluation.
@@ -257,6 +269,7 @@ These gates are product correctness requirements:
 - Product smoke pass rate should be 100% for required smoke cases.
 - Permission and scope leak rate must be 0.
 - Rendered citation mappings must be recoverable and clickable.
+- Product tables and product Elasticsearch indices must contain no LitSearch/QASPER benchmark data.
 - Structured benchmark results must not be used as proof of OCR/parser/page-evidence quality.
 - A retrieval strategy change must not silently regress the current accepted benchmark baselines.
 
@@ -264,7 +277,8 @@ These gates are product correctness requirements:
 
 As of the 2026-06-27 scan:
 
-- LitSearch Full validates the paper-discovery path over 597 queries and 64,183 imported papers.
+- LitSearch Full validates the paper-discovery strategy over 597 queries and 64,183 eval-corpus
+  papers, not product-library PDFs.
 - QASPER Dev 200 validates structured scoped QA and evidence selection, not PDF parsing.
 - Product smoke validates selected end-to-end product scenarios.
 - Real PDF parser and figure-heavy QA are not yet sufficiently benchmarked as product claims.

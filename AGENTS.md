@@ -16,6 +16,11 @@ PaperLoom is an evidence-grounded RAG workbench for structured research paper re
 
 PaperLoom should be described as a research-paper RAG system, not as a generic enterprise knowledge-base assistant. The public API and frontend contract should use `paperId`, `paperTitle`, `originalFilename`, page evidence, chunk provenance, and persistent reference mappings.
 
+Product PaperLoom accepts research paper PDFs only. Benchmark or structured eval corpora such as
+LitSearch and QASPER must live outside product tables and product Elasticsearch indices, using an
+eval data domain such as the `paperloom_eval` MySQL schema and eval-only ES indices. Do not add
+`includeEval` switches to product controllers or chat paths.
+
 Use this file as the first repo-local reference before making changes.
 
 ## First Read
@@ -26,9 +31,11 @@ When a new agent thread starts in this repo, check these in order:
 2. `CLAUDE.md`
 3. `docs/PAPERLOOM_PRODUCT_REQUIREMENTS.md`
 4. `docs/PAPERLOOM_IMPLEMENTATION_ALIGNMENT.md`
-5. repo root `.env` and `src/main/resources/application*.yml`
-6. `frontend/.env*`
-7. current runtime state: frontend dev server, backend process, ports, and browser behavior
+5. `CONTEXT.md`
+6. `docs/adr/`
+7. repo root `.env` and `src/main/resources/application*.yml`
+8. `frontend/.env*`
+9. current runtime state: frontend dev server, backend process, ports, and browser behavior
 
 Do not assume generic Spring Boot conventions before checking the actual local setup.
 

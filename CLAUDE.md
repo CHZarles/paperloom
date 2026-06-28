@@ -8,6 +8,11 @@ PaperLoom is an evidence-grounded RAG workbench for structured research paper re
 
 PaperLoom supports PDF paper upload, asynchronous parsing/indexing, page-aware chunk retrieval, source-grounded chat, persistent evidence references, and basic editable paper metadata. It should not be described as a generic enterprise knowledge-base assistant.
 
+Product PaperLoom is PDF-only. Structured benchmark corpora such as LitSearch and QASPER must not be
+stored in product tables or product Elasticsearch indices. They belong in an eval data domain such as
+the `paperloom_eval` MySQL schema and eval-only ES indices, and benchmark harnesses must select that
+corpus explicitly.
+
 ## Development Environment Setup
 
 ### Prerequisites
@@ -141,11 +146,14 @@ frontend/src/
 
 The application uses MySQL as the primary database with JPA/Hibernate for ORM. Key entities include:
 - `User`: User accounts and authentication
-- `Paper`: paper upload metadata, processing status, visibility, and editable paper metadata
+- `Paper`: PDF paper upload metadata, processing status, visibility, and editable paper metadata
 - `PaperTextChunk`: page-aware paper chunks
 - `Conversation`: Chat history and persisted reference mappings
 - `OrganizationTag`: Multi-tenant organization structure
 - `ChunkInfo`: legacy physical table/entity name for upload chunks
+
+Benchmark/eval records are not product `Paper` rows. Eval storage uses separate eval-native tables
+and indices, not `is_eval`-style columns in product tables.
 
 ## External Dependencies
 

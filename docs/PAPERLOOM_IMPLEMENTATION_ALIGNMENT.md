@@ -1,6 +1,6 @@
 # PaperLoom Implementation Alignment
 
-Status: initial scan recorded on 2026-06-27.
+Status: initial scan recorded on 2026-06-27; eval data isolation drift added on 2026-06-28.
 
 This document records the gap between the current implementation and the user-confirmed PaperLoom
 product direction in `docs/PAPERLOOM_PRODUCT_REQUIREMENTS.md`.
@@ -60,7 +60,7 @@ Current behavior:
 ### Storage
 
 The implementation still has legacy physical naming in places, but the product contract is
-paper-centered.
+paper-centered and PDF-only.
 
 Relevant areas:
 
@@ -78,6 +78,8 @@ Important product requirement:
 - `Conversation.referenceMappingsJson` is the durable reference-evidence path for chat history.
 - Redis generation state is short-lived and must not be the only source of historical citation
   recovery.
+- Product storage must contain only product PDF papers. Benchmark corpora must use an eval-native
+  schema such as `paperloom_eval`, not `paismart.file_upload` or product chunk tables.
 
 ### Indexing
 
@@ -100,6 +102,12 @@ Current direction:
 - `paper_chunks` supports chunk-level evidence retrieval.
 - `paper_search` supports paper-level discovery over title, abstract, authors, venue/year, external
   ids, filename, and combined search text.
+
+Alignment requirement:
+
+- Product `paper_chunks` and `paper_search` must contain only product PDF-derived documents.
+- Eval corpora require separate indices such as `eval_litsearch_paper_search`,
+  `eval_litsearch_chunks`, `eval_qasper_paper_search`, and `eval_qasper_chunks`.
 
 ### Retrieval
 
@@ -189,8 +197,9 @@ Current behavior:
 
 Alignment note:
 
-- The frontend has most of the required evidence-display surface.
-- It still needs clearer distinction between PDF-derived evidence and structured/eval import evidence.
+- The frontend has most of the required PDF evidence-display surface.
+- Product frontend must not contain eval/structured import branches; eval visualization belongs in a
+  separate eval/debug surface if needed.
 - Product language still contains legacy names and generic knowledge-base wording.
 
 ## Benchmark State
@@ -210,6 +219,8 @@ Accepted interpretation:
 - QASPER validates structured scoped QA and evidence selection.
 - LitSearch validates large-scale paper discovery.
 - None of QASPER or LitSearch validates real PDF parser/OCR/page visual evidence.
+- LitSearch and QASPER must run from isolated eval storage and eval indices, not product tables or
+  product Elasticsearch indices.
 
 Current benchmark facts from the scan:
 
@@ -242,8 +253,8 @@ Current benchmark facts from the scan:
   proven by benchmark.
 - Metadata extraction is limited. Title inference exists, but authors, venue, year, DOI, and arXiv id
   are not yet a robust PDF-extraction guarantee.
-- Structured/eval imports can support text retrieval, but product UI must not imply PDF page assets
-  exist for those records.
+- Current code still contains eval import compatibility fields and frontend branches. These are now
+  product drift and should move to eval-only DTOs or be removed from product paths.
 - PageIndex/page-location ideas exist in eval or test-scoped form. They are not production-default
   capability until benchmarks justify promotion.
 
@@ -255,6 +266,10 @@ Current benchmark facts from the scan:
   acceptable internally, but public API and UI should stay paper-centered.
 - Current benchmark documentation is strong for retrieval, but the product still needs a separate
   real PDF parser smoke benchmark.
+- Runtime data is currently polluted: LitSearch/QASPER benchmark rows exist in product `file_upload`,
+  product chunk tables, and product Elasticsearch indices. This must be corrected by migrating those
+  rows to `paperloom_eval` and removing eval-only columns (`is_eval`, `source_dataset`,
+  `external_corpus_id`, `eval_split`) from product tables.
 
 ## Development Guidance From This Alignment
 
@@ -266,6 +281,8 @@ When implementing future changes:
 - preserve citation-to-referenceMappings persistence
 - do not use fixed production phrases as routing logic
 - do not claim OCR/page/visual capability from QASPER or LitSearch results
+- do not store benchmark corpora in product tables or product Elasticsearch indices
+- do not add `includeEval` switches to product controllers or chat paths
 - validate UI evidence behavior in the browser when frontend evidence display is touched
 - record any product drift instead of silently normalizing it away
 
@@ -274,5 +291,6 @@ High-priority cleanup items:
 - replace visible `CiteWeave` product copy with PaperLoom where appropriate
 - replace generic knowledge-base wording with paper-library or paper-search wording
 - add or formalize a real PDF parser smoke benchmark
-- add explicit UI states for structured/eval import and missing visual assets
+- migrate benchmark data to `paperloom_eval` and eval-only Elasticsearch indices
+- remove product API/frontend support for eval/structured import states
 - keep PageIndex or LOCATE_PAGES behind eval gates until scorecards justify production use
