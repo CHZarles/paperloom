@@ -150,16 +150,18 @@ class ConversationScopeServiceTest {
         ConversationSession session = ownedSession("conversation-1");
         Paper searchable = paper("searchable-paper", "1", false, "default");
         Paper unsearchable = paper("unsearchable-paper", "1", false, "default");
+        Paper inaccessible = paper("inaccessible-paper", "2", false, "other");
         when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperCollectionService.getCollection(1L, 11L)).thenReturn(Map.of(
                 "id", 11L,
                 "name", "Collection",
-                "paperIds", List.of("searchable-paper", "unsearchable-paper")
+                "paperIds", List.of("searchable-paper", "unsearchable-paper", "inaccessible-paper")
         ));
-        when(paperRepository.findByPaperIdIn(List.of("searchable-paper", "unsearchable-paper")))
-                .thenReturn(List.of(searchable, unsearchable));
+        when(paperRepository.findByPaperIdIn(List.of("searchable-paper", "unsearchable-paper", "inaccessible-paper")))
+                .thenReturn(List.of(searchable, unsearchable, inaccessible));
         when(paperSearchabilityService.isSearchable(searchable)).thenReturn(true);
         when(paperSearchabilityService.isSearchable(unsearchable)).thenReturn(false);
+        when(paperSearchabilityService.isSearchable(inaccessible)).thenReturn(true);
 
         Map<String, Object> result = service.updateUnlockedScope(
                 1L,
