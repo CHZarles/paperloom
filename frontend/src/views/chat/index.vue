@@ -49,14 +49,10 @@ function closeReferencePanel() {
 }
 
 function handleAskAboutReference(scope: Api.Chat.Scope) {
-  chatStore.input.scope = scope;
+  chatStore.setReferenceFocus(scope);
   if (!chatStore.input.message.trim()) {
     chatStore.input.message = '解释这个引用';
   }
-}
-
-function handleSelectSourceScope(scope: Api.Chat.Scope) {
-  chatStore.input.scope = scope;
 }
 
 function syncSidebarForViewport() {
@@ -111,7 +107,7 @@ onBeforeUnmount(() => {
 
       <section class="chat-workspace">
         <div class="chat-conversation">
-          <ChatList @open-reference="handleOpenReference" @select-source-scope="handleSelectSourceScope" />
+          <ChatList @open-reference="handleOpenReference" />
           <InputBox v-if="showDockInput" />
         </div>
 

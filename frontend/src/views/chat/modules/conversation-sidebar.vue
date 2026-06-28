@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
+import SessionScopeChip from './session-scope-chip.vue';
 
 defineOptions({
   name: 'ConversationSidebar'
@@ -136,6 +137,16 @@ function formatDate(dateStr?: string) {
   }
   return date.format('YYYY-MM-DD');
 }
+
+function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.ConversationScope {
+  return {
+    scopeMode: session.scopeMode || 'AUTO_LIBRARY',
+    scopeLocked: Boolean(session.scopeLocked),
+    scopeStatus: session.scopeStatus || 'READY',
+    sourceLabel: session.sourceLabel,
+    sourcePaperCount: session.sourcePaperCount
+  };
+}
 </script>
 
 <template>
@@ -209,6 +220,7 @@ function formatDate(dateStr?: string) {
                   {{ session.title }}
                 </div>
                 <div class="session-date">{{ formatDate(session.updatedAt) }}</div>
+                <SessionScopeChip :scope="sessionScope(session)" compact />
               </div>
 
               <NPopconfirm v-if="!showArchived" @positive-click="handleArchive(session.conversationId)">
@@ -476,6 +488,16 @@ function formatDate(dateStr?: string) {
     'Microsoft YaHei',
     sans-serif;
   font-size: 11px;
+}
+
+.session-item :deep(.session-scope-chip) {
+  margin-top: 6px;
+  max-width: 210px;
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+}
+
+.session-item :deep(.session-scope-chip__label) {
+  max-width: 154px;
 }
 
 .sidebar-footer {

@@ -19,7 +19,6 @@ import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -30,7 +29,6 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 论文管理服务。
@@ -60,9 +58,6 @@ public class PaperService {
 
     @Autowired
     private OrgTagCacheService orgTagCacheService;
-
-    @Autowired
-    private PaperSearchabilityService paperSearchabilityService;
 
     @Autowired
     private UserRepository userRepository;
@@ -539,10 +534,30 @@ public class PaperService {
             String normalizedQuery = normalizeSearchQuery(query);
 
             List<String> userEffectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
-            Page<Paper> candidatePage = userEffectiveTags.isEmpty()
-                    ? paperRepository.searchAccessiblePaperCandidatesWithoutOrgTags(
+            boolean searchableOnly = isSearchableReadiness(readiness);
+            if (userEffectiveTags.isEmpty()) {
+                return searchableOnly
+                        ? paperRepository.searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
+                                userDbId,
+                                normalizedQuery,
+                                Paper.STATUS_COMPLETED,
+                                Paper.VECTORIZATION_STATUS_COMPLETED,
+                                effectivePageable
+                        )
+                        : paperRepository.searchAccessiblePaperCandidatesWithoutOrgTags(
+                                userDbId,
+                                normalizedQuery,
+                                effectivePageable
+                        );
+            }
+
+            return searchableOnly
+                    ? paperRepository.searchAccessibleSearchablePaperCandidates(
                             userDbId,
+                            userEffectiveTags,
                             normalizedQuery,
+                            Paper.STATUS_COMPLETED,
+                            Paper.VECTORIZATION_STATUS_COMPLETED,
                             effectivePageable
                     )
                     : paperRepository.searchAccessiblePaperCandidates(
@@ -551,35 +566,10 @@ public class PaperService {
                             normalizedQuery,
                             effectivePageable
                     );
-
-            if (!isSearchableReadiness(readiness)) {
-                return candidatePage;
-            }
-
-            List<Paper> searchableContent = candidatePage.getContent().stream()
-                    .filter(paperSearchabilityService::isSearchable)
-                    .collect(Collectors.toList());
-            return pageWithFilteredContent(candidatePage, searchableContent);
         } catch (Exception e) {
             logger.error("分页搜索用户可访问论文候选失败: userId={}", userId, e);
             throw new RuntimeException("分页搜索可访问论文候选失败: " + e.getMessage(), e);
         }
-    }
-
-    private Page<Paper> pageWithFilteredContent(Page<Paper> originalPage, List<Paper> filteredContent) {
-        long originalTotalElements = originalPage.getTotalElements();
-        int originalTotalPages = originalPage.getTotalPages();
-        return new PageImpl<>(filteredContent, originalPage.getPageable(), originalTotalElements) {
-            @Override
-            public long getTotalElements() {
-                return originalTotalElements;
-            }
-
-            @Override
-            public int getTotalPages() {
-                return originalTotalPages;
-            }
-        };
     }
 
     private String normalizeSearchQuery(String query) {

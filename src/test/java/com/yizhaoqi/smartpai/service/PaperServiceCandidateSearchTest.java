@@ -7,7 +7,6 @@ import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
@@ -19,7 +18,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaperServiceCandidateSearchTest {
@@ -36,9 +36,6 @@ class PaperServiceCandidateSearchTest {
     @Mock
     private OrgTagCacheService orgTagCacheService;
 
-    @Mock
-    private PaperSearchabilityService paperSearchabilityService;
-
     private PaperService paperService;
 
     @BeforeEach
@@ -49,27 +46,30 @@ class PaperServiceCandidateSearchTest {
         ReflectionTestUtils.setField(paperService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(paperService, "userRepository", userRepository);
         ReflectionTestUtils.setField(paperService, "orgTagCacheService", orgTagCacheService);
-        ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);
     }
 
     @Test
-    void readinessSearchableFiltersCurrentPageAfterRepositoryPagingAndPreservesTotal() {
+    void readinessSearchableUsesRepositoryLevelSearchablePaging() {
         User user = new User();
         user.setId(1L);
         user.setUsername("alice");
 
         Paper searchable = paper("paper-searchable");
-        Paper unsearchable = paper("paper-unsearchable");
         PageRequest pageable = PageRequest.of(0, 10);
-        Page<Paper> repositoryPage = new PageImpl<>(List.of(searchable, unsearchable), pageable, 25);
+        Page<Paper> repositoryPage = new PageImpl<>(List.of(searchable), pageable, 1);
 
         when(paperRepository.findAllByVectorizationStatusIsNull()).thenReturn(List.of());
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(orgTagCacheService.getUserEffectiveOrgTags("alice")).thenReturn(List.of("lab"));
-        when(paperRepository.searchAccessiblePaperCandidates("1", List.of("lab"), "agent", pageable))
+        when(paperRepository.searchAccessibleSearchablePaperCandidates(
+                "1",
+                List.of("lab"),
+                "agent",
+                Paper.STATUS_COMPLETED,
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                pageable
+        ))
                 .thenReturn(repositoryPage);
-        when(paperSearchabilityService.isSearchable(searchable)).thenReturn(true);
-        when(paperSearchabilityService.isSearchable(unsearchable)).thenReturn(false);
 
         Page<Paper> result = paperService.searchAccessiblePaperCandidates(
                 "1",
@@ -80,12 +80,16 @@ class PaperServiceCandidateSearchTest {
         );
 
         assertEquals(List.of("paper-searchable"), result.getContent().stream().map(Paper::getPaperId).toList());
-        assertEquals(25L, result.getTotalElements());
-
-        InOrder inOrder = inOrder(paperRepository, paperSearchabilityService);
-        inOrder.verify(paperRepository).searchAccessiblePaperCandidates("1", List.of("lab"), "agent", pageable);
-        inOrder.verify(paperSearchabilityService).isSearchable(searchable);
-        inOrder.verify(paperSearchabilityService).isSearchable(unsearchable);
+        assertEquals(1L, result.getTotalElements());
+        verify(paperRepository).searchAccessibleSearchablePaperCandidates(
+                "1",
+                List.of("lab"),
+                "agent",
+                Paper.STATUS_COMPLETED,
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                pageable
+        );
+        verify(paperRepository, never()).searchAccessiblePaperCandidates("1", List.of("lab"), "agent", pageable);
     }
 
     private Paper paper(String paperId) {

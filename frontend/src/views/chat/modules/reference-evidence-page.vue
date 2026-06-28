@@ -213,7 +213,7 @@ function handleBack() {
 }
 
 function handleAskAboutReference(scope: Api.Chat.Scope) {
-  chatStore.input.scope = scope;
+  chatStore.setReferenceFocus(scope);
   if (!chatStore.input.message.trim()) {
     chatStore.input.message = '解释这个引用';
   }

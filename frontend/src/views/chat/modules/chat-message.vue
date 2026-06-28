@@ -56,7 +56,6 @@ const emit = defineEmits<{
       referenceNumber: number;
     }
   ): void;
-  (e: 'selectSourceScope', payload: Api.Chat.Scope): void;
 }>();
 
 const authStore = useAuthStore();
@@ -170,15 +169,9 @@ const sourcesUsed = computed(() => {
   return sources;
 });
 
-const sourceSetScope = computed<Api.Chat.Scope | null>(() => {
+const answerSourcePaperIds = computed(() => {
   const sources = sourcesUsed.value.filter(source => source.paperId);
-  if (!sources.length) {
-    return null;
-  }
-  return {
-    paperIds: sources.map(source => source.paperId as string),
-    paperTitles: sources.map(source => source.paperTitle)
-  };
+  return sources.map(source => source.paperId as string);
 });
 
 function getToolLabel(tool: string) {
@@ -193,26 +186,19 @@ function getSourceLabel(source: { paperTitle: string; originalFilename?: string 
   return source.paperTitle || source.originalFilename || 'Untitled paper';
 }
 
-function selectSourceSet() {
-  if (!sourceSetScope.value) {
-    return;
-  }
-  emit('selectSourceScope', sourceSetScope.value);
-  window.$message?.success('已将本轮来源设为提问范围');
-}
+async function createSessionFromAnswerSources(paperIds: string[]) {
+  if (!paperIds.length) return;
 
-function selectSingleSource(source: { paperId?: string; paperTitle: string; originalFilename?: string | null }) {
-  if (!source.paperId) {
-    return;
-  }
-  emit('selectSourceScope', {
-    paperIds: [source.paperId],
-    paperTitles: [source.paperTitle],
-    paperId: source.paperId,
-    paperTitle: source.paperTitle,
-    originalFilename: source.originalFilename || undefined
+  const ok = await chatStore.createSessionFromScope({
+    scopeMode: 'SOURCE_SET_SNAPSHOT',
+    paperIds,
+    sourceLabel: 'Sources from answer',
+    sourceRecipe: { type: 'answer_sources', conversationRecordId: props.msg.conversationRecordId }
   });
-  window.$message?.success('已将该论文设为提问范围');
+  if (!ok) return;
+
+  window.$message?.success('已从回答来源创建新会话');
+  router.push({ name: 'chat' });
 }
 
 function splitTrailingUrlPunctuation(rawUrl: string) {
@@ -697,21 +683,21 @@ async function handleSourceFileClick(fileInfo: {
           :key="source.paperId || source.paperTitle"
           type="button"
           :disabled="!source.paperId"
-          :title="source.paperId ? 'Use this paper as scope' : 'Source id unavailable'"
-          @click="selectSingleSource(source)"
+          :title="source.paperId ? 'New session from this paper' : 'Source id unavailable'"
+          @click="createSessionFromAnswerSources(source.paperId ? [source.paperId] : [])"
         >
           {{ getSourceLabel(source) }}
         </button>
       </div>
       <button
-        v-if="sourceSetScope"
+        v-if="answerSourcePaperIds.length"
         type="button"
         class="sources-used__set-action"
-        title="Use all sources from this answer as the next question scope"
-        @click="selectSourceSet"
+        title="New session from all sources in this answer"
+        @click="createSessionFromAnswerSources(answerSourcePaperIds)"
       >
         <icon-lucide:quote class="text-13px" />
-        Use sources
+        New session from sources
       </button>
     </div>
     <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>

@@ -188,8 +188,10 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     const { error, data } = await request<Api.Chat.ConversationScope>({
       url: `users/conversations/${targetConversationId}/scope`
     });
-    if (!error && data) currentScope.value = data;
-    else currentScope.value = null;
+    if (targetConversationId === conversationId.value) {
+      if (!error && data) currentScope.value = data;
+      else currentScope.value = null;
+    }
     return data || null;
   }
 
@@ -202,7 +204,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       method: 'PUT',
       data: payload
     });
-    if (!error && data) currentScope.value = data;
+    if (!error && data && targetConversationId === conversationId.value) currentScope.value = data;
     return !error;
   }
 
@@ -220,6 +222,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (!createdConversationId) return false;
       const scoped = await updateConversationScope(createdConversationId, payload);
       if (scoped) {
+        await loadSessions();
         return true;
       }
 

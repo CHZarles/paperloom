@@ -569,7 +569,6 @@ declare namespace Api {
     interface Input {
       message: string;
       conversationId?: string;
-      scope?: Scope | null;
       retrievalBudgetProfile?: Scope['retrievalBudgetProfile'];
     }
 

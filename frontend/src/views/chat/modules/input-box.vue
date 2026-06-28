@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import SessionScopeChip from './session-scope-chip.vue';
+import SessionScopePicker from './session-scope-picker.vue';
+
 const props = withDefaults(
   defineProps<{
     variant?: 'dock' | 'hero';
@@ -9,7 +12,17 @@ const props = withDefaults(
 );
 
 const chatStore = useChatStore();
-const { connectionStatus, input, isRateLimited, list, rateLimitRemainingSeconds, wsData } = storeToRefs(chatStore);
+const {
+  connectionStatus,
+  conversationId,
+  currentScope,
+  input,
+  isRateLimited,
+  list,
+  rateLimitRemainingSeconds,
+  referenceFocus,
+  wsData
+} = storeToRefs(chatStore);
 
 function buildWsErrorMessage(data: Record<string, any>) {
   if (data.code === 429) {
@@ -112,132 +125,30 @@ const cooldownText = computed(() => {
   return `${rateLimitRemainingSeconds.value} 秒后可重新发送`;
 });
 
-const activeScope = computed(() => input.value.scope || null);
-const sourcePickerVisible = ref(false);
-const sourcePickerLoading = ref(false);
-const sourcePickerQuery = ref('');
-const sourcePapers = ref<Api.Paper.UploadTask[]>([]);
-const selectedSourcePaperIds = ref<string[]>([]);
+const scopePickerVisible = ref(false);
 const activeRetrievalBudgetProfile = computed(
   () => input.value.retrievalBudgetProfile || DEFAULT_RETRIEVAL_BUDGET_PROFILE
 );
-const scopeLabel = computed(() => {
-  const scope = activeScope.value;
-  if (!scope) return '';
-  if (!scope.referenceNumber && scope.paperTitles && scope.paperTitles.length > 1) {
-    return `已选 ${scope.paperTitles.length} 篇论文`;
-  }
-  if (!scope.referenceNumber && scope.paperIds && scope.paperIds.length > 1) {
-    return `已选 ${scope.paperIds.length} 篇论文`;
-  }
-  const paper = scope.paperTitle || scope.paperTitles?.[0] || 'Selected source';
+const canEditScope = computed(() =>
+  Boolean(conversationId.value && currentScope.value && !currentScope.value.scopeLocked)
+);
+const referenceFocusLabel = computed(() => {
+  const focus = referenceFocus.value;
+  if (!focus) return '';
+  const paper = focus.paperTitle || focus.originalFilename || 'Reference focus';
   const parts = [paper];
-  if (scope.pageNumber) parts.push(`p${scope.pageNumber}`);
-  if (scope.referenceNumber) parts.push(`[${scope.referenceNumber}]`);
+  if (focus.pageNumber) parts.push(`p${focus.pageNumber}`);
+  if (focus.referenceNumber) parts.push(`[${focus.referenceNumber}]`);
   return parts.join(' · ');
 });
 
-function clearScope() {
-  input.value.scope = null;
-}
-
 function setRetrievalBudgetProfile(profile: RetrievalBudgetProfile) {
   input.value.retrievalBudgetProfile = profile;
-  if (input.value.scope) {
-    input.value.scope = {
-      ...input.value.scope,
-      retrievalBudgetProfile: profile
-    };
-  }
 }
 
-function outgoingScopeWithBudget(scope: Api.Chat.Scope | null): Api.Chat.Scope {
-  return {
-    ...(scope || {}),
-    retrievalBudgetProfile: activeRetrievalBudgetProfile.value
-  };
-}
-
-const filteredSourcePapers = computed(() => {
-  const query = sourcePickerQuery.value.trim().toLowerCase();
-  if (!query) {
-    return sourcePapers.value;
-  }
-  return sourcePapers.value.filter(paper => {
-    const haystack = [paper.paperTitle, paper.originalFilename, paper.authors, paper.venue]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(query);
-  });
-});
-
-function normalizePaperPayload(payload: Api.Paper.UploadTask[] | Api.Paper.List | null | undefined) {
-  if (!payload) {
-    return [];
-  }
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-  return payload.data || payload.content || [];
-}
-
-async function loadSourcePapers() {
-  sourcePickerLoading.value = true;
-  try {
-    const { error, data } = await request<Api.Paper.UploadTask[] | Api.Paper.List>({
-      url: '/papers?scope=accessible',
-      params: {
-        page: 1,
-        size: 50
-      }
-    });
-    if (!error) {
-      sourcePapers.value = normalizePaperPayload(data).map(paper => ({
-        ...paper,
-        paperTitle: paper.paperTitle || paper.originalFilename,
-        originalFilename: paper.originalFilename || paper.paperTitle
-      }));
-    }
-  } finally {
-    sourcePickerLoading.value = false;
-  }
-}
-
-function openSourcePicker() {
-  selectedSourcePaperIds.value = activeScope.value?.paperIds ? [...activeScope.value.paperIds] : [];
-  sourcePickerVisible.value = true;
-  if (!sourcePapers.value.length) {
-    loadSourcePapers();
-  }
-}
-
-function applySourceSelection() {
-  const selected = sourcePapers.value.filter(paper => selectedSourcePaperIds.value.includes(paper.paperId));
-  if (!selected.length) {
-    clearScope();
-    sourcePickerVisible.value = false;
-    return;
-  }
-  input.value.scope = {
-    paperIds: selected.map(paper => paper.paperId),
-    paperTitles: selected.map(paper => paper.paperTitle || paper.originalFilename),
-    retrievalBudgetProfile: activeRetrievalBudgetProfile.value,
-    ...(selected.length === 1
-      ? {
-          paperId: selected[0].paperId,
-          paperTitle: selected[0].paperTitle || selected[0].originalFilename,
-          originalFilename: selected[0].originalFilename
-        }
-      : {})
-  };
-  sourcePickerVisible.value = false;
-}
-
-function useAutoSource() {
-  selectedSourcePaperIds.value = [];
-  clearScope();
-  sourcePickerVisible.value = false;
+function outgoingReferenceFocus(scope: Api.Chat.Scope | null): Api.Chat.Scope | null {
+  if (!scope) return null;
+  return { ...scope };
 }
 
 function inferOutgoingRoute(message: string, scope: Api.Chat.Scope | null): Api.Chat.Message['route'] {
@@ -254,6 +165,19 @@ function inferOutgoingRoute(message: string, scope: Api.Chat.Scope | null): Api.
     return 'MANUAL_SOURCE_QA';
   }
   return 'AUTO_SOURCE_QA';
+}
+
+function clearReferenceFocus() {
+  chatStore.setReferenceFocus(null);
+}
+
+async function openScopePicker() {
+  if (!conversationId.value) return;
+  if (!currentScope.value) {
+    await chatStore.loadConversationScope(conversationId.value);
+  }
+  if (!canEditScope.value) return;
+  scopePickerVisible.value = true;
 }
 
 function isSmalltalkMessage(message: string) {
@@ -287,6 +211,10 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
   assistant.generationId = payload.generationId || assistant.generationId;
   assistant.conversationId = payload.conversationId || assistant.conversationId;
   assistant.route = normalizeChatRoute(payload.route) || assistant.route;
+  if (payload.conversationId) {
+    chatStore.loadConversationScope(payload.conversationId).catch(() => {});
+    chatStore.loadSessions().catch(() => {});
+  }
   if (!assistant.timestamp && payload.timestamp) {
     assistant.timestamp = new Date(payload.timestamp).toISOString();
   }
@@ -532,8 +460,8 @@ const handleSend = async () => {
   }
 
   const outgoingMessage = input.value.message;
-  const outgoingScope = outgoingScopeWithBudget(input.value.scope || null);
-  const route = inferOutgoingRoute(outgoingMessage, outgoingScope);
+  const outgoingReferenceFocusPayload = outgoingReferenceFocus(referenceFocus.value);
+  const route = inferOutgoingRoute(outgoingMessage, outgoingReferenceFocusPayload);
 
   list.value.push({
     content: outgoingMessage,
@@ -550,10 +478,12 @@ const handleSend = async () => {
     JSON.stringify({
       type: 'chat',
       message: outgoingMessage,
-      scope: outgoingScope
+      referenceFocus: outgoingReferenceFocusPayload,
+      retrievalBudgetProfile: activeRetrievalBudgetProfile.value
     })
   );
   input.value = { message: '', retrievalBudgetProfile: activeRetrievalBudgetProfile.value };
+  chatStore.setReferenceFocus(null);
   startGenerationStatusMonitor();
 };
 
@@ -598,10 +528,28 @@ onUnmounted(() => {
       :class="props.variant === 'hero' ? 'max-w-[760px]' : 'max-w-[960px]'"
     >
       <div class="chat-input-main">
-        <div v-if="activeScope" class="scope-chip">
+        <div class="session-scope-line">
+          <SessionScopeChip
+            v-if="currentScope"
+            :scope="currentScope"
+            :editable="canEditScope"
+            compact
+            @edit="openScopePicker"
+          />
+          <button
+            v-if="!currentScope && conversationId"
+            type="button"
+            class="scope-open-button"
+            @click="openScopePicker"
+          >
+            <icon-lucide:sliders-horizontal />
+            Scope
+          </button>
+        </div>
+        <div v-if="referenceFocus" class="scope-chip">
           <icon-lucide:quote class="scope-chip__icon" />
-          <span>{{ scopeLabel }}</span>
-          <button type="button" aria-label="清除引用范围" @click="clearScope">
+          <span>{{ referenceFocusLabel }}</span>
+          <button type="button" aria-label="清除引用焦点" @click="clearReferenceFocus">
             <icon-lucide:x />
           </button>
         </div>
@@ -636,12 +584,6 @@ onUnmounted(() => {
           <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
           <span class="chat-input-muted text-11px">{{ connectionText }}</span>
         </div>
-        <NButton quaternary size="tiny" class="source-picker-trigger" @click="openSourcePicker">
-          <template #icon>
-            <icon-lucide:library class="text-13px" />
-          </template>
-          重点检索论文
-        </NButton>
         <div class="retrieval-budget-segment" aria-label="检索深度">
           <NTooltip v-for="option in retrievalBudgetOptions" :key="option.value" trigger="hover" placement="top">
             <template #trigger>
@@ -668,39 +610,12 @@ onUnmounted(() => {
       <span class="chat-input-muted text-11px">Shift+Enter 换行</span>
     </div>
 
-    <NModal
-      v-model:show="sourcePickerVisible"
-      preset="dialog"
-      title="重点检索论文"
-      :show-icon="false"
-      class="source-picker-modal"
-    >
-      <div class="source-picker">
-        <NInput v-model:value="sourcePickerQuery" clearable placeholder="按标题、文件名、作者或会议筛选" size="small">
-          <template #prefix>
-            <icon-lucide:search class="text-14px" />
-          </template>
-        </NInput>
-        <NSpin :show="sourcePickerLoading">
-          <NEmpty v-if="!filteredSourcePapers.length" description="暂无可选择论文" class="py-8" />
-          <NCheckboxGroup v-else v-model:value="selectedSourcePaperIds">
-            <NScrollbar class="source-picker__list">
-              <label v-for="paper in filteredSourcePapers" :key="paper.paperId" class="source-picker__row">
-                <NCheckbox :value="paper.paperId" />
-                <span class="source-picker__paper">
-                  <span class="source-picker__title">{{ paper.paperTitle || paper.originalFilename }}</span>
-                  <span class="source-picker__filename">{{ paper.originalFilename }}</span>
-                </span>
-              </label>
-            </NScrollbar>
-          </NCheckboxGroup>
-        </NSpin>
-        <div class="source-picker__footer">
-          <NButton secondary size="small" @click="useAutoSource">使用自动发现</NButton>
-          <NButton type="primary" size="small" @click="applySourceSelection">应用来源</NButton>
-        </div>
-      </div>
-    </NModal>
+    <SessionScopePicker
+      v-model:show="scopePickerVisible"
+      :conversation-id="conversationId"
+      :scope="currentScope"
+      @updated="chatStore.loadConversationScope(conversationId)"
+    />
   </div>
 </template>
 
@@ -776,8 +691,29 @@ onUnmounted(() => {
   color: var(--color-text);
 }
 
-.source-picker-trigger {
+.session-scope-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.scope-open-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
   color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 7px;
+}
+
+.scope-open-button:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .retrieval-budget-segment {
@@ -815,60 +751,6 @@ onUnmounted(() => {
 .retrieval-budget-button--active {
   background: var(--color-primary-soft-bg);
   color: var(--color-primary);
-}
-
-.source-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.source-picker__list {
-  max-height: min(420px, 58vh);
-}
-
-.source-picker__row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-  padding: 10px 2px;
-}
-
-.source-picker__row:last-child {
-  border-bottom: 0;
-}
-
-.source-picker__paper {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.source-picker__title,
-.source-picker__filename {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.source-picker__title {
-  color: var(--color-text);
-  font-size: 13px;
-}
-
-.source-picker__filename {
-  color: var(--color-text-muted);
-  font-size: 12px;
-}
-
-.source-picker__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 </style>
 

@@ -120,7 +120,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     if (messageText instanceof String chatText && !chatText.isBlank()) {
                         chatHandler.processMessage(
                                 userId,
-                                new ChatHandler.ChatRequest(chatText, parseAnswerScope(jsonMessage.get("scope"))),
+                                new ChatHandler.ChatRequest(
+                                        chatText,
+                                        parseAnswerScope(referenceFocusPayload(jsonMessage)),
+                                        parseRetrievalBudgetProfile(jsonMessage.get("retrievalBudgetProfile"))
+                                ),
                                 session
                         );
                         return;
@@ -220,6 +224,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 stringValue(scope.get("sourceKind")),
                 RetrievalBudgetProfile.fromToken(stringValue(scope.get("retrievalBudgetProfile")))
         );
+    }
+
+    private Object referenceFocusPayload(Map<String, Object> jsonMessage) {
+        Object referenceFocus = jsonMessage.get("referenceFocus");
+        return referenceFocus == null ? jsonMessage.get("scope") : referenceFocus;
+    }
+
+    private RetrievalBudgetProfile parseRetrievalBudgetProfile(Object rawProfile) {
+        return rawProfile == null ? null : RetrievalBudgetProfile.fromToken(stringValue(rawProfile));
     }
 
     private Object firstPresent(Map<String, Object> map, String... keys) {

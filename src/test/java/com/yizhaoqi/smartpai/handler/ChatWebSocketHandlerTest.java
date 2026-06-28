@@ -55,6 +55,62 @@ class ChatWebSocketHandlerTest {
         assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, request.scope().retrievalBudgetProfile());
     }
 
+    @Test
+    void structuredChatPayloadCarriesTopLevelRetrievalBudgetWithoutReferenceFocus() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","message":"audit the session","retrievalBudgetProfile":"deep_audit","referenceFocus":null}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("audit the session", request.message());
+        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, request.retrievalBudgetProfile());
+    }
+
+    @Test
+    void structuredChatPayloadUsesReferenceFocusInsteadOfLegacyScopeWhenPresent() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","message":"explain this citation","referenceFocus":{"referenceNumber":2,"retrievalBudgetProfile":"high_recall"},"scope":{"referenceNumber":9,"retrievalBudgetProfile":"deep_audit"}}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("explain this citation", request.message());
+        assertEquals(2, request.scope().referenceNumber());
+        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, request.scope().retrievalBudgetProfile());
+        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, request.retrievalBudgetProfile());
+    }
+
+    @Test
+    void structuredChatPayloadFallsBackToLegacyScopeWhenReferenceFocusIsNull() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","message":"legacy audit","referenceFocus":null,"scope":{"retrievalBudgetProfile":"deep_audit"}}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("legacy audit", request.message());
+        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, request.retrievalBudgetProfile());
+    }
+
     private ChatWebSocketHandler handler(ChatHandler chatHandler) {
         JwtUtils jwtUtils = mock(JwtUtils.class);
         when(jwtUtils.extractUserIdFromToken("token")).thenReturn("u1");

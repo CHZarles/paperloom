@@ -126,6 +126,9 @@ public class ChatHandler {
     public void processMessage(String userId, ChatRequest request, WebSocketSession session) {
         String userMessage = request == null ? "" : request.message();
         PaperAnswerService.AnswerScope scope = request == null ? null : request.scope();
+        RetrievalBudgetProfile retrievalBudgetProfile = request == null
+                ? RetrievalBudgetProfile.INTERACTIVE
+                : request.retrievalBudgetProfile();
         logger.info("开始处理消息，用户ID: {}, 会话ID: {}", userId, session.getId());
         String requestClientId = resolveClientId(session);
         String conversationId = null;
@@ -140,7 +143,7 @@ public class ChatHandler {
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
             PaperAnswerService.AnswerScope referenceFocus =
-                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(scope, userMessage));
+                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(scope, userMessage, retrievalBudgetProfile));
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
             }
@@ -152,7 +155,8 @@ public class ChatHandler {
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
-            PaperAnswerService.AnswerScope controlledScope = controlledAnswerScope(effectiveScope, scope, referenceFocus);
+            PaperAnswerService.AnswerScope controlledScope =
+                    controlledAnswerScope(effectiveScope, referenceFocus, retrievalBudgetProfile);
             Map<String, Object> effectiveScopeMap = effectiveScopeMap(effectiveScope);
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
@@ -239,8 +243,8 @@ public class ChatHandler {
 
     private PaperAnswerService.AnswerScope controlledAnswerScope(
             ConversationScopeService.EffectiveConversationScope effectiveScope,
-            PaperAnswerService.AnswerScope incomingScope,
-            PaperAnswerService.AnswerScope referenceFocus) {
+            PaperAnswerService.AnswerScope referenceFocus,
+            RetrievalBudgetProfile retrievalBudgetProfile) {
         List<String> controlledPaperIds = effectiveScope != null
                 && effectiveScope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT
                 ? effectiveScope.paperIds()
@@ -248,15 +252,12 @@ public class ChatHandler {
         if (referenceFocus != null) {
             return referenceFocus.withPaperIds(controlledPaperIds);
         }
-        return sessionOnlyAnswerScope(controlledPaperIds, incomingScope);
+        return sessionOnlyAnswerScope(controlledPaperIds, retrievalBudgetProfile);
     }
 
     private PaperAnswerService.AnswerScope sessionOnlyAnswerScope(
             List<String> controlledPaperIds,
-            PaperAnswerService.AnswerScope incomingScope) {
-        RetrievalBudgetProfile budgetProfile = incomingScope == null
-                ? RetrievalBudgetProfile.INTERACTIVE
-                : incomingScope.retrievalBudgetProfile();
+            RetrievalBudgetProfile budgetProfile) {
         return new PaperAnswerService.AnswerScope(
                 controlledPaperIds,
                 List.of(),
@@ -276,17 +277,15 @@ public class ChatHandler {
 
     private PaperAnswerService.AnswerScope referenceFocus(
             PaperAnswerService.AnswerScope incomingScope,
-            String userMessage) {
+            String userMessage,
+            RetrievalBudgetProfile budgetProfile) {
         if (hasReferenceFocus(incomingScope)) {
-            return structuredReferenceFocus(incomingScope);
+            return structuredReferenceFocus(incomingScope, budgetProfile);
         }
         Integer referenceNumber = firstCitedReferenceNumber(userMessage);
         if (referenceNumber == null) {
             return null;
         }
-        RetrievalBudgetProfile budgetProfile = incomingScope == null
-                ? RetrievalBudgetProfile.INTERACTIVE
-                : incomingScope.retrievalBudgetProfile();
         return new PaperAnswerService.AnswerScope(
                 List.of(),
                 List.of(),
@@ -304,7 +303,9 @@ public class ChatHandler {
         );
     }
 
-    private PaperAnswerService.AnswerScope structuredReferenceFocus(PaperAnswerService.AnswerScope incomingScope) {
+    private PaperAnswerService.AnswerScope structuredReferenceFocus(
+            PaperAnswerService.AnswerScope incomingScope,
+            RetrievalBudgetProfile budgetProfile) {
         String focusPaperId = trimToNull(incomingScope.paperId());
         List<String> focusPaperIds = focusPaperId == null
                 ? incomingScope.paperIds()
@@ -326,7 +327,7 @@ public class ChatHandler {
                 incomingScope.matchedText(),
                 incomingScope.bboxJson(),
                 incomingScope.sourceKind(),
-                incomingScope.retrievalBudgetProfile()
+                budgetProfile
         );
     }
 
@@ -2115,7 +2116,17 @@ public class ChatHandler {
 
     public record ChatRequest(
             String message,
-            PaperAnswerService.AnswerScope scope
+            PaperAnswerService.AnswerScope scope,
+            RetrievalBudgetProfile retrievalBudgetProfile
     ) {
+        public ChatRequest {
+            retrievalBudgetProfile = retrievalBudgetProfile == null
+                    ? (scope == null ? RetrievalBudgetProfile.INTERACTIVE : scope.retrievalBudgetProfile())
+                    : retrievalBudgetProfile;
+        }
+
+        public ChatRequest(String message, PaperAnswerService.AnswerScope scope) {
+            this(message, scope, scope == null ? RetrievalBudgetProfile.INTERACTIVE : scope.retrievalBudgetProfile());
+        }
     }
 }

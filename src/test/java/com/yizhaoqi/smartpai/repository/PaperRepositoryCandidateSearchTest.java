@@ -1,6 +1,7 @@
 package com.yizhaoqi.smartpai.repository;
 
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperTextChunk;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -19,6 +20,9 @@ class PaperRepositoryCandidateSearchTest {
 
     @Autowired
     private PaperRepository paperRepository;
+
+    @Autowired
+    private PaperTextChunkRepository paperTextChunkRepository;
 
     @Test
     void noOrgCandidateSearchMatchesMetadataAndExcludesPrivateOrgPapers() {
@@ -64,6 +68,41 @@ class PaperRepositoryCandidateSearchTest {
                 page.getContent().stream().map(Paper::getPaperId).toList());
     }
 
+    @Test
+    void noOrgSearchableCandidateSearchFiltersBeforePagingAndCountsSearchableRowsOnly() {
+        paperRepository.saveAll(List.of(
+                paper("repo-a-searchable", "owner", true, null, "GraphLoom Searchable A", "a.pdf", null),
+                paper("repo-b-no-chunks", "owner", true, null, "GraphLoom Not Indexed", "b.pdf", null),
+                paper("repo-c-searchable", "owner", true, null, "GraphLoom Searchable C", "c.pdf", null)
+        ));
+        paperTextChunkRepository.saveAll(List.of(
+                chunk("repo-a-searchable", "owner"),
+                chunk("repo-c-searchable", "owner")
+        ));
+        paperRepository.flush();
+        paperTextChunkRepository.flush();
+
+        Page<Paper> firstPage = paperRepository.searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
+                "owner",
+                "graphloom",
+                Paper.STATUS_COMPLETED,
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                PageRequest.of(0, 1, Sort.by("paperId"))
+        );
+        Page<Paper> secondPage = paperRepository.searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
+                "owner",
+                "graphloom",
+                Paper.STATUS_COMPLETED,
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                PageRequest.of(1, 1, Sort.by("paperId"))
+        );
+
+        assertEquals(2L, firstPage.getTotalElements());
+        assertEquals(List.of("repo-a-searchable"), firstPage.getContent().stream().map(Paper::getPaperId).toList());
+        assertEquals(2L, secondPage.getTotalElements());
+        assertEquals(List.of("repo-c-searchable"), secondPage.getContent().stream().map(Paper::getPaperId).toList());
+    }
+
     private Paper paper(String paperId,
                         String userId,
                         boolean isPublic,
@@ -82,5 +121,15 @@ class PaperRepositoryCandidateSearchTest {
         paper.setStatus(Paper.STATUS_COMPLETED);
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
         return paper;
+    }
+
+    private PaperTextChunk chunk(String paperId, String userId) {
+        PaperTextChunk chunk = new PaperTextChunk();
+        chunk.setPaperId(paperId);
+        chunk.setChunkId(1);
+        chunk.setTextContent("chunk");
+        chunk.setUserId(userId);
+        chunk.setPublic(true);
+        return chunk;
     }
 }

@@ -255,12 +255,7 @@ class PaperControllerContractTest {
                 isNull(),
                 eq("searchable"),
                 eq(PageRequest.of(0, 10))
-        )).thenReturn(new PageImpl<>(List.of(searchablePaper), PageRequest.of(0, 10), 2) {
-            @Override
-            public long getTotalElements() {
-                return 2;
-            }
-        });
+        )).thenReturn(new PageImpl<>(List.of(searchablePaper), PageRequest.of(0, 10), 1));
 
         var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, "searchable");
         Map<?, ?> body = (Map<?, ?>) response.getBody();
@@ -270,7 +265,7 @@ class PaperControllerContractTest {
 
         assertEquals(1, content.size());
         assertEquals("paper-searchable", item.get("paperId"));
-        assertEquals(2L, data.get("totalElements"));
+        assertEquals(1L, data.get("totalElements"));
         assertFalse(content.stream()
                 .map(Map.class::cast)
                 .anyMatch(row -> unsearchablePaper.getPaperId().equals(row.get("paperId"))));
