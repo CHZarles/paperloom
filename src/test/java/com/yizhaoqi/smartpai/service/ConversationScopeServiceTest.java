@@ -99,7 +99,7 @@ class ConversationScopeServiceTest {
         ConversationSession session = ownedSession("conversation-1");
         Paper first = paper("paper-1", "1", false, "default");
         Paper second = paper("paper-2", "1", false, "default");
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperRepository.findByPaperIdIn(List.of("paper-1", "paper-2"))).thenReturn(List.of(first, second));
         when(paperSearchabilityService.isSearchable(first)).thenReturn(true);
         when(paperSearchabilityService.isSearchable(second)).thenReturn(true);
@@ -133,7 +133,7 @@ class ConversationScopeServiceTest {
     void lockedSessionRejectsScopeUpdate() {
         ConversationSession session = ownedSession("conversation-1");
         session.setScopeLocked(true);
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
 
         CustomException exception = assertThrows(CustomException.class, () -> service.updateUnlockedScope(
                 1L,
@@ -146,12 +146,148 @@ class ConversationScopeServiceTest {
     }
 
     @Test
+    void updateAndLockMutatingPathsUsePessimisticLockedLookup() {
+        ConversationSession updateSession = ownedSession("update-conversation");
+        ConversationSession lockSession = ownedSession("lock-conversation");
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("update-conversation", 1L))
+                .thenReturn(Optional.of(updateSession));
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("lock-conversation", 1L))
+                .thenReturn(Optional.of(lockSession));
+
+        service.updateUnlockedScope(
+                1L,
+                "update-conversation",
+                new UpdateConversationScopeRequest("AUTO_LIBRARY", null, null, null, null)
+        );
+        service.lockForFirstMessage(1L, "lock-conversation");
+
+        verify(sessionRepository).findByConversationIdAndUserIdForUpdate("update-conversation", 1L);
+        verify(sessionRepository).findByConversationIdAndUserIdForUpdate("lock-conversation", 1L);
+        verify(sessionRepository, never()).findByConversationIdAndUserId("update-conversation", 1L);
+        verify(sessionRepository, never()).findByConversationIdAndUserId("lock-conversation", 1L);
+    }
+
+    @Test
+    void lockAutoLibraryScopeForFirstMessage() {
+        ConversationSession session = ownedSession("conversation-1");
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
+
+        ConversationScopeService.EffectiveConversationScope scope = service.lockForFirstMessage(1L, "conversation-1");
+
+        assertEquals(ConversationScopeMode.AUTO_LIBRARY, scope.mode());
+        assertEquals(ConversationScopeStatus.READY, scope.status());
+        assertEquals(true, scope.locked());
+        assertEquals(true, session.isScopeLocked());
+        verify(sessionRepository).save(session);
+    }
+
+    @Test
+    void lockValidSnapshotScopeForFirstMessage() throws Exception {
+        ConversationSession session = snapshotSession("conversation-1", List.of("paper-1", "paper-2"));
+        Paper first = paper("paper-1", "1", false, "default");
+        Paper second = paper("paper-2", "1", false, "default");
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(paperRepository.findByPaperIdIn(List.of("paper-1", "paper-2"))).thenReturn(List.of(first, second));
+        when(paperSearchabilityService.isSearchable(first)).thenReturn(true);
+        when(paperSearchabilityService.isSearchable(second)).thenReturn(true);
+
+        ConversationScopeService.EffectiveConversationScope scope = service.lockForFirstMessage(1L, "conversation-1");
+
+        assertEquals(ConversationScopeMode.SOURCE_SET_SNAPSHOT, scope.mode());
+        assertEquals(ConversationScopeStatus.READY, scope.status());
+        assertEquals(true, scope.locked());
+        assertIterableEquals(List.of("paper-1", "paper-2"), scope.paperIds());
+        assertEquals(true, session.isScopeLocked());
+        verify(sessionRepository).save(session);
+    }
+
+    @Test
+    void alreadyLockedScopeIsIdempotent() throws Exception {
+        ConversationSession session = snapshotSession("conversation-1", List.of("paper-1"));
+        session.setScopeLocked(true);
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
+
+        ConversationScopeService.EffectiveConversationScope scope = service.lockForFirstMessage(1L, "conversation-1");
+
+        assertEquals(ConversationScopeMode.SOURCE_SET_SNAPSHOT, scope.mode());
+        assertEquals(true, scope.locked());
+        assertIterableEquals(List.of("paper-1"), scope.paperIds());
+        verify(sessionRepository, never()).save(session);
+        verify(paperRepository, never()).findByPaperIdIn(anyList());
+    }
+
+    @Test
+    void lockRejectsEmptySnapshotScope() {
+        ConversationSession session = ownedSession("conversation-1");
+        session.setScopeMode(ConversationScopeMode.SOURCE_SET_SNAPSHOT);
+        session.setScopeStatus(ConversationScopeStatus.READY);
+        session.setSourceSnapshotJson("{\"paperIds\":[],\"paperCount\":0}");
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> service.lockForFirstMessage(1L, "conversation-1"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals(ConversationScopeStatus.INVALID, session.getScopeStatus());
+        assertEquals(false, session.isScopeLocked());
+        verify(sessionRepository).save(session);
+    }
+
+    @Test
+    void lockRejectsSnapshotWithMissingPaper() throws Exception {
+        ConversationSession session = snapshotSession("conversation-1", List.of("missing-paper"));
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(paperRepository.findByPaperIdIn(List.of("missing-paper"))).thenReturn(List.of());
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> service.lockForFirstMessage(1L, "conversation-1"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals(ConversationScopeStatus.INVALID, session.getScopeStatus());
+        assertEquals(false, session.isScopeLocked());
+        verify(sessionRepository).save(session);
+    }
+
+    @Test
+    void lockRejectsSnapshotWithInaccessiblePaper() throws Exception {
+        ConversationSession session = snapshotSession("conversation-1", List.of("inaccessible-paper"));
+        Paper inaccessible = paper("inaccessible-paper", "2", false, "other");
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(paperRepository.findByPaperIdIn(List.of("inaccessible-paper"))).thenReturn(List.of(inaccessible));
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> service.lockForFirstMessage(1L, "conversation-1"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals(ConversationScopeStatus.INVALID, session.getScopeStatus());
+        assertEquals(false, session.isScopeLocked());
+        verify(sessionRepository).save(session);
+    }
+
+    @Test
+    void lockRejectsSnapshotWithUnsearchablePaper() throws Exception {
+        ConversationSession session = snapshotSession("conversation-1", List.of("unsearchable-paper"));
+        Paper unsearchable = paper("unsearchable-paper", "1", false, "default");
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(paperRepository.findByPaperIdIn(List.of("unsearchable-paper"))).thenReturn(List.of(unsearchable));
+        when(paperSearchabilityService.isSearchable(unsearchable)).thenReturn(false);
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> service.lockForFirstMessage(1L, "conversation-1"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals(ConversationScopeStatus.INVALID, session.getScopeStatus());
+        assertEquals(false, session.isScopeLocked());
+        verify(sessionRepository).save(session);
+    }
+
+    @Test
     void collectionScopeResolvesSearchableAccessiblePapersOnly() throws Exception {
         ConversationSession session = ownedSession("conversation-1");
         Paper searchable = paper("searchable-paper", "1", false, "default");
         Paper unsearchable = paper("unsearchable-paper", "1", false, "default");
         Paper inaccessible = paper("inaccessible-paper", "2", false, "other");
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperCollectionService.getCollection(1L, 11L)).thenReturn(Map.of(
                 "id", 11L,
                 "name", "Collection",
@@ -186,7 +322,7 @@ class ConversationScopeServiceTest {
     void emptyResolvedCollectionScopeIsRejected() {
         ConversationSession session = ownedSession("conversation-1");
         Paper unsearchable = paper("unsearchable-paper", "1", false, "default");
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperCollectionService.getCollection(1L, 11L)).thenReturn(Map.of(
                 "id", 11L,
                 "name", "Collection",
@@ -290,6 +426,19 @@ class ConversationScopeServiceTest {
         session.setUser(user);
         session.setConversationId(conversationId);
         session.setTitle("New conversation");
+        return session;
+    }
+
+    private ConversationSession snapshotSession(String conversationId, List<String> paperIds) throws Exception {
+        ConversationSession session = ownedSession(conversationId);
+        session.setScopeMode(ConversationScopeMode.SOURCE_SET_SNAPSHOT);
+        session.setScopeStatus(ConversationScopeStatus.READY);
+        session.setSourceLabel("Selected papers");
+        session.setSourcePaperCount(paperIds.size());
+        session.setSourceSnapshotJson(objectMapper.writeValueAsString(Map.of(
+                "paperIds", paperIds,
+                "paperCount", paperIds.size()
+        )));
         return session;
     }
 

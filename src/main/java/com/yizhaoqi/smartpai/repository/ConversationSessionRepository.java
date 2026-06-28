@@ -1,7 +1,11 @@
 package com.yizhaoqi.smartpai.repository;
 
 import com.yizhaoqi.smartpai.model.ConversationSession;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,6 +19,11 @@ public interface ConversationSessionRepository extends JpaRepository<Conversatio
     List<ConversationSession> findByUserIdOrderByUpdatedAtDesc(Long userId);
 
     Optional<ConversationSession> findByConversationIdAndUserId(String conversationId, Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ConversationSession s WHERE s.conversationId = :conversationId AND s.user.id = :userId")
+    Optional<ConversationSession> findByConversationIdAndUserIdForUpdate(@Param("conversationId") String conversationId,
+                                                                         @Param("userId") Long userId);
 
     boolean existsByConversationId(String conversationId);
 }

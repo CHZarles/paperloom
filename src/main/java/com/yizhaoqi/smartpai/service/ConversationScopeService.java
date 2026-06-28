@@ -89,7 +89,7 @@ public class ConversationScopeService {
     public Map<String, Object> updateUnlockedScope(Long userId,
                                                    String conversationId,
                                                    UpdateConversationScopeRequest request) {
-        ConversationSession session = requireOwnedSession(userId, conversationId);
+        ConversationSession session = requireOwnedSessionForUpdate(userId, conversationId);
         if (session.isScopeLocked()) {
             throw new CustomException("Conversation scope is locked", HttpStatus.CONFLICT);
         }
@@ -136,7 +136,7 @@ public class ConversationScopeService {
 
     @Transactional
     public EffectiveConversationScope lockForFirstMessage(Long userId, String conversationId) {
-        ConversationSession session = requireOwnedSession(userId, conversationId);
+        ConversationSession session = requireOwnedSessionForUpdate(userId, conversationId);
         if (session.isScopeLocked()) {
             return resolveSession(session);
         }
@@ -144,7 +144,7 @@ public class ConversationScopeService {
         ConversationScopeMode mode = scopeModeOrDefault(session.getScopeMode());
         if (mode == ConversationScopeMode.SOURCE_SET_SNAPSHOT) {
             List<String> paperIds = snapshotPaperIds(session.getSourceSnapshotJson());
-            if (paperIds.isEmpty()) {
+            if (paperIds.isEmpty() || !snapshotPaperIdsStillValid(resolveUser(userId), paperIds)) {
                 session.setScopeStatus(ConversationScopeStatus.INVALID);
                 sessionRepository.save(session);
                 throw new CustomException("Conversation source scope is invalid", HttpStatus.CONFLICT);
@@ -233,6 +233,14 @@ public class ConversationScopeService {
                 .orElseThrow(() -> new CustomException("Conversation not found", HttpStatus.NOT_FOUND));
     }
 
+    private ConversationSession requireOwnedSessionForUpdate(Long userId, String conversationId) {
+        if (userId == null || conversationId == null || conversationId.isBlank()) {
+            throw new CustomException("Conversation not found", HttpStatus.NOT_FOUND);
+        }
+        return sessionRepository.findByConversationIdAndUserIdForUpdate(conversationId, userId)
+                .orElseThrow(() -> new CustomException("Conversation not found", HttpStatus.NOT_FOUND));
+    }
+
     private User resolveUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
@@ -301,6 +309,28 @@ public class ConversationScopeService {
                         .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
                         .anyMatch(paperSearchabilityService::isSearchable))
                 .toList();
+    }
+
+    private boolean snapshotPaperIdsStillValid(User user, List<String> paperIds) {
+        Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
+        List<String> effectiveOrgTags = effectiveOrgTags(user);
+        for (String paperId : paperIds) {
+            List<Paper> papers = papersByPaperId.getOrDefault(paperId, List.of());
+            if (papers.isEmpty()) {
+                return false;
+            }
+            boolean accessible = papers.stream().anyMatch(paper -> canAccessPaper(user, paper, effectiveOrgTags));
+            if (!accessible) {
+                return false;
+            }
+            boolean searchable = papers.stream()
+                    .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                    .anyMatch(paperSearchabilityService::isSearchable);
+            if (!searchable) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private Map<String, List<Paper>> productPapersByPaperId(List<String> paperIds) {
