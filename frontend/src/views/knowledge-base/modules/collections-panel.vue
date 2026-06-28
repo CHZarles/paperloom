@@ -285,7 +285,7 @@ async function searchCandidates(page = 1) {
   const query = addQuery.value.trim();
   const { error, data } = await request<Api.Paper.List>({
     url: '/papers?scope=accessible',
-    params: { page, size: 20, query, readiness: 'searchable' }
+    params: { page, size: 20, query }
   });
 
   if (requestSeq !== paperSearchRequestSeq || !addVisible.value) {
@@ -579,7 +579,7 @@ watch(
         </div>
 
         <NSpin :show="addSearchLoading">
-          <NEmpty v-if="!addCandidates.length" description="No searchable papers" class="collections-empty" />
+          <NEmpty v-if="!addCandidates.length" description="No accessible papers" class="collections-empty" />
 
           <NCheckboxGroup v-else v-model:value="selectedPaperIds">
             <div class="collection-candidate-list">
