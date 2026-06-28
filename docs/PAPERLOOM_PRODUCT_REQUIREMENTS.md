@@ -1,6 +1,7 @@
 # PaperLoom Product Requirements
 
-Status: user-confirmed on 2026-06-27; eval data isolation update confirmed on 2026-06-28.
+Status: user-confirmed on 2026-06-27; eval data isolation update confirmed on 2026-06-28;
+conversation scope and collection rules confirmed on 2026-06-28.
 
 This document is an AI-visible product standard for future PaperLoom development. When old code,
 UI copy, or implementation shortcuts conflict with this document, treat this document as the product
@@ -148,6 +149,122 @@ Policy:
 - do not infer a different paper or page when no trusted anchor exists
 - ask for clarification when the target cannot be resolved
 
+## Conversation Scope And Collections
+
+PaperLoom sessions must have a clear evidence universe. A user should always be able to tell which
+papers a conversation can retrieve from, and that scope must not silently change after the session
+has begun.
+
+### Scope Modes
+
+Supported conversation scope modes:
+
+- `AUTO_LIBRARY`: the session retrieves from all searchable product papers currently accessible to
+  the user. This is the default for a new session.
+- `SOURCE_SET_SNAPSHOT`: the session retrieves from a fixed list of resolved product `paperIds`
+  captured when the first chat request is accepted.
+
+`COLLECTION` is not a live session scope mode. A collection may be used to create a
+`SOURCE_SET_SNAPSHOT`, but locked sessions must retrieve from the snapshot paper ids, not from a
+collection that can later be edited.
+
+### Scope Locking
+
+Conversation scope is editable only before the first user message is accepted by the backend.
+
+Rules:
+
+- New sessions default to `AUTO_LIBRARY`.
+- Before the first accepted user message, the user may choose `AUTO_LIBRARY`, a collection-derived
+  snapshot, or a custom source-set snapshot.
+- The backend is the source of truth for scope locking.
+- The lock happens when the backend accepts the first chat request and records the user message.
+- Clicking send in the frontend must not be treated as a durable lock until the backend accepts the
+  request.
+- Once locked, the session scope cannot be changed. To use different papers, the user must start a
+  new session.
+- `AUTO_LIBRARY` also locks after the first accepted message; it cannot be changed to a source set
+  inside the same session.
+- The backend must reject attempts to send a chat request with a scope inconsistent with the locked
+  conversation scope.
+- If a locked source-set snapshot later contains papers that are deleted, lose permission, or become
+  unsearchable, the session is degraded or invalid. It must not silently expand to all papers or
+  dynamically replace the missing papers.
+
+### Source Set Snapshot
+
+A source set snapshot is the fixed evidence boundary for one session.
+
+Rules:
+
+- A snapshot stores resolved product `paperIds`.
+- A snapshot may be created from one collection, multiple collections, manual selection, paper-level
+  search results, title or metadata regex matches, answer sources, or combinations of these.
+- Snapshot creation may preserve a source label and recipe for explanation, but retrieval and audit
+  must use the resolved `paperIds`.
+- Snapshot paper ids must be product papers only, must pass permission filtering, and must be
+  searchable at the time the session locks.
+- There is no hard paper-count limit for snapshots. Large snapshots are valid when the user chooses
+  a broad collection or batch-matched paper set.
+
+### Collections
+
+A PaperLoom collection is a reusable, user-managed set of product papers.
+
+Rules:
+
+- Collections are first-class product objects, not chat-only temporary UI state.
+- Collections store static `paperIds`; they are not dynamic smart folders.
+- Regex, paper-level search, metadata conditions, and answer sources may be used as batch-add tools,
+  but after the add operation the collection stores concrete paper ids.
+- Collections may contain currently unsearchable papers because collection management is a paper
+  organization workflow.
+- Chat source selection must only use searchable papers from a collection. If a collection contains
+  unavailable papers, snapshot creation excludes them and reports the searchable count. If no
+  searchable papers remain, the session cannot start from that collection.
+- Collection edits do not affect already locked sessions.
+- Supported collection visibility is `PRIVATE` and `ORG`.
+- `PRIVATE` collections are visible and editable by their owner.
+- `ORG` collections are visible within the organization. Their creator and admins may edit them;
+  ordinary organization users are read-only.
+- Every paper inside a collection still requires normal paper permission checks before it can enter
+  a snapshot.
+
+### Reference Focus
+
+Reference follow-up is allowed inside a locked session, but it is not a scope change.
+
+Rules:
+
+- A reference focus may include `referenceNumber`, `conversationRecordId`, `paperId`, `pageNumber`,
+  `chunkId`, matched text, bbox, and source-kind metadata from persisted reference mappings.
+- Reference focus is temporary and applies to one outgoing question.
+- After the question is sent, the frontend clears the reference focus and the session scope remains
+  unchanged.
+- Reference focus must resolve to evidence inside the current session evidence universe.
+- In a `SOURCE_SET_SNAPSHOT` session, reference focus cannot jump to a paper outside the snapshot.
+- In an `AUTO_LIBRARY` session, reference focus must come from a persisted reference previously
+  generated in that session; users must not be able to hand-write arbitrary paper/page targets to
+  bypass scope rules.
+
+### Source Selection UX
+
+Large paper libraries require source selection to be paper-level, searchable, and server-backed.
+
+Rules:
+
+- Source selection for chat must search paper-level metadata, not chunk text.
+- Searchable fields include title, original filename, authors, venue, publication year, DOI, arXiv
+  id, paper id, and abstract when reliably extracted.
+- The source picker must use backend pagination and filtering. It must not load the first fixed page
+  of papers and filter locally.
+- The picker used for chat source selection only shows searchable papers.
+- Product paper-library management views may show unsearchable papers and their pipeline state.
+- Answer source actions should create a new session from those sources, not mutate the current
+  locked session.
+- A locked session should display a read-only scope summary. A user who needs different sources
+  should start a new session.
+
 ## Retrieval Constraints
 
 All retrieval must pass permission filtering.
@@ -173,6 +290,15 @@ Retrieval budgets should be explicit:
 - fast or interactive: lower latency, smaller evidence set
 - high recall: larger candidate/window budget
 - audit or deep recall: slower, broader evidence inspection for high-stakes review
+
+Conversation scope is part of retrieval correctness:
+
+- Product chat must retrieve from the locked conversation scope.
+- If a chat request does not include a reference focus, the backend must derive the effective paper
+  universe from the conversation scope.
+- The frontend must not be able to override a locked session by sending arbitrary `paperIds`.
+- Message history should record the effective scope used for each user message so historical answers
+  remain explainable.
 
 ## Answer Policy
 
@@ -204,6 +330,16 @@ When a user clicks a citation, the UI should display the evidence type accuratel
 - missing visual asset: explicit "text evidence only" or equivalent state
 
 Reference follow-up must work from persisted referenceMappings after chat history is reloaded.
+
+Frontend scope display requirements:
+
+- New and unlocked sessions display the editable scope, defaulting to all searchable papers.
+- Locked sessions display a read-only scope with a lock indicator and paper count.
+- Source-set sessions must expose the snapshot label and paper list or a paged paper list.
+- Reference focus is displayed separately from session scope and is cleared after send.
+- The paper library page should have separate surfaces for product papers and collections.
+- The chat page should not become the collection-management surface; it should select existing
+  collections or build source-set snapshots for new sessions.
 
 ## Benchmark Policy
 

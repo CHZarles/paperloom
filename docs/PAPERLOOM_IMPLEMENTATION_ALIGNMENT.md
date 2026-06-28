@@ -1,6 +1,7 @@
 # PaperLoom Implementation Alignment
 
-Status: initial scan recorded on 2026-06-27; eval data isolation completed on 2026-06-28.
+Status: initial scan recorded on 2026-06-27; eval data isolation completed on 2026-06-28;
+conversation scope and collection target recorded on 2026-06-28.
 
 This document records the gap between the current implementation and the user-confirmed PaperLoom
 product direction in `docs/PAPERLOOM_PRODUCT_REQUIREMENTS.md`.
@@ -81,6 +82,15 @@ Important product requirement:
 - Product storage contains only product PDF papers after eval cleanup. Benchmark corpora use the
   eval-native `paperloom_eval` schema, not `paismart.file_upload` or product chunk tables.
 
+Confirmed new storage target:
+
+- Conversations need durable scope fields: scope mode, lock state, scope status, source label,
+  source recipe, and resolved source-set snapshot paper ids.
+- Message history needs the effective scope used by each user message.
+- Collections need product tables for collection metadata and static collection paper membership.
+- Collections are management objects; locked sessions must not retrieve from live collection
+  membership.
+
 ### Indexing
 
 There are two Elasticsearch retrieval surfaces:
@@ -156,6 +166,8 @@ Alignment note:
 - `PaperQueryPlanner` and parts of `EvidencePlanner` still contain query cleanup and heuristic
   intent logic. This is acceptable only as replaceable planner strategy covered by regression tests,
   not as the product's core routing contract.
+- Chat routing must derive the paper universe from the locked conversation scope and optional
+  reference focus, not from mutable frontend `input.scope` state.
 
 ### Answering
 
@@ -199,6 +211,10 @@ Current behavior:
 - evidence display supports text, page/PDF preview, table, figure, and source follow-up paths
 - the knowledge base page shows upload, processing state, preview, parser artifact, and retry/delete
   controls
+- the chat input source picker currently requests the first page of accessible papers and filters
+  them in the browser
+- source scope is currently attached to the outgoing input and cleared after send
+- answer source actions currently set the next input scope inside the same session
 
 Alignment note:
 
@@ -206,6 +222,40 @@ Alignment note:
 - Product frontend no longer contains eval/structured import branches; eval visualization belongs in
   a separate eval/debug surface if needed.
 - Product language still contains legacy names and generic knowledge-base wording.
+- The current chat source picker is not acceptable for large paper libraries because it only loads a
+  fixed page and does not search paper-level candidates server-side.
+- The current mutable input scope conflicts with the confirmed rule that a session has one locked
+  evidence universe. Source changes must create a new session after the first accepted message.
+- The current paper-library page has no collection management surface.
+
+### Conversation Scope And Collections
+
+Confirmed product target:
+
+- A conversation starts unlocked with default `AUTO_LIBRARY` scope.
+- The user may choose all searchable papers, an existing collection, or a custom source-set snapshot
+  before the first accepted message.
+- The backend locks the conversation scope when it accepts the first user message.
+- Locked session scope is immutable. Changing sources requires a new session.
+- Reference focus is temporary and separate from session scope.
+- Collections are static paper-id sets with `PRIVATE` or `ORG` visibility.
+- Regex and metadata filters are batch-add tools for collections or custom snapshots, not dynamic
+  live session scopes.
+- Session retrieval uses resolved snapshot paper ids. Source recipe metadata is explanatory only.
+- Chat source selection must search paper-level metadata server-side and show only searchable
+  papers.
+
+Current implementation gap:
+
+- There is no collection model or API.
+- There is no durable conversation scope model, lock state, or snapshot storage.
+- There is no message-level effective-scope audit field.
+- WebSocket chat still accepts scope payloads that can vary per message.
+- Conversation session DTOs do not expose scope summary, paper count, lock state, or degraded scope
+  status.
+- The source picker is front-end filtered over a limited page of papers.
+- Existing runtime chat data was created before this model and does not need compatibility in the
+  development environment.
 
 ## Benchmark State
 
@@ -263,6 +313,9 @@ Current benchmark facts from the scan:
   are not yet a robust PDF-extraction guarantee.
 - PageIndex/page-location ideas exist in eval or test-scoped form. They are not production-default
   capability until benchmarks justify promotion.
+- Conversation scope is not yet a durable backend-owned session invariant.
+- Chat source selection is not yet suitable for large paper libraries.
+- Collections are not implemented.
 
 ### Product Drift
 
@@ -273,6 +326,8 @@ Current benchmark facts from the scan:
 - Runtime data pollution has been cleaned: LitSearch/QASPER rows were migrated to `paperloom_eval`,
   product DB/ES records were removed, and eval-only product columns (`is_eval`, `source_dataset`,
   `external_corpus_id`, `eval_split`) were dropped.
+- Product runtime data should be reset for the new collection/scope model while preserving admin
+  access and benchmark/eval corpora.
 
 ## Development Guidance From This Alignment
 
@@ -288,9 +343,15 @@ When implementing future changes:
 - do not add `includeEval` switches to product controllers or chat paths
 - validate UI evidence behavior in the browser when frontend evidence display is touched
 - record any product drift instead of silently normalizing it away
+- keep conversation scope backend-owned and immutable after the first accepted message
+- use source-set snapshots as retrieval truth, not live collection membership or regex rules
+- use paper-level server-side candidate search for chat source selection
+- preserve benchmark corpora while resetting product runtime data during local development
 
 High-priority cleanup items:
 
 - replace visible `CiteWeave` product copy with PaperLoom where appropriate
 - replace generic knowledge-base wording with paper-library or paper-search wording
 - keep PageIndex or LOCATE_PAGES behind eval gates until scorecards justify production use
+- add collection management to the paper-library surface
+- add locked-scope display and new-session-from-sources behavior to chat
