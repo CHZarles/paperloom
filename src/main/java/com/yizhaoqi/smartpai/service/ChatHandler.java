@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -138,7 +139,8 @@ public class ChatHandler {
             conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
-            PaperAnswerService.AnswerScope referenceFocus = referenceFocus(scope);
+            PaperAnswerService.AnswerScope referenceFocus =
+                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(scope));
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
             }
@@ -299,6 +301,112 @@ public class ChatHandler {
                 incomingScope.sourceKind(),
                 incomingScope.retrievalBudgetProfile()
         );
+    }
+
+    private PaperAnswerService.AnswerScope resolveReferenceFocus(
+            Long userId,
+            String conversationId,
+            PaperAnswerService.AnswerScope referenceFocus) {
+        if (referenceFocus == null || trimToNull(referenceFocus.paperId()) != null) {
+            return referenceFocus;
+        }
+        if (referenceFocus.referenceNumber() == null) {
+            return referenceFocus;
+        }
+
+        Optional<Map<String, Object>> detail = referenceFocus.conversationRecordId() == null
+                ? conversationService.findLatestReferenceDetail(userId, conversationId, referenceFocus.referenceNumber())
+                : conversationService.findReferenceDetail(userId, referenceFocus.conversationRecordId(), referenceFocus.referenceNumber());
+        Map<String, Object> resolvedDetail = detail.orElseThrow(() ->
+                new IllegalArgumentException("Reference focus could not be resolved to a paper"));
+        String paperId = stringDetail(resolvedDetail, "paperId");
+        if (paperId == null) {
+            throw new IllegalArgumentException("Reference focus could not be resolved to a paper");
+        }
+        return enrichReferenceFocus(referenceFocus, resolvedDetail, paperId);
+    }
+
+    private PaperAnswerService.AnswerScope enrichReferenceFocus(
+            PaperAnswerService.AnswerScope referenceFocus,
+            Map<String, Object> detail,
+            String paperId) {
+        String paperTitle = firstNonBlank(referenceFocus.paperTitle(), stringDetail(detail, "paperTitle"));
+        String originalFilename = firstNonBlank(referenceFocus.originalFilename(), stringDetail(detail, "originalFilename"));
+        String matchedText = firstNonBlank(
+                referenceFocus.matchedText(),
+                stringDetail(detail, "matchedChunkText"),
+                stringDetail(detail, "evidenceSnippet"),
+                stringDetail(detail, "anchorText"),
+                stringDetail(detail, "matchedText")
+        );
+        return new PaperAnswerService.AnswerScope(
+                List.of(paperId),
+                paperTitle == null ? referenceFocus.paperTitles() : List.of(paperTitle),
+                referenceFocus.referenceNumber(),
+                referenceFocus.conversationRecordId(),
+                firstNonNull(referenceFocus.chunkId(), integerDetail(detail, "chunkId")),
+                firstNonNull(referenceFocus.pageNumber(), integerDetail(detail, "pageNumber")),
+                paperId,
+                paperTitle,
+                originalFilename,
+                matchedText,
+                firstNonBlank(referenceFocus.bboxJson(), stringDetail(detail, "bboxJson")),
+                firstNonBlank(referenceFocus.sourceKind(), stringDetail(detail, "sourceKind")),
+                referenceFocus.retrievalBudgetProfile()
+        );
+    }
+
+    private String stringDetail(Map<String, Object> detail, String key) {
+        if (detail == null) {
+            return null;
+        }
+        Object value = detail.get(key);
+        return value == null ? null : trimToNull(String.valueOf(value));
+    }
+
+    private Integer integerDetail(Map<String, Object> detail, String key) {
+        if (detail == null) {
+            return null;
+        }
+        Object value = detail.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        String text = value == null ? null : trimToNull(String.valueOf(value));
+        if (text == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    @SafeVarargs
+    private final <T> T firstNonNull(T... values) {
+        if (values == null) {
+            return null;
+        }
+        for (T value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            String trimmed = trimToNull(value);
+            if (trimmed != null) {
+                return trimmed;
+            }
+        }
+        return null;
     }
 
     private boolean hasReferenceFocus(PaperAnswerService.AnswerScope scope) {

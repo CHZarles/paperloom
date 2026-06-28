@@ -16,6 +16,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -220,6 +221,96 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals(51L, answerScope.conversationRecordId());
         assertEquals(7, answerScope.chunkId());
         assertEquals("Reference evidence text from the locked paper.", answerScope.matchedText());
+        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, answerScope.retrievalBudgetProfile());
+    }
+
+    @Test
+    void referenceFocusFromPersistedRecordOutsideLockedScopeDoesNotAnswer() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationService.findReferenceDetail(1L, 10L, 1))
+                .thenReturn(Optional.of(referenceDetail("paper-b")));
+        doAnswer(invocation -> {
+            PaperAnswerService.AnswerScope focus = invocation.getArgument(1);
+            if ("paper-b".equals(focus.paperId())) {
+                throw new RuntimeException("Reference focus is outside the conversation source scope");
+            }
+            return null;
+        }).when(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(lockedScope), any());
+        PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                1,
+                10L,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                RetrievalBudgetProfile.INTERACTIVE
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain saved reference", referenceFocus),
+                fixture.session);
+
+        verify(fixture.conversationService).findReferenceDetail(1L, 10L, 1);
+        verify(fixture.paperAnswerService, never()).answer(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void referenceFocusFromPersistedRecordInsideLockedScopeIsEnrichedBeforeAnswering() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationService.findReferenceDetail(1L, 10L, 1))
+                .thenReturn(Optional.of(referenceDetail("paper-a")));
+        PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                1,
+                10L,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                RetrievalBudgetProfile.HIGH_RECALL
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain saved reference", referenceFocus),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.conversationService).findReferenceDetail(1L, 10L, 1);
+        verify(fixture.conversationScopeService, times(2)).assertReferenceFocusWithinScope(eq(lockedScope), any());
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("Explain saved reference"), scopeCaptor.capture());
+        PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
+        assertEquals(List.of("paper-a"), answerScope.paperIds());
+        assertEquals("paper-a", answerScope.paperId());
+        assertEquals("Resolved Paper paper-a", answerScope.paperTitle());
+        assertEquals("paper-a.pdf", answerScope.originalFilename());
+        assertEquals(1, answerScope.referenceNumber());
+        assertEquals(10L, answerScope.conversationRecordId());
+        assertEquals(7, answerScope.chunkId());
+        assertEquals(3, answerScope.pageNumber());
+        assertEquals("Persisted matched chunk for paper-a", answerScope.matchedText());
+        assertEquals("{\"x\":1}", answerScope.bboxJson());
+        assertEquals("TEXT", answerScope.sourceKind());
         assertEquals(RetrievalBudgetProfile.HIGH_RECALL, answerScope.retrievalBudgetProfile());
     }
 
@@ -756,6 +847,19 @@ class ChatHandlerReferenceEvidenceTest {
         );
     }
 
+    private static Map<String, Object> referenceDetail(String paperId) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("paperId", paperId);
+        detail.put("paperTitle", "Resolved Paper " + paperId);
+        detail.put("originalFilename", paperId + ".pdf");
+        detail.put("pageNumber", 3);
+        detail.put("chunkId", 7);
+        detail.put("matchedChunkText", "Persisted matched chunk for " + paperId);
+        detail.put("bboxJson", "{\"x\":1}");
+        detail.put("sourceKind", "TEXT");
+        return detail;
+    }
+
     private static ChatHandlerFixture chatHandlerFixture() {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
@@ -796,6 +900,7 @@ class ChatHandlerReferenceEvidenceTest {
         }).when(executor).execute(any(Runnable.class));
 
         ConversationScopeService conversationScopeService = mock(ConversationScopeService.class);
+        ConversationService conversationService = mock(ConversationService.class);
         ChatHandler handler = new ChatHandler(
                 redisTemplate,
                 null,
@@ -803,7 +908,7 @@ class ChatHandlerReferenceEvidenceTest {
                 paperAnswerService,
                 null,
                 mock(RateLimitService.class),
-                mock(ConversationService.class),
+                conversationService,
                 conversationScopeService,
                 generationStateService,
                 mock(ChatSessionRegistry.class),
@@ -814,12 +919,14 @@ class ChatHandlerReferenceEvidenceTest {
 
         WebSocketSession session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn("socket-1");
-        return new ChatHandlerFixture(handler, paperAnswerService, conversationScopeService, generationStateService, session);
+        return new ChatHandlerFixture(handler, paperAnswerService, conversationService, conversationScopeService,
+                generationStateService, session);
     }
 
     private record ChatHandlerFixture(
             ChatHandler handler,
             PaperAnswerService paperAnswerService,
+            ConversationService conversationService,
             ConversationScopeService conversationScopeService,
             ChatGenerationStateService generationStateService,
             WebSocketSession session
