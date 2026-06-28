@@ -134,7 +134,7 @@ public class ConversationScopeService {
         return resolveSession(requireOwnedSession(userId, conversationId));
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = CustomException.class)
     public EffectiveConversationScope lockForFirstMessage(Long userId, String conversationId) {
         ConversationSession session = requireOwnedSessionForUpdate(userId, conversationId);
         if (session.isScopeLocked()) {
