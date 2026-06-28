@@ -795,7 +795,11 @@ async function onBeforeUpload(
     <NCard title="Paper Library / 文献库" :bordered="false" size="small" class="paper-library-card card-wrapper">
       <template #header-extra>
         <div class="library-header-extra">
-          <NSegmented v-model:value="libraryView" size="small" :options="libraryViewOptions" />
+          <NRadioGroup v-model:value="libraryView" name="library-view" size="small" class="library-view-switch">
+            <NRadioButton v-for="option in libraryViewOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </NRadioButton>
+          </NRadioGroup>
           <TableHeaderOperation
             v-if="libraryView === 'papers'"
             v-model:columns="columnChecks"

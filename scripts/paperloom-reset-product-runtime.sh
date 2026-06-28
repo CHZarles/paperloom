@@ -76,6 +76,8 @@ declare -A ES_INDEX_EXISTS=()
 PRODUCT_DB_TABLES=(
   conversations
   conversation_sessions
+  paper_collection_papers
+  paper_collections
   paper_visual_assets
   paper_parser_artifacts
   paper_tables
@@ -305,7 +307,7 @@ SELECT CONCAT(TABLE_NAME, '.', COLUMN_NAME)
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE TABLE_SCHEMA='paismart'
   AND REFERENCED_TABLE_NAME='users'
-  AND TABLE_NAME NOT IN ('conversations', 'conversation_sessions', 'invite_codes', 'organization_tags')
+  AND TABLE_NAME NOT IN ('conversations', 'conversation_sessions', 'paper_collections', 'invite_codes', 'organization_tags')
 ORDER BY TABLE_NAME, COLUMN_NAME;
 ")"
   if [[ -n "$unknown_user_fks" ]]; then
@@ -403,6 +405,8 @@ DELIMITER ;
 
 CALL paperloom_reset_delete_if_exists('conversations');
 CALL paperloom_reset_delete_if_exists('conversation_sessions');
+CALL paperloom_reset_delete_if_exists('paper_collection_papers');
+CALL paperloom_reset_delete_if_exists('paper_collections');
 CALL paperloom_reset_delete_if_exists('paper_visual_assets');
 CALL paperloom_reset_delete_if_exists('paper_parser_artifacts');
 CALL paperloom_reset_delete_if_exists('paper_tables');
@@ -559,6 +563,12 @@ verify_product_db_counts() {
       paper_text_chunks)
         label="product_chunks"
         ;;
+      paper_collection_papers)
+        label="product_collection_memberships"
+        ;;
+      paper_collections)
+        label="product_collections"
+        ;;
       *)
         label="$table"
         ;;
@@ -647,7 +657,7 @@ verify_reset() {
 }
 
 echo "Preserving: admin user and paperloom_eval benchmark corpus."
-echo "Deleting: product papers, product chunks, product chat/session history, Redis runtime keys, product ES docs, product MinIO objects."
+echo "Deleting: product papers, product collections, product chunks, product chat/session history, Redis runtime keys, product ES docs, product MinIO objects."
 
 preflight
 reset_mysql

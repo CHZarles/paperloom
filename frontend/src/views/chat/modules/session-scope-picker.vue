@@ -193,14 +193,11 @@ function sameStringSet(left: string[], right: string[]) {
 <template>
   <NModal v-model:show="visible" preset="dialog" title="Session Scope" :show-icon="false" class="w-900px!">
     <div class="session-scope-picker">
-      <NSegmented
-        v-model:value="mode"
-        :options="[
-          { label: 'All', value: 'AUTO_LIBRARY' },
-          { label: 'Collection', value: 'COLLECTION' },
-          { label: 'Custom', value: 'CUSTOM' }
-        ]"
-      />
+      <NRadioGroup v-model:value="mode" name="session-scope-mode" size="small" class="scope-picker-mode">
+        <NRadioButton value="AUTO_LIBRARY">All</NRadioButton>
+        <NRadioButton value="COLLECTION">Collection</NRadioButton>
+        <NRadioButton value="CUSTOM">Custom</NRadioButton>
+      </NRadioGroup>
 
       <section v-if="mode === 'AUTO_LIBRARY'" class="scope-picker-pane">
         <div class="scope-picker-state">
@@ -294,6 +291,10 @@ function sameStringSet(left: string[], right: string[]) {
 .session-scope-picker {
   display: grid;
   gap: 14px;
+}
+
+.scope-picker-mode {
+  width: fit-content;
 }
 
 .scope-picker-pane {

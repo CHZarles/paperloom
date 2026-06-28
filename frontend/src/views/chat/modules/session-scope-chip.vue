@@ -50,7 +50,7 @@ const countLabel = computed(() => {
 });
 
 const showMeta = computed(() => {
-  return !props.compact || scopeStatus.value !== 'READY' || Boolean(countLabel.value && isSnapshot.value);
+  return true;
 });
 </script>
 

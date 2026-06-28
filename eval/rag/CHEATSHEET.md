@@ -1,6 +1,6 @@
 # PaperLoom RAG Eval Cheatsheet
 
-Last updated: 2026-06-28T06:25:34Z
+Last updated: 2026-06-28T19:18:09Z
 
 | Harness | Benchmark | Tier | Cases | Primary | Quality | Run |
 |---|---|---|---:|---:|---|---|
@@ -16,7 +16,7 @@ Last updated: 2026-06-28T06:25:34Z
 | service-backed-scoped-page-window | Product Paper-QA Slice | product | 3 | Pass 100.0% | Ev 100.0%, Cite 100.0%, Bad 0.0% | `runs/2026-06-24T162000Z-service-backed-scoped-page-window-product-rescue-paper-qa/` |
 | service-backed-scoped-page-window | QASPER Dev 200 | professional | 200 | Pass 42.5% | Ev 42.5%, Cite 100.0%, Bad 0.0% | `runs/2026-06-24T162100Z-service-backed-scoped-page-window-qasper-dev-200/` |
 | service-backed-scoped-diverse-window | Product Paper-QA Slice | product | 10 | Pass 100.0% | Ev 100.0%, Cite 100.0%, Bad 0.0% | `runs/2026-06-27T063345239159915Z-service-backed-scoped-diverse-window-product-rescue-paper-qa/` |
-| service-backed-scoped-diverse-window | QASPER Dev 200 | professional | 200 | Pass 45.5% | Ev 45.5%, Cite 100.0%, Bad 0.0% | `runs/2026-06-28T062534Z-service-backed-scoped-diverse-window-qasper-dev-200/` |
+| service-backed-scoped-diverse-window | QASPER Dev 200 | professional | 200 | Pass 45.5% | Ev 45.5%, Cite 100.0%, Bad 0.0% | `runs/2026-06-28T191809Z-service-backed-scoped-diverse-window-qasper-dev-200/` |
 | service-backed-scoped-diverse-window-k5 | Product Paper-QA Slice | product | 10 | Pass 100.0% | Ev 100.0%, Cite 100.0%, Bad 0.0% | `runs/2026-06-27T063403318239747Z-service-backed-scoped-diverse-window-k5-product-rescue-paper-qa/` |
 | service-backed-scoped-diverse-window-k5 | QASPER Dev 200 | professional | 200 | Pass 53.0% | Ev 53.0%, Cite 100.0%, Bad 0.0% | `runs/2026-06-27T061011343477880Z-service-backed-scoped-diverse-window-k5-qasper-dev-200/` |
 | service-backed-scoped-diverse-window-k7 | Product Paper-QA Slice | product | 10 | Pass 100.0% | Ev 100.0%, Cite 100.0%, Bad 0.0% | `runs/2026-06-27T063421402493123Z-service-backed-scoped-diverse-window-k7-product-rescue-paper-qa/` |
