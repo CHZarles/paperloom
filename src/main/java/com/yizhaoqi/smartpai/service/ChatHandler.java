@@ -140,7 +140,7 @@ public class ChatHandler {
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
             PaperAnswerService.AnswerScope referenceFocus =
-                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(scope));
+                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(scope, userMessage));
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
             }
@@ -274,10 +274,37 @@ public class ChatHandler {
         );
     }
 
-    private PaperAnswerService.AnswerScope referenceFocus(PaperAnswerService.AnswerScope incomingScope) {
-        if (!hasReferenceFocus(incomingScope)) {
+    private PaperAnswerService.AnswerScope referenceFocus(
+            PaperAnswerService.AnswerScope incomingScope,
+            String userMessage) {
+        if (hasReferenceFocus(incomingScope)) {
+            return structuredReferenceFocus(incomingScope);
+        }
+        Integer referenceNumber = firstCitedReferenceNumber(userMessage);
+        if (referenceNumber == null) {
             return null;
         }
+        RetrievalBudgetProfile budgetProfile = incomingScope == null
+                ? RetrievalBudgetProfile.INTERACTIVE
+                : incomingScope.retrievalBudgetProfile();
+        return new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                referenceNumber,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                budgetProfile
+        );
+    }
+
+    private PaperAnswerService.AnswerScope structuredReferenceFocus(PaperAnswerService.AnswerScope incomingScope) {
         String focusPaperId = trimToNull(incomingScope.paperId());
         List<String> focusPaperIds = focusPaperId == null
                 ? incomingScope.paperIds()
@@ -301,6 +328,21 @@ public class ChatHandler {
                 incomingScope.sourceKind(),
                 incomingScope.retrievalBudgetProfile()
         );
+    }
+
+    private Integer firstCitedReferenceNumber(String userMessage) {
+        if (userMessage == null || userMessage.isBlank()) {
+            return null;
+        }
+        Matcher matcher = CITED_REFERENCE_PATTERN.matcher(userMessage);
+        if (!matcher.find()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private PaperAnswerService.AnswerScope resolveReferenceFocus(

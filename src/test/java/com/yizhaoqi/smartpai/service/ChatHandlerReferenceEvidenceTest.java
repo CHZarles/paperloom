@@ -274,6 +274,56 @@ class ChatHandlerReferenceEvidenceTest {
     }
 
     @Test
+    void plainTextReferenceOutsideLockedScopeDoesNotAnswer() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationService.findLatestReferenceDetail(1L, "conversation-1", 1))
+                .thenReturn(Optional.of(referenceDetail("paper-b")));
+        doAnswer(invocation -> {
+            PaperAnswerService.AnswerScope focus = invocation.getArgument(1);
+            if ("paper-b".equals(focus.paperId())) {
+                throw new RuntimeException("Reference focus is outside the conversation source scope");
+            }
+            return null;
+        }).when(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(lockedScope), any());
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释 [1]", null), fixture.session);
+
+        verify(fixture.conversationService).findLatestReferenceDetail(1L, "conversation-1", 1);
+        verify(fixture.paperAnswerService, never()).answer(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void plainTextReferenceInsideLockedScopeIsPassedAsReferenceFocus() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(lockedScope);
+        when(fixture.conversationService.findLatestReferenceDetail(1L, "conversation-1", 1))
+                .thenReturn(Optional.of(referenceDetail("paper-a")));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释 [1]", null), fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.conversationService).findLatestReferenceDetail(1L, "conversation-1", 1);
+        verify(fixture.conversationScopeService, times(2)).assertReferenceFocusWithinScope(eq(lockedScope), any());
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("解释 [1]"), scopeCaptor.capture());
+        PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
+        assertEquals(List.of("paper-a"), answerScope.paperIds());
+        assertEquals(1, answerScope.referenceNumber());
+        assertEquals("paper-a", answerScope.paperId());
+        assertEquals("Persisted matched chunk for paper-a", answerScope.matchedText());
+    }
+
+    @Test
     void scalarPaperIdDoesNotOverridePersistedReferencePaperOutsideLockedScope() {
         ChatHandlerFixture fixture = chatHandlerFixture();
         ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
