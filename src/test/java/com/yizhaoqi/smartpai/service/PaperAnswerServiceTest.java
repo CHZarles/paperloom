@@ -633,6 +633,48 @@ class PaperAnswerServiceTest {
     }
 
     @Test
+    void referenceSeedWithReferenceNumberDoesNotReinspectPersistedReference() {
+        when(conversationService.findLatestReferenceDetail(1L, "c1", 1))
+                .thenReturn(java.util.Optional.of(Map.of(
+                        "paperId", "paper-b",
+                        "paperTitle", "Out of scope paper",
+                        "matchedChunkText", "This persisted detail should not be re-resolved."
+                )));
+        when(llmProviderRouter.completeReActTurn(eq("1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(new LlmProviderRouter.ReActTurn(
+                        "**结论**\nvalidated seed 已经足够回答。{{E1}}",
+                        List.of(),
+                        Map.of("role", "assistant", "content", "**结论**\nvalidated seed 已经足够回答。{{E1}}"),
+                        "stop",
+                        10,
+                        5
+                ));
+        PaperAnswerService.AnswerScope scope = new PaperAnswerService.AnswerScope(
+                List.of("paper-a"),
+                List.of("Title paper-a"),
+                1,
+                null,
+                7,
+                5,
+                "paper-a",
+                "Title paper-a",
+                "paper-a.pdf",
+                "validated seed evidence from the locked scope",
+                "{\"coordinateSystem\":\"top_left_1000\"}",
+                "TEXT"
+        );
+
+        PaperAnswerService.AnswerResult answer = service.answer("1", "c1", "解释 [1]", scope);
+
+        assertEquals(PaperAnswerService.Intent.REFERENCE_QA, answer.intent());
+        assertEquals("paper-a", answer.referenceMappings().get(1).paperId());
+        assertTrue(answer.markdown().contains("[1]"));
+        verify(conversationService, never()).findLatestReferenceDetail(1L, "c1", 1);
+        verify(conversationService, never()).findReferenceDetail(eq(1L), any(), eq(1));
+        verifyNoInteractions(retrievalService);
+    }
+
+    @Test
     void answerScopeWithPaperIdsPreservesReferenceFocusAndBudget() {
         PaperAnswerService.AnswerScope incomingFocus = new PaperAnswerService.AnswerScope(
                 List.of("mutable-paper"),
@@ -703,6 +745,7 @@ class PaperAnswerServiceTest {
 
         assertEquals(PaperAnswerService.Intent.CLARIFY, answer.intent());
         assertTrue(answer.markdown().contains("找不到这个引用"));
+        verify(conversationService).findLatestReferenceDetail(1L, "c1", 99);
         verifyNoInteractions(retrievalService, llmProviderRouter);
     }
 

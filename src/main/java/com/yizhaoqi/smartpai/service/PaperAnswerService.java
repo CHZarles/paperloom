@@ -209,6 +209,10 @@ public class PaperAnswerService {
         PlannerAction lastAction = null;
         int plannerRounds = 0;
         List<String> attemptedQueries = new ArrayList<>();
+        if (responseIntent == Intent.REFERENCE_QA && !ledger.evidence().isEmpty()) {
+            return answerFromHarnessLedger(userId, conversationId, userMessage, responseIntent, effectiveScope,
+                    ledger, plannerRounds, attemptedQueries);
+        }
         for (int round = 0; round < 3; round++) {
             plannerRounds++;
             PlannerContext context = new PlannerContext(userId, userMessage, responseIntent, effectiveScope, ledger);
