@@ -21,7 +21,6 @@ const tableModalTitle = ref('');
 const tableModalRows = ref<Api.Paper.TableItem[]>([]);
 
 const assetWarningLabels: Record<string, string> = {
-  structured_import_text_only: 'PDF/page visuals unavailable',
   parser_artifact_missing: 'Parser artifact missing',
   page_screenshots_missing: 'Page screenshots missing'
 };
@@ -122,8 +121,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
           <button
             class="library-file-cell__icon"
             type="button"
-            disabled={!canPreviewPaper(row)}
-            title={canPreviewPaper(row) ? '预览 PDF' : 'Text-only import has no PDF preview'}
+            title="预览 PDF"
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {renderIcon(row.originalFilename)}
@@ -133,8 +131,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
               <button
                 type="button"
                 class="library-file-cell__name"
-                disabled={!canPreviewPaper(row)}
-                title={canPreviewPaper(row) ? '预览 PDF' : 'Text-only import has no PDF preview'}
+                title="预览 PDF"
                 onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
               >
                 {row.originalFilename}
@@ -213,7 +210,6 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
             type="primary"
             secondary
             size="small"
-            disabled={!canPreviewPaper(row)}
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {{
@@ -336,8 +332,6 @@ function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.Uplo
     evidenceAssetLevel: source.evidenceAssetLevel,
     assetWarnings: source.assetWarnings,
     pdfEvidenceAvailable: source.pdfEvidenceAvailable,
-    structuredImport: source.structuredImport,
-    evalImport: source.evalImport,
     parserArtifact: source.parserArtifact,
     tableAsset: source.tableAsset,
     figureAsset: source.figureAsset,
@@ -520,22 +514,6 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
 function renderEvidenceReadiness(row: Api.Paper.UploadTask, warningText: string) {
   const title = warningText || 'Evidence assets ready';
 
-  if (row.evalImport || row.sourceType === 'EVAL_IMPORT') {
-    return (
-      <span class="library-asset-pill library-asset-pill--muted" title={title}>
-        Eval import: text only
-      </span>
-    );
-  }
-
-  if (row.structuredImport || row.sourceType === 'STRUCTURED_IMPORT') {
-    return (
-      <span class="library-asset-pill library-asset-pill--muted" title={title}>
-        Structured import: text only
-      </span>
-    );
-  }
-
   if (row.pdfEvidenceAvailable || row.evidenceAssetLevel === 'PDF_VISUAL') {
     return (
       <span class="library-asset-pill library-asset-pill--ok" title={title}>
@@ -553,15 +531,6 @@ function renderEvidenceReadiness(row: Api.Paper.UploadTask, warningText: string)
 
 function formatAssetWarnings(warnings?: string[]) {
   return (warnings || []).map(warning => assetWarningLabels[warning] || warning).join('; ');
-}
-
-function canPreviewPaper(row: Api.Paper.UploadTask) {
-  return !(
-    row.structuredImport ||
-    row.evalImport ||
-    row.sourceType === 'STRUCTURED_IMPORT' ||
-    row.sourceType === 'EVAL_IMPORT'
-  );
 }
 
 function renderIndexLine(label: string, tokens?: number | null, chunks?: number | null) {

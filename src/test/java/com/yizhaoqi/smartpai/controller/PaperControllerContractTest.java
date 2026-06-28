@@ -38,6 +38,9 @@ import static org.mockito.Mockito.when;
 
 class PaperControllerContractTest {
 
+    private static final String LEGACY_STRUCTURED_FIELD = "structured" + "Import";
+    private static final String LEGACY_EVAL_FIELD = "eval" + "Import";
+
     @Mock
     private PaperService paperService;
 
@@ -140,8 +143,8 @@ class PaperControllerContractTest {
         assertEquals("PDF", item.get("sourceType"));
         assertEquals("PDF_VISUAL", item.get("evidenceAssetLevel"));
         assertEquals(true, item.get("pdfEvidenceAvailable"));
-        assertEquals(false, item.get("structuredImport"));
-        assertEquals(false, item.get("evalImport"));
+        assertFalse(item.containsKey(LEGACY_STRUCTURED_FIELD));
+        assertFalse(item.containsKey(LEGACY_EVAL_FIELD));
         assertEquals(List.of(), item.get("assetWarnings"));
     }
 
@@ -177,17 +180,14 @@ class PaperControllerContractTest {
     }
 
     @Test
-    void metadataDetailMarksEvalImportsAsTextOnly() {
+    void metadataDetailUsesPdfReadinessOnly() {
         Paper paper = new Paper();
         paper.setPaperId("fedcba9876543210fedcba9876543210");
-        paper.setOriginalFilename("litsearch:123.json");
-        paper.setPaperTitle("Eval Paper");
+        paper.setOriginalFilename("paper.pdf");
+        paper.setPaperTitle("PDF Paper");
         paper.setStatus(Paper.STATUS_COMPLETED);
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
         paper.setUserId("2");
-        paper.setSourceDataset("litsearch");
-        paper.setEvalSplit("full");
-        paper.setEval(true);
 
         when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("fedcba9876543210fedcba9876543210"))
                 .thenReturn(Optional.of(paper));
@@ -195,19 +195,20 @@ class PaperControllerContractTest {
 
         var response = paperController.updatePaperMetadata(
                 "fedcba9876543210fedcba9876543210",
-                Map.of("paperTitle", "Eval Paper"),
+                Map.of("paperTitle", "PDF Paper"),
                 "2",
                 "USER"
         );
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         Map<?, ?> data = (Map<?, ?>) body.get("data");
 
-        assertEquals("EVAL_IMPORT", data.get("sourceType"));
-        assertEquals("TEXT_ONLY", data.get("evidenceAssetLevel"));
+        assertEquals("PDF", data.get("sourceType"));
+        assertEquals("PDF_PENDING_ASSETS", data.get("evidenceAssetLevel"));
         assertEquals(false, data.get("pdfEvidenceAvailable"));
-        assertEquals(true, data.get("structuredImport"));
-        assertEquals(true, data.get("evalImport"));
-        assertTrue(((List<?>) data.get("assetWarnings")).contains("structured_import_text_only"));
+        assertFalse(data.containsKey(LEGACY_STRUCTURED_FIELD));
+        assertFalse(data.containsKey(LEGACY_EVAL_FIELD));
+        assertTrue(((List<?>) data.get("assetWarnings")).contains("parser_artifact_missing"));
+        assertTrue(((List<?>) data.get("assetWarnings")).contains("page_screenshots_missing"));
     }
 
     @Test

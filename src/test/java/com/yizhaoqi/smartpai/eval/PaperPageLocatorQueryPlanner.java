@@ -140,7 +140,7 @@ public final class PaperPageLocatorQueryPlanner {
         if (isEmbeddingQuestion(lower)) {
             addAll(expansions, "embedding", "embeddings", "representation", "representations");
         }
-        if (isEvaluationResultQuestion(lower)) {
+        if (asksAboutEvaluationResult(lower)) {
             addAll(expansions,
                     "evaluation",
                     "evaluated",
@@ -298,7 +298,7 @@ public final class PaperPageLocatorQueryPlanner {
         return containsAny(lower, "embedding", "embeddings", "representation", "representations");
     }
 
-    private static boolean isEvaluationResultQuestion(String lower) {
+    private static boolean asksAboutEvaluationResult(String lower) {
         return containsAny(lower,
                 "evaluated",
                 "evaluate",

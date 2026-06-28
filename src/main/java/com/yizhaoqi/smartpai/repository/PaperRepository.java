@@ -62,8 +62,6 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
 
     List<Paper> findByPaperIdIn(List<String> md5List);
 
-    List<Paper> findByEvalTrueAndSourceDatasetAndEvalSplit(String sourceDataset, String evalSplit);
-
     @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Paper f SET f.status = :newStatus WHERE f.id = :id AND f.status = :currentStatus")

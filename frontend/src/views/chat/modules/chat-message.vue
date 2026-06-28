@@ -44,8 +44,6 @@ const emit = defineEmits<{
       sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
       evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
       pdfEvidenceAvailable?: boolean | null;
-      structuredImport?: boolean | null;
-      evalImport?: boolean | null;
       pageScreenshotAvailable?: boolean | null;
       figureScreenshotAvailable?: boolean | null;
       assetWarnings?: string[] | null;
@@ -419,8 +417,6 @@ function openReferenceEvidencePage(payload: {
   sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
   evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
   pdfEvidenceAvailable?: boolean | null;
-  structuredImport?: boolean | null;
-  evalImport?: boolean | null;
   pageScreenshotAvailable?: boolean | null;
   figureScreenshotAvailable?: boolean | null;
   assetWarnings?: string[] | null;
@@ -577,8 +573,6 @@ async function handleSourceFileClick(fileInfo: {
         sourceType: persistedDetail.sourceType,
         evidenceAssetLevel: persistedDetail.evidenceAssetLevel,
         pdfEvidenceAvailable: persistedDetail.pdfEvidenceAvailable,
-        structuredImport: persistedDetail.structuredImport,
-        evalImport: persistedDetail.evalImport,
         pageScreenshotAvailable: persistedDetail.pageScreenshotAvailable,
         figureScreenshotAvailable: persistedDetail.figureScreenshotAvailable,
         assetWarnings: persistedDetail.assetWarnings,
@@ -622,8 +616,6 @@ async function handleSourceFileClick(fileInfo: {
       sourceType: detail?.sourceType,
       evidenceAssetLevel: detail?.evidenceAssetLevel,
       pdfEvidenceAvailable: detail?.pdfEvidenceAvailable,
-      structuredImport: detail?.structuredImport,
-      evalImport: detail?.evalImport,
       pageScreenshotAvailable: detail?.pageScreenshotAvailable,
       figureScreenshotAvailable: detail?.figureScreenshotAvailable,
       assetWarnings: detail?.assetWarnings,

@@ -112,18 +112,14 @@ public class ProductPdfParserSmokeRunner {
         diagnostics.put("paperId", paperId);
         diagnostics.put("originalFilename", paper.getOriginalFilename());
         diagnostics.put("paperTitle", paper.getPaperTitle());
-        diagnostics.put("isEval", paper.isEval());
-        diagnostics.put("sourceDataset", paper.getSourceDataset());
-        diagnostics.put("externalCorpusId", paper.getExternalCorpusId());
-        diagnostics.put("evalSplit", paper.getEvalSplit());
         diagnostics.put("uploadStatus", paper.getStatus());
         diagnostics.put("vectorizationStatus", paper.getVectorizationStatus());
 
         if (paperId == null) {
             addFailure(failures, failureClass, "paper_id_missing", "PDF_PROVENANCE");
         }
-        if (isStructuredOrEvalImport(paper, manifestCase)) {
-            addFailure(failures, failureClass, "eval_or_structured_import_not_pdf", "PDF_PROVENANCE");
+        if (isJsonRow(paper, manifestCase)) {
+            addFailure(failures, failureClass, "json_row_not_pdf", "PDF_PROVENANCE");
         }
         if (!isPdfFilename(paper.getOriginalFilename())) {
             addFailure(failures, failureClass, "original_filename_not_pdf", "PDF_PROVENANCE");
@@ -325,8 +321,8 @@ public class ProductPdfParserSmokeRunner {
         metrics.put("avgPageAwareChunkCount", averageDiagnostic(results, "pageAwareChunkCount"));
         metrics.put("avgParserArtifactCount", averageDiagnostic(results, "parserArtifactCount"));
         metrics.put("avgPageScreenshotCount", averageDiagnostic(results, "pageScreenshotCount"));
-        metrics.put("evalImportRejectedCount", (double) results.stream()
-                .filter(result -> result.failures().contains("eval_or_structured_import_not_pdf"))
+        metrics.put("jsonRowRejectedCount", (double) results.stream()
+                .filter(result -> result.failures().contains("json_row_not_pdf"))
                 .count());
         metrics.put("parserArtifactMissingRate", failureRate(results, "PARSER_ARTIFACT"));
         metrics.put("visualAssetMissingRate", failureRate(results, "VISUAL_ASSET"));
@@ -354,10 +350,8 @@ public class ProductPdfParserSmokeRunner {
         return fraction(count, results.size());
     }
 
-    private boolean isStructuredOrEvalImport(Paper paper, ManifestCase manifestCase) {
-        return paper.isEval()
-                || blankToNull(paper.getSourceDataset()) != null
-                || hasJsonExtension(paper.getOriginalFilename())
+    private boolean isJsonRow(Paper paper, ManifestCase manifestCase) {
+        return hasJsonExtension(paper.getOriginalFilename())
                 || hasJsonExtension(manifestCase.path())
                 || hasJsonExtension(manifestCase.originalFilename());
     }

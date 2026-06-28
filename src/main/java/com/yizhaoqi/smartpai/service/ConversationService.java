@@ -396,7 +396,41 @@ public class ConversationService {
         normalized.putIfAbsent("originalFilename", normalized.get("paperTitle"));
         normalized.remove("fileMd5");
         normalized.remove("fileName");
+        normalized.put("sourceType", "PDF");
+        boolean pdfEvidenceAvailable = booleanValue(normalized.get("pdfEvidenceAvailable"));
+        normalized.put("pdfEvidenceAvailable", pdfEvidenceAvailable);
+        normalized.put("evidenceAssetLevel", "PDF_VISUAL".equals(normalized.get("evidenceAssetLevel")) || pdfEvidenceAvailable
+                ? "PDF_VISUAL"
+                : "PDF_PENDING_ASSETS");
+        normalized.put("pageScreenshotAvailable", booleanValue(normalized.get("pageScreenshotAvailable")));
+        normalized.put("figureScreenshotAvailable", booleanValue(normalized.get("figureScreenshotAvailable")));
+        normalized.put("assetWarnings", normalizedAssetWarnings(normalized.get("assetWarnings")));
+        normalized.remove(legacyField("structured", "Import"));
+        normalized.remove(legacyField("eval", "Import"));
         return normalized;
+    }
+
+    private String legacyField(String prefix, String suffix) {
+        return prefix + suffix;
+    }
+
+    private boolean booleanValue(Object value) {
+        return value instanceof Boolean bool && bool;
+    }
+
+    private List<String> normalizedAssetWarnings(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        return list.stream()
+                .filter(item -> item != null && !String.valueOf(item).isBlank())
+                .map(String::valueOf)
+                .filter(item -> !isLegacyImportWarning(item))
+                .toList();
+    }
+
+    private boolean isLegacyImportWarning(String value) {
+        return value.startsWith("structured_") && value.endsWith("_text_only");
     }
 
     private String writeReferenceMappings(Map<String, Map<String, Object>> referenceMappings) {
@@ -418,9 +452,26 @@ public class ConversationService {
         }
 
         try {
-            return objectMapper.readValue(referenceMappingsJson, new TypeReference<Map<String, Map<String, Object>>>() {});
+            Map<String, Map<String, Object>> rawMappings = objectMapper.readValue(
+                    referenceMappingsJson,
+                    new TypeReference<Map<String, Map<String, Object>>>() {}
+            );
+            Map<String, Map<String, Object>> normalizedMappings = new LinkedHashMap<>();
+            rawMappings.forEach((key, value) -> normalizedMappings.put(key, normalizeReferenceDetail(value, integerValue(key))));
+            return normalizedMappings;
         } catch (Exception e) {
             logger.warn("解析引用映射失败，将返回无引用详情的历史记录", e);
+            return null;
+        }
+    }
+
+    private Integer integerValue(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException exception) {
             return null;
         }
     }

@@ -208,8 +208,6 @@ public class EvidenceToolExecutor {
         result.setSourceType(stringValue(detail.get("sourceType")));
         result.setEvidenceAssetLevel(stringValue(detail.get("evidenceAssetLevel")));
         result.setPdfEvidenceAvailable(booleanValue(detail.get("pdfEvidenceAvailable")));
-        result.setStructuredImport(booleanValue(detail.get("structuredImport")));
-        result.setEvalImport(booleanValue(detail.get("evalImport")));
         result.setPageScreenshotAvailable(booleanValue(detail.get("pageScreenshotAvailable")));
         result.setFigureScreenshotAvailable(booleanValue(detail.get("figureScreenshotAvailable")));
         result.setAssetWarnings(stringListValue(detail.get("assetWarnings")));

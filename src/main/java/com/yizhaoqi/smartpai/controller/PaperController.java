@@ -734,44 +734,24 @@ public class PaperController {
             Paper paper,
             Map<String, Object> parserArtifact,
             Map<String, Object> visualAsset) {
-        boolean evalImport = paper.isEval();
-        boolean structuredImport = evalImport || hasText(paper.getSourceDataset()) || isJsonImport(paper);
-        String sourceType = evalImport ? "EVAL_IMPORT" : structuredImport ? "STRUCTURED_IMPORT" : "PDF";
         long pageScreenshotCount = longValue(visualAsset, "pageScreenshotCount");
-        boolean pdfEvidenceAvailable = "PDF".equals(sourceType) && pageScreenshotCount > 0;
-        String evidenceAssetLevel = pdfEvidenceAvailable
-                ? "PDF_VISUAL"
-                : structuredImport ? "TEXT_ONLY" : "PDF_PENDING_ASSETS";
+        boolean pdfEvidenceAvailable = pageScreenshotCount > 0;
+        String evidenceAssetLevel = pdfEvidenceAvailable ? "PDF_VISUAL" : "PDF_PENDING_ASSETS";
 
         List<String> assetWarnings = new ArrayList<>();
-        if (structuredImport) {
-            assetWarnings.add("structured_import_text_only");
-        } else {
-            if (!Boolean.TRUE.equals(parserArtifact.get("available"))) {
-                assetWarnings.add("parser_artifact_missing");
-            }
-            if (pageScreenshotCount <= 0) {
-                assetWarnings.add("page_screenshots_missing");
-            }
+        if (!Boolean.TRUE.equals(parserArtifact.get("available"))) {
+            assetWarnings.add("parser_artifact_missing");
+        }
+        if (pageScreenshotCount <= 0) {
+            assetWarnings.add("page_screenshots_missing");
         }
 
         Map<String, Object> readiness = new LinkedHashMap<>();
-        readiness.put("sourceType", sourceType);
+        readiness.put("sourceType", "PDF");
         readiness.put("evidenceAssetLevel", evidenceAssetLevel);
         readiness.put("assetWarnings", assetWarnings);
         readiness.put("pdfEvidenceAvailable", pdfEvidenceAvailable);
-        readiness.put("structuredImport", structuredImport);
-        readiness.put("evalImport", evalImport);
         return readiness;
-    }
-
-    private boolean isJsonImport(Paper paper) {
-        String originalFilename = paper.getOriginalFilename();
-        return originalFilename != null && originalFilename.toLowerCase().endsWith(".json");
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 
     private long longValue(Map<String, Object> map, String key) {

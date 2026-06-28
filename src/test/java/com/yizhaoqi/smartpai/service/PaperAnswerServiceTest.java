@@ -401,17 +401,15 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void qaReferenceMappingPreservesStructuredImportReadiness() {
-        SearchResult evalResult = result("paper-eval", 1, "Structured eval evidence about agent benchmarks.", 0.9);
-        evalResult.setOriginalFilename("litsearch:123.json");
-        evalResult.setSourceType("EVAL_IMPORT");
-        evalResult.setEvidenceAssetLevel("TEXT_ONLY");
+    void qaReferenceMappingPreservesPdfReadinessOnly() {
+        SearchResult evalResult = result("paper-pdf", 1, "PDF evidence about agent benchmarks.", 0.9);
+        evalResult.setOriginalFilename("agent-benchmarks.pdf");
+        evalResult.setSourceType("PDF");
+        evalResult.setEvidenceAssetLevel("PDF_PENDING_ASSETS");
         evalResult.setPdfEvidenceAvailable(false);
-        evalResult.setStructuredImport(true);
-        evalResult.setEvalImport(true);
         evalResult.setPageScreenshotAvailable(false);
         evalResult.setFigureScreenshotAvailable(false);
-        evalResult.setAssetWarnings(List.of("structured_import_text_only"));
+        evalResult.setAssetWarnings(List.of("page_screenshots_missing"));
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 evalResult
         )));
@@ -428,15 +426,13 @@ class PaperAnswerServiceTest {
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "agent benchmark 怎么设置");
         ChatHandler.ReferenceInfo reference = answer.referenceMappings().get(1);
 
-        assertEquals("paper-eval", reference.paperId());
-        assertEquals("EVAL_IMPORT", reference.sourceType());
-        assertEquals("TEXT_ONLY", reference.evidenceAssetLevel());
+        assertEquals("paper-pdf", reference.paperId());
+        assertEquals("PDF", reference.sourceType());
+        assertEquals("PDF_PENDING_ASSETS", reference.evidenceAssetLevel());
         assertEquals(false, reference.pdfEvidenceAvailable());
-        assertEquals(true, reference.structuredImport());
-        assertEquals(true, reference.evalImport());
         assertEquals(false, reference.pageScreenshotAvailable());
         assertEquals(false, reference.figureScreenshotAvailable());
-        assertEquals(List.of("structured_import_text_only"), reference.assetWarnings());
+        assertEquals(List.of("page_screenshots_missing"), reference.assetWarnings());
     }
 
     @Test

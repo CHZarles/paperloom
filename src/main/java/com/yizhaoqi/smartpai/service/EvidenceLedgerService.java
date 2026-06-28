@@ -50,8 +50,6 @@ public class EvidenceLedgerService {
                     result.getSourceType(),
                     result.getEvidenceAssetLevel(),
                     result.getPdfEvidenceAvailable(),
-                    result.getStructuredImport(),
-                    result.getEvalImport(),
                     result.getPageScreenshotAvailable(),
                     result.getFigureScreenshotAvailable(),
                     result.getAssetWarnings(),

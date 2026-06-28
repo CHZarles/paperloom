@@ -67,18 +67,6 @@ public class Paper {
     @Column(name = "arxiv_id")
     private String arxivId;
 
-    @Column(name = "source_dataset", length = 64)
-    private String sourceDataset;
-
-    @Column(name = "external_corpus_id", length = 128)
-    private String externalCorpusId;
-
-    @Column(name = "eval_split", length = 64)
-    private String evalSplit;
-
-    @Column(name = "is_eval", nullable = false)
-    private boolean eval = false;
-
     /**
      * PDF 文件大小，单位为字节。
      */

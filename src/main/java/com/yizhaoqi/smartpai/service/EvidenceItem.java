@@ -17,8 +17,6 @@ public record EvidenceItem(
         String sourceType,
         String evidenceAssetLevel,
         Boolean pdfEvidenceAvailable,
-        Boolean structuredImport,
-        Boolean evalImport,
         Boolean pageScreenshotAvailable,
         Boolean figureScreenshotAvailable,
         List<String> assetWarnings,
@@ -32,20 +30,23 @@ public record EvidenceItem(
 ) {
     public EvidenceItem {
         sourceKind = sourceKind == null || sourceKind.isBlank() ? "TEXT" : sourceKind;
-        sourceType = sourceType == null || sourceType.isBlank() ? "PDF" : sourceType;
-        structuredImport = Boolean.TRUE.equals(structuredImport);
-        evalImport = Boolean.TRUE.equals(evalImport);
+        sourceType = "PDF";
         pdfEvidenceAvailable = Boolean.TRUE.equals(pdfEvidenceAvailable);
         pageScreenshotAvailable = Boolean.TRUE.equals(pageScreenshotAvailable);
         figureScreenshotAvailable = Boolean.TRUE.equals(figureScreenshotAvailable);
         tableScreenshotAvailable = Boolean.TRUE.equals(tableScreenshotAvailable);
         evidenceRole = evidenceRole == null || evidenceRole.isBlank() ? "NORMAL_TEXT" : evidenceRole;
-        evidenceAssetLevel = evidenceAssetLevel == null || evidenceAssetLevel.isBlank()
-                ? (structuredImport ? "TEXT_ONLY" : pdfEvidenceAvailable ? "PDF_VISUAL" : "PDF_PENDING_ASSETS")
-                : evidenceAssetLevel;
+        evidenceAssetLevel = "PDF_VISUAL".equals(evidenceAssetLevel) || pdfEvidenceAvailable
+                ? "PDF_VISUAL"
+                : "PDF_PENDING_ASSETS";
         assetWarnings = assetWarnings == null ? List.of() : assetWarnings.stream()
                 .filter(value -> value != null && !value.isBlank())
+                .filter(value -> !isLegacyImportWarning(value))
                 .toList();
+    }
+
+    private static boolean isLegacyImportWarning(String value) {
+        return value.startsWith("structured_") && value.endsWith("_text_only");
     }
 
     public EvidenceItem(String evidenceId,
@@ -76,8 +77,6 @@ public record EvidenceItem(
                 false,
                 false,
                 false,
-                false,
-                false,
                 List.of(),
                 null,
                 null,
@@ -103,8 +102,6 @@ public record EvidenceItem(
                         String sourceType,
                         String evidenceAssetLevel,
                         Boolean pdfEvidenceAvailable,
-                        Boolean structuredImport,
-                        Boolean evalImport,
                         Boolean pageScreenshotAvailable,
                         Boolean figureScreenshotAvailable,
                         List<String> assetWarnings) {
@@ -123,8 +120,6 @@ public record EvidenceItem(
                 sourceType,
                 evidenceAssetLevel,
                 pdfEvidenceAvailable,
-                structuredImport,
-                evalImport,
                 pageScreenshotAvailable,
                 figureScreenshotAvailable,
                 assetWarnings,

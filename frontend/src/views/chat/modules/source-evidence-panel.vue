@@ -32,8 +32,6 @@ interface Props {
   sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
   evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
   pdfEvidenceAvailable?: boolean | null;
-  structuredImport?: boolean | null;
-  evalImport?: boolean | null;
   pageScreenshotAvailable?: boolean | null;
   figureScreenshotAvailable?: boolean | null;
   assetWarnings?: string[] | null;
@@ -59,7 +57,6 @@ const evidenceImageElement = ref<HTMLImageElement | null>(null);
 const evidenceImageDisplaySize = ref({ width: 0, height: 0 });
 
 const assetWarningLabels: Record<string, string> = {
-  structured_import_text_only: 'PDF/page visual assets are unavailable for this import.',
   page_screenshots_missing: 'Page screenshot is unavailable.',
   table_screenshot_missing: 'Table image is unavailable.',
   figure_screenshot_missing: 'Figure image is unavailable.',
@@ -69,13 +66,6 @@ const assetWarningLabels: Record<string, string> = {
 const displayPaper = computed(() => props.paperTitle || props.originalFilename || 'Unknown paper');
 const displayFilename = computed(() => props.originalFilename || props.paperTitle || '');
 const displayPage = computed(() => (props.pageNumber ? `Page ${props.pageNumber}` : 'Not captured'));
-const isStructuredEvidence = computed(
-  () =>
-    props.evalImport ||
-    props.structuredImport ||
-    props.sourceType === 'EVAL_IMPORT' ||
-    props.sourceType === 'STRUCTURED_IMPORT'
-);
 const isTableSource = computed(() => props.sourceKind === 'TABLE' || Boolean(props.tableId));
 const isFigureSource = computed(
   () => props.sourceKind === 'FIGURE' || props.sourceKind === 'CHART' || Boolean(props.figureId)
@@ -89,23 +79,17 @@ const displaySourceKind = computed(() => {
 });
 const matchedText = computed(() => props.matchedChunkText || props.evidenceSnippet || '');
 const tableEvidenceText = computed(() => props.tableMarkdown || props.tableText || '');
-const sourceTypeLabel = computed(() => {
-  if (props.evalImport || props.sourceType === 'EVAL_IMPORT') return 'Eval import';
-  if (props.structuredImport || props.sourceType === 'STRUCTURED_IMPORT') return 'Structured import';
-  return 'PDF';
-});
+const sourceTypeLabel = computed(() => props.sourceType || 'PDF');
 const evidenceReadinessLabel = computed(() => {
-  if (isStructuredEvidence.value) return `${sourceTypeLabel.value}: text evidence`;
   if (props.pdfEvidenceAvailable || props.evidenceAssetLevel === 'PDF_VISUAL') return 'PDF visual evidence available';
   return 'PDF visual assets unavailable';
 });
 const readableAssetWarnings = computed(() =>
   (props.assetWarnings || []).map(warning => assetWarningLabels[warning] || warning)
 );
-const canDownloadOriginalPdf = computed(() => Boolean(props.paperId) && !isStructuredEvidence.value);
+const canDownloadOriginalPdf = computed(() => Boolean(props.paperId));
 const canOpenPageEvidence = computed(
-  () =>
-    !isStructuredEvidence.value && Boolean(props.paperId && props.pageNumber) && props.pageScreenshotAvailable !== false
+  () => Boolean(props.paperId && props.pageNumber) && props.pageScreenshotAvailable !== false
 );
 const tableImageUnavailable = computed(() => isTableSource.value && props.tableScreenshotAvailable === false);
 const figureImageUnavailable = computed(() => isFigureSource.value && props.figureScreenshotAvailable === false);
@@ -177,11 +161,6 @@ function showEvidenceImage(options: {
 }
 
 async function openPageScreenshot() {
-  if (isStructuredEvidence.value) {
-    window.$message?.warning('This reference is text-only and has no PDF page evidence.');
-    return;
-  }
-
   if (!props.paperId) {
     window.$message?.warning('Missing paper id.');
     return;
@@ -306,11 +285,6 @@ async function openFigureScreenshot() {
 }
 
 async function downloadOriginalPdf() {
-  if (isStructuredEvidence.value) {
-    window.$message?.warning('This reference is text-only and has no original PDF recovery path.');
-    return;
-  }
-
   if (!props.paperId) {
     window.$message?.warning('Missing paper id.');
     return;
@@ -450,8 +424,7 @@ onBeforeUnmount(() => {
         class="source-evidence__asset-pill"
         :class="{
           'source-evidence__asset-pill--ok': pdfEvidenceAvailable || evidenceAssetLevel === 'PDF_VISUAL',
-          'source-evidence__asset-pill--muted': isStructuredEvidence,
-          'source-evidence__asset-pill--warning': !isStructuredEvidence && !pdfEvidenceAvailable
+          'source-evidence__asset-pill--warning': !pdfEvidenceAvailable
         }"
       >
         {{ evidenceReadinessLabel }}

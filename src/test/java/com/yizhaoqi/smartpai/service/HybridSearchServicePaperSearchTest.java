@@ -123,7 +123,7 @@ class HybridSearchServicePaperSearchTest {
     }
 
     @Test
-    void paperCandidateSearchCarriesStructuredImportReadiness() throws Exception {
+    void paperCandidateSearchCarriesPdfReadinessOnly() throws Exception {
         User user = new User();
         user.setId(1L);
         user.setUsername("alice");
@@ -131,21 +131,19 @@ class HybridSearchServicePaperSearchTest {
         when(orgTagCacheService.getUserEffectiveOrgTags("alice")).thenReturn(List.of("eval-litsearch"));
 
         PaperSearchDocument source = new PaperSearchDocument();
-        source.setPaperId("litsearch:123");
+        source.setPaperId("paper-123");
         source.setPaperTitle("Agent Benchmarks");
-        source.setOriginalFilename("litsearch:123.json");
-        source.setAbstractText("Structured benchmark import about agents.");
-        source.setSearchText("title: Agent Benchmarks\nabstract: Structured benchmark import about agents.");
+        source.setOriginalFilename("agent-benchmarks.pdf");
+        source.setAbstractText("PDF paper about agents.");
+        source.setSearchText("title: Agent Benchmarks\nabstract: PDF paper about agents.");
         source.setUserId("1");
-        source.setOrgTag("eval-litsearch");
+        source.setOrgTag("team-a");
         source.setPublic(true);
 
-        Paper importedPaper = new Paper();
-        importedPaper.setPaperId("litsearch:123");
-        importedPaper.setOriginalFilename("litsearch:123.json");
-        importedPaper.setPaperTitle("Agent Benchmarks");
-        importedPaper.setSourceDataset("litsearch");
-        importedPaper.setEval(true);
+        Paper paper = new Paper();
+        paper.setPaperId("paper-123");
+        paper.setOriginalFilename("agent-benchmarks.pdf");
+        paper.setPaperTitle("Agent Benchmarks");
 
         SearchResponse<PaperSearchDocument> response = SearchResponse.of(search -> search
                 .took(1)
@@ -155,14 +153,14 @@ class HybridSearchServicePaperSearchTest {
                         .total(total -> total.value(1).relation(TotalHitsRelation.Eq))
                         .hits(List.of(Hit.of(hit -> hit
                                 .index(PaperSearchIndex.PAPER_INDEX_NAME)
-                                .id("litsearch:123")
+                                .id("paper-123")
                                 .score(4.2d)
                                 .source(source)
                         )))
                 )
         );
         when(esClient.search(any(SearchRequest.class), eq(PaperSearchDocument.class))).thenReturn(response);
-        when(paperRepository.findByPaperIdIn(List.of("litsearch:123"))).thenReturn(List.of(importedPaper));
+        when(paperRepository.findByPaperIdIn(List.of("paper-123"))).thenReturn(List.of(paper));
 
         HybridSearchService.AdaptiveSearchResult result = hybridSearchService.searchPaperCandidatesWithPermission(
                 "agent benchmarks",
@@ -173,12 +171,10 @@ class HybridSearchServicePaperSearchTest {
 
         assertEquals(1, result.results().size());
         SearchResult candidate = result.results().get(0);
-        assertEquals("EVAL_IMPORT", candidate.getSourceType());
-        assertEquals("TEXT_ONLY", candidate.getEvidenceAssetLevel());
+        assertEquals("PDF", candidate.getSourceType());
+        assertEquals("PDF_PENDING_ASSETS", candidate.getEvidenceAssetLevel());
         assertEquals(false, candidate.getPdfEvidenceAvailable());
-        assertEquals(true, candidate.getStructuredImport());
-        assertEquals(true, candidate.getEvalImport());
-        assertEquals(List.of("structured_import_text_only"), candidate.getAssetWarnings());
+        assertEquals(List.of(), candidate.getAssetWarnings());
     }
 
     @Test

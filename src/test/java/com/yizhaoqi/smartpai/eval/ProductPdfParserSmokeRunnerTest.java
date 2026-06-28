@@ -96,11 +96,9 @@ class ProductPdfParserSmokeRunnerTest {
     }
 
     @Test
-    void evalImportJsonRowIsRejectedAsParserSmokeEvidence() throws Exception {
+    void jsonRowIsRejectedAsParserSmokeEvidence() throws Exception {
         Fixture fixture = fixture();
         Paper paper = pdfPaper("qasper:123", "qasper-paper.json");
-        paper.setEval(true);
-        paper.setSourceDataset("qasper");
         when(fixture.paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("qasper:123"))
                 .thenReturn(Optional.of(paper));
         when(fixture.chunkRepository.countByPaperId("qasper:123")).thenReturn(5L);
@@ -121,7 +119,7 @@ class ProductPdfParserSmokeRunnerTest {
         JsonNode row = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile())
                 .path("cases").get(0);
         assertEquals(false, row.path("passed").asBoolean());
-        assertTrue(row.path("failures").toString().contains("eval_or_structured_import_not_pdf"));
+        assertTrue(row.path("failures").toString().contains("json_row_not_pdf"));
         assertTrue(row.path("failureClass").toString().contains("PDF_PROVENANCE"));
     }
 

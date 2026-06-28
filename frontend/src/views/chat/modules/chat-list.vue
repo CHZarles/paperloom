@@ -39,8 +39,6 @@ const emit = defineEmits<{
       sourceType?: Api.Chat.ReferenceEvidence['sourceType'];
       evidenceAssetLevel?: Api.Chat.ReferenceEvidence['evidenceAssetLevel'];
       pdfEvidenceAvailable?: boolean | null;
-      structuredImport?: boolean | null;
-      evalImport?: boolean | null;
       pageScreenshotAvailable?: boolean | null;
       figureScreenshotAvailable?: boolean | null;
       assetWarnings?: string[] | null;

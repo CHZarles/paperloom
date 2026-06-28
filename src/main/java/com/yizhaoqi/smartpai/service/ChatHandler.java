@@ -1003,8 +1003,6 @@ public class ChatHandler {
             item.put("sourceType", detail.sourceType());
             item.put("evidenceAssetLevel", detail.evidenceAssetLevel());
             item.put("pdfEvidenceAvailable", detail.pdfEvidenceAvailable());
-            item.put("structuredImport", detail.structuredImport());
-            item.put("evalImport", detail.evalImport());
             item.put("pageScreenshotAvailable", detail.pageScreenshotAvailable());
             item.put("figureScreenshotAvailable", detail.figureScreenshotAvailable());
             item.put("assetWarnings", detail.assetWarnings());
@@ -1342,8 +1340,6 @@ public class ChatHandler {
                     (String) item.get("sourceType"),
                     (String) item.get("evidenceAssetLevel"),
                     item.get("pdfEvidenceAvailable") instanceof Boolean value && value,
-                    item.get("structuredImport") instanceof Boolean value && value,
-                    item.get("evalImport") instanceof Boolean value && value,
                     item.get("pageScreenshotAvailable") instanceof Boolean value && value,
                     item.get("figureScreenshotAvailable") instanceof Boolean value && value,
                     stringListValue(item.get("assetWarnings"))
@@ -1402,8 +1398,6 @@ public class ChatHandler {
                 result.getSourceType(),
                 result.getEvidenceAssetLevel(),
                 Boolean.TRUE.equals(result.getPdfEvidenceAvailable()),
-                Boolean.TRUE.equals(result.getStructuredImport()),
-                Boolean.TRUE.equals(result.getEvalImport()),
                 Boolean.TRUE.equals(result.getPageScreenshotAvailable()),
                 Boolean.TRUE.equals(result.getFigureScreenshotAvailable()),
                 result.getAssetWarnings()
@@ -1554,8 +1548,6 @@ public class ChatHandler {
             String sourceType,
             String evidenceAssetLevel,
             Boolean pdfEvidenceAvailable,
-            Boolean structuredImport,
-            Boolean evalImport,
             Boolean pageScreenshotAvailable,
             Boolean figureScreenshotAvailable,
             List<String> assetWarnings
@@ -1564,18 +1556,21 @@ public class ChatHandler {
             sourceKind = sourceKind == null || sourceKind.isBlank() ? "TEXT" : sourceKind;
             evidenceRole = evidenceRole == null || evidenceRole.isBlank() ? "NORMAL_TEXT" : evidenceRole;
             tableScreenshotAvailable = Boolean.TRUE.equals(tableScreenshotAvailable);
-            sourceType = sourceType == null || sourceType.isBlank() ? "PDF" : sourceType;
-            structuredImport = Boolean.TRUE.equals(structuredImport);
-            evalImport = Boolean.TRUE.equals(evalImport);
+            sourceType = "PDF";
             pdfEvidenceAvailable = Boolean.TRUE.equals(pdfEvidenceAvailable);
             pageScreenshotAvailable = Boolean.TRUE.equals(pageScreenshotAvailable);
             figureScreenshotAvailable = Boolean.TRUE.equals(figureScreenshotAvailable);
-            evidenceAssetLevel = evidenceAssetLevel == null || evidenceAssetLevel.isBlank()
-                    ? (structuredImport ? "TEXT_ONLY" : pdfEvidenceAvailable ? "PDF_VISUAL" : "PDF_PENDING_ASSETS")
-                    : evidenceAssetLevel;
+            evidenceAssetLevel = "PDF_VISUAL".equals(evidenceAssetLevel) || pdfEvidenceAvailable
+                    ? "PDF_VISUAL"
+                    : "PDF_PENDING_ASSETS";
             assetWarnings = assetWarnings == null ? List.of() : assetWarnings.stream()
                     .filter(value -> value != null && !value.isBlank())
+                    .filter(value -> !isLegacyImportWarning(value))
                     .toList();
+        }
+
+        private static boolean isLegacyImportWarning(String value) {
+            return value.startsWith("structured_") && value.endsWith("_text_only");
         }
 
         public ReferenceInfo(String paperId,
@@ -1642,8 +1637,6 @@ public class ChatHandler {
                     false,
                     false,
                     false,
-                    false,
-                    false,
                     List.of()
             );
         }
@@ -1706,8 +1699,6 @@ public class ChatHandler {
                     false,
                     false,
                     false,
-                    false,
-                    false,
                     List.of()
             );
         }
@@ -1738,8 +1729,6 @@ public class ChatHandler {
                              String sourceType,
                              String evidenceAssetLevel,
                              Boolean pdfEvidenceAvailable,
-                             Boolean structuredImport,
-                             Boolean evalImport,
                              Boolean pageScreenshotAvailable,
                              Boolean figureScreenshotAvailable,
                              List<String> assetWarnings) {
@@ -1776,8 +1765,6 @@ public class ChatHandler {
                     sourceType,
                     evidenceAssetLevel,
                     pdfEvidenceAvailable,
-                    structuredImport,
-                    evalImport,
                     pageScreenshotAvailable,
                     figureScreenshotAvailable,
                     assetWarnings
@@ -1834,8 +1821,6 @@ public class ChatHandler {
                     false,
                     null,
                     null,
-                    false,
-                    false,
                     false,
                     false,
                     false,

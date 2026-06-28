@@ -41,8 +41,6 @@ public class SearchResult {
     private String sourceType;
     private String evidenceAssetLevel;
     private Boolean pdfEvidenceAvailable;
-    private Boolean structuredImport;
-    private Boolean evalImport;
     private Boolean pageScreenshotAvailable;
     private Boolean figureScreenshotAvailable;
     private List<String> assetWarnings;

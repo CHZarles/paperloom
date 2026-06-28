@@ -737,12 +737,7 @@ public class HybridSearchService {
     }
 
     private void applySourceProvenance(SearchResult result, Paper paper) {
-        boolean evalImport = paper.isEval();
-        boolean structuredImport = evalImport || hasText(paper.getSourceDataset()) || isJsonImport(paper);
-        String sourceType = evalImport ? "EVAL_IMPORT" : structuredImport ? "STRUCTURED_IMPORT" : "PDF";
-        result.setSourceType(sourceType);
-        result.setStructuredImport(structuredImport);
-        result.setEvalImport(evalImport);
+        result.setSourceType("PDF");
     }
 
     private void applyVisualAssetAvailability(SearchResult result) {
@@ -783,23 +778,19 @@ public class HybridSearchService {
             return;
         }
         for (SearchResult result : results) {
-            boolean structuredImport = Boolean.TRUE.equals(result.getStructuredImport());
             boolean pageAvailable = Boolean.TRUE.equals(result.getPageScreenshotAvailable());
-            boolean pdfEvidenceAvailable = "PDF".equals(result.getSourceType()) && pageAvailable;
+            boolean pdfEvidenceAvailable = pageAvailable;
+            result.setSourceType("PDF");
             result.setPdfEvidenceAvailable(pdfEvidenceAvailable);
             result.setEvidenceAssetLevel(pdfEvidenceAvailable
                     ? "PDF_VISUAL"
-                    : structuredImport ? "TEXT_ONLY" : "PDF_PENDING_ASSETS");
-            result.setAssetWarnings(referenceAssetWarnings(result, structuredImport, pageAvailable));
+                    : "PDF_PENDING_ASSETS");
+            result.setAssetWarnings(referenceAssetWarnings(result, pageAvailable));
         }
     }
 
-    private List<String> referenceAssetWarnings(SearchResult result, boolean structuredImport, boolean pageAvailable) {
+    private List<String> referenceAssetWarnings(SearchResult result, boolean pageAvailable) {
         List<String> warnings = new ArrayList<>();
-        if (structuredImport) {
-            warnings.add("structured_import_text_only");
-            return warnings;
-        }
         if (result.getPageNumber() != null && !pageAvailable) {
             warnings.add("page_screenshots_missing");
         }
@@ -814,14 +805,5 @@ public class HybridSearchService {
             warnings.add("figure_screenshot_missing");
         }
         return warnings;
-    }
-
-    private boolean isJsonImport(Paper paper) {
-        String originalFilename = paper.getOriginalFilename();
-        return originalFilename != null && originalFilename.toLowerCase().endsWith(".json");
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 }

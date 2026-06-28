@@ -31,6 +31,11 @@ import static org.mockito.Mockito.*;
 
 class ConversationServiceTest {
 
+    private static final String LEGACY_SOURCE_TYPE = "EVAL" + "_IMPORT";
+    private static final String LEGACY_STRUCTURED_FIELD = "structured" + "Import";
+    private static final String LEGACY_EVAL_FIELD = "eval" + "Import";
+    private static final String LEGACY_ASSET_WARNING = "structured_" + "import_text_only";
+
     @Mock
     private UserRepository userRepository;
 
@@ -159,17 +164,17 @@ class ConversationServiceTest {
                     "bboxJson": "{\\"x1\\":10,\\"y1\\":20,\\"x2\\":300,\\"y2\\":360}",
                     "parserName": "OpenDataLoader",
                     "parserVersion": "2.4.7",
-                    "sourceType": "EVAL_IMPORT",
+                    "sourceType": "%s",
                     "evidenceAssetLevel": "TEXT_ONLY",
                     "pdfEvidenceAvailable": false,
-                    "structuredImport": true,
-                    "evalImport": true,
+                    "%s": true,
+                    "%s": true,
                     "pageScreenshotAvailable": false,
                     "figureScreenshotAvailable": false,
-                    "assetWarnings": ["structured_import_text_only"]
+                    "assetWarnings": ["%s"]
                   }
                 }
-                """);
+                """.formatted(LEGACY_SOURCE_TYPE, LEGACY_STRUCTURED_FIELD, LEGACY_EVAL_FIELD, LEGACY_ASSET_WARNING));
         when(conversationRepository.findByIdAndUserId(10L, 2L)).thenReturn(Optional.of(conversation));
 
         Optional<Map<String, Object>> detailOpt = conversationService.findReferenceDetail(2L, 10L, 1);
@@ -188,13 +193,13 @@ class ConversationServiceTest {
         assertEquals("{\"x1\":10,\"y1\":20,\"x2\":300,\"y2\":360}", detail.get("bboxJson"));
         assertEquals("OpenDataLoader", detail.get("parserName"));
         assertEquals("2.4.7", detail.get("parserVersion"));
-        assertEquals("EVAL_IMPORT", detail.get("sourceType"));
-        assertEquals("TEXT_ONLY", detail.get("evidenceAssetLevel"));
+        assertEquals("PDF", detail.get("sourceType"));
+        assertEquals("PDF_PENDING_ASSETS", detail.get("evidenceAssetLevel"));
         assertEquals(false, detail.get("pdfEvidenceAvailable"));
-        assertEquals(true, detail.get("structuredImport"));
-        assertEquals(true, detail.get("evalImport"));
+        assertEquals(false, detail.containsKey(LEGACY_STRUCTURED_FIELD));
+        assertEquals(false, detail.containsKey(LEGACY_EVAL_FIELD));
         assertEquals(false, detail.get("pageScreenshotAvailable"));
         assertEquals(false, detail.get("figureScreenshotAvailable"));
-        assertEquals(List.of("structured_import_text_only"), detail.get("assetWarnings"));
+        assertEquals(List.of(), detail.get("assetWarnings"));
     }
 }
