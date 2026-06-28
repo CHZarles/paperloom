@@ -35,6 +35,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const sessions = ref<Api.Chat.ConversationSession[]>([]);
   const sessionsLoading = ref(false);
   const activeTab = ref<'active' | 'archived'>('active');
+  const currentScope = ref<Api.Chat.ConversationScope | null>(null);
+  const referenceFocus = ref<Api.Chat.Scope | null>(null);
 
   const store = useAuthStore();
 
@@ -181,6 +183,38 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     sessionsLoading.value = false;
   }
 
+  async function loadConversationScope(targetConversationId: string) {
+    const { error, data } = await request<Api.Chat.ConversationScope>({
+      url: `users/conversations/${targetConversationId}/scope`
+    });
+    if (!error && data) currentScope.value = data;
+    else currentScope.value = null;
+    return data || null;
+  }
+
+  async function updateConversationScope(
+    targetConversationId: string,
+    payload: Api.Chat.UpdateConversationScopePayload
+  ) {
+    const { error, data } = await request<Api.Chat.ConversationScope>({
+      url: `users/conversations/${targetConversationId}/scope`,
+      method: 'PUT',
+      data: payload
+    });
+    if (!error && data) currentScope.value = data;
+    return !error;
+  }
+
+  async function createSessionFromScope(payload: Api.Chat.UpdateConversationScopePayload) {
+    const created = await createNewSession();
+    if (!created || !conversationId.value) return false;
+    return updateConversationScope(conversationId.value, payload);
+  }
+
+  function setReferenceFocus(scope: Api.Chat.Scope | null) {
+    referenceFocus.value = scope;
+  }
+
   async function createNewSession() {
     const { error, data } = await request<Api.Chat.ConversationSession>({
       url: 'users/conversations',
@@ -190,6 +224,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       conversationId.value = data.conversationId;
       list.value = [];
       await loadSessions();
+      await loadConversationScope(data.conversationId);
     }
     return !error;
   }
@@ -207,6 +242,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
     conversationId.value = targetConversationId;
     list.value = [];
+    await loadConversationScope(targetConversationId);
     await loadMessages(targetConversationId);
   }
 
@@ -234,6 +270,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (targetConversationId === conversationId.value) {
         list.value = [];
         conversationId.value = '';
+        currentScope.value = null;
+        referenceFocus.value = null;
       }
     }
   }
@@ -370,6 +408,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     clearRateLimitCountdown();
     resetConnectionState();
     conversationId.value = '';
+    currentScope.value = null;
+    referenceFocus.value = null;
     input.value = { message: '', retrievalBudgetProfile: 'interactive' };
     list.value = [];
     sessions.value = [];
@@ -423,6 +463,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     sessions,
     sessionsLoading,
     activeTab,
+    currentScope,
+    referenceFocus,
     filteredSessions,
     connectionStatus,
     isRateLimited,
@@ -441,6 +483,10 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     upsertGenerationSnapshot,
     syncGenerationAfterReconnect,
     loadSessions,
+    loadConversationScope,
+    updateConversationScope,
+    createSessionFromScope,
+    setReferenceFocus,
     createNewSession,
     switchSession,
     loadMessages,

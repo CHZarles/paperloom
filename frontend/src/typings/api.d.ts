@@ -495,8 +495,37 @@ declare namespace Api {
     }
   }
 
+  namespace PaperCollection {
+    type Visibility = 'PRIVATE' | 'ORG';
+
+    interface Item {
+      id: number;
+      name: string;
+      description?: string | null;
+      visibility: Visibility;
+      orgTag?: string | null;
+      paperCount: number;
+      searchablePaperCount: number;
+      createdAt?: string;
+      updatedAt?: string;
+    }
+
+    interface Detail extends Item {
+      papers: Paper.UploadTask[];
+    }
+
+    interface UpsertPayload {
+      name: string;
+      description?: string | null;
+      visibility: Visibility;
+      orgTag?: string | null;
+    }
+  }
+
   namespace Chat {
     type GenerationStatus = 'STREAMING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    type ScopeMode = 'AUTO_LIBRARY' | 'SOURCE_SET_SNAPSHOT';
+    type ScopeStatus = 'READY' | 'DEGRADED' | 'INVALID';
 
     interface ReferenceEvidence {
       paperId: string;
@@ -582,6 +611,7 @@ declare namespace Api {
       diagnostics?: Diagnostics;
       toolEvents?: AgentToolEvent[];
       feedbackRating?: 'good' | 'bad';
+      effectiveScope?: ConversationScope | Record<string, any>;
     }
 
     interface Diagnostics {
@@ -614,6 +644,24 @@ declare namespace Api {
       retrievalBudgetProfile?: 'interactive' | 'high_recall' | 'deep_audit';
     }
 
+    interface ConversationScope {
+      scopeMode: ScopeMode;
+      scopeLocked: boolean;
+      scopeStatus: ScopeStatus;
+      sourceLabel?: string | null;
+      sourcePaperCount?: number | null;
+      paperIds?: string[];
+      sourceRecipe?: Record<string, any> | null;
+    }
+
+    interface UpdateConversationScopePayload {
+      scopeMode: ScopeMode;
+      sourceLabel?: string;
+      collectionIds?: number[];
+      paperIds?: string[];
+      sourceRecipe?: Record<string, any>;
+    }
+
     interface Token {
       cmdToken: string;
     }
@@ -637,6 +685,11 @@ declare namespace Api {
       conversationId: string;
       title: string;
       status: 'ACTIVE' | 'ARCHIVED';
+      scopeMode?: ScopeMode;
+      scopeLocked?: boolean;
+      scopeStatus?: ScopeStatus;
+      sourceLabel?: string | null;
+      sourcePaperCount?: number | null;
       createdAt: string;
       updatedAt: string;
     }
