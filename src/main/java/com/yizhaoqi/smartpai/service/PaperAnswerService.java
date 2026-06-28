@@ -1589,9 +1589,6 @@ public class PaperAnswerService {
             paperTitles = paperTitles == null ? List.of() : paperTitles.stream()
                     .filter(value -> value != null && !value.isBlank())
                     .toList();
-            if ((paperIds == null || paperIds.isEmpty()) && paperId != null && !paperId.isBlank()) {
-                paperIds = List.of(paperId);
-            }
             if ((paperTitles == null || paperTitles.isEmpty()) && paperTitle != null && !paperTitle.isBlank()) {
                 paperTitles = List.of(paperTitle);
             }

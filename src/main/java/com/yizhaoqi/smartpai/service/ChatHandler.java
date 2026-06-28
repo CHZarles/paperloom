@@ -136,17 +136,19 @@ public class ChatHandler {
             conversationId = getOrCreateConversationId(userId);
             Long userIdLong = Long.parseLong(userId);
             conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
-            ConversationScopeService.EffectiveConversationScope effectiveScope =
-                    conversationScopeService.lockForFirstMessage(userIdLong, conversationId);
+            ConversationScopeService.EffectiveConversationScope resolvedScope =
+                    conversationScopeService.resolveForChat(userIdLong, conversationId);
             PaperAnswerService.AnswerScope referenceFocus = referenceFocus(scope);
             if (referenceFocus != null) {
-                conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
+                conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
             }
-            PaperAnswerService.AnswerScope controlledScope = controlledAnswerScope(effectiveScope, scope, referenceFocus);
-            Map<String, Object> effectiveScopeMap = effectiveScopeMap(effectiveScope);
             ChatGenerationStateService.GenerationSnapshot generation =
                     chatGenerationStateService.createGeneration(userId, conversationId, userMessage);
             generationId = generation.generationId();
+            ConversationScopeService.EffectiveConversationScope effectiveScope =
+                    conversationScopeService.lockForFirstMessage(userIdLong, conversationId);
+            PaperAnswerService.AnswerScope controlledScope = controlledAnswerScope(effectiveScope, scope, referenceFocus);
+            Map<String, Object> effectiveScopeMap = effectiveScopeMap(effectiveScope);
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
             generationClientIds.put(finalGenerationId, requestClientId);
@@ -300,14 +302,14 @@ public class ChatHandler {
         if (scope == null) {
             return false;
         }
-        return scope.referenceNumber() != null
-                || scope.conversationRecordId() != null
+        boolean hasPaperId = trimToNull(scope.paperId()) != null;
+        boolean hasMatchedText = trimToNull(scope.matchedText()) != null;
+        boolean hasConversationReference = scope.conversationRecordId() != null && scope.referenceNumber() != null;
+        boolean hasPageAnchor = hasPaperId && scope.pageNumber() != null;
+        return hasConversationReference
                 || scope.chunkId() != null
-                || scope.pageNumber() != null
-                || trimToNull(scope.matchedText()) != null
-                || trimToNull(scope.bboxJson()) != null
-                || trimToNull(scope.sourceKind()) != null
-                || (trimToNull(scope.paperId()) != null && trimToNull(scope.matchedText()) != null);
+                || hasPageAnchor
+                || (hasPaperId && hasMatchedText);
     }
 
     private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope) {

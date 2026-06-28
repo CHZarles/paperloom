@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -181,6 +182,8 @@ class ChatHandlerReferenceEvidenceTest {
     void referenceFocusDoesNotChangeLockedScope() {
         ChatHandlerFixture fixture = chatHandlerFixture();
         ConversationScopeService.EffectiveConversationScope lockedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(lockedScope);
         when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
                 .thenReturn(lockedScope);
         PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
@@ -216,6 +219,154 @@ class ChatHandlerReferenceEvidenceTest {
         assertEquals(7, answerScope.chunkId());
         assertEquals("Reference evidence text from the locked paper.", answerScope.matchedText());
         assertEquals(RetrievalBudgetProfile.HIGH_RECALL, answerScope.retrievalBudgetProfile());
+    }
+
+    @Test
+    void outOfScopeReferenceFocusRejectsBeforeLockAndGenerationCreation() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope resolvedScope = snapshotScope(List.of("paper-a"), true);
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(resolvedScope);
+        PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                1,
+                51L,
+                7,
+                null,
+                "paper-b",
+                "Paper B",
+                "paper-b.pdf",
+                "Reference evidence from a different paper.",
+                null,
+                "TEXT",
+                RetrievalBudgetProfile.INTERACTIVE
+        );
+        doThrow(new RuntimeException("Reference focus is outside the conversation source scope"))
+                .when(fixture.conversationScopeService)
+                .assertReferenceFocusWithinScope(eq(resolvedScope), any());
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain this citation", referenceFocus),
+                fixture.session);
+
+        verify(fixture.conversationScopeService).resolveForChat(1L, "conversation-1");
+        verify(fixture.conversationScopeService, never()).lockForFirstMessage(any(), anyString());
+        verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString());
+        verify(fixture.paperAnswerService, never()).answer(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void generationCreationFailureDoesNotLockFirstMessageScope() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope resolvedScope = new ConversationScopeService.EffectiveConversationScope(
+                ConversationScopeMode.AUTO_LIBRARY,
+                ConversationScopeStatus.READY,
+                false,
+                "All searchable papers",
+                List.of(),
+                Map.of()
+        );
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(resolvedScope);
+        when(fixture.generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+                .thenThrow(new RuntimeException("generation unavailable"));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("What does agent routing do?", null),
+                fixture.session);
+
+        verify(fixture.conversationScopeService).resolveForChat(1L, "conversation-1");
+        verify(fixture.conversationScopeService, never()).lockForFirstMessage(any(), anyString());
+        verify(fixture.paperAnswerService, never()).answer(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void autoLibraryReferenceFocusKeepsScalarEvidenceWithoutBackfillingPaperIds() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        ConversationScopeService.EffectiveConversationScope autoScope = new ConversationScopeService.EffectiveConversationScope(
+                ConversationScopeMode.AUTO_LIBRARY,
+                ConversationScopeStatus.READY,
+                true,
+                "All searchable papers",
+                List.of(),
+                Map.of()
+        );
+        when(fixture.conversationScopeService.resolveForChat(1L, "conversation-1"))
+                .thenReturn(autoScope);
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(autoScope);
+        PaperAnswerService.AnswerScope referenceFocus = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                null,
+                null,
+                7,
+                null,
+                "paper-a",
+                "Paper A",
+                "paper-a.pdf",
+                "Reference seed text from paper A.",
+                null,
+                "TEXT",
+                RetrievalBudgetProfile.HIGH_RECALL
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Explain this evidence", referenceFocus),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.conversationScopeService).assertReferenceFocusWithinScope(eq(autoScope), any());
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("Explain this evidence"), scopeCaptor.capture());
+        PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
+        assertEquals(List.of(), answerScope.paperIds());
+        assertEquals("paper-a", answerScope.paperId());
+        assertEquals("Reference seed text from paper A.", answerScope.matchedText());
+        assertEquals(7, answerScope.chunkId());
+        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, answerScope.retrievalBudgetProfile());
+    }
+
+    @Test
+    void bareMatchedTextIsNotReferenceFocus() {
+        ChatHandlerFixture fixture = chatHandlerFixture();
+        when(fixture.conversationScopeService.lockForFirstMessage(1L, "conversation-1"))
+                .thenReturn(new ConversationScopeService.EffectiveConversationScope(
+                        ConversationScopeMode.AUTO_LIBRARY,
+                        ConversationScopeStatus.READY,
+                        true,
+                        "All searchable papers",
+                        List.of(),
+                        Map.of()
+                ));
+        PaperAnswerService.AnswerScope textOnlyScope = new PaperAnswerService.AnswerScope(
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "floating text without an anchor",
+                null,
+                null,
+                RetrievalBudgetProfile.DEEP_AUDIT
+        );
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("Use this text", textOnlyScope),
+                fixture.session);
+
+        ArgumentCaptor<PaperAnswerService.AnswerScope> scopeCaptor =
+                ArgumentCaptor.forClass(PaperAnswerService.AnswerScope.class);
+        verify(fixture.conversationScopeService, never()).assertReferenceFocusWithinScope(any(), any());
+        verify(fixture.paperAnswerService)
+                .answer(eq("1"), eq("conversation-1"), eq("Use this text"), scopeCaptor.capture());
+        PaperAnswerService.AnswerScope answerScope = scopeCaptor.getValue();
+        assertEquals(List.of(), answerScope.paperIds());
+        assertEquals(null, answerScope.paperId());
+        assertEquals(null, answerScope.matchedText());
+        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, answerScope.retrievalBudgetProfile());
     }
 
     @Test
@@ -618,13 +769,14 @@ class ChatHandlerReferenceEvidenceTest {
 
         WebSocketSession session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn("socket-1");
-        return new ChatHandlerFixture(handler, paperAnswerService, conversationScopeService, session);
+        return new ChatHandlerFixture(handler, paperAnswerService, conversationScopeService, generationStateService, session);
     }
 
     private record ChatHandlerFixture(
             ChatHandler handler,
             PaperAnswerService paperAnswerService,
             ConversationScopeService conversationScopeService,
+            ChatGenerationStateService generationStateService,
             WebSocketSession session
     ) {
     }
