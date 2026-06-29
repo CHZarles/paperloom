@@ -120,6 +120,7 @@ paper:
       reading-order: ${PAPER_PARSING_OPENDATALOADER_READING_ORDER:xycut}
       hybrid: ${PAPER_PARSING_OPENDATALOADER_HYBRID:off}
       image-output: ${PAPER_PARSING_OPENDATALOADER_IMAGE_OUTPUT:off}
+      timeout-seconds: ${PAPER_PARSING_OPENDATALOADER_TIMEOUT_SECONDS:300}
     mineru:
       base-url: ${PAPER_PARSING_MINERU_BASE_URL:http://localhost:8000}
       health-path: ${PAPER_PARSING_MINERU_HEALTH_PATH:/health}

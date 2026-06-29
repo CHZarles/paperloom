@@ -17,16 +17,6 @@ public class EvidenceVerifier {
     private static final Pattern BRACKET_CITATION_PATTERN = Pattern.compile("\\[\\d+]");
     private static final Pattern LEGACY_SOURCE_PATTERN = Pattern.compile("(?:来源|source)\\s*#\\s*\\d+", Pattern.CASE_INSENSITIVE);
     private static final Pattern CHINESE_TITLE_PATTERN = Pattern.compile("《([^》]+)》");
-    private static final Pattern STRONG_COMPARATIVE_CLAIM_PATTERN = Pattern.compile(
-            "(优于|超越|显著|证明|更强|更高|outperform|superior|significantly)",
-            Pattern.CASE_INSENSITIVE
-    );
-    private static final Pattern COMPARATIVE_EVIDENCE_SIGNAL_PATTERN = Pattern.compile(
-            "(对比|比较|实验|评估|准确率|指标|表\\s*\\d*|"
-                    + "compare|comparison|versus|vs\\.?|experiment|evaluation|accuracy|benchmark|table|ablation|"
-                    + "outperform|superior|significant|significantly)",
-            Pattern.CASE_INSENSITIVE
-    );
 
     public VerificationResult verify(String rawAnswer, EvidenceLedger ledger) {
         if (rawAnswer == null || rawAnswer.isBlank()) {
@@ -58,10 +48,6 @@ public class EvidenceVerifier {
         if (usedEvidenceIds.isEmpty()) {
             return VerificationResult.invalid("missing_evidence_token");
         }
-        if (STRONG_COMPARATIVE_CLAIM_PATTERN.matcher(rawAnswer).find()
-                && usedEvidenceIds.stream().noneMatch(id -> hasComparativeSignal(byId.get(id)))) {
-        return VerificationResult.invalid("unsupported_comparative_claim");
-        }
         return new VerificationResult(true, "");
     }
 
@@ -77,18 +63,6 @@ public class EvidenceVerifier {
             }
         }
         return false;
-    }
-
-    private boolean hasComparativeSignal(EvidenceItem item) {
-        if (item == null) {
-            return false;
-        }
-        String text = String.join(" ",
-                item.matchedText() == null ? "" : item.matchedText(),
-                item.sourceKind() == null ? "" : item.sourceKind(),
-                item.sectionTitle() == null ? "" : item.sectionTitle()
-        );
-        return COMPARATIVE_EVIDENCE_SIGNAL_PATTERN.matcher(text).find();
     }
 
     public record VerificationResult(boolean valid, String reason) {

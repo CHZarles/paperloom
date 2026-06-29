@@ -3,6 +3,7 @@ import type { UploadFileInfo } from 'naive-ui';
 import { NButton, NEllipsis, NModal, NPopconfirm, NProgress, NUpload } from 'naive-ui';
 import type { FlatResponseData } from '@sa/axios';
 import { uploadAccept } from '@/constants/common';
+import { getUploadFileValidationError } from '@/store/modules/knowledge-base/upload-validation';
 import { UploadStatus } from '@/enum';
 import SvgIcon from '@/components/custom/svg-icon.vue';
 import FilePreview from '@/components/custom/file-preview.vue';
@@ -31,6 +32,30 @@ const assetWarningLabels: Record<string, string> = {
   page_screenshots_missing: 'Page screenshots missing'
 };
 
+const activeProcessingStatuses = new Set<Api.Paper.UploadTask['processingStatus']>([
+  'PENDING',
+  'PROCESSING',
+  'MINERU_RUNNING',
+  'MINERU_ARTIFACT_SAVED',
+  'MAPPING_STRUCTURED_CONTENT',
+  'RENDERING_VISUAL_ASSETS',
+  'CHUNKING',
+  'EMBEDDING',
+  'INDEXING'
+]);
+
+const processingStatusLabels: Partial<Record<NonNullable<Api.Paper.UploadTask['processingStatus']>, string>> = {
+  PENDING: 'Queued',
+  PROCESSING: 'Processing',
+  MINERU_RUNNING: 'Parsing',
+  MINERU_ARTIFACT_SAVED: 'Parsed',
+  MAPPING_STRUCTURED_CONTENT: 'Mapping',
+  RENDERING_VISUAL_ASSETS: 'Rendering',
+  CHUNKING: 'Chunking',
+  EMBEDDING: 'Embedding',
+  INDEXING: 'Indexing'
+};
+
 function mapUploadStatusToTaskStatus(uploadStatus?: Api.Paper.UploadTask['uploadStatus']) {
   if (uploadStatus === 'COMPLETED' || uploadStatus === 1) return UploadStatus.Completed;
   if (uploadStatus === 'MERGING' || uploadStatus === 2) return UploadStatus.Uploading;
@@ -38,9 +63,15 @@ function mapUploadStatusToTaskStatus(uploadStatus?: Api.Paper.UploadTask['upload
   return UploadStatus.Break;
 }
 
+function normalizeBytes(value?: number | string | null) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
 function normalizeRemotePaper(row: Api.Paper.UploadTask): Api.Paper.UploadTask {
   return {
     ...row,
+    totalSize: normalizeBytes(row.totalSize ?? row.sourceFileSizeBytes),
     paperTitle: row.paperTitle || row.originalFilename,
     originalFilename: row.originalFilename || row.paperTitle,
     uploadedChunks: row.uploadedChunks || [],
@@ -165,7 +196,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
       key: 'totalSize',
       title: 'Size',
       width: 82,
-      render: row => <span class="library-size-cell">{fileSize(row.totalSize)}</span>
+      render: row => <span class="library-size-cell">{formatFileSize(row.totalSize ?? row.sourceFileSizeBytes)}</span>
     },
     {
       key: 'estimatedEmbeddingTokens',
@@ -176,8 +207,8 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
     {
       key: 'status',
       title: 'Pipeline / 状态',
-      width: 112,
-      render: row => renderStatus(row.status, row.progress)
+      width: 132,
+      render: row => renderPipelineStatus(row)
     },
     {
       key: 'orgTagName',
@@ -267,19 +298,16 @@ const store = useKnowledgeBaseStore();
 const { tasks } = storeToRefs(store);
 const tableTasks = computed(() => {
   const remoteRows = data.value.map(item => tasks.value.find(task => task.paperId === item.paperId) || item);
-  const localRows = tasks.value.filter(
-    task =>
-      task.file && task.status !== UploadStatus.Completed && !remoteRows.some(item => item.paperId === task.paperId)
-  );
+  const localRows = tasks.value.filter(task => task.file && !remoteRows.some(item => item.paperId === task.paperId));
 
   return [...localRows, ...remoteRows];
 });
 
 const libraryStats = computed(() => {
   const rows = tableTasks.value;
-  const completed = rows.filter(item => item.status === UploadStatus.Completed).length;
-  const indexing = rows.filter(item => isVectorizationProcessing(item)).length;
-  const privateRows = rows.filter(item => !item.isPublic).length;
+  const searchable = rows.filter(item => isPaperSearchable(item)).length;
+  const processing = rows.filter(item => isPipelineActive(item)).length;
+  const failed = rows.filter(item => isPipelineFailed(item)).length;
   const estimatedTokens = rows.reduce((sum, item) => sum + Number(item.estimatedEmbeddingTokens || 0), 0);
 
   return [
@@ -289,19 +317,19 @@ const libraryStats = computed(() => {
       detail: 'accessible'
     },
     {
-      label: 'Ready',
-      value: formatNumber(completed),
-      detail: 'uploaded'
+      label: 'Searchable',
+      value: formatNumber(searchable),
+      detail: 'indexed'
     },
     {
-      label: 'Indexing',
-      value: formatNumber(indexing),
-      detail: 'vector jobs'
+      label: 'Processing',
+      value: formatNumber(processing),
+      detail: 'parse/index'
     },
     {
-      label: 'Private',
-      value: formatNumber(privateRows),
-      detail: 'restricted'
+      label: 'Failed',
+      value: formatNumber(failed),
+      detail: 'needs action'
     },
     {
       label: 'Est. tokens',
@@ -319,7 +347,8 @@ function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.Uplo
   Object.assign(target, {
     originalFilename: source.originalFilename,
     paperTitle: source.paperTitle,
-    totalSize: source.totalSize,
+    totalSize: normalizeBytes(source.totalSize ?? source.sourceFileSizeBytes),
+    sourceFileSizeBytes: source.sourceFileSizeBytes,
     status: source.status,
     uploadStatus: source.uploadStatus,
     userId: source.userId,
@@ -453,26 +482,50 @@ function handleSearch() {
 }
 // #endregion
 
-// 渲染上传状态
-function renderStatus(status: UploadStatus, percentage: number) {
-  if (status === UploadStatus.Completed) {
-    return (
-      <span class="library-pipeline-status library-pipeline-status--ready">
-        <span class="library-pipeline-status__dot"></span>
-        Ready
-      </span>
-    );
+function formatFileSize(value?: number | string | null) {
+  const bytes = normalizeBytes(value);
+  return bytes > 0 ? fileSize(bytes) : 'N/A';
+}
+
+function renderPipelineStatus(row: Api.Paper.UploadTask) {
+  if (row.status === UploadStatus.Break) {
+    return renderPipelineBadge('Interrupted', 'broken');
   }
 
-  if (status === UploadStatus.Break) {
-    return (
-      <span class="library-pipeline-status library-pipeline-status--broken">
-        <span class="library-pipeline-status__dot"></span>
-        Interrupted
-      </span>
-    );
+  if (!isUploadCompleted(row)) {
+    return renderUploadProgress(row.progress);
   }
 
+  if (row.processingStatus === 'FAILED') {
+    return renderPipelineBadge('Failed', 'broken', row.processingErrorMessage || 'Parse or index failed');
+  }
+
+  if (isPaperSearchable(row)) {
+    return renderPipelineBadge('Searchable', 'ready');
+  }
+
+  if (isVectorizationProcessing(row)) {
+    const label = processingStatusLabels[row.processingStatus || 'PROCESSING'] || 'Processing';
+    return renderPipelineBadge(label, 'processing');
+  }
+
+  if (row.processingStatus === 'COMPLETED') {
+    return renderPipelineBadge('Index missing', 'warning', 'Index usage is missing; retry vectorization if needed');
+  }
+
+  return renderPipelineBadge('Pending', 'warning');
+}
+
+function renderPipelineBadge(label: string, status: 'ready' | 'processing' | 'warning' | 'broken', title?: string) {
+  return (
+    <span class={`library-pipeline-status library-pipeline-status--${status}`} title={title}>
+      <span class="library-pipeline-status__dot"></span>
+      {label}
+    </span>
+  );
+}
+
+function renderUploadProgress(percentage: number) {
   return (
     <div class="library-progress-cell">
       <NProgress percentage={percentage || 0} processing showIndicator={false} />
@@ -563,7 +616,29 @@ function renderIndexLine(label: string, tokens?: number | null, chunks?: number 
 }
 
 function isVectorizationProcessing(row: Api.Paper.UploadTask) {
-  return row.processingStatus === 'PENDING' || row.processingStatus === 'PROCESSING';
+  return activeProcessingStatuses.has(row.processingStatus || null);
+}
+
+function isUploadCompleted(row: Api.Paper.UploadTask) {
+  return row.status === UploadStatus.Completed || row.uploadStatus === 'COMPLETED' || row.uploadStatus === 1;
+}
+
+function isPaperSearchable(row: Api.Paper.UploadTask) {
+  return (
+    isUploadCompleted(row) &&
+    row.processingStatus === 'COMPLETED' &&
+    hasActualVectorizationUsage(row) &&
+    Number(row.actualChunkCount || 0) > 0
+  );
+}
+
+function isPipelineActive(row: Api.Paper.UploadTask) {
+  if (row.status === UploadStatus.Pending || row.status === UploadStatus.Uploading) return true;
+  return isUploadCompleted(row) && isVectorizationProcessing(row);
+}
+
+function isPipelineFailed(row: Api.Paper.UploadTask) {
+  return row.status === UploadStatus.Break || row.processingStatus === 'FAILED';
 }
 
 function hasActualVectorizationUsage(row: Api.Paper.UploadTask) {
@@ -766,7 +841,13 @@ async function onBeforeUpload(
   options: { file: UploadFileInfo; fileList: UploadFileInfo[] },
   row: Api.Paper.UploadTask
 ) {
-  const md5 = await calculateMD5(options.file.file!);
+  const file = options.file.file ?? null;
+  const validationError = getUploadFileValidationError(file);
+  if (validationError || !file) {
+    window.$message?.error(validationError);
+    return false;
+  }
+  const md5 = await calculateMD5(file);
   if (md5 !== row.paperId) {
     window.$message?.error('两次上传的文件不一致');
     return false;
@@ -1299,6 +1380,26 @@ async function onBeforeUpload(
 
 .library-pipeline-status--ready .library-pipeline-status__dot {
   background: var(--color-success);
+}
+
+.library-pipeline-status--processing {
+  border-color: var(--color-accent);
+  background: var(--color-card-band);
+  color: var(--color-accent);
+}
+
+.library-pipeline-status--processing .library-pipeline-status__dot {
+  background: var(--color-accent);
+}
+
+.library-pipeline-status--warning {
+  border-color: var(--color-warning);
+  background: var(--color-card-band);
+  color: var(--color-warning);
+}
+
+.library-pipeline-status--warning .library-pipeline-status__dot {
+  background: var(--color-warning);
 }
 
 .library-pipeline-status--broken {

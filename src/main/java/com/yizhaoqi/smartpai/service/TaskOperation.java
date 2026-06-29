@@ -1,0 +1,11 @@
+package com.yizhaoqi.smartpai.service;
+
+public enum TaskOperation {
+    DIRECT_RESPONSE,
+    ASK_CLARIFICATION,
+    COUNT_SEARCHABLE_PAPERS,
+    LIST_ACCESSIBLE_PAPERS,
+    SEARCH_PAPER_METADATA,
+    ANSWER_FROM_EVIDENCE,
+    INSPECT_REFERENCE
+}

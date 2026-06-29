@@ -58,6 +58,46 @@ Current behavior:
 - Chunking is text/table/figure/formula aware, but the retrieval and benchmark evidence is currently
   stronger for text and tables than for figure-heavy questions.
 
+Unlimited-OCR research note:
+
+- Unlimited-OCR is not integrated in the current codebase.
+- Official materials describe it as a Baidu 3B image-text OCR model for long-horizon document
+  parsing and markdown generation. The vLLM recipe requires a dedicated image, a custom logits
+  processor, an `<image>` prompt prefix, `skip_special_tokens=false`, and per-request n-gram
+  settings. The recipe states that BF16 inference can run on a single GPU with at least 8 GB VRAM.
+- The repository examples convert PDFs to page images with PyMuPDF and produce markdown/text
+  output. Batch PDF inference processes converted pages and writes page markdown files.
+- The output shape does not currently match PaperLoom's `ParsedPaper` contract. A production
+  adapter would need to preserve page numbers, reading order, bbox/grounding tokens, table and
+  formula structure, figure evidence, artifacts, and failure diagnostics.
+- Recommendation: keep MinerU as the production default, keep OpenDataLoader as the local fallback,
+  and evaluate Unlimited-OCR only behind a provider flag and real PDF parser benchmark. Promote it
+  only if product-level evidence completeness improves, not merely because raw OCR text looks better.
+
+Provider decision supplement recorded on 2026-06-29:
+
+- Current local code has two parser beans: `MinerUPaperPdfParser` and
+  `OpenDataLoaderPaperPdfParser`.
+- `MinerUPaperPdfParser` is selected by default through `paper.parsing.provider=mineru` and maps
+  MinerU `content_list`, `middle_json`, markdown, and raw result artifacts into PaperLoom's
+  structured parser model.
+- `OpenDataLoaderPaperPdfParser` is selected only when
+  `paper.parsing.provider=opendataloader`. It runs the Java OpenDataLoader library inside a
+  dedicated worker JVM through `OpenDataLoaderProcessRunner`, with
+  `paper.parsing.opendataloader.timeout-seconds` defaulting to 300. If the worker exceeds the
+  timeout, the process is terminated and the parser raises a visible `PaperParsingException`
+  instead of holding a Kafka worker indefinitely.
+- Unlimited-OCR should be modeled as a third provider only after a sidecar/adapter is written. The
+  adapter must convert PDFs to page images, call the model with the required prompt/decode recipe,
+  parse markdown and grounding tokens, and map results into `ParsedPaper`.
+- The provider choice is therefore:
+  - default target: MinerU
+  - local fallback with process timeout boundary: OpenDataLoader
+  - OCR experiment: Unlimited-OCR
+- A provider cannot become default until it passes a real PDF parser benchmark that checks not just
+  extracted text, but page numbers, reading order, bbox coverage, table/figure/formula evidence,
+  parser artifacts, latency, resource use, and visible failure behavior.
+
 ### Storage
 
 The implementation still has legacy physical naming in places, but the product contract is
@@ -150,11 +190,16 @@ Relevant areas:
 - `EvidencePlanner`
 - `EvidenceToolExecutor`
 - `PlannerActionType`
+- `TaskRouter`
+- `LlmTaskRouter`
 - `PaperAnswerService`
 
 Current behavior:
 
 - `PaperChatRouter` defaults ambiguous paper queries to `AUTO_SOURCE_QA`
+- `TaskRouter` uses an LLM JSON routing step to turn flexible natural-language `AUTO_SOURCE_QA`
+  requests into typed task decisions such as `LIBRARY_STATUS`, `PAPER_DISCOVERY`, `PAPER_QA`,
+  `REFERENCE_QA`, `FOLLOW_UP`, `CLARIFY`, or `SMALLTALK`
 - `EvidencePlanner` chooses actions such as `DISCOVER_PAPERS`, `SEARCH_EVIDENCE`,
   `INSPECT_REFERENCE`, and `INSPECT_PAGE`
 - `INSPECT_PAGE` is intended for trusted paper/page anchors
@@ -162,10 +207,17 @@ Current behavior:
 
 Alignment note:
 
-- The recent direction avoids production routing based on hardcoded phrases.
-- `PaperQueryPlanner` and parts of `EvidencePlanner` still contain query cleanup and heuristic
-  intent logic. This is acceptable only as replaceable planner strategy covered by regression tests,
-  not as the product's core routing contract.
+- The recent direction forbids production semantic decisions based on hardcoded phrases, regex
+  alternations, or token lists.
+- `PaperChatRouter` is limited to structural routing such as explicit references, reference focus,
+  and empty-query clarification. A source scope is an evidence boundary, not a semantic task
+  decision.
+- `TaskRouter` owns top-level semantic routing. `PaperQueryPlanner` normalizes already-decided
+  retrieval queries and must not infer task semantics from phrase lists.
+- `EvidencePlanner` may plan inside a known capability, but invalid planner output fails closed to
+  clarification rather than falling through to retrieval.
+- Parser evidence roles should come from parser-provided structure such as table, figure, chart, or
+  formula elements, not from text-content words such as "experiment" or "accuracy".
 - Chat routing must derive the paper universe from the locked conversation scope and optional
   reference focus, not from mutable frontend `input.scope` state.
 
@@ -305,8 +357,10 @@ Current benchmark facts from the scan:
 
 ### Partial Or Risky
 
-- Query cleanup and intent heuristics still exist in planner code. They need regression coverage and
-  must remain replaceable strategy logic.
+- Semantic task routing is centralized in `TaskRouter`, and current planner code no longer uses
+  production phrase lists for route recognition or query expansion. This remains a regression risk:
+  future changes must not reintroduce hardcoded semantic matching in routing, planning, verifier,
+  query expansion, or parser evidence-role logic.
 - Figure/chart evidence is represented in data structures and UI, but figure-heavy QA has not been
   proven by benchmark.
 - Metadata extraction is limited. Title inference exists, but authors, venue, year, DOI, and arXiv id

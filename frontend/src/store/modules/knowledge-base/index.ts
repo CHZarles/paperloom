@@ -1,3 +1,4 @@
+import { getUploadFileValidationError } from './upload-validation';
 import { REQUEST_ID_KEY } from '~/packages/axios/src';
 import { nanoid } from '~/packages/utils/src';
 
@@ -122,7 +123,12 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
    */
   async function enqueueUpload(form: Api.Paper.Form) {
     // 获取文件列表中的第一个文件
-    const file = form.fileList![0].file!;
+    const file = form.fileList?.[0]?.file ?? null;
+    const validationError = getUploadFileValidationError(file);
+    if (validationError || !file) {
+      window.$message?.error(validationError);
+      return;
+    }
     // 计算文件的MD5值，用于唯一标识文件
     const md5 = await calculateMD5(file);
 

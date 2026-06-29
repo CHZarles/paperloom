@@ -30,7 +30,6 @@ public class AgentToolRegistry {
     private static final int DEFAULT_SUMMARY_BATCH_SIZE = 5;
     private static final int MAX_SUMMARY_BATCH_SIZE = 20;
 
-    private final HybridSearchService hybridSearchService;
     private final PaperRetrievalService paperRetrievalService;
     private final DeepSeekClient deepSeekClient;
     private final StringRedisTemplate stringRedisTemplate;
@@ -39,13 +38,11 @@ public class AgentToolRegistry {
     private final List<AgentTool> tools;
     private final Map<String, ToolHandler> handlers;
 
-    public AgentToolRegistry(HybridSearchService hybridSearchService,
-                             PaperRetrievalService paperRetrievalService,
+    public AgentToolRegistry(PaperRetrievalService paperRetrievalService,
                              DeepSeekClient deepSeekClient,
                              StringRedisTemplate stringRedisTemplate,
                              ElasticsearchClient elasticsearchClient,
                              PaperRepository paperRepository) {
-        this.hybridSearchService = hybridSearchService;
         this.paperRetrievalService = paperRetrievalService;
         this.deepSeekClient = deepSeekClient;
         this.stringRedisTemplate = stringRedisTemplate;
@@ -109,7 +106,7 @@ public class AgentToolRegistry {
         data.put("routeHitCounts", retrievalResult.routeHitCounts());
         data.put("finalHitCount", retrievalResult.finalHitCount());
         data.put("diagnostics", retrievalResult.diagnostics());
-        data.put("fallbackUsed", retrievalResult.finalHitCount() == 0 && retrievalResult.attemptedQueries().size() > 1);
+        data.put("queryExpansionUsed", retrievalResult.attemptedQueries().size() > 1);
         data.put("results", results);
         return new ToolExecutionResult("search_papers", true, formatSearchResults(results, retrievalResult), data);
     }
@@ -193,11 +190,11 @@ public class AgentToolRegistry {
     private AgentTool searchPapersTool() {
         return new AgentTool(
                 "search_papers",
-                "在论文库中搜索与用户问题相关的论文片段。当问题涉及论文观点、方法、实验、结论、限制、术语、对比或引用依据时应调用；普通问候、闲聊、纯创作、翻译、通用代码/常识问题，或用户明确要求不要查论文时不要调用。",
+                "在论文库中搜索与用户问题相关的论文片段。当问题需要论文证据支持时应调用；普通问候、闲聊、纯创作、翻译、通用代码/常识问题，或用户明确要求跳过论文检索时不要调用。",
                 objectSchema(Map.of(
                         "query", stringSchema("用于论文检索的查询语句。应保留用户原话中的核心术语、方法名、数据集、指标和限定词，可包含必要的等价改写。"),
                         "pageBatchSize", integerSchema("ES 技术分页批次，默认 5。不是答案候选数量上限。"),
-                        "intent", stringSchema("可选检索意图，例如 experiment_result、method、limitation、summary、general。后端会自动规划和扩展。"),
+                        "intent", stringSchema("可选结构化检索意图。后端不会用固定短语表猜测用户语义。"),
                         "expand", booleanSchema("是否允许后端进行多查询扩展，默认 true。"),
                         "preferredSourceKinds", arrayStringSchema("可选偏好的证据类型，例如 TEXT、TABLE、FIGURE、CHART、FORMULA。")
                 ), List.of("query"))

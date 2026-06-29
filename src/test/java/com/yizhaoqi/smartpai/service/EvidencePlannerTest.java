@@ -11,12 +11,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class EvidencePlannerTest {
 
     @Test
-    void librarySearchPlansDiscoverPapersWithCleanedQuery() {
+    void librarySearchUsesStructuredQueryWithoutPhraseCleaning() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         EvidencePlanner planner = new EvidencePlanner(llm, new ObjectMapper());
 
@@ -29,11 +30,11 @@ class EvidencePlannerTest {
         ));
 
         assertEquals(PlannerActionType.DISCOVER_PAPERS, action.type());
-        assertEquals("agent", action.query());
+        assertEquals("推荐一些和 agent 相关的论文", action.query());
     }
 
     @Test
-    void autoSourceQaPlansSearchEvidence() {
+    void autoSourceQaIsNotExecutableByPlanner() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         when(llm.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
                 .thenReturn(new LlmProviderRouter.ReActTurn(
@@ -54,12 +55,33 @@ class EvidencePlannerTest {
                 EvidenceLedger.empty()
         ));
 
-        assertEquals(PlannerActionType.SEARCH_EVIDENCE, action.type());
-        assertEquals("这篇论文讲了什么", action.query());
+        assertEquals(PlannerActionType.ASK_CLARIFICATION, action.type());
+        assertEquals("auto_source_unresolved", action.reason());
     }
 
     @Test
-    void autoSourceQaLetsPlannerChoosePaperDiscoveryForNaturalTopicRequest() {
+    void paperQaPlansSearchEvidenceWithoutLlmPlanner() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        EvidencePlanner planner = new EvidencePlanner(llm, new ObjectMapper());
+
+        PlannerAction action = planner.plan(new PlannerContext(
+                "u1",
+                "According to the LoRA paper, what limitation of full fine-tuning does LoRA address, and how does the low-rank update work?",
+                PaperAnswerService.Intent.PAPER_QA,
+                SourceScope.auto(),
+                EvidenceLedger.empty()
+        ));
+
+        assertEquals(PlannerActionType.SEARCH_EVIDENCE, action.type());
+        assertEquals(
+                "According to the LoRA paper, what limitation of full fine-tuning does LoRA address, and how does the low-rank update work?",
+                action.query()
+        );
+        verifyNoInteractions(llm);
+    }
+
+    @Test
+    void autoSourceQaDoesNotLetPlannerChoosePaperDiscovery() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         when(llm.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
                 .thenReturn(new LlmProviderRouter.ReActTurn(
@@ -80,8 +102,8 @@ class EvidencePlannerTest {
                 EvidenceLedger.empty()
         ));
 
-        assertEquals(PlannerActionType.DISCOVER_PAPERS, action.type());
-        assertEquals("agent", action.query());
+        assertEquals(PlannerActionType.ASK_CLARIFICATION, action.type());
+        assertEquals("auto_source_unresolved", action.reason());
     }
 
     @Test

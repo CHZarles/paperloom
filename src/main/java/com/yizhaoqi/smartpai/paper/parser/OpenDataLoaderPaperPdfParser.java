@@ -1,7 +1,6 @@
 package com.yizhaoqi.smartpai.paper.parser;
 
 import org.opendataloader.pdf.api.Config;
-import org.opendataloader.pdf.api.OpenDataLoaderPDF;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -10,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Comparator;
 
 @Component
@@ -20,6 +20,7 @@ public class OpenDataLoaderPaperPdfParser implements PaperPdfParser {
     private static final String PROVIDER_VERSION = "2.4.7";
 
     private final OpenDataLoaderJsonMapper jsonMapper;
+    private final OpenDataLoaderProcessRunner processRunner;
 
     @Value("${paper.parsing.opendataloader.reading-order:xycut}")
     private String readingOrder = Config.READING_ORDER_XYCUT;
@@ -30,8 +31,16 @@ public class OpenDataLoaderPaperPdfParser implements PaperPdfParser {
     @Value("${paper.parsing.opendataloader.image-output:off}")
     private String imageOutput = Config.IMAGE_OUTPUT_OFF;
 
+    @Value("${paper.parsing.opendataloader.timeout-seconds:300}")
+    private long timeoutSeconds = 300L;
+
     public OpenDataLoaderPaperPdfParser(OpenDataLoaderJsonMapper jsonMapper) {
+        this(jsonMapper, OpenDataLoaderProcessRunner.production());
+    }
+
+    OpenDataLoaderPaperPdfParser(OpenDataLoaderJsonMapper jsonMapper, OpenDataLoaderProcessRunner processRunner) {
         this.jsonMapper = jsonMapper;
+        this.processRunner = processRunner;
     }
 
     @Override
@@ -47,7 +56,7 @@ public class OpenDataLoaderPaperPdfParser implements PaperPdfParser {
             Files.copy(pdfInputStream, inputPdf);
 
             Config config = buildConfig(tempDir);
-            OpenDataLoaderPDF.processFile(inputPdf.toString(), config);
+            processRunner.processFile(inputPdf, config, Duration.ofSeconds(timeoutSeconds), safeName(originalFilename));
 
             Path jsonOutput = tempDir.resolve("input.json");
             if (!Files.exists(jsonOutput)) {

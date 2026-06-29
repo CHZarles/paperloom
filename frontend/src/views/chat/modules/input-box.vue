@@ -208,15 +208,21 @@ function findAssistantMessage(generationId?: string) {
 }
 
 function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
-  assistant.generationId = payload.generationId || assistant.generationId;
-  assistant.conversationId = payload.conversationId || assistant.conversationId;
-  assistant.route = normalizeChatRoute(payload.route) || assistant.route;
+  const timestamp = payload.timestamp ? new Date(payload.timestamp).toISOString() : undefined;
+  const startedAssistant =
+    chatStore.applyGenerationStart({
+      generationId: typeof payload.generationId === 'string' ? payload.generationId : undefined,
+      conversationId: typeof payload.conversationId === 'string' ? payload.conversationId : undefined,
+      route: normalizeChatRoute(payload.route),
+      timestamp
+    }) || assistant;
+
   if (payload.conversationId) {
     chatStore.loadConversationScope(payload.conversationId).catch(() => {});
     chatStore.loadSessions().catch(() => {});
   }
-  if (!assistant.timestamp && payload.timestamp) {
-    assistant.timestamp = new Date(payload.timestamp).toISOString();
+  if (!startedAssistant.timestamp && timestamp) {
+    startedAssistant.timestamp = timestamp;
   }
 }
 

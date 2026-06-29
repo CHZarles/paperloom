@@ -74,6 +74,42 @@ Production default parser is MinerU.
 OpenDataLoader is an explicit fallback for local development or MinerU-unavailable situations. It
 must not be silently presented as equivalent to the default production parser quality.
 
+Unlimited-OCR is an experimental OCR candidate, not the current production parser. It is useful to
+evaluate because it targets long-horizon image/PDF OCR and markdown generation, and the official
+vLLM recipe describes a 3B BF16 model that can run on a single GPU with at least 8 GB VRAM. It is
+not a drop-in replacement for PaperLoom's parser contract because PaperLoom needs structured
+`ParsedPaper` output, including page evidence, reading order, bbox, table/figure/formula records,
+and parser artifacts. Unlimited-OCR may be added as a benchmark-gated provider, but it must not
+become the default until its adapter and real PDF benchmark results prove that it preserves the
+same evidence guarantees.
+
+Provider policy:
+
+- MinerU remains the production default when the sidecar is available.
+- OpenDataLoader remains the local fallback for smoke testing and development without MinerU.
+- Unlimited-OCR may be tested as an experimental OCR provider for scanned PDFs, image-heavy PDFs,
+  formulas, tables, and long multi-page documents.
+- System tools such as PDF-to-image conversion or Tesseract-style OCR are not product parser
+  providers unless they are explicitly integrated into the same `ParsedPaper` contract and
+  benchmarked.
+
+OCR decision supplement recorded on 2026-06-29:
+
+| Provider | Product role | Best use | Do not use as | Required before promotion |
+| --- | --- | --- | --- | --- |
+| MinerU | Production default parser | Paper PDFs that need page-aware text, reading order, bbox, tables, figures, formulas, markdown, raw artifacts, and visual evidence assets | A hidden optional dependency that fails silently | Sidecar health, bounded task timeout, visible failure state, and parser benchmark results |
+| OpenDataLoader | Local fallback and development smoke parser | Born-digital PDFs when MinerU is unavailable; local-only smoke runs; quick JSON/bbox extraction | Proof of production OCR quality, especially while hybrid/OCR mode is off | Timeout or process isolation, no indefinite Kafka worker hangs, benchmarked OCR/hybrid mode if used for scanned PDFs |
+| Unlimited-OCR | Experimental OCR candidate | Scanned PDFs, image-heavy papers, long documents, and OCR-specific benchmark comparison | Drop-in replacement for MinerU or OpenDataLoader | Sidecar adapter, PDF-to-page-image handling, raw output parser, `ParsedPaper` mapper, bbox/grounding validation, latency/VRAM measurements, and real PDF parser benchmark pass |
+
+Current recommendation:
+
+- Use MinerU as the target production parser.
+- Use OpenDataLoader only as the local fallback after it is bounded by timeout or process isolation.
+- Add Unlimited-OCR as a benchmark-gated experimental provider, not as the default runtime path.
+- Do not change the default provider from vendor claims, model novelty, or raw markdown quality.
+  The default can change only when the candidate preserves PaperLoom's evidence contract and wins
+  or matches on parser benchmark results.
+
 A PDF is "fully readable" only when the pipeline has produced, as far as the parser can support:
 
 - text chunks
@@ -97,6 +133,20 @@ Required user-visible states include:
 - searchable
 - partially available because PDF visual assets, parser artifacts, table crops, or figure crops are
   missing
+
+Parser/OCR benchmark gates for changing the default provider:
+
+- born-digital research papers, scanned papers, table-heavy papers, formula-heavy papers,
+  figure-heavy papers, and long papers must be tested separately
+- each provider must report parser success rate, per-page text coverage, page-number accuracy,
+  reading-order quality, bbox coverage, table/figure/formula extraction quality, retrieval QA
+  citation quality, latency, VRAM, and failure modes
+- benchmark corpora and results must stay out of product paper tables and product Elasticsearch
+  indices
+- LitSearch and QASPER results cannot be used as proof of OCR/parser/page-evidence quality
+- a provider can become the default only after it is wired through the product `ParsedPaper`
+  contract and beats or matches the current default on evidence completeness, not just text OCR
+  quality
 
 ## Retrieval Strategy
 
@@ -273,8 +323,31 @@ Product retrieval must use the product paper library only. Eval retrieval must s
 eval corpus such as `EVAL_LITSEARCH` or `EVAL_QASPER`. Do not add an `includeEval` switch to product
 controllers or product chat paths; eval data must be unreachable from those paths by construction.
 
-Routing must be semantic and state-aware. Debug-only hardcoded probes are acceptable during diagnosis,
-but production routing must not depend on a fixed list of phrases such as "有什么 agent 相关论文".
+Routing, planning, query construction, evidence verification, and evidence-role assignment must be
+semantic and state-aware. Debug-only hardcoded probes are acceptable during diagnosis, but production
+paths must not depend on a fixed list of phrases such as "有什么 agent 相关论文".
+
+Semantic intent recognition should be LLM-assisted and schema-constrained. The classifier should
+decide whether the user is asking for paper reading/QA, paper discovery, citation/reference
+inspection, follow-up, clarification, or small talk from task semantics and conversation state, not
+from brittle phrase lists. Deterministic routing is reserved for structural facts that do not require
+semantic inference, such as an explicit reference marker, a locked manual source scope, or an empty
+query.
+
+Hardcoded semantic matching is not allowed in production code. This includes static regex or token
+lists used to infer:
+
+- top-level task route or operation
+- paper QA sub-intent such as method, limitation, experiment, comparison, or summary
+- query expansion or query cleanup
+- evidence sufficiency or unsupported-claim detection
+- parser evidence role from text content words
+
+Allowed deterministic matching is limited to structural or protocol facts: citation syntax such as
+`[1]`, parser-provided element types such as `TABLE` or `FORMULA`, file extensions, route paths,
+permission ids, status codes, and parser/runtime error categories. If a decision requires
+understanding what the user's words mean, it belongs in an LLM-assisted typed classifier, a model
+score, or a benchmarked retrieval/reranking component rather than a hand-written word list.
 
 Query normalization and planner heuristics are allowed as implementation details, but they must be:
 

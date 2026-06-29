@@ -136,23 +136,12 @@ public class PaperChunkBuilder {
     }
 
     private String resolveEvidenceRole(ParsedPaperElement element, String text) {
-        String lower = text == null ? "" : text.toLowerCase();
-        if (element.elementType() == ParsedPaperElementType.FIGURE
-                || element.elementType() == ParsedPaperElementType.CHART) {
-            return "FIGURE_CAPTION";
-        }
-        if (element.elementType() == ParsedPaperElementType.FORMULA) {
-            return "FORMULA";
-        }
-        if (element.elementType() == ParsedPaperElementType.TABLE
-                || lower.contains("accuracy")
-                || lower.contains("experiment")
-                || lower.contains("evaluation")
-                || lower.contains("benchmark")
-                || lower.contains("table ")) {
-            return "EXPERIMENT_RESULT";
-        }
-        return "NORMAL_TEXT";
+        return switch (element.elementType()) {
+            case TABLE -> "TABLE";
+            case FIGURE, CHART -> "FIGURE_CAPTION";
+            case FORMULA -> "FORMULA";
+            default -> "NORMAL_TEXT";
+        };
     }
 
     private String firstNonBlank(String... values) {

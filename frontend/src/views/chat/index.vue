@@ -89,7 +89,6 @@ onBeforeUnmount(() => {
         </button>
         <div class="min-w-0 flex-1">
           <div class="topbar-title">PaperLoom</div>
-          <div class="topbar-subtitle">evidence-grounded paper analysis</div>
         </div>
         <div class="connection-pill" :class="`connection-pill--${connectionStatus}`">
           <span />
@@ -241,19 +240,6 @@ onBeforeUnmount(() => {
   line-height: 1.05;
 }
 
-.topbar-subtitle {
-  color: var(--chat-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 11px;
-}
-
 .connection-pill {
   display: inline-flex;
   align-items: center;
@@ -395,7 +381,6 @@ onBeforeUnmount(() => {
   background: var(--color-surface);
 }
 
-.dark .topbar-subtitle,
 .dark .connection-pill,
 .dark .reference-panel__subtitle {
   color: var(--color-text-muted);

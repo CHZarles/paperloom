@@ -1,5 +1,6 @@
 import { useWebSocket } from '@vueuse/core';
 import { request } from '@/service/request';
+import { applyGenerationStartToMessages, shouldApplyLoadedConversationMessages } from './message-list';
 
 function createChatClientId() {
   if (globalThis.crypto?.randomUUID) {
@@ -130,6 +131,38 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       diagnostics: snapshot.diagnostics,
       route: normalizeChatRoute(snapshot.diagnostics?.route)
     });
+  }
+
+  function applyGenerationStart(payload: {
+    conversationId?: string;
+    generationId?: string;
+    timestamp?: string;
+    route?: string;
+  }) {
+    const started = applyGenerationStartToMessages({
+      currentConversationId: conversationId.value,
+      messages: list.value,
+      payload
+    });
+
+    conversationId.value = started.conversationId;
+    list.value = started.messages;
+    return started.assistant as Api.Chat.Message | null;
+  }
+
+  function applyLoadedMessages(messages: Api.Chat.Message[], targetConversationId?: string) {
+    if (
+      !shouldApplyLoadedConversationMessages({
+        currentMessages: list.value,
+        loadedMessages: messages,
+        targetConversationId
+      })
+    ) {
+      return false;
+    }
+
+    list.value = messages;
+    return true;
   }
 
   async function fetchGenerationSnapshot(generationId: string) {
@@ -296,7 +329,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       params: { conversationId: cid }
     });
     if (!error && data) {
-      list.value = data;
+      applyLoadedMessages(data, cid);
     }
   }
 
@@ -521,6 +554,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     handleAuthReset,
     fetchGenerationSnapshot,
     upsertGenerationSnapshot,
+    applyGenerationStart,
+    applyLoadedMessages,
     syncGenerationAfterReconnect,
     loadSessions,
     loadConversationScope,

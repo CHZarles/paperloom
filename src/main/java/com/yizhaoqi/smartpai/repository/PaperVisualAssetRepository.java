@@ -2,6 +2,7 @@ package com.yizhaoqi.smartpai.repository;
 
 import com.yizhaoqi.smartpai.model.PaperVisualAsset;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,9 @@ import java.util.Optional;
 @Repository
 public interface PaperVisualAssetRepository extends JpaRepository<PaperVisualAsset, Long> {
     List<PaperVisualAsset> findByPaperId(String paperId);
+
+    @Query("SELECT DISTINCT a.paperId FROM PaperVisualAsset a WHERE a.paperId IS NOT NULL AND a.paperId <> ''")
+    List<String> findDistinctPaperIds();
 
     Optional<PaperVisualAsset> findFirstByPaperIdAndAssetTypeAndPageNumber(
             String paperId,

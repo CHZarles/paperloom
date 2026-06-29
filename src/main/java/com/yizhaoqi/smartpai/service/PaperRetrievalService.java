@@ -1,6 +1,7 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.entity.SearchResult;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,11 +18,20 @@ public class PaperRetrievalService {
 
     private final PaperQueryPlanner paperQueryPlanner;
     private final HybridSearchService hybridSearchService;
+    private final ProductPaperCorpus productPaperCorpus;
 
     public PaperRetrievalService(PaperQueryPlanner paperQueryPlanner,
                                  HybridSearchService hybridSearchService) {
+        this(paperQueryPlanner, hybridSearchService, null);
+    }
+
+    @Autowired
+    public PaperRetrievalService(PaperQueryPlanner paperQueryPlanner,
+                                 HybridSearchService hybridSearchService,
+                                 ProductPaperCorpus productPaperCorpus) {
         this.paperQueryPlanner = paperQueryPlanner;
         this.hybridSearchService = hybridSearchService;
+        this.productPaperCorpus = productPaperCorpus;
     }
 
     public RetrievalResult retrieve(String query, String userId, RetrievalBudget budget) {
@@ -47,9 +57,13 @@ public class PaperRetrievalService {
                                      PaperQueryPlanner.RetrievalIntent forcedIntent) {
         RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
         List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
+        List<String> productPaperIds = resolveProductPaperIds(userId, effectiveScopePaperIds);
         PaperQueryPlanner.RetrievalPlan plan = forcedIntent == null
                 ? paperQueryPlanner.plan(query)
                 : paperQueryPlanner.plan(query, forcedIntent);
+        if (productPaperCorpus != null && productPaperIds.isEmpty()) {
+            return emptyResult(plan);
+        }
         Map<String, SearchResult> uniqueResults = new LinkedHashMap<>();
         Map<String, Integer> routeHitCounts = new LinkedHashMap<>();
         int scannedCount = 0;
@@ -57,7 +71,7 @@ public class PaperRetrievalService {
 
         for (String plannedQuery : plan.queryTexts()) {
             HybridSearchService.AdaptiveSearchResult searchResult =
-                    searchForPlan(plan, plannedQuery, userId, effectiveBudget, effectiveScopePaperIds);
+                    searchForPlan(plan, plannedQuery, userId, effectiveBudget, productPaperIds);
             if (searchResult == null) {
                 searchResult = new HybridSearchService.AdaptiveSearchResult(
                         List.of(),
@@ -67,7 +81,7 @@ public class PaperRetrievalService {
                         StopReason.NO_USABLE_EVIDENCE
                 );
             }
-            List<SearchResult> results = filterResultsByScope(searchResult.results(), effectiveScopePaperIds);
+            List<SearchResult> results = filterResultsByScope(searchResult.results(), productPaperIds);
             scannedCount += searchResult.scannedCount();
             combinedStopReason = mergeStopReason(combinedStopReason, searchResult.stopReason());
             for (SearchResult result : results) {
@@ -101,6 +115,25 @@ public class PaperRetrievalService {
                 ranked.isEmpty() ? StopReason.NO_USABLE_EVIDENCE : combinedStopReason
         );
         return new RetrievalResult(plan, ranked, routeHitCounts, diagnostics);
+    }
+
+    private List<String> resolveProductPaperIds(String userId, List<String> requestedScopePaperIds) {
+        if (productPaperCorpus == null) {
+            return requestedScopePaperIds;
+        }
+        SourceScope requestedScope = requestedScopePaperIds == null || requestedScopePaperIds.isEmpty()
+                ? SourceScope.auto()
+                : SourceScope.manual(requestedScopePaperIds);
+        return productPaperCorpus.resolveAccessibleSearchablePaperIds(userId, requestedScope).paperIds();
+    }
+
+    private RetrievalResult emptyResult(PaperQueryPlanner.RetrievalPlan plan) {
+        return new RetrievalResult(
+                plan,
+                List.of(),
+                Map.of(),
+                new RetrievalDiagnostics(0, 0, 0, StopReason.NO_USABLE_EVIDENCE)
+        );
     }
 
     private HybridSearchService.AdaptiveSearchResult searchForPlan(PaperQueryPlanner.RetrievalPlan plan,
@@ -244,24 +277,6 @@ public class PaperRetrievalService {
         double score = result.getScore() == null ? 0.0d : result.getScore();
         String sourceKind = upper(result.getSourceKind());
         String evidenceRole = upper(result.getEvidenceRole());
-        String section = lower(result.getSectionTitle());
-        if (plan.intent() == PaperQueryPlanner.RetrievalIntent.EXPERIMENT_RESULT) {
-            if ("TABLE".equals(sourceKind) || "CHART".equals(sourceKind)) {
-                score += 3.0d;
-            } else if ("FIGURE".equals(sourceKind)) {
-                score += 2.0d;
-            }
-            if ("EXPERIMENT_RESULT".equals(evidenceRole) || "FIGURE_CAPTION".equals(evidenceRole)) {
-                score += 1.5d;
-            }
-            if (containsAny(section, "experiment", "evaluation", "results", "dataset", "appendix")) {
-                score += 1.0d;
-            }
-            String text = lower(result.getTextContent());
-            if (containsAny(text, "experiment", "accuracy", "evaluation", "benchmark", "table", "chart")) {
-                score += 0.8d;
-            }
-        }
         if (plan.intent() == PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH) {
             String query = lower(plan.normalizedQuery());
             String title = lower(result.getPaperTitle());
@@ -273,12 +288,6 @@ public class PaperRetrievalService {
             }
             score += 2.5d * tokenCoverage(query, title);
             score += 1.4d * tokenCoverage(query, title + " " + evidence);
-            if (containsAny(section, "title", "abstract", "introduction", "related work")) {
-                score += 1.2d;
-            }
-            if (containsAny(evidence, "abstract:", "abstract", "introduction", "related work")) {
-                score += 0.8d;
-            }
         }
         return score;
     }
@@ -310,9 +319,6 @@ public class PaperRetrievalService {
     }
 
     private String rankReason(PaperQueryPlanner.RetrievalPlan plan, SearchResult result) {
-        if (plan.intent() == PaperQueryPlanner.RetrievalIntent.EXPERIMENT_RESULT) {
-            return "experiment-intent:" + nullToText(result.getSourceKind()) + ":" + nullToText(result.getEvidenceRole());
-        }
         if (plan.intent() == PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH) {
             return "literature-search:" + nullToText(result.getPaperTitle());
         }
@@ -328,7 +334,7 @@ public class PaperRetrievalService {
         int hitCount = 0;
         String lowerText = text.toLowerCase(Locale.ROOT);
         for (String token : queryTokens) {
-            if (token.length() < 3 || isStopword(token)) {
+            if (token.length() < 3) {
                 continue;
             }
             usefulCount++;
@@ -337,25 +343,6 @@ public class PaperRetrievalService {
             }
         }
         return usefulCount == 0 ? 0.0d : (double) hitCount / usefulCount;
-    }
-
-    private boolean isStopword(String token) {
-        return switch (token) {
-            case "the", "and", "for", "with", "paper", "papers", "research", "study", "studies", "method", "methods" -> true;
-            default -> false;
-        };
-    }
-
-    private boolean containsAny(String text, String... needles) {
-        if (text == null) {
-            return false;
-        }
-        for (String needle : needles) {
-            if (text.contains(needle)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private String lower(String value) {

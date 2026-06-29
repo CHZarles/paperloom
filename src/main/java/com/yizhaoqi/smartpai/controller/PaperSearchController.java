@@ -1,6 +1,6 @@
 package com.yizhaoqi.smartpai.controller;
 
-import com.yizhaoqi.smartpai.service.HybridSearchService;
+import com.yizhaoqi.smartpai.service.PaperRetrievalService;
 import com.yizhaoqi.smartpai.service.RetrievalBudget;
 import com.yizhaoqi.smartpai.utils.LogUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ import java.util.Collections;
 public class PaperSearchController {
 
     @Autowired
-    private HybridSearchService hybridSearchService;
+    private PaperRetrievalService paperRetrievalService;
 
     /**
      * 论文混合检索接口
@@ -53,12 +53,12 @@ public class PaperSearchController {
             LogUtils.logBusiness("HYBRID_SEARCH", userId != null ? userId : "anonymous", 
                     "开始论文混合检索: query=%s, pageBatchSize=%d", query, pageBatchSize);
             
-            HybridSearchService.AdaptiveSearchResult searchResult = hybridSearchService.adaptiveSearchWithPermission(
+            PaperRetrievalService.RetrievalResult retrievalResult = paperRetrievalService.retrieve(
                     query,
                     userId,
                     RetrievalBudget.forPageBatch(pageBatchSize)
             );
-            List<SearchResult> results = searchResult.results();
+            List<SearchResult> results = retrievalResult.results();
             
             LogUtils.logUserOperation(userId != null ? userId : "anonymous", "HYBRID_SEARCH", 
                     "search_query", "SUCCESS");
@@ -72,10 +72,10 @@ public class PaperSearchController {
             responseBody.put("message", "success");
             responseBody.put("data", results);
             responseBody.put("diagnostics", Map.of(
-                    "scannedCount", searchResult.scannedCount(),
-                    "acceptedEvidenceCount", searchResult.acceptedEvidenceCount(),
-                    "sourceCount", searchResult.sourceCount(),
-                    "stopReason", searchResult.stopReason().name()
+                    "scannedCount", retrievalResult.diagnostics().scannedCount(),
+                    "acceptedEvidenceCount", retrievalResult.diagnostics().acceptedEvidenceCount(),
+                    "sourceCount", retrievalResult.diagnostics().sourceCount(),
+                    "stopReason", retrievalResult.diagnostics().stopReason().name()
             ));
             
             return responseBody;

@@ -56,11 +56,9 @@ public class ChatHandler {
     private static final int REACT_MAX_COMPLETION_TOKENS = 2000;
     private static final int INITIAL_SEARCH_PAGE_BATCH_SIZE = 5;
     private static final String INITIAL_SEARCH_TOOL_CALL_ID = "initial-search";
-    private static final String SMALLTALK_RESPONSE = "我在。你可以直接问论文的方法、实验、结论、表格或某个引用点。";
     private static final Pattern CITED_REFERENCE_PATTERN =
             Pattern.compile("\\[(\\d+)]");
     private final RedisTemplate<String, String> redisTemplate;
-    private final HybridSearchService searchService;
     private final PaperRetrievalService paperRetrievalService;
     private final PaperAnswerService paperAnswerService;
     private final LlmProviderRouter llmProviderRouter;
@@ -92,7 +90,6 @@ public class ChatHandler {
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
     public ChatHandler(RedisTemplate<String, String> redisTemplate,
-                      HybridSearchService searchService,
                       PaperRetrievalService paperRetrievalService,
                       PaperAnswerService paperAnswerService,
                       LlmProviderRouter llmProviderRouter,
@@ -105,7 +102,6 @@ public class ChatHandler {
                       ObjectMapper objectMapper,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
-        this.searchService = searchService;
         this.paperRetrievalService = paperRetrievalService;
         this.paperAnswerService = paperAnswerService;
         this.llmProviderRouter = llmProviderRouter;
@@ -173,13 +169,7 @@ public class ChatHandler {
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
 
-            if (isSmalltalkMessage(userMessage)) {
-                timing.route("SMALLTALK");
-                timing.mark("intent_route_decided");
-                completeSmalltalkResponse(userId, userMessage, finalConversationId, finalGenerationId, responseFuture);
-                return;
-            }
-            timing.route("PAPER_QA");
+            timing.route("AUTO_SOURCE_QA");
             timing.mark("intent_route_decided");
 
             // 2. 异步执行 Evidence Harness；默认用户聊天不再让模型自由调度工具和 citation。
@@ -222,23 +212,6 @@ public class ChatHandler {
             sendCompletionNotification(userId, generationId, conversationId, true, false);
             cleanupGenerationState(generationId, e);
         }
-    }
-
-    private void completeSmalltalkResponse(String userId,
-                                           String userMessage,
-                                           String conversationId,
-                                           String generationId,
-                                           CompletableFuture<String> responseFuture) {
-        appendStreamChunk(userId, generationId, conversationId, SMALLTALK_RESPONSE);
-        finalizeResponse(
-                userId,
-                userMessage,
-                conversationId,
-                generationId,
-                responseFuture,
-                responseBuilders.get(generationId),
-                new LlmProviderRouter.StreamCompletion("smalltalk", 0, 0, SMALLTALK_RESPONSE.length())
-        );
     }
 
     private PaperAnswerService.AnswerScope controlledAnswerScope(
@@ -799,37 +772,7 @@ public class ChatHandler {
     }
 
     static boolean shouldUseInitialPaperSearch(String userMessage) {
-        if (isSmalltalkMessage(userMessage)) {
-            return false;
-        }
-        String normalized = normalizeEvidenceTextStatic(userMessage);
-        if (normalized.isBlank()) {
-            return false;
-        }
-        String lower = normalized.toLowerCase(Locale.ROOT);
-        if (lower.contains("不要查论文") || lower.contains("不用查论文")
-                || lower.contains("别查论文") || lower.contains("直接回答")) {
-            return false;
-        }
-        return !lower.matches("^(你好|您好|hello|hi|谢谢|谢了|再见|拜拜)[!！。,.，\\s]*$");
-    }
-
-    static boolean isSmalltalkMessage(String userMessage) {
-        String normalized = normalizeChatRouteText(userMessage);
-        return switch (normalized) {
-            case "hi", "hello", "hey", "你好", "您好", "在吗", "谢谢", "thanks", "ok", "好的" -> true;
-            default -> false;
-        };
-    }
-
-    private static String normalizeChatRouteText(String userMessage) {
-        if (userMessage == null) {
-            return "";
-        }
-        return userMessage
-                .trim()
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[\\s!！?？。,.，;；:：、\"'“”‘’()（）\\[\\]{}<>《》]+", "");
+        return false;
     }
 
     static List<String> buildInitialPaperQueries(String userMessage) {
@@ -837,20 +780,7 @@ public class ChatHandler {
         if (original.isBlank()) {
             return List.of();
         }
-
-        String focused = original
-                .replaceFirst("^(你知道|你懂|你了解|请问|帮我查一下|查一下|说说|解释一下|介绍一下)", "")
-                .replaceFirst("(是什么|是啥|吗|么|呢|\\?)$", "")
-                .trim();
-
-        List<String> queries = new ArrayList<>();
-        if (!focused.isBlank()) {
-            queries.add(focused);
-        }
-        if (!queries.contains(original)) {
-            queries.add(original);
-        }
-        return queries;
+        return List.of(original);
     }
 
     private record InitialSearchOutcome(String context, boolean noHit, int hitCount) {

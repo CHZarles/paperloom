@@ -80,26 +80,19 @@ function getRetrievalQueryFallback(index: number) {
   return '';
 }
 
-const params = computed(() => {
-  const p: Record<string, string> = {};
-  if (conversationId.value) {
-    p.conversationId = conversationId.value;
-  }
-  return p;
-});
-
 watchEffect(() => {
   getList();
 });
 
 async function getList() {
   loading.value = true;
+  const targetConversationId = conversationId.value;
   const { error, data } = await request<Api.Chat.Message[]>({
     url: 'users/conversation',
-    params: params.value
+    params: targetConversationId ? { conversationId: targetConversationId } : {}
   });
   if (!error) {
-    list.value = data;
+    chatStore.applyLoadedMessages(data, targetConversationId);
   }
   loading.value = false;
 }
@@ -115,20 +108,6 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   <Suspense>
     <div class="chat-list-shell">
       <div v-if="showEmpty" class="welcome-panel">
-        <div class="welcome-logo">
-          <SystemLogo class="text-56px" />
-        </div>
-        <div class="welcome-copy">
-          <div class="welcome-kicker">evidence-grounded paper reading desk</div>
-          <h1>Ask papers with cited evidence</h1>
-          <p>围绕论文、PDF、方法、实验和结论提问，回答会用 citation chip 连接页码、chunk 与原文证据。</p>
-          <div class="welcome-tags" aria-label="example scopes">
-            <span>[PDF]</span>
-            <span>[METHOD]</span>
-            <span>[CLAIMS]</span>
-            <span>[REFS]</span>
-          </div>
-        </div>
         <div class="welcome-input">
           <InputBox variant="hero" />
         </div>
@@ -175,87 +154,6 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   text-align: center;
 }
 
-.welcome-logo {
-  display: flex;
-  height: 72px;
-  width: 72px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--color-primary-soft-bg);
-  color: var(--color-primary);
-}
-
-.welcome-copy {
-  max-width: 860px;
-}
-
-.welcome-kicker {
-  margin-bottom: 9px;
-  color: var(--color-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.welcome-copy h1 {
-  margin: 0;
-  color: var(--color-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.welcome-copy p {
-  margin: 12px auto 0;
-  max-width: 590px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.8;
-}
-
-.welcome-tags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.welcome-tags span {
-  border-radius: 999px;
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-  padding: 5px 12px;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-}
-
 .welcome-input {
   width: min(760px, 100%);
 }
@@ -266,29 +164,7 @@ const showEmpty = computed(() => !loading.value && list.value.length === 0);
   padding: 26px 24px 36px;
 }
 
-.dark .welcome-logo {
-  background: var(--color-primary-soft-bg);
-}
-
-.dark .welcome-copy h1 {
-  color: var(--color-text);
-}
-
-.dark .welcome-copy p {
-  color: var(--color-text-muted);
-}
-
-.dark .welcome-tags span {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-}
-
 @media (max-width: 640px) {
-  .welcome-copy h1 {
-    font-size: 26px;
-  }
-
   .chat-message-stack {
     padding: 18px 16px 28px;
   }

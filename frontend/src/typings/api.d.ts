@@ -359,6 +359,7 @@ declare namespace Api {
       paperId: string;
       chunkIndex: number;
       totalSize: number;
+      sourceFileSizeBytes?: number;
       paperTitle: string;
       originalFilename: string;
       userId?: string;

@@ -1020,7 +1020,6 @@ class ChatHandlerReferenceEvidenceTest {
                 null,
                 null,
                 null,
-                null,
                 new ObjectMapper(),
                 null
         );
@@ -1109,7 +1108,6 @@ class ChatHandlerReferenceEvidenceTest {
         ConversationService conversationService = mock(ConversationService.class);
         ChatHandler handler = new ChatHandler(
                 redisTemplate,
-                null,
                 null,
                 paperAnswerService,
                 null,

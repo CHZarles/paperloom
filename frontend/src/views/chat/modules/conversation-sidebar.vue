@@ -95,26 +95,16 @@ function handleUnarchive(cid: string) {
   chatStore.unarchiveSession(cid);
 }
 
-const adminWorkbenchRoutes = [
-  'user',
-  'org-tag',
-  'model-provider',
-  'invite-code',
-  'usage-monitor',
-  'chat-history',
-  'recharge-manage'
-];
-
 const isWorkbenchActive = computed(() => {
-  return ['knowledge-base', 'personal-center', ...adminWorkbenchRoutes].includes(String(route.name || ''));
+  return route.name === 'knowledge-base';
 });
 
 const workbenchSubtitle = computed(() => {
-  return 'library / taxonomy / experiments';
+  return 'papers / collections';
 });
 
 async function handleWorkbenchClick() {
-  await router.push({ name: authStore.isAdmin ? 'user' : 'knowledge-base' });
+  await router.push({ name: 'knowledge-base' });
   collapsed.value = true;
 }
 
@@ -158,7 +148,6 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
         </div>
         <div class="min-w-0 flex-1">
           <div class="brand-title">PaperLoom</div>
-          <div class="brand-subtitle">structured paper reading</div>
         </div>
         <NButton text size="tiny" class="collapse-button" @click="handleCollapse">
           <template #icon>
@@ -331,20 +320,6 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
     sans-serif;
   font-size: 18px;
   font-weight: 700;
-}
-
-.brand-subtitle {
-  margin-top: 1px;
-  color: var(--color-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 11px;
 }
 
 .collapse-button {
@@ -604,7 +579,6 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
   box-shadow: none;
 }
 
-.dark .brand-subtitle,
 .dark .sidebar-section-header,
 .dark .session-date {
   color: var(--color-text-muted);

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -56,13 +57,16 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void smalltalkDoesNotRetrieveOrCallLlm() {
+    void smalltalkRoutedByTaskRouterDoesNotRetrieve() {
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(smalltalkRoute());
+
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "hi");
 
         assertEquals(PaperAnswerService.Intent.SMALLTALK, answer.intent());
         assertEquals(0, answer.referenceMappings().size());
         assertTrue(answer.markdown().contains("我在"));
-        verifyNoInteractions(retrievalService, llmProviderRouter);
+        verifyNoInteractions(retrievalService);
     }
 
     @Test
@@ -98,27 +102,144 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void paperInventoryQuestionUsesRecommendationRoute() {
-        plannerReturns(PlannerActionType.LIST_LIBRARY, "");
-        when(paperService.getAccessiblePapers("u1", null)).thenReturn(List.of(paper("paper-a", "Agent Harness Paper")));
-
-        PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "现在有什么论文");
-
-        assertEquals(PaperAnswerService.Intent.LIBRARY_SEARCH, answer.intent());
-        assertTrue(answer.markdown().contains("当前可访问论文库中有 1 篇论文"));
-        assertTrue(answer.markdown().contains("《Agent Harness Paper》"));
-        assertEquals(0, answer.referenceMappings().size());
-        verifyNoInteractions(retrievalService);
-    }
-
-    @Test
     void nonPaperSystemQuestionClarifiesWithoutRetrieval() {
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(clarifyRoute());
+
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "现在的session id是什么");
 
         assertEquals(PaperAnswerService.Intent.CLARIFY, answer.intent());
         assertEquals(0, answer.referenceMappings().size());
         assertTrue(answer.markdown().contains("论文"));
-        verifyNoInteractions(retrievalService, llmProviderRouter);
+        verifyNoInteractions(retrievalService);
+    }
+
+    @Test
+    void taskRoutingFailureDoesNotRetrieveOrRenderEvidence() {
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(turn("not json"));
+
+        PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "介绍一下 LoRA");
+
+        assertEquals(PaperAnswerService.Intent.CLARIFY, answer.intent());
+        assertEquals("ROUTING_FAILURE", answer.diagnostics().route());
+        assertEquals(0, answer.referenceMappings().size());
+        assertEquals(0, answer.evidenceCount());
+        assertFalse(answer.fallbackUsed());
+        verifyNoInteractions(retrievalService);
+    }
+
+    @Test
+    void libraryStatusAnswersFromMetadataWithoutRetrievalOrCitations() {
+        TaskRouter taskRouter = request -> TaskRoutingResult.routed(new TaskDecision(
+                TaskType.LIBRARY_STATUS,
+                TaskOperation.COUNT_SEARCHABLE_PAPERS,
+                "",
+                0.95d,
+                "count searchable papers"
+        ));
+        PaperLibraryStatusService libraryStatusService = mock(PaperLibraryStatusService.class);
+        when(libraryStatusService.statusFor(eq("u1"), any(SourceScope.class)))
+                .thenReturn(new PaperLibraryStatus(
+                        3,
+                        2,
+                        0,
+                        0,
+                        1,
+                        2,
+                        List.of()
+                ));
+        PaperAnswerService statusService = new PaperAnswerService(
+                retrievalService,
+                paperService,
+                conversationService,
+                llmProviderRouter,
+                redisTemplate,
+                new ObjectMapper(),
+                new PaperChatRouter(),
+                new EvidencePlanner(llmProviderRouter, new ObjectMapper()),
+                new EvidenceLedgerService(),
+                new EvidenceAnswerGenerator(llmProviderRouter, new EvidenceVerifier()),
+                new EvidenceVerifier(),
+                new EvidenceToolExecutor(retrievalService, paperService, conversationService, new EvidenceLedgerService()),
+                taskRouter,
+                libraryStatusService
+        );
+
+        PaperAnswerService.AnswerResult answer = statusService.answer("u1", "c1", "有多少论文可以检索");
+
+        assertEquals(PaperAnswerService.Intent.LIBRARY_STATUS, answer.intent());
+        assertEquals("LIBRARY_STATUS", answer.diagnostics().route());
+        assertEquals(0, answer.referenceMappings().size());
+        assertEquals(0, answer.evidenceCount());
+        assertTrue(answer.markdown().contains("2 篇"));
+        verifyNoInteractions(retrievalService);
+    }
+
+    @Test
+    void libraryStatusInsideScopedSessionStillUsesStatusCapabilityWithoutRetrieval() {
+        TaskRouter taskRouter = request -> TaskRoutingResult.routed(new TaskDecision(
+                TaskType.LIBRARY_STATUS,
+                TaskOperation.COUNT_SEARCHABLE_PAPERS,
+                "",
+                0.95d,
+                "count scoped searchable papers"
+        ));
+        PaperLibraryStatusService libraryStatusService = mock(PaperLibraryStatusService.class);
+        when(libraryStatusService.statusFor(eq("u1"), any(SourceScope.class)))
+                .thenReturn(new PaperLibraryStatus(
+                        3,
+                        2,
+                        0,
+                        0,
+                        1,
+                        1,
+                        List.of()
+                ));
+        PaperAnswerService statusService = new PaperAnswerService(
+                retrievalService,
+                paperService,
+                conversationService,
+                llmProviderRouter,
+                redisTemplate,
+                new ObjectMapper(),
+                new PaperChatRouter(),
+                new EvidencePlanner(llmProviderRouter, new ObjectMapper()),
+                new EvidenceLedgerService(),
+                new EvidenceAnswerGenerator(llmProviderRouter, new EvidenceVerifier()),
+                new EvidenceVerifier(),
+                new EvidenceToolExecutor(retrievalService, paperService, conversationService, new EvidenceLedgerService()),
+                taskRouter,
+                libraryStatusService
+        );
+
+        PaperAnswerService.AnswerResult answer = statusService.answer(
+                "u1",
+                "c1",
+                "有多少论文可以检索",
+                new PaperAnswerService.AnswerScope(
+                        List.of("paper-a"),
+                        List.of("Title paper-a"),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                )
+        );
+
+        assertEquals(PaperAnswerService.Intent.LIBRARY_STATUS, answer.intent());
+        assertEquals("LIBRARY_STATUS", answer.diagnostics().route());
+        assertEquals("MANUAL_SOURCE", answer.diagnostics().scopeMode());
+        assertEquals(0, answer.referenceMappings().size());
+        assertEquals(0, answer.evidenceCount());
+        assertTrue(answer.markdown().contains("当前检索范围：1 篇"));
+        verifyNoInteractions(retrievalService);
     }
 
     @Test
@@ -171,12 +292,14 @@ class PaperAnswerServiceTest {
     @Test
     void followUpWithoutFocusAsksForClarificationAndDoesNotRetrieve() {
         when(valueOps.get("paperloom:chat:focus:c1")).thenReturn(null);
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(followUpRoute("详细讲解"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "详细讲解");
 
         assertEquals(PaperAnswerService.Intent.CLARIFY, answer.intent());
         assertTrue(answer.markdown().contains("你想讲哪一篇"));
-        verifyNoInteractions(retrievalService, llmProviderRouter);
+        verifyNoInteractions(retrievalService);
     }
 
     @Test
@@ -184,12 +307,14 @@ class PaperAnswerServiceTest {
         when(valueOps.get("paperloom:chat:focus:c1")).thenReturn("""
                 {"lastIntent":"PAPER_RECOMMENDATION","lastPaperIds":["paper-a","paper-b"],"lastPaperTitles":["Title paper-a","Title paper-b"]}
                 """);
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(followUpRoute("详细讲解"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "详细讲解");
 
         assertEquals(PaperAnswerService.Intent.CLARIFY, answer.intent());
         assertTrue(answer.markdown().contains("你想讲第几篇"));
-        verifyNoInteractions(retrievalService, llmProviderRouter);
+        verifyNoInteractions(retrievalService);
     }
 
     @Test
@@ -202,7 +327,7 @@ class PaperAnswerServiceTest {
                 result("paper-a", 1, "Focused paper evidence explains how the agent harness changes retrieval behavior.", 0.8)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
+                .thenReturn(followUpRoute("详细讲解"), new LlmProviderRouter.ReActTurn(
                         "**结论**\n这篇论文讨论 Agent Harness。{{E1}}",
                         List.of(),
                         Map.of("role", "assistant", "content", "**结论**\n这篇论文讨论 Agent Harness。{{E1}}"),
@@ -227,18 +352,14 @@ class PaperAnswerServiceTest {
                 result("paper-grep", 1, "Grep is available as a native bash tool that agents can use for search.", 0.9)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "**结论**\ngrep 在论文中被作为 agent 可调用的搜索工具讨论。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "**结论**\ngrep 在论文中被作为 agent 可调用的搜索工具讨论。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(
+                        paperQaRoute(),
+                        turn("**结论**\ngrep 在论文中被作为 agent 可调用的搜索工具讨论。{{E1}}")
+                );
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "介绍一下grep");
 
-        assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, answer.intent());
+        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
         assertEquals("AUTO_SOURCE", answer.diagnostics().scopeMode());
         assertEquals("paper-grep", answer.referenceMappings().get(1).paperId());
         verify(retrievalService, never()).retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of("paper-old")));
@@ -259,9 +380,9 @@ class PaperAnswerServiceTest {
         when(retrievalService.retrieve(eq("Title paper-a 进一步解释"), eq("1"), any(RetrievalBudget.class), eq(List.of("paper-a"))))
                 .thenReturn(retrievalResult(List.of(
                         result("paper-a", 1, "Focused paper evidence explains how the agent harness changes retrieval behavior.", 0.8)
-                )));
+        )));
         when(llmProviderRouter.completeReActTurn(eq("1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
+                .thenReturn(followUpRoute("进一步解释"), new LlmProviderRouter.ReActTurn(
                         "**结论**\n这篇论文讨论 Agent Harness。{{E1}}",
                         List.of(),
                         Map.of("role", "assistant", "content", "**结论**\n这篇论文讨论 Agent Harness。{{E1}}"),
@@ -277,47 +398,39 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void qaFallsBackWhenLlmUsesUnknownEvidenceToken() {
+    void qaGenerationFailureForUnknownEvidenceTokenDoesNotRenderFallbackSummary() {
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Real evidence shows that agent harnesses alter retrieval decisions.", 0.9)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "这是一个无效引用 {{E99}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "这是一个无效引用 {{E99}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("这是一个无效引用 {{E99}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这篇论文和 agent 有什么关系");
 
-        assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, answer.intent());
-        assertTrue(answer.fallbackUsed());
-        assertTrue(answer.markdown().contains("[1]"));
-        assertEquals(1, answer.referenceMappings().size());
+        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
+        assertFalse(answer.fallbackUsed());
+        assertTrue(answer.markdown().contains("没有生成可验证的答案"));
+        assertEquals(0, answer.referenceMappings().size());
     }
 
     @Test
-    void qaFallbackAfterLlmQuotaFailureStillGivesUsefulEvidenceAnswer() {
+    void qaGenerationQuotaFailureDoesNotRenderFallbackEvidenceSummary() {
         when(retrievalService.retrieve(eq("介绍一下grep"), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-grep", 1, "Grep is available as a native bash search primitive that agents can use to inspect files and retrieve exact matches.", 0.9),
                 result("paper-grep", 2, "The paper compares grep-style search with vector search under different agent harnesses.", 0.8)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(paperQaRoute())
                 .thenThrow(new RateLimitExceededException("LLM Token 余额不足", 60));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "介绍一下grep");
 
-        assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, answer.intent());
-        assertTrue(answer.fallbackUsed());
-        assertTrue(answer.markdown().contains("**可确认的信息**"));
-        assertTrue(answer.markdown().contains("《Title paper-grep》"));
-        assertTrue(answer.markdown().contains("Grep is available"));
-        assertTrue(answer.markdown().contains("[1]"));
-        assertTrue(!answer.markdown().contains("无法生成"));
-        assertEquals("paper-grep", answer.referenceMappings().get(1).paperId());
+        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
+        assertFalse(answer.fallbackUsed());
+        assertTrue(answer.markdown().contains("没有生成可验证的答案"));
+        assertFalse(answer.markdown().contains("**可确认的信息**"));
+        assertFalse(answer.markdown().contains("[1]"));
+        assertEquals(0, answer.referenceMappings().size());
     }
 
     @Test
@@ -325,56 +438,44 @@ class PaperAnswerServiceTest {
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "5", 0.9)
         )));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(paperQaRoute());
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这篇论文和 agent 有什么关系");
 
-        assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, answer.intent());
+        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
         assertEquals(0, answer.referenceMappings().size());
         assertTrue(answer.markdown().contains("足够可靠"));
     }
 
     @Test
-    void qaFallsBackWhenLlmUsesNakedCitation() {
+    void qaGenerationFailureForNakedCitationDoesNotRenderFallbackSummary() {
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Real evidence shows that agent harnesses alter retrieval decisions.", 0.9)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "这是模型自己编的引用 [1]",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "这是模型自己编的引用 [1]"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("这是模型自己编的引用 [1]"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这篇论文和 agent 有什么关系");
 
-        assertTrue(answer.fallbackUsed());
-        assertTrue(answer.markdown().contains("[1]"));
-        assertEquals("paper-a", answer.referenceMappings().get(1).paperId());
+        assertFalse(answer.fallbackUsed());
+        assertTrue(answer.markdown().contains("没有生成可验证的答案"));
+        assertEquals(0, answer.referenceMappings().size());
     }
 
     @Test
-    void qaFallsBackWhenLlmUsesLegacySourceCitation() {
+    void qaGenerationFailureForLegacySourceCitationDoesNotRenderFallbackSummary() {
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Real evidence shows that agent harnesses alter retrieval decisions.", 0.9)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "这是旧格式引用 来源#1",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "这是旧格式引用 来源#1"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("这是旧格式引用 来源#1"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这篇论文和 agent 有什么关系");
 
-        assertTrue(answer.fallbackUsed());
-        assertTrue(answer.markdown().contains("[1]"));
-        assertEquals("paper-a", answer.referenceMappings().get(1).paperId());
+        assertFalse(answer.fallbackUsed());
+        assertTrue(answer.markdown().contains("没有生成可验证的答案"));
+        assertEquals(0, answer.referenceMappings().size());
     }
 
     @Test
@@ -383,21 +484,47 @@ class PaperAnswerServiceTest {
                 result("paper-a", 1, "Agent harness changes retrieval behavior.", 0.9)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "**结论**\nAgent Harness 会改变检索行为。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "**结论**\nAgent Harness 会改变检索行为。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("**结论**\nAgent Harness 会改变检索行为。{{E1}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这篇论文和 agent 有什么关系");
 
-        assertEquals(PaperAnswerService.Intent.AUTO_SOURCE_QA, answer.intent());
+        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
         assertTrue(answer.markdown().contains("[1]"));
         assertTrue(!answer.markdown().contains("{{E1}}"));
         assertEquals("paper-a", answer.referenceMappings().get(1).paperId());
+    }
+
+    @Test
+    void loraContentQuestionUsesPaperQaInsteadOfRecommendationTemplate() {
+        String question = "According to the LoRA paper, what limitation of full fine-tuning does LoRA address, and how does the low-rank update work?";
+        String classifierJson = """
+                {
+                  "route": "PAPER_QA",
+                  "retrievalIntent": "METHOD",
+                  "query": "LoRA full fine-tuning limitation low-rank update",
+                  "confidence": 0.94,
+                  "reason": "The user asks how the method in a paper works."
+                }
+                """;
+        when(retrievalService.retrieve(eq("LoRA full fine-tuning limitation low-rank update"), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
+                result("lora-paper", 1, "LoRA addresses the inefficiency of full fine-tuning by freezing pretrained weights and learning low-rank decomposition matrices for the update.", 0.95)
+        )));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(
+                        turn(classifierJson),
+                        turn("**结论**\nLoRA 避免对所有预训练参数做全量更新，而是在冻结权重旁学习低秩更新矩阵。{{E1}}")
+                );
+
+        PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", question);
+
+        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
+        assertEquals("PAPER_QA", answer.diagnostics().route());
+        assertTrue(answer.markdown().contains("[1]"));
+        assertTrue(!answer.markdown().contains("推荐"));
+        assertTrue(!answer.markdown().contains("只找到"));
+        assertEquals("lora-paper", answer.referenceMappings().get(1).paperId());
+        verify(retrievalService).retrieve(eq("LoRA full fine-tuning limitation low-rank update"), eq("u1"), any(RetrievalBudget.class), eq(List.of()));
+        verify(retrievalService, never()).discoverPapers(anyString(), eq("u1"), any(RetrievalBudget.class));
     }
 
     @Test
@@ -414,14 +541,7 @@ class PaperAnswerServiceTest {
                 evalResult
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "**结论**\n结构化评测证据说明 agent benchmark 设置。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "**结论**\n结构化评测证据说明 agent benchmark 设置。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("**结论**\n结构化评测证据说明 agent benchmark 设置。{{E1}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "agent benchmark 怎么设置");
         ChatHandler.ReferenceInfo reference = answer.referenceMappings().get(1);
@@ -449,14 +569,7 @@ class PaperAnswerServiceTest {
                 tableResult
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "**结论**\n表 1 报告了 grep 和 vector 的整体准确率。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "**结论**\n表 1 报告了 grep 和 vector 的整体准确率。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("**结论**\n表 1 报告了 grep 和 vector 的整体准确率。{{E1}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "实验1的表1报告了什么？");
         ChatHandler.ReferenceInfo reference = answer.referenceMappings().get(1);
@@ -470,7 +583,7 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void qaFallbackForFigureTextOnlyEvidenceDoesNotClaimVisualInspection() {
+    void qaGenerationFailureForFigureEvidenceDoesNotRenderFallbackVisualClaim() {
         SearchResult figureResult = result("paper-figure", 9, "Figure 2 caption: agent harness accuracy rises after scoped retrieval.", 0.9);
         figureResult.setSourceKind("FIGURE");
         figureResult.setFigureId("figure-2");
@@ -484,17 +597,14 @@ class PaperAnswerServiceTest {
                 figureResult
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(paperQaRoute())
                 .thenThrow(new RateLimitExceededException("LLM Token 余额不足", 60));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这张图说明什么？");
-        ChatHandler.ReferenceInfo reference = answer.referenceMappings().get(1);
 
-        assertTrue(answer.fallbackUsed());
-        assertEquals("FIGURE", reference.sourceKind());
-        assertEquals("figure-2", reference.figureId());
-        assertEquals("FIGURE_CAPTION", reference.evidenceRole());
-        assertEquals(false, reference.figureScreenshotAvailable());
-        assertEquals(List.of("figure_screenshot_missing"), reference.assetWarnings());
+        assertFalse(answer.fallbackUsed());
+        assertEquals(0, answer.referenceMappings().size());
+        assertTrue(answer.markdown().contains("没有生成可验证的答案"));
         assertTrue(!answer.markdown().contains("截图"));
         assertTrue(!answer.markdown().contains("视觉"));
         assertTrue(!answer.markdown().toLowerCase(java.util.Locale.ROOT).contains("visual"));
@@ -515,14 +625,7 @@ class PaperAnswerServiceTest {
                 highNoiseTable
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "**依据**\n- 高噪声条件下 Claude Haiku 4.5 仍达到 94.0%。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "**依据**\n- 高噪声条件下 Claude Haiku 4.5 仍达到 94.0%。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("**依据**\n- 高噪声条件下 Claude Haiku 4.5 仍达到 94.0%。{{E1}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "讲一讲高噪声场景");
 
@@ -537,14 +640,7 @@ class PaperAnswerServiceTest {
                 result("paper-b", 1, "Weaker evidence provides related but less direct tool usage context.", 0.7)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "**依据**\n- 次要证据。{{E2}}\n- 主要证据。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "**依据**\n- 次要证据。{{E2}}\n- 主要证据。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("**依据**\n- 次要证据。{{E2}}\n- 主要证据。{{E1}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这篇论文和 agent 有什么关系");
 
@@ -555,47 +651,34 @@ class PaperAnswerServiceTest {
     }
 
     @Test
-    void qaFallsBackWhenLlmMentionsCandidateOutsideLedgerTitleWhitelist() {
+    void qaGenerationFailureForUnknownTitleDoesNotRenderFallbackSummary() {
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Real evidence shows that agent harnesses alter retrieval decisions.", 0.9)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "《Fake Agent Paper》也很相关。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "《Fake Agent Paper》也很相关。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("《Fake Agent Paper》也很相关。{{E1}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "这篇论文和 agent 有什么关系");
 
-        assertTrue(answer.fallbackUsed());
+        assertFalse(answer.fallbackUsed());
+        assertTrue(answer.markdown().contains("没有生成可验证的答案"));
         assertTrue(!answer.markdown().contains("Fake Agent Paper"));
-        assertTrue(answer.markdown().contains("[1]"));
+        assertEquals(0, answer.referenceMappings().size());
     }
 
     @Test
-    void qaFallsBackWhenStrongComparativeClaimHasNoComparativeEvidence() {
+    void verifierDoesNotRejectComparativeClaimWithValidEvidenceByPhraseList() {
         when(retrievalService.retrieve(anyString(), eq("u1"), any(RetrievalBudget.class), eq(List.of()))).thenReturn(retrievalResult(List.of(
                 result("paper-a", 1, "Agent harnesses dynamically choose retrieval tools and inspect intermediate results before answering.", 0.9)
         )));
         when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
-                .thenReturn(new LlmProviderRouter.ReActTurn(
-                        "**结论**\nAgent Harness 显著优于传统 Grep 搜索。{{E1}}",
-                        List.of(),
-                        Map.of("role", "assistant", "content", "**结论**\nAgent Harness 显著优于传统 Grep 搜索。{{E1}}"),
-                        "stop",
-                        10,
-                        5
-                ));
+                .thenReturn(paperQaRoute(), turn("**结论**\nAgent Harness 显著优于传统 Grep 搜索。{{E1}}"));
 
         PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "agent harness 比 grep 更好吗");
 
-        assertTrue(answer.fallbackUsed());
-        assertTrue(!answer.markdown().contains("显著优于"));
-        assertEquals("paper-a", answer.referenceMappings().get(1).paperId());
+        assertFalse(answer.fallbackUsed());
+        assertTrue(answer.markdown().contains("显著优于"));
+        assertEquals(1, answer.referenceMappings().size());
     }
 
     @Test
@@ -839,7 +922,7 @@ class PaperAnswerServiceTest {
         when(planner.plan(any())).thenReturn(searchAction, answerAction);
         when(toolExecutor.execute(eq("u1"), eq("c1"), eq(searchAction), any(SourceScope.class)))
                 .thenReturn(new EvidenceToolResult(PlannerActionType.SEARCH_EVIDENCE, ledger, ""));
-        when(answerGenerator.generate(eq("u1"), eq("这篇论文讲什么"), eq(ledger)))
+        when(answerGenerator.generate(eq("u1"), eq("这篇论文讲什么"), any(EvidenceLedger.class)))
                 .thenReturn(new EvidenceAnswerGenerator.GeneratedAnswer(
                         "**结论**\n这篇论文讨论受控检索。{{E1}}",
                         true,
@@ -847,6 +930,8 @@ class PaperAnswerServiceTest {
                         10,
                         5
                 ));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(paperQaRoute());
 
         PaperAnswerService.AnswerResult answer = harnessService.answer(
                 "u1",
@@ -868,7 +953,8 @@ class PaperAnswerServiceTest {
                 )
         );
 
-        assertEquals(PaperAnswerService.Intent.MANUAL_SOURCE_QA, answer.intent());
+        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
+        assertEquals("MANUAL_SOURCE", answer.diagnostics().scopeMode());
         assertTrue(answer.markdown().contains("[1]"));
         assertEquals("paper-a", answer.referenceMappings().get(1).paperId());
         verify(planner, org.mockito.Mockito.times(2)).plan(any(PlannerContext.class));
@@ -922,6 +1008,8 @@ class PaperAnswerServiceTest {
         when(planner.plan(any())).thenReturn(discoverAction);
         when(toolExecutor.execute(eq("u1"), eq("c1"), eq(discoverAction), any(SourceScope.class)))
                 .thenReturn(new EvidenceToolResult(PlannerActionType.DISCOVER_PAPERS, ledger, ""));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(paperDiscoveryRoute("agent"));
 
         PaperAnswerService.AnswerResult answer = harnessService.answer(
                 "u1",
@@ -997,6 +1085,8 @@ class PaperAnswerServiceTest {
                         10,
                         5
                 ));
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(paperQaRoute());
 
         harnessService.answer(
                 "u1",
@@ -1037,9 +1127,16 @@ class PaperAnswerServiceTest {
     }
 
     private void plannerReturns(PlannerActionType actionType, String query) {
-        String json = "{\"action\":\"" + actionType.name() + "\",\"query\":\""
+        PaperAnswerService.Intent route = actionType == PlannerActionType.DISCOVER_PAPERS
+                || actionType == PlannerActionType.LIST_LIBRARY
+                ? PaperAnswerService.Intent.LIBRARY_SEARCH
+                : PaperAnswerService.Intent.PAPER_QA;
+        PaperQueryPlanner.RetrievalIntent retrievalIntent = route == PaperAnswerService.Intent.LIBRARY_SEARCH
+                ? PaperQueryPlanner.RetrievalIntent.LITERATURE_SEARCH
+                : PaperQueryPlanner.RetrievalIntent.GENERAL;
+        String json = "{\"route\":\"" + route.name() + "\",\"retrievalIntent\":\"" + retrievalIntent.name() + "\",\"query\":\""
                 + (query == null ? "" : query)
-                + "\",\"reason\":\"test\"}";
+                + "\",\"confidence\":0.9,\"reason\":\"test\"}";
         when(llmProviderRouter.completeReActTurn(anyString(), any(), eq(List.of()), anyInt()))
                 .thenReturn(new LlmProviderRouter.ReActTurn(
                         json,
@@ -1049,6 +1146,82 @@ class PaperAnswerServiceTest {
                         10,
                         5
                 ));
+    }
+
+    private LlmProviderRouter.ReActTurn turn(String content) {
+        return new LlmProviderRouter.ReActTurn(
+                content,
+                List.of(),
+                Map.of("role", "assistant", "content", content),
+                "stop",
+                10,
+                5
+        );
+    }
+
+    private LlmProviderRouter.ReActTurn paperQaRoute() {
+        String content = """
+                {
+                  "taskType": "PAPER_QA",
+                  "operation": "ANSWER_FROM_EVIDENCE",
+                  "query": "",
+                  "confidence": 0.9,
+                  "reason": "test paper qa route"
+                }
+                """;
+        return turn(content);
+    }
+
+    private LlmProviderRouter.ReActTurn followUpRoute(String query) {
+        String content = """
+                {
+                  "taskType": "FOLLOW_UP",
+                  "operation": "ANSWER_FROM_EVIDENCE",
+                  "query": "%s",
+                  "confidence": 0.9,
+                  "reason": "test follow-up route"
+                }
+                """.formatted(query == null ? "" : query);
+        return turn(content);
+    }
+
+    private LlmProviderRouter.ReActTurn clarifyRoute() {
+        String content = """
+                {
+                  "taskType": "CLARIFY",
+                  "operation": "ASK_CLARIFICATION",
+                  "query": "",
+                  "confidence": 0.9,
+                  "reason": "test clarify route"
+                }
+                """;
+        return turn(content);
+    }
+
+    private LlmProviderRouter.ReActTurn smalltalkRoute() {
+        String content = """
+                {
+                  "taskType": "SMALLTALK",
+                  "operation": "DIRECT_RESPONSE",
+                  "query": "",
+                  "confidence": 0.9,
+                  "reason": "test smalltalk route"
+                }
+                """;
+        return turn(content);
+    }
+
+    private LlmProviderRouter.ReActTurn paperDiscoveryRoute(String query) {
+        String content = """
+                {
+                  "taskType": "PAPER_DISCOVERY",
+                  "operation": "SEARCH_PAPER_METADATA",
+                  "query": "%s",
+                  "confidence": 0.9,
+                  "reason": "test paper discovery route"
+                }
+                """.formatted(query == null ? "" : query);
+        return turn(content);
     }
 
     private SearchResult result(String paperId, int chunkId, String text, double score) {

@@ -8,9 +8,12 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,6 +36,32 @@ class PaperRetrievalServiceTest {
         assertEquals(2, retrieval.results().size());
         assertEquals(2, retrieval.diagnostics().acceptedEvidenceCount());
         verify(hybridSearchService).adaptiveSearchWithPermission("agent", "u1", budget, List.of());
+    }
+
+    @Test
+    void autoScopeUsesProductPaperCorpusAllowlistBeforeHybridSearch() {
+        PaperQueryPlanner planner = new PaperQueryPlanner();
+        HybridSearchService hybridSearchService = mock(HybridSearchService.class);
+        ProductPaperCorpus corpus = mock(ProductPaperCorpus.class);
+        RetrievalBudget budget = RetrievalBudget.forQa();
+        when(corpus.resolveAccessibleSearchablePaperIds(eq("u1"), eq(SourceScope.auto())))
+                .thenReturn(new ProductPaperCorpus.ProductPaperSet(
+                        List.of("paper-a"),
+                        2,
+                        1,
+                        List.of()
+                ));
+        when(hybridSearchService.adaptiveSearchWithPermission(eq("agent"), eq("u1"), eq(budget), eq(List.of("paper-a"))))
+                .thenReturn(adaptiveResult(List.of(
+                        result("paper-a", 1, "Allowed product evidence about agent retrieval.", 0.9),
+                        result("orphan-paper", 1, "Orphan chunk must not be product evidence.", 0.99)
+                ), 2, PaperRetrievalService.StopReason.EXHAUSTED));
+        PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService, corpus);
+
+        PaperRetrievalService.RetrievalResult retrieval = service.retrieve("agent", "u1", budget);
+
+        assertEquals(List.of("paper-a"), retrieval.results().stream().map(SearchResult::getPaperId).toList());
+        verify(hybridSearchService).adaptiveSearchWithPermission("agent", "u1", budget, List.of("paper-a"));
     }
 
     @Test
@@ -113,26 +142,20 @@ class PaperRetrievalServiceTest {
     }
 
     @Test
-    void usesEnglishExpansionWhenChineseNoiseQueryDoesNotMatchDirectly() {
+    void doesNotUseHardcodedEnglishExpansionWhenChineseQueryDoesNotMatchDirectly() {
         PaperQueryPlanner planner = new PaperQueryPlanner();
         HybridSearchService hybridSearchService = mock(HybridSearchService.class);
         RetrievalBudget budget = RetrievalBudget.forQa();
         when(hybridSearchService.adaptiveSearchWithPermission(eq("讲一讲高噪声场景"), eq("u1"), eq(budget), eq(List.of())))
                 .thenReturn(adaptiveResult(List.of(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE));
-        when(hybridSearchService.adaptiveSearchWithPermission(eq("increasing noise"), eq("u1"), eq(budget), eq(List.of())))
-                .thenReturn(adaptiveResult(List.of(
-                        result("paper-a", 7,
-                                "4.2 Experiment 2: Context Scaling with Increasing Noise studies retrieval behavior under growing distractor context.",
-                                0.9)
-                ), 1, PaperRetrievalService.StopReason.EXHAUSTED));
 
         PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService);
 
         PaperRetrievalService.RetrievalResult retrieval = service.retrieve("讲一讲高噪声场景", "u1", budget);
 
-        assertEquals(1, retrieval.results().size());
-        assertTrue(retrieval.results().get(0).getMatchedChunkText().contains("Increasing Noise"));
-        assertTrue(retrieval.attemptedQueries().contains("increasing noise"));
+        assertEquals(0, retrieval.results().size());
+        assertEquals(List.of("讲一讲高噪声场景"), retrieval.attemptedQueries());
+        verify(hybridSearchService, never()).adaptiveSearchWithPermission(eq("increasing noise"), anyString(), any(), any());
     }
 
     @Test
@@ -159,6 +182,29 @@ class PaperRetrievalServiceTest {
         assertEquals("paper-gold", retrieval.results().get(0).getPaperId());
         assertEquals("PAPER_LEVEL", retrieval.results().get(0).getRetrievalRoute());
         assertTrue(retrieval.results().get(0).getRankReason().contains("literature-search"));
+    }
+
+    @Test
+    void discoverPapersDoesNotDropDomainTermsWithAStaticStopwordList() {
+        PaperQueryPlanner planner = new PaperQueryPlanner();
+        HybridSearchService hybridSearchService = mock(HybridSearchService.class);
+        RetrievalBudget budget = RetrievalBudget.forLibrarySearch();
+        SearchResult decoy = result("paper-decoy", 0, "Abstract: retrieval overview.", 0.9);
+        decoy.setPaperTitle("Retrieval Survey");
+        decoy.setSourceKind("PAPER");
+        SearchResult gold = result("paper-gold", 0, "Abstract: method retrieval for paper evidence.", 0.7);
+        gold.setPaperTitle("Method Retrieval");
+        gold.setSourceKind("PAPER");
+        when(hybridSearchService.searchPaperCandidatesWithPermission(eq("method retrieval"), eq("u1"), eq(budget), eq(List.of())))
+                .thenReturn(adaptiveResult(List.of(decoy, gold), 2, PaperRetrievalService.StopReason.EXHAUSTED));
+        when(hybridSearchService.adaptiveSearchWithPermission(eq("method retrieval"), eq("u1"), eq(budget), eq(List.of("paper-decoy", "paper-gold"))))
+                .thenReturn(adaptiveResult(List.of(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE));
+
+        PaperRetrievalService service = new PaperRetrievalService(planner, hybridSearchService);
+
+        PaperRetrievalService.RetrievalResult retrieval = service.discoverPapers("method retrieval", "u1", budget);
+
+        assertEquals("paper-gold", retrieval.results().get(0).getPaperId());
     }
 
     @Test

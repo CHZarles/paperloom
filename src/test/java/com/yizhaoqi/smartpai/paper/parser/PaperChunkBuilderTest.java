@@ -158,6 +158,30 @@ class PaperChunkBuilderTest {
         assertEquals("FORMULA", chunks.get(1).evidenceRole());
     }
 
+    @Test
+    void assignsEvidenceRoleFromParserStructureNotContentKeywords() {
+        ParsedPaper paper = new ParsedPaper(
+                "MinerU",
+                "1.3.0",
+                new ParsedPaperMetadata("paper.pdf", "A Study", "Ada", 2, null, null),
+                List.of(
+                        element("caption", 1, 1, ParsedPaperElementType.CAPTION,
+                                "Table 1 reports experiment accuracy on the benchmark.",
+                                null, bbox(1, 72, 620, 520, 690)),
+                        element("table", 2, 2, ParsedPaperElementType.TABLE,
+                                "Metric Value Accuracy 91.2",
+                                null, bbox(2, 72, 500, 520, 540))
+                ),
+                Map.of()
+        );
+
+        List<PaperChunkCandidate> chunks = new PaperChunkBuilder().buildChunks(paper, 512);
+
+        assertEquals(2, chunks.size());
+        assertEquals("NORMAL_TEXT", chunks.get(0).evidenceRole());
+        assertEquals("TABLE", chunks.get(1).evidenceRole());
+    }
+
     private ParsedPaperElement element(String id, int page, int order, ParsedPaperElementType type,
                                        String text, Integer sectionLevel, BoundingBox bbox) {
         return new ParsedPaperElement(id, page, order, type, text, null, sectionLevel, bbox, Map.of());

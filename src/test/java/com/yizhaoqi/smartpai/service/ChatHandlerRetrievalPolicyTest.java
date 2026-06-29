@@ -12,13 +12,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ChatHandlerRetrievalPolicyTest {
 
     @Test
-    void shouldSearchPapersForDomainQuestionEvenWhenPhrasedCasually() {
-        assertTrue(ChatHandler.shouldUseInitialPaperSearch("你懂单臂老虎机吗"));
-        assertTrue(ChatHandler.shouldUseInitialPaperSearch("Bandits（老虎机问题）是什么"));
+    void shouldNotRunLegacyInitialPaperSearchBeforeTaskRouter() {
+        assertFalse(ChatHandler.shouldUseInitialPaperSearch("你懂单臂老虎机吗"));
+        assertFalse(ChatHandler.shouldUseInitialPaperSearch("Bandits（老虎机问题）是什么"));
     }
 
     @Test
-    void shouldSkipInitialPaperSearchForExplicitBypassAndGreeting() {
+    void shouldSkipInitialPaperSearchForAllInputs() {
         assertFalse(ChatHandler.shouldUseInitialPaperSearch("不要查论文，直接回答你懂单臂老虎机吗"));
         assertFalse(ChatHandler.shouldUseInitialPaperSearch("你好"));
         assertFalse(ChatHandler.shouldUseInitialPaperSearch("hi"));
@@ -28,22 +28,10 @@ class ChatHandlerRetrievalPolicyTest {
     }
 
     @Test
-    void shouldOnlyClassifyExactSmalltalkAsSmalltalk() {
-        assertTrue(ChatHandler.isSmalltalkMessage("hi"));
-        assertTrue(ChatHandler.isSmalltalkMessage("你好！"));
-        assertTrue(ChatHandler.isSmalltalkMessage("在吗？"));
-
-        assertFalse(ChatHandler.isSmalltalkMessage("论文实验数据"));
-        assertFalse(ChatHandler.isSmalltalkMessage("我说论文实验数据"));
-        assertFalse(ChatHandler.isSmalltalkMessage("这篇论文讲了什么"));
-        assertFalse(ChatHandler.isSmalltalkMessage("agent 相关内容"));
-    }
-
-    @Test
-    void shouldBuildFocusedRetrievalQueriesFromCasualQuestion() {
+    void shouldBuildInitialPaperQueriesWithoutPhraseCleaning() {
         List<String> queries = ChatHandler.buildInitialPaperQueries("你懂单臂老虎机吗");
 
-        assertEquals(List.of("单臂老虎机", "你懂单臂老虎机吗"), queries);
+        assertEquals(List.of("你懂单臂老虎机吗"), queries);
     }
 
     @Test

@@ -17,6 +17,9 @@ public interface PaperTextChunkRepository extends JpaRepository<PaperTextChunk, 
                                                                                         Integer startPage,
                                                                                         Integer endPage);
 
+    @Query("SELECT DISTINCT c.paperId FROM PaperTextChunk c WHERE c.paperId IS NOT NULL AND c.paperId <> ''")
+    List<String> findDistinctPaperIds();
+
     long countByPaperId(String paperId);
 
     long countByPaperIdAndPageNumberIsNotNull(String paperId);

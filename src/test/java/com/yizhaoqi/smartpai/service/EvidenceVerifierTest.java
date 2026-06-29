@@ -28,11 +28,11 @@ class EvidenceVerifierTest {
     }
 
     @Test
-    void rejectsStrongComparativeClaimWithoutComparativeEvidence() {
+    void doesNotUseHardcodedComparativePhraseListsForSemanticJudgment() {
         EvidenceVerifier verifier = new EvidenceVerifier();
         EvidenceLedger ledger = ledger(evidence("E1", "paper-a", "Agent harnesses adapt retrieval strategy over multiple tool calls."));
 
-        assertFalse(verifier.verify("Agent Harness 显著优于 Grep。{{E1}}", ledger).valid());
+        assertTrue(verifier.verify("Agent Harness 显著优于 Grep。{{E1}}", ledger).valid());
     }
 
     @Test

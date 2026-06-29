@@ -38,7 +38,7 @@ public class EvidencePlanner {
             );
             return parseAction(turn.content(), safeContext);
         } catch (Exception exception) {
-            return fallbackAction(safeContext, "planner_failed");
+            return plannerFailure("planner_failed");
         }
     }
 
@@ -67,20 +67,29 @@ public class EvidencePlanner {
                     context.userQuery(),
                     "ledger_ready",
                     context.scope().paperIds(),
-                    context.scope().referenceNumber()
+                context.scope().referenceNumber()
             );
+        }
+        if (context.route() == PaperAnswerService.Intent.AUTO_SOURCE_QA) {
+            return PlannerAction.clarify("auto_source_unresolved");
         }
         if (context.route() == PaperAnswerService.Intent.LIBRARY_SEARCH) {
             return new PlannerAction(
-                    isPaperInventoryQuery(context.userQuery()) ? PlannerActionType.LIST_LIBRARY : PlannerActionType.DISCOVER_PAPERS,
-                    librarySearchQuery(context.userQuery()),
+                    PlannerActionType.DISCOVER_PAPERS,
+                    context.userQuery(),
                     "library_search",
                     context.scope().paperIds(),
                     context.scope().referenceNumber()
             );
         }
-        if (context.route() == PaperAnswerService.Intent.AUTO_SOURCE_QA) {
-            return null;
+        if (context.route() == PaperAnswerService.Intent.PAPER_QA) {
+            return new PlannerAction(
+                    PlannerActionType.SEARCH_EVIDENCE,
+                    context.userQuery(),
+                    "paper_qa",
+                    context.scope().paperIds(),
+                    context.scope().referenceNumber()
+            );
         }
         if (context.route() == PaperAnswerService.Intent.MANUAL_SOURCE_QA
                 || context.route() == PaperAnswerService.Intent.FOLLOW_UP) {
@@ -96,35 +105,6 @@ public class EvidencePlanner {
             return PlannerAction.clarify("route_requires_clarification");
         }
         return null;
-    }
-
-    private boolean isPaperInventoryQuery(String query) {
-        String normalized = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT)
-                .replaceAll("[\\s!！?？。,.，;；:：、\"'“”‘’()（）\\[\\]{}<>《》]+", "");
-        return normalized.contains("有什么论文")
-                || normalized.contains("有哪些论文")
-                || normalized.contains("论文列表")
-                || normalized.contains("论文库有什么")
-                || normalized.contains("当前论文");
-    }
-
-    private String librarySearchQuery(String query) {
-        String text = query == null ? "" : query.trim();
-        String cleaned = text
-                .replaceAll("(?i)recommend papers|related papers", " ")
-                .replace("推荐一下", " ")
-                .replace("推荐一些", " ")
-                .replace("推荐", " ")
-                .replace("相关论文", " ")
-                .replace("有哪些论文", " ")
-                .replace("有什么论文", " ")
-                .replace("论文", " ")
-                .replace("和", " ")
-                .replace("的", " ")
-                .replace("相关", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-        return cleaned.isBlank() ? text : cleaned;
     }
 
     private List<Map<String, Object>> plannerMessages(PlannerContext context) {
@@ -156,7 +136,7 @@ public class EvidencePlanner {
         if (rawJson == null || rawJson.isBlank()
                 || rawJson.contains("[1]")
                 || rawJson.contains("来源#")) {
-            return fallbackAction(context, "planner_invalid_output");
+            return plannerFailure("planner_invalid_output");
         }
         try {
             JsonNode node = objectMapper.readTree(extractJsonObject(rawJson));
@@ -172,7 +152,7 @@ public class EvidencePlanner {
             Integer windowRadius = node.hasNonNull("windowRadius") ? node.get("windowRadius").asInt() : null;
             return new PlannerAction(type, query, reason, context.scope().paperIds(), referenceNumber, pageNumber, windowRadius);
         } catch (Exception exception) {
-            return fallbackAction(context, "planner_invalid_json");
+            return plannerFailure("planner_invalid_json");
         }
     }
 
@@ -186,18 +166,7 @@ public class EvidencePlanner {
         return text;
     }
 
-    private PlannerAction fallbackAction(PlannerContext context, String reason) {
-        if (context != null && (context.route() == PaperAnswerService.Intent.AUTO_SOURCE_QA
-                || context.route() == PaperAnswerService.Intent.MANUAL_SOURCE_QA
-                || context.route() == PaperAnswerService.Intent.FOLLOW_UP)) {
-            return new PlannerAction(
-                    PlannerActionType.SEARCH_EVIDENCE,
-                    context.userQuery(),
-                    reason,
-                    context.scope().paperIds(),
-                    context.scope().referenceNumber()
-            );
-        }
+    private PlannerAction plannerFailure(String reason) {
         return PlannerAction.clarify(reason);
     }
 }

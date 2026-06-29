@@ -148,7 +148,7 @@ public class LlmProviderRouter {
                 .append("- 纯翻译请求，且不涉及论文内容；\n")
                 .append("- 与论文材料无关的纯创作请求；\n")
                 .append("- 通用编程语法、数学计算等完全不依赖任何专有信息的常识题；\n")
-                .append("- 用户在本轮明确表示「不要查论文 / 直接回答」。\n\n")
+                .append("- 用户在本轮明确要求跳过论文检索。\n\n")
                 .append("回答与异常处理：\n")
                 .append("- 只要 search_papers 返回了片段，必须基于片段作答并用紧凑引用标记标注证据，例如 [1]、[2]；禁止回答「论文库暂无相关信息」。\n")
                 .append("- 引用标记只输出 [n] 锚点，不要写「来源#1: 论文标题 | 第7页」、paperId、chunk、score 或 References 列表；正文可以写论文标题、方法名、数据集和推荐理由，完整证据由前端 Source Evidence 面板展示。\n")
@@ -404,7 +404,6 @@ public class LlmProviderRouter {
                 .replace("结论", "")
                 .replace("依据", "")
                 .replace("限制", "")
-                .replace("推荐", "")
                 .replace("核心", "")
                 .replace("关键", "");
         return remaining.length() < 8;

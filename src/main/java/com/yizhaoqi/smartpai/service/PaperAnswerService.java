@@ -32,19 +32,7 @@ public class PaperAnswerService {
     private static final Pattern USER_REFERENCE_PATTERN = Pattern.compile("\\[(\\d+)]");
     private static final Pattern LEGACY_SOURCE_PATTERN = Pattern.compile("(?:来源|source)\\s*#\\s*\\d+", Pattern.CASE_INSENSITIVE);
     private static final Pattern CHINESE_TITLE_PATTERN = Pattern.compile("《([^》]+)》");
-    private static final Pattern STRONG_COMPARATIVE_CLAIM_PATTERN = Pattern.compile(
-            "(优于|超越|显著|证明|更强|更高|outperform|superior|significantly)",
-            Pattern.CASE_INSENSITIVE
-    );
-    private static final Pattern COMPARATIVE_EVIDENCE_SIGNAL_PATTERN = Pattern.compile(
-            "(对比|比较|实验|评估|准确率|指标|表\\s*\\d*|"
-                    + "compare|comparison|versus|vs\\.?|experiment|evaluation|accuracy|benchmark|table|ablation|"
-                    + "outperform|superior|significant|significantly)",
-            Pattern.CASE_INSENSITIVE
-    );
     private static final int MAX_RECOMMENDED_PAPERS = 15;
-    private static final int FALLBACK_EVIDENCE_CHAR_BUDGET = 900;
-    private static final int FALLBACK_SNIPPET_CHARS = 180;
 
     private final PaperRetrievalService paperRetrievalService;
     private final PaperService paperService;
@@ -58,6 +46,38 @@ public class PaperAnswerService {
     private final EvidenceAnswerGenerator evidenceAnswerGenerator;
     private final EvidenceVerifier evidenceVerifier;
     private final EvidenceToolExecutor evidenceToolExecutor;
+    private final TaskRouter taskRouter;
+    private final PaperLibraryStatusService paperLibraryStatusService;
+
+    public PaperAnswerService(PaperRetrievalService paperRetrievalService,
+                              PaperService paperService,
+                              ConversationService conversationService,
+                              LlmProviderRouter llmProviderRouter,
+                              RedisTemplate<String, String> redisTemplate,
+                              ObjectMapper objectMapper,
+                              PaperChatRouter paperChatRouter,
+                              EvidencePlanner evidencePlanner,
+                              EvidenceLedgerService evidenceLedgerService,
+                              EvidenceAnswerGenerator evidenceAnswerGenerator,
+                              EvidenceVerifier evidenceVerifier,
+                              EvidenceToolExecutor evidenceToolExecutor) {
+        this(
+                paperRetrievalService,
+                paperService,
+                conversationService,
+                llmProviderRouter,
+                redisTemplate,
+                objectMapper,
+                paperChatRouter,
+                evidencePlanner,
+                evidenceLedgerService,
+                evidenceAnswerGenerator,
+                evidenceVerifier,
+                evidenceToolExecutor,
+                new LlmTaskRouter(llmProviderRouter, objectMapper),
+                null
+        );
+    }
 
     @Autowired
     public PaperAnswerService(PaperRetrievalService paperRetrievalService,
@@ -71,7 +91,9 @@ public class PaperAnswerService {
                               EvidenceLedgerService evidenceLedgerService,
                               EvidenceAnswerGenerator evidenceAnswerGenerator,
                               EvidenceVerifier evidenceVerifier,
-                              EvidenceToolExecutor evidenceToolExecutor) {
+                              EvidenceToolExecutor evidenceToolExecutor,
+                              TaskRouter taskRouter,
+                              PaperLibraryStatusService paperLibraryStatusService) {
         this.paperRetrievalService = paperRetrievalService;
         this.paperService = paperService;
         this.conversationService = conversationService;
@@ -84,6 +106,8 @@ public class PaperAnswerService {
         this.evidenceAnswerGenerator = evidenceAnswerGenerator;
         this.evidenceVerifier = evidenceVerifier;
         this.evidenceToolExecutor = evidenceToolExecutor;
+        this.taskRouter = taskRouter == null ? new LlmTaskRouter(llmProviderRouter, objectMapper) : taskRouter;
+        this.paperLibraryStatusService = paperLibraryStatusService;
     }
 
     PaperAnswerService(PaperRetrievalService paperRetrievalService,
@@ -109,7 +133,9 @@ public class PaperAnswerService {
                         paperService,
                         conversationService,
                         new EvidenceLedgerService()
-                )
+                ),
+                new LlmTaskRouter(llmProviderRouter, objectMapper),
+                null
         );
     }
 
@@ -119,6 +145,7 @@ public class PaperAnswerService {
 
     public AnswerResult answer(String userId, String conversationId, String userMessage, AnswerScope scope) {
         Intent intent = paperChatRouter.route(userMessage, scope);
+        String taskQuery = userMessage == null ? "" : userMessage;
         if (intent == Intent.SMALLTALK) {
             return new AnswerResult(
                     "我在。你可以直接问论文的方法、实验、结论、表格或某个引用点。",
@@ -128,6 +155,43 @@ public class PaperAnswerService {
                     0,
                     false
             );
+        }
+
+        if (intent == Intent.AUTO_SOURCE_QA) {
+            TaskRoutingResult routing = taskRouter.route(new TaskRoutingRequest(
+                    userId,
+                    conversationId,
+                    userMessage,
+                    scope == null || scope.paperIds().isEmpty()
+                            ? SourceScope.auto(budgetProfile(scope))
+                            : SourceScope.manual(scope.paperIds(), budgetProfile(scope))
+            ));
+            if (routing.failed()) {
+                return routingFailure(routing.failure());
+            }
+            TaskDecision decision = routing.decision();
+            intent = intentFor(decision.taskType());
+            if (!decision.query().isBlank()) {
+                taskQuery = decision.query();
+            }
+            if (intent == Intent.SMALLTALK) {
+                return new AnswerResult(
+                        "我在。你可以直接问论文的方法、实验、结论、表格或某个引用点。",
+                        Map.of(),
+                        intent,
+                        0,
+                        0,
+                        false
+                );
+            }
+            if (intent == Intent.LIBRARY_STATUS) {
+                return renderLibraryStatus(userId, scope == null || scope.paperIds().isEmpty()
+                        ? SourceScope.auto(budgetProfile(scope))
+                        : SourceScope.manual(scope.paperIds(), budgetProfile(scope)));
+            }
+            if (intent == Intent.CLARIFY) {
+                return clarify();
+            }
         }
 
         FocusState scopedFocus = toFocus(scope);
@@ -140,9 +204,9 @@ public class PaperAnswerService {
             return answerWithHarness(
                     userId,
                     conversationId,
-                    userMessage,
+                    taskQuery,
                     Intent.REFERENCE_QA,
-                    sourceScopeFor(intent, scope, focus, userMessage),
+                    sourceScopeFor(intent, scope, focus, taskQuery),
                     seedLedger
             );
         }
@@ -150,9 +214,9 @@ public class PaperAnswerService {
             return answerWithHarness(
                     userId,
                     conversationId,
-                    userMessage,
+                    taskQuery,
                     Intent.MANUAL_SOURCE_QA,
-                    sourceScopeFor(intent, scope, focus, userMessage),
+                    sourceScopeFor(intent, scope, focus, taskQuery),
                     EvidenceLedger.empty()
             );
         }
@@ -166,35 +230,132 @@ public class PaperAnswerService {
             return answerWithHarness(
                     userId,
                     conversationId,
-                    scopedQuery(userMessage, focus),
+                    scopedQuery(taskQuery, focus),
                     Intent.MANUAL_SOURCE_QA,
-                    sourceScopeFor(Intent.MANUAL_SOURCE_QA, scope, focus, userMessage),
+                    sourceScopeFor(Intent.MANUAL_SOURCE_QA, scope, focus, taskQuery),
                     EvidenceLedger.empty()
             );
         }
         if (intent == Intent.CLARIFY) {
-            if (isNonPaperSystemQuestion(userMessage)) {
-                return clarifyNonPaperSystemQuestion();
-            }
             return clarify();
         }
         if (intent == Intent.LIBRARY_SEARCH) {
             return answerWithHarness(
                     userId,
                     conversationId,
-                    userMessage,
+                    taskQuery,
                     Intent.LIBRARY_SEARCH,
                     SourceScope.auto(budgetProfile(scope)),
+                    EvidenceLedger.empty()
+            );
+        }
+        if (intent == Intent.PAPER_QA) {
+            return answerWithHarness(
+                    userId,
+                    conversationId,
+                    taskQuery,
+                    Intent.PAPER_QA,
+                    sourceScopeFor(intent, scope, focus, taskQuery),
                     EvidenceLedger.empty()
             );
         }
         return answerWithHarness(
                 userId,
                 conversationId,
-                userMessage,
+                taskQuery,
                 intent,
-                sourceScopeFor(intent, scope, focus, userMessage),
+                sourceScopeFor(intent, scope, focus, taskQuery),
                 EvidenceLedger.empty()
+        );
+    }
+
+    private Intent intentFor(TaskType taskType) {
+        return switch (taskType == null ? TaskType.CLARIFY : taskType) {
+            case SMALLTALK -> Intent.SMALLTALK;
+            case CLARIFY -> Intent.CLARIFY;
+            case LIBRARY_STATUS -> Intent.LIBRARY_STATUS;
+            case PAPER_DISCOVERY -> Intent.LIBRARY_SEARCH;
+            case PAPER_QA -> Intent.PAPER_QA;
+            case REFERENCE_QA -> Intent.REFERENCE_QA;
+            case FOLLOW_UP -> Intent.FOLLOW_UP;
+        };
+    }
+
+    private AnswerResult routingFailure(TaskRoutingFailure failure) {
+        TaskRoutingFailure safeFailure = failure == null
+                ? new TaskRoutingFailure(TaskRoutingFailure.ReasonCode.UNSUPPORTED_TASK, "", "missing_failure", Map.of())
+                : failure;
+        return new AnswerResult(
+                safeFailure.userMessage(),
+                Map.of(),
+                Intent.CLARIFY,
+                0,
+                0,
+                false,
+                new AnswerDiagnostics(
+                        "ROUTING_FAILURE",
+                        ScopeMode.AUTO_SOURCE.name(),
+                        0,
+                        0,
+                        0,
+                        safeFailure.reasonCode().name()
+                )
+        );
+    }
+
+    private AnswerResult renderLibraryStatus(String userId, SourceScope sourceScope) {
+        SourceScope effectiveScope = sourceScope == null ? SourceScope.auto() : sourceScope;
+        if (paperLibraryStatusService == null) {
+            return new AnswerResult(
+                    "我无法可靠读取论文库状态，因此不会执行检索来猜测答案。",
+                    Map.of(),
+                    Intent.LIBRARY_STATUS,
+                    0,
+                    0,
+                    false,
+                    new AnswerDiagnostics(
+                            Intent.LIBRARY_STATUS.name(),
+                            scopeMode(effectiveScope, Intent.LIBRARY_STATUS).name(),
+                            0,
+                            0,
+                            0,
+                            "LIBRARY_STATUS_UNAVAILABLE"
+                    )
+            );
+        }
+        PaperLibraryStatus status = paperLibraryStatusService.statusFor(userId, effectiveScope);
+        StringBuilder markdown = new StringBuilder()
+                .append("**结论**\n")
+                .append("当前可检索论文有 ")
+                .append(status.searchableCount())
+                .append(" 篇。\n\n")
+                .append("**状态**\n")
+                .append("- 可访问论文：").append(status.accessibleCount()).append(" 篇\n")
+                .append("- 当前检索范围：").append(status.selectedScopeCount()).append(" 篇\n")
+                .append("- 解析中：").append(status.parsingCount()).append(" 篇\n")
+                .append("- 索引中：").append(status.indexingCount()).append(" 篇\n")
+                .append("- 失败：").append(status.failedCount()).append(" 篇");
+        if (!status.consistencyWarnings().isEmpty()) {
+            markdown.append("\n\n**一致性问题**\n");
+            for (String warning : status.consistencyWarnings()) {
+                markdown.append("- ").append(warning).append("\n");
+            }
+        }
+        return new AnswerResult(
+                markdown.toString(),
+                Map.of(),
+                Intent.LIBRARY_STATUS,
+                0,
+                0,
+                false,
+                new AnswerDiagnostics(
+                        Intent.LIBRARY_STATUS.name(),
+                        scopeMode(effectiveScope, Intent.LIBRARY_STATUS).name(),
+                        0,
+                        0,
+                        0,
+                        "EXHAUSTED"
+                )
         );
     }
 
@@ -445,17 +606,12 @@ public class PaperAnswerService {
                     generated.verifierReason(),
                     generated.rawMarkdown() == null ? 0 : generated.rawMarkdown().length());
         }
-        AnswerResult fallback = qaFallback(safeLedger, responseIntent);
-        return new AnswerResult(
-                fallback.markdown(),
-                fallback.referenceMappings(),
-                fallback.intent(),
-                fallback.evidenceCount(),
-                fallback.uniquePaperCount(),
-                true,
-                diagnostics(responseIntent, responseScopeMode, safeLedger.diagnostics(),
-                        safeLedger.evidence().size(), safeLedger.sourceSet().size(),
-                        plannerRounds, attemptedQueries, true)
+        return answerGenerationFailure(
+                responseIntent,
+                responseScopeMode,
+                safeLedger.diagnostics(),
+                plannerRounds,
+                attemptedQueries
         );
     }
 
@@ -578,10 +734,16 @@ public class PaperAnswerService {
                 return new AnswerResult(rendered.markdown(), rendered.references(), Intent.REFERENCE_QA,
                         ledger.size(), distinctPaperCount(ledger), false);
             }
-        } catch (Exception ignored) {
-            // LLM failure falls through to deterministic reference fallback.
+        } catch (Exception exception) {
+            logger.warn("reference answer generation failed: userId={}, conversationId={}", userId, conversationId, exception);
         }
-        return qaFallback(ledger, Intent.REFERENCE_QA);
+        return answerGenerationFailure(
+                Intent.REFERENCE_QA,
+                ScopeMode.REFERENCE_SOURCE,
+                new LedgerDiagnostics(ledger.size(), ledger.size(), distinctPaperCount(ledger), "GENERATION_FAILED"),
+                0,
+                List.of()
+        );
     }
 
     private AnswerResult answerQa(String userId,
@@ -649,16 +811,29 @@ public class PaperAnswerService {
                     generated.verifierReason(),
                     generated.rawMarkdown() == null ? 0 : generated.rawMarkdown().length());
         }
-        AnswerResult fallback = qaFallback(ledger, responseIntent);
+        return answerGenerationFailure(
+                responseIntent,
+                scopeMode(focus, responseIntent),
+                ledger.diagnostics(),
+                0,
+                List.of()
+        );
+    }
+
+    private AnswerResult answerGenerationFailure(Intent responseIntent,
+                                                 ScopeMode responseScopeMode,
+                                                 LedgerDiagnostics ledgerDiagnostics,
+                                                 int plannerRounds,
+                                                 List<String> attemptedQueries) {
         return new AnswerResult(
-                fallback.markdown(),
-                fallback.referenceMappings(),
-                fallback.intent(),
-                fallback.evidenceCount(),
-                fallback.uniquePaperCount(),
-                true,
-                diagnostics(responseIntent, scopeMode(focus, responseIntent), retrieval.diagnostics(),
-                        ledger.evidence().size(), ledger.sourceSet().size())
+                "我找到了论文证据，但这次没有生成可验证的答案。请重试，或者缩小问题范围后再问。",
+                Map.of(),
+                responseIntent,
+                0,
+                0,
+                false,
+                diagnostics(responseIntent, responseScopeMode, ledgerDiagnostics, 0, 0,
+                        plannerRounds, attemptedQueries, false)
         );
     }
 
@@ -707,11 +882,6 @@ public class PaperAnswerService {
         if (usedEvidenceIds.isEmpty()) {
             return null;
         }
-        if (STRONG_COMPARATIVE_CLAIM_PATTERN.matcher(rawAnswer).find()
-                && usedEvidenceIds.stream().noneMatch(id -> hasComparativeEvidenceSignal(byId.get(id)))) {
-            return null;
-        }
-
         LinkedHashMap<String, Integer> evidenceToReference = new LinkedHashMap<>();
         for (EvidenceItem item : ledger) {
             if (usedEvidenceIds.contains(item.evidenceId())) {
@@ -803,29 +973,11 @@ public class PaperAnswerService {
     }
 
     private boolean isImportantSectionTitle(String sectionTitle, String sourceKind) {
-        String lower = sectionTitle == null ? "" : sectionTitle.toLowerCase(Locale.ROOT);
-        if (lower.contains("experiment") || lower.contains("context scaling")
-                || lower.contains("table") || lower.contains("figure")
-                || sectionTitle.contains("实验") || sectionTitle.contains("表") || sectionTitle.contains("图")) {
-            return true;
-        }
         if ("TABLE".equalsIgnoreCase(sourceKind) || "FIGURE".equalsIgnoreCase(sourceKind)) {
             return true;
         }
+        String lower = sectionTitle == null ? "" : sectionTitle.toLowerCase(Locale.ROOT);
         return lower.matches("^\\d+(?:\\.\\d+)*\\s+.+");
-    }
-
-    private boolean hasComparativeEvidenceSignal(EvidenceItem item) {
-        if (item == null) {
-            return false;
-        }
-        String text = String.join(" ",
-                item.matchedText() == null ? "" : item.matchedText(),
-                item.sourceKind() == null ? "" : item.sourceKind(),
-                item.result().getEvidenceRole() == null ? "" : item.result().getEvidenceRole(),
-                item.result().getSectionTitle() == null ? "" : item.result().getSectionTitle()
-        );
-        return COMPARATIVE_EVIDENCE_SIGNAL_PATTERN.matcher(text).find();
     }
 
     private AnswerDiagnostics diagnostics(Intent intent,
@@ -908,119 +1060,9 @@ public class PaperAnswerService {
         return false;
     }
 
-    private AnswerResult qaFallback(List<EvidenceItem> ledger, Intent responseIntent) {
-        Map<Integer, ChatHandler.ReferenceInfo> references = new LinkedHashMap<>();
-        String markdown = buildLegacyFallbackMarkdown(ledger, references);
-        return new AnswerResult(markdown, references, responseIntent, ledger.size(), distinctPaperCount(ledger), true);
-    }
-
-    private AnswerResult qaFallback(EvidenceLedger ledger, Intent responseIntent) {
-        Map<Integer, ChatHandler.ReferenceInfo> references = new LinkedHashMap<>();
-        String markdown = buildHarnessFallbackMarkdown(ledger.evidence(), references);
-        return new AnswerResult(markdown, references, responseIntent, ledger.evidence().size(), ledger.sourceSet().size(), true);
-    }
-
-    private String buildLegacyFallbackMarkdown(List<EvidenceItem> ledger,
-                                               Map<Integer, ChatHandler.ReferenceInfo> references) {
-        StringBuilder markdown = new StringBuilder()
-                .append("**结论**\n")
-                .append("我找到了与问题相关的论文证据，可以先确认以下信息。\n\n")
-                .append("**可确认的信息**\n");
-        int usedChars = 0;
-        int referenceNumber = 1;
-        for (EvidenceItem item : ledger) {
-            if (item == null || !EvidenceQuality.isUsable(item.matchedText())) {
-                continue;
-            }
-            String snippet = shortText(item.matchedText(), FALLBACK_SNIPPET_CHARS);
-            if (!references.isEmpty() && usedChars + snippet.length() > FALLBACK_EVIDENCE_CHAR_BUDGET) {
-                break;
-            }
-            markdown.append("- ")
-                    .append(fallbackSourceLabel(item.paperTitle(), item.originalFilename(), item.pageNumber()))
-                    .append("提到：")
-                    .append(snippet)
-                    .append("。[")
-                    .append(referenceNumber)
-                    .append("]\n");
-            references.put(referenceNumber, toReferenceInfo(item.result(), item.matchedText()));
-            usedChars += snippet.length();
-            referenceNumber++;
-        }
-        if (references.isEmpty()) {
-            markdown.append("- 当前检索命中了论文，但没有可展示的可靠原文片段。\n");
-        }
-        markdown.append("\n**限制**\n这是基于当前证据的保守摘要；点击 citation 可以查看对应原文和页面位置。");
-        return markdown.toString();
-    }
-
-    private String buildHarnessFallbackMarkdown(List<com.yizhaoqi.smartpai.service.EvidenceItem> evidence,
-                                                Map<Integer, ChatHandler.ReferenceInfo> references) {
-        StringBuilder markdown = new StringBuilder()
-                .append("**结论**\n")
-                .append("我找到了与问题相关的论文证据，可以先确认以下信息。\n\n")
-                .append("**可确认的信息**\n");
-        int usedChars = 0;
-        int referenceNumber = 1;
-        for (com.yizhaoqi.smartpai.service.EvidenceItem item : evidence) {
-            if (item == null || !EvidenceQuality.isUsable(item.matchedText())) {
-                continue;
-            }
-            String snippet = shortText(item.matchedText(), FALLBACK_SNIPPET_CHARS);
-            if (!references.isEmpty() && usedChars + snippet.length() > FALLBACK_EVIDENCE_CHAR_BUDGET) {
-                break;
-            }
-            markdown.append("- ")
-                    .append(fallbackSourceLabel(item.paperTitle(), item.originalFilename(), item.pageNumber()))
-                    .append("提到：")
-                    .append(snippet)
-                    .append("。[")
-                    .append(referenceNumber)
-                    .append("]\n");
-            references.put(referenceNumber, toReferenceInfo(item));
-            usedChars += snippet.length();
-            referenceNumber++;
-        }
-        if (references.isEmpty()) {
-            markdown.append("- 当前检索命中了论文，但没有可展示的可靠原文片段。\n");
-        }
-        markdown.append("\n**限制**\n这是基于当前证据的保守摘要；点击 citation 可以查看对应原文和页面位置。");
-        return markdown.toString();
-    }
-
-    private String fallbackSourceLabel(String paperTitle, String originalFilename, Integer pageNumber) {
-        String title = paperTitle != null && !paperTitle.isBlank()
-                ? paperTitle
-                : (originalFilename == null ? "" : originalFilename);
-        StringBuilder label = new StringBuilder();
-        if (!title.isBlank()) {
-            label.append("《").append(title).append("》");
-        } else {
-            label.append("这篇论文");
-        }
-        if (pageNumber != null) {
-            label.append("第 ").append(pageNumber).append(" 页");
-        }
-        return label.toString();
-    }
-
     private AnswerResult clarify() {
         return new AnswerResult("你想讲哪一篇？可以点上一条推荐里的编号，或者直接说论文标题。",
                 Map.of(), Intent.CLARIFY, 0, 0, false);
-    }
-
-    private AnswerResult clarifyNonPaperSystemQuestion() {
-        return new AnswerResult("我不能从论文问答界面读取或暴露当前 session id。你可以继续问论文内容、方法、实验、结论或某个 citation。",
-                Map.of(), Intent.CLARIFY, 0, 0, false);
-    }
-
-    private boolean isNonPaperSystemQuestion(String userMessage) {
-        String text = userMessage == null ? "" : userMessage.toLowerCase(Locale.ROOT);
-        String normalized = text.replaceAll("[\\s!！?？。,.，;；:：、\"'“”‘’()（）\\[\\]{}<>《》]+", "");
-        return text.contains("session")
-                || normalized.contains("会话id")
-                || normalized.contains("当前会话")
-                || normalized.contains("我的id");
     }
 
     private AnswerResult clarifyMissingReference() {
@@ -1451,7 +1493,9 @@ public class PaperAnswerService {
 
     public enum Intent {
         SMALLTALK,
+        LIBRARY_STATUS,
         LIBRARY_SEARCH,
+        PAPER_QA,
         AUTO_SOURCE_QA,
         MANUAL_SOURCE_QA,
         REFERENCE_QA,
