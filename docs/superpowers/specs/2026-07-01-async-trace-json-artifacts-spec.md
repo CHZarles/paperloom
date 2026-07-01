@@ -52,6 +52,8 @@ Rules:
 - trace does not change `ProductTurnResult`
 - trace does not change `stopReason`
 - trace does not change `resultStatus`
+- trace failure must never become `ProductStopReason.TRACE_WRITE_FAILED`
+- trace failure must never turn a completed product answer into `DEGRADED`
 - trace does not affect final answer persistence
 - trace does not affect reference persistence
 - business tables do not know trace exists
@@ -260,6 +262,7 @@ Write failure behavior:
 
 ```text
 log trace_write_failed with conversationId, generationId, artifactType, targetPath
+do not change ProductTurnResult, stopReason, resultStatus, final answer, or reference persistence
 ```
 
 No summary file is written for failed or dropped traces in phase one.
