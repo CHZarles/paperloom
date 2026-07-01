@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -566,6 +567,21 @@ public class UploadService {
                 GetObjectArgs.builder()
                         .bucket("uploads")
                         .object("merged/" + paperId)
+                        .build()
+        );
+    }
+
+    public InputStream getMergedFileRangeStream(String paperId, long offset, long length) throws Exception {
+        if (offset < 0 || length < 0) {
+            throw new IllegalArgumentException("offset and length must be non-negative");
+        }
+
+        return minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket("uploads")
+                        .object("merged/" + paperId)
+                        .offset(offset)
+                        .length(length)
                         .build()
         );
     }

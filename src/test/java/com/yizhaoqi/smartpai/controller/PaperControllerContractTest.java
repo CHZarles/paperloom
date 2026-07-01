@@ -15,10 +15,8 @@ import com.yizhaoqi.smartpai.service.PaperVisualAssetService;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.MediaType;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -31,6 +29,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -236,7 +235,7 @@ class PaperControllerContractTest {
     }
 
     @Test
-    void pdfPreviewResponseUsesInlinePreviewStreamUrl() {
+    void pdfPreviewResponseUsesApplicationPdfDataUrl() {
         Paper paper = paper(
                 "paper-preview",
                 "Preview Paper",
@@ -254,12 +253,15 @@ class PaperControllerContractTest {
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals("pdf", data.get("previewType"));
-        assertEquals("/api/v1/papers/paper-preview/preview/pdf", data.get("previewUrl"));
+        assertEquals("/api/v1/papers/paper-preview/preview/pdf-data", data.get("previewUrl"));
+        assertEquals("/api/v1/papers/paper-preview/preview/pdf-data", data.get("previewDataUrl"));
+        assertFalse(data.containsKey("downloadUrl"));
         verify(paperService, never()).generateDownloadUrl("paper-preview");
+        verify(paperService, never()).generateAttachmentDownloadUrl("paper-preview");
     }
 
     @Test
-    void pdfPreviewStreamUsesInlineDisposition() {
+    void pdfPreviewDataEndpointReturnsRangeMetadataToAvoidNativeBrowserDownload() {
         Paper paper = paper(
                 "paper-preview",
                 "Preview Paper",
@@ -271,16 +273,134 @@ class PaperControllerContractTest {
 
         when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
                 .thenReturn(Optional.of(paper));
-        when(paperService.openMergedPdfStream("paper-preview"))
-                .thenReturn(new ByteArrayInputStream("%PDF-1.7".getBytes()));
+
+        var response = paperController.previewPdfDataByPath("paper-preview", null, null);
+
+        assertEquals(200, response.getStatusCode().value());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+
+        assertEquals("paper-preview", data.get("paperId"));
+        assertEquals("application/pdf", data.get("contentType"));
+        assertEquals("preview-paper.pdf", data.get("originalFilename"));
+        assertEquals(8L, data.get("sourceFileSizeBytes"));
+        assertEquals(262144, data.get("chunkSizeBytes"));
+        assertEquals("/api/v1/papers/paper-preview/preview/pdf-data/range", data.get("rangeUrl"));
+        assertFalse(data.containsKey("contentBase64"));
+        assertNull(response.getHeaders().getContentType());
+        assertNull(response.getHeaders().getFirst("Content-Disposition"));
+        verify(paperService, never()).openMergedPdfStream("paper-preview");
+    }
+
+    @Test
+    void pdfPreviewDataRangeEndpointReturnsJsonChunkToAvoidNativeBrowserDownload() {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(8L);
+
+        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+                .thenReturn(Optional.of(paper));
+        when(paperService.openMergedPdfRangeStream("paper-preview", 1L, 4L))
+                .thenReturn(new ByteArrayInputStream("PDF-".getBytes()));
+
+        var response = paperController.previewPdfDataRangeByPath("paper-preview", 1L, 5L, null, null);
+
+        assertEquals(206, response.getStatusCode().value());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+
+        assertEquals("paper-preview", data.get("paperId"));
+        assertEquals(1L, data.get("begin"));
+        assertEquals(5L, data.get("end"));
+        assertEquals(1L, data.get("offset"));
+        assertEquals(4, data.get("length"));
+        assertEquals(8L, data.get("totalSizeBytes"));
+        assertEquals("UERGLQ==", data.get("contentBase64"));
+        assertEquals("application/pdf", data.get("contentType"));
+        assertNull(response.getHeaders().getContentType());
+        assertNull(response.getHeaders().getFirst("Content-Disposition"));
+        verify(paperService).openMergedPdfRangeStream("paper-preview", 1L, 4L);
+        verify(paperService, never()).openMergedPdfStream("paper-preview");
+    }
+
+    @Test
+    void pdfPreviewDataRangeAllowsPdfJsMultiMegabyteRanges() {
+        long requestedLength = 2L * 1024 * 1024;
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(requestedLength + 16);
+
+        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+                .thenReturn(Optional.of(paper));
+        when(paperService.openMergedPdfRangeStream("paper-preview", 0L, requestedLength))
+                .thenReturn(new ByteArrayInputStream(new byte[(int) requestedLength]));
+
+        var response = paperController.previewPdfDataRangeByPath("paper-preview", 0L, requestedLength, null, null);
+
+        assertEquals(206, response.getStatusCode().value());
+        verify(paperService).openMergedPdfRangeStream("paper-preview", 0L, requestedLength);
+    }
+
+    @Test
+    void legacyPdfPreviewEndpointReturnsJsonRangeMetadataToAvoidNativeBrowserDownload() {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(8L);
+
+        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+                .thenReturn(Optional.of(paper));
 
         var response = paperController.previewPdfByPath("paper-preview", null, null);
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals(MediaType.APPLICATION_PDF, response.getHeaders().getContentType());
-        assertTrue(response.getHeaders().getFirst("Content-Disposition").startsWith("inline;"));
-        assertEquals(8L, response.getHeaders().getContentLength());
-        assertTrue(response.getBody() instanceof InputStreamResource);
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+
+        assertEquals("/api/v1/papers/paper-preview/preview/pdf-data/range", data.get("rangeUrl"));
+        assertFalse(data.containsKey("contentBase64"));
+        assertNull(response.getHeaders().getContentType());
+        assertNull(response.getHeaders().getFirst("Content-Disposition"));
+        verify(paperService, never()).openMergedPdfStream("paper-preview");
+    }
+
+    @Test
+    void downloadEndpointUsesExplicitAttachmentDownloadUrl() {
+        Paper paper = paper(
+                "paper-download",
+                "Download Paper",
+                "download-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+
+        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-download"))
+                .thenReturn(Optional.of(paper));
+        when(paperService.generateAttachmentDownloadUrl("paper-download"))
+                .thenReturn("http://localhost:9000/uploads/merged/paper-download?download=1");
+
+        var response = paperController.downloadPaperByPath("paper-download", null, null);
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("http://localhost:9000/uploads/merged/paper-download?download=1", data.get("downloadUrl"));
+        verify(paperService).generateAttachmentDownloadUrl("paper-download");
+        verify(paperService, never()).generateDownloadUrl("paper-download");
     }
 
     @Test

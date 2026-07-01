@@ -96,6 +96,10 @@ const resolvedPdfPreviewUrl = computed(() => {
 
   return resolvedPreviewUrl.value;
 });
+const previewRequestKey = computed(() => {
+  if (!props.visible || !displayTitle.value || !props.paperId) return '';
+  return [props.paperId, props.pageNumber || '', displayTitle.value].join(':');
+});
 const canOpenInNewTab = computed(() => {
   if (previewType.value === 'pdf') {
     return Boolean(resolvedPdfPreviewUrl.value);
@@ -103,6 +107,9 @@ const canOpenInNewTab = computed(() => {
 
   return Boolean(resolvedSourceUrl.value || resolvedPreviewUrl.value);
 });
+
+let activePreviewRequestKey = '';
+let previewLoadSequence = 0;
 
 function resolveFileAccessUrl(url: string) {
   if (!url) return '';
@@ -140,41 +147,77 @@ function getFileIcon(paperTitle: string) {
   return 'dflt';
 }
 
-// 监听论文标题变化，加载预览内容
-watch(
-  () => [props.paperTitle, props.paperId, props.pageNumber],
-  async () => {
-    if (displayTitle.value && props.visible) {
-      await loadPreviewContent();
-    }
-  },
-  { immediate: true }
-);
-
-// 监听可见性变化
-watch(
-  () => props.visible,
-  async visible => {
-    if (visible && displayTitle.value) {
-      await loadPreviewContent();
-    }
-  }
-);
-
-// 加载预览内容
-async function loadPreviewContent() {
-  if (!displayTitle.value) return;
-
-  loading.value = true;
+function resetPreviewState() {
   error.value = '';
   content.value = '';
   previewUrl.value = '';
   sourceUrl.value = '';
   resolvedPaperId.value = props.paperId || '';
   previewType.value = 'text';
+}
+
+function isActivePreviewLoad(loadSequence: number, requestKey: string) {
+  return loadSequence === previewLoadSequence && activePreviewRequestKey === requestKey && props.visible;
+}
+
+function applyPreviewResponse(
+  requestError: { message?: string } | null | undefined,
+  data:
+    | {
+        paperId?: string;
+        content?: string;
+        previewDataUrl?: string;
+        previewUrl?: string;
+        sourceUrl?: string;
+        previewType?: 'pdf' | 'image' | 'text' | 'download';
+      }
+    | null
+    | undefined
+) {
+  if (requestError) {
+    error.value = `预览失败：${requestError.message || '未知错误'}`;
+    return;
+  }
+
+  if (!data) return;
+
+  previewType.value = data.previewType || 'download';
+  content.value = data.content || '';
+  previewUrl.value = data.previewDataUrl || data.previewUrl || '';
+  sourceUrl.value = previewType.value === 'pdf' ? data.sourceUrl || '' : data.sourceUrl || data.previewUrl || '';
+  resolvedPaperId.value = data.paperId || props.paperId || '';
+}
+
+// 监听预览目标变化，加载预览内容
+watch(
+  previewRequestKey,
+  async key => {
+    if (!key) {
+      activePreviewRequestKey = '';
+      previewLoadSequence += 1;
+      loading.value = false;
+      return;
+    }
+    await loadPreviewContent(key);
+  },
+  { immediate: true, flush: 'post' }
+);
+
+// 加载预览内容
+async function loadPreviewContent(requestKey = previewRequestKey.value) {
+  if (!requestKey || !displayTitle.value) return;
+  if (loading.value && activePreviewRequestKey === requestKey) return;
+
+  const loadSequence = previewLoadSequence + 1;
+  previewLoadSequence = loadSequence;
+  activePreviewRequestKey = requestKey;
+
+  loading.value = true;
+  resetPreviewState();
 
   try {
-    if (!props.paperId) {
+    const targetPaperId = props.paperId;
+    if (!targetPaperId) {
       error.value = '预览失败：缺少 paperId';
       return;
     }
@@ -185,29 +228,31 @@ async function loadPreviewContent() {
       sourceFileSizeBytes: number;
       paperId?: string;
       content?: string;
+      previewDataUrl?: string;
       previewUrl?: string;
       sourceUrl?: string;
       previewType?: 'pdf' | 'image' | 'text' | 'download';
     }>({
-      url: `/papers/${props.paperId}/preview`,
+      url: `/papers/${targetPaperId}/preview`,
       params: {
         pageNumber: props.pageNumber
       }
     });
 
-    if (requestError) {
-      error.value = `预览失败：${requestError.message || '未知错误'}`;
-    } else if (data) {
-      previewType.value = data.previewType || 'download';
-      content.value = data.content || '';
-      previewUrl.value = data.previewUrl || '';
-      sourceUrl.value = data.sourceUrl || data.previewUrl || '';
-      resolvedPaperId.value = data.paperId || props.paperId || '';
+    if (!isActivePreviewLoad(loadSequence, requestKey)) {
+      return;
     }
+
+    applyPreviewResponse(requestError, data);
   } catch (err: any) {
+    if (!isActivePreviewLoad(loadSequence, requestKey)) {
+      return;
+    }
     error.value = `预览失败：${err.message || '网络错误'}`;
   } finally {
-    loading.value = false;
+    if (isActivePreviewLoad(loadSequence, requestKey)) {
+      loading.value = false;
+    }
   }
 }
 

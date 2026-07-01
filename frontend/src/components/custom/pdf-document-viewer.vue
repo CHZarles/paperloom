@@ -2,11 +2,11 @@
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { NButton, NSpin } from 'naive-ui';
-import { GlobalWorkerOptions, TextLayer, getDocument } from 'pdfjs-dist';
+import { GlobalWorkerOptions, TextLayer, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { getAuthorization } from '@/service/request/shared';
+import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { createPdfPreviewSource } from './pdf-preview-loader';
 
 GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -130,7 +130,6 @@ let activeSummaryPromise: Promise<void> | null = null;
 let summaryQueue: number[] = [];
 let summaryLoadedPages = new Set<number>();
 let summaryLoadingPages = new Set<number>();
-let activePdfFetchController: AbortController | null = null;
 
 watch(
   () => props.url,
@@ -457,16 +456,16 @@ async function loadDocument(url: string) {
   await cleanupPdfState();
 
   try {
-    const pdfBytes = await fetchPdfBytes(url, currentToken);
+    const pdfSource = await fetchPdfSource(url, currentToken);
     if (currentToken !== lifecycleToken) {
       return;
     }
 
     loadingTask = getDocument({
-      data: pdfBytes,
       disableAutoFetch: true,
       disableStream: true,
-      rangeChunkSize: pdfRangeChunkSize
+      rangeChunkSize: pdfRangeChunkSize,
+      ...pdfSource
     });
 
     const documentProxy = await loadingTask.promise;
@@ -505,41 +504,16 @@ async function loadDocument(url: string) {
   }
 }
 
-async function fetchPdfBytes(url: string, expectedToken: number) {
-  activePdfFetchController?.abort();
-  activePdfFetchController = new AbortController();
-
-  const authorization = getAuthorization();
-  const headers: Record<string, string> = {
-    Accept: 'application/pdf'
-  };
-
-  if (authorization && shouldAttachAuthHeaders(url)) {
-    headers.Authorization = authorization;
-  }
-
-  const response = await fetch(url, {
-    headers,
-    credentials: 'same-origin',
-    signal: activePdfFetchController.signal
+async function fetchPdfSource(url: string, expectedToken: number) {
+  const source = await createPdfPreviewSource(url, {
+    shouldAttachAuthHeaders
   });
 
   if (expectedToken !== lifecycleToken) {
     throw new DOMException('PDF load was superseded', 'AbortError');
   }
 
-  if (!response.ok) {
-    throw new Error(`PDF request failed: ${response.status}`);
-  }
-
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
-
-  if (!isPdf) {
-    throw new Error(`PDF response is not a PDF: ${response.headers.get('content-type') || 'unknown content type'}`);
-  }
-
-  return bytes;
+  return source;
 }
 
 function shouldAttachAuthHeaders(url: string) {
@@ -1389,9 +1363,6 @@ async function cleanupPdfState() {
     await loadingTask.destroy();
     loadingTask = null;
   }
-
-  activePdfFetchController?.abort();
-  activePdfFetchController = null;
 
   if (pdfDocument.value) {
     await pdfDocument.value.destroy();

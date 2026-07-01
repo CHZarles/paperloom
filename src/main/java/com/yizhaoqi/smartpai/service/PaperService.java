@@ -686,6 +686,15 @@ public class PaperService {
         }
     }
 
+    public InputStream openMergedPdfRangeStream(String paperId, long offset, long length) {
+        try {
+            return uploadService.getMergedFileRangeStream(paperId, offset, length);
+        } catch (Exception e) {
+            logger.error("打开论文 PDF 范围流失败: paperId={}, offset={}, length={}", paperId, offset, length, e);
+            throw new RuntimeException("无法打开论文 PDF 范围流", e);
+        }
+    }
+
     private String generateDownloadUrl(String paperId, PdfDownloadHeaders.Disposition disposition) {
         logger.info("生成论文 PDF 下载链接: paperId={}", paperId);
 

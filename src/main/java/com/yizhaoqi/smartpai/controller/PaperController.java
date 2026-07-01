@@ -22,11 +22,6 @@ import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,8 +30,10 @@ import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,6 +51,8 @@ public class PaperController {
 
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int PDF_PREVIEW_RANGE_CHUNK_SIZE_BYTES = 256 * 1024;
+    private static final int PDF_PREVIEW_MAX_RANGE_SIZE_BYTES = 64 * 1024 * 1024;
 
     @Autowired
     private PaperService paperService;
@@ -1180,6 +1179,14 @@ public class PaperController {
             @PathVariable String paperId,
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestParam(required = false) String token) {
+        return previewPdfDataByPath(paperId, authorization, token);
+    }
+
+    @GetMapping("/{paperId}/preview/pdf-data")
+    public ResponseEntity<?> previewPdfDataByPath(
+            @PathVariable String paperId,
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestParam(required = false) String token) {
         try {
             RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
             Optional<Paper> targetFile = findPreviewablePaper(paperId, authContext);
@@ -1188,27 +1195,82 @@ public class PaperController {
             }
 
             Paper file = targetFile.get();
-            InputStream pdfStream = paperService.openMergedPdfStream(file.getPaperId());
-            InputStreamResource resource = new InputStreamResource(pdfStream);
             String filename = sanitizePdfFilename(file.getOriginalFilename(), file.getPaperId());
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(ContentDisposition.inline()
-                    .filename(filename, StandardCharsets.UTF_8)
-                    .build());
-            if (file.getTotalSize() > 0) {
-                headers.setContentLength(file.getTotalSize());
-            }
+            Map<String, Object> payload = buildPdfPreviewDataPayload(file, filename);
 
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(resource);
+            return ResponseEntity.ok(Map.of(
+                    "code", 200,
+                    "message", "PDF 预览数据获取成功",
+                    "data", payload
+            ));
         } catch (Exception e) {
             LogUtils.logBusinessError("PREVIEW_PDF", "system", "PDF 预览流生成失败: paperId=%s", e, paperId);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                     "code", HttpStatus.INTERNAL_SERVER_ERROR.value(),
                     "message", "PDF 预览流生成失败: " + e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/{paperId}/preview/pdf-data/range")
+    public ResponseEntity<?> previewPdfDataRangeByPath(
+            @PathVariable String paperId,
+            @RequestParam Long begin,
+            @RequestParam Long end,
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestParam(required = false) String token) {
+        try {
+            RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
+            Optional<Paper> targetFile = findPreviewablePaper(paperId, authContext);
+            if (targetFile.isEmpty()) {
+                return paperNotFoundOrForbidden();
+            }
+
+            if (begin == null || end == null || begin < 0 || end <= begin) {
+                return invalidPdfPreviewRange("无效的 PDF 预览范围");
+            }
+
+            Paper file = targetFile.get();
+            long totalSizeBytes = resolvePdfSourceSizeBytes(file);
+            if (begin >= totalSizeBytes) {
+                return invalidPdfPreviewRange("PDF 预览范围超出文件长度");
+            }
+
+            long normalizedEnd = Math.min(end, totalSizeBytes);
+            long requestedLength = normalizedEnd - begin;
+            if (requestedLength > PDF_PREVIEW_MAX_RANGE_SIZE_BYTES) {
+                return invalidPdfPreviewRange("PDF 预览范围过大");
+            }
+
+            byte[] rangeBytes;
+            try (InputStream pdfStream = paperService.openMergedPdfRangeStream(file.getPaperId(), begin, requestedLength)) {
+                rangeBytes = pdfStream.readNBytes((int) requestedLength);
+            }
+
+            long actualEnd = begin + rangeBytes.length;
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("paperId", file.getPaperId());
+            payload.put("paperTitle", file.getPaperTitle());
+            payload.put("originalFilename", sanitizePdfFilename(file.getOriginalFilename(), file.getPaperId()));
+            payload.put("contentType", MediaType.APPLICATION_PDF_VALUE);
+            payload.put("begin", begin);
+            payload.put("end", actualEnd);
+            payload.put("offset", begin);
+            payload.put("length", rangeBytes.length);
+            payload.put("totalSizeBytes", totalSizeBytes);
+            payload.put("contentBase64", Base64.getEncoder().encodeToString(rangeBytes));
+
+            return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(Map.of(
+                    "code", 200,
+                    "message", "PDF 预览分块数据获取成功",
+                    "data", payload
+            ));
+        } catch (Exception e) {
+            LogUtils.logBusinessError("PREVIEW_PDF_RANGE", "system", "PDF 预览分块读取失败: paperId=%s", e, paperId);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "code", HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    "message", "PDF 预览分块读取失败: " + e.getMessage()
             ));
         }
     }
@@ -1294,7 +1356,9 @@ public class PaperController {
         }
 
         if ("pdf".equals(previewType)) {
-            payload.put("previewUrl", buildInlinePdfPreviewUrl(file.getPaperId()));
+            String previewDataUrl = buildPdfPreviewDataUrl(file.getPaperId());
+            payload.put("previewUrl", previewDataUrl);
+            payload.put("previewDataUrl", previewDataUrl);
             return payload;
         }
 
@@ -1306,9 +1370,45 @@ public class PaperController {
         return payload;
     }
 
-    private String buildInlinePdfPreviewUrl(String paperId) {
+    private Map<String, Object> buildPdfPreviewDataPayload(Paper file, String filename) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("paperId", file.getPaperId());
+        payload.put("paperTitle", file.getPaperTitle());
+        payload.put("originalFilename", filename);
+        payload.put("contentType", MediaType.APPLICATION_PDF_VALUE);
+        payload.put("sourceFileSizeBytes", resolvePdfSourceSizeBytes(file));
+        payload.put("chunkSizeBytes", PDF_PREVIEW_RANGE_CHUNK_SIZE_BYTES);
+        payload.put("rangeUrl", buildPdfPreviewDataRangeUrl(file.getPaperId()));
+        return payload;
+    }
+
+    private String buildPdfPreviewDataUrl(String paperId) {
         String encodedPaperId = UriUtils.encodePathSegment(paperId, StandardCharsets.UTF_8);
-        return "/api/v1/papers/" + encodedPaperId + "/preview/pdf";
+        return "/api/v1/papers/" + encodedPaperId + "/preview/pdf-data";
+    }
+
+    private String buildPdfPreviewDataRangeUrl(String paperId) {
+        return buildPdfPreviewDataUrl(paperId) + "/range";
+    }
+
+    private long resolvePdfSourceSizeBytes(Paper file) {
+        Long sourceFileSizeBytes = file.getTotalSize();
+        if (sourceFileSizeBytes != null && sourceFileSizeBytes > 0) {
+            return sourceFileSizeBytes;
+        }
+
+        try (InputStream pdfStream = paperService.openMergedPdfStream(file.getPaperId())) {
+            return pdfStream.transferTo(OutputStream.nullOutputStream());
+        } catch (IOException e) {
+            throw new RuntimeException("无法读取 PDF 文件大小", e);
+        }
+    }
+
+    private ResponseEntity<?> invalidPdfPreviewRange(String message) {
+        return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE).body(Map.of(
+                "code", HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value(),
+                "message", message
+        ));
     }
 
     private Optional<Paper> findPreviewablePaper(String paperId, RequestAuthContext authContext) {

@@ -20,12 +20,15 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -137,6 +140,17 @@ class PaperServiceTest {
         assertEquals("application/pdf", firstQueryParam(args, "response-content-type"));
         assertEquals("attachment; filename=\"paper-md5.pdf\"",
                 firstQueryParam(args, "response-content-disposition"));
+    }
+
+    @Test
+    void openMergedPdfRangeStreamDelegatesToUploadRangeStream() throws Exception {
+        InputStream rangeStream = new ByteArrayInputStream("%PDF".getBytes());
+        when(uploadService.getMergedFileRangeStream("paper-md5", 10L, 20L)).thenReturn(rangeStream);
+
+        InputStream result = paperService.openMergedPdfRangeStream("paper-md5", 10L, 20L);
+
+        assertSame(rangeStream, result);
+        verify(uploadService).getMergedFileRangeStream("paper-md5", 10L, 20L);
     }
 
     @Test
