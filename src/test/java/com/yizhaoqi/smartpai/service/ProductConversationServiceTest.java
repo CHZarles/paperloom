@@ -255,6 +255,55 @@ class ProductConversationServiceTest {
     }
 
     @Test
+    void traceFailureAfterMemoryUpdateDoesNotDegradeTurn() {
+        ConversationService conversationService = mock(ConversationService.class);
+        ProductMemoryService memoryService = mock(ProductMemoryService.class);
+        ProductReActHarness harness = mock(ProductReActHarness.class);
+        ProductTraceRecorder traceRecorder = mock(ProductTraceRecorder.class);
+        when(conversationService.getMessagesByConversationId(7L, "conversation-1")).thenReturn(List.of());
+        when(memoryService.loadMemory(7L, "conversation-1")).thenReturn(Map.of());
+        ProductMemoryService.MemoryUpdateResult memoryUpdate =
+                new ProductMemoryService.MemoryUpdateResult(true, Map.of(), Map.of(), "");
+        when(memoryService.updateMemory(any(), any(), any(), any(), any(), any()))
+                .thenReturn(memoryUpdate);
+        when(traceRecorder.recordMemoryUpdate(eq("conversation-1"), eq("generation-1"), any()))
+                .thenReturn(false);
+        when(harness.run(any()))
+                .thenReturn(new ProductTurnResult(
+                        "ok",
+                        new AnswerEnvelope(
+                                AnswerType.NON_EVIDENCE,
+                                "ok",
+                                List.of(),
+                                List.of(),
+                                List.of(),
+                                List.of(),
+                                List.of(),
+                                ""
+                        ),
+                        List.of(),
+                        List.of(),
+                        ProductStopReason.COMPLETED,
+                        ProductResultStatus.COMPLETED
+                ));
+        ProductConversationService service =
+                new ProductConversationService(conversationService, memoryService, harness, traceRecorder);
+
+        ProductTurnResult result = service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-1",
+                "hi",
+                SourceScope.auto(),
+                ProductModelContext.defaults()
+        );
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(ProductStopReason.COMPLETED, result.stopReason());
+        verify(traceRecorder).recordMemoryUpdate("conversation-1", "generation-1", memoryUpdate);
+    }
+
+    @Test
     void persistenceFailureFailsTurnAndDoesNotUpdateMemory() {
         ConversationService conversationService = mock(ConversationService.class);
         ProductMemoryService memoryService = mock(ProductMemoryService.class);

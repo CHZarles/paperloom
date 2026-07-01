@@ -3,6 +3,8 @@ package com.yizhaoqi.smartpai.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.yizhaoqi.smartpai.model.PaperConversationReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,7 @@ import java.util.regex.Pattern;
 @Service
 public class ProductReActHarness {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductReActHarness.class);
     private static final Pattern EVIDENCE_MARKER_PATTERN =
             Pattern.compile("\\{\\{\\s*evidenceRef\\s*:\\s*([^}\\s]+)\\s*}}");
     private static final Pattern MODEL_NUMBERED_CITATION_PATTERN =
@@ -301,18 +304,16 @@ public class ProductReActHarness {
         if (traceRecorder == null) {
             return result;
         }
-        boolean written = traceRecorder.record(request, result, llmCalls, toolCalls, startedAt, Instant.now());
-        if (written || result.resultStatus() == ProductResultStatus.FAILED) {
-            return result;
+        try {
+            traceRecorder.record(request, result, llmCalls, toolCalls, startedAt, Instant.now());
+        } catch (Exception exception) {
+            log.warn("trace_submit_failed conversationId={} generationId={} artifactType={}",
+                    request == null ? "" : request.conversationId(),
+                    request == null ? "" : request.generationId(),
+                    "PRODUCT_REACT_TURN",
+                    exception);
         }
-        return new ProductTurnResult(
-                result.finalAnswerMarkdown(),
-                result.envelope(),
-                result.references(),
-                result.progressEvents(),
-                ProductStopReason.TRACE_WRITE_FAILED,
-                ProductResultStatus.DEGRADED
-        );
+        return result;
     }
 
     private List<Map<String, Object>> initialMessages(ProductTurnRequest request) {

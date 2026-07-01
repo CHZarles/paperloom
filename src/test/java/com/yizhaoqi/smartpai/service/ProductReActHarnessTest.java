@@ -15,6 +15,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -91,7 +92,7 @@ class ProductReActHarnessTest {
     }
 
     @Test
-    void writesDiskTraceForCompletedTurn() throws Exception {
+    void writesAsyncDiskTraceForCompletedTurn() throws Exception {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductToolRegistry toolRegistry = mock(ProductToolRegistry.class);
         List<AgentToolRegistry.AgentTool> tools = List.of(tool("get_system_state"));
@@ -133,8 +134,9 @@ class ProductReActHarnessTest {
 
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         Path traceFile = traceDir.resolve("conversation-conversation-1").resolve("turn-generation-1.json");
-        assertTrue(Files.exists(traceFile));
+        awaitFile(traceFile);
         Map<?, ?> trace = objectMapper.readValue(traceFile.toFile(), Map.class);
+        assertEquals("PRODUCT_REACT_TURN", trace.get("artifactType"));
         assertEquals("conversation-1", trace.get("conversationId"));
         assertEquals("generation-1", trace.get("generationId"));
         assertEquals("COMPLETED", trace.get("stopReason"));
@@ -152,8 +154,83 @@ class ProductReActHarnessTest {
                         ""
                 )
         ));
-        Map<?, ?> updatedTrace = objectMapper.readValue(traceFile.toFile(), Map.class);
-        assertTrue(updatedTrace.containsKey("memoryCompressionCalls"));
+        Path memoryTraceFile = awaitSingleMemoryTrace("conversation-1", "generation-1");
+        Map<?, ?> memoryTrace = objectMapper.readValue(memoryTraceFile.toFile(), Map.class);
+        assertEquals("PRODUCT_MEMORY_COMPRESSION", memoryTrace.get("artifactType"));
+        assertEquals("conversation-1", memoryTrace.get("conversationId"));
+        assertEquals("generation-1", memoryTrace.get("generationId"));
+        assertTrue(memoryTrace.containsKey("memoryCompressionCall"));
+
+        Map<?, ?> unchangedTurnTrace = objectMapper.readValue(traceFile.toFile(), Map.class);
+        assertFalse(unchangedTurnTrace.containsKey("memoryCompressionCalls"));
+    }
+
+    @Test
+    void memoryTraceDoesNotRequireExistingTurnTrace() throws Exception {
+        ProductTraceRecorder traceRecorder = new ProductTraceRecorder(objectMapper, traceDir);
+
+        assertTrue(traceRecorder.recordMemoryUpdate(
+                "conversation-standalone",
+                "generation-standalone",
+                new ProductMemoryService.MemoryUpdateResult(
+                        true,
+                        Map.of("userGoals", List.of("read papers")),
+                        Map.of("purpose", "MEMORY_COMPRESSION"),
+                        ""
+                )
+        ));
+
+        Path memoryTraceFile = awaitSingleMemoryTrace("conversation-standalone", "generation-standalone");
+        Map<?, ?> memoryTrace = objectMapper.readValue(memoryTraceFile.toFile(), Map.class);
+        assertEquals("PRODUCT_MEMORY_COMPRESSION", memoryTrace.get("artifactType"));
+        assertEquals("conversation-standalone", memoryTrace.get("conversationId"));
+        assertEquals("generation-standalone", memoryTrace.get("generationId"));
+    }
+
+    @Test
+    void traceRecorderFailureDoesNotDegradeHarnessResult() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductToolRegistry toolRegistry = mock(ProductToolRegistry.class);
+        ProductTraceRecorder traceRecorder = mock(ProductTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = List.of(tool("get_system_state"));
+        when(toolRegistry.listTools()).thenReturn(tools);
+        when(toolRegistry.execute(eq("get_system_state"), any(), any()))
+                .thenReturn(new ProductToolResult(
+                        "get_system_state",
+                        true,
+                        Map.of("searchablePaperCount", 2),
+                        ProductToolEffect.PRODUCT_STATE
+                ));
+        when(llm.completeReActTurn(eq("1"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_system_state", Map.of()))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "PRODUCT_STATE",
+                          "answer": "当前 session scope 内有 2 篇可检索论文。",
+                          "evidenceBasedClaims": [],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        when(traceRecorder.record(any(), any(), any(), any(), any(), any())).thenReturn(false);
+        ProductReActHarness harness = new ProductReActHarness(llm, toolRegistry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(new ProductTurnRequest(
+                1L,
+                "conversation-1",
+                "generation-1",
+                "现在有多少论文可以检索",
+                SourceScope.auto(),
+                List.of(),
+                Map.of(),
+                ProductModelContext.defaults()
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(ProductStopReason.COMPLETED, result.stopReason());
     }
 
     @Test
@@ -1234,6 +1311,7 @@ class ProductReActHarnessTest {
         verify(toolRegistry, never()).execute(eq("inspect_reference"), any(), any());
 
         Path traceFile = traceDir.resolve("conversation-conversation-1").resolve("turn-generation-1.json");
+        awaitFile(traceFile);
         Map<?, ?> trace = objectMapper.readValue(traceFile.toFile(), Map.class);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> toolCalls = (List<Map<String, Object>>) trace.get("toolCalls");
@@ -1349,6 +1427,7 @@ class ProductReActHarnessTest {
         assertFalse(executedRetrieveArgs.contains("2507.21504"));
 
         Path traceFile = traceDir.resolve("conversation-conversation-1").resolve("turn-generation-1.json");
+        awaitFile(traceFile);
         Map<?, ?> trace = objectMapper.readValue(traceFile.toFile(), Map.class);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> toolCalls = (List<Map<String, Object>>) trace.get("toolCalls");
@@ -1482,6 +1561,7 @@ class ProductReActHarnessTest {
         verify(toolRegistry).execute(eq("resolve_papers"), any(), any());
 
         Path traceFile = traceDir.resolve("conversation-conversation-1").resolve("turn-generation-1.json");
+        awaitFile(traceFile);
         String traceJson = Files.readString(traceFile);
         assertTrue(traceJson.contains("tool_result_unresolved_paper_ref"));
     }
@@ -1658,5 +1738,40 @@ class ProductReActHarnessTest {
                 20,
                 20
         );
+    }
+
+    private void awaitFile(Path path) throws Exception {
+        long deadline = System.currentTimeMillis() + 3000;
+        while (System.currentTimeMillis() < deadline) {
+            if (Files.exists(path)) {
+                return;
+            }
+            Thread.sleep(25);
+        }
+        fail("file was not written: " + path);
+    }
+
+    private Path awaitSingleMemoryTrace(String conversationId, String generationId) throws Exception {
+        Path directory = traceDir.resolve("conversation-" + conversationId);
+        String prefix = "turn-" + generationId + ".memory-";
+        long deadline = System.currentTimeMillis() + 3000;
+        while (System.currentTimeMillis() < deadline) {
+            if (Files.exists(directory)) {
+                try (var paths = Files.list(directory)) {
+                    List<Path> matches = paths
+                            .filter(path -> {
+                                String filename = path.getFileName().toString();
+                                return filename.startsWith(prefix) && filename.endsWith(".json");
+                            })
+                            .toList();
+                    if (!matches.isEmpty()) {
+                        return matches.get(0);
+                    }
+                }
+            }
+            Thread.sleep(25);
+        }
+        fail("memory trace was not written for " + conversationId + "/" + generationId);
+        return directory.resolve(prefix + "missing.json");
     }
 }

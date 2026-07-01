@@ -2,12 +2,13 @@ package com.yizhaoqi.smartpai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,17 +17,31 @@ import java.util.Map;
 @Service
 public class ProductTraceRecorder {
 
-    private final ObjectMapper objectMapper;
-    private final Path traceRoot;
+    private static final Logger log = LoggerFactory.getLogger(ProductTraceRecorder.class);
+
+    private final ProductTraceSink traceSink;
 
     @Autowired
+    public ProductTraceRecorder(ObjectMapper objectMapper, ProductTraceSink traceSink) {
+        this.traceSink = traceSink;
+    }
+
+    public ProductTraceRecorder(ObjectMapper objectMapper, Path traceRoot) {
+        this.traceSink = new AsyncDiskProductTraceSink(
+                objectMapper,
+                traceRoot == null ? Path.of("data", "traces", "product-react") : traceRoot,
+                1000,
+                1,
+                true
+        );
+    }
+
     public ProductTraceRecorder(ObjectMapper objectMapper) {
         this(objectMapper, Path.of("data", "traces", "product-react"));
     }
 
-    public ProductTraceRecorder(ObjectMapper objectMapper, Path traceRoot) {
-        this.objectMapper = objectMapper;
-        this.traceRoot = traceRoot == null ? Path.of("data", "traces", "product-react") : traceRoot;
+    ProductTraceRecorder(ProductTraceSink traceSink) {
+        this.traceSink = traceSink;
     }
 
     public boolean record(ProductTurnRequest request,
@@ -43,6 +58,7 @@ public class ProductTraceRecorder {
                     ? new ProductTurnResult("", null, List.of(), List.of(), ProductStopReason.COMPLETED, ProductResultStatus.COMPLETED)
                     : result;
             Map<String, Object> trace = new LinkedHashMap<>();
+            trace.put("artifactType", "PRODUCT_REACT_TURN");
             trace.put("traceVersion", 1);
             trace.put("conversationId", safeRequest.conversationId());
             trace.put("generationId", safeRequest.generationId());
@@ -65,14 +81,20 @@ public class ProductTraceRecorder {
             trace.put("resultStatus", safeResult.resultStatus().name());
             trace.put("errors", List.of());
 
-            Path directory = traceRoot.resolve("conversation-" + safeSegment(safeRequest.conversationId()));
-            Files.createDirectories(directory);
-            Path target = directory.resolve("turn-" + safeSegment(safeRequest.generationId()) + ".json");
-            Path temp = directory.resolve(target.getFileName() + ".tmp");
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(temp.toFile(), trace);
-            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            traceSink.submit(new ProductTracePayload(
+                    safeRequest.conversationId(),
+                    safeRequest.generationId(),
+                    "PRODUCT_REACT_TURN",
+                    "turn-" + safeSegment(safeRequest.generationId()) + ".json",
+                    trace
+            ));
             return true;
         } catch (Exception exception) {
+            log.warn("trace_submit_failed conversationId={} generationId={} artifactType={}",
+                    request == null ? "" : request.conversationId(),
+                    request == null ? "" : request.generationId(),
+                    "PRODUCT_REACT_TURN",
+                    exception);
             return false;
         }
     }
@@ -81,18 +103,6 @@ public class ProductTraceRecorder {
                                       String generationId,
                                       ProductMemoryService.MemoryUpdateResult memoryUpdate) {
         try {
-            Path directory = traceRoot.resolve("conversation-" + safeSegment(conversationId));
-            Path target = directory.resolve("turn-" + safeSegment(generationId) + ".json");
-            if (!Files.exists(target)) {
-                return false;
-            }
-            @SuppressWarnings("unchecked")
-            Map<String, Object> trace = objectMapper.readValue(target.toFile(), LinkedHashMap.class);
-            List<Object> memoryCalls = new ArrayList<>();
-            Object existing = trace.get("memoryCompressionCalls");
-            if (existing instanceof List<?> list) {
-                memoryCalls.addAll(list);
-            }
             ProductMemoryService.MemoryUpdateResult safeUpdate = memoryUpdate == null
                     ? new ProductMemoryService.MemoryUpdateResult(false, Map.of(), Map.of(), "missing_memory_update")
                     : memoryUpdate;
@@ -100,17 +110,31 @@ public class ProductTraceRecorder {
             call.put("success", safeUpdate.success());
             call.put("error", safeUpdate.error());
             call.put("memory", safeUpdate.memory());
-            memoryCalls.add(call);
-            trace.put("memoryCompressionCalls", memoryCalls);
-            trace.put("diagnostics", mergeDiagnostics(
-                    trace.get("diagnostics"),
-                    diagnostics(safeUpdate.memory(), List.of(), null)
+
+            Instant createdAt = Instant.now();
+            Map<String, Object> trace = new LinkedHashMap<>();
+            trace.put("artifactType", "PRODUCT_MEMORY_COMPRESSION");
+            trace.put("traceVersion", 1);
+            trace.put("conversationId", conversationId);
+            trace.put("generationId", generationId);
+            trace.put("createdAt", createdAt.toString());
+            trace.put("memoryCompressionCall", call);
+            trace.put("diagnostics", diagnostics(safeUpdate.memory(), List.of(), null));
+
+            traceSink.submit(new ProductTracePayload(
+                    conversationId,
+                    generationId,
+                    "PRODUCT_MEMORY_COMPRESSION",
+                    "turn-" + safeSegment(generationId) + ".memory-" + safeSegment(DateTimeFormatter.ISO_INSTANT.format(createdAt)) + ".json",
+                    trace
             ));
-            Path temp = directory.resolve(target.getFileName() + ".tmp");
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(temp.toFile(), trace);
-            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return true;
         } catch (Exception exception) {
+            log.warn("trace_submit_failed conversationId={} generationId={} artifactType={}",
+                    conversationId,
+                    generationId,
+                    "PRODUCT_MEMORY_COMPRESSION",
+                    exception);
             return false;
         }
     }
@@ -173,21 +197,6 @@ public class ProductTraceRecorder {
         diagnostics.put("eventCount", events.size());
         diagnostics.put("events", events);
         return diagnostics;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> mergeDiagnostics(Object existing, Map<String, Object> additional) {
-        List<Object> events = new ArrayList<>();
-        if (existing instanceof Map<?, ?> map && map.get("events") instanceof List<?> list) {
-            events.addAll(list);
-        }
-        if (additional != null && additional.get("events") instanceof List<?> list) {
-            events.addAll(list);
-        }
-        Map<String, Object> merged = new LinkedHashMap<>();
-        merged.put("eventCount", events.size());
-        merged.put("events", events);
-        return merged;
     }
 
     private void collectMemoryIdentityDiagnostics(Object value, String path, List<Map<String, Object>> events) {

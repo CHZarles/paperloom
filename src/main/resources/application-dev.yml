@@ -143,6 +143,13 @@ paper:
       timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:3600}
       poll-interval-seconds: ${PAPER_PARSING_MINERU_POLL_INTERVAL_SECONDS:3}
 
+paperloom:
+  trace:
+    enabled: ${PAPERLOOM_TRACE_ENABLED:true}
+    root: ${PAPERLOOM_TRACE_ROOT:data/traces/product-react}
+    queue-capacity: ${PAPERLOOM_TRACE_QUEUE_CAPACITY:1000}
+    writer-threads: ${PAPERLOOM_TRACE_WRITER_THREADS:1}
+
 elasticsearch:
   # dev 下允许按需使用 https + 自签名证书
   host: ${ELASTICSEARCH_HOST:localhost}

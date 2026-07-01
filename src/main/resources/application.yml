@@ -171,6 +171,13 @@ paper:
     public: ${PAPER_BOOTSTRAP_PUBLIC:true}
     user-id: ${PAPER_BOOTSTRAP_USER_ID:system-bootstrap}
 
+paperloom:
+  trace:
+    enabled: ${PAPERLOOM_TRACE_ENABLED:true}
+    root: ${PAPERLOOM_TRACE_ROOT:data/traces/product-react}
+    queue-capacity: ${PAPERLOOM_TRACE_QUEUE_CAPACITY:1000}
+    writer-threads: ${PAPERLOOM_TRACE_WRITER_THREADS:1}
+
 elasticsearch:
   # 本地如果是自签名证书，可设为 https + trust-all=true。
   # 生产环境必须改为 trust-all=false。

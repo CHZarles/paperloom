@@ -1,5 +1,7 @@
 package com.yizhaoqi.smartpai.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +13,8 @@ import java.util.function.Consumer;
 
 @Service
 public class ProductConversationService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductConversationService.class);
 
     private final ConversationService conversationService;
     private final ProductMemoryService memoryService;
@@ -89,8 +93,16 @@ public class ProductConversationService {
             if (!memoryUpdate.success()) {
                 return degradedForMemoryFailure(result);
             }
-            if (traceRecorder != null && !traceRecorder.recordMemoryUpdate(conversationId, generationId, memoryUpdate)) {
-                return degradedForTraceFailure(result);
+            if (traceRecorder != null) {
+                try {
+                    traceRecorder.recordMemoryUpdate(conversationId, generationId, memoryUpdate);
+                } catch (Exception exception) {
+                    log.warn("trace_submit_failed conversationId={} generationId={} artifactType={}",
+                            conversationId,
+                            generationId,
+                            "PRODUCT_MEMORY_COMPRESSION",
+                            exception);
+                }
             }
             return result;
         } catch (Exception exception) {
@@ -131,17 +143,6 @@ public class ProductConversationService {
                 result.references(),
                 result.progressEvents(),
                 ProductStopReason.MEMORY_UPDATE_FAILED,
-                ProductResultStatus.DEGRADED
-        );
-    }
-
-    private ProductTurnResult degradedForTraceFailure(ProductTurnResult result) {
-        return new ProductTurnResult(
-                result.finalAnswerMarkdown(),
-                result.envelope(),
-                result.references(),
-                result.progressEvents(),
-                ProductStopReason.TRACE_WRITE_FAILED,
                 ProductResultStatus.DEGRADED
         );
     }
