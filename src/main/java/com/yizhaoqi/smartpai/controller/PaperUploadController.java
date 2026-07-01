@@ -407,7 +407,7 @@ public class PaperUploadController {
             LogUtils.logBusiness("MERGE_FILE", userId, "发送论文处理任务到 Kafka(事务): topic=%s, paperId=%s, paperTitle=%s",
                     kafkaConfig.getPaperProcessingTopic(), request.paperId(), request.paperTitle());
             kafkaTemplate.executeInTransaction(kt -> {
-                kt.send(kafkaConfig.getPaperProcessingTopic(), task);
+                kt.send(kafkaConfig.getPaperProcessingTopic(), request.paperId(), task);
                 return true;
             });
             LogUtils.logBusiness("MERGE_FILE", userId, "论文处理任务已发送: paperId=%s, paperTitle=%s, fileType=%s", request.paperId(), request.paperTitle(), fileType);

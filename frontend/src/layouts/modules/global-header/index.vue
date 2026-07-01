@@ -29,13 +29,13 @@ const { isFullscreen, toggle } = useFullscreen();
 
 const isDev = import.meta.env.DEV;
 
-function goToChatbot() {
+function goToChat() {
   router.push('/chat');
 }
 </script>
 
 <template>
-  <DarkModeContainer class="ml-12 h-full flex-y-center justify-between bg-transparent">
+  <DarkModeContainer class="global-header-shell h-full flex-y-center justify-between bg-transparent">
     <div id="header-extra" class="h-full flex-col justify-center"></div>
     <!-- <GlobalLogo v-if="showLogo" class="h-full" :style="{ width: themeStore.sider.width + 'px' }" /> -->
     <MenuToggler
@@ -49,19 +49,19 @@ function goToChatbot() {
       <GlobalBreadcrumb v-if="!appStore.isMobile" class="ml-12px" />
     </div>
 -->
-    <div class="h-full flex-y-center justify-end gap-2 px-6">
+    <div class="global-header-actions h-full flex-y-center justify-end gap-2 px-5">
       <NButton
         size="small"
         secondary
-        aria-label="返回 Chatbot"
-        title="返回 Chatbot"
+        aria-label="返回 Chat"
+        title="返回 Chat"
         class="chatbot-back-button"
-        @click="goToChatbot"
+        @click="goToChat"
       >
         <template #icon>
-          <icon-material-symbols-smart-toy-outline-rounded class="text-icon" />
+          <icon-lucide:message-circle class="text-icon" />
         </template>
-        Chatbot
+        <span class="chatbot-back-button__label">Chat</span>
       </NButton>
       <GlobalSearch />
       <FullScreen v-if="!appStore.isMobile" :full="isFullscreen" @click="toggle" />
@@ -85,12 +85,40 @@ function goToChatbot() {
 <style scoped>
 .chatbot-back-button {
   --n-border-color: var(--color-border);
-  --n-color: var(--color-bg);
-  --n-color-hover: var(--color-surface-alt);
-  --n-color-pressed: var(--color-card-band);
+  --n-color: var(--color-card-band);
+  --n-color-hover: var(--color-card-band-pressed);
+  --n-color-pressed: #dfdfdd;
   --n-text-color: var(--color-text-muted);
   --n-text-color-hover: var(--color-text);
   --n-text-color-pressed: var(--color-text);
   font-weight: 600;
+}
+
+.global-header-shell {
+  border-bottom: 1px solid var(--color-border);
+  background: rgb(255 255 255 / 92%);
+}
+
+@media (max-width: 640px) {
+  .global-header-shell {
+    margin-left: 0;
+    min-width: 0;
+  }
+
+  .global-header-actions {
+    min-width: 0;
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .chatbot-back-button {
+    width: 36px;
+    padding: 0;
+  }
+
+  .chatbot-back-button__label {
+    display: none;
+  }
 }
 </style>

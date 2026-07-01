@@ -285,13 +285,40 @@ function handleEdit(row: RechargePackage) {
   visible.value = true;
 }
 
-async function handleSubmit() {
-  console.log('开始提交，editingId:', editingId.value, 'isEditing:', isEditing.value);
+function buildSubmitData() {
+  const { packagePriceYuan, llmTokenWan, embeddingTokenWan, ...rest } = model.value;
 
+  return {
+    ...rest,
+    packagePrice: packagePriceYuan !== null ? Math.round(packagePriceYuan * 100) : null,
+    llmToken: llmTokenWan !== null ? Math.round(llmTokenWan * TOKEN_UNIT) : null,
+    embeddingToken: embeddingTokenWan !== null ? Math.round(embeddingTokenWan * TOKEN_UNIT) : null
+  };
+}
+
+function showSubmitError(error: unknown) {
+  if (Array.isArray(error)) {
+    window.$message?.error('请填写完整的表单信息!');
+    return;
+  }
+
+  if (error && typeof error === 'object' && 'errors' in error) {
+    const errors = (error as { errors?: unknown }).errors;
+    const firstError = Array.isArray(errors) ? errors[0] : errors;
+    const errorMessage =
+      firstError && typeof firstError === 'object' && 'message' in firstError
+        ? String((firstError as { message?: unknown }).message || '请填写完整的表单信息')
+        : '请填写完整的表单信息';
+    window.$message?.warning(errorMessage);
+    return;
+  }
+
+  window.$message?.error(`操作失败：${error instanceof Error ? error.message : '未知错误'}`);
+}
+
+async function handleSubmit() {
   try {
-    // 先进行表单验证
     await validate();
-    console.log('表单验证通过');
 
     submitting.value = true;
 
@@ -299,28 +326,11 @@ async function handleSubmit() {
 
     const method = isEditing.value ? 'put' : 'post';
 
-    // 将元转换为分
-    const submitData = {
-      ...model.value,
-      packagePrice: model.value.packagePriceYuan !== null ? Math.round(model.value.packagePriceYuan * 100) : null,
-      llmToken: model.value.llmTokenWan !== null ? Math.round(model.value.llmTokenWan * TOKEN_UNIT) : null,
-      embeddingToken:
-        model.value.embeddingTokenWan !== null ? Math.round(model.value.embeddingTokenWan * TOKEN_UNIT) : null
-    };
-    // 删除 packagePriceYuan 字段，不传递给后端
-    delete (submitData as any).packagePriceYuan;
-    delete (submitData as any).llmTokenWan;
-    delete (submitData as any).embeddingTokenWan;
-
-    console.log('提交数据:', submitData);
-
-    const { error, data } = await request({
+    const { error } = await request({
       url,
       method,
-      data: submitData
+      data: buildSubmitData()
     });
-
-    console.log('返回结果:', error, data);
 
     if (!error) {
       window.$message?.success(isEditing.value ? '更新成功' : '创建成功');
@@ -329,21 +339,8 @@ async function handleSubmit() {
     } else {
       window.$message?.error(`操作失败：${error.message || '未知错误'}`);
     }
-  } catch (e: any) {
-    console.error('提交异常:', e);
-    if (Array.isArray(e)) {
-      window.$message?.error('请填写完整的表单信息!');
-      return;
-    }
-    // validate 失败时会抛出异常，包含验证错误信息
-    if (e?.errors) {
-      // errors 可能是一个数组，取第一个错误的提示信息
-      const firstError = Array.isArray(e.errors) ? e.errors[0] : e.errors;
-      const errorMessage = firstError?.message || '请填写完整的表单信息';
-      window.$message?.warning(errorMessage);
-    } else {
-      window.$message?.error(`操作失败：${(e as Error).message}`);
-    }
+  } catch (error) {
+    showSubmitError(error);
   } finally {
     submitting.value = false;
   }
@@ -360,7 +357,7 @@ async function handleDelete(id: number) {
       window.$message?.success('删除成功');
       await getData();
     }
-  } catch (e) {
+  } catch {
     window.$message?.error('删除失败');
   }
 }
@@ -374,7 +371,12 @@ onMounted(() => {
   <div class="admin-console-page flex-col-stretch gap-16px overflow-auto">
     <NCard title="Billing Packages / 充值套餐" :bordered="false" size="small" class="admin-console-card card-wrapper">
       <template #header-extra>
-        <NButton type="primary" @click="handleCreate">新增套餐</NButton>
+        <NButton type="primary" @click="handleCreate">
+          <template #icon>
+            <icon-lucide:plus />
+          </template>
+          新增套餐
+        </NButton>
       </template>
 
       <NDataTable

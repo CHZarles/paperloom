@@ -84,7 +84,7 @@ function reset() {
   padding: 6px 10px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--color-surface), var(--color-border-soft));
+  background: var(--color-surface);
   box-shadow: var(--shadow-card-soft);
 }
 

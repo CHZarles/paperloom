@@ -11,8 +11,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.service.ChatHandler;
 import com.yizhaoqi.smartpai.service.ChatSessionRegistry;
-import com.yizhaoqi.smartpai.service.PaperAnswerService;
-import com.yizhaoqi.smartpai.service.RetrievalBudgetProfile;
+import com.yizhaoqi.smartpai.service.ProductReferenceFocus;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import java.util.List;
 import java.util.Map;
@@ -122,8 +121,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                                 userId,
                                 new ChatHandler.ChatRequest(
                                         chatText,
-                                        parseAnswerScope(referenceFocusPayload(jsonMessage)),
-                                        parseRetrievalBudgetProfile(jsonMessage.get("retrievalBudgetProfile"))
+                                        parseReferenceFocus(referenceFocusPayload(jsonMessage))
                                 ),
                                 session
                         );
@@ -204,12 +202,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private PaperAnswerService.AnswerScope parseAnswerScope(Object rawScope) {
+    private ProductReferenceFocus parseReferenceFocus(Object rawScope) {
         if (!(rawScope instanceof Map<?, ?> rawMap)) {
             return null;
         }
         Map<String, Object> scope = (Map<String, Object>) rawMap;
-        return new PaperAnswerService.AnswerScope(
+        return new ProductReferenceFocus(
                 stringList(scope.get("paperIds")),
                 stringList(scope.get("paperTitles")),
                 integerValue(scope.get("referenceNumber")),
@@ -221,18 +219,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 stringValue(scope.get("originalFilename")),
                 stringValue(firstPresent(scope, "matchedText", "matchedChunkText", "evidenceSnippet")),
                 stringValue(scope.get("bboxJson")),
-                stringValue(scope.get("sourceKind")),
-                RetrievalBudgetProfile.fromToken(stringValue(scope.get("retrievalBudgetProfile")))
+                stringValue(scope.get("sourceKind"))
         );
     }
 
     private Object referenceFocusPayload(Map<String, Object> jsonMessage) {
         Object referenceFocus = jsonMessage.get("referenceFocus");
         return referenceFocus == null ? jsonMessage.get("scope") : referenceFocus;
-    }
-
-    private RetrievalBudgetProfile parseRetrievalBudgetProfile(Object rawProfile) {
-        return rawProfile == null ? null : RetrievalBudgetProfile.fromToken(stringValue(rawProfile));
     }
 
     private Object firstPresent(Map<String, Object> map, String... keys) {

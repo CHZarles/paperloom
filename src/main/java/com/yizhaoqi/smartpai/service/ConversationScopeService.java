@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @Service
 public class ConversationScopeService {
@@ -104,29 +106,61 @@ public class ConversationScopeService {
         User user = resolveUser(userId);
         List<String> directPaperIds = normalizedPaperIds(request == null ? null : request.paperIds());
         List<Long> collectionIds = normalizedCollectionIds(request == null ? null : request.collectionIds());
+        List<String> titleMatchPaperIds = resolveTitleMatchPaperIds(user, request, true);
 
         LinkedHashSet<String> snapshotPaperIds = new LinkedHashSet<>();
         snapshotPaperIds.addAll(resolveDirectPaperIds(user, directPaperIds));
         for (Long collectionId : collectionIds) {
             snapshotPaperIds.addAll(resolveCollectionPaperIds(user, collectionId));
         }
+        snapshotPaperIds.addAll(titleMatchPaperIds);
 
         if (snapshotPaperIds.isEmpty()) {
             throw new CustomException("Conversation source scope resolved to no searchable papers", HttpStatus.BAD_REQUEST);
         }
 
         List<String> paperIds = new ArrayList<>(snapshotPaperIds);
-        Map<String, Object> sourceRecipe = sourceRecipe(request, collectionIds, directPaperIds);
+        Map<String, Object> sourceRecipe = sourceRecipe(request, collectionIds, directPaperIds, titleMatchPaperIds);
         Map<String, Object> sourceSnapshot = sourceSnapshot(paperIds);
 
         session.setScopeMode(ConversationScopeMode.SOURCE_SET_SNAPSHOT);
         session.setScopeStatus(ConversationScopeStatus.READY);
-        session.setSourceLabel(sourceLabel(request == null ? null : request.sourceLabel(), collectionIds, directPaperIds));
+        session.setSourceLabel(sourceLabel(request, collectionIds, directPaperIds, titleMatchPaperIds));
         session.setSourceRecipeJson(writeJson(sourceRecipe));
         session.setSourceSnapshotJson(writeJson(sourceSnapshot));
         session.setSourcePaperCount(paperIds.size());
         sessionRepository.save(session);
         return scopeResponse(resolveSession(session));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> previewTitleMatchScope(Long userId,
+                                                      String conversationId,
+                                                      UpdateConversationScopeRequest request) {
+        ConversationSession session = requireOwnedSession(userId, conversationId);
+        if (session.isScopeLocked()) {
+            throw new CustomException("Conversation scope is locked", HttpStatus.CONFLICT);
+        }
+        User user = resolveUser(userId);
+        List<String> paperIds = resolveTitleMatchPaperIds(user, request, false);
+        Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
+        List<String> effectiveOrgTags = effectiveOrgTags(user);
+        List<Map<String, Object>> papers = paperIds.stream()
+                .map(paperId -> papersByPaperId.getOrDefault(paperId, List.of()).stream()
+                        .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                        .filter(paperSearchabilityService::isSearchable)
+                        .findFirst()
+                        .map(this::paperPreview)
+                        .orElse(null))
+                .filter(Objects::nonNull)
+                .toList();
+        Map<String, Object> preview = new LinkedHashMap<>();
+        preview.put("paperCount", paperIds.size());
+        preview.put("paperIds", paperIds);
+        preview.put("papers", papers);
+        preview.put("sourceLabel", titleMatchLabel(request, paperIds));
+        preview.put("sourceRecipe", titleMatchRecipe(request, paperIds));
+        return preview;
     }
 
     @Transactional(readOnly = true)
@@ -159,7 +193,7 @@ public class ConversationScopeService {
     }
 
     public void assertReferenceFocusWithinScope(EffectiveConversationScope scope,
-                                                PaperAnswerService.AnswerScope referenceFocus) {
+                                                ProductReferenceFocus referenceFocus) {
         if (scope == null || scope.mode() == ConversationScopeMode.AUTO_LIBRARY || referenceFocus == null) {
             return;
         }
@@ -311,6 +345,75 @@ public class ConversationScopeService {
                 .toList();
     }
 
+    private List<String> resolveTitleMatchPaperIds(User user,
+                                                   UpdateConversationScopeRequest request,
+                                                   boolean requireMatches) {
+        String titleQuery = trimToNull(request == null ? null : request.titleQuery());
+        String titleRegex = trimToNull(request == null ? null : request.titleRegex());
+        if (titleQuery == null && titleRegex == null) {
+            return List.of();
+        }
+        if (titleQuery != null && titleRegex != null) {
+            throw new CustomException("Use either titleQuery or titleRegex", HttpStatus.BAD_REQUEST);
+        }
+        Pattern regex = null;
+        if (titleRegex != null) {
+            try {
+                regex = Pattern.compile(titleRegex);
+            } catch (PatternSyntaxException exception) {
+                throw new CustomException("Invalid title regex", HttpStatus.BAD_REQUEST);
+            }
+        }
+        String query = titleQuery == null ? null : titleQuery.toLowerCase();
+        Pattern safeRegex = regex;
+        List<String> effectiveOrgTags = effectiveOrgTags(user);
+        LinkedHashSet<String> paperIds = accessiblePapersForTitleMatch(user, effectiveOrgTags).stream()
+                .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                .filter(paperSearchabilityService::isSearchable)
+                .filter(paper -> titleMatches(paper, query, safeRegex))
+                .map(Paper::getPaperId)
+                .map(this::trimToNull)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (requireMatches && paperIds.isEmpty()) {
+            throw new CustomException("Title match resolved to no searchable papers", HttpStatus.BAD_REQUEST);
+        }
+        return new ArrayList<>(paperIds);
+    }
+
+    private List<Paper> accessiblePapersForTitleMatch(User user, List<String> effectiveOrgTags) {
+        if (user.getRole() == User.Role.ADMIN) {
+            return paperRepository.findAll();
+        }
+        return paperRepository.findAccessiblePapersWithTags(String.valueOf(user.getId()), effectiveOrgTags);
+    }
+
+    private boolean titleMatches(Paper paper, String titleQuery, Pattern titleRegex) {
+        String title = trimToNull(paper == null ? null : paper.getPaperTitle());
+        String filename = trimToNull(paper == null ? null : paper.getOriginalFilename());
+        if (titleRegex != null) {
+            return (title != null && titleRegex.matcher(title).find())
+                    || (filename != null && titleRegex.matcher(filename).find());
+        }
+        if (titleQuery == null) {
+            return false;
+        }
+        String normalizedTitle = title == null ? "" : title.toLowerCase();
+        String normalizedFilename = filename == null ? "" : filename.toLowerCase();
+        return normalizedTitle.contains(titleQuery) || normalizedFilename.contains(titleQuery);
+    }
+
+    private Map<String, Object> paperPreview(Paper paper) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("paperId", paper.getPaperId());
+        item.put("paperTitle", paper.getPaperTitle());
+        item.put("originalFilename", paper.getOriginalFilename());
+        item.put("authors", paper.getAuthors());
+        item.put("venue", paper.getVenue());
+        item.put("publicationYear", paper.getPublicationYear());
+        return item;
+    }
+
     private boolean snapshotPaperIdsStillValid(User user, List<String> paperIds) {
         Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
         List<String> effectiveOrgTags = effectiveOrgTags(user);
@@ -430,7 +533,16 @@ public class ConversationScopeService {
                 .toList();
     }
 
-    private String sourceLabel(String requestedLabel, List<Long> collectionIds, List<String> directPaperIds) {
+    private String sourceLabel(UpdateConversationScopeRequest request,
+                               List<Long> collectionIds,
+                               List<String> directPaperIds,
+                               List<String> titleMatchPaperIds) {
+        if (request != null && (!titleMatchPaperIds.isEmpty()
+                || trimToNull(request.titleQuery()) != null
+                || trimToNull(request.titleRegex()) != null)) {
+            return titleMatchLabel(request, titleMatchPaperIds);
+        }
+        String requestedLabel = request == null ? null : request.sourceLabel();
         String label = trimToNull(requestedLabel);
         if (label != null) {
             return label;
@@ -454,7 +566,13 @@ public class ConversationScopeService {
 
     private Map<String, Object> sourceRecipe(UpdateConversationScopeRequest request,
                                              List<Long> collectionIds,
-                                             List<String> directPaperIds) {
+                                             List<String> directPaperIds,
+                                             List<String> titleMatchPaperIds) {
+        if (request != null && (!titleMatchPaperIds.isEmpty()
+                || trimToNull(request.titleQuery()) != null
+                || trimToNull(request.titleRegex()) != null)) {
+            return titleMatchRecipe(request, titleMatchPaperIds);
+        }
         if (request != null && request.sourceRecipe() != null && !request.sourceRecipe().isEmpty()) {
             return new LinkedHashMap<>(request.sourceRecipe());
         }
@@ -462,6 +580,22 @@ public class ConversationScopeService {
         recipe.put("scopeMode", ConversationScopeMode.SOURCE_SET_SNAPSHOT.name());
         recipe.put("collectionIds", collectionIds);
         recipe.put("paperIds", directPaperIds);
+        return recipe;
+    }
+
+    private String titleMatchLabel(UpdateConversationScopeRequest request, List<String> paperIds) {
+        String titleQuery = trimToNull(request == null ? null : request.titleQuery());
+        String titleRegex = trimToNull(request == null ? null : request.titleRegex());
+        String matcher = titleRegex != null ? "/" + titleRegex + "/" : titleQuery;
+        return "Title match: " + matcher + " (" + paperIds.size() + " papers)";
+    }
+
+    private Map<String, Object> titleMatchRecipe(UpdateConversationScopeRequest request, List<String> paperIds) {
+        Map<String, Object> recipe = new LinkedHashMap<>();
+        recipe.put("type", "title_match");
+        recipe.put("titleQuery", trimToNull(request == null ? null : request.titleQuery()));
+        recipe.put("titleRegex", trimToNull(request == null ? null : request.titleRegex()));
+        recipe.put("paperCount", paperIds == null ? 0 : paperIds.size());
         return recipe;
     }
 

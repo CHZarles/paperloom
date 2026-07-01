@@ -34,11 +34,11 @@ class ChatWebSocketHandlerTest {
 
         ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
         assertEquals("explain this paper", request.message());
-        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.scope().retrievalBudgetProfile());
+        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
     }
 
     @Test
-    void structuredChatPayloadCarriesRetrievalBudgetProfile() {
+    void structuredChatPayloadIgnoresScopeRetrievalBudgetProfile() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);
         WebSocketSession session = session();
@@ -52,11 +52,11 @@ class ChatWebSocketHandlerTest {
 
         ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
         assertEquals("audit the evidence", request.message());
-        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, request.scope().retrievalBudgetProfile());
+        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
     }
 
     @Test
-    void structuredChatPayloadCarriesTopLevelRetrievalBudgetWithoutReferenceFocus() {
+    void structuredChatPayloadIgnoresTopLevelRetrievalBudgetWithoutReferenceFocus() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);
         WebSocketSession session = session();
@@ -70,7 +70,7 @@ class ChatWebSocketHandlerTest {
 
         ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
         assertEquals("audit the session", request.message());
-        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, request.retrievalBudgetProfile());
+        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
     }
 
     @Test
@@ -88,9 +88,8 @@ class ChatWebSocketHandlerTest {
 
         ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
         assertEquals("explain this citation", request.message());
-        assertEquals(2, request.scope().referenceNumber());
-        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, request.scope().retrievalBudgetProfile());
-        assertEquals(RetrievalBudgetProfile.HIGH_RECALL, request.retrievalBudgetProfile());
+        assertEquals(2, request.referenceFocus().referenceNumber());
+        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
     }
 
     @Test
@@ -108,7 +107,7 @@ class ChatWebSocketHandlerTest {
 
         ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
         assertEquals("legacy audit", request.message());
-        assertEquals(RetrievalBudgetProfile.DEEP_AUDIT, request.retrievalBudgetProfile());
+        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
     }
 
     private ChatWebSocketHandler handler(ChatHandler chatHandler) {

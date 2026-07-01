@@ -208,6 +208,48 @@ class ConversationServiceTest {
     }
 
     @Test
+    void deleteConversationSessionDeletesOwnedSessionAndConversationRows() {
+        ConversationSession session = new ConversationSession();
+        session.setConversationId("conversation-1");
+        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L))
+                .thenReturn(Optional.of(session));
+        when(valueOperations.get("user:1:current_conversation")).thenReturn("other-conversation");
+
+        conversationService.deleteConversationSession(1L, "conversation-1");
+
+        verify(conversationRepository).deleteByUserIdAndConversationId(1L, "conversation-1");
+        verify(sessionRepository).delete(session);
+        verify(redisTemplate, never()).delete("user:1:current_conversation");
+    }
+
+    @Test
+    void deleteConversationSessionClearsRedisWhenDeletingCurrentSession() {
+        ConversationSession session = new ConversationSession();
+        session.setConversationId("conversation-1");
+        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L))
+                .thenReturn(Optional.of(session));
+        when(valueOperations.get("user:1:current_conversation")).thenReturn("conversation-1");
+
+        conversationService.deleteConversationSession(1L, "conversation-1");
+
+        verify(redisTemplate).delete("user:1:current_conversation");
+    }
+
+    @Test
+    void deleteConversationSessionRejectsConversationNotOwnedByCurrentUser() {
+        when(sessionRepository.findByConversationIdAndUserId("other-conversation", 2L))
+                .thenReturn(Optional.empty());
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> conversationService.deleteConversationSession(2L, "other-conversation"));
+
+        assertEquals("对话不存在", exception.getMessage());
+        verify(conversationRepository, never()).deleteByUserIdAndConversationId(anyLong(), anyString());
+        verify(sessionRepository, never()).delete(any(ConversationSession.class));
+        verify(redisTemplate, never()).delete(anyString());
+    }
+
+    @Test
     void createConversationSessionIncludesDefaultScopeFields() {
         User user = new User();
         user.setId(1L);

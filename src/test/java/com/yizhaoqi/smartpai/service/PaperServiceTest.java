@@ -1,6 +1,7 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.model.ChunkInfo;
+import com.yizhaoqi.smartpai.config.KafkaConfig;
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.paper.parser.MinerUUnavailableException;
 import com.yizhaoqi.smartpai.repository.ChunkInfoRepository;
@@ -14,14 +15,20 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -62,6 +69,12 @@ class PaperServiceTest {
     @Mock
     private PaperVisualAssetService paperVisualAssetService;
 
+    @Mock
+    private KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Mock
+    private KafkaConfig kafkaConfig;
+
     private PaperService paperService;
 
     @BeforeEach
@@ -79,6 +92,8 @@ class PaperServiceTest {
         ReflectionTestUtils.setField(paperService, "paperFigureService", paperFigureService);
         ReflectionTestUtils.setField(paperService, "paperFormulaService", paperFormulaService);
         ReflectionTestUtils.setField(paperService, "paperVisualAssetService", paperVisualAssetService);
+        ReflectionTestUtils.setField(paperService, "kafkaTemplate", kafkaTemplate);
+        ReflectionTestUtils.setField(paperService, "kafkaConfig", kafkaConfig);
     }
 
     @Test
@@ -187,6 +202,30 @@ class PaperServiceTest {
         assertEquals(Paper.VECTORIZATION_STATUS_FAILED, saved.getVectorizationStatus());
         assertTrue(saved.getVectorizationErrorMessage().startsWith("MinerU sidecar unavailable"));
         assertTrue(saved.getVectorizationErrorMessage().contains("PAPER_PARSING_PROVIDER=opendataloader"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void retryVectorizationSendsPaperIdAsKafkaKey() {
+        Paper paper = paper("paper-md5", "1");
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-md5"))
+                .thenReturn(Optional.of(paper));
+        when(kafkaConfig.getPaperProcessingTopic()).thenReturn("paper-processing-topic");
+        when(kafkaTemplate.executeInTransaction(any())).thenAnswer(invocation -> {
+            KafkaOperations.OperationsCallback<String, Object, Boolean> callback = invocation.getArgument(0);
+            return callback.doInOperations(kafkaTemplate);
+        });
+
+        paperService.enqueueAsyncVectorizationRetry("paper-md5", "admin");
+
+        verify(kafkaTemplate).send(eq("paper-processing-topic"), eq("paper-md5"), any());
+    }
+
+    @Test
+    void reindexPaperDoesNotWrapOcrAndEmbeddingInOneTransaction() throws NoSuchMethodException {
+        Method method = PaperService.class.getMethod("reindexPaper", String.class, String.class);
+
+        assertFalse(method.isAnnotationPresent(Transactional.class));
     }
 
     private Paper paper(String paperId, String userId) {

@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -177,6 +178,123 @@ class PaperAnswerServiceTest {
     }
 
     @Test
+    void libraryStatusStoresSearchablePapersForFollowUp() {
+        TaskRouter taskRouter = request -> TaskRoutingResult.routed(new TaskDecision(
+                TaskType.LIBRARY_STATUS,
+                TaskOperation.COUNT_SEARCHABLE_PAPERS,
+                "",
+                0.95d,
+                "count searchable papers"
+        ));
+        PaperLibraryStatusService libraryStatusService = mock(PaperLibraryStatusService.class);
+        when(libraryStatusService.statusFor(eq("u1"), any(SourceScope.class)))
+                .thenReturn(new PaperLibraryStatus(
+                        2,
+                        2,
+                        0,
+                        0,
+                        0,
+                        2,
+                        List.of(),
+                        List.of(
+                                new PaperSource("paper-a", "LoRA", "lora.pdf"),
+                                new PaperSource("paper-b", "Attention Is All You Need", "attention.pdf")
+                        )
+                ));
+        PaperAnswerService statusService = new PaperAnswerService(
+                retrievalService,
+                paperService,
+                conversationService,
+                llmProviderRouter,
+                redisTemplate,
+                new ObjectMapper(),
+                new PaperChatRouter(),
+                new EvidencePlanner(llmProviderRouter, new ObjectMapper()),
+                new EvidenceLedgerService(),
+                new EvidenceAnswerGenerator(llmProviderRouter, new EvidenceVerifier()),
+                new EvidenceVerifier(),
+                new EvidenceToolExecutor(retrievalService, paperService, conversationService, new EvidenceLedgerService()),
+                taskRouter,
+                libraryStatusService
+        );
+
+        statusService.answer("u1", "c1", "有多少论文可以检索");
+
+        ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+        verify(valueOps).set(eq("paperloom:chat:focus:c1"), json.capture(), any(Duration.class));
+        assertTrue(json.getValue().contains("\"lastIntent\":\"LIBRARY_STATUS\""));
+        assertTrue(json.getValue().contains("paper-a"));
+        assertTrue(json.getValue().contains("paper-b"));
+        assertTrue(json.getValue().contains("LoRA"));
+        assertTrue(json.getValue().contains("Attention Is All You Need"));
+        verifyNoInteractions(retrievalService);
+    }
+
+    @Test
+    void libraryStatusFollowUpPassesConversationHistoryToTaskRouterAndListsPapers() {
+        when(valueOps.get("paperloom:chat:focus:c1")).thenReturn("""
+                {"lastIntent":"LIBRARY_STATUS","lastPaperIds":["paper-a","paper-b"],"lastPaperTitles":["LoRA","Attention Is All You Need"]}
+                """);
+        when(conversationService.getMessagesByConversationId(1L, "c1")).thenReturn(List.of(
+                Map.of("role", "user", "content", "现在有多少参考论文"),
+                Map.of("role", "assistant", "content", "**结论**\n当前可检索论文有 2 篇。")
+        ));
+        AtomicReference<TaskRoutingRequest> capturedRequest = new AtomicReference<>();
+        TaskRouter taskRouter = request -> {
+            capturedRequest.set(request);
+            return TaskRoutingResult.routed(new TaskDecision(
+                    TaskType.LIBRARY_STATUS,
+                    TaskOperation.LIST_ACCESSIBLE_PAPERS,
+                    "",
+                    0.95d,
+                    "list previous library status paper set"
+            ));
+        };
+        PaperLibraryStatusService libraryStatusService = mock(PaperLibraryStatusService.class);
+        when(libraryStatusService.statusFor(eq("1"), any(SourceScope.class)))
+                .thenReturn(new PaperLibraryStatus(
+                        2,
+                        2,
+                        0,
+                        0,
+                        0,
+                        2,
+                        List.of(),
+                        List.of(
+                                new PaperSource("paper-a", "LoRA", "lora.pdf"),
+                                new PaperSource("paper-b", "Attention Is All You Need", "attention.pdf")
+                        )
+                ));
+        PaperAnswerService statusService = new PaperAnswerService(
+                retrievalService,
+                paperService,
+                conversationService,
+                llmProviderRouter,
+                redisTemplate,
+                new ObjectMapper(),
+                new PaperChatRouter(),
+                new EvidencePlanner(llmProviderRouter, new ObjectMapper()),
+                new EvidenceLedgerService(),
+                new EvidenceAnswerGenerator(llmProviderRouter, new EvidenceVerifier()),
+                new EvidenceVerifier(),
+                new EvidenceToolExecutor(retrievalService, paperService, conversationService, new EvidenceLedgerService()),
+                taskRouter,
+                libraryStatusService
+        );
+
+        PaperAnswerService.AnswerResult answer = statusService.answer("1", "c1", "我问的你有哪两篇论文");
+
+        assertEquals(2, capturedRequest.get().history().size());
+        assertEquals("现在有多少参考论文", capturedRequest.get().history().get(0).get("content"));
+        assertTrue(capturedRequest.get().history().get(1).get("content").contains("当前可检索论文有 2 篇"));
+        assertEquals(PaperAnswerService.Intent.LIBRARY_STATUS, answer.intent());
+        assertEquals(2, answer.uniquePaperCount());
+        assertTrue(answer.markdown().contains("1. 《LoRA》"));
+        assertTrue(answer.markdown().contains("2. 《Attention Is All You Need》"));
+        verifyNoInteractions(retrievalService);
+    }
+
+    @Test
     void libraryStatusInsideScopedSessionStillUsesStatusCapabilityWithoutRetrieval() {
         TaskRouter taskRouter = request -> TaskRoutingResult.routed(new TaskDecision(
                 TaskType.LIBRARY_STATUS,
@@ -314,6 +432,23 @@ class PaperAnswerServiceTest {
 
         assertEquals(PaperAnswerService.Intent.CLARIFY, answer.intent());
         assertTrue(answer.markdown().contains("你想讲第几篇"));
+        verifyNoInteractions(retrievalService);
+    }
+
+    @Test
+    void followUpAfterLibraryStatusListsThePapersFromStructuredFocus() {
+        when(valueOps.get("paperloom:chat:focus:c1")).thenReturn("""
+                {"lastIntent":"LIBRARY_STATUS","lastPaperIds":["paper-a","paper-b"],"lastPaperTitles":["LoRA","Attention Is All You Need"]}
+                """);
+        when(llmProviderRouter.completeReActTurn(eq("u1"), any(), eq(List.of()), anyInt()))
+                .thenReturn(followUpRoute(""));
+
+        PaperAnswerService.AnswerResult answer = service.answer("u1", "c1", "哪两篇");
+
+        assertEquals(PaperAnswerService.Intent.LIBRARY_STATUS, answer.intent());
+        assertEquals(2, answer.uniquePaperCount());
+        assertTrue(answer.markdown().contains("1. 《LoRA》"));
+        assertTrue(answer.markdown().contains("2. 《Attention Is All You Need》"));
         verifyNoInteractions(retrievalService);
     }
 

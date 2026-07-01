@@ -6,9 +6,9 @@ import { toggleHtmlClass } from '@/utils/common';
 import { $t } from '@/locales';
 
 export function setupLoading() {
-  let themeColor = localStg.get('themeColor') || '#1a3a2e';
-  if (themeColor.toLowerCase() === '#2f5d62') {
-    themeColor = '#1a3a2e';
+  let themeColor = localStg.get('themeColor') || '#1a1a19';
+  if (['#2f5d62', '#1a3a2e'].includes(themeColor.toLowerCase())) {
+    themeColor = '#1a1a19';
     localStg.set('themeColor', themeColor);
   }
 

@@ -12,7 +12,16 @@ public final class ConversationScopeRequests {
             String sourceLabel,
             List<Long> collectionIds,
             List<String> paperIds,
-            Map<String, Object> sourceRecipe
+            Map<String, Object> sourceRecipe,
+            String titleQuery,
+            String titleRegex
     ) {
+        public UpdateConversationScopeRequest(String scopeMode,
+                                              String sourceLabel,
+                                              List<Long> collectionIds,
+                                              List<String> paperIds,
+                                              Map<String, Object> sourceRecipe) {
+            this(scopeMode, sourceLabel, collectionIds, paperIds, sourceRecipe, null, null);
+        }
     }
 }

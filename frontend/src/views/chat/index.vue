@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import SettingsPanel from '../personal-center/modules/settings-panel.vue';
 import ChatList from './modules/chat-list.vue';
 import InputBox from './modules/input-box.vue';
 import ConversationSidebar from './modules/conversation-sidebar.vue';
@@ -13,6 +14,9 @@ const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth <
 const chatStore = useChatStore();
 const { connectionStatus, list } = storeToRefs(chatStore);
 const referencePanelVisible = ref(false);
+const settingsVisible = ref(false);
+const settingsModalHostStyle = { width: 'min(1480px, calc(100vw - 32px))' };
+const inputBoxRef = ref<InstanceType<typeof InputBox> | null>(null);
 type ReferencePanelPayload = Partial<Omit<Api.Chat.ReferenceEvidence, 'paperId' | 'paperTitle'>> & {
   paperTitle: string;
   paperId?: string | null;
@@ -55,6 +59,10 @@ function handleAskAboutReference(scope: Api.Chat.Scope) {
   }
 }
 
+function handleRetryMessage(message: string) {
+  inputBoxRef.value?.sendMessage(message);
+}
+
 function syncSidebarForViewport() {
   sidebarCollapsed.value = window.innerWidth <= 960;
 }
@@ -75,7 +83,11 @@ onBeforeUnmount(() => {
   </div>
   <div v-else class="chat-shell">
     <div v-if="!sidebarCollapsed" class="mobile-sidebar-mask" @click="sidebarCollapsed = true" />
-    <ConversationSidebar v-model:collapsed="sidebarCollapsed" class="chat-shell__sidebar" />
+    <ConversationSidebar
+      v-model:collapsed="sidebarCollapsed"
+      class="chat-shell__sidebar"
+      @open-settings="settingsVisible = true"
+    />
 
     <main class="chat-shell__main">
       <header class="chat-topbar">
@@ -88,7 +100,7 @@ onBeforeUnmount(() => {
           <icon-lucide:panel-left-open class="text-18px" />
         </button>
         <div class="min-w-0 flex-1">
-          <div class="topbar-title">PaperLoom</div>
+          <div class="topbar-title">Folio</div>
         </div>
         <div class="connection-pill" :class="`connection-pill--${connectionStatus}`">
           <span />
@@ -106,8 +118,8 @@ onBeforeUnmount(() => {
 
       <section class="chat-workspace">
         <div class="chat-conversation">
-          <ChatList @open-reference="handleOpenReference" />
-          <InputBox v-if="showDockInput" />
+          <ChatList @open-reference="handleOpenReference" @retry-message="handleRetryMessage" />
+          <InputBox v-if="showDockInput" ref="inputBoxRef" />
         </div>
 
         <aside v-if="referencePanelVisible" class="reference-panel">
@@ -157,6 +169,15 @@ onBeforeUnmount(() => {
         </aside>
       </section>
     </main>
+
+    <NModal
+      v-model:show="settingsVisible"
+      :auto-focus="false"
+      class="settings-modal-host"
+      :style="settingsModalHostStyle"
+    >
+      <SettingsPanel @close="settingsVisible = false" />
+    </NModal>
   </div>
 </template>
 
@@ -183,6 +204,10 @@ onBeforeUnmount(() => {
     'PingFang SC',
     'Microsoft YaHei',
     sans-serif;
+}
+
+.settings-modal-host {
+  width: min(1480px, calc(100vw - 32px));
 }
 
 .chat-shell__main {
@@ -391,8 +416,8 @@ onBeforeUnmount(() => {
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 40;
-    width: 292px !important;
-    min-width: 292px !important;
+    width: 276px !important;
+    min-width: 276px !important;
     transform: translateX(0);
   }
 

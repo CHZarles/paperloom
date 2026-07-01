@@ -86,13 +86,14 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.invite-code',
       icon: 'lucide:ticket',
       roles: ['ADMIN'],
-      order: 6
+      order: 6,
+      hideInMenu: true
     }
   },
   {
     name: 'knowledge-base',
     path: '/knowledge-base',
-    component: 'layout.base$view.knowledge-base',
+    component: 'layout.blank$view.knowledge-base',
     meta: {
       title: 'knowledge-base',
       i18nKey: 'route.knowledge-base',
@@ -121,7 +122,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.model-provider',
       icon: 'lucide:flask-conical',
       roles: ['ADMIN'],
-      order: 5
+      order: 5,
+      hideInMenu: true
     }
   },
   {
@@ -133,7 +135,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.org-tag',
       icon: 'lucide:tags',
       roles: ['ADMIN'],
-      order: 4
+      order: 4,
+      hideInMenu: true
     }
   },
   {
@@ -143,8 +146,7 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'personal-center',
       i18nKey: 'route.personal-center',
-      icon: 'lucide:user-round',
-      order: 7
+      hideInMenu: true
     }
   },
   {
@@ -155,7 +157,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'recharge',
       i18nKey: 'route.recharge',
       icon: 'lucide:credit-card',
-      order: 8
+      order: 8,
+      hideInMenu: true
     }
   },
   {
@@ -167,7 +170,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.recharge-manage',
       icon: 'lucide:receipt',
       roles: ['ADMIN'],
-      order: 9
+      order: 9,
+      hideInMenu: true
     }
   },
   {
@@ -179,7 +183,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.usage-monitor',
       icon: 'lucide:chart-line',
       roles: ['ADMIN'],
-      order: 6
+      order: 6,
+      hideInMenu: true
     }
   },
   {
@@ -190,7 +195,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'user',
       i18nKey: 'route.user',
       icon: 'lucide:users',
-      roles: ['ADMIN']
+      roles: ['ADMIN'],
+      hideInMenu: true
     }
   }
 ];

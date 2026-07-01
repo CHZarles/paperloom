@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SessionScopeChip from './session-scope-chip.vue';
-import SessionScopePicker from './session-scope-picker.vue';
-
 const props = withDefaults(
   defineProps<{
     variant?: 'dock' | 'hero';
@@ -14,7 +11,6 @@ const props = withDefaults(
 const chatStore = useChatStore();
 const {
   connectionStatus,
-  conversationId,
   currentScope,
   input,
   isRateLimited,
@@ -66,19 +62,6 @@ const CHAT_ROUTES = new Set<Api.Chat.Route>([
   'PAPER_QA'
 ]);
 
-type RetrievalBudgetProfile = NonNullable<Api.Chat.Scope['retrievalBudgetProfile']>;
-
-const DEFAULT_RETRIEVAL_BUDGET_PROFILE: RetrievalBudgetProfile = 'interactive';
-const retrievalBudgetOptions: Array<{
-  value: RetrievalBudgetProfile;
-  label: string;
-  tooltip: string;
-}> = [
-  { value: 'interactive', label: '快速', tooltip: 'K3 interactive' },
-  { value: 'high_recall', label: '高召回', tooltip: 'K5 high recall' },
-  { value: 'deep_audit', label: '审计', tooltip: 'K7 deep audit' }
-];
-
 function normalizeChatRoute(route: unknown): Api.Chat.Route | undefined {
   return typeof route === 'string' && CHAT_ROUTES.has(route as Api.Chat.Route) ? (route as Api.Chat.Route) : undefined;
 }
@@ -125,13 +108,6 @@ const cooldownText = computed(() => {
   return `${rateLimitRemainingSeconds.value} 秒后可重新发送`;
 });
 
-const scopePickerVisible = ref(false);
-const activeRetrievalBudgetProfile = computed(
-  () => input.value.retrievalBudgetProfile || DEFAULT_RETRIEVAL_BUDGET_PROFILE
-);
-const canEditScope = computed(() =>
-  Boolean(conversationId.value && currentScope.value && !currentScope.value.scopeLocked)
-);
 const referenceFocusLabel = computed(() => {
   const focus = referenceFocus.value;
   if (!focus) return '';
@@ -142,51 +118,26 @@ const referenceFocusLabel = computed(() => {
   return parts.join(' · ');
 });
 
-function setRetrievalBudgetProfile(profile: RetrievalBudgetProfile) {
-  input.value.retrievalBudgetProfile = profile;
-}
+const searchScopeHint = computed(() => {
+  const scope = currentScope.value;
+  if (!scope) return '';
+  if (scope.scopeStatus === 'INVALID') return 'Search scope unavailable';
+
+  const isSnapshot = scope.scopeMode === 'SOURCE_SET_SNAPSHOT';
+  const label = isSnapshot ? scope.sourceLabel || 'Selected papers' : 'All searchable papers';
+  const count = Number(scope.sourcePaperCount || scope.paperIds?.length || 0);
+  const countText = isSnapshot && count > 0 ? ` · ${count.toLocaleString()} papers` : '';
+  const statusText = scope.scopeStatus === 'DEGRADED' ? ' · limited availability' : '';
+  return `Search scope: ${label}${countText}${statusText}`;
+});
 
 function outgoingReferenceFocus(scope: Api.Chat.Scope | null): Api.Chat.Scope | null {
   if (!scope) return null;
   return { ...scope };
 }
 
-function inferOutgoingRoute(message: string, scope: Api.Chat.Scope | null): Api.Chat.Message['route'] {
-  if (isSmalltalkMessage(message)) {
-    return 'SMALLTALK';
-  }
-  if (
-    scope?.referenceNumber ||
-    (scope?.paperId && (scope.matchedText || scope.matchedChunkText || scope.evidenceSnippet))
-  ) {
-    return 'REFERENCE_QA';
-  }
-  if (scope?.paperId || scope?.paperIds?.length) {
-    return 'MANUAL_SOURCE_QA';
-  }
-  return 'AUTO_SOURCE_QA';
-}
-
 function clearReferenceFocus() {
   chatStore.setReferenceFocus(null);
-}
-
-async function openScopePicker() {
-  if (!conversationId.value) return;
-  if (!currentScope.value) {
-    await chatStore.loadConversationScope(conversationId.value);
-  }
-  if (!canEditScope.value) return;
-  scopePickerVisible.value = true;
-}
-
-function isSmalltalkMessage(message: string) {
-  const normalized = message
-    .trim()
-    .toLowerCase()
-    .replace(/[\s!！?？。,.，;；:：、"'“”‘’()（）{}<>《》]+/g, '')
-    .replace(/\[|\]/g, '');
-  return ['hi', 'hello', 'hey', '你好', '您好', '在吗', '谢谢', 'thanks', 'ok', '好的'].includes(normalized);
 }
 
 function findAssistantMessage(generationId?: string) {
@@ -361,6 +312,25 @@ function updateExecutingToolStatus(assistant: Api.Chat.Message, status: Api.Chat
   }
 }
 
+function handleCallingToolPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  const tool = typeof payload.toolName === 'string' ? payload.toolName.trim() : '';
+  if (!tool) {
+    return;
+  }
+
+  assistant.status = 'loading';
+  assistant.toolEvents ||= [];
+  assistant.toolEvents = [
+    ...assistant.toolEvents,
+    {
+      id: `${tool}:${payload.timestamp || Date.now()}`,
+      tool,
+      status: 'executing',
+      timestamp: Number(payload.timestamp || Date.now())
+    }
+  ];
+}
+
 function handleToolCallPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
   const id = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
   const tool = typeof payload.tool === 'string' ? payload.tool : '';
@@ -425,6 +395,11 @@ watch(wsData, val => {
     return;
   }
 
+  if (payload.type === 'calling_tool') {
+    handleCallingToolPayload(assistant, payload);
+    return;
+  }
+
   if (payload.type === 'stop') {
     handleStopPayload(assistant);
     return;
@@ -440,13 +415,18 @@ watch(wsData, val => {
   }
 });
 
-const handleSend = async () => {
+const handleSend = async (messageOverride?: string) => {
   if (isRateLimited.value) {
     window.$message?.warning(`当前发送受限，${cooldownText.value}`);
     return;
   }
 
   if (isSending.value) {
+    if (messageOverride) {
+      window.$message?.warning('当前回答还在生成，完成后再重试');
+      return;
+    }
+
     const { error, data: tokenData } = await request<Api.Chat.Token>({
       url: 'chat/websocket-token'
     });
@@ -465,9 +445,12 @@ const handleSend = async () => {
     return;
   }
 
-  const outgoingMessage = input.value.message;
+  const outgoingMessage = (messageOverride ?? input.value.message).trim();
+  if (!outgoingMessage) {
+    return;
+  }
+
   const outgoingReferenceFocusPayload = outgoingReferenceFocus(referenceFocus.value);
-  const route = inferOutgoingRoute(outgoingMessage, outgoingReferenceFocusPayload);
 
   list.value.push({
     content: outgoingMessage,
@@ -477,21 +460,23 @@ const handleSend = async () => {
     content: '',
     role: 'assistant',
     status: 'pending',
-    route,
     toolEvents: []
   });
   chatStore.wsSend(
     JSON.stringify({
-      type: 'chat',
+      type: 'user_message',
       message: outgoingMessage,
-      referenceFocus: outgoingReferenceFocusPayload,
-      retrievalBudgetProfile: activeRetrievalBudgetProfile.value
+      referenceFocus: outgoingReferenceFocusPayload
     })
   );
-  input.value = { message: '', retrievalBudgetProfile: activeRetrievalBudgetProfile.value };
+  input.value = { message: '' };
   chatStore.setReferenceFocus(null);
   startGenerationStatusMonitor();
 };
+
+defineExpose({
+  sendMessage: handleSend
+});
 
 const inputRef = ref();
 const insertNewline = () => {
@@ -529,29 +514,14 @@ onUnmounted(() => {
       v-if="props.variant === 'dock'"
       class="pointer-events-none absolute inset-x-0 h-6 from-[var(--color-bg)]/95 to-transparent bg-gradient-to-t -top-6 dark:from-[var(--color-bg)]/95"
     />
+    <div v-if="props.variant === 'dock' && searchScopeHint" class="search-scope-hint mx-auto w-full px-1">
+      {{ searchScopeHint }}
+    </div>
     <div
       class="chat-input-shell mx-auto w-full flex items-end gap-2 px-3.5 py-2.5"
-      :class="props.variant === 'hero' ? 'max-w-[760px]' : 'max-w-[960px]'"
+      :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
     >
       <div class="chat-input-main">
-        <div class="session-scope-line">
-          <SessionScopeChip
-            v-if="currentScope"
-            :scope="currentScope"
-            :editable="canEditScope"
-            compact
-            @edit="openScopePicker"
-          />
-          <button
-            v-if="!currentScope && conversationId"
-            type="button"
-            class="scope-open-button"
-            @click="openScopePicker"
-          >
-            <icon-lucide:sliders-horizontal />
-            Scope
-          </button>
-        </div>
         <div v-if="referenceFocus" class="scope-chip">
           <icon-lucide:quote class="scope-chip__icon" />
           <span>{{ referenceFocusLabel }}</span>
@@ -562,7 +532,7 @@ onUnmounted(() => {
         <textarea
           ref="inputRef"
           v-model.trim="input.message"
-          placeholder="Search papers, claims, methods... Enter 发送，Shift+Enter 换行"
+          placeholder="Ask about a paper, method, claim, table, or citation"
           class="chat-input-textarea max-h-32 min-h-6 w-full flex-1 resize-none border-none bg-transparent py-1 text-14px caret-[rgb(var(--primary-color))] outline-none"
           @keydown="handShortcut"
         />
@@ -573,7 +543,7 @@ onUnmounted(() => {
         size="small"
         circle
         :type="isSending ? 'warning' : 'primary'"
-        @click="handleSend"
+        @click="() => handleSend()"
       >
         <template #icon>
           <icon-lucide:square v-if="isSending" class="text-16px" />
@@ -583,45 +553,19 @@ onUnmounted(() => {
     </div>
     <div
       class="mx-auto mt-1.5 w-full flex items-center justify-between px-1"
-      :class="props.variant === 'hero' ? 'max-w-[760px]' : 'max-w-[960px]'"
+      :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
     >
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-1">
           <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
           <span class="chat-input-muted text-11px">{{ connectionText }}</span>
         </div>
-        <div class="retrieval-budget-segment" aria-label="检索深度">
-          <NTooltip v-for="option in retrievalBudgetOptions" :key="option.value" trigger="hover" placement="top">
-            <template #trigger>
-              <button
-                type="button"
-                class="retrieval-budget-button"
-                :class="{ 'retrieval-budget-button--active': activeRetrievalBudgetProfile === option.value }"
-                :aria-pressed="activeRetrievalBudgetProfile === option.value"
-                @click="setRetrievalBudgetProfile(option.value)"
-              >
-                <icon-lucide:zap v-if="option.value === 'interactive'" class="text-12px" />
-                <icon-lucide:search v-else-if="option.value === 'high_recall'" class="text-12px" />
-                <icon-lucide:shield v-else class="text-12px" />
-                <span>{{ option.label }}</span>
-              </button>
-            </template>
-            {{ option.tooltip }}
-          </NTooltip>
-        </div>
         <span v-if="isRateLimited" class="text-11px text-[rgb(var(--primary-color))]">
           {{ cooldownText }}
         </span>
       </div>
-      <span class="chat-input-muted text-11px">Shift+Enter 换行</span>
+      <span v-if="props.variant !== 'hero'" class="chat-input-muted text-11px">Folio</span>
     </div>
-
-    <SessionScopePicker
-      v-model:show="scopePickerVisible"
-      :conversation-id="conversationId"
-      :scope="currentScope"
-      @updated="chatStore.loadConversationScope(conversationId)"
-    />
   </div>
 </template>
 
@@ -640,6 +584,14 @@ onUnmounted(() => {
 
 .chat-input-muted {
   color: var(--color-text-muted);
+}
+
+.search-scope-hint {
+  max-width: 960px;
+  margin-bottom: 6px;
+  color: color-mix(in srgb, var(--color-text-muted) 72%, transparent);
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .connection-dot--open {
@@ -696,68 +648,6 @@ onUnmounted(() => {
 .scope-chip button:hover {
   color: var(--color-text);
 }
-
-.session-scope-line {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.scope-open-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 3px 7px;
-}
-
-.scope-open-button:hover {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.retrieval-budget-segment {
-  display: inline-flex;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  background: var(--color-surface);
-}
-
-.retrieval-budget-button {
-  display: inline-flex;
-  min-height: 24px;
-  align-items: center;
-  gap: 4px;
-  border: 0;
-  border-right: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 11px;
-  line-height: 16px;
-  padding: 3px 7px;
-}
-
-.retrieval-budget-button:last-child {
-  border-right: 0;
-}
-
-.retrieval-budget-button:hover {
-  color: var(--color-text);
-}
-
-.retrieval-budget-button--active {
-  background: var(--color-primary-soft-bg);
-  color: var(--color-primary);
-}
 </style>
 
 <style scoped>
@@ -775,11 +665,25 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.chat-input-wrap--hero .chat-input-shell {
+  min-height: 112px;
+  align-items: flex-end;
+  padding: 17px 18px;
+}
+
+.chat-input-wrap--hero .chat-input-textarea {
+  min-height: 74px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
 .chat-input-shell {
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 16px;
   background: var(--color-surface) !important;
-  box-shadow: var(--shadow-card);
+  box-shadow:
+    0 18px 42px rgb(15 23 42 / 8%),
+    0 1px 0 rgb(255 255 255 / 70%) inset;
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease,
@@ -789,7 +693,7 @@ onUnmounted(() => {
 .chat-input-shell:focus-within {
   border-color: var(--color-primary);
   box-shadow:
-    var(--shadow-card),
+    0 22px 56px rgb(15 23 42 / 12%),
     0 0 0 3px var(--color-primary-soft-bg);
 }
 

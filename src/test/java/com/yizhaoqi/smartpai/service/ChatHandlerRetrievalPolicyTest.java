@@ -2,7 +2,6 @@ package com.yizhaoqi.smartpai.service;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,29 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChatHandlerRetrievalPolicyTest {
-
-    @Test
-    void shouldNotRunLegacyInitialPaperSearchBeforeTaskRouter() {
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("你懂单臂老虎机吗"));
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("Bandits（老虎机问题）是什么"));
-    }
-
-    @Test
-    void shouldSkipInitialPaperSearchForAllInputs() {
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("不要查论文，直接回答你懂单臂老虎机吗"));
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("你好"));
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("hi"));
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("在吗？"));
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("OK."));
-        assertFalse(ChatHandler.shouldUseInitialPaperSearch("好的"));
-    }
-
-    @Test
-    void shouldBuildInitialPaperQueriesWithoutPhraseCleaning() {
-        List<String> queries = ChatHandler.buildInitialPaperQueries("你懂单臂老虎机吗");
-
-        assertEquals(List.of("你懂单臂老虎机吗"), queries);
-    }
 
     @Test
     void shouldIgnoreLegacyChineseSourceReferencesInFinalResponse() {

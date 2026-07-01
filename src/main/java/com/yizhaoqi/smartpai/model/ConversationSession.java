@@ -57,6 +57,9 @@ public class ConversationSession {
     @Column(name = "source_paper_count")
     private Integer sourcePaperCount;
 
+    @Column(name = "conversation_memory_json", columnDefinition = "LONGTEXT")
+    private String conversationMemoryJson;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

@@ -2,7 +2,6 @@
 import { nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
-import { formatDate } from '@/utils/common';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
 defineOptions({ name: 'ChatMessage' });
 
@@ -56,16 +55,16 @@ const emit = defineEmits<{
       referenceNumber: number;
     }
   ): void;
+  (e: 'retry'): void;
 }>();
 
-const authStore = useAuthStore();
+const chatStore = useChatStore();
 
 function handleCopy(content: string) {
   navigator.clipboard.writeText(content);
   window.$message?.success('已复制');
 }
 
-const chatStore = useChatStore();
 const feedbackSubmitting = ref<Record<string, boolean>>({});
 
 function getMessageFeedbackKey(message: Api.Chat.Message) {
@@ -127,78 +126,27 @@ const assistantContentRef = ref<HTMLElement | null>(null);
 const activeReferenceNumber = ref<number | null>(null);
 // eslint-disable-next-line no-useless-escape
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
-const toolNameLabels: Record<string, string> = {
-  search_knowledge: '检索文献库',
-  generate_summary: '生成论文摘要',
-  submit_feedback: '记录反馈',
-  knowledge_stats: '读取文献统计'
-};
-const toolStatusLabels: Record<Api.Chat.AgentToolEvent['status'], string> = {
-  executing: '执行中',
-  success: '已完成',
-  failed: '失败'
-};
-
 const toolEvents = computed(() => props.msg.toolEvents || []);
-const thinkingTitle = computed(() => (props.msg.route === 'SMALLTALK' ? '正在回复' : '正在研读证据'));
-const thinkingDescription = computed(() =>
-  props.msg.route === 'SMALLTALK' ? '准备简短回应' : '检索片段、页码与引用来源'
+const assistantIsRunning = computed(
+  () =>
+    props.msg.role === 'assistant' &&
+    (props.msg.status === 'pending' || (props.msg.status === 'loading' && !props.msg.content))
 );
-const sourcesUsed = computed(() => {
-  if (props.msg.role !== 'assistant' || !props.msg.referenceMappings) {
-    return [];
-  }
-  const seen = new Set<string>();
-  const sources: Array<{ paperId?: string; paperTitle: string; originalFilename?: string | null }> = [];
-  Object.values(props.msg.referenceMappings).forEach(detail => {
-    const title = (detail.paperTitle || detail.originalFilename || '').trim();
-    if (!title) {
-      return;
-    }
-    const key = detail.paperId || title;
-    if (seen.has(key)) {
-      return;
-    }
-    seen.add(key);
-    sources.push({
-      paperId: detail.paperId,
-      paperTitle: title,
-      originalFilename: detail.originalFilename
-    });
-  });
-  return sources;
-});
+const assistantIsGenerating = computed(
+  () => props.msg.role === 'assistant' && ['pending', 'loading'].includes(props.msg.status || '')
+);
+const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
+const showToolProgress = computed(
+  () => props.msg.role === 'assistant' && (assistantIsGenerating.value || toolEvents.value.length > 0)
+);
+const canRetry = computed(() => props.msg.role === 'assistant' && Boolean(props.retrievalQueryFallback?.trim()));
 
-const answerSourcePaperIds = computed(() => {
-  const sources = sourcesUsed.value.filter(source => source.paperId);
-  return sources.map(source => source.paperId as string);
-});
-
-function getToolLabel(tool: string) {
-  return toolNameLabels[tool] || tool;
-}
-
-function getToolStatusLabel(status: Api.Chat.AgentToolEvent['status']) {
-  return toolStatusLabels[status] || status;
-}
-
-function getSourceLabel(source: { paperTitle: string; originalFilename?: string | null }) {
-  return source.paperTitle || source.originalFilename || 'Untitled paper';
-}
-
-async function createSessionFromAnswerSources(paperIds: string[]) {
-  if (!paperIds.length) return;
-
-  const ok = await chatStore.createSessionFromScope({
-    scopeMode: 'SOURCE_SET_SNAPSHOT',
-    paperIds,
-    sourceLabel: 'Sources from answer',
-    sourceRecipe: { type: 'answer_sources', conversationRecordId: props.msg.conversationRecordId }
-  });
-  if (!ok) return;
-
-  window.$message?.success('已从回答来源创建新会话');
-  router.push({ name: 'chat' });
+function toolEventClass(event: Api.Chat.AgentToolEvent) {
+  return {
+    'assistant-process__line--executing': event.status === 'executing',
+    'assistant-process__line--success': event.status === 'success',
+    'assistant-process__line--failed': event.status === 'failed'
+  };
 }
 
 function splitTrailingUrlPunctuation(rawUrl: string) {
@@ -616,124 +564,80 @@ async function handleSourceFileClick(fileInfo: {
 
 <template>
   <div class="message-block" :class="msg.role === 'user' ? 'message-block--user' : 'message-block--assistant'">
-    <div v-if="msg.role === 'user'" class="message-heading">
-      <NAvatar class="user-avatar">
-        <SvgIcon icon="lucide:user-round" class="text-icon-large color-white" />
-      </NAvatar>
-      <div class="flex-col gap-1">
-        <NText class="message-author">{{ msg.username || authStore.userInfo.username }}</NText>
-        <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
-      </div>
-    </div>
-    <div v-else class="message-heading">
-      <NAvatar class="bg-transparent">
-        <SystemLogo class="text-36px" />
-      </NAvatar>
-      <div class="flex-col gap-1">
-        <NText class="message-author">PaperLoom</NText>
-        <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
-      </div>
-    </div>
-    <div v-if="msg.role === 'assistant' && toolEvents.length > 0" class="ml-12 mt-3 flex flex-col gap-2">
-      <div
-        v-for="event in toolEvents"
-        :key="event.id || event.tool"
-        class="tool-event"
-        :class="`tool-event--${event.status}`"
-      >
-        <icon-lucide:loader-circle v-if="event.status === 'executing'" class="text-4" />
-        <icon-lucide:check-circle v-else-if="event.status === 'success'" class="text-4" />
-        <icon-lucide:alert-circle v-else class="text-4" />
-        <span class="tool-event__name">{{ getToolLabel(event.tool) }}</span>
-        <span class="tool-event__status">{{ getToolStatusLabel(event.status) }}</span>
-      </div>
-    </div>
-    <div
-      v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)"
-      class="assistant-thinking"
-      aria-live="polite"
-    >
-      <div class="assistant-thinking__mark" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <div class="assistant-thinking__copy">
-        <strong>{{ thinkingTitle }}</strong>
-        <span>{{ thinkingDescription }}</span>
-      </div>
-    </div>
-    <NText v-else-if="msg.status === 'error'" class="message-error">
-      {{ msg.content || '服务器繁忙，请稍后再试' }}
-    </NText>
-    <div
-      v-else-if="msg.role === 'assistant'"
-      ref="assistantContentRef"
-      class="assistant-content message-content"
-      @click="handleContentClick"
-      @keydown="handleContentKeydown"
-    >
-      <VueMarkdownIt :content="content" />
-    </div>
-    <div v-if="sourcesUsed.length" class="sources-used">
-      <span>Sources used</span>
-      <div>
-        <button
-          v-for="source in sourcesUsed"
-          :key="source.paperId || source.paperTitle"
-          type="button"
-          :disabled="!source.paperId"
-          :title="source.paperId ? 'New session from this paper' : 'Source id unavailable'"
-          @click="createSessionFromAnswerSources(source.paperId ? [source.paperId] : [])"
+    <div class="message-row">
+      <span v-if="msg.role === 'assistant'" class="message-avatar message-avatar--assistant" aria-hidden="true">
+        <SystemLogo />
+      </span>
+
+      <div class="message-body">
+        <div v-if="showToolProgress" class="assistant-process" aria-live="polite">
+          <div v-if="assistantIsGenerating" class="assistant-process__line assistant-process__line--thinking">
+            <span class="assistant-process__dot" aria-hidden="true" />
+            <span class="assistant-process__text">Thinking</span>
+          </div>
+          <div
+            v-for="event in toolEvents"
+            :key="event.id || `${event.tool}:${event.timestamp}`"
+            class="assistant-process__line"
+            :class="toolEventClass(event)"
+          >
+            <span class="assistant-process__dot" aria-hidden="true" />
+            <span class="assistant-process__text">calling {{ event.tool }}</span>
+          </div>
+        </div>
+        <NText v-if="msg.status === 'error'" class="message-error">
+          {{ msg.content || '服务器繁忙，请稍后再试' }}
+        </NText>
+        <div
+          v-else-if="msg.role === 'assistant' && msg.content"
+          ref="assistantContentRef"
+          class="assistant-content message-content"
+          @click="handleContentClick"
+          @keydown="handleContentKeydown"
         >
-          {{ getSourceLabel(source) }}
-        </button>
+          <VueMarkdownIt :content="content" />
+        </div>
+        <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
+        <NDivider v-if="showMessageActions" class="message-divider" />
+        <div v-if="showMessageActions" class="message-actions">
+          <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
+            <template #icon>
+              <icon-lucide:copy />
+            </template>
+          </NButton>
+          <NButton v-if="canRetry" quaternary title="重新生成" aria-label="重新生成" @click="emit('retry')">
+            <template #icon>
+              <icon-lucide:rotate-ccw />
+            </template>
+          </NButton>
+          <NButton
+            v-if="msg.role === 'assistant'"
+            quaternary
+            title="点赞"
+            aria-label="点赞"
+            :type="msg.feedbackRating === 'good' ? 'primary' : 'default'"
+            :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
+            @click="handleFeedback(msg, 'good')"
+          >
+            <template #icon>
+              <icon-lucide:thumbs-up />
+            </template>
+          </NButton>
+          <NButton
+            v-if="msg.role === 'assistant'"
+            quaternary
+            title="点踩"
+            aria-label="点踩"
+            :type="msg.feedbackRating === 'bad' ? 'error' : 'default'"
+            :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
+            @click="handleFeedback(msg, 'bad')"
+          >
+            <template #icon>
+              <icon-lucide:thumbs-down />
+            </template>
+          </NButton>
+        </div>
       </div>
-      <button
-        v-if="answerSourcePaperIds.length"
-        type="button"
-        class="sources-used__set-action"
-        title="New session from all sources in this answer"
-        @click="createSessionFromAnswerSources(answerSourcePaperIds)"
-      >
-        <icon-lucide:quote class="text-13px" />
-        New session from sources
-      </button>
-    </div>
-    <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
-    <NDivider class="message-divider" />
-    <div class="message-actions">
-      <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
-        <template #icon>
-          <icon-lucide:copy />
-        </template>
-      </NButton>
-      <NButton
-        v-if="msg.role === 'assistant'"
-        quaternary
-        title="点赞"
-        aria-label="点赞"
-        :type="msg.feedbackRating === 'good' ? 'primary' : 'default'"
-        :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
-        @click="handleFeedback(msg, 'good')"
-      >
-        <template #icon>
-          <icon-lucide:thumbs-up />
-        </template>
-      </NButton>
-      <NButton
-        v-if="msg.role === 'assistant'"
-        quaternary
-        title="点踩"
-        aria-label="点踩"
-        :type="msg.feedbackRating === 'bad' ? 'error' : 'default'"
-        :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
-        @click="handleFeedback(msg, 'bad')"
-      >
-        <template #icon>
-          <icon-lucide:thumbs-down />
-        </template>
-      </NButton>
     </div>
   </div>
 </template>
@@ -815,240 +719,136 @@ async function handleSourceFileClick(fileInfo: {
 }
 
 .message-block {
-  margin-bottom: 28px;
   display: flex;
+  width: 100%;
+  margin-bottom: 22px;
+}
+
+.message-block--user {
+  justify-content: flex-end;
+}
+
+.message-block--assistant {
+  justify-content: flex-start;
+}
+
+.message-row {
+  display: flex;
+  max-width: min(900px, 92%);
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.message-block--assistant .message-row {
+  width: min(900px, 92%);
+  justify-content: flex-start;
+}
+
+.message-block--user .message-row {
+  max-width: min(760px, 92%);
+  justify-content: flex-end;
+}
+
+.message-avatar {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #f6f8fa;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 86%) inset,
+    0 1px 2px rgb(15 23 42 / 8%);
+  color: #57606a;
+}
+
+.message-avatar :deep(svg) {
+  width: 18px;
+  height: 18px;
+}
+
+.message-avatar--assistant {
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+.message-body {
+  display: flex;
+  min-width: 0;
+  max-width: calc(100% - 42px);
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
 }
 
-.message-heading {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.message-block--assistant .message-body {
+  width: min(760px, calc(100% - 42px));
+  align-items: flex-start;
 }
 
-.message-author {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-text);
+.message-block--user .message-body {
+  max-width: 100%;
+  align-items: flex-end;
 }
 
 .message-content {
-  margin-top: 2px;
-  margin-left: 52px;
-  max-width: min(860px, calc(100% - 52px));
+  max-width: 100%;
   font-size: 15px;
   line-height: 1.78;
   color: var(--color-text);
 }
 
 .message-error {
-  margin-left: 52px;
-  margin-top: 8px;
+  max-width: 100%;
   color: var(--color-error);
   font-style: italic;
-}
-
-.sources-used {
-  margin-left: 52px;
-  display: flex;
-  max-width: min(860px, calc(100% - 52px));
-  align-items: flex-start;
-  gap: 8px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.sources-used > span {
-  flex: 0 0 auto;
-  font-weight: 650;
-}
-
-.sources-used > div {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.sources-used > div > button,
-.sources-used__set-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 280px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface);
-  padding: 1px 8px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font: inherit;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.sources-used > div > button:hover,
-.sources-used__set-action:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
-  background: var(--color-primary-soft-bg);
-  color: var(--color-primary);
-}
-
-.sources-used > div > button:disabled {
-  cursor: default;
-  opacity: 0.62;
-}
-
-.sources-used > div > button:disabled:hover {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-}
-
-.sources-used__set-action {
-  flex: 0 0 auto;
-  max-width: none;
-  color: var(--color-primary);
-  font-weight: 650;
-}
-
-.message-block--assistant .message-author {
-  color: var(--color-primary);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 17px;
-}
-
-.user-avatar {
-  background: var(--color-accent);
 }
 
 .user-content {
   display: inline-flex;
   width: fit-content;
-  max-width: min(760px, calc(100% - 52px));
+  max-width: 100%;
   white-space: pre-wrap;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-surface-alt);
-  padding: 10px 14px;
+  background: #f7f7f5;
+  padding: 10px 13px;
+}
+
+.assistant-content {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 13px 16px 4px;
+  box-shadow: var(--shadow-card);
 }
 
 .assistant-content :deep(p) {
   margin: 0 0 12px;
 }
 
-.assistant-thinking {
-  position: relative;
-  display: inline-flex;
-  width: fit-content;
-  max-width: min(520px, calc(100% - 52px));
-  align-items: center;
-  gap: 12px;
-  overflow: hidden;
-  margin-left: 52px;
-  margin-top: 4px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  padding: 10px 13px;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
-}
-
-.assistant-thinking::after {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 0%, rgb(255 255 255 / 10%) 42%, transparent 68%);
-  content: '';
-  pointer-events: none;
-  transform: translateX(-120%);
-  animation: evidence-sheen 2.4s ease-in-out infinite;
-}
-
-.assistant-thinking__mark {
-  display: grid;
-  flex: 0 0 auto;
-  grid-template-columns: repeat(3, 4px);
-  gap: 4px;
-  align-items: end;
-  justify-content: center;
-  width: 28px;
-  height: 24px;
-  border-radius: 6px;
-  background: var(--color-primary-soft-bg);
-}
-
-.assistant-thinking__mark span {
-  display: block;
-  width: 4px;
-  border-radius: 999px;
-  background: var(--color-primary);
-  opacity: 0.5;
-  animation: evidence-pulse 1.35s ease-in-out infinite;
-}
-
-.assistant-thinking__mark span:nth-child(1) {
-  height: 10px;
-}
-
-.assistant-thinking__mark span:nth-child(2) {
-  height: 17px;
-  animation-delay: 0.15s;
-}
-
-.assistant-thinking__mark span:nth-child(3) {
-  height: 13px;
-  animation-delay: 0.3s;
-}
-
-.assistant-thinking__copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.assistant-thinking__copy strong {
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 18px;
-}
-
-.assistant-thinking__copy span {
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 17px;
-}
-
 .message-divider {
-  margin-bottom: 0 !important;
-  margin-left: 52px;
-  margin-top: 4px !important;
-  width: calc(100% - 52px);
+  width: 100%;
+  margin: 2px 0 0 !important;
   opacity: 0.55;
 }
 
 .message-actions {
-  margin-left: 52px;
   display: flex;
+  width: 100%;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.dark .message-author,
+.message-block--assistant .message-actions {
+  justify-content: flex-start;
+}
+
 .dark .message-content {
   color: var(--color-text);
 }
@@ -1058,42 +858,10 @@ async function handleSourceFileClick(fileInfo: {
   background: var(--color-surface-alt);
 }
 
-.tool-event {
-  display: inline-flex;
-  width: fit-content;
-  max-width: 100%;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  padding: 5px 9px;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--color-text-muted);
-}
-
-.tool-event__name {
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.tool-event__status {
-  color: var(--color-text-muted);
-}
-
-.tool-event--executing .text-4 {
-  animation: tool-breathe 1.2s ease-in-out infinite;
-}
-
-.tool-event--success {
-  border-color: var(--color-success);
-  color: var(--color-success);
-}
-
-.tool-event--failed {
-  border-color: var(--color-error);
-  color: var(--color-error);
+.dark .message-avatar {
+  border-color: var(--color-border);
+  background: var(--color-surface-alt);
+  box-shadow: none;
 }
 
 /* Override VuePress-style markdown theme variables inside chat responses
@@ -1132,28 +900,106 @@ async function handleSourceFileClick(fileInfo: {
     sans-serif;
 }
 
-@keyframes evidence-pulse {
+.assistant-process {
+  display: grid;
+  width: fit-content;
+  max-width: 100%;
+  gap: 5px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.assistant-process__line {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.assistant-process__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-text-muted);
+  opacity: 0.58;
+}
+
+.assistant-process__line--thinking .assistant-process__dot,
+.assistant-process__line--executing .assistant-process__dot {
+  background: var(--color-primary);
+  animation: runner-dot 1.2s ease-in-out infinite;
+}
+
+.assistant-process__line--success .assistant-process__dot {
+  background: var(--color-success);
+  opacity: 0.9;
+}
+
+.assistant-process__line--failed .assistant-process__dot {
+  background: var(--color-error);
+  opacity: 0.9;
+}
+
+.assistant-process__text {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-weight: 520;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes runner-dot {
   0%,
   100% {
-    opacity: 0.35;
-    transform: scaleY(0.72);
+    opacity: 0.42;
+    transform: scale(0.84);
   }
 
-  45% {
-    opacity: 0.95;
-    transform: scaleY(1);
+  50% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
-@keyframes evidence-sheen {
-  0%,
-  35% {
-    transform: translateX(-120%);
+@media (max-width: 640px) {
+  .message-row,
+  .message-block--assistant .message-row {
+    width: 100%;
+    max-width: 100%;
   }
 
-  75%,
-  100% {
-    transform: translateX(120%);
+  .message-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .message-avatar :deep(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .message-body,
+  .message-block--assistant .message-body {
+    width: calc(100% - 38px);
+    max-width: calc(100% - 38px);
+  }
+
+  .message-block--user .message-body {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .message-content,
+  .message-error,
+  .user-content,
+  .assistant-content,
+  .message-divider,
+  .message-actions,
+  .assistant-process {
+    width: 100%;
+    max-width: 100%;
   }
 }
 

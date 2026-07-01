@@ -478,9 +478,8 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-// 1. Outer card: align with knowledge-base .paper-library-card
 .invite-code-card {
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   box-shadow: var(--shadow-card) !important;
 }
 
@@ -510,7 +509,6 @@ onMounted(() => {
   padding: 16px 20px;
 }
 
-// 2. Note: dashed paper sticker
 .invite-code-note {
   background: var(--color-surface) !important;
   border: 1px dashed var(--color-border) !important;

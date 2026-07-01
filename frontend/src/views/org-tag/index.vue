@@ -229,7 +229,7 @@ function shortTagId(value?: string) {
   margin-bottom: 14px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
+  background: var(--color-surface);
   overflow: hidden;
 }
 

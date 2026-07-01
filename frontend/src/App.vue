@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { NConfigProvider, darkTheme } from 'naive-ui';
 import type { WatermarkProps } from 'naive-ui';
 import { useAppStore } from './store/modules/app';
@@ -12,6 +13,7 @@ defineOptions({
 
 const appStore = useAppStore();
 const themeStore = useThemeStore();
+const route = useRoute();
 
 const naiveDarkTheme = computed(() => (themeStore.darkMode ? darkTheme : undefined));
 
@@ -22,6 +24,8 @@ const naiveLocale = computed(() => {
 const naiveDateLocale = computed(() => {
   return naiveDateLocales[appStore.locale];
 });
+
+const routeLayoutKey = computed(() => route.matched[0]?.path || route.path);
 
 const watermarkProps = computed<WatermarkProps>(() => {
   return {
@@ -49,7 +53,7 @@ const watermarkProps = computed<WatermarkProps>(() => {
     class="h-full"
   >
     <AppProvider>
-      <RouterView class="bg-layout" />
+      <RouterView :key="routeLayoutKey" class="bg-layout" />
       <NWatermark v-if="themeStore.watermark.visible" v-bind="watermarkProps" />
     </AppProvider>
   </NConfigProvider>

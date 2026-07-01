@@ -146,6 +146,8 @@ public class PaperAnswerService {
     public AnswerResult answer(String userId, String conversationId, String userMessage, AnswerScope scope) {
         Intent intent = paperChatRouter.route(userMessage, scope);
         String taskQuery = userMessage == null ? "" : userMessage;
+        FocusState scopedFocus = toFocus(scope);
+        FocusState focus = scopedFocus == null ? readFocus(conversationId) : scopedFocus;
         if (intent == Intent.SMALLTALK) {
             return new AnswerResult(
                     "我在。你可以直接问论文的方法、实验、结论、表格或某个引用点。",
@@ -164,7 +166,8 @@ public class PaperAnswerService {
                     userMessage,
                     scope == null || scope.paperIds().isEmpty()
                             ? SourceScope.auto(budgetProfile(scope))
-                            : SourceScope.manual(scope.paperIds(), budgetProfile(scope))
+                            : SourceScope.manual(scope.paperIds(), budgetProfile(scope)),
+                    conversationHistory(userId, conversationId)
             ));
             if (routing.failed()) {
                 return routingFailure(routing.failure());
@@ -185,17 +188,15 @@ public class PaperAnswerService {
                 );
             }
             if (intent == Intent.LIBRARY_STATUS) {
-                return renderLibraryStatus(userId, scope == null || scope.paperIds().isEmpty()
+                return renderLibraryStatus(userId, conversationId, scope == null || scope.paperIds().isEmpty()
                         ? SourceScope.auto(budgetProfile(scope))
-                        : SourceScope.manual(scope.paperIds(), budgetProfile(scope)));
+                        : SourceScope.manual(scope.paperIds(), budgetProfile(scope)), decision.operation());
             }
             if (intent == Intent.CLARIFY) {
                 return clarify();
             }
         }
 
-        FocusState scopedFocus = toFocus(scope);
-        FocusState focus = scopedFocus == null ? readFocus(conversationId) : scopedFocus;
         if (focus == null && intent == Intent.FOLLOW_UP) {
             focus = readFocusFromHistory(userId, conversationId);
         }
@@ -221,7 +222,13 @@ public class PaperAnswerService {
             );
         }
         if (intent == Intent.FOLLOW_UP) {
-            if (focus == null || focus.lastPaperIds().isEmpty()) {
+            if (focus == null) {
+                return clarify();
+            }
+            if (isLibraryStatusFocus(focus)) {
+                return renderFocusedLibraryList(focus);
+            }
+            if (focus.lastPaperIds().isEmpty()) {
                 return clarify();
             }
             if (focus.lastPaperIds().size() > 1) {
@@ -269,6 +276,83 @@ public class PaperAnswerService {
         );
     }
 
+    private List<Map<String, String>> conversationHistory(String userId, String conversationId) {
+        Long parsedUserId = parseLong(userId);
+        if (parsedUserId == null || conversationId == null || conversationId.isBlank() || conversationService == null) {
+            return List.of();
+        }
+        try {
+            List<Map<String, Object>> messages = conversationService.getMessagesByConversationId(parsedUserId, conversationId);
+            if (messages == null || messages.isEmpty()) {
+                return List.of();
+            }
+            return messages.stream()
+                    .map(message -> Map.of(
+                            "role", stringValue(message.get("role")),
+                            "content", stringValue(message.get("content"))
+                    ))
+                    .filter(message -> message.get("role") != null
+                            && !message.get("role").isBlank()
+                            && message.get("content") != null
+                            && !message.get("content").isBlank())
+                    .toList();
+        } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private boolean isLibraryStatusFocus(FocusState focus) {
+        return focus != null && Intent.LIBRARY_STATUS.name().equals(focus.lastIntent());
+    }
+
+    private AnswerResult renderFocusedLibraryList(FocusState focus) {
+        FocusState safeFocus = focus == null
+                ? new FocusState(Intent.LIBRARY_STATUS.name(), List.of(), List.of())
+                : focus;
+        StringBuilder markdown = new StringBuilder()
+                .append("**结论**\n")
+                .append("当前可检索论文有 ")
+                .append(safeFocus.lastPaperIds().size())
+                .append(" 篇。\n\n")
+                .append("**论文**\n");
+        for (int i = 0; i < safeFocus.lastPaperIds().size(); i++) {
+            markdown.append(i + 1)
+                    .append(". 《")
+                    .append(focusedPaperTitle(safeFocus, i))
+                    .append("》\n");
+        }
+        markdown.append("\n**限制**\n这是当前会话检索范围内可检索论文列表，不会读取正文或生成 citation。");
+        return new AnswerResult(
+                markdown.toString(),
+                Map.of(),
+                Intent.LIBRARY_STATUS,
+                0,
+                safeFocus.lastPaperIds().size(),
+                false,
+                new AnswerDiagnostics(
+                        Intent.LIBRARY_STATUS.name(),
+                        ScopeMode.AUTO_SOURCE.name(),
+                        0,
+                        0,
+                        safeFocus.lastPaperIds().size(),
+                        PaperRetrievalService.StopReason.EXHAUSTED.name()
+                )
+        );
+    }
+
+    private String focusedPaperTitle(FocusState focus, int index) {
+        if (focus != null && focus.lastPaperTitles().size() > index) {
+            String title = focus.lastPaperTitles().get(index);
+            if (title != null && !title.isBlank()) {
+                return title;
+            }
+        }
+        if (focus != null && focus.lastPaperIds().size() > index) {
+            return focus.lastPaperIds().get(index);
+        }
+        return "";
+    }
+
     private Intent intentFor(TaskType taskType) {
         return switch (taskType == null ? TaskType.CLARIFY : taskType) {
             case SMALLTALK -> Intent.SMALLTALK;
@@ -303,7 +387,10 @@ public class PaperAnswerService {
         );
     }
 
-    private AnswerResult renderLibraryStatus(String userId, SourceScope sourceScope) {
+    private AnswerResult renderLibraryStatus(String userId,
+                                             String conversationId,
+                                             SourceScope sourceScope,
+                                             TaskOperation operation) {
         SourceScope effectiveScope = sourceScope == null ? SourceScope.auto() : sourceScope;
         if (paperLibraryStatusService == null) {
             return new AnswerResult(
@@ -324,6 +411,11 @@ public class PaperAnswerService {
             );
         }
         PaperLibraryStatus status = paperLibraryStatusService.statusFor(userId, effectiveScope);
+        FocusState statusFocus = focusFromSources(Intent.LIBRARY_STATUS, status.selectedSearchablePapers());
+        writeFocus(conversationId, statusFocus);
+        if (operation == TaskOperation.LIST_ACCESSIBLE_PAPERS) {
+            return renderFocusedLibraryList(statusFocus);
+        }
         StringBuilder markdown = new StringBuilder()
                 .append("**结论**\n")
                 .append("当前可检索论文有 ")
@@ -356,6 +448,15 @@ public class PaperAnswerService {
                         0,
                         "EXHAUSTED"
                 )
+        );
+    }
+
+    private FocusState focusFromSources(Intent intent, List<PaperSource> sources) {
+        List<PaperSource> safeSources = sources == null ? List.of() : sources;
+        return new FocusState(
+                (intent == null ? Intent.CLARIFY : intent).name(),
+                safeSources.stream().map(PaperSource::paperId).toList(),
+                safeSources.stream().map(this::displayTitle).toList()
         );
     }
 
@@ -1144,6 +1245,8 @@ public class PaperAnswerService {
                 result.getPdfEvidenceAvailable(),
                 result.getPageScreenshotAvailable(),
                 result.getFigureScreenshotAvailable(),
+                null,
+                null,
                 result.getAssetWarnings()
         );
     }
@@ -1184,6 +1287,8 @@ public class PaperAnswerService {
                 item.pdfEvidenceAvailable(),
                 item.pageScreenshotAvailable(),
                 item.figureScreenshotAvailable(),
+                null,
+                null,
                 item.assetWarnings()
         );
     }

@@ -171,7 +171,7 @@ const checkPayStatus = async () => {
         window.$message?.error('支付失败，请重试');
       }
     }
-  } catch (e) {
+  } catch {
     window.$message?.error('查询支付状态失败');
   }
 };
@@ -249,23 +249,29 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-auto">
-    <NCard title="余额充值" :bordered="false" size="small" class="card-wrapper">
-      <!-- 余额充值区域 -->
+  <div class="admin-console-page recharge-page flex-col-stretch gap-16px overflow-auto">
+    <NCard
+      title="Billing / 余额充值"
+      :bordered="false"
+      size="small"
+      class="admin-console-card recharge-card card-wrapper"
+    >
       <template #header-extra>
         <NTag type="primary">微信支付</NTag>
       </template>
 
       <NSpin :show="loading">
-        <div v-if="packages.length > 0" class="grid gap-6 lg:grid-cols-3 md:grid-cols-2">
-          <!-- 充值套餐卡片 -->
-          <NCard
+        <div v-if="packages.length > 0" class="recharge-package-grid">
+          <div
             v-for="pkg in packages"
             :key="pkg.id"
-            hoverable
-            class="cursor-pointer transition-all duration-300"
-            :class="{ 'border-primary border-2': selectedPackageId === pkg.id && !isCustomAmount }"
+            role="button"
+            tabindex="0"
+            class="package-card"
+            :class="{ 'package-card--selected': selectedPackageId === pkg.id && !isCustomAmount }"
             @click="selectPackage(pkg.id)"
+            @keydown.enter="selectPackage(pkg.id)"
+            @keydown.space.prevent="selectPackage(pkg.id)"
           >
             <div class="flex flex-col gap-4">
               <div class="flex items-center justify-between">
@@ -274,20 +280,20 @@ onMounted(() => {
               </div>
 
               <div class="flex items-baseline gap-2">
-                <span class="text-3xl text-primary font-bold">¥{{ (pkg.packagePrice / 100).toFixed(2) }}</span>
+                <span class="package-price">¥{{ (pkg.packagePrice / 100).toFixed(2) }}</span>
                 <span class="text-sm text-stone-500">原价 ¥{{ (pkg.packagePrice / 100).toFixed(2) }}</span>
               </div>
 
               <div class="flex flex-col gap-2 text-sm">
                 <div class="flex items-center gap-2">
-                  <icon-lucide:check class="text-primary" />
+                  <icon-lucide:check class="package-check-icon" />
                   <span>
                     LLM Token:
                     <strong>{{ formatTokenWan(pkg.llmToken) }}</strong>
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <icon-lucide:check class="text-primary" />
+                  <icon-lucide:check class="package-check-icon" />
                   <span>
                     Embedding Token:
                     <strong>{{ formatTokenWan(pkg.embeddingToken) }}</strong>
@@ -299,16 +305,13 @@ onMounted(() => {
                 {{ pkg.packageDesc }}
               </NEllipsis>
 
-              <div
-                v-if="packageBenefitLines(pkg.packageBenefit).length"
-                class="flex flex-col gap-2 rounded-lg bg-stone-50 p-3 text-sm text-stone-600"
-              >
+              <div v-if="packageBenefitLines(pkg.packageBenefit).length" class="package-benefits">
                 <div
                   v-for="line in packageBenefitLines(pkg.packageBenefit)"
                   :key="`${pkg.id}-${line}`"
                   class="flex items-start gap-2"
                 >
-                  <span class="mt-1 h-1.5 w-1.5 rounded-full bg-primary"></span>
+                  <span class="package-benefit-dot"></span>
                   <span>{{ line }}</span>
                 </div>
               </div>
@@ -324,20 +327,22 @@ onMounted(() => {
               </NButton>
               <NButton v-else secondary block size="large">选择套餐</NButton>
             </div>
-          </NCard>
+          </div>
 
-          <!-- 自定义充值卡片 -->
-          <NCard
-            hoverable
-            class="cursor-pointer transition-all duration-300"
-            :class="{ 'border-primary border-2': isCustomAmount }"
+          <div
+            role="button"
+            tabindex="0"
+            class="package-card"
+            :class="{ 'package-card--selected': isCustomAmount }"
             @click="selectCustomAmount"
+            @keydown.enter="selectCustomAmount"
+            @keydown.space.prevent="selectCustomAmount"
           >
             <div class="flex flex-col gap-4">
               <h3 class="text-xl font-bold">自定义充值</h3>
 
               <div class="flex items-baseline gap-2">
-                <span class="text-3xl text-primary font-bold">灵活充值</span>
+                <span class="package-price">灵活充值</span>
               </div>
 
               <div class="flex flex-col gap-2 text-sm text-stone-500">
@@ -371,15 +376,19 @@ onMounted(() => {
               </NButton>
               <NButton v-else secondary block size="large">自定义金额</NButton>
             </div>
-          </NCard>
+          </div>
         </div>
 
         <NEmpty v-else description="暂无充值套餐" />
       </NSpin>
     </NCard>
 
-    <!-- 充值记录列表 -->
-    <NCard title="充值记录" :bordered="false" size="large" class="w-full card-wrapper">
+    <NCard
+      title="Orders / 充值记录"
+      :bordered="false"
+      size="small"
+      class="admin-console-card recharge-card w-full card-wrapper"
+    >
       <NTabs v-model:value="activeTab" @update:value="handleTabChange">
         <NTabPane name="all" tab="全部订单" />
         <NTabPane name="NOT_PAY" tab="未支付" />
@@ -401,11 +410,10 @@ onMounted(() => {
       </NSpin>
     </NCard>
 
-    <!-- 支付二维码弹窗 -->
     <NModal v-model:show="showPayModal" preset="dialog" title="扫码支付" :show-icon="false" class="w-480px">
       <div class="flex flex-col items-center gap-6 py-6">
         <div v-if="orderInfo" class="flex flex-col items-center gap-4">
-          <div class="border-2 border-primary rounded-lg bg-white p-6">
+          <div class="payment-qr-box">
             <QRCode
               :value="orderInfo.prePayId"
               :size="240"
@@ -432,9 +440,87 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
+.recharge-page {
+  overflow-x: hidden;
+}
+
+.recharge-card {
+  :deep(.n-card__content) {
+    padding: 18px 20px;
+  }
+}
+
+.recharge-package-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.package-card {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card-soft);
+  cursor: pointer;
+  outline: none;
+  padding: 18px;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.package-card:hover,
+.package-card:focus-visible,
+.package-card--selected {
+  border-color: var(--color-primary);
+  background: var(--color-card-band);
+  box-shadow: var(--shadow-card);
+}
+
+.package-price {
+  color: var(--color-primary);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.package-check-icon {
+  color: var(--color-primary);
+}
+
+.package-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card-band);
+  padding: 12px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.package-benefit-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.payment-qr-box {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 24px;
+}
+
 .card-wrapper {
   :deep(.n-card__content) {
-    padding: 24px;
+    padding: 18px 20px;
   }
 }
 </style>

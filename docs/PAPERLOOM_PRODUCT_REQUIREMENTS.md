@@ -123,6 +123,11 @@ A PDF is "fully readable" only when the pipeline has produced, as far as the par
 Parser or OCR failure must be visible to the user. The UI should not present a failed or half-parsed
 paper as fully searchable.
 
+Product chat should expose only product semantic states, not internal OCR/parser infrastructure.
+For example, a chat answer may say a paper is `PROCESSING`, `FAILED`, `AVAILABLE`, `NOT_IN_SCOPE`,
+or `NOT_VISIBLE`; it should not expose MinerU, Unlimited-OCR, OpenDataLoader, Elasticsearch, Kafka,
+sidecar health, or provider-specific internals as business chat state.
+
 Required user-visible states include:
 
 - uploading
@@ -199,6 +204,96 @@ Policy:
 - do not infer a different paper or page when no trusted anchor exists
 - ask for clarification when the target cannot be resolved
 
+## Product ReAct Chat Contract
+
+Product chat is a ReAct loop over product-level read-only functions. It is not a chain of
+independent router, planner, retrieval, focus-state, and renderer decisions.
+
+Confirmed target:
+
+```text
+Chat entry
+  -> ProductConversationService
+  -> ProductReActHarness
+  -> product functions
+  -> answer envelope
+  -> harness citation/reference rendering
+```
+
+Every user turn must expose the same product function catalog and the complete usable conversation
+context. If the full history approaches the model context window, the system automatically uses
+persisted structured conversation memory plus a recent verbatim tail. Memory is a non-authoritative
+conversation aid; it cannot replace tool calls for paper identity, product state, session scope,
+references, or evidence.
+
+The first-phase product function catalog is fixed:
+
+```text
+answer_without_product_state
+get_system_state
+get_session_scope
+list_papers
+find_papers
+resolve_papers
+get_paper_metadata
+retrieve_evidence
+inspect_reference
+inspect_page
+```
+
+All functions are read-only. The LLM must not receive collection mutation, paper deletion, OCR
+rerun, scope-change, benchmark, raw search, SQL, Elasticsearch, or retrieval-parameter functions.
+
+The LLM sees product capabilities, not implementation details. Function inputs may express natural
+language questions, natural language subquestions, semantic paper-discovery queries, semantic
+constraints, title queries, explicit title regexes, and persistent opaque refs. Function inputs must
+not expose raw internal `paperId` sets, chunk ids, SQL ids, Elasticsearch document ids, `topK`,
+search modes, rerank flags, or page window knobs.
+
+`list_papers` is for browsing, enumeration, and explicit metadata filters such as title substring,
+filename substring, author, year, or explicit user-supplied regex. It is not a semantic topic search
+or recommendation tool.
+
+`find_papers` is the product semantic paper-discovery tool. Recommendation, discovery, and
+topic-based paper-selection turns such as "recommend agent eval papers" must use `find_papers`
+inside the locked session scope. `find_papers` returns paper candidates and selection rationale but
+not citeable evidence; paper-content claims about methods, experiments, results, limitations, or
+comparisons still require `retrieve_evidence`.
+
+Allowed answer types are fixed:
+
+```text
+EVIDENCE_ANSWER
+PRODUCT_STATE
+INSUFFICIENT_EVIDENCE
+NON_EVIDENCE
+CLARIFICATION_NEEDED
+```
+
+Paper facts, methods, experiments, results, limitations, and comparisons require tool evidence.
+Product-state answers such as "how many papers are searchable" require product-state tools but do
+not require citations. If a retrieval or inspection tool succeeds but finds no adequate evidence,
+the answer is `INSUFFICIENT_EVIDENCE`. If a tool fails, the turn fails; the model must not guess.
+
+Final citation numbers and reference mappings belong to the harness, not the LLM. The LLM may only
+refer to evidence or reference ids returned by tools. The harness validates those ids, generates
+rendered citation numbers, persists reference records, and emits the final UI payload.
+
+The frontend may show minimal progress events such as:
+
+```text
+calling retrieve_evidence
+```
+
+It must not show tool arguments, tool results, prompts, raw model responses, hidden reasoning, SQL,
+Elasticsearch details, or a free-text `Sources used` block. References are rendered from structured
+reference data only.
+
+Trace for Product ReAct is disk-only JSON in phase one. It records prompts, tool catalogs, tool
+calls, tool results, raw LLM responses, retrieval diagnostics, memory compression calls, errors, and
+latency where available. Business tables do not store trace ids or trace paths. Trace is for later
+offline analysis, not for product behavior.
+
 ## Conversation Scope And Collections
 
 PaperLoom sessions must have a clear evidence universe. A user should always be able to tell which
@@ -227,12 +322,17 @@ Rules:
 - New sessions default to `AUTO_LIBRARY`.
 - Before the first accepted user message, the user may choose `AUTO_LIBRARY`, a collection-derived
   snapshot, or a custom source-set snapshot.
+- The chat UI must provide a new-session scope entry for all papers, collection, and title match.
+- Title match supports plain title query and explicit regex mode. The backend previews matched
+  papers and creates a fixed source-set snapshot after confirmation.
 - The backend is the source of truth for scope locking.
 - The lock happens when the backend accepts the first chat request and records the user message.
 - Clicking send in the frontend must not be treated as a durable lock until the backend accepts the
   request.
 - Once locked, the session scope cannot be changed. To use different papers, the user must start a
   new session.
+- Uploading a new paper does not add it to already locked sessions. To retrieve newly uploaded
+  papers, start a new session whose scope includes them after they become searchable.
 - `AUTO_LIBRARY` also locks after the first accepted message; it cannot be changed to a source set
   inside the same session.
 - The backend must reject attempts to send a chat request with a scope inconsistent with the locked
@@ -327,12 +427,14 @@ Routing, planning, query construction, evidence verification, and evidence-role 
 semantic and state-aware. Debug-only hardcoded probes are acceptable during diagnosis, but production
 paths must not depend on a fixed list of phrases such as "有什么 agent 相关论文".
 
-Semantic intent recognition should be LLM-assisted and schema-constrained. The classifier should
-decide whether the user is asking for paper reading/QA, paper discovery, citation/reference
-inspection, follow-up, clarification, or small talk from task semantics and conversation state, not
-from brittle phrase lists. Deterministic routing is reserved for structural facts that do not require
-semantic inference, such as an explicit reference marker, a locked manual source scope, or an empty
-query.
+Semantic intent handling in product chat belongs inside the Product ReAct Harness. The LLM receives
+the full relevant conversation context and the complete product function catalog every turn, then
+chooses product functions such as `get_system_state`, `list_papers`, `find_papers`,
+`resolve_papers`, `retrieve_evidence`, `inspect_reference`, or `answer_without_product_state`.
+A separate top-level
+classifier/router must not be the owner of product chat semantics. Deterministic routing is reserved
+for structural facts that do not require semantic inference, such as protocol message type,
+authenticated user, locked session scope, citation token syntax, and empty input validation.
 
 Hardcoded semantic matching is not allowed in production code. This includes static regex or token
 lists used to infer:
@@ -381,11 +483,18 @@ Rules:
 
 - paper facts, methods, experiments, results, limitations, and comparisons need citation markers
 - every rendered citation marker must map to persisted reference evidence
-- citation mappings must be recoverable from MySQL history, not only Redis generation state
+- citation mappings must be recoverable from the persistent reference registry, not Redis generation
+  state, trace files, or frontend-only payloads
+- `Conversation.referenceMappingsJson` may remain as a render snapshot, but it is not the only
+  source of truth for references
 - if evidence is insufficient, say so directly
 - do not fill gaps with generic knowledge or plausible claims
-- recommendations must include paper title, reason, citation, and the limitation that results come
-  only from the user's accessible paper library
+- recommendation lists may include paper titles and semantic selection rationale from `find_papers`
+  without citation markers, because paper discovery is product state rather than paper evidence
+- recommendation answers must include the limitation that results come only from the user's
+  accessible locked-scope paper library
+- recommendation answers that explain paper content, methods, experiments, results, limitations, or
+  comparisons must first retrieve citeable evidence and cite it
 - comparative claims require evidence for the compared sides
 
 Smalltalk, system help, and UI operation guidance do not need paper citations.
@@ -413,6 +522,9 @@ Frontend scope display requirements:
 - The paper library page should have separate surfaces for product papers and collections.
 - The chat page should not become the collection-management surface; it should select existing
   collections or build source-set snapshots for new sessions.
+- Chat answers must not show a free-text `Sources used` block. When references exist, the frontend
+  renders a structured references panel from harness/reference-registry data. When references are
+  empty, the sources area is not displayed.
 
 ## Benchmark Policy
 

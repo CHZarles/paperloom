@@ -16,12 +16,40 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <RouterLink to="/" class="w-full flex-center nowrap-hidden">
-    <SystemLogo class="text-32px text-primary" />
-    <h2 v-show="showTitle" class="pl-8px text-16px text-primary font-bold transition duration-300 ease-in-out">
+  <RouterLink to="/" class="global-logo w-full nowrap-hidden">
+    <SystemLogo class="global-logo__mark" />
+    <h2 v-show="showTitle" class="global-logo__title">
       {{ $t('system.title') }}
     </h2>
   </RouterLink>
 </template>
 
-<style scoped></style>
+<style scoped>
+.global-logo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 18px;
+  color: var(--color-text);
+}
+
+.global-logo__mark {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  font-size: 22px;
+}
+
+.global-logo__title {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 18px;
+  font-weight: 720;
+  letter-spacing: 0;
+  line-height: 1;
+  text-overflow: ellipsis;
+  transition: opacity 0.16s ease;
+  white-space: nowrap;
+}
+</style>

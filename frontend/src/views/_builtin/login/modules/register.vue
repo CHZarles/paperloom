@@ -116,7 +116,7 @@ watch(
     <aside class="invite-side-panel">
       <div class="invite-side-header">
         <div class="invite-side-kicker">邀请码获取</div>
-        <div class="invite-side-title">PaperLoom 科研论文解读 RAG 工作台正在内测。</div>
+        <div class="invite-side-title">Folio 科研论文解读工作台正在内测。</div>
         <div class="invite-side-desc">
           微信搜索
           <span class="invite-emphasis">{{ inviteChannelConfig.officialAccountName }}</span>

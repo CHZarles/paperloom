@@ -460,14 +460,14 @@ onMounted(() => {
           </div>
 
           <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
-            <NCard size="small" embedded class="overview-section">
-              <template #header>调用趋势</template>
+            <section class="overview-section">
+              <div class="overview-section__header">调用趋势</div>
               <div ref="trendChartRef" class="h-360px w-full" />
-            </NCard>
+            </section>
 
             <div class="flex flex-col gap-4">
-              <NCard size="small" embedded class="overview-section">
-                <template #header>超额与预警</template>
+              <section class="overview-section">
+                <div class="overview-section__header">超额与预警</div>
                 <div v-if="overview?.alerts?.length" class="flex flex-col gap-3">
                   <div
                     v-for="alert in overview.alerts.slice(0, 6)"
@@ -488,10 +488,10 @@ onMounted(() => {
                   </div>
                 </div>
                 <NEmpty v-else size="small" description="暂无告警" />
-              </NCard>
+              </section>
 
-              <NCard size="small" embedded class="overview-section">
-                <template #header>今日用量排行</template>
+              <section class="overview-section">
+                <div class="overview-section__header">今日用量排行</div>
                 <div class="flex flex-col gap-4">
                   <div>
                     <div class="mb-2 text-xs text-stone-400 font-semibold tracking-0.12em uppercase">LLM</div>
@@ -535,7 +535,7 @@ onMounted(() => {
                     <NEmpty v-else size="small" description="暂无数据" />
                   </div>
                 </div>
-              </NCard>
+              </section>
             </div>
           </div>
         </div>
@@ -545,9 +545,8 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-// 1. Outer cards: align with knowledge-base .paper-library-card
 .usage-monitor-card {
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   box-shadow: var(--shadow-card) !important;
 }
 
@@ -581,7 +580,6 @@ onMounted(() => {
   padding: 16px 20px;
 }
 
-// 2. Note: dashed paper sticker
 .usage-monitor-note {
   background: var(--color-surface) !important;
   border: 1px dashed var(--color-border) !important;
@@ -592,7 +590,7 @@ onMounted(() => {
 .limit-card {
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
+  background: var(--color-surface);
   box-shadow: var(--shadow-card-soft);
   padding: 16px;
 }
@@ -628,13 +626,13 @@ onMounted(() => {
 .summary-card {
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
+  background: var(--color-surface);
   padding: 16px;
 }
 
 .summary-card.is-alert {
   border-color: var(--color-warning);
-  background: linear-gradient(180deg, var(--color-surface-alt), var(--color-card-band-pressed));
+  background: var(--color-surface-alt);
 }
 
 .summary-label {
@@ -670,6 +668,16 @@ onMounted(() => {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
+  padding: 0 16px 16px;
+}
+
+.overview-section__header {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .alert-item {

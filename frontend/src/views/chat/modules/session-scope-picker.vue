@@ -24,9 +24,8 @@ const emit = defineEmits<{
   (e: 'updated'): void;
 }>();
 
-type PickerMode = 'AUTO_LIBRARY' | 'COLLECTION' | 'CUSTOM';
+type PickerMode = 'AUTO_LIBRARY' | 'COLLECTION' | 'TITLE_MATCH';
 
-const PAPER_SEARCH_PAGE_SIZE = 20;
 const chatStore = useChatStore();
 
 const visible = computed({
@@ -40,13 +39,11 @@ const collectionsLoading = ref(false);
 const collections = ref<Api.PaperCollection.Item[]>([]);
 const selectedCollectionId = ref<number | null>(null);
 
-const paperQuery = ref('');
-const paperPage = ref(1);
-const paperTotal = ref(0);
-const papersLoading = ref(false);
-const paperCandidates = ref<Api.Paper.UploadTask[]>([]);
-const selectedPaperIds = ref<string[]>([]);
-let paperSearchSeq = 0;
+const titleMatchText = ref('');
+const titleMatchRegexMode = ref(false);
+const titleMatchPreview = ref<Api.Chat.TitleMatchScopePreview | null>(null);
+const titleMatchPreviewLoading = ref(false);
+let titleMatchPreviewSeq = 0;
 
 const selectedCollection = computed(
   () => collections.value.find(item => item.id === selectedCollectionId.value) || null
@@ -55,7 +52,9 @@ const selectedCollection = computed(
 const canSubmit = computed(() => {
   if (submitting.value) return false;
   if (mode.value === 'COLLECTION') return Boolean(selectedCollection.value?.searchablePaperCount);
-  if (mode.value === 'CUSTOM') return selectedPaperIds.value.length > 0;
+  if (mode.value === 'TITLE_MATCH') {
+    return Boolean(titleMatchText.value.trim() && titleMatchPreview.value?.paperCount);
+  }
   return true;
 });
 
@@ -65,48 +64,70 @@ watch(
     if (!value) return;
     resetPicker();
     loadCollections();
-    searchPapers(1);
   }
 );
+
+watch([titleMatchText, titleMatchRegexMode], () => {
+  titleMatchPreviewSeq += 1;
+  titleMatchPreview.value = null;
+});
+
+function collectionIdsFromRecipe(sourceRecipe: Record<string, any> | null | undefined) {
+  return Array.isArray(sourceRecipe?.collectionIds) ? sourceRecipe.collectionIds : [];
+}
+
+function recipeString(sourceRecipe: Record<string, any> | null | undefined, key: string) {
+  const value = sourceRecipe?.[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function pickerModeForScope(
+  currentScope: Api.Chat.ConversationScope | null | undefined,
+  firstCollectionId: number,
+  recipeType: string
+): PickerMode {
+  if (currentScope?.scopeMode !== 'SOURCE_SET_SNAPSHOT') return 'AUTO_LIBRARY';
+  if (Number.isFinite(firstCollectionId)) return 'COLLECTION';
+  if (recipeType === 'title_match') return 'TITLE_MATCH';
+  return 'AUTO_LIBRARY';
+}
+
+function previewFromCurrentScope(
+  currentScope: Api.Chat.ConversationScope | null | undefined,
+  sourceRecipe: Record<string, any> | null | undefined,
+  recipeType: string
+): Api.Chat.TitleMatchScopePreview | null {
+  if (recipeType !== 'title_match' || currentScope?.scopeMode !== 'SOURCE_SET_SNAPSHOT') return null;
+  return {
+    paperCount: Number(currentScope.sourcePaperCount || currentScope.paperIds?.length || 0),
+    paperIds: [...(currentScope.paperIds || [])],
+    papers: [],
+    sourceLabel: currentScope.sourceLabel || '',
+    sourceRecipe: sourceRecipe || {}
+  };
+}
 
 function resetPicker() {
   const currentScope = props.scope;
   const sourceRecipe = currentScope?.sourceRecipe || null;
-  const collectionIds = Array.isArray(sourceRecipe?.collectionIds) ? sourceRecipe.collectionIds : [];
+  const collectionIds = collectionIdsFromRecipe(sourceRecipe);
   const firstCollectionId = Number(collectionIds[0]);
+  const recipeType = recipeString(sourceRecipe, 'type');
+  const titleRegex = recipeString(sourceRecipe, 'titleRegex');
+  const titleQuery = recipeString(sourceRecipe, 'titleQuery');
 
-  if (currentScope?.scopeMode !== 'SOURCE_SET_SNAPSHOT') {
-    mode.value = 'AUTO_LIBRARY';
-  } else if (Number.isFinite(firstCollectionId)) {
-    mode.value = 'COLLECTION';
-  } else {
-    mode.value = 'CUSTOM';
-  }
+  mode.value = pickerModeForScope(currentScope, firstCollectionId, recipeType);
   selectedCollectionId.value = Number.isFinite(firstCollectionId) ? firstCollectionId : null;
-  paperQuery.value = '';
-  paperPage.value = 1;
-  paperTotal.value = 0;
-  paperCandidates.value = [];
-  selectedPaperIds.value = currentScope?.scopeMode === 'SOURCE_SET_SNAPSHOT' ? [...(currentScope.paperIds || [])] : [];
+  titleMatchRegexMode.value = Boolean(titleRegex);
+  titleMatchText.value = titleRegex || titleQuery || '';
+  titleMatchPreviewLoading.value = false;
+  titleMatchPreview.value = previewFromCurrentScope(currentScope, sourceRecipe, recipeType);
 }
 
 function close() {
   if (submitting.value) return;
-  paperSearchSeq += 1;
+  titleMatchPreviewSeq += 1;
   visible.value = false;
-}
-
-function normalizePaperPage(payload?: Api.Paper.List | null) {
-  const rows = payload?.data || payload?.content || [];
-  return {
-    rows: rows.map(paper => ({
-      ...paper,
-      paperTitle: paper.paperTitle || paper.originalFilename,
-      originalFilename: paper.originalFilename || paper.paperTitle
-    })),
-    total: payload?.totalElements ?? rows.length,
-    page: payload?.number || paperPage.value
-  };
 }
 
 async function loadCollections() {
@@ -117,30 +138,34 @@ async function loadCollections() {
   collections.value = data || [];
 }
 
-async function searchPapers(page = 1) {
-  paperSearchSeq += 1;
-  const requestSeq = paperSearchSeq;
-  paperPage.value = page;
-  papersLoading.value = true;
-  const query = paperQuery.value.trim();
-  const { error, data } = await request<Api.Paper.List>({
-    url: '/papers?scope=accessible',
-    params: { page, size: 20, query, readiness: 'searchable' }
+function titleMatchPayload(): Api.Chat.UpdateConversationScopePayload | null {
+  const matcher = titleMatchText.value.trim();
+  if (!matcher) return null;
+  return {
+    scopeMode: 'SOURCE_SET_SNAPSHOT',
+    titleQuery: titleMatchRegexMode.value ? undefined : matcher,
+    titleRegex: titleMatchRegexMode.value ? matcher : undefined
+  };
+}
+
+async function previewTitleMatchScope() {
+  if (!props.conversationId) return;
+  const payload = titleMatchPayload();
+  if (!payload) return;
+
+  titleMatchPreviewSeq += 1;
+  const requestSeq = titleMatchPreviewSeq;
+  titleMatchPreviewLoading.value = true;
+  const { error, data } = await request<Api.Chat.TitleMatchScopePreview>({
+    url: `users/conversations/${props.conversationId}/scope/title-match-preview`,
+    method: 'POST',
+    data: payload
   });
 
-  if (requestSeq !== paperSearchSeq || !visible.value) return;
+  if (requestSeq !== titleMatchPreviewSeq || !visible.value) return;
 
-  papersLoading.value = false;
-  if (error) {
-    paperCandidates.value = [];
-    paperTotal.value = 0;
-    return;
-  }
-
-  const normalized = normalizePaperPage(data);
-  paperCandidates.value = normalized.rows;
-  paperTotal.value = normalized.total;
-  paperPage.value = normalized.page;
+  titleMatchPreviewLoading.value = false;
+  titleMatchPreview.value = !error && data ? data : null;
 }
 
 async function applyScope() {
@@ -156,18 +181,13 @@ async function applyScope() {
       sourceLabel: collection.name,
       sourceRecipe: { type: 'collection', collectionIds: [collection.id] }
     };
-  } else if (mode.value === 'CUSTOM') {
-    const unchangedExistingSnapshot =
-      props.scope?.scopeMode === 'SOURCE_SET_SNAPSHOT' &&
-      sameStringSet(selectedPaperIds.value, props.scope.paperIds || []);
+  } else if (mode.value === 'TITLE_MATCH') {
+    const basePayload = titleMatchPayload();
+    if (!basePayload || !titleMatchPreview.value?.paperCount) return;
     payload = {
-      scopeMode: 'SOURCE_SET_SNAPSHOT',
-      paperIds: [...selectedPaperIds.value],
-      sourceLabel:
-        unchangedExistingSnapshot && props.scope?.sourceLabel
-          ? props.scope.sourceLabel
-          : `${selectedPaperIds.value.length} selected papers`,
-      sourceRecipe: { type: 'manual_paper_search', query: paperQuery.value.trim() }
+      ...basePayload,
+      sourceLabel: titleMatchPreview.value.sourceLabel,
+      sourceRecipe: titleMatchPreview.value.sourceRecipe
     };
   } else {
     payload = { scopeMode: 'AUTO_LIBRARY' };
@@ -182,12 +202,6 @@ async function applyScope() {
   emit('updated');
   visible.value = false;
 }
-
-function sameStringSet(left: string[], right: string[]) {
-  if (left.length !== right.length) return false;
-  const rightSet = new Set(right);
-  return left.every(item => rightSet.has(item));
-}
 </script>
 
 <template>
@@ -196,7 +210,7 @@ function sameStringSet(left: string[], right: string[]) {
       <NRadioGroup v-model:value="mode" name="session-scope-mode" size="small" class="scope-picker-mode">
         <NRadioButton value="AUTO_LIBRARY">All</NRadioButton>
         <NRadioButton value="COLLECTION">Collection</NRadioButton>
-        <NRadioButton value="CUSTOM">Custom</NRadioButton>
+        <NRadioButton value="TITLE_MATCH">Title Match</NRadioButton>
       </NRadioGroup>
 
       <section v-if="mode === 'AUTO_LIBRARY'" class="scope-picker-pane">
@@ -232,25 +246,36 @@ function sameStringSet(left: string[], right: string[]) {
       <section v-else class="scope-picker-pane">
         <div class="scope-picker-search">
           <NInput
-            v-model:value="paperQuery"
+            v-model:value="titleMatchText"
             clearable
-            placeholder="Search searchable papers"
-            @keyup.enter="searchPapers(1)"
+            placeholder="Match paper title or filename"
+            @keyup.enter="previewTitleMatchScope"
           />
-          <NButton secondary type="primary" :loading="papersLoading" @click="searchPapers(1)">
+          <NCheckbox v-model:checked="titleMatchRegexMode" class="scope-title-regex">Regex</NCheckbox>
+          <NButton
+            secondary
+            type="primary"
+            :loading="titleMatchPreviewLoading"
+            :disabled="!titleMatchText.trim()"
+            @click="previewTitleMatchScope"
+          >
             <template #icon>
               <icon-lucide:search />
             </template>
-            Search
+            Preview
           </NButton>
         </div>
 
-        <NSpin :show="papersLoading">
-          <NEmpty v-if="!paperCandidates.length" description="No searchable papers" class="scope-picker-empty" />
-          <NCheckboxGroup v-else v-model:value="selectedPaperIds">
+        <NSpin :show="titleMatchPreviewLoading">
+          <div v-if="titleMatchPreview" class="scope-title-preview">
+            <div class="scope-title-preview__summary">
+              <strong>{{ titleMatchPreview.paperCount.toLocaleString() }} papers</strong>
+              <span>{{ titleMatchPreview.sourceLabel }}</span>
+            </div>
+            <NEmpty v-if="!titleMatchPreview.papers.length" description="No matches" class="scope-picker-empty" />
             <div class="scope-picker-list">
-              <label v-for="paper in paperCandidates" :key="paper.paperId" class="scope-picker-row">
-                <NCheckbox :value="paper.paperId" />
+              <div v-for="paper in titleMatchPreview.papers" :key="paper.paperId" class="scope-picker-row">
+                <icon-lucide:file-text class="scope-picker-row__icon" />
                 <span class="scope-picker-row__body">
                   <strong>{{ paper.paperTitle || paper.originalFilename }}</strong>
                   <span>{{ paper.originalFilename }}</span>
@@ -260,21 +285,11 @@ function sameStringSet(left: string[], right: string[]) {
                     <span>{{ paper.publicationYear || 'N/A' }}</span>
                   </span>
                 </span>
-              </label>
+              </div>
             </div>
-          </NCheckboxGroup>
+          </div>
+          <NEmpty v-else description="No preview" class="scope-picker-empty" />
         </NSpin>
-
-        <div class="scope-picker-pagination">
-          <span>{{ selectedPaperIds.length }} selected</span>
-          <NPagination
-            v-model:page="paperPage"
-            :page-size="PAPER_SEARCH_PAGE_SIZE"
-            :item-count="paperTotal"
-            size="small"
-            @update:page="searchPapers"
-          />
-        </div>
       </section>
     </div>
 
@@ -357,6 +372,13 @@ function sameStringSet(left: string[], right: string[]) {
   cursor: pointer;
 }
 
+.scope-picker-row__icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--color-primary);
+  font-size: 15px;
+}
+
 .scope-picker-row__body {
   display: grid;
   min-width: 0;
@@ -399,5 +421,37 @@ function sameStringSet(left: string[], right: string[]) {
 
 .scope-picker-empty {
   padding: 72px 0;
+}
+
+.scope-title-regex {
+  flex: 0 0 auto;
+}
+
+.scope-title-preview {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.scope-title-preview__summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.scope-title-preview__summary strong {
+  flex: 0 0 auto;
+  color: var(--color-text);
+}
+
+.scope-title-preview__summary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

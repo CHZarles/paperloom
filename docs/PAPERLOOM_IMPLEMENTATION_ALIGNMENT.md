@@ -116,7 +116,10 @@ Relevant areas:
 
 Important product requirement:
 
-- `Conversation.referenceMappingsJson` is the durable reference-evidence path for chat history.
+- A new persistent conversation reference registry is the durable reference-evidence source of
+  truth for chat history.
+- `Conversation.referenceMappingsJson` may remain as a render snapshot, but it must not be the only
+  source of truth for citations, pages, or evidence follow-up.
 - Redis generation state is short-lived and must not be the only source of historical citation
   recovery.
 - Product storage contains only product PDF papers after eval cleanup. Benchmark corpora use the
@@ -130,6 +133,10 @@ Confirmed new storage target:
 - Collections need product tables for collection metadata and static collection paper membership.
 - Collections are management objects; locked sessions must not retrieve from live collection
   membership.
+- Conversation memory needs durable structured JSON storage. Redis may cache it but cannot be the
+  source of truth.
+- Product ReAct trace is disk-only JSON in phase one and does not add trace pointers to business
+  tables.
 
 ### Indexing
 
@@ -193,6 +200,8 @@ Relevant areas:
 - `TaskRouter`
 - `LlmTaskRouter`
 - `PaperAnswerService`
+- `PaperConversationAgent`
+- `PaperConversationToolRegistry`
 
 Current behavior:
 
@@ -204,22 +213,38 @@ Current behavior:
   `INSPECT_REFERENCE`, and `INSPECT_PAGE`
 - `INSPECT_PAGE` is intended for trusted paper/page anchors
 - `DISCOVER_PAPERS` forces the paper-discovery retrieval path
+- A transitional `PaperConversationAgent` and `PaperConversationToolRegistry` exist, but they are
+  not the final Product ReAct Harness contract. They still use old function names such as
+  `get_library_status` and `discover_papers`, and their refs are not yet the persistent reference
+  registry model.
 
 Alignment note:
 
 - The recent direction forbids production semantic decisions based on hardcoded phrases, regex
   alternations, or token lists.
-- `PaperChatRouter` is limited to structural routing such as explicit references, reference focus,
-  and empty-query clarification. A source scope is an evidence boundary, not a semantic task
-  decision.
-- `TaskRouter` owns top-level semantic routing. `PaperQueryPlanner` normalizes already-decided
-  retrieval queries and must not infer task semantics from phrase lists.
-- `EvidencePlanner` may plan inside a known capability, but invalid planner output fails closed to
-  clarification rather than falling through to retrieval.
+- Product chat semantics should move into `ProductReActHarness`. The LLM receives full relevant
+  history and the complete read-only product function catalog every turn.
+- `PaperChatRouter`, `TaskRouter`, `LlmTaskRouter`, and `EvidencePlanner` must not remain the
+  top-level semantic owners of product chat.
+- `PaperQueryPlanner` may remain as a retrieval implementation detail behind product tools, but it
+  must not infer user-facing task semantics from phrase lists.
 - Parser evidence roles should come from parser-provided structure such as table, figure, chart, or
   formula elements, not from text-content words such as "experiment" or "accuracy".
-- Chat routing must derive the paper universe from the locked conversation scope and optional
-  reference focus, not from mutable frontend `input.scope` state.
+- Chat routing must derive the paper universe from locked conversation scope and persistent opaque
+  refs, not from mutable frontend `input.scope`, Redis `FocusState`, or LLM-maintained paper id
+  sets.
+
+Confirmed replacement target:
+
+```text
+ChatHandler / WebSocket entry
+  -> ProductConversationService
+  -> ProductReActHarness
+  -> ProductToolRegistry
+  -> ProductMemoryService
+  -> ConversationReferenceRegistry
+  -> ProductTraceRecorder
+```
 
 ### Answering
 
@@ -239,7 +264,17 @@ Current behavior:
 - the verifier rejects several unsupported citation and claim patterns
 - recommendation answers group papers and cite evidence
 
-This mostly aligns with the answer policy, but naming and some prompt language still need cleanup.
+Alignment note:
+
+- The final target is a fixed product answer envelope with `EVIDENCE_ANSWER`, `PRODUCT_STATE`,
+  `INSUFFICIENT_EVIDENCE`, `NON_EVIDENCE`, and `CLARIFICATION_NEEDED`.
+- The LLM must not directly own final Markdown structure or final citation numbers.
+- The harness must validate evidence markers, generate final citation numbers, persist reference
+  registry records, and persist `referenceMappingsJson` as a render snapshot.
+- `PRODUCT_STATE` answers such as searchable paper counts must come from product-state tools and
+  must not show citations or references.
+- `INSUFFICIENT_EVIDENCE` means retrieval/inspection succeeded but found no adequate evidence.
+  Tool failure is a failed turn, not insufficient evidence.
 
 ### Frontend
 
@@ -279,6 +314,14 @@ Alignment note:
 - The current mutable input scope conflicts with the confirmed rule that a session has one locked
   evidence universe. Source changes must create a new session after the first accepted message.
 - The current paper-library page has no collection management surface.
+- The chat UI must add a new-session scope entry for all papers, collection, and title-match
+  snapshot. Title match must support plain query and explicit regex mode with backend preview.
+- Product ReAct progress display should be minimal: `calling <toolName>`. Do not display tool
+  arguments, tool results, hidden reasoning, prompts, SQL, Elasticsearch details, or provider
+  internals.
+- The frontend should remove free-text `Sources used` output. It should render only the structured
+  references panel from final answer payload/reference registry data, and display no sources area
+  when references are empty.
 
 ### Conversation Scope And Collections
 
@@ -287,8 +330,12 @@ Confirmed product target:
 - A conversation starts unlocked with default `AUTO_LIBRARY` scope.
 - The user may choose all searchable papers, an existing collection, or a custom source-set snapshot
   before the first accepted message.
+- Custom source-set snapshot can be created from title match. Title match supports plain title
+  query and explicit regex mode, with backend preview before confirmation.
 - The backend locks the conversation scope when it accepts the first user message.
 - Locked session scope is immutable. Changing sources requires a new session.
+- Newly uploaded papers do not enter an already locked session. To retrieve a new paper, the user
+  must start a new session after the paper becomes searchable.
 - Reference focus is temporary and separate from session scope.
 - Collections are static paper-id sets with `PRIVATE` or `ORG` visibility.
 - Regex and metadata filters are batch-add tools for collections or custom snapshots, not dynamic
@@ -351,16 +398,41 @@ Current benchmark facts from the scan:
   expose eval/structured import state.
 - The `paper_search` plus scoped evidence strategy matches the confirmed paper-discovery path.
 - Chunk hybrid retrieval matches the confirmed paper-reading path.
-- Reference mappings are persisted in MySQL conversation history.
+- Product ReAct now writes an independent `paper_conversation_reference` registry and also keeps
+  `Conversation.referenceMappingsJson` as a render snapshot for frontend/history recovery.
+- ProductConversationService now owns product turn MySQL persistence, including assistant answer,
+  render snapshot reference mappings, and message effective-scope audit. ChatHandler keeps
+  WebSocket streaming, generation state, and Redis short-term history update responsibilities.
 - `INSPECT_PAGE` is scoped to trusted anchors rather than arbitrary page guessing.
 - Benchmarks already separate LitSearch, QASPER, and product smoke.
 
 ### Partial Or Risky
 
-- Semantic task routing is centralized in `TaskRouter`, and current planner code no longer uses
-  production phrase lists for route recognition or query expansion. This remains a regression risk:
-  future changes must not reintroduce hardcoded semantic matching in routing, planning, verifier,
-  query expansion, or parser evidence-role logic.
+- Product chat default WebSocket path now enters `ProductConversationService` and
+  `ProductReActHarness`; `PaperAnswerService`, `TaskRouter`/`LlmTaskRouter`, and `EvidencePlanner`
+  remain in the codebase but are no longer the default product chat semantic path.
+- Product ReAct exposes the confirmed 10-tool catalog and fixed answer envelope.
+  `answer_without_product_state`, `get_system_state`, `get_session_scope`, `list_papers`,
+  `find_papers`, `resolve_papers`, `get_paper_metadata`, `retrieve_evidence`,
+  `inspect_reference`, and `inspect_page` now execute through the product boundary without
+  delegating to `PaperConversationToolRegistry`. ProductToolRegistry sanitizes public tool data,
+  rejects raw ids/retrieval knobs at the product contract boundary, resolves paperRef constraints
+  through the persistent reference registry, and calls product paper/evidence primitives directly.
+- `find_papers` is now the product semantic paper-discovery/recommendation tool. `list_papers`
+  remains a browsing/enumeration/explicit metadata-filter tool and must not be treated as semantic
+  topic search.
+- Current planner code no longer uses production phrase lists for route recognition or query
+  expansion, but this remains a regression risk. Future changes must not reintroduce hardcoded
+  semantic matching in routing, planning, verifier, query expansion, or parser evidence-role logic.
+- Conversation memory is now persisted on `ConversationSession.conversation_memory_json` and updated
+  through a separate LLM memory-compression call after successful Product ReAct turns.
+- ProductConversationService now applies a model-context history budget before calling
+  ProductReActHarness: if full verbatim history exceeds the configured budget, the persisted
+  structured memory remains available separately and only the recent verbatim tail is passed as
+  turn history.
+- Product ReAct trace is written as disk JSON under `data/traces/product-react/`; memory compression
+  calls are appended to the same turn trace when available.
+- Frontend chat protocol now handles `calling_tool` events and displays only `calling <toolName>`.
 - Figure/chart evidence is represented in data structures and UI, but figure-heavy QA has not been
   proven by benchmark.
 - Metadata extraction is limited. Title inference exists, but authors, venue, year, DOI, and arXiv id
@@ -377,6 +449,12 @@ Current benchmark facts from the scan:
 - Some UI copy still says generic "knowledge base", including search-dialog wording.
 - Legacy physical names such as file-oriented table/entity concepts still exist. This may be
   acceptable internally, but public API and UI should stay paper-centered.
+- Chat output no longer renders the free-text `Sources used` block; citations continue through
+  structured reference mappings and evidence panels.
+- Product follow-up no longer treats frontend raw `paperId` focus as a scope or reference override;
+  persisted reference numbers resolve through stored reference mappings/registry context.
+- Business persistence must not grow trace pointer fields for phase-one Product ReAct trace; trace
+  stays disk-only JSON.
 - Runtime data pollution has been cleaned: LitSearch/QASPER rows were migrated to `paperloom_eval`,
   product DB/ES records were removed, and eval-only product columns (`is_eval`, `source_dataset`,
   `external_corpus_id`, `eval_split`) were dropped.
@@ -388,9 +466,10 @@ Current benchmark facts from the scan:
 When implementing future changes:
 
 - start from the product requirements document
+- use `docs/PAPERLOOM_REACT_FUNCTION_DESIGN.md` as the Product ReAct Harness contract for chat
 - identify which retrieval path the task affects
 - preserve permission filtering and scope isolation
-- preserve citation-to-referenceMappings persistence
+- preserve reference registry and citation render snapshot persistence
 - do not use fixed production phrases as routing logic
 - do not claim OCR/page/visual capability from QASPER or LitSearch results
 - do not store benchmark corpora in product tables or product Elasticsearch indices
@@ -401,11 +480,21 @@ When implementing future changes:
 - use source-set snapshots as retrieval truth, not live collection membership or regex rules
 - use paper-level server-side candidate search for chat source selection
 - preserve benchmark corpora while resetting product runtime data during local development
+- do not expose OCR provider, ES, Kafka, or parser internals through product chat tools
+- keep Product ReAct trace disk-only until a later cleaning/analysis phase is designed
 
 High-priority cleanup items:
 
+- continue hardening `ProductReActHarness`, `ProductConversationService`, `ProductToolRegistry`,
+  `ProductMemoryService`, `ConversationReferenceRegistry`, and `ProductTraceRecorder`
+- remove `PaperAnswerService`, `LlmTaskRouter`, `EvidencePlanner`, Redis `FocusState`, and
+  transitional `PaperConversationAgent` from the product chat semantic path unless a remaining
+  class has a clear narrow responsibility
+- replace remaining transitional ProductToolRegistry delegation where direct product tool
+  implementations are clearer
+- add new-session scope selection for all papers, collection, and title-match snapshot
+- verify structured reference rendering and reference follow-up in a live browser
 - replace visible `CiteWeave` product copy with PaperLoom where appropriate
 - replace generic knowledge-base wording with paper-library or paper-search wording
 - keep PageIndex or LOCATE_PAGES behind eval gates until scorecards justify production use
-- add collection management to the paper-library surface
-- add locked-scope display and new-session-from-sources behavior to chat
+- add locked-scope display to chat

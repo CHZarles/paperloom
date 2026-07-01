@@ -26,17 +26,12 @@ export function hasInFlightAssistant(messages: readonly ChatMessageListItem[], t
 
 export function shouldApplyLoadedConversationMessages({
   currentMessages,
-  loadedMessages,
   targetConversationId
 }: {
   currentMessages: readonly ChatMessageListItem[];
   loadedMessages: readonly ChatMessageListItem[];
   targetConversationId?: string;
 }) {
-  if (loadedMessages.length > 0) {
-    return true;
-  }
-
   return !hasInFlightAssistant(currentMessages, targetConversationId);
 }
 

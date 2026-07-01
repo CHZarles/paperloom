@@ -7,16 +7,36 @@ import { getUploadFileValidationError } from '@/store/modules/knowledge-base/upl
 import { UploadStatus } from '@/enum';
 import SvgIcon from '@/components/custom/svg-icon.vue';
 import FilePreview from '@/components/custom/file-preview.vue';
+import ConversationSidebar from '@/views/chat/modules/conversation-sidebar.vue';
+import SettingsPanel from '@/views/personal-center/modules/settings-panel.vue';
 import UploadDialog from './modules/upload-dialog.vue';
 import SearchDialog from './modules/search-dialog.vue';
 import CollectionsPanel from './modules/collections-panel.vue';
 
 const authStore = useAuthStore();
-const libraryView = ref<'papers' | 'collections'>('papers');
+const route = useRoute();
+const router = useRouter();
+const sidebarCollapsed = ref(false);
+const settingsVisible = ref(false);
+const settingsModalHostStyle = { width: 'min(1480px, calc(100vw - 32px))' };
+
+function normalizeLibraryView(value: unknown): 'papers' | 'collections' {
+  return value === 'collections' ? 'collections' : 'papers';
+}
+
+const libraryView = ref<'papers' | 'collections'>(normalizeLibraryView(route.query.view));
 const libraryViewOptions = [
   { label: 'Papers', value: 'papers' },
   { label: 'Collections', value: 'collections' }
 ] as const;
+
+function handleLibraryViewUpdate(value: 'papers' | 'collections') {
+  libraryView.value = value;
+  router.replace({
+    name: 'knowledge-base',
+    query: value === 'collections' ? { view: 'collections' } : {}
+  });
+}
 
 // 文件预览相关状态
 const previewVisible = ref(false);
@@ -342,6 +362,13 @@ const libraryStats = computed(() => {
 onMounted(async () => {
   await getList();
 });
+
+watch(
+  () => route.query.view,
+  value => {
+    libraryView.value = normalizeLibraryView(value);
+  }
+);
 
 function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.UploadTask) {
   Object.assign(target, {
@@ -872,68 +899,106 @@ async function onBeforeUpload(
 </script>
 
 <template>
-  <div class="paper-library-page min-h-500px flex-col-stretch gap-16px overflow-auto">
-    <NCard title="Paper Library / 文献库" :bordered="false" size="small" class="paper-library-card card-wrapper">
-      <template #header-extra>
-        <div class="library-header-extra">
-          <NRadioGroup v-model:value="libraryView" name="library-view" size="small" class="library-view-switch">
-            <NRadioButton v-for="option in libraryViewOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </NRadioButton>
-          </NRadioGroup>
-          <TableHeaderOperation
-            v-if="libraryView === 'papers'"
-            v-model:columns="columnChecks"
-            :addable="false"
-            :loading="loading"
-            @refresh="getList"
-          >
-            <template #prefix>
-              <NButton size="small" secondary type="primary" @click="handleSearch">
-                <template #icon>
-                  <icon-lucide:search class="text-icon" />
-                </template>
-                检索文献库
-              </NButton>
-            </template>
-            <template #default>
-              <NButton size="small" secondary type="primary" @click="handleUpload">
-                <template #icon>
-                  <icon-lucide:upload class="text-icon" />
-                </template>
-                上传文献
-              </NButton>
-            </template>
-          </TableHeaderOperation>
-        </div>
-      </template>
+  <div class="paper-library-shell">
+    <ConversationSidebar
+      v-model:collapsed="sidebarCollapsed"
+      class="paper-library-sidebar"
+      @open-settings="settingsVisible = true"
+    />
 
-      <template v-if="libraryView === 'papers'">
-        <div class="library-summary">
-          <div v-for="item in libraryStats" :key="item.label" class="library-summary__item">
-            <span class="library-summary__label">{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-            <span>{{ item.detail }}</span>
+    <main class="paper-library-page">
+      <NCard :bordered="false" size="small" class="paper-library-card">
+        <div class="library-topbar">
+          <button
+            v-show="sidebarCollapsed"
+            type="button"
+            class="library-sidebar-open"
+            aria-label="展开对话列表"
+            @click="sidebarCollapsed = false"
+          >
+            <icon-lucide:panel-left-open class="text-18px" />
+          </button>
+          <div class="library-title-block">
+            <div>
+              <h1>Library</h1>
+              <p>Research PDFs, parser state, evidence assets, and reusable source sets.</p>
+            </div>
+          </div>
+          <div class="library-toolbar">
+            <NRadioGroup
+              :value="libraryView"
+              name="library-view"
+              size="small"
+              class="library-view-switch"
+              @update:value="handleLibraryViewUpdate"
+            >
+              <NRadioButton v-for="option in libraryViewOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </NRadioButton>
+            </NRadioGroup>
+            <TableHeaderOperation
+              v-if="libraryView === 'papers'"
+              v-model:columns="columnChecks"
+              :addable="false"
+              :loading="loading"
+              @refresh="getList"
+            >
+              <template #prefix>
+                <NButton size="small" secondary @click="handleSearch">
+                  <template #icon>
+                    <icon-lucide:search class="text-icon" />
+                  </template>
+                  检索文献库
+                </NButton>
+              </template>
+              <template #default>
+                <NButton size="small" type="primary" @click="handleUpload">
+                  <template #icon>
+                    <icon-lucide:upload class="text-icon" />
+                  </template>
+                  上传文献
+                </NButton>
+              </template>
+            </TableHeaderOperation>
           </div>
         </div>
 
-        <NDataTable
-          :columns="columns"
-          :data="tableTasks"
-          size="small"
-          :scroll-x="1280"
-          :loading="loading"
-          remote
-          :row-key="row => row.id"
-          :pagination="mobilePagination"
-          class="library-table"
-        />
-      </template>
+        <template v-if="libraryView === 'papers'">
+          <div class="library-summary">
+            <div v-for="item in libraryStats" :key="item.label" class="library-summary__item">
+              <span class="library-summary__label">{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <span>{{ item.detail }}</span>
+            </div>
+          </div>
 
-      <CollectionsPanel v-else />
-    </NCard>
+          <NDataTable
+            :columns="columns"
+            :data="tableTasks"
+            size="small"
+            :scroll-x="1280"
+            :loading="loading"
+            remote
+            :row-key="row => row.id"
+            :pagination="mobilePagination"
+            class="library-table"
+          />
+        </template>
+
+        <CollectionsPanel v-else />
+      </NCard>
+    </main>
     <UploadDialog v-model:visible="uploadVisible" />
     <SearchDialog v-model:visible="searchVisible" />
+
+    <NModal
+      v-model:show="settingsVisible"
+      :auto-focus="false"
+      class="settings-modal-host"
+      :style="settingsModalHostStyle"
+    >
+      <SettingsPanel @close="settingsVisible = false" />
+    </NModal>
 
     <NModal v-model:show="tableModalVisible" class="paper-table-modal-shell" :auto-focus="false">
       <div class="paper-table-modal">
@@ -987,65 +1052,132 @@ async function onBeforeUpload(
   transition: width 0.3s ease;
 }
 
+.paper-library-shell {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.paper-library-sidebar {
+  height: 100%;
+}
+
+.settings-modal-host {
+  width: min(1480px, calc(100vw - 32px));
+}
+
 .paper-library-page {
-  padding-bottom: 8px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
   overflow-x: hidden;
+  padding: 0;
 }
 
 .paper-library-card {
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  min-height: fit-content;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
-.paper-library-card > .n-card-header {
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-card-band);
-  padding: 14px 20px;
+.paper-library-card > .n-card__content {
+  background: var(--color-bg);
+  padding: 18px 24px 28px;
 }
 
-.paper-library-card .n-card-header__main {
-  color: var(--color-primary);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-.paper-library-card .n-card-header__extra {
-  min-width: 0;
-}
-
-.library-header-extra {
+.library-topbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
   min-width: 0;
-  flex-wrap: wrap;
+  margin-bottom: 34px;
+  background: var(--color-bg);
+  padding: 0;
 }
 
-.paper-library-card .n-card__content {
-  background: var(--color-bg);
-  padding: 16px 20px;
+.library-sidebar-open {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.library-sidebar-open:hover {
+  border-color: var(--color-primary);
+  background: var(--color-accent-soft-bg);
+  color: var(--color-primary);
+}
+
+.library-title-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  max-width: 640px;
+}
+
+.library-title-icon {
+  display: none;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card-band);
+  color: var(--color-primary);
+  font-size: 17px;
+}
+
+.library-title-block h1 {
+  margin: 0 0 2px;
+  color: var(--color-text);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+.library-title-block p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.library-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .library-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin-bottom: 14px;
+  margin-bottom: 22px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--color-card-band), var(--color-bg));
+  background: var(--color-bg);
   overflow: hidden;
 }
 
@@ -1082,7 +1214,7 @@ async function onBeforeUpload(
 
 .library-summary__item strong {
   display: block;
-  margin: 4px 0 3px;
+  margin: 3px 0 2px;
   color: var(--color-text);
   font-family:
     system-ui,
@@ -1092,7 +1224,7 @@ async function onBeforeUpload(
     'PingFang SC',
     'Microsoft YaHei',
     sans-serif;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.05;
 }
 
@@ -1102,6 +1234,9 @@ async function onBeforeUpload(
   --n-border-color: var(--color-border) !important;
   --n-th-text-color: var(--color-primary) !important;
   --n-td-text-color: var(--color-text) !important;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .paper-library-card .n-data-table-th {
@@ -1593,30 +1728,28 @@ async function onBeforeUpload(
 }
 
 @media (max-width: 640px) {
-  .paper-library-card > .n-card-header {
+  .library-topbar {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
-    padding: 18px 24px;
+    padding: 14px;
   }
 
-  .paper-library-card .n-card-header__main,
-  .paper-library-card .n-card-header__extra {
+  .library-title-block,
+  .library-toolbar {
     width: 100%;
   }
 
-  .paper-library-card .n-card-header__main {
-    font-size: 26px;
-    line-height: 1.22;
+  .library-title-block h1 {
+    font-size: 24px;
   }
 
-  .paper-library-card .n-card-header__extra .n-space {
-    width: 100% !important;
-    justify-content: flex-start !important;
+  .library-toolbar {
+    justify-content: flex-start;
   }
 
   .paper-library-card .n-card__content {
-    padding: 12px;
+    padding: 12px 12px 18px;
   }
 
   .library-summary {

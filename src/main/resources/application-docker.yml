@@ -44,16 +44,21 @@ spring:
     consumer:
       group-id: paper-processing-group
       auto-offset-reset: earliest
+      max-poll-records: ${SPRING_KAFKA_CONSUMER_MAX_POLL_RECORDS:1}
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
         client.dns.lookup: use_all_dns_ips
+        max.poll.interval.ms: ${SPRING_KAFKA_CONSUMER_MAX_POLL_INTERVAL_MS:7200000}
+    listener:
+      concurrency: ${SPRING_KAFKA_LISTENER_CONCURRENCY:3}
+      auto-startup: ${SPRING_KAFKA_LISTENER_AUTO_STARTUP:true}
     topic:
       paper-processing: paper-processing-topic
       dlt: paper-processing-dlt
-      # 单节点 Docker 环境通常保持 1/1 即可
-      partitions: ${SPRING_KAFKA_TOPIC_PARTITIONS:1}
+      # 分区数需要不小于 listener concurrency，才能真正并发消费
+      partitions: ${SPRING_KAFKA_TOPIC_PARTITIONS:3}
       replication-factor: ${SPRING_KAFKA_TOPIC_REPLICATION_FACTOR:1}
   webflux:
     client:
@@ -136,7 +141,7 @@ paper:
       response-format-zip: ${PAPER_PARSING_MINERU_RESPONSE_FORMAT_ZIP:true}
       status-path-template: ${PAPER_PARSING_MINERU_STATUS_PATH_TEMPLATE:/tasks/{taskId}}
       result-path-template: ${PAPER_PARSING_MINERU_RESULT_PATH_TEMPLATE:/tasks/{taskId}/result}
-      timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:900}
+      timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:3600}
       poll-interval-seconds: ${PAPER_PARSING_MINERU_POLL_INTERVAL_SECONDS:3}
 
 elasticsearch:

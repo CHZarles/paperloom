@@ -62,6 +62,7 @@ public class PaperLibraryStatusService {
         int indexingCount = 0;
         int failedCount = 0;
         int selectedScopeCount = 0;
+        List<PaperSource> selectedSearchablePapers = new ArrayList<>();
 
         for (Paper paper : safeAccessible) {
             if (paper == null || paper.getPaperId() == null || paper.getPaperId().isBlank()) {
@@ -73,6 +74,11 @@ public class PaperLibraryStatusService {
                 accessibleSearchablePaperIds.add(paper.getPaperId());
                 if (requested.isEmpty() || requested.contains(paper.getPaperId())) {
                     selectedScopeCount++;
+                    selectedSearchablePapers.add(new PaperSource(
+                            paper.getPaperId(),
+                            displayTitle(paper),
+                            paper.getOriginalFilename()
+                    ));
                 }
                 continue;
             }
@@ -96,8 +102,19 @@ public class PaperLibraryStatusService {
                 indexingCount,
                 failedCount,
                 selectedScopeCount,
-                consistencyWarnings(accessibleSearchablePaperIds)
+                consistencyWarnings(accessibleSearchablePaperIds),
+                selectedSearchablePapers
         );
+    }
+
+    private String displayTitle(Paper paper) {
+        if (paper == null) {
+            return "";
+        }
+        if (paper.getPaperTitle() != null && !paper.getPaperTitle().isBlank()) {
+            return paper.getPaperTitle();
+        }
+        return paper.getOriginalFilename() == null ? paper.getPaperId() : paper.getOriginalFilename();
     }
 
     private Set<String> requestedPaperIds(SourceScope scope) {

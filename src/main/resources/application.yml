@@ -44,18 +44,23 @@ spring:
     consumer:
       group-id: paper-processing-group
       auto-offset-reset: earliest
+      max-poll-records: ${SPRING_KAFKA_CONSUMER_MAX_POLL_RECORDS:1}
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
         client.dns.lookup: use_all_dns_ips
+        max.poll.interval.ms: ${SPRING_KAFKA_CONSUMER_MAX_POLL_INTERVAL_MS:7200000}
+    listener:
+      concurrency: ${SPRING_KAFKA_LISTENER_CONCURRENCY:3}
+      auto-startup: ${SPRING_KAFKA_LISTENER_AUTO_STARTUP:true}
     topic:
-      # 文件上传完成后进入该主题，消费者会顺序完成“解析 + 向量化”
+      # 文件上传完成后进入该主题，消费者会并发完成“解析 + 向量化”
       paper-processing: paper-processing-topic
       # 消费失败并重试耗尽后进入死信主题
       dlt: paper-processing-dlt
-      # 启动时自动建 topic 的默认参数，本地单机通常保持 1/1
-      partitions: ${SPRING_KAFKA_TOPIC_PARTITIONS:1}
+      # 分区数需要不小于 listener concurrency，才能真正并发消费
+      partitions: ${SPRING_KAFKA_TOPIC_PARTITIONS:3}
       replication-factor: ${SPRING_KAFKA_TOPIC_REPLICATION_FACTOR:1}
   webflux:
     client:
@@ -157,7 +162,7 @@ paper:
       response-format-zip: ${PAPER_PARSING_MINERU_RESPONSE_FORMAT_ZIP:true}
       status-path-template: ${PAPER_PARSING_MINERU_STATUS_PATH_TEMPLATE:/tasks/{taskId}}
       result-path-template: ${PAPER_PARSING_MINERU_RESULT_PATH_TEMPLATE:/tasks/{taskId}/result}
-      timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:900}
+      timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:3600}
       poll-interval-seconds: ${PAPER_PARSING_MINERU_POLL_INTERVAL_SECONDS:3}
   bootstrap:
     enabled: ${PAPER_BOOTSTRAP_ENABLED:true}

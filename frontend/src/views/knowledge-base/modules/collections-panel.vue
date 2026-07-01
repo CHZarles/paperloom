@@ -412,7 +412,21 @@ watch(
     </div>
 
     <NSpin :show="collectionsLoading">
-      <NEmpty v-if="!collections.length" description="No collections" class="collections-empty" />
+      <div v-if="!collections.length" class="collections-empty-state">
+        <div class="collections-empty-state__icon">
+          <icon-lucide:library />
+        </div>
+        <div class="collections-empty-state__copy">
+          <h2>No collections yet</h2>
+          <p>Create a reusable paper set, then start a scoped reading session from it.</p>
+        </div>
+        <NButton type="primary" secondary @click="openCreateForm">
+          <template #icon>
+            <icon-lucide:plus class="text-icon" />
+          </template>
+          New Collection
+        </NButton>
+      </div>
 
       <div v-else class="collections-layout">
         <div class="collections-list">
@@ -703,6 +717,52 @@ watch(
   min-width: 0;
 }
 
+.collections-empty-state {
+  display: flex;
+  min-height: 260px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 28px;
+}
+
+.collections-empty-state__icon {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card-band);
+  color: var(--color-primary);
+  font-size: 23px;
+}
+
+.collections-empty-state__copy {
+  min-width: 0;
+  max-width: 420px;
+}
+
+.collections-empty-state__copy h2 {
+  margin: 0 0 5px;
+  color: var(--color-text);
+  font-size: 20px;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.collections-empty-state__copy p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .collections-list,
 .collection-detail {
   min-width: 0;
@@ -919,6 +979,7 @@ watch(
 
 @media (max-width: 720px) {
   .collections-toolbar,
+  .collections-empty-state,
   .collection-row,
   .collection-detail__header,
   .collection-add-pagination {

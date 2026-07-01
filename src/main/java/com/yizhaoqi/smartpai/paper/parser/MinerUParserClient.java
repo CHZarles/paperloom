@@ -24,6 +24,8 @@ import java.util.zip.ZipInputStream;
 @Component
 public class MinerUParserClient {
 
+    private static final int DEFAULT_MAX_RESULT_IN_MEMORY_BYTES = 64 * 1024 * 1024;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${paper.parsing.mineru.base-url:http://localhost:8000}")
@@ -71,14 +73,15 @@ public class MinerUParserClient {
     @Value("${paper.parsing.mineru.health-timeout-seconds:5}")
     private long healthTimeoutSeconds;
 
+    @Value("${paper.parsing.mineru.max-result-in-memory-bytes:67108864}")
+    private int maxResultInMemoryBytes;
+
     public MinerUParseResult parse(byte[] pdfBytes, String originalFilename) {
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw new PaperParsingException("PDF bytes must not be empty");
         }
         assertSidecarAvailable();
-        WebClient client = WebClient.builder()
-                .baseUrl(baseUrl)
-                .build();
+        WebClient client = buildClient();
 
         JsonNode submitResponse = submitTask(client, pdfBytes, originalFilename);
         MinerUParseResult immediate = parseResultFromJsonIfPresent(submitResponse, null);
@@ -93,6 +96,14 @@ public class MinerUParserClient {
         waitUntilCompleted(client, taskId);
         byte[] resultBytes = downloadResult(client, taskId);
         return parseResultBytes(resultBytes);
+    }
+
+    private WebClient buildClient() {
+        int maxBytes = maxResultInMemoryBytes > 0 ? maxResultInMemoryBytes : DEFAULT_MAX_RESULT_IN_MEMORY_BYTES;
+        return WebClient.builder()
+                .baseUrl(baseUrl)
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(maxBytes))
+                .build();
     }
 
     private JsonNode submitTask(WebClient client, byte[] pdfBytes, String originalFilename) {

@@ -27,7 +27,8 @@ public class PaperFigure {
     @Column(name = "page_number")
     private Integer pageNumber;
 
-    @Column(name = "caption", length = 1000)
+    @Lob
+    @Column(name = "caption", columnDefinition = "TEXT")
     private String caption;
 
     @Column(name = "section_title", length = 500)

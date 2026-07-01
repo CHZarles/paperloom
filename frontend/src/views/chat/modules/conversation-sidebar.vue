@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router';
-import SessionScopeChip from './session-scope-chip.vue';
 
 defineOptions({
   name: 'ConversationSidebar'
 });
 
 const collapsed = defineModel<boolean>('collapsed', { default: false });
+
+const emit = defineEmits<{
+  openSettings: [];
+}>();
 
 const chatStore = useChatStore();
 const authStore = useAuthStore();
@@ -37,6 +40,12 @@ const visibleSessions = computed(() => {
 
 const activeCount = computed(() => sessions.value.filter(item => item.status === 'ACTIVE').length);
 const archivedCount = computed(() => sessions.value.filter(item => item.status === 'ARCHIVED').length);
+const accountName = computed(() => authStore.userInfo.username || 'Folio User');
+const accountRole = computed(() => (authStore.isAdmin ? 'Admin management' : 'Workspace settings'));
+const avatarCells = computed(() => buildAvatarCells(accountName.value));
+const avatarStyle = computed(() => ({
+  '--avatar-fill': buildAvatarFill(accountName.value)
+}));
 
 onMounted(() => {
   chatStore.loadSessions();
@@ -79,12 +88,20 @@ function handleCollapse() {
   collapsed.value = true;
 }
 
-function handleNewChat() {
-  chatStore.createNewSession();
+async function handleNewChat() {
+  await chatStore.createNewSession();
+
+  if (route.name !== 'chat') {
+    await router.push({ name: 'chat' });
+  }
 }
 
-function handleSelect(cid: string) {
-  chatStore.switchSession(cid);
+async function handleSelect(cid: string) {
+  await chatStore.switchSession(cid);
+
+  if (route.name !== 'chat') {
+    await router.push({ name: 'chat' });
+  }
 }
 
 function handleArchive(cid: string) {
@@ -95,21 +112,53 @@ function handleUnarchive(cid: string) {
   chatStore.unarchiveSession(cid);
 }
 
+function handleDelete(cid: string) {
+  chatStore.deleteSession(cid);
+}
+
 const isWorkbenchActive = computed(() => {
   return route.name === 'knowledge-base';
 });
 
-const workbenchSubtitle = computed(() => {
-  return 'papers / collections';
-});
-
 async function handleWorkbenchClick() {
   await router.push({ name: 'knowledge-base' });
-  collapsed.value = true;
+}
+
+async function handleAccountClick() {
+  emit('openSettings');
 }
 
 function handleLogout() {
   authStore.logout();
+}
+
+function buildAvatarCells(seed: string) {
+  let hash = 0;
+  const normalized = seed || 'Folio';
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash = Math.imul(31, hash) + normalized.charCodeAt(index);
+  }
+
+  return Array.from({ length: 25 }, (_, index) => {
+    const row = Math.floor(index / 5);
+    const col = index % 5;
+    const mirroredCol = col > 2 ? 4 - col : col;
+    const cellSeed = Math.abs(hash + row * 131 + mirroredCol * 977);
+    return cellSeed % 4 !== 0;
+  });
+}
+
+function buildAvatarFill(seed: string) {
+  let hash = 0;
+  const normalized = seed || 'Folio';
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash = Math.imul(33, hash) + normalized.charCodeAt(index);
+  }
+
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 54% 38%)`;
 }
 
 function formatDate(dateStr?: string) {
@@ -127,27 +176,15 @@ function formatDate(dateStr?: string) {
   }
   return date.format('YYYY-MM-DD');
 }
-
-function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.ConversationScope {
-  return {
-    scopeMode: session.scopeMode || 'AUTO_LIBRARY',
-    scopeLocked: Boolean(session.scopeLocked),
-    scopeStatus: session.scopeStatus || 'READY',
-    sourceLabel: session.sourceLabel,
-    sourcePaperCount: session.sourcePaperCount
-  };
-}
 </script>
 
 <template>
-  <div class="chat-sidebar" :class="collapsed ? 'w-0 min-w-0 border-r-0' : 'w-[292px] min-w-[292px]'">
-    <div class="w-[292px] flex flex-col flex-1 overflow-hidden" :class="{ 'pointer-events-none invisible': collapsed }">
+  <div class="chat-sidebar" :class="collapsed ? 'w-0 min-w-0 border-r-0' : 'w-[276px] min-w-[276px]'">
+    <div class="w-[276px] flex flex-col flex-1 overflow-hidden" :class="{ 'pointer-events-none invisible': collapsed }">
       <div class="brand-row">
-        <div class="brand-mark">
-          <SystemLogo class="text-36px" />
-        </div>
+        <SystemLogo class="brand-logo" />
         <div class="min-w-0 flex-1">
-          <div class="brand-title">PaperLoom</div>
+          <div class="brand-title">Folio</div>
         </div>
         <NButton text size="tiny" class="collapse-button" @click="handleCollapse">
           <template #icon>
@@ -156,7 +193,17 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
         </NButton>
       </div>
 
-      <div class="px-3">
+      <div class="sidebar-actions">
+        <button
+          type="button"
+          class="library-button"
+          :class="{ 'library-button--active': isWorkbenchActive }"
+          aria-label="进入文献库"
+          @click="handleWorkbenchClick"
+        >
+          <icon-lucide:library class="library-button__icon" />
+          <span>Paper Library</span>
+        </button>
         <NButton type="primary" block class="new-chat-button" @click="handleNewChat">
           <template #icon>
             <icon-lucide:plus />
@@ -165,10 +212,10 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
         </NButton>
       </div>
 
-      <div class="px-3 pt-3">
-        <NInput v-model:value="keyword" clearable size="small" placeholder="搜索 query / session">
+      <div class="sidebar-search">
+        <NInput v-model:value="keyword" clearable size="small" placeholder="Search chats">
           <template #prefix>
-            <icon-lucide:search class="text-16px" style="color: var(--color-text-muted)" />
+            <icon-lucide:search class="search-icon" />
           </template>
         </NInput>
       </div>
@@ -188,28 +235,27 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
         <NSpin :show="sessionsLoading" class="h-full">
           <TransitionGroup name="session-list" tag="div">
             <div v-if="visibleSessions.length === 0 && !sessionsLoading" class="empty-sessions">
-              <icon-lucide:message-circle class="text-36px" style="color: var(--color-border-soft)" />
+              <icon-lucide:message-circle class="empty-sessions__icon" />
               <span>{{ showArchived ? '暂无归档 query' : '暂无 query 记录' }}</span>
             </div>
 
             <div
               v-for="session in visibleSessions"
               :key="session.conversationId"
+              data-testid="conversation-session"
+              :data-conversation-id="session.conversationId"
               class="session-item group"
               :class="session.conversationId === conversationId ? 'session-item--active' : ''"
               @click="handleSelect(session.conversationId)"
             >
-              <icon-lucide:circle-dot
-                v-if="session.conversationId === conversationId"
-                class="shrink-0 text-12px"
-                :style="{ color: 'var(--color-primary)' }"
-              />
+              <icon-lucide:circle-dot v-if="session.conversationId === conversationId" class="shrink-0 text-12px" />
               <div class="min-w-0 flex-1">
                 <div class="session-title">
                   {{ session.title }}
                 </div>
-                <div class="session-date">{{ formatDate(session.updatedAt) }}</div>
-                <SessionScopeChip :scope="sessionScope(session)" compact />
+                <div class="session-date">
+                  {{ formatDate(session.updatedAt) }}
+                </div>
               </div>
 
               <NPopconfirm v-if="!showArchived" @positive-click="handleArchive(session.conversationId)">
@@ -222,7 +268,7 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
                     @click.stop
                   >
                     <template #icon>
-                      <icon-lucide:archive class="text-15px" style="color: var(--color-text-muted)" />
+                      <icon-lucide:archive class="text-15px" />
                     </template>
                   </NButton>
                 </template>
@@ -236,9 +282,30 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
                 @click.stop="handleUnarchive(session.conversationId)"
               >
                 <template #icon>
-                  <icon-lucide:archive-restore class="text-15px" style="color: var(--color-text-muted)" />
+                  <icon-lucide:archive-restore class="text-15px" />
                 </template>
               </NButton>
+              <NPopconfirm
+                positive-text="删除"
+                negative-text="取消"
+                @positive-click="handleDelete(session.conversationId)"
+              >
+                <template #trigger>
+                  <NButton
+                    class="shrink-0 transition-opacity"
+                    :class="session.conversationId === conversationId ? '' : 'opacity-0 group-hover:opacity-100'"
+                    text
+                    size="tiny"
+                    :aria-label="`删除 ${session.title}`"
+                    @click.stop
+                  >
+                    <template #icon>
+                      <icon-lucide:trash-2 class="text-15px" />
+                    </template>
+                  </NButton>
+                </template>
+                删除后会移除此 session 和历史记录
+              </NPopconfirm>
             </div>
           </TransitionGroup>
         </NSpin>
@@ -247,23 +314,31 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
       <div class="sidebar-footer">
         <button
           type="button"
-          class="footer-action footer-action--workbench"
-          :class="{ 'footer-action--active': isWorkbenchActive }"
-          aria-label="进入工作台"
-          @click="handleWorkbenchClick"
+          class="account-button"
+          :class="{
+            'account-button--active': route.name === 'personal-center'
+          }"
+          aria-label="进入管理页面"
+          title="进入管理页面"
+          @click="handleAccountClick"
         >
-          <icon-lucide:book-open class="footer-action__icon" />
-          <span class="footer-action__copy">
-            <strong>Paper Library</strong>
-            <small>{{ workbenchSubtitle }}</small>
+          <span class="avatar-identicon" :style="avatarStyle" aria-hidden="true">
+            <span
+              v-for="(filled, index) in avatarCells"
+              :key="index"
+              class="avatar-identicon__cell"
+              :class="{ 'avatar-identicon__cell--filled': filled }"
+            />
           </span>
+          <span class="account-copy">
+            <strong>{{ accountName }}</strong>
+            <small>{{ accountRole }}</small>
+          </span>
+          <icon-lucide:settings class="account-button__icon" />
         </button>
 
-        <button type="button" class="footer-action footer-action--danger" @click="handleLogout">
-          <icon-lucide:log-out class="footer-action__icon" />
-          <span class="footer-action__copy">
-            <strong>Logout</strong>
-          </span>
+        <button type="button" class="logout-button" aria-label="退出登录" @click="handleLogout">
+          <icon-lucide:log-out />
         </button>
       </div>
     </div>
@@ -273,13 +348,13 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
 <style scoped>
 .chat-sidebar {
   position: relative;
-  height: 100%;
   flex-shrink: 0;
   display: flex;
+  height: 100%;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid var(--color-border);
-  background: var(--color-card-band);
+  border-right: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, #eef1ec);
   transition:
     width 0.2s ease,
     min-width 0.2s ease;
@@ -288,21 +363,14 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
 .brand-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 16px 12px 12px;
+  gap: 8px;
+  padding: 12px 10px 10px;
 }
 
-.brand-mark {
-  display: flex;
-  height: 42px;
-  width: 42px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+.brand-logo {
+  flex: 0 0 auto;
   color: var(--color-primary);
+  font-size: 22px;
 }
 
 .brand-title {
@@ -318,25 +386,77 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
     'PingFang SC',
     'Microsoft YaHei',
     sans-serif;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 720;
+  letter-spacing: 0;
 }
 
 .collapse-button {
   color: var(--color-text-muted);
 }
 
+.sidebar-actions {
+  display: grid;
+  gap: 6px;
+  padding: 0 10px;
+}
+
 .new-chat-button {
   height: 38px;
-  border-radius: 6px;
-  font-weight: 700;
+  border-radius: 8px;
+  font-weight: 720;
+}
+
+.library-button {
+  display: flex;
+  width: 100%;
+  height: 34px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  padding: 0 10px;
+  text-align: left;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.library-button:hover,
+.library-button--active {
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-primary) 12%);
+  color: var(--color-primary);
+}
+
+.library-button__icon {
+  flex: 0 0 auto;
+  font-size: 17px;
+}
+
+.sidebar-search {
+  padding: 10px 10px 0;
+}
+
+.sidebar-search :deep(.n-input) {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+}
+
+.search-icon {
+  color: var(--color-text-muted);
+  font-size: 15px;
 }
 
 .sidebar-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 14px 8px;
+  padding: 14px 14px 6px;
   color: var(--color-text-muted);
   font-family:
     system-ui,
@@ -347,7 +467,8 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
     'Microsoft YaHei',
     sans-serif;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 680;
+  letter-spacing: 0;
 }
 
 .archive-toggle {
@@ -356,6 +477,7 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
   color: var(--color-primary);
   cursor: pointer;
   font-size: 12px;
+  font-weight: 650;
 }
 
 .empty-sessions {
@@ -367,6 +489,11 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
   padding: 56px 12px;
   color: var(--color-text-muted);
   font-size: 13px;
+}
+
+.empty-sessions__icon {
+  color: var(--color-border-soft);
+  font-size: 34px;
 }
 
 .session-scroll {
@@ -415,31 +542,28 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
 }
 
 .session-item {
-  margin: 2px 4px;
   display: flex;
+  min-height: 38px;
   cursor: pointer;
   align-items: center;
-  gap: 10px;
-  border-left: 3px solid transparent;
-  border-radius: 4px;
-  padding: 10px 10px;
+  gap: 9px;
+  margin: 1px 2px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 9px;
   color: var(--color-text);
-  box-shadow: 0 0 0 transparent;
   transition:
     background 0.16s ease,
-    color 0.16s ease,
-    border-left-color 0.16s ease;
+    color 0.16s ease;
 }
 
 .session-item:hover {
-  background: var(--color-surface);
-  border-left-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
 }
 
 .session-item--active {
-  background: var(--color-primary-soft-bg);
+  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-primary) 12%);
   color: var(--color-primary);
-  border-left-color: var(--color-accent);
   font-weight: 600;
 }
 
@@ -452,7 +576,7 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
 }
 
 .session-date {
-  margin-top: 2px;
+  margin-top: 1px;
   color: var(--color-text-muted);
   font-family:
     system-ui,
@@ -465,79 +589,82 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
   font-size: 11px;
 }
 
-.session-item :deep(.session-scope-chip) {
-  margin-top: 6px;
-  max-width: 210px;
-  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
-}
-
-.session-item :deep(.session-scope-chip__label) {
-  max-width: 154px;
-}
-
 .sidebar-footer {
-  display: grid;
-  gap: 6px;
-  border-top: 1px solid var(--color-border);
-  padding: 10px 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  padding: 8px 10px 10px;
 }
 
-.footer-action {
+.account-button {
   display: flex;
+  min-width: 0;
   min-height: 42px;
+  flex: 1 1 0;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
-  padding: 0 10px;
+  padding: 5px 7px;
   text-align: left;
   transition:
     background 0.16s ease,
-    color 0.16s ease,
-    box-shadow 0.16s ease;
+    color 0.16s ease;
 }
 
-.footer-action:hover {
-  background: var(--color-surface);
+.account-button:hover,
+.account-button--active {
+  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
   color: var(--color-primary);
 }
 
-.footer-action--active {
-  background: var(--color-card-band);
-  color: var(--color-primary);
-  box-shadow: inset 3px 0 0 var(--color-primary);
-}
-
-.footer-action--workbench {
-  min-height: 54px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.footer-action__icon {
+.avatar-identicon {
+  display: grid;
+  position: relative;
+  width: 31px;
+  height: 31px;
   flex: 0 0 auto;
-  font-size: 18px;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  border-radius: 7px;
+  background: #f6f8fa;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 90%) inset,
+    0 1px 2px rgb(15 23 42 / 8%);
+  gap: 1px;
+  padding: 4px;
 }
 
-.footer-action__copy {
+.avatar-identicon__cell {
+  border-radius: 1px;
+}
+
+.avatar-identicon__cell--filled {
+  background: var(--avatar-fill, #57606a);
+}
+
+.account-copy {
   display: grid;
   min-width: 0;
   flex: 1 1 0;
-  gap: 1px;
+  gap: 2px;
 }
 
-.footer-action__copy strong {
+.account-copy strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 680;
 }
 
-.footer-action__copy small {
+.account-copy small {
   overflow: hidden;
   color: var(--color-text-muted);
   font-family:
@@ -554,8 +681,42 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
   white-space: nowrap;
 }
 
-.footer-action--danger:hover {
-  background: var(--color-accent-soft-bg);
+.account-button__icon {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  opacity: 0;
+  transition:
+    color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.account-button:hover .account-button__icon,
+.account-button--active .account-button__icon {
+  color: var(--color-primary);
+  opacity: 1;
+}
+
+.logout-button {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.logout-button:hover {
+  background: color-mix(in srgb, var(--color-accent-soft-bg) 78%, transparent);
   color: var(--color-error);
 }
 
@@ -570,13 +731,8 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
 }
 
 .dark .chat-sidebar {
-  border-right-color: var(--color-border);
-  background: var(--color-bg);
-}
-
-.dark .brand-mark {
-  background: var(--color-surface);
-  box-shadow: none;
+  border-right-color: color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 88%, #111827);
 }
 
 .dark .sidebar-section-header,
@@ -590,14 +746,11 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
 
 .dark .session-item:hover {
   background: var(--color-primary-soft-bg);
-  border-left-color: var(--color-accent);
 }
 
 .dark .session-item--active {
   background: var(--color-primary-soft-bg);
   color: var(--color-text);
-  border-left-color: var(--color-accent);
-  box-shadow: var(--shadow-card-soft);
 }
 
 .dark .session-scroll--overflowing:hover {
@@ -616,21 +769,27 @@ function sessionScope(session: Api.Chat.ConversationSession): Api.Chat.Conversat
   border-top-color: var(--color-border);
 }
 
-.dark .footer-action__copy small {
+.dark .account-copy small {
   color: var(--color-text-muted);
 }
 
-.dark .footer-action {
+.dark .account-button,
+.dark .logout-button,
+.dark .library-button {
   color: var(--color-text-muted);
 }
 
-.dark .footer-action:hover,
-.dark .footer-action--active {
+.dark .account-button:hover,
+.dark .account-button--active,
+.dark .library-button:hover,
+.dark .library-button--active,
+.dark .logout-button:hover {
   background: var(--color-primary-soft-bg);
   color: var(--color-text);
 }
 
-.dark .footer-action--workbench {
-  background: var(--color-primary-soft-bg);
+.dark .avatar-identicon {
+  background: #161b22;
+  box-shadow: none;
 }
 </style>

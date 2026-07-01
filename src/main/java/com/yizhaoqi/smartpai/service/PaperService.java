@@ -271,7 +271,6 @@ public class PaperService {
         }
     }
 
-    @Transactional
     public VectorizationService.VectorizationUsageResult reindexPaper(String paperId, String requesterId) {
         logger.info("开始重建论文索引: paperId={}, requesterId={}", paperId, requesterId);
 
@@ -346,7 +345,7 @@ public class PaperService {
         );
 
         kafkaTemplate.executeInTransaction(kt -> {
-            kt.send(kafkaConfig.getPaperProcessingTopic(), task);
+            kt.send(kafkaConfig.getPaperProcessingTopic(), paper.getPaperId(), task);
             return true;
         });
 

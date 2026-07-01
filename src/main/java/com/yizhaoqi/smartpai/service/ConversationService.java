@@ -96,18 +96,47 @@ public class ConversationService {
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (ConversationSession session : sessions) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", session.getId());
-            item.put("conversationId", session.getConversationId());
-            item.put("title", session.getTitle() != null ? session.getTitle() : "新对话");
-            item.put("status", session.getStatus().name());
-            item.put("createdAt", formatTimestamp(session.getCreatedAt()));
-            item.put("updatedAt", formatTimestamp(session.getUpdatedAt()));
-            appendScopeSummary(item, session);
-            result.add(item);
+            result.add(toSessionResponse(session));
         }
 
         return result;
+    }
+
+    public Optional<Map<String, Object>> getCurrentConversationSession(Long userId) {
+        String redisKey = "user:" + userId + ":current_conversation";
+        String conversationId = redisTemplate.opsForValue().get(redisKey);
+
+        if (conversationId != null && !conversationId.isBlank()) {
+            Optional<ConversationSession> current = findOwnedSession(userId, conversationId)
+                    .filter(session -> session.getStatus() == ConversationSession.SessionStatus.ACTIVE);
+            if (current.isPresent()) {
+                return current.map(this::toSessionResponse);
+            }
+        }
+
+        List<ConversationSession> activeSessions = sessionRepository.findByUserIdAndStatusOrderByUpdatedAtDesc(
+                userId,
+                ConversationSession.SessionStatus.ACTIVE
+        );
+        if (activeSessions.isEmpty()) {
+            return Optional.empty();
+        }
+
+        ConversationSession fallback = activeSessions.get(0);
+        redisTemplate.opsForValue().set(redisKey, fallback.getConversationId(), Duration.ofDays(7));
+        return Optional.of(toSessionResponse(fallback));
+    }
+
+    private Map<String, Object> toSessionResponse(ConversationSession session) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", session.getId());
+        item.put("conversationId", session.getConversationId());
+        item.put("title", session.getTitle() != null ? session.getTitle() : "新对话");
+        item.put("status", session.getStatus().name());
+        item.put("createdAt", formatTimestamp(session.getCreatedAt()));
+        item.put("updatedAt", formatTimestamp(session.getUpdatedAt()));
+        appendScopeSummary(item, session);
+        return item;
     }
 
     public Map<String, Object> createConversationSession(Long userId) {
@@ -186,6 +215,20 @@ public class ConversationService {
         ConversationSession session = requireOwnedSession(userId, conversationId);
         session.setStatus(ConversationSession.SessionStatus.ACTIVE);
         sessionRepository.save(session);
+    }
+
+    @Transactional
+    public void deleteConversationSession(Long userId, String conversationId) {
+        ConversationSession session = requireOwnedSession(userId, conversationId);
+        String redisKey = "user:" + userId + ":current_conversation";
+        String currentConversationId = redisTemplate.opsForValue().get(redisKey);
+
+        conversationRepository.deleteByUserIdAndConversationId(userId, conversationId);
+        sessionRepository.delete(session);
+
+        if (conversationId.equals(currentConversationId)) {
+            redisTemplate.delete(redisKey);
+        }
     }
 
     private void touchSessionUpdatedAt(Long userId, String conversationId) {

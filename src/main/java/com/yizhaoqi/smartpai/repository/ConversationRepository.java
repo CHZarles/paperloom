@@ -50,4 +50,6 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
     @EntityGraph(attributePaths = "user")
     Optional<Conversation> findByIdAndUserId(Long id, Long userId);
+
+    void deleteByUserIdAndConversationId(Long userId, String conversationId);
 }

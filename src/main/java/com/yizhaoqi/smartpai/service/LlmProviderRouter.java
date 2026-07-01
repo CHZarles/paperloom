@@ -144,7 +144,7 @@ public class LlmProviderRouter {
                 .append("2. 构造 query 时严格保留用户原话中的核心术语、方法名、数据集、指标和限定词，禁止替换为泛化关键词；必要时可在同一次 query 中合并原句与等价改写。\n")
                 .append("3. 用户要求整理、总结、归纳、提炼论文内容时，先用 search_papers 圈定材料，再调用 generate_summary 生成总结。\n\n")
                 .append("可以跳过 search_papers 的白名单（必须严格匹配其一，否则一律检索）：\n")
-                .append("- 纯打招呼或寒暄（你好/谢谢/再见等）；\n")
+                .append("- 纯打招呼或寒暄；\n")
                 .append("- 纯翻译请求，且不涉及论文内容；\n")
                 .append("- 与论文材料无关的纯创作请求；\n")
                 .append("- 通用编程语法、数学计算等完全不依赖任何专有信息的常识题；\n")

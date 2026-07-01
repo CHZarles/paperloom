@@ -334,7 +334,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   width: 100%;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--color-surface), var(--color-border-soft));
+  background: var(--color-surface);
   box-shadow: var(--shadow-card-soft);
   padding: 12px;
 }
@@ -392,7 +392,7 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
   margin-bottom: 14px;
   border: 1px solid var(--user-line);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--color-card-band), var(--color-surface));
+  background: var(--color-surface);
   overflow: hidden;
 }
 

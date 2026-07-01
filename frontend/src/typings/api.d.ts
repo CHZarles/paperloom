@@ -564,13 +564,14 @@ declare namespace Api {
       pdfEvidenceAvailable?: boolean | null;
       pageScreenshotAvailable?: boolean | null;
       figureScreenshotAvailable?: boolean | null;
+      citationRef?: string | null;
+      evidenceRef?: string | null;
       assetWarnings?: string[] | null;
     }
 
     interface Input {
       message: string;
       conversationId?: string;
-      retrievalBudgetProfile?: Scope['retrievalBudgetProfile'];
     }
 
     interface Output {
@@ -642,7 +643,6 @@ declare namespace Api {
       evidenceSnippet?: string;
       bboxJson?: string;
       sourceKind?: ReferenceEvidence['sourceKind'];
-      retrievalBudgetProfile?: 'interactive' | 'high_recall' | 'deep_audit';
     }
 
     interface ConversationScope {
@@ -655,12 +655,31 @@ declare namespace Api {
       sourceRecipe?: Record<string, any> | null;
     }
 
+    interface TitleMatchScopePreviewPaper {
+      paperId: string;
+      paperTitle?: string | null;
+      originalFilename?: string | null;
+      authors?: string | null;
+      venue?: string | null;
+      publicationYear?: number | null;
+    }
+
+    interface TitleMatchScopePreview {
+      paperCount: number;
+      paperIds: string[];
+      papers: TitleMatchScopePreviewPaper[];
+      sourceLabel: string;
+      sourceRecipe: Record<string, any>;
+    }
+
     interface UpdateConversationScopePayload {
       scopeMode: ScopeMode;
       sourceLabel?: string;
       collectionIds?: number[];
       paperIds?: string[];
       sourceRecipe?: Record<string, any>;
+      titleQuery?: string;
+      titleRegex?: string;
     }
 
     interface Token {

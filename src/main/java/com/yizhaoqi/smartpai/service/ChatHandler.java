@@ -3,7 +3,6 @@ package com.yizhaoqi.smartpai.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yizhaoqi.smartpai.entity.SearchResult;
 import com.yizhaoqi.smartpai.exception.RateLimitExceededException;
 import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import org.slf4j.Logger;
@@ -20,7 +19,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,12 +26,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,27 +41,16 @@ import java.util.regex.Pattern;
 public class ChatHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatHandler.class);
-    private static final int MAX_CONTEXT_SNIPPET_LEN = 300;
-    private static final int MAX_MATCHED_CHUNK_LEN = 800;
     private static final int MAX_EVIDENCE_SNIPPET_LEN = 160;
-    private static final int GENERATION_COMPLETION_TIMEOUT_SECONDS = 120;
-    private static final int MAX_REACT_ROUNDS = 4;
-    private static final int MAX_REACT_TOOL_CALLS = 8;
-    private static final int REACT_MAX_COMPLETION_TOKENS = 2000;
-    private static final int INITIAL_SEARCH_PAGE_BATCH_SIZE = 5;
-    private static final String INITIAL_SEARCH_TOOL_CALL_ID = "initial-search";
     private static final Pattern CITED_REFERENCE_PATTERN =
             Pattern.compile("\\[(\\d+)]");
     private final RedisTemplate<String, String> redisTemplate;
-    private final PaperRetrievalService paperRetrievalService;
-    private final PaperAnswerService paperAnswerService;
-    private final LlmProviderRouter llmProviderRouter;
     private final RateLimitService rateLimitService;
     private final ConversationService conversationService;
     private final ConversationScopeService conversationScopeService;
     private final ChatGenerationStateService chatGenerationStateService;
     private final ChatSessionRegistry chatSessionRegistry;
-    private final AgentToolRegistry agentToolRegistry;
+    private final ProductConversationService productConversationService;
     private final ThreadPoolTaskExecutor chatMonitorExecutor;
     private final ObjectMapper objectMapper;
 
@@ -75,8 +58,6 @@ public class ChatHandler {
     private final Map<String, StringBuilder> responseBuilders = new ConcurrentHashMap<>();
     // 用于跟踪每次生成任务的响应完成状态
     private final Map<String, CompletableFuture<String>> responseFutures = new ConcurrentHashMap<>();
-    // 用于持有正在进行中的 LLM 流，支持主动取消上游请求
-    private final Map<String, LlmProviderRouter.StreamHandle> activeStreams = new ConcurrentHashMap<>();
     // 停止标志 - 简单方案
     private final Map<String, Boolean> stopFlags = new ConcurrentHashMap<>();
     // 用于标记已经取消的生成任务，防止后续又被落成 completed
@@ -90,27 +71,21 @@ public class ChatHandler {
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
     public ChatHandler(RedisTemplate<String, String> redisTemplate,
-                      PaperRetrievalService paperRetrievalService,
-                      PaperAnswerService paperAnswerService,
-                      LlmProviderRouter llmProviderRouter,
                       RateLimitService rateLimitService,
                       ConversationService conversationService,
                       ConversationScopeService conversationScopeService,
                       ChatGenerationStateService chatGenerationStateService,
                       ChatSessionRegistry chatSessionRegistry,
-                      AgentToolRegistry agentToolRegistry,
+                      ProductConversationService productConversationService,
                       ObjectMapper objectMapper,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
-        this.paperRetrievalService = paperRetrievalService;
-        this.paperAnswerService = paperAnswerService;
-        this.llmProviderRouter = llmProviderRouter;
         this.rateLimitService = rateLimitService;
         this.conversationService = conversationService;
         this.conversationScopeService = conversationScopeService;
         this.chatGenerationStateService = chatGenerationStateService;
         this.chatSessionRegistry = chatSessionRegistry;
-        this.agentToolRegistry = agentToolRegistry;
+        this.productConversationService = productConversationService;
         this.objectMapper = objectMapper;
         this.chatMonitorExecutor = chatMonitorExecutor;
     }
@@ -121,10 +96,8 @@ public class ChatHandler {
 
     public void processMessage(String userId, ChatRequest request, WebSocketSession session) {
         String userMessage = request == null ? "" : request.message();
-        PaperAnswerService.AnswerScope scope = request == null ? null : request.scope();
-        RetrievalBudgetProfile retrievalBudgetProfile = request == null
-                ? RetrievalBudgetProfile.INTERACTIVE
-                : request.retrievalBudgetProfile();
+        ProductReferenceFocus incomingReferenceFocus = request == null ? null : request.referenceFocus();
+        RetrievalBudgetProfile retrievalBudgetProfile = RetrievalBudgetProfile.INTERACTIVE;
         logger.info("开始处理消息，用户ID: {}, 会话ID: {}", userId, session.getId());
         String requestClientId = resolveClientId(session);
         String conversationId = null;
@@ -138,8 +111,8 @@ public class ChatHandler {
             conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
-            PaperAnswerService.AnswerScope referenceFocus =
-                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(scope, userMessage, retrievalBudgetProfile));
+            ProductReferenceFocus referenceFocus =
+                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(incomingReferenceFocus, userMessage));
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
             }
@@ -151,8 +124,7 @@ public class ChatHandler {
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
-            PaperAnswerService.AnswerScope controlledScope =
-                    controlledAnswerScope(effectiveScope, referenceFocus, retrievalBudgetProfile);
+            SourceScope productScope = productSourceScope(effectiveScope, retrievalBudgetProfile);
             Map<String, Object> effectiveScopeMap = effectiveScopeMap(effectiveScope);
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
@@ -161,7 +133,7 @@ public class ChatHandler {
             logger.info("会话ID: {}, 用户ID: {}", conversationId, userId);
             sendGenerationStart(userId, finalGenerationId, finalConversationId);
             ChatRequestTiming timing = ChatRequestTiming.start(userMessage);
-            generationTimings.put(finalGenerationId, timing);
+                generationTimings.put(finalGenerationId, timing);
 
             // 为当前生成任务创建响应构建器
             responseBuilders.put(finalGenerationId, new StringBuilder());
@@ -169,13 +141,13 @@ public class ChatHandler {
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
 
-            timing.route("AUTO_SOURCE_QA");
+            timing.route("PRODUCT_REACT");
             timing.mark("intent_route_decided");
 
-            // 2. 异步执行 Evidence Harness；默认用户聊天不再让模型自由调度工具和 citation。
+            // 2. 异步执行 Product ReAct Harness；产品语义由 Harness 和产品工具目录处理。
             try {
                 chatMonitorExecutor.execute(() ->
-                        runEvidenceHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, controlledScope, responseFuture));
+                        runProductHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, productScope, responseFuture));
             } catch (RejectedExecutionException ex) {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
@@ -197,69 +169,25 @@ public class ChatHandler {
         }
     }
 
-    private void runReActLoopSafely(String userId,
-                                    String userMessage,
-                                    String conversationId,
-                                    String generationId,
-                                    List<Map<String, String>> history,
-                                    CompletableFuture<String> responseFuture) {
-        try {
-            runReActLoop(userId, userMessage, conversationId, generationId, history, responseFuture);
-        } catch (Exception e) {
-            logger.error("ReAct 循环执行失败: generationId={}", generationId, e);
-            chatGenerationStateService.markFailed(generationId, e.getMessage());
-            handleError(userId, generationId, e);
-            sendCompletionNotification(userId, generationId, conversationId, true, false);
-            cleanupGenerationState(generationId, e);
+    private SourceScope productSourceScope(ConversationScopeService.EffectiveConversationScope effectiveScope,
+                                           RetrievalBudgetProfile retrievalBudgetProfile) {
+        if (effectiveScope != null && effectiveScope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT) {
+            return SourceScope.manual(effectiveScope.paperIds(), retrievalBudgetProfile);
         }
+        return SourceScope.auto(retrievalBudgetProfile);
     }
 
-    private PaperAnswerService.AnswerScope controlledAnswerScope(
-            ConversationScopeService.EffectiveConversationScope effectiveScope,
-            PaperAnswerService.AnswerScope referenceFocus,
-            RetrievalBudgetProfile retrievalBudgetProfile) {
-        List<String> controlledPaperIds = effectiveScope != null
-                && effectiveScope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT
-                ? effectiveScope.paperIds()
-                : List.of();
-        if (referenceFocus != null) {
-            return referenceFocus.withPaperIds(controlledPaperIds);
-        }
-        return sessionOnlyAnswerScope(controlledPaperIds, retrievalBudgetProfile);
-    }
-
-    private PaperAnswerService.AnswerScope sessionOnlyAnswerScope(
-            List<String> controlledPaperIds,
-            RetrievalBudgetProfile budgetProfile) {
-        return new PaperAnswerService.AnswerScope(
-                controlledPaperIds,
-                List.of(),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                budgetProfile
-        );
-    }
-
-    private PaperAnswerService.AnswerScope referenceFocus(
-            PaperAnswerService.AnswerScope incomingScope,
-            String userMessage,
-            RetrievalBudgetProfile budgetProfile) {
+    private ProductReferenceFocus referenceFocus(
+            ProductReferenceFocus incomingScope,
+            String userMessage) {
         if (hasReferenceFocus(incomingScope)) {
-            return structuredReferenceFocus(incomingScope, budgetProfile);
+            return structuredReferenceFocus(incomingScope);
         }
         Integer referenceNumber = firstCitedReferenceNumber(userMessage);
         if (referenceNumber == null) {
             return null;
         }
-        return new PaperAnswerService.AnswerScope(
+        return new ProductReferenceFocus(
                 List.of(),
                 List.of(),
                 referenceNumber,
@@ -271,14 +199,11 @@ public class ChatHandler {
                 null,
                 null,
                 null,
-                null,
-                budgetProfile
+                null
         );
     }
 
-    private PaperAnswerService.AnswerScope structuredReferenceFocus(
-            PaperAnswerService.AnswerScope incomingScope,
-            RetrievalBudgetProfile budgetProfile) {
+    private ProductReferenceFocus structuredReferenceFocus(ProductReferenceFocus incomingScope) {
         String focusPaperId = trimToNull(incomingScope.paperId());
         List<String> focusPaperIds = focusPaperId == null
                 ? incomingScope.paperIds()
@@ -287,7 +212,7 @@ public class ChatHandler {
         List<String> focusPaperTitles = focusPaperTitle == null
                 ? incomingScope.paperTitles()
                 : List.of(focusPaperTitle);
-        return new PaperAnswerService.AnswerScope(
+        return new ProductReferenceFocus(
                 focusPaperIds,
                 focusPaperTitles,
                 incomingScope.referenceNumber(),
@@ -299,8 +224,7 @@ public class ChatHandler {
                 incomingScope.originalFilename(),
                 incomingScope.matchedText(),
                 incomingScope.bboxJson(),
-                incomingScope.sourceKind(),
-                budgetProfile
+                incomingScope.sourceKind()
         );
     }
 
@@ -319,10 +243,10 @@ public class ChatHandler {
         }
     }
 
-    private PaperAnswerService.AnswerScope resolveReferenceFocus(
+    private ProductReferenceFocus resolveReferenceFocus(
             Long userId,
             String conversationId,
-            PaperAnswerService.AnswerScope referenceFocus) {
+            ProductReferenceFocus referenceFocus) {
         if (referenceFocus == null) {
             return referenceFocus;
         }
@@ -342,8 +266,8 @@ public class ChatHandler {
         return enrichReferenceFocus(referenceFocus, resolvedDetail, paperId);
     }
 
-    private PaperAnswerService.AnswerScope enrichReferenceFocus(
-            PaperAnswerService.AnswerScope referenceFocus,
+    private ProductReferenceFocus enrichReferenceFocus(
+            ProductReferenceFocus referenceFocus,
             Map<String, Object> detail,
             String paperId) {
         String paperTitle = firstNonBlank(stringDetail(detail, "paperTitle"), referenceFocus.paperTitle());
@@ -355,7 +279,7 @@ public class ChatHandler {
                 stringDetail(detail, "matchedText"),
                 referenceFocus.matchedText()
         );
-        return new PaperAnswerService.AnswerScope(
+        return new ProductReferenceFocus(
                 List.of(paperId),
                 paperTitle == null ? referenceFocus.paperTitles() : List.of(paperTitle),
                 referenceFocus.referenceNumber(),
@@ -367,8 +291,7 @@ public class ChatHandler {
                 originalFilename,
                 matchedText,
                 firstNonBlank(stringDetail(detail, "bboxJson"), referenceFocus.bboxJson()),
-                firstNonBlank(stringDetail(detail, "sourceKind"), referenceFocus.sourceKind()),
-                referenceFocus.retrievalBudgetProfile()
+                firstNonBlank(stringDetail(detail, "sourceKind"), referenceFocus.sourceKind())
         );
     }
 
@@ -399,6 +322,37 @@ public class ChatHandler {
         }
     }
 
+    private Double doubleDetail(Map<String, Object> detail, String key) {
+        if (detail == null) {
+            return null;
+        }
+        Object value = detail.get(key);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        String text = value == null ? null : trimToNull(String.valueOf(value));
+        if (text == null) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Boolean booleanDetail(Map<String, Object> detail, String key) {
+        if (detail == null) {
+            return false;
+        }
+        Object value = detail.get(key);
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        String text = value == null ? null : trimToNull(String.valueOf(value));
+        return text != null && Boolean.parseBoolean(text);
+    }
+
     @SafeVarargs
     private final <T> T firstNonNull(T... values) {
         if (values == null) {
@@ -425,18 +379,11 @@ public class ChatHandler {
         return null;
     }
 
-    private boolean hasReferenceFocus(PaperAnswerService.AnswerScope scope) {
+    private boolean hasReferenceFocus(ProductReferenceFocus scope) {
         if (scope == null) {
             return false;
         }
-        boolean hasPaperId = trimToNull(scope.paperId()) != null;
-        boolean hasMatchedText = trimToNull(scope.matchedText()) != null;
-        boolean hasConversationReference = scope.conversationRecordId() != null && scope.referenceNumber() != null;
-        boolean hasPageAnchor = hasPaperId && scope.pageNumber() != null;
-        return hasConversationReference
-                || scope.chunkId() != null
-                || hasPageAnchor
-                || (hasPaperId && hasMatchedText);
+        return scope.referenceNumber() != null;
     }
 
     private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope) {
@@ -452,21 +399,161 @@ public class ChatHandler {
         return scope;
     }
 
-    private void runEvidenceHarnessSafely(String userId,
-                                          String userMessage,
-                                          String conversationId,
-                                          String generationId,
-                                          PaperAnswerService.AnswerScope scope,
-                                          CompletableFuture<String> responseFuture) {
+    private void runProductHarnessSafely(String userId,
+                                         String userMessage,
+                                         String conversationId,
+                                         String generationId,
+                                         SourceScope scope,
+                                         CompletableFuture<String> responseFuture) {
         try {
-            runEvidenceHarness(userId, userMessage, conversationId, generationId, scope, responseFuture);
+            runProductHarness(userId, userMessage, conversationId, generationId, scope, responseFuture);
         } catch (Exception e) {
-            logger.error("Evidence Harness 执行失败: generationId={}", generationId, e);
+            logger.error("Product ReAct Harness 执行失败: generationId={}", generationId, e);
             chatGenerationStateService.markFailed(generationId, e.getMessage());
             handleError(userId, generationId, e);
             sendCompletionNotification(userId, generationId, conversationId, true, false);
             cleanupGenerationState(generationId, e);
         }
+    }
+
+    private void runProductHarness(String userId,
+                                   String userMessage,
+                                   String conversationId,
+                                   String generationId,
+                                   SourceScope scope,
+                                   CompletableFuture<String> responseFuture) {
+        if (productConversationService == null) {
+            throw new IllegalStateException("ProductConversationService is required for product chat");
+        }
+        ChatRequestTiming timing = generationTimings.get(generationId);
+        if (timing != null) {
+            timing.begin("product_react_harness");
+        }
+        ProductTurnResult answer = productConversationService.runTurn(
+                Long.parseLong(userId),
+                conversationId,
+                generationId,
+                userMessage,
+                scope,
+                ProductModelContext.defaults(),
+                generationEffectiveScopes.get(generationId),
+                event -> sendProductToolCall(userId, generationId, conversationId, event)
+        );
+        if (timing != null) {
+            timing.end("product_react_harness");
+            timing.route(answer.envelope() == null ? answer.stopReason().name() : answer.envelope().answerType().name());
+            timing.retrievalHitCount(answer.references().size());
+        }
+        Map<String, Object> diagnostics = productDiagnostics(answer);
+        if (!diagnostics.isEmpty()) {
+            generationDiagnostics.put(generationId, diagnostics);
+            chatGenerationStateService.updateDiagnostics(generationId, diagnostics);
+        }
+        if (answer.resultStatus() == ProductResultStatus.FAILED) {
+            throw new RuntimeException(answer.finalAnswerMarkdown());
+        }
+        Map<Integer, ReferenceInfo> productReferences = productReferenceMappings(answer.references());
+        if (!productReferences.isEmpty()) {
+            generationReferenceMappings.put(generationId, productReferences);
+            chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(productReferences));
+        }
+        appendStreamChunk(userId, generationId, conversationId, answer.finalAnswerMarkdown());
+        finalizeResponse(
+                userId,
+                userMessage,
+                conversationId,
+                generationId,
+                responseFuture,
+                responseBuilders.get(generationId),
+                new LlmProviderRouter.StreamCompletion(
+                        answer.stopReason().name(),
+                        0,
+                        0,
+                        answer.finalAnswerMarkdown().length()
+                )
+        );
+    }
+
+    private Map<String, Object> productDiagnostics(ProductTurnResult answer) {
+        if (answer == null) {
+            return Map.of();
+        }
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("harness", "PRODUCT_REACT");
+        diagnostics.put("resultStatus", answer.resultStatus().name());
+        diagnostics.put("stopReason", answer.stopReason().name());
+        if (answer.envelope() != null) {
+            diagnostics.put("answerType", answer.envelope().answerType().name());
+        }
+        diagnostics.put("referenceCount", answer.references().size());
+        return diagnostics;
+    }
+
+    private Map<Integer, ReferenceInfo> productReferenceMappings(List<Map<String, Object>> references) {
+        Map<Integer, ReferenceInfo> mappings = new LinkedHashMap<>();
+        int fallbackNumber = 1;
+        for (Map<String, Object> reference : references == null ? List.<Map<String, Object>>of() : references) {
+            Integer referenceNumber = integerDetail(reference, "referenceNumber");
+            if (referenceNumber == null || referenceNumber <= 0) {
+                referenceNumber = fallbackNumber;
+            }
+            fallbackNumber = Math.max(fallbackNumber + 1, referenceNumber + 1);
+            mappings.put(referenceNumber, referenceInfoFromProductReference(reference));
+        }
+        return mappings;
+    }
+
+    private ReferenceInfo referenceInfoFromProductReference(Map<String, Object> reference) {
+        String matchedText = firstNonBlank(
+                stringDetail(reference, "matchedChunkText"),
+                stringDetail(reference, "matchedText"),
+                stringDetail(reference, "snippet"),
+                stringDetail(reference, "evidenceSnippet")
+        );
+        String evidenceSnippet = firstNonBlank(
+                stringDetail(reference, "evidenceSnippet"),
+                stringDetail(reference, "snippet"),
+                trimToMaxLength(matchedText, MAX_EVIDENCE_SNIPPET_LEN)
+        );
+        return new ReferenceInfo(
+                stringDetail(reference, "paperId"),
+                firstNonBlank(stringDetail(reference, "paperTitle"), stringDetail(reference, "title")),
+                stringDetail(reference, "originalFilename"),
+                integerDetail(reference, "pageNumber"),
+                firstNonBlank(stringDetail(reference, "anchorText"), matchedText),
+                firstNonBlank(stringDetail(reference, "retrievalMode"), "PRODUCT_REACT"),
+                firstNonBlank(stringDetail(reference, "retrievalLabel"), "Product ReAct evidence"),
+                firstNonBlank(stringDetail(reference, "retrievalQuery"), stringDetail(reference, "question")),
+                matchedText,
+                evidenceSnippet,
+                doubleDetail(reference, "score"),
+                integerDetail(reference, "chunkId"),
+                stringDetail(reference, "elementType"),
+                stringDetail(reference, "sectionTitle"),
+                integerDetail(reference, "sectionLevel"),
+                stringDetail(reference, "bboxJson"),
+                stringDetail(reference, "parserName"),
+                stringDetail(reference, "parserVersion"),
+                stringDetail(reference, "sourceKind"),
+                stringDetail(reference, "tableId"),
+                stringDetail(reference, "figureId"),
+                stringDetail(reference, "formulaId"),
+                stringDetail(reference, "evidenceRole"),
+                firstNonBlank(stringDetail(reference, "retrievalRoute"), "PRODUCT_REACT"),
+                stringDetail(reference, "intent"),
+                stringDetail(reference, "rankReason"),
+                stringDetail(reference, "tableText"),
+                stringDetail(reference, "tableMarkdown"),
+                booleanDetail(reference, "tableScreenshotAvailable"),
+                "PDF",
+                firstNonBlank(stringDetail(reference, "evidenceAssetLevel"), stringDetail(reference, "assetLevel")),
+                booleanDetail(reference, "pdfEvidenceAvailable"),
+                booleanDetail(reference, "pageScreenshotAvailable"),
+                booleanDetail(reference, "figureScreenshotAvailable"),
+                stringDetail(reference, "citationRef"),
+                stringDetail(reference, "evidenceRef"),
+                stringListValue(reference.get("assetWarnings"))
+        );
     }
 
     private String trimToNull(String value) {
@@ -477,383 +564,12 @@ public class ChatHandler {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private void runEvidenceHarness(String userId,
-                                    String userMessage,
-                                    String conversationId,
-                                    String generationId,
-                                    PaperAnswerService.AnswerScope scope,
-                                    CompletableFuture<String> responseFuture) {
-        ChatRequestTiming timing = generationTimings.get(generationId);
-        if (timing != null) {
-            timing.begin("harness");
-        }
-        PaperAnswerService.AnswerResult answer = paperAnswerService.answer(userId, conversationId, userMessage, scope);
-        if (timing != null) {
-            timing.end("harness");
-            timing.route(answer.intent().name());
-            timing.retrievalHitCount(answer.evidenceCount());
-        }
-        if (!answer.referenceMappings().isEmpty()) {
-            generationReferenceMappings.put(generationId, answer.referenceMappings());
-            chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(answer.referenceMappings()));
-        }
-        Map<String, Object> diagnostics = toSerializableDiagnostics(answer.diagnostics());
-        if (!diagnostics.isEmpty()) {
-            generationDiagnostics.put(generationId, diagnostics);
-            chatGenerationStateService.updateDiagnostics(generationId, diagnostics);
-        }
-        appendStreamChunk(userId, generationId, conversationId, answer.markdown());
-        finalizeResponse(
-                userId,
-                userMessage,
-                conversationId,
-                generationId,
-                responseFuture,
-                responseBuilders.get(generationId),
-                new LlmProviderRouter.StreamCompletion(answer.intent().name(), 0, 0, answer.markdown().length())
-        );
-    }
-
     private String resolveClientId(WebSocketSession session) {
         String clientId = chatSessionRegistry.getClientId(session);
         if (clientId != null && !clientId.isBlank()) {
             return clientId;
         }
         return session != null ? session.getId() : null;
-    }
-
-    private void runReActLoop(String userId,
-                              String userMessage,
-                              String conversationId,
-                              String generationId,
-                              List<Map<String, String>> history,
-                              CompletableFuture<String> responseFuture) {
-        ChatRequestTiming timing = generationTimings.get(generationId);
-        String initialContext = "";
-        if (shouldUseInitialPaperSearch(userMessage)) {
-            if (timing != null) {
-                timing.begin("retrieval");
-            }
-            InitialSearchOutcome initialSearchOutcome = runInitialPaperSearch(userId, userMessage, generationId, conversationId);
-            if (timing != null) {
-                timing.retrievalHitCount(initialSearchOutcome.hitCount());
-                timing.end("retrieval");
-            }
-            if (initialSearchOutcome.noHit()) {
-                logger.info("初始论文检索无命中，继续进入 ReAct 工具规划: generationId={}", generationId);
-            }
-            initialContext = initialSearchOutcome.context();
-        }
-
-        List<Map<String, Object>> messages = llmProviderRouter.buildReActMessages(
-                userMessage,
-                initialContext,
-                history,
-                buildRecentFeedbackGuidance(userId)
-        );
-        int executedToolCalls = 0;
-        int totalPromptTokens = 0;
-        int totalCompletionTokens = 0;
-
-        for (int round = 1; round <= MAX_REACT_ROUNDS; round++) {
-            if (finishCancelledGeneration(generationId, responseFuture, responseBuilders.get(generationId))) {
-                return;
-            }
-
-            if (timing != null) {
-                timing.begin("llm");
-            }
-            LlmProviderRouter.ReActTurn turn = streamReActTurnBlocking(
-                    userId, conversationId, generationId, messages, agentToolRegistry.getTools());
-            if (timing != null) {
-                timing.end("llm");
-            }
-            if (turn == null) {
-                // 上游 stream 被取消（如用户点 stop），保证内存映射被回收
-                cleanupGenerationState(generationId, null);
-                return;
-            }
-            totalPromptTokens += turn.promptTokens();
-            totalCompletionTokens += turn.completionTokens();
-
-            if (turn.toolCalls().isEmpty()) {
-                finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
-                        responseBuilders.get(generationId),
-                        new LlmProviderRouter.StreamCompletion(turn.finishReason(), totalPromptTokens, totalCompletionTokens, turn.content().length()));
-                return;
-            }
-
-            messages.add(turn.assistantMessage());
-            for (LlmProviderRouter.ToolCallDecision toolCall : turn.toolCalls()) {
-                ExecutedToolResult executedToolResult;
-                if (executedToolCalls >= MAX_REACT_TOOL_CALLS) {
-                    executedToolResult = new ExecutedToolResult(
-                            "工具调用预算已用尽，本次工具未执行。请基于已有 tool 结果给出最终回答。",
-                            false
-                    );
-                    sendToolCallStatus(userId, generationId, conversationId, toolCall, "failed");
-                } else {
-                    executedToolResult = executeToolForReAct(userId, userMessage, generationId, conversationId, toolCall);
-                    executedToolCalls++;
-                }
-                messages.add(toolMessage(toolCall.id(), executedToolResult.content()));
-                if (executedToolResult.streamedToUser()) {
-                    finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
-                            responseBuilders.get(generationId),
-                            new LlmProviderRouter.StreamCompletion(
-                                    "tool_streamed",
-                                    totalPromptTokens,
-                                    totalCompletionTokens,
-                                    responseBuilders.get(generationId) != null ? responseBuilders.get(generationId).length() : 0
-                            ));
-                    return;
-                }
-            }
-        }
-
-        messages.add(Map.of(
-                "role", "user",
-                "content", "ReAct 轮次预算已用尽，请不要再调用工具，直接基于已有 tool 结果给出最终回答。"
-        ));
-        if (timing != null) {
-            timing.begin("llm");
-        }
-        LlmProviderRouter.ReActTurn finalTurn = streamReActTurnBlocking(
-                userId, conversationId, generationId, messages, List.of());
-        if (timing != null) {
-            timing.end("llm");
-        }
-        if (finalTurn == null) {
-            cleanupGenerationState(generationId, null);
-            return;
-        }
-        totalPromptTokens += finalTurn.promptTokens();
-        totalCompletionTokens += finalTurn.completionTokens();
-        finalizeResponse(userId, userMessage, conversationId, generationId, responseFuture,
-                responseBuilders.get(generationId),
-                new LlmProviderRouter.StreamCompletion(finalTurn.finishReason(), totalPromptTokens, totalCompletionTokens, finalTurn.content().length()));
-    }
-
-    private ExecutedToolResult executeToolForReAct(String userId,
-                                                   String userMessage,
-                                                   String generationId,
-                                                   String conversationId,
-                                                   LlmProviderRouter.ToolCallDecision toolCall) {
-        sendToolCallStatus(userId, generationId, conversationId, toolCall, "executing");
-        AtomicBoolean summaryStreamStarted = new AtomicBoolean(false);
-        try {
-            logger.info("ReAct 执行 Agent Tool: name={}, userId={}, generationId={}, toolCallId={}, args={}",
-                    toolCall.name(), userId, generationId, toolCall.id(), toolCall.arguments());
-            Consumer<String> toolChunkConsumer = "generate_summary".equals(toolCall.name())
-                    ? chunk -> {
-                        if (chunk == null || chunk.isEmpty()) {
-                            return;
-                        }
-                        if (summaryStreamStarted.compareAndSet(false, true)) {
-                            appendStreamChunk(userId, generationId, conversationId, "\n\n");
-                        }
-                        appendStreamChunk(userId, generationId, conversationId, chunk);
-                    }
-                    : null;
-            ChatRequestTiming timing = generationTimings.get(generationId);
-            if ("search_papers".equals(toolCall.name()) && timing != null) {
-                timing.begin("retrieval");
-            }
-            AgentToolRegistry.ToolExecutionResult toolResult =
-                    agentToolRegistry.executeTool(toolCall.name(), toolCall.arguments(), userId, toolChunkConsumer);
-            if ("search_papers".equals(toolCall.name()) && timing != null) {
-                timing.end("retrieval");
-            }
-
-            // search_papers 返回的 SearchResult 列表与模型 prompt 中的 [N] 编号一一对应，
-            // 必须把它落到 generationReferenceMappings 里，否则前端点击引用拿不到 paperId/页码。
-            if ("search_papers".equals(toolCall.name())) {
-                if (timing != null) {
-                    timing.retrievalHitCount(extractSearchResultCount(toolResult));
-                }
-                replaceReferencesFromSearchTool(generationId, userMessage, toolResult);
-            }
-
-            String content = toolResult.content();
-            if (content == null || content.isBlank()) {
-                content = "工具 " + toolCall.name() + " 执行成功，但没有返回可展示内容。";
-            }
-            sendToolCallStatus(userId, generationId, conversationId, toolCall, "success");
-            return new ExecutedToolResult(content, toolResult.streamedToUser());
-        } catch (Exception exception) {
-            logger.warn("ReAct Agent Tool 执行失败，作为 tool message 返回模型: name={}, generationId={}",
-                    toolCall.name(), generationId, exception);
-            sendToolCallStatus(userId, generationId, conversationId, toolCall, "failed");
-            // generate_summary 已经把部分摘要流给前端，再让模型重写会拼出"半个旧摘要 + 新摘要"。
-            // 直接以失败提示收尾，让 ReAct 循环立即 finalize，避免数据不一致。
-            if ("generate_summary".equals(toolCall.name()) && summaryStreamStarted.get()) {
-                appendStreamChunk(userId, generationId, conversationId,
-                        "\n\n（摘要流式生成中断：" + exception.getMessage() + "）");
-                return new ExecutedToolResult(
-                        "工具 " + toolCall.name() + " 已部分流式输出后失败: " + exception.getMessage(),
-                        true
-                );
-            }
-            return new ExecutedToolResult("工具 " + toolCall.name() + " 执行失败: " + exception.getMessage(), false);
-        }
-    }
-
-    private int extractSearchResultCount(AgentToolRegistry.ToolExecutionResult toolResult) {
-        if (toolResult == null || toolResult.data() == null) {
-            return 0;
-        }
-        Object resultsObj = toolResult.data().get("results");
-        return resultsObj instanceof List<?> results ? results.size() : 0;
-    }
-
-    private void replaceReferencesFromSearchTool(String generationId,
-                                                 String userMessage,
-                                                 AgentToolRegistry.ToolExecutionResult toolResult) {
-        if (toolResult == null || toolResult.data() == null) {
-            return;
-        }
-        Object resultsObj = toolResult.data().get("results");
-        if (!(resultsObj instanceof List<?> rawList) || rawList.isEmpty()) {
-            return;
-        }
-
-        Map<Integer, ReferenceInfo> mapping = new HashMap<>();
-        int referenceNumber = 1;
-        String retrievalQuery = toolResult.data().get("query") instanceof String query && !query.isBlank()
-                ? query
-                : userMessage;
-        for (Object item : rawList) {
-            if (!(item instanceof SearchResult result) || result.getPaperId() == null) {
-                continue;
-            }
-            String paperLabel = result.getPaperTitle() != null ? result.getPaperTitle() : "unknown";
-            mapping.put(referenceNumber, buildReferenceInfo(result, paperLabel, retrievalQuery));
-            referenceNumber++;
-        }
-        if (mapping.isEmpty()) {
-            return;
-        }
-        // 模型每次 search_papers 都会拿到 [1]..[K] 重新编号，因此按"覆盖"语义保存最新一次的引用映射。
-        generationReferenceMappings.put(generationId, mapping);
-        chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(mapping));
-        logger.info("ReAct search_papers 引用映射已刷新: generationId={}, count={}", generationId, mapping.size());
-    }
-
-    private InitialSearchOutcome runInitialPaperSearch(String userId,
-                                                           String userMessage,
-                                                           String generationId,
-                                                           String conversationId) {
-        LlmProviderRouter.ToolCallDecision toolCall = new LlmProviderRouter.ToolCallDecision(
-                INITIAL_SEARCH_TOOL_CALL_ID,
-                "search_papers",
-                Map.of("query", userMessage, "pageBatchSize", INITIAL_SEARCH_PAGE_BATCH_SIZE)
-        );
-        sendToolCallStatus(userId, generationId, conversationId, toolCall, "executing");
-
-        PaperRetrievalService.RetrievalResult retrievalResult = paperRetrievalService.retrieve(
-                userMessage,
-                userId,
-                RetrievalBudget.forPageBatch(INITIAL_SEARCH_PAGE_BATCH_SIZE)
-        );
-        List<String> queries = retrievalResult.attemptedQueries();
-
-        sendToolCallStatus(userId, generationId, conversationId, toolCall, "success");
-        if (retrievalResult.finalHitCount() == 0) {
-            logger.info("初始论文检索无命中: generationId={}, queries={}", generationId, queries);
-            return InitialSearchOutcome.noHitOutcome();
-        }
-
-        List<SearchResult> mergedResults = retrievalResult.results();
-        String retrievalQuery = String.join(" | ", queries);
-        String context = buildContext(mergedResults, generationId, retrievalQuery);
-        logger.info("初始论文检索命中: generationId={}, queries={}, resultCount={}",
-                generationId, queries, mergedResults.size());
-        return InitialSearchOutcome.withContext(context, mergedResults.size());
-    }
-
-    static boolean shouldUseInitialPaperSearch(String userMessage) {
-        return false;
-    }
-
-    static List<String> buildInitialPaperQueries(String userMessage) {
-        String original = normalizeEvidenceTextStatic(userMessage);
-        if (original.isBlank()) {
-            return List.of();
-        }
-        return List.of(original);
-    }
-
-    private record InitialSearchOutcome(String context, boolean noHit, int hitCount) {
-        private static InitialSearchOutcome withContext(String context, int hitCount) {
-            return new InitialSearchOutcome(context == null ? "" : context, false, hitCount);
-        }
-
-        private static InitialSearchOutcome noHitOutcome() {
-            return new InitialSearchOutcome("", true, 0);
-        }
-    }
-
-    private record ExecutedToolResult(String content, boolean streamedToUser) {
-    }
-
-    private Map<String, Object> toolMessage(String toolCallId, String content) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("role", "tool");
-        message.put("tool_call_id", toolCallId == null ? "" : toolCallId);
-        message.put("content", content == null ? "" : content);
-        return message;
-    }
-
-    private LlmProviderRouter.ReActTurn streamReActTurnBlocking(String userId,
-                                                                String conversationId,
-                                                                String generationId,
-                                                                List<Map<String, Object>> messages,
-                                                                List<AgentToolRegistry.AgentTool> tools) {
-        CompletableFuture<LlmProviderRouter.ReActTurn> turnFuture = new CompletableFuture<>();
-        LlmProviderRouter.StreamHandle streamHandle = llmProviderRouter.streamReActTurn(
-                userId,
-                messages,
-                tools,
-                REACT_MAX_COMPLETION_TOKENS,
-                chunk -> appendStreamChunk(userId, generationId, conversationId, chunk),
-                turnFuture::completeExceptionally,
-                turnFuture::complete
-        );
-        activeStreams.put(generationId, streamHandle);
-
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(GENERATION_COMPLETION_TIMEOUT_SECONDS);
-        try {
-            while (true) {
-                if (isGenerationCancelled(generationId)) {
-                    streamHandle.cancel();
-                    return null;
-                }
-                long remainingNanos = deadline - System.nanoTime();
-                if (remainingNanos <= 0) {
-                    streamHandle.cancel();
-                    throw new RuntimeException("模型响应超时，请稍后重试");
-                }
-                try {
-                    long waitMillis = Math.min(TimeUnit.NANOSECONDS.toMillis(remainingNanos), 200L);
-                    return turnFuture.get(Math.max(waitMillis, 1L), TimeUnit.MILLISECONDS);
-                } catch (TimeoutException ignored) {
-                    // 短轮询用于及时响应用户停止生成。
-                }
-            }
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            streamHandle.cancel();
-            throw new RuntimeException("模型响应被中断", exception);
-        } catch (ExecutionException exception) {
-            streamHandle.cancel();
-            Throwable cause = exception.getCause() == null ? exception : exception.getCause();
-            if (cause instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new RuntimeException("ReAct 流式模型回合调用失败", cause);
-        } finally {
-            activeStreams.remove(generationId, streamHandle);
-        }
     }
 
     private void appendStreamChunk(String userId, String generationId, String conversationId, String chunk) {
@@ -866,48 +582,6 @@ public class ChatHandler {
         }
         chatGenerationStateService.appendChunk(generationId, chunk);
         sendResponseChunk(userId, generationId, conversationId, chunk);
-    }
-
-    private void submitCompletionMonitor(String userId, String userMessage, String conversationId, String generationId,
-                                         CompletableFuture<String> responseFuture) {
-        try {
-            chatMonitorExecutor.execute(() -> {
-                try {
-                    if (finishCancelledGeneration(generationId, responseFuture, responseBuilders.get(generationId))) {
-                        return;
-                    }
-
-                    responseFuture.get(GENERATION_COMPLETION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                } catch (TimeoutException e) {
-                    if (finishCancelledGeneration(generationId, responseFuture, responseBuilders.get(generationId))) {
-                        return;
-                    }
-                    RuntimeException exception = new RuntimeException("模型响应超时，请稍后重试");
-                    if (responseFuture.completeExceptionally(exception)) {
-                        handleError(userId, generationId, exception);
-                        sendCompletionNotification(userId, generationId, conversationId, true, false);
-                        chatGenerationStateService.markFailed(generationId, exception.getMessage());
-                        cleanupGenerationState(generationId, exception);
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } catch (ExecutionException ignored) {
-                    // 上游错误分支已经处理并完成了当前 future，这里只负责等待兜底。
-                } catch (Exception e) {
-                    logger.error("检查响应完成时出错: {}", e.getMessage(), e);
-                    if (responseFuture.completeExceptionally(e)) {
-                        chatGenerationStateService.markFailed(generationId, e.getMessage());
-                        cleanupGenerationState(generationId, e);
-                    }
-                }
-            });
-        } catch (RejectedExecutionException ex) {
-            logger.warn("聊天监控线程池已满，generationId: {}", generationId);
-            RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
-            handleError(userId, generationId, busyException);
-            chatGenerationStateService.markFailed(generationId, busyException.getMessage());
-            cleanupGenerationState(generationId, ex);
-        }
     }
 
     private void finalizeResponse(String userId, String userMessage, String conversationId, String generationId,
@@ -965,23 +639,15 @@ public class ChatHandler {
             timing.citationCount(referenceMappings.size());
             timing.mark("reference_mapping_saved");
         }
-        // 先把消息事务性地落 MySQL；只有 MySQL 成功后才写 Redis 短期会话历史，
-        // 否则两个数据源会出现一边有记录、一边没有的不一致状态。
-        boolean persisted = persistConversation(userId, userMessage, completeResponse, conversationId, generationId, referenceMappings);
-        if (persisted) {
-            updateConversationHistory(
-                    conversationId,
-                    userMessage,
-                    completeResponse,
-                    referenceMappings,
-                    generationEffectiveScopes.get(generationId)
-            );
-        } else {
-            logger.warn("MySQL 落库失败，跳过 Redis 会话历史写入以保持两端一致: generationId={}, conversationId={}",
-                    generationId, conversationId);
-        }
+        updateConversationHistory(
+                conversationId,
+                userMessage,
+                completeResponse,
+                referenceMappings,
+                generationEffectiveScopes.get(generationId)
+        );
         chatGenerationStateService.markCompleted(generationId, toSerializableReferenceMappings(referenceMappings));
-        sendCompletionNotification(userId, generationId, conversationId, false, !persisted);
+        sendCompletionNotification(userId, generationId, conversationId, false, false);
         if (timing != null) {
             timing.mark("response_sent");
             timing.log(logger, conversationId, generationId);
@@ -989,26 +655,6 @@ public class ChatHandler {
         logger.info("对话存储信息 - Redis键: {}, 值: {}", "user:" + userId + ":current_conversation", conversationId);
         cleanupGenerationState(generationId, null);
         logger.info("消息处理完成，用户ID: {}", userId);
-    }
-
-    private boolean persistConversation(String userId, String userMessage, String completeResponse, String conversationId,
-                                        String generationId,
-                                        Map<Integer, ReferenceInfo> referenceMappings) {
-        try {
-            Long userIdLong = Long.parseLong(userId);
-            conversationService.recordConversation(
-                    userIdLong,
-                    userMessage,
-                    completeResponse,
-                    conversationId,
-                    toSerializableReferenceMappings(referenceMappings),
-                    generationEffectiveScopes.get(generationId)
-            );
-            return true;
-        } catch (Exception e) {
-            logger.error("持久化对话历史失败: userId={}, conversationId={}", userId, conversationId, e);
-            return false;
-        }
     }
 
     private void cleanupGenerationState(String generationId, Throwable throwable) {
@@ -1019,7 +665,6 @@ public class ChatHandler {
         generationEffectiveScopes.remove(generationId);
         generationTimings.remove(generationId);
         stopFlags.remove(generationId);
-        activeStreams.remove(generationId);
         cancelledGenerations.remove(generationId);
         CompletableFuture<String> future = responseFutures.remove(generationId);
         if (throwable != null && future != null && !future.isDone()) {
@@ -1220,17 +865,12 @@ public class ChatHandler {
             item.put("pdfEvidenceAvailable", detail.pdfEvidenceAvailable());
             item.put("pageScreenshotAvailable", detail.pageScreenshotAvailable());
             item.put("figureScreenshotAvailable", detail.figureScreenshotAvailable());
+            item.put("citationRef", detail.citationRef());
+            item.put("evidenceRef", detail.evidenceRef());
             item.put("assetWarnings", detail.assetWarnings());
             serialized.put(String.valueOf(entry.getKey()), item);
         }
         return serialized;
-    }
-
-    private Map<String, Object> toSerializableDiagnostics(PaperAnswerService.AnswerDiagnostics diagnostics) {
-        if (diagnostics == null) {
-            return Map.of();
-        }
-        return objectMapper.convertValue(diagnostics, new TypeReference<Map<String, Object>>() {});
     }
 
     static Map<Integer, ReferenceInfo> filterReferenceMappingsForResponse(Map<Integer, ReferenceInfo> referenceMapping,
@@ -1253,59 +893,6 @@ public class ChatHandler {
             }
         }
         return filtered;
-    }
-
-    private String buildContext(List<SearchResult> searchResults, String generationId, String userMessage) {
-        if (searchResults == null || searchResults.isEmpty()) {
-            // 返回空字符串，让 LLM provider 按"无检索结果"逻辑处理
-            return "";
-        }
-
-        // 创建当前生成任务的引用映射
-        Map<Integer, ReferenceInfo> referenceMapping = new HashMap<>();
-
-        StringBuilder context = new StringBuilder();
-        for (int i = 0; i < searchResults.size(); i++) {
-            SearchResult result = searchResults.get(i);
-            String snippet = result.getTextContent();
-            if (snippet.length() > MAX_CONTEXT_SNIPPET_LEN) {
-                snippet = snippet.substring(0, MAX_CONTEXT_SNIPPET_LEN) + "…";
-            }
-            String paperLabel = result.getPaperTitle() != null ? result.getPaperTitle() : "unknown";
-            String paperId = result.getPaperId();
-
-            context.append("[").append(i + 1).append("]\n")
-                    .append("paperTitle: ").append(paperLabel).append("\n")
-                    .append("sourceKind: ").append(result.getSourceKind() != null ? result.getSourceKind() : "TEXT").append("\n");
-            if (result.getPageNumber() != null && result.getPageNumber() > 0) {
-                context.append("pageNumber: ").append(result.getPageNumber()).append("\n");
-            }
-            if (result.getSectionTitle() != null && !result.getSectionTitle().isBlank()) {
-                context.append("sectionTitle: ").append(result.getSectionTitle()).append("\n");
-            }
-            if (result.getRetrievalRoute() != null && !result.getRetrievalRoute().isBlank()) {
-                context.append("retrievalRoute: ").append(result.getRetrievalRoute()).append("\n");
-            }
-            if (result.getScore() != null) {
-                context.append("score: ").append(String.format(Locale.ROOT, "%.4f", result.getScore())).append("\n");
-            }
-            context.append("matchedText: ").append(snippet).append("\n");
-
-            // 保存引用编号到论文证据的映射
-            if (paperId != null) {
-                ReferenceInfo detail = buildReferenceInfo(result, paperLabel, userMessage);
-                referenceMapping.put(i + 1, detail);
-                logger.info("引用映射: generationId={}, 引用编号#{}={}, paperTitle={}, paperId={}, page={}, retrievalMode={}, chunkId={}",
-                    generationId, i + 1, paperLabel, paperId, result.getPageNumber(), detail.retrievalMode(), detail.chunkId());
-            }
-        }
-
-        // 保存当前生成任务的引用映射
-        generationReferenceMappings.put(generationId, referenceMapping);
-        chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(referenceMapping));
-        logger.info("保存生成任务 {} 的引用映射，共 {} 条: {}", generationId, referenceMapping.size(), referenceMapping);
-
-        return context.toString();
     }
 
     private void sendGenerationStart(String userId, String generationId, String conversationId) {
@@ -1331,16 +918,13 @@ public class ChatHandler {
         ));
     }
 
-    private void sendToolCallStatus(String userId,
-                                    String generationId,
-                                    String conversationId,
-                                    LlmProviderRouter.ToolCallDecision toolCall,
-                                    String status) {
+    private void sendProductToolCall(String userId,
+                                     String generationId,
+                                     String conversationId,
+                                     ToolProgressEvent event) {
         Map<String, Object> payload = new HashMap<>();
-        payload.put("type", "tool_call");
-        payload.put("tool", toolCall.name());
-        payload.put("toolCallId", toolCall.id());
-        payload.put("status", status);
+        payload.put("type", "calling_tool");
+        payload.put("toolName", event.toolName());
         payload.put("generationId", generationId);
         payload.put("conversationId", conversationId);
         payload.put("timestamp", System.currentTimeMillis());
@@ -1386,8 +970,27 @@ public class ChatHandler {
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("type", "error");
         errorResponse.put("generationId", generationId);
+        RateLimitExceededException rateLimitExceededException = findRateLimitException(error);
+        if (rateLimitExceededException != null) {
+            errorResponse.put("code", 429);
+            errorResponse.put("message", rateLimitExceededException.getMessage());
+            errorResponse.put("retryAfterSeconds", rateLimitExceededException.getRetryAfterSeconds());
+            sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
+            return;
+        }
         errorResponse.put("error", "AI服务暂时不可用，请稍后重试");
         sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
+    }
+
+    private RateLimitExceededException findRateLimitException(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof RateLimitExceededException rateLimitExceededException) {
+                return rateLimitExceededException;
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     private void sendRateLimitMessage(String userId, String clientId, String generationId, RateLimitExceededException exception) {
@@ -1457,10 +1060,6 @@ public class ChatHandler {
         cancelledGenerations.add(targetGenerationId);
         stopFlags.put(targetGenerationId, true);
         chatGenerationStateService.markCancelled(targetGenerationId);
-        LlmProviderRouter.StreamHandle streamHandle = activeStreams.get(targetGenerationId);
-        if (streamHandle != null) {
-            streamHandle.cancel();
-        }
         CompletableFuture<String> responseFuture = responseFutures.get(targetGenerationId);
         if (responseFuture != null && !responseFuture.isDone()) {
             responseFuture.completeExceptionally(new CancellationException("响应已停止"));
@@ -1557,6 +1156,8 @@ public class ChatHandler {
                     item.get("pdfEvidenceAvailable") instanceof Boolean value && value,
                     item.get("pageScreenshotAvailable") instanceof Boolean value && value,
                     item.get("figureScreenshotAvailable") instanceof Boolean value && value,
+                    (String) item.get("citationRef"),
+                    (String) item.get("evidenceRef"),
                     stringListValue(item.get("assetWarnings"))
             ));
         }
@@ -1573,99 +1174,12 @@ public class ChatHandler {
                 .toList();
     }
 
-    private ReferenceInfo buildReferenceInfo(SearchResult result, String paperLabel, String userMessage) {
-        String matchedChunkText = trimToMaxLength(
-                result.getMatchedChunkText() != null ? result.getMatchedChunkText() : result.getTextContent(),
-                MAX_MATCHED_CHUNK_LEN
-        );
-        String evidenceSnippet = buildEvidenceSnippet(userMessage, result.getAnchorText(), matchedChunkText);
-
-        return new ReferenceInfo(
-                result.getPaperId(),
-                paperLabel,
-                result.getOriginalFilename(),
-                result.getPageNumber(),
-                result.getAnchorText(),
-                result.getRetrievalMode(),
-                buildRetrievalLabel(result.getRetrievalMode()),
-                normalizeEvidenceText(result.getRetrievalQuery() != null ? result.getRetrievalQuery() : userMessage),
-                matchedChunkText,
-                evidenceSnippet,
-                result.getScore(),
-                result.getChunkId(),
-                result.getElementType(),
-                result.getSectionTitle(),
-                result.getSectionLevel(),
-                result.getBboxJson(),
-                result.getParserName(),
-                result.getParserVersion(),
-                result.getSourceKind(),
-                result.getTableId(),
-                result.getFigureId(),
-                result.getFormulaId(),
-                result.getEvidenceRole(),
-                result.getRetrievalRoute(),
-                result.getIntent(),
-                result.getRankReason(),
-                result.getTableText(),
-                result.getTableMarkdown(),
-                Boolean.TRUE.equals(result.getTableScreenshotAvailable()),
-                result.getSourceType(),
-                result.getEvidenceAssetLevel(),
-                Boolean.TRUE.equals(result.getPdfEvidenceAvailable()),
-                Boolean.TRUE.equals(result.getPageScreenshotAvailable()),
-                Boolean.TRUE.equals(result.getFigureScreenshotAvailable()),
-                result.getAssetWarnings()
-        );
-    }
-
-    private String buildRetrievalLabel(String retrievalMode) {
-        if ("TEXT_ONLY".equalsIgnoreCase(retrievalMode)) {
-            return "关键词召回";
-        }
-        return "混合召回（语义相关 + 关键词命中）";
-    }
-
-    private String buildEvidenceSnippet(String userMessage, String anchorText, String matchedChunkText) {
-        String normalizedAnchorText = normalizeEvidenceText(anchorText);
-        if (!normalizedAnchorText.isBlank()) {
-            return trimToMaxLength(normalizedAnchorText, MAX_EVIDENCE_SNIPPET_LEN);
-        }
-
-        String normalizedMatchedChunk = normalizeEvidenceText(matchedChunkText);
-        if (normalizedMatchedChunk.isBlank()) {
-            String normalizedUserMessage = normalizeEvidenceText(userMessage);
-            if (!normalizedUserMessage.isBlank()) {
-                return trimToMaxLength(normalizedUserMessage, MAX_EVIDENCE_SNIPPET_LEN);
-            }
-            return "";
-        }
-
-        String[] sentences = normalizedMatchedChunk.split("(?<=[。！？!?；;])");
-        for (String sentence : sentences) {
-            String trimmedSentence = sentence.trim();
-            if (trimmedSentence.length() >= 12) {
-                return trimToMaxLength(trimmedSentence, MAX_EVIDENCE_SNIPPET_LEN);
-            }
-        }
-
-        return trimToMaxLength(normalizedMatchedChunk, MAX_EVIDENCE_SNIPPET_LEN);
-    }
-
     private String trimToMaxLength(String value, int maxLength) {
-        String normalized = normalizeEvidenceText(value);
+        String normalized = value == null ? "" : value.replaceAll("\\s+", " ").trim();
         if (normalized.length() <= maxLength) {
             return normalized;
         }
         return normalized.substring(0, maxLength) + "…";
-    }
-
-    private String normalizeEvidenceText(String value) {
-        return normalizeEvidenceTextStatic(value);
-    }
-
-    private static String normalizeEvidenceTextStatic(String value) {
-        return value == null ? "" : value.replaceAll("\\s+", " ").trim();
     }
 
     private static final class ChatRequestTiming {
@@ -1765,6 +1279,8 @@ public class ChatHandler {
             Boolean pdfEvidenceAvailable,
             Boolean pageScreenshotAvailable,
             Boolean figureScreenshotAvailable,
+            String citationRef,
+            String evidenceRef,
             List<String> assetWarnings
     ) {
         public ReferenceInfo {
@@ -1775,6 +1291,8 @@ public class ChatHandler {
             pdfEvidenceAvailable = Boolean.TRUE.equals(pdfEvidenceAvailable);
             pageScreenshotAvailable = Boolean.TRUE.equals(pageScreenshotAvailable);
             figureScreenshotAvailable = Boolean.TRUE.equals(figureScreenshotAvailable);
+            citationRef = citationRef == null || citationRef.isBlank() ? null : citationRef.trim();
+            evidenceRef = evidenceRef == null || evidenceRef.isBlank() ? null : evidenceRef.trim();
             evidenceAssetLevel = "PDF_VISUAL".equals(evidenceAssetLevel) || pdfEvidenceAvailable
                     ? "PDF_VISUAL"
                     : "PDF_PENDING_ASSETS";
@@ -1852,6 +1370,8 @@ public class ChatHandler {
                     false,
                     false,
                     false,
+                    null,
+                    null,
                     List.of()
             );
         }
@@ -1914,6 +1434,8 @@ public class ChatHandler {
                     false,
                     false,
                     false,
+                    null,
+                    null,
                     List.of()
             );
         }
@@ -1982,6 +1504,8 @@ public class ChatHandler {
                     pdfEvidenceAvailable,
                     pageScreenshotAvailable,
                     figureScreenshotAvailable,
+                    null,
+                    null,
                     assetWarnings
             );
         }
@@ -2039,6 +1563,8 @@ public class ChatHandler {
                     false,
                     false,
                     false,
+                    null,
+                    null,
                     List.of()
             );
         }
@@ -2046,17 +1572,17 @@ public class ChatHandler {
 
     public record ChatRequest(
             String message,
-            PaperAnswerService.AnswerScope scope,
+            ProductReferenceFocus referenceFocus,
             RetrievalBudgetProfile retrievalBudgetProfile
     ) {
         public ChatRequest {
             retrievalBudgetProfile = retrievalBudgetProfile == null
-                    ? (scope == null ? RetrievalBudgetProfile.INTERACTIVE : scope.retrievalBudgetProfile())
+                    ? RetrievalBudgetProfile.INTERACTIVE
                     : retrievalBudgetProfile;
         }
 
-        public ChatRequest(String message, PaperAnswerService.AnswerScope scope) {
-            this(message, scope, scope == null ? RetrievalBudgetProfile.INTERACTIVE : scope.retrievalBudgetProfile());
+        public ChatRequest(String message, ProductReferenceFocus referenceFocus) {
+            this(message, referenceFocus, RetrievalBudgetProfile.INTERACTIVE);
         }
     }
 }

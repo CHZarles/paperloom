@@ -51,6 +51,15 @@ public class KafkaConfig {
     @Value("${spring.kafka.listener.auto-startup:true}")
     private boolean listenerAutoStartup;
 
+    @Value("${spring.kafka.listener.concurrency:1}")
+    private int listenerConcurrency;
+
+    @Value("${spring.kafka.consumer.max-poll-records:1}")
+    private int maxPollRecords;
+
+    @Value("${spring.kafka.consumer.properties.max.poll.interval.ms:7200000}")
+    private int maxPollIntervalMs;
+
     public String getPaperProcessingTopic() {
         return paperProcessingTopic;
     }
@@ -101,11 +110,13 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> config = new HashMap<>();
-//        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false); // 禁用自动提交偏移量
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, paperProcessingGroupId);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords);
+        config.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, maxPollIntervalMs);
         config.put(JsonDeserializer.TRUSTED_PACKAGES, trustedPackages);
         return new DefaultKafkaConsumerFactory<>(config);
     }
@@ -127,6 +138,7 @@ public class KafkaConfig {
         factory.setConsumerFactory(consumerFactory);
         factory.setCommonErrorHandler(errorHandler);
         factory.setAutoStartup(listenerAutoStartup);
+        factory.setConcurrency(listenerConcurrency);
         return factory;
     }
 }

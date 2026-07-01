@@ -2,6 +2,7 @@
 
 This file is the agent-facing working agreement for the PaperLoom repository. The directory is still named `PaiSmart`, but the product story and API subject are PaperLoom papers.
 
+Dont't send optional commentary
 ## Purpose
 
 PaperLoom is an evidence-grounded RAG workbench for structured research paper reading. It is built around a paper PDF workflow:

@@ -31,7 +31,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const chatClientId = createChatClientId();
 
   const conversationId = ref<string>('');
-  const input = ref<Api.Chat.Input>({ message: '', retrievalBudgetProfile: 'interactive' });
+  const input = ref<Api.Chat.Input>({ message: '' });
   const list = ref<Api.Chat.Message[]>([]);
   const sessions = ref<Api.Chat.ConversationSession[]>([]);
   const sessionsLoading = ref(false);
@@ -151,6 +151,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   }
 
   function applyLoadedMessages(messages: Api.Chat.Message[], targetConversationId?: string) {
+    if (targetConversationId && targetConversationId !== conversationId.value) {
+      return false;
+    }
     if (
       !shouldApplyLoadedConversationMessages({
         currentMessages: list.value,
@@ -206,15 +209,29 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     });
     if (!error && data) {
       sessions.value = data;
-      // Auto-select first active session if none is active
       if (!conversationId.value) {
+        const currentSession = await fetchCurrentSession();
+        const currentActive = currentSession?.conversationId
+          ? data.find(s => s.status === 'ACTIVE' && s.conversationId === currentSession.conversationId)
+          : null;
         const firstActive = data.find(s => s.status === 'ACTIVE');
-        if (firstActive) {
-          await switchSession(firstActive.conversationId);
+        const targetSession = currentActive || firstActive;
+        if (targetSession) {
+          await switchSession(targetSession.conversationId);
         }
       }
     }
     sessionsLoading.value = false;
+  }
+
+  async function fetchCurrentSession() {
+    const { error, data } = await request<Api.Chat.ConversationSession | Record<string, never>>({
+      url: 'users/conversations/current'
+    });
+    if (error || !data || !('conversationId' in data)) {
+      return null;
+    }
+    return data as Api.Chat.ConversationSession;
   }
 
   async function loadConversationScope(targetConversationId: string) {
@@ -359,6 +376,27 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
   }
 
+  async function deleteSession(targetConversationId: string) {
+    const deletingCurrentSession = targetConversationId === conversationId.value;
+    const { error } = await request({
+      url: `users/conversations/${targetConversationId}`,
+      method: 'DELETE'
+    });
+    if (error) {
+      return false;
+    }
+
+    sessions.value = sessions.value.filter(session => session.conversationId !== targetConversationId);
+    if (deletingCurrentSession) {
+      conversationId.value = '';
+      list.value = [];
+      currentScope.value = null;
+      referenceFocus.value = null;
+    }
+    await loadSessions();
+    return true;
+  }
+
   const filteredSessions = computed(() => {
     return sessions.value.filter(s => s.status === (activeTab.value === 'archived' ? 'ARCHIVED' : 'ACTIVE'));
   });
@@ -483,7 +521,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     conversationId.value = '';
     currentScope.value = null;
     referenceFocus.value = null;
-    input.value = { message: '', retrievalBudgetProfile: 'interactive' };
+    input.value = { message: '' };
     list.value = [];
     sessions.value = [];
     wsClose(1000, 'auth-reset');
@@ -566,6 +604,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     switchSession,
     loadMessages,
     archiveSession,
-    unarchiveSession
+    unarchiveSession,
+    deleteSession
   };
 });

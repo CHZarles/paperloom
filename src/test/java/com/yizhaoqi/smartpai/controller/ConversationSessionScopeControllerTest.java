@@ -18,6 +18,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -45,6 +46,34 @@ class ConversationSessionScopeControllerTest {
         ReflectionTestUtils.setField(controller, "conversationScopeService", conversationScopeService);
         when(jwtUtils.extractUsernameFromToken("token")).thenReturn("owner");
         when(jwtUtils.extractUserIdFromToken("token")).thenReturn("1");
+    }
+
+    @Test
+    void currentSessionReturns200WithData() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("conversationId", "conversation-1");
+        data.put("title", "LoRA discussion");
+        data.put("status", "ACTIVE");
+        when(conversationService.getCurrentConversationSession(1L)).thenReturn(Optional.of(data));
+
+        ResponseEntity<?> response = controller.currentSession("Bearer token");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(200, body(response).get("code"));
+        assertEquals(data, body(response).get("data"));
+        verify(conversationService).getCurrentConversationSession(1L);
+    }
+
+    @Test
+    void currentSessionReturnsEmptyDataWhenMissing() {
+        when(conversationService.getCurrentConversationSession(1L)).thenReturn(Optional.empty());
+
+        ResponseEntity<?> response = controller.currentSession("Bearer token");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(200, body(response).get("code"));
+        assertEquals(Map.of(), body(response).get("data"));
+        verify(conversationService).getCurrentConversationSession(1L);
     }
 
     @Test
@@ -101,6 +130,50 @@ class ConversationSessionScopeControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(data, body(response).get("data"));
         verify(conversationScopeService).updateUnlockedScope(1L, "conversation-1", request);
+    }
+
+    @Test
+    void previewTitleMatchPassesRequestToServiceAndReturns200() {
+        UpdateConversationScopeRequest request = new UpdateConversationScopeRequest(
+                "SOURCE_SET_SNAPSHOT",
+                null,
+                null,
+                null,
+                null,
+                "lora",
+                null
+        );
+        Map<String, Object> data = Map.of(
+                "paperCount", 1,
+                "paperIds", List.of("paper-1"),
+                "papers", List.of(Map.of(
+                        "paperTitle", "LoRA",
+                        "originalFilename", "lora.pdf"
+                )),
+                "sourceLabel", "Title match: lora (1 papers)",
+                "sourceRecipe", Map.of(
+                        "type", "title_match",
+                        "titleQuery", "lora",
+                        "paperCount", 1
+                )
+        );
+        when(conversationScopeService.previewTitleMatchScope(1L, "conversation-1", request)).thenReturn(data);
+
+        ResponseEntity<?> response = controller.previewTitleMatchScope("Bearer token", "conversation-1", request);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(data, body(response).get("data"));
+        verify(conversationScopeService).previewTitleMatchScope(1L, "conversation-1", request);
+    }
+
+    @Test
+    void deleteSessionPassesOwnedConversationToServiceAndReturns200() {
+        ResponseEntity<?> response = controller.deleteSession("Bearer token", "conversation-1");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(200, body(response).get("code"));
+        assertEquals("删除成功", body(response).get("message"));
+        verify(conversationService).deleteConversationSession(1L, "conversation-1");
     }
 
     @Test

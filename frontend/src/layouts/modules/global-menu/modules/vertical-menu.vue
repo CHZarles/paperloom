@@ -46,6 +46,7 @@ watch(
     <SimpleScrollbar class="relative">
       <NMenu
         v-model:expanded-keys="expandedKeys"
+        class="manus-admin-menu"
         mode="vertical"
         :value="selectedKey"
         :collapsed="appStore.siderCollapse"
@@ -66,4 +67,14 @@ watch(
   </Teleport>
 </template>
 
-<style scoped></style>
+<style scoped>
+.manus-admin-menu {
+  padding-top: 4px;
+}
+
+.manus-admin-menu :deep(.n-menu-item-content-header) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
