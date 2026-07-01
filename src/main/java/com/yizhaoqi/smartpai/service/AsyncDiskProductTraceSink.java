@@ -5,6 +5,7 @@ import com.yizhaoqi.smartpai.config.ProductTraceProperties;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
@@ -34,6 +35,7 @@ public class AsyncDiskProductTraceSink implements ProductTraceSink, AutoCloseabl
     private final ExecutorService writerExecutor;
     private final AtomicBoolean accepting = new AtomicBoolean(true);
 
+    @Autowired
     public AsyncDiskProductTraceSink(ObjectMapper objectMapper, ProductTraceProperties properties) {
         this(
                 objectMapper,
