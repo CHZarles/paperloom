@@ -15,12 +15,15 @@ import com.yizhaoqi.smartpai.service.PaperVisualAssetService;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -230,6 +233,54 @@ class PaperControllerContractTest {
                 isNull(),
                 eq(PageRequest.of(0, 10))
         );
+    }
+
+    @Test
+    void pdfPreviewResponseUsesInlinePreviewStreamUrl() {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+
+        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+                .thenReturn(Optional.of(paper));
+
+        var response = paperController.previewPaperByPath("paper-preview", null, null, null);
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("pdf", data.get("previewType"));
+        assertEquals("/api/v1/papers/paper-preview/preview/pdf", data.get("previewUrl"));
+        verify(paperService, never()).generateDownloadUrl("paper-preview");
+    }
+
+    @Test
+    void pdfPreviewStreamUsesInlineDisposition() {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(8L);
+
+        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+                .thenReturn(Optional.of(paper));
+        when(paperService.openMergedPdfStream("paper-preview"))
+                .thenReturn(new ByteArrayInputStream("%PDF-1.7".getBytes()));
+
+        var response = paperController.previewPdfByPath("paper-preview", null, null);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(MediaType.APPLICATION_PDF, response.getHeaders().getContentType());
+        assertTrue(response.getHeaders().getFirst("Content-Disposition").startsWith("inline;"));
+        assertEquals(8L, response.getHeaders().getContentLength());
+        assertTrue(response.getBody() instanceof InputStreamResource);
     }
 
     @Test

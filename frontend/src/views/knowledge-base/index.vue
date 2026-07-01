@@ -46,6 +46,12 @@ const tableModalVisible = ref(false);
 const tableModalLoading = ref(false);
 const tableModalTitle = ref('');
 const tableModalRows = ref<Api.Paper.TableItem[]>([]);
+const paperLibraryQuery = ref('');
+const activePaperLibraryQuery = ref('');
+
+type PaperLibrarySearchParams = Api.Common.CommonSearchParams & {
+  query?: string;
+};
 
 const assetWarningLabels: Record<string, string> = {
   parser_artifact_missing: 'Parser artifact missing',
@@ -101,10 +107,11 @@ function normalizeRemotePaper(row: Api.Paper.UploadTask): Api.Paper.UploadTask {
   };
 }
 
-async function apiFn(params: Api.Common.CommonSearchParams = {}): Promise<FlatResponseData<Api.Paper.List>> {
+async function apiFn(params: PaperLibrarySearchParams = {}): Promise<FlatResponseData<Api.Paper.List>> {
   const page = params.page && params.page > 0 ? params.page : 1;
   const size = params.size && params.size > 0 ? params.size : 10;
-  const requestParams = { ...params, page, size };
+  const query = params.query?.trim() || '';
+  const requestParams = { ...params, page, size, query };
   const response = await request<Api.Paper.UploadTask[] | Api.Paper.List>({
     url: '/papers?scope=accessible',
     params: requestParams
@@ -164,7 +171,7 @@ function closeFilePreview() {
   previewPaperId.value = '';
 }
 
-const { columns, columnChecks, data, getData, loading, mobilePagination } = useTable({
+const { columns, columnChecks, data, getData, loading, mobilePagination, updateSearchParams } = useTable({
   apiFn,
   showTotal: true,
   immediate: false,
@@ -317,8 +324,14 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
 const store = useKnowledgeBaseStore();
 const { tasks } = storeToRefs(store);
 const tableTasks = computed(() => {
+  const activeQuery = activePaperLibraryQuery.value.trim().toLowerCase();
   const remoteRows = data.value.map(item => tasks.value.find(task => task.paperId === item.paperId) || item);
-  const localRows = tasks.value.filter(task => task.file && !remoteRows.some(item => item.paperId === task.paperId));
+  const localRows = tasks.value.filter(
+    task =>
+      task.file &&
+      !remoteRows.some(item => item.paperId === task.paperId) &&
+      matchesLocalPaperLibraryQuery(task, activeQuery)
+  );
 
   return [...localRows, ...remoteRows];
 });
@@ -334,7 +347,7 @@ const libraryStats = computed(() => {
     {
       label: 'Documents',
       value: formatNumber(mobilePagination.value.itemCount || rows.length),
-      detail: 'accessible'
+      detail: activePaperLibraryQuery.value ? 'matched' : 'accessible'
     },
     {
       label: 'Searchable',
@@ -417,6 +430,40 @@ async function getList() {
       tasks.value.push(item);
     }
   });
+}
+
+function matchesLocalPaperLibraryQuery(task: Api.Paper.UploadTask, activeQuery: string) {
+  if (!activeQuery) return true;
+
+  return [task.originalFilename, task.paperTitle, task.paperId].some(value =>
+    String(value || '')
+      .toLowerCase()
+      .includes(activeQuery)
+  );
+}
+
+async function handlePaperLibrarySearch() {
+  const query = paperLibraryQuery.value.trim();
+  activePaperLibraryQuery.value = query;
+  updateSearchParams({
+    page: 1,
+    size: Number(mobilePagination.value.pageSize || 10),
+    query
+  });
+  await getList();
+}
+
+async function handlePaperLibrarySearchReset() {
+  if (!paperLibraryQuery.value && !activePaperLibraryQuery.value) return;
+
+  paperLibraryQuery.value = '';
+  activePaperLibraryQuery.value = '';
+  updateSearchParams({
+    page: 1,
+    size: Number(mobilePagination.value.pageSize || 10),
+    query: ''
+  });
+  await getList();
 }
 
 async function handleDelete(paperId: string) {
@@ -944,12 +991,41 @@ async function onBeforeUpload(
               @refresh="getList"
             >
               <template #prefix>
-                <NButton size="small" secondary @click="handleSearch">
-                  <template #icon>
-                    <icon-lucide:search class="text-icon" />
-                  </template>
-                  检索文献库
-                </NButton>
+                <div class="library-search-control">
+                  <NInput
+                    v-model:value="paperLibraryQuery"
+                    size="small"
+                    clearable
+                    placeholder="Filename, title, paper ID"
+                    @keyup.enter="handlePaperLibrarySearch"
+                    @clear="handlePaperLibrarySearchReset"
+                  >
+                    <template #prefix>
+                      <icon-lucide:file-search class="text-icon" />
+                    </template>
+                  </NInput>
+                  <NButton size="small" secondary :loading="loading" @click="handlePaperLibrarySearch">
+                    <template #icon>
+                      <icon-lucide:search class="text-icon" />
+                    </template>
+                    Search
+                  </NButton>
+                  <NButton
+                    v-if="activePaperLibraryQuery"
+                    size="small"
+                    quaternary
+                    :disabled="loading"
+                    @click="handlePaperLibrarySearchReset"
+                  >
+                    Reset
+                  </NButton>
+                  <NButton size="small" secondary @click="handleSearch">
+                    <template #icon>
+                      <icon-lucide:search-check class="text-icon" />
+                    </template>
+                    检索文献库
+                  </NButton>
+                </div>
               </template>
               <template #default>
                 <NButton size="small" type="primary" @click="handleUpload">
@@ -1169,6 +1245,22 @@ async function onBeforeUpload(
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.library-search-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.library-search-control .n-input {
+  width: clamp(220px, 26vw, 360px);
+}
+
+.library-search-control .n-button {
+  border-radius: 6px;
 }
 
 .library-summary {
@@ -1716,6 +1808,11 @@ async function onBeforeUpload(
 @media (max-width: 1180px) {
   .library-summary {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .library-search-control,
+  .library-search-control .n-input {
+    width: 100%;
   }
 
   .library-summary__item {

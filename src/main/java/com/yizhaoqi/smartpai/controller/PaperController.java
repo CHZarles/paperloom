@@ -22,19 +22,25 @@ import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -1169,6 +1175,44 @@ public class PaperController {
         return previewPaper(paperId, pageNumber, authorization, token);
     }
 
+    @GetMapping("/{paperId}/preview/pdf")
+    public ResponseEntity<?> previewPdfByPath(
+            @PathVariable String paperId,
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestParam(required = false) String token) {
+        try {
+            RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
+            Optional<Paper> targetFile = findPreviewablePaper(paperId, authContext);
+            if (targetFile.isEmpty()) {
+                return paperNotFoundOrForbidden();
+            }
+
+            Paper file = targetFile.get();
+            InputStream pdfStream = paperService.openMergedPdfStream(file.getPaperId());
+            InputStreamResource resource = new InputStreamResource(pdfStream);
+            String filename = sanitizePdfFilename(file.getOriginalFilename(), file.getPaperId());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.inline()
+                    .filename(filename, StandardCharsets.UTF_8)
+                    .build());
+            if (file.getTotalSize() > 0) {
+                headers.setContentLength(file.getTotalSize());
+            }
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(resource);
+        } catch (Exception e) {
+            LogUtils.logBusinessError("PREVIEW_PDF", "system", "PDF 预览流生成失败: paperId=%s", e, paperId);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "code", HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    "message", "PDF 预览流生成失败: " + e.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/reference-detail")
     public ResponseEntity<?> getReferenceDetail(
             @RequestParam Long conversationRecordId,
@@ -1249,13 +1293,54 @@ public class PaperController {
             return payload;
         }
 
+        if ("pdf".equals(previewType)) {
+            payload.put("previewUrl", buildInlinePdfPreviewUrl(file.getPaperId()));
+            return payload;
+        }
+
         String previewUrl = paperService.generateDownloadUrl(file.getPaperId());
         if (previewUrl == null) {
             return null;
         }
-
         payload.put("previewUrl", previewUrl);
         return payload;
+    }
+
+    private String buildInlinePdfPreviewUrl(String paperId) {
+        String encodedPaperId = UriUtils.encodePathSegment(paperId, StandardCharsets.UTF_8);
+        return "/api/v1/papers/" + encodedPaperId + "/preview/pdf";
+    }
+
+    private Optional<Paper> findPreviewablePaper(String paperId, RequestAuthContext authContext) {
+        if (authContext.userId() == null) {
+            return paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc(paperId);
+        }
+        return findAccessiblePaper(paperId, authContext.userId(), authContext.orgTags());
+    }
+
+    private String sanitizePdfFilename(String originalFilename, String fallbackPaperId) {
+        String filename = originalFilename;
+        if (filename == null || filename.isBlank()) {
+            filename = fallbackPaperId;
+        }
+        if (filename == null || filename.isBlank()) {
+            filename = "paper";
+        }
+
+        filename = filename.trim()
+                .replaceAll("[\\r\\n\\t\\p{Cntrl}]+", " ")
+                .replace('/', '_')
+                .replace('\\', '_')
+                .replace('"', '_')
+                .trim();
+        filename = filename.replaceAll("\\s+", " ");
+        if (filename.isBlank()) {
+            filename = "paper";
+        }
+        if (!filename.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            filename = filename + ".pdf";
+        }
+        return filename;
     }
 
     private String normalizeProcessingStatus(String vectorizationStatus, int uploadStatus) {

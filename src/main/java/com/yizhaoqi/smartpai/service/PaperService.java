@@ -677,6 +677,15 @@ public class PaperService {
         return generateDownloadUrl(paperId, PdfDownloadHeaders.Disposition.ATTACHMENT);
     }
 
+    public InputStream openMergedPdfStream(String paperId) {
+        try {
+            return uploadService.getMergedFileStream(paperId);
+        } catch (Exception e) {
+            logger.error("打开论文 PDF 流失败: paperId={}", paperId, e);
+            throw new RuntimeException("无法打开论文 PDF", e);
+        }
+    }
+
     private String generateDownloadUrl(String paperId, PdfDownloadHeaders.Disposition disposition) {
         logger.info("生成论文 PDF 下载链接: paperId={}", paperId);
 
