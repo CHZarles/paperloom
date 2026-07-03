@@ -226,7 +226,14 @@ persisted structured conversation memory plus a recent verbatim tail. Memory is 
 conversation aid; it cannot replace tool calls for paper identity, product state, session scope,
 references, or evidence.
 
-The first-phase product function catalog is fixed:
+Supersession:
+
+`docs/superpowers/specs/2026-07-02-product-react-tool-catalog-spec.md` supersedes the
+first-phase 10-function LLM-facing catalog below. Future Product ReAct work should use the
+new progressive tool catalog as the LLM-facing contract while preserving the scope, permission,
+evidence, citation, answer-envelope, and trace requirements in this document.
+
+Historical first-phase product function catalog:
 
 ```text
 answer_without_product_state

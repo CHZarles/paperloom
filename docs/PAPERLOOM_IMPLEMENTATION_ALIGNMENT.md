@@ -466,7 +466,8 @@ Current benchmark facts from the scan:
 When implementing future changes:
 
 - start from the product requirements document
-- use `docs/PAPERLOOM_REACT_FUNCTION_DESIGN.md` as the Product ReAct Harness contract for chat
+- use `docs/superpowers/specs/2026-07-02-product-react-tool-catalog-spec.md` as the
+  current LLM-facing Product ReAct tool-catalog contract for chat
 - identify which retrieval path the task affects
 - preserve permission filtering and scope isolation
 - preserve reference registry and citation render snapshot persistence

@@ -2,9 +2,12 @@
 
 Date: 2026-06-29
 
-Status: User-confirmed product target. This document is the implementation standard for the
-PaperLoom chat refactor. If existing code conflicts with this document, treat the code as drift
-unless the product requirements document says otherwise.
+Status: Superseded for the LLM-facing Product ReAct tool catalog by
+`docs/superpowers/specs/2026-07-02-product-react-tool-catalog-spec.md`.
+This document remains historical implementation context for the first Product
+ReAct phase and still describes product boundaries, persistence, citation, and
+trace concerns unless the newer tool-catalog spec or product requirements
+replace them.
 
 ## Product Boundary
 

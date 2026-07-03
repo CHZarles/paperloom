@@ -2,24 +2,50 @@
 
 Date: 2026-07-02
 
-Status: user-confirmed design target.
+Status: user-confirmed revised design target. This spec formally supersedes the
+previous LLM-facing Product ReAct function-catalog contract and the earlier
+seven-tool draft.
+
+## Supersedes
+
+This document is the authoritative LLM-facing Product ReAct tool-catalog
+contract for future implementation work.
+
+It supersedes the prior 10-function LLM-facing catalog described in:
+
+- `docs/PAPERLOOM_REACT_FUNCTION_DESIGN.md`
+- the Product ReAct catalog subsection of
+  `docs/PAPERLOOM_PRODUCT_REQUIREMENTS.md`
+
+It also supersedes the earlier seven-tool draft that used overloaded tools such
+as `inspect_session`, `inspect_catalog`, `select_papers`, `inspect_paper`,
+`select_targets`, and `inspect_source`.
+
+The supersession is limited to the LLM-facing Product ReAct tool catalog, tool
+schemas, prompt rules, and source-quote support model. Existing product
+requirements for paper-only product scope, eval separation, fixed conversation
+search scope, permission filtering, persistent reference mappings, citation
+ownership, final-answer validation, and disk-only trace boundaries still apply
+unless this spec explicitly replaces them.
+
+Before coding against this spec, update or annotate any old Product ReAct docs
+that still present the 10-function catalog or the seven-tool draft as current.
 
 ## Goal
 
-Redesign the PaperLoom Product ReAct harness so the LLM is exposed to a small,
-clear, progressively disclosed paper-reading tool catalog.
+Redesign the PaperLoom Product ReAct harness so the LLM receives small,
+single-capability paper-reading tools whose names describe the action to take.
 
-The new catalog must make the tool call sequence itself the auditable reasoning
-path:
+The tool path should expose the auditable reading workflow:
 
 ```text
-inspect visible state
-inspect candidate papers
-select papers
-inspect paper structure
-select reading targets
-read citeable evidence
-answer with verified evidence refs
+get session state when needed
+list, search, or resolve paper candidates
+get paper outlines for explicitly chosen papers
+list paper locations when exact refs are needed
+locate candidate reading locations when useful
+read explicitly chosen locations
+answer with verified `sourceQuoteRef` values
 ```
 
 This replaces broad or black-box tools such as:
@@ -31,10 +57,16 @@ resolve_papers
 filter_papers
 plan_reading
 answer_without_product_state
+inspect_catalog
+inspect_source
+select_papers
+select_targets
 ```
 
-The product must remain an evidence-grounded research-paper RAG system. Tools
-must not hide semantic decisions that should be visible in the LLM's tool path.
+The product must remain a source-quote-backed research-paper RAG system. Tools
+may help the model find papers, locate where to read, and read selected
+locations,
+but final paper-content claims must be grounded in `sourceQuoteRef` values.
 
 ## Non-Goals
 
@@ -47,10 +79,23 @@ Do not add:
 - web-scale search
 - fallback answer paths
 - hardcoded semantic phrase matching
-- free-form natural-language tool query fields
+- unbounded natural-language answer or source-quote retrieval query fields
 - tool-side semantic recommendation decisions
-- tool-side semantic evidence sufficiency judgments
-- direct exposure of SQL, Elasticsearch query DSL, vector `topK`, rerank knobs, or raw `paperId`
+- tool-side semantic Source Quote sufficiency judgments
+- direct exposure of SQL, Elasticsearch query DSL, vector `topK`, rerank knobs,
+  or raw `paperId`
+
+Bounded natural-language fields are allowed only where this spec explicitly
+defines them:
+
+- `search_paper_candidates.searchNeed` for paper-level candidate search inside
+  the fixed conversation search scope
+- `find_reading_locations.readingNeed` for in-paper reading location inside
+  explicitly chosen papers
+
+Those fields are locate/search aids. They must not cause tools to return final
+answers, Source Quotes, recommendation verdicts, or semantic sufficiency
+judgments.
 
 This spec does not choose a final PageIndex implementation. PageIndex-style
 structured indexes may be used internally, but the LLM-facing catalog must stay
@@ -58,142 +103,154 @@ stable and product-level.
 
 ## Core Principles
 
-### Tools Do Not Accept Natural-Language Tasks
+### Tool Names Describe One Capability
 
-LLM-facing tools must not accept fields such as:
+Each LLM-facing tool should expose one original product capability. Do not hide
+multiple unrelated capabilities behind generic names such as `inspect_catalog`
+plus a `source.type` switch.
 
-```text
-query
-question
-semanticQuery
-naturalLanguageNeed
-selectionRequest
-subQuestions
-coverageTargets
-supportsSubQuestions
-missingTargets
-```
-
-The LLM reads the user message and compiles it into structured tool arguments:
+The LLM should be able to choose the next tool from the action name:
 
 ```text
-opaque refs
-ordinals from visible views
-metadata constraints
-precomputed taxonomy ids
-lexical terms
-section/page/table/figure refs
-read modes
-include flags
-pagination
+Need current search scope label/readable paper count? use get_session_state.
+Need browse/filter papers? use list_papers.
+Need topic/need paper candidates? use search_paper_candidates.
+Need a specific paper by title/file/DOI/arXiv? use find_papers_by_identity.
+Need selected paper structure? use get_paper_outline.
+Need deterministic section/page/table/figure refs? use list_paper_locations.
+Need find where to read inside selected papers? use find_reading_locations.
+Need source quote text? use read_locations.
+Need previous source quote details? use trace_source_quotes.
 ```
 
-Text atoms are allowed only when they are typed lexical or metadata atoms, for
-example:
+### Stateless Tool Calls
 
-```text
-titleContains
-filenameContains
-authorName
-doiExact
-arxivIdExact
-lexicalTerms
-```
+Product ReAct tool calls must not create hidden mutable session state required by
+later tools.
 
-These are lexical constraints, not semantic instructions.
+Any paper or reading-location choice must be passed explicitly in the consuming tool input
+through durable opaque refs.
 
-### Tools Do Not Make Semantic Judgments
+Allowed state reads:
 
-Tools must not decide:
+- durable product data
+- fixed conversation search scope
+- current user permission state
+- persistent Source Quote records
+- disclosed opaque refs that resolve to durable product data or persisted
+  reference records
 
-- whether a paper is truly related to a topic
-- whether a paper is a good recommendation
-- whether a section satisfies a semantic coverage target
-- whether an evidence snippet is sufficient to answer the user
-- whether a final claim is entailed by an evidence snippet
+Forbidden hidden state dependencies:
 
-Tools may do:
+- current selected papers
+- current selected reading locations
+- `paperSelectionRef`
+- implicit follow-up state that is not present in explicit input or current
+  model context
 
-- object lookup
-- permission and locked-scope enforcement
-- metadata filtering
-- precomputed taxonomy/facet filtering
-- candidate recall over catalog fields
-- view creation
-- selection registration
-- paper artifact inspection
-- explicit target registration
-- deterministic reading of selected targets
-- provenance and reference lookup
+There are no public selection-only tools. The backend may record trace events
+showing which explicit refs were passed to consuming tools, but later tools must
+not depend on an unspoken selection state.
 
 ### Progressive Disclosure
 
 The LLM should see information in levels:
 
 ```text
-session state -> catalog candidates -> selected papers -> paper map -> selected targets -> citeable evidence
+session state -> paper candidates -> paper outline / paper locations -> reading-location candidates -> source quotes
 ```
 
-Do not dump whole papers, whole libraries, or full paper maps by default.
+Do not dump whole papers, whole libraries, or unbounded location lists by
+default. Large tools must return bounded output. `get_paper_outline` returns
+whole-paper structure without page ranges. `list_paper_locations` may use an
+explicit page range when the user or context asks for specific pages. Reading
+volume is controlled by internal product policy, not LLM-supplied
+hyperparameters.
 
-Large inspect tools must support pagination, cursors, field selection, and
-detail levels. Selection tools should not paginate. Reading tools should use
-bounded read modes.
+### Ready Paper Scope
 
-### Information Levels
+LLM-facing paper retrieval scope contains only READY Product Papers.
 
-Every tool result must declare:
+Unparsed, processing, failed, or unreadable papers are outside Product ReAct
+paper browse, paper candidate search, paper identity lookup, paper outlines,
+paper location lists, reading locations, and Source Quotes. Product
+upload/admin status may track those papers elsewhere, but the LLM-facing
+paper-reading tools must not return them as candidates.
 
-```json
-{
-  "informationLevel": "PRODUCT_STATE | IDENTITY_ONLY | SELECTION_FEATURES_ONLY | NAVIGATION_ONLY | CITEABLE_EVIDENCE",
-  "allowedAnswerTypes": [],
-  "contentEvidence": false,
-  "notCiteable": true
-}
-```
+### Semantic Retrieval Boundary
 
-Meaning:
+Semantic retrieval is allowed in two bounded places.
 
-| Level | Meaning | Can support paper-content answer? |
-| --- | --- | --- |
-| `PRODUCT_STATE` | Product/session/library state. | No |
-| `IDENTITY_ONLY` | Paper or ref identity only. | No |
-| `SELECTION_FEATURES_ONLY` | Candidate cards, catalog tags, metadata, abstract previews used for choosing. | No |
-| `NAVIGATION_ONLY` | Paper map, section/page/table/figure refs, parser quality. | No |
-| `CITEABLE_EVIDENCE` | Text/table/page evidence units with provenance and evidence refs. | Yes |
+| Tool | Scope | Search surface | Output |
+| --- | --- | --- | --- |
+| `search_paper_candidates` | fixed conversation search scope | paper-level fields such as title, abstract, catalog tags, metadata | paper candidate cards with `paperHandle` |
+| `find_reading_locations` | explicitly chosen papers | selected paper content, parser artifacts, headings, captions, anchors | reading-location candidates with `locationRef` |
 
-Final paper-content answers must cite only `CITEABLE_EVIDENCE`.
+Neither tool returns Source Quotes, final recommendations, answer snippets,
+or semantic sufficiency judgments.
 
-### Candidate Recall Is Not Recommendation
+### Built-In Reading Skills
 
-Catalog candidate recall may use BM25/vector over title, abstract, and catalog
-tags. It is still only candidate recall.
+The catalog is not only a restriction system. The Product ReAct prompt must
+include built-in reading skills that give the LLM positive operating guidance
+for research-paper reading tasks.
 
-It must return:
+Examples:
 
-```text
-paperSetViewRef
-candidate cards
-retrieval diagnostics
-notCiteable=true
-informationLevel=SELECTION_FEATURES_ONLY
-```
+- Summary/contribution questions: read Abstract, Introduction, and Conclusion;
+  expand to Methods or Results when the answer needs technical or empirical
+  detail.
+- Method questions: locate/read Methods, Approach, Model, Algorithm, or related
+  figures/formulas.
+- Experiment/result questions: locate/read Experiments, Evaluation, Results,
+  tables, figures, captions, and nearby explanatory text.
+- Limitation/failure questions: locate/read Limitations, Discussion, Conclusion,
+  future work, and failure-case mentions.
+- Comparison questions: read matching task-relevant locations for each compared
+  paper; do not compare a dimension unless each side has Source Quotes.
+- Recommendation with content reasons: first search paper candidates, then read
+  selected candidates before giving content-based reasons.
+- Source follow-up: trace explicit `sourceQuoteRef` values first; read
+  additional nearby locations only when broader context is requested.
+- Expand reading when initial Source Quotes are empty, truncated, weak, or
+  mismatched, while product reading policy allows another call. This is not a
+  backend semantic sufficiency validator.
 
-It must not return:
+### Source Quote Boundary
 
-```text
-recommendation verdicts
-semantic relatedness conclusions
-citeable paper claims
-final recommendation reasons
-```
+Only Source Quotes returned by `read_locations`, or Source Quotes resolved by
+`trace_source_quotes` from explicit `sourceQuoteRef` values, may support final
+paper-content claims and rendered citations.
 
-To recommend with reasons, the harness must continue through:
+The following are not Source Quotes:
 
-```text
-select_papers -> inspect_paper -> select_targets -> read_targets
-```
+- product/session state
+- paper identity
+- paper candidate cards
+- catalog tags
+- abstract previews
+- paper outlines
+- paper location lists
+- section headings
+- page refs
+- table/figure refs
+- reading-location candidates
+- model memory
+
+## LLM-Facing Concepts
+
+Keep prompt language small. The LLM only needs these working concepts:
+
+| Concept | Meaning |
+| --- | --- |
+| Paper Card | A paper browse/search/identity result item with display metadata and a `paperHandle`. Its ordinal is only a UI label. |
+| Paper Outline | Whole-paper structure and parser status for chosen papers. |
+| Paper Location | A section/page/table/figure ref returned by `get_paper_outline`, `list_paper_locations`, `find_reading_locations`, or a clicked UI ref. |
+| Reading Location Candidate | A possible reading location returned by `find_reading_locations`, with a `locationRef`. Its ordinal is only a UI label. |
+| Source Quote | Text/table/caption content returned by `read_locations` or resolved from an existing `sourceQuoteRef`. |
+
+Backend validation may use richer internal metadata, but the prompt should not
+force the LLM to reason over unnecessary implementation vocabulary.
 
 ## Opaque Handles
 
@@ -203,170 +260,139 @@ Allowed handle types:
 
 | Handle | Meaning |
 | --- | --- |
-| `sessionRegistryRef` | Snapshot/view of current session references. |
-| `taxonomyRef` | Disclosed catalog taxonomy/facet snapshot. |
-| `paperSetViewRef` | A visible ordered paper candidate view. |
-| `paperRef` | Opaque single-paper handle. |
-| `paperSelectionRef` | Registered selected paper set. |
-| `paperMapRef` | Navigation map for a selected paper set. |
-| `sectionRef` | Opaque section handle from a paper map. |
-| `pageRef` | Opaque page handle. |
-| `tableRef` | Opaque table handle. |
-| `figureRef` | Opaque figure handle. |
-| `readingTargetRef` | Registered selected reading targets. |
-| `evidenceRef` | Citeable evidence unit. |
-| `citationRef` | Persisted rendered citation reference. |
+| `paperHandle` | Opaque single-paper handle. |
+| `sectionRef` | Opaque section handle from a Paper Outline or paper-location result. |
+| `pageRef` | Opaque page handle from a paper-location result. |
+| `tableRef` | Opaque table handle from a paper-location result. |
+| `figureRef` | Opaque figure handle from a paper-location result. |
+| `sourceQuoteRef` | Opaque ref to a Source Quote. |
 
 Rules:
 
 - LLM must never pass raw `paperId`, `chunkId`, SQL ids, ES ids, or vector ids.
-- `paperRefs` are allowed only when they were returned in the current session by
-  a tool or persistent reference registry.
-- Selection by `paperRef` must be bound to a visible `sourceViewRef`.
-- Section/page/table/figure refs must be bound to a disclosed `paperMapRef`.
-- Reading must be bound to a registered `readingTargetRef`.
+- LLM-facing refs must be resolvable from durable product data or persisted
+  reference records. They must not point to in-memory list snapshots.
+- `paperHandles` are allowed only when disclosed by prior tool output or clicked
+  refs.
+- Ordinals are display labels only. They must not be passed to LLM-facing tools.
+- Section/page/table/figure refs must be disclosed by `get_paper_outline`,
+  `list_paper_locations`, `find_reading_locations`, or an explicit UI click.
+- `locationRef` / `locationRefs` are field names that carry section/page/table/
+  figure refs. They are not separate handle types.
+- Reading must pass explicit `locationRefs` to `read_locations`; it must not rely
+  on hidden current reading-location state.
+
+## Passing Paper And Location Choices
+
+Tools pass choices directly as paper handles and location refs.
+
+Paper selection is passed directly to paper-reading tools:
+
+```json
+{
+  "paperHandles": ["paper_handle_..."]
+}
+```
+
+Reading-location selection is passed directly to `read_locations`:
+
+```json
+{
+  "locationRefs": ["page_...", "table_..."]
+}
+```
+
+Validation:
+
+- `paperHandles` must be disclosed by prior tool output or clicked paper rows,
+  visible to the user, READY, and inside fixed conversation search scope.
+- `locationRefs` must be disclosed by prior `get_paper_outline`,
+  `list_paper_locations`, `find_reading_locations` output, or clicked refs.
+- `locationRefs` must be section/page/table/figure refs that resolve to READY
+  papers visible to the user and inside fixed conversation search scope.
+- Ordinals must not be accepted in tool input.
+- hidden or unexposed refs are rejected.
 
 ## LLM-Facing Tool Catalog
 
-The new catalog has exactly seven public product tools.
+The new catalog exposes nine public product tools:
 
 ```text
-inspect_session
-inspect_catalog
-select_papers
-inspect_paper
-select_targets
-read_targets
-inspect_source
+get_session_state
+list_papers
+search_paper_candidates
+find_papers_by_identity
+get_paper_outline
+list_paper_locations
+find_reading_locations
+read_locations
+trace_source_quotes
 ```
 
-### 1. `inspect_session`
+### 1. `get_session_state`
 
 Purpose:
 
 ```text
-Inspect current session, locked scope, product counts, and session reference registry.
-```
-
-It replaces:
-
-```text
-get_system_state
-get_session_scope
-inspect_session_registry
+Get the fixed conversation search-scope label and readable paper count.
 ```
 
 Input:
 
 ```json
-{
-  "include": ["SCOPE", "COUNTS", "REGISTRY", "RECENT_VIEWS", "RECENT_SELECTIONS", "RECENT_CITATIONS"],
-  "registryTypes": ["PAPER", "PAPER_SET_VIEW", "PAPER_SELECTION", "SECTION", "PAGE", "EVIDENCE", "CITATION"],
-  "visibility": "VISIBLE_TO_USER | ALL_REGISTERED",
-  "limit": 100,
-  "cursor": ""
-}
+{}
 ```
 
 Output:
 
 ```json
 {
-  "sessionRef": "session_...",
-  "scope": {
-    "locked": true,
-    "mode": "AUTO_SOURCE | COLLECTION | SOURCE_SET_SNAPSHOT",
+  "searchScope": {
     "label": "...",
     "readablePaperCountKnown": true,
     "readablePaperCount": 12
-  },
-  "registry": {
-    "sessionRegistryRef": "registry_...",
-    "paperSetViews": [],
-    "paperSelections": [],
-    "papers": [],
-    "evidence": [],
-    "citations": []
-  },
-  "informationLevel": "PRODUCT_STATE",
-  "allowedAnswerTypes": ["PRODUCT_STATE", "PAPER_SELECTION"],
-  "contentEvidence": false,
-  "notCiteable": true
+  }
 }
 ```
 
 Rules:
 
-- It does not perform catalog discovery.
+- It does not list historical refs.
+- It does not discover papers.
 - It does not read paper content.
-- It can answer product-state questions such as paper counts and scope state.
-- It enables follow-up references like "the ninth paper", "the paper we discussed",
-  and "all papers mentioned in this session" without relying on chat text counting.
+- It returns a fixed compact state shape.
+- It does not choose, change, or describe search-scope mode. Search scope is
+  fixed when the conversation starts and enforced by the Harness.
+- It can support product-state answers such as readable paper count and scope
+  label.
 
-### 2. `inspect_catalog`
+### 2. `list_papers`
 
 Purpose:
 
 ```text
-Inspect the locked-scope paper catalog or an existing paper set view.
-```
-
-It replaces:
-
-```text
-inspect_library_catalog
-identify_paper_candidates
-inspect_paper_set
-```
-
-Source modes:
-
-```text
-LIBRARY_FACETS
-LIBRARY_PAGE
-LIBRARY_CANDIDATES
-VIEW
-REGISTRY
-SELECTION
-IDENTITY
+Browse or explicitly filter papers inside the fixed conversation search scope.
 ```
 
 Input:
 
 ```json
 {
-  "source": {
-    "type": "LIBRARY_FACETS | LIBRARY_PAGE | LIBRARY_CANDIDATES | VIEW | REGISTRY | SELECTION | IDENTITY",
-    "ref": "view_... | registry_... | selection_..."
-  },
-  "facetTypes": ["CATALOG_TOPIC", "PAPER_TYPE", "YEAR", "AUTHOR", "VENUE", "COLLECTION"],
-  "taxonomyRef": "taxonomy_...",
-  "constraints": {
+  "filters": {
     "titleContains": "",
+    "titleExact": "",
     "filenameContains": "",
-    "titleRegex": "",
-    "filenameRegex": "",
+    "filenameExact": "",
     "authorName": "",
     "doiExact": "",
     "arxivIdExact": "",
     "yearRange": {"from": 2023, "to": 2026},
-    "collectionRef": "",
+    "venue": "",
     "catalogTopicIds": ["topic_..."],
-    "paperTypeIds": ["type_..."],
-    "availability": "AVAILABLE"
+    "paperTypeIds": ["type_..."]
   },
-  "candidateRetrieval": {
-    "useCurrentTurnEmbedding": true,
-    "basis": ["TITLE", "ABSTRACT", "CATALOG_TAGS"],
-    "retrievalModes": ["BM25", "VECTOR"],
-    "lexicalTerms": ["agent", "eval"],
-    "maxCandidates": 50
-  },
-  "fields": ["TITLE", "FILENAME", "AUTHORS", "YEAR", "AVAILABILITY", "CATALOG_TOPICS", "PAPER_TYPE"],
-  "detailLevel": "COMPACT | CARD | EXTENDED",
-  "page": 1,
-  "pageSize": 20,
-  "cursor": ""
+  "includeFacets": false,
+  "sort": "RECENT | TITLE | YEAR"
 }
 ```
 
@@ -374,68 +400,59 @@ Output:
 
 ```json
 {
-  "taxonomyRef": "taxonomy_...",
   "facets": {},
-  "paperSetViewRef": "view_...",
   "items": [
     {
       "ordinal": 1,
-      "paperRef": "paper_...",
+      "paperHandle": "paper_handle_...",
       "title": "...",
       "originalFilename": "...",
       "authors": [],
       "year": 2025,
-      "availability": "AVAILABLE",
       "catalogTopics": [],
       "paperTypes": []
     }
-  ],
-  "candidateRetrievalDiagnostics": {
-    "usedCurrentTurnEmbedding": true,
-    "embeddingInputSource": "CURRENT_TURN_RAW_USER_MESSAGE",
-    "basis": ["TITLE", "ABSTRACT", "CATALOG_TAGS"],
-    "retrievalModes": ["BM25", "VECTOR"]
-  },
-  "informationLevel": "SELECTION_FEATURES_ONLY",
-  "allowedAnswerTypes": ["CATALOG_LIST", "PAPER_SELECTION"],
-  "contentEvidence": false,
-  "notCiteable": true
+  ]
 }
 ```
 
 Rules:
 
-- It must not accept `query`, `question`, or free-form topic text.
-- `catalogTopicIds` and `paperTypeIds` must come from an already disclosed
-  `taxonomyRef` or system enum.
-- `lexicalTerms` must come from the current user message or already disclosed
-  text. The LLM must not expand them with unstated concepts.
-- Candidate retrieval may use the current turn's raw user message internally for
-  embedding. The raw message is owned by the Harness and recorded in trace; it is
-  not passed as a natural-language tool argument.
-- `ABSTRACT_SUMMARY` and section preview fields are not default fields. If
-  requested, they must be marked `notCiteable=true` and used only for selection.
-- Candidate views must not support recommendation reasons or paper-content facts.
+- It is deterministic browse/filter.
+- It returns only READY papers.
+- It must not accept `searchNeed`, `query`, `question`, `semanticNeed`, or topic
+  text.
+- It must not run BM25/vector/rerank topic discovery.
+- Facets are included through `includeFacets=true`; there is no separate public
+  facet tool.
+- If `includeFacets=true`, the tool returns the product's fixed facet set:
+  catalog topics, paper types, years, authors, and venues inside the fixed
+  conversation search scope.
+- `catalogTopicIds` and `paperTypeIds` must come from prior
+  `list_papers(includeFacets=true)` output or clicked UI filters.
+- It returns a fixed paper card shape; output size is controlled by internal
+  product policy, not LLM-selected fields.
+- `ordinal` is a display label only. Consuming tools must pass `paperHandle`.
+- It returns paper cards for browsing/selection, not Source Quotes.
 
-### 3. `select_papers`
+### 3. `search_paper_candidates`
 
 Purpose:
 
 ```text
-Register the LLM's explicit selection from a visible paper set view.
+Search for candidate papers by topic or need inside the fixed conversation search scope.
 ```
-
-This is not semantic filtering and not retrieval.
 
 Input:
 
 ```json
 {
-  "sourceViewRef": "view_...",
-  "selectionMode": "ORDINALS | EXPLICIT_REFS | ALL",
-  "ordinals": [1, 3, 5],
-  "paperRefs": ["paper_..."],
-  "cardinality": {"min": 1, "max": 5}
+  "searchNeed": "papers related to agent evaluation",
+  "metadataFilters": {
+    "yearRange": {"from": 2020, "to": 2026},
+    "catalogTopicIds": [],
+    "paperTypeIds": []
+  }
 }
 ```
 
@@ -443,131 +460,58 @@ Output:
 
 ```json
 {
-  "paperSelectionRef": "selection_...",
-  "sourceViewRef": "view_...",
-  "selectedPapers": [
+  "items": [
     {
-      "paperRef": "paper_...",
       "ordinal": 1,
+      "paperHandle": "paper_handle_...",
       "title": "...",
       "originalFilename": "...",
-      "availability": "AVAILABLE"
+      "authors": [],
+      "year": 2025
     }
-  ],
-  "selectionProvenance": {
-    "mode": "ORDINALS",
-    "selectedFromVisibleView": true,
-    "scopeLocked": true
-  },
-  "informationLevel": "IDENTITY_ONLY",
-  "allowedAnswerTypes": ["PAPER_SELECTION", "PRODUCT_STATE"],
-  "contentEvidence": false,
-  "notCiteable": true
+  ]
 }
 ```
 
 Rules:
 
-- `sourceViewRef` is required.
-- Every ordinal or `paperRef` must exist in `sourceViewRef`.
-- The tool must reject unexposed refs and refs outside the locked session scope.
-- The tool must not accept a natural-language selection request.
-- The result cannot support content answers.
-
-### 4. `inspect_paper`
-
-Purpose:
-
-```text
-Inspect selected papers' artifact status, parser quality, and paper map.
-```
-
-It replaces:
-
-```text
-inspect_paper_artifacts
-inspect_paper_map
-```
-
-Input:
-
-```json
-{
-  "paperSelectionRef": "selection_...",
-  "include": ["ARTIFACT_STATUS", "MAP_SUMMARY", "MAP_DETAIL", "ASSET_ANCHORS"],
-  "detailLevel": "SUMMARY | FULL",
-  "sectionDepth": 2,
-  "pageRange": {"from": 1, "to": 10},
-  "cursor": ""
-}
-```
-
-Output:
-
-```json
-{
-  "paperMapRef": "map_...",
-  "artifactStatus": "READY | INDEX_NOT_READY | OCR_NOT_READY | FAILED",
-  "quality": {
-    "pageTextCoverage": 1.0,
-    "outlineAvailable": true,
-    "outlineConfidence": "HIGH",
-    "sectionPageMapping": "READY",
-    "tablesAvailable": true,
-    "figuresAvailable": true,
-    "warnings": []
-  },
-  "sections": [
-    {
-      "sectionRef": "sec_...",
-      "heading": "Introduction",
-      "sectionRole": "INTRODUCTION",
-      "level": 1,
-      "pageStart": 1,
-      "pageEnd": 2
-    }
-  ],
-  "pages": [],
-  "tables": [],
-  "figures": [],
-  "informationLevel": "NAVIGATION_ONLY",
-  "allowedAnswerTypes": [],
-  "contentEvidence": false,
-  "notCiteable": true
-}
-```
-
-Rules:
-
-- Paper maps are navigation, not evidence.
-- Section headings, roles, page ranges, table refs, and figure refs cannot support
+- It is paper-level candidate recall, not a recommendation verdict.
+- It returns only READY papers.
+- It may use semantic retrieval over title, abstract, catalog tags, and metadata.
+- Search fields, retrieval modes, reranking, and search terms are internal
+  implementation decisions, not LLM inputs.
+- `metadataFilters.catalogTopicIds` and `metadataFilters.paperTypeIds` must come
+  from prior `list_papers(includeFacets=true)` output or clicked UI filters.
+- Candidate order is the only public ranking signal. Internal scores must not be
+  exposed to the LLM.
+- It must not return source quote text, final recommendation reasons, or
   paper-content claims.
-- `sectionSummaryPreview` is optional and never default. If returned, it must be
-  `notCiteable=true`.
-- If artifacts fail quality gates, the tool returns the unavailable status. The
-  Harness must not silently fall back to low-quality vector-only reading.
+- If the final answer only uses this result, the answer must be a candidate list,
+  not a source-quote-backed recommendation.
+- `ordinal` is a display label only. Consuming tools must pass `paperHandle`.
 
-### 5. `select_targets`
+### 4. `find_papers_by_identity`
 
 Purpose:
 
 ```text
-Register explicit section/page/table/figure targets chosen by the LLM from a paper map.
+Resolve a specific paper mention by identity hints.
 ```
-
-It is analogous to `select_papers`, but for reading locations.
 
 Input:
 
 ```json
 {
-  "paperMapRef": "map_...",
-  "targetMode": "EXPLICIT_REFS",
-  "sectionRefs": ["sec_..."],
-  "pageRefs": ["page_..."],
-  "tableRefs": ["table_..."],
-  "figureRefs": ["figure_..."],
-  "maxTargets": 8
+  "identityHints": {
+    "titleContains": "",
+    "titleExact": "",
+    "filenameContains": "",
+    "filenameExact": "",
+    "doiExact": "",
+    "arxivIdExact": "",
+    "authorName": "",
+    "year": 2021
+  }
 }
 ```
 
@@ -575,46 +519,48 @@ Output:
 
 ```json
 {
-  "readingTargetRef": "target_...",
-  "paperMapRef": "map_...",
-  "targets": [
+  "ambiguous": false,
+  "matches": [
     {
-      "targetRef": "target_item_...",
-      "sourceRef": "sec_...",
-      "sourceType": "SECTION"
+      "ordinal": 1,
+      "paperHandle": "paper_handle_...",
+      "title": "...",
+      "originalFilename": "...",
+      "matchReason": "TITLE_CONTAINS | TITLE_EXACT | FILENAME_EXACT | DOI_EXACT | ARXIV_ID_EXACT"
     }
-  ],
-  "informationLevel": "NAVIGATION_ONLY",
-  "allowedAnswerTypes": [],
-  "contentEvidence": false,
-  "notCiteable": true
+  ]
 }
 ```
 
 Rules:
 
-- It must not accept `coverageTargets`, `subQuestions`, or semantic target specs.
-- It must not decide which sections are relevant.
-- All refs must belong to `paperMapRef`.
-- If the LLM needs to read more, it must inspect the map and explicitly select
-  more targets.
+- It is not semantic topic search.
+- It must not accept `searchNeed`, `query`, `question`, `semanticNeed`,
+  related-to topic, or recommendation need.
+- It must not accept ordinal hints. Ordinals are display labels only.
+- If the user refers to a displayed ordinal without clicking the row, ask them to
+  click the paper row so the frontend can provide `paperHandle`.
+- It returns only READY papers.
+- If identity hints match multiple papers, return ambiguous paper cards rather
+  than guessing.
+- If the model already has a `paperHandle`, it should pass that handle directly
+  to the consuming tool instead of calling this tool.
+- Source Quote refs are resolved through `trace_source_quotes`, not this tool.
+- It returns identity candidates, not Source Quotes.
 
-### 6. `read_targets`
+### 5. `get_paper_outline`
 
 Purpose:
 
 ```text
-Read registered targets and return citeable evidence units.
+Get parser quality and whole-paper outline for explicitly chosen READY papers.
 ```
 
 Input:
 
 ```json
 {
-  "readingTargetRef": "target_...",
-  "readMode": "SNIPPET | WINDOW | FULL_TARGET",
-  "evidenceKinds": ["TEXT", "TABLE", "FIGURE_CAPTION"],
-  "maxEvidencePerTarget": 3
+  "paperHandles": ["paper_handle_..."]
 }
 ```
 
@@ -622,72 +568,262 @@ Output:
 
 ```json
 {
-  "evidence": [
+  "paperHandles": ["paper_handle_..."],
+  "papers": [
     {
-      "evidenceRef": "ev_...",
-      "paperRef": "paper_...",
+      "paperHandle": "paper_handle_...",
+      "title": "...",
+      "originalFilename": "...",
+      "parserQuality": {
+        "pageTextCoverage": 1.0,
+        "outlineConfidence": "HIGH",
+        "warnings": []
+      },
+      "sections": [
+        {
+          "sectionRef": "sec_...",
+          "heading": "Methods",
+          "sectionRole": "METHODS",
+          "level": 1,
+          "pageStart": 3,
+          "pageEnd": 5
+        }
+      ]
+    }
+  ]
+}
+```
+
+Rules:
+
+- It does not read paper content.
+- It returns whole-paper outline and parser quality state, not Source Quotes.
+- It only accepts READY papers.
+- `parserQuality` describes extraction quality for reading strategy; it is not a
+  readiness signal.
+- It must not accept `mapMode`, `pageRange`, output-size controls, or expansion
+  depth controls.
+- It returns section refs from the whole-paper outline. It does not list all
+  page/table/figure refs.
+- For multiple papers, returned outlines must be grouped by owning paper.
+- Every returned `sectionRef` must resolve to its owning `paperHandle`.
+
+### 6. `list_paper_locations`
+
+Purpose:
+
+```text
+List explicit section/page/table/figure refs for chosen READY papers.
+```
+
+Input:
+
+```json
+{
+  "paperHandles": ["paper_handle_..."],
+  "pageRange": {"from": 1, "to": 10},
+  "locationTypes": ["SECTION", "PAGE", "TABLE", "FIGURE"]
+}
+```
+
+Required: `paperHandles`.
+
+Optional: `pageRange`, `locationTypes`.
+
+Output:
+
+```json
+{
+  "paperHandles": ["paper_handle_..."],
+  "locations": [
+    {
+      "ordinal": 1,
+      "locationRef": "page_...",
+      "locationType": "PAGE",
+      "paperHandle": "paper_handle_...",
+      "sectionRef": "sec_...",
+      "pageNumber": 7,
+      "label": "Page 7"
+    }
+  ]
+}
+```
+
+Rules:
+
+- It is deterministic navigation, not semantic search.
+- It does not read paper content.
+- It returns explicit refs usable by `read_locations`, not Source Quotes.
+- `paperHandles` are required.
+- `pageRange` is optional and is used only when the user or current context
+  explicitly asks for specific pages.
+- `pageRange.from` and `pageRange.to` are 1-based inclusive page numbers.
+  `from` must be less than or equal to `to`, and the range must fit inside the
+  selected paper's page count.
+- `locationTypes` is an optional coarse location filter.
+- `locationTypes` only accepts `SECTION`, `PAGE`, `TABLE`, and `FIGURE`. If
+  omitted, the tool may return all supported location types subject to product
+  output limits.
+- It must not accept `readingNeed`, `searchNeed`, `query`, `question`, or
+  semantic topic text.
+- It returns ordered locations in document order. Internal output limits are
+  controlled by product policy.
+- `ordinal` is a display label only. Consuming tools must pass `locationRef`.
+- Every returned location ref must resolve to its owning `paperHandle`.
+
+### 7. `find_reading_locations`
+
+Purpose:
+
+```text
+Search within explicitly chosen READY papers to find candidate reading locations.
+```
+
+Input:
+
+```json
+{
+  "paperHandles": ["paper_handle_..."],
+  "readingNeed": "where the paper discusses method limitations",
+  "locationTypes": ["SECTION", "PAGE", "TABLE", "FIGURE"]
+}
+```
+
+Required: `paperHandles`, `readingNeed`.
+
+Optional: `locationTypes`.
+
+Output:
+
+```json
+{
+  "paperHandles": ["paper_handle_..."],
+  "candidates": [
+    {
+      "ordinal": 1,
+      "locationRef": "page_...",
+      "locationType": "PAGE",
+      "paperHandle": "paper_handle_...",
+      "sectionRef": "sec_...",
+      "pageNumber": 7,
+      "sectionRole": "DISCUSSION"
+    }
+  ]
+}
+```
+
+Rules:
+
+- It does not discover or select papers.
+- It searches only within explicitly supplied `paperHandles`.
+- `paperHandles` must be visible, READY, and inside fixed conversation search
+  scope.
+- `readingNeed` is required. If there is no semantic reading need, use
+  `list_paper_locations` instead.
+- It may use lexical, BM25, vector, rerank, heading-role, caption, parser-anchor,
+  and similar bounded signals.
+- Retrieval basis is an internal implementation decision, not an LLM input.
+- Section role is an internal location signal and returned location label, not an LLM
+  input.
+- `locationTypes` is an optional coarse content-location filter, not a semantic
+  sufficiency signal.
+- `locationTypes` only accepts `SECTION`, `PAGE`, `TABLE`, and `FIGURE`. If
+  omitted, the tool may search all supported location types subject to product
+  output limits.
+- Search terms are derived internally from `readingNeed`, not supplied by
+  the LLM as a separate input.
+- It returns ordered `locationRef` reading-location candidates only.
+- Candidate order is the only public ranking signal. Internal scores must not be
+  exposed to the LLM.
+- `locationRef` values are reading locations, not Source Quotes.
+- `ordinal` is a display label only. Consuming tools must pass `locationRef`.
+- It must not return source quote text, answer snippets, final recommendation
+  reasons, or Source Quote sufficiency judgments.
+
+### 8. `read_locations`
+
+Purpose:
+
+```text
+Read explicitly chosen section/page/table/figure locations and return Source Quotes.
+```
+
+Input:
+
+```json
+{
+  "locationRefs": ["page_...", "table_..."]
+}
+```
+
+Output:
+
+```json
+{
+  "sourceQuotes": [
+    {
+      "sourceQuoteRef": "source_quote_...",
+      "locationRef": "page_...",
+      "paperHandle": "paper_handle_...",
+      "paperTitle": "...",
       "sectionRef": "sec_...",
       "pageRef": "page_...",
       "pageNumber": 3,
-      "sourceKind": "TEXT",
-      "text": "...",
-      "tableMarkdown": "",
-      "caption": "",
-      "provenance": {
-        "parserName": "mineru",
-        "parserVersion": "...",
-        "hasBbox": true,
-        "hasPagePreview": true
-      }
+      "contentKind": "TEXT",
+      "content": "..."
     }
   ],
   "readStatus": [
     {
-      "targetRef": "target_item_...",
-      "status": "READ_WITH_EVIDENCE | EMPTY_TARGET | TRUNCATED_BY_BUDGET | UNREADABLE",
-      "evidenceCount": 2
+      "locationRef": "page_...",
+      "status": "OK | EMPTY_LOCATION | CONTENT_TRUNCATED | UNREADABLE_LOCATION"
     }
-  ],
-  "informationLevel": "CITEABLE_EVIDENCE",
-  "allowedAnswerTypes": ["PAPER_CONTENT", "PAPER_COMPARISON", "SOURCE_INSPECTION"],
-  "contentEvidence": true,
-  "notCiteable": false
+  ]
 }
 ```
 
 Rules:
 
-- It reads only `readingTargetRef`.
-- It must not accept section roles, page numbers, semantic queries, or coverage
-  targets directly.
-- It may report mechanical read status only.
-- It must not report semantic sufficiency, missing semantic targets, or support
-  judgments.
-- `FULL_TARGET` is allowed only within fixed budget limits. If the target is too
-  large, the tool returns `TRUNCATED_BY_BUDGET` or asks for narrower targets.
+- It mechanically reads selected locations up to product-defined internal
+  output limits.
+- It resolves the owning paper from each `locationRef`.
+- Each returned Source Quote includes the input `locationRef` it came from.
+- Each returned Source Quote includes `paperTitle` for display and answer
+  wording.
+- Returned content kind is determined by the selected location ref type and
+  available parser artifacts.
+- `sectionRef` and `pageRef` return `TEXT`; `tableRef` returns `TABLE`;
+  `figureRef` returns `FIGURE_CAPTION`.
+- `content` contains plain text for `TEXT`, table markdown for `TABLE`, and
+  caption text for `FIGURE_CAPTION`.
+- `readStatus.status=OK` means the location produced Source Quotes.
+- It must not accept `question`, `query`, `semanticNeed`, `subQuestions`, or
+  `coverageTargets`.
+- It must not search for new locations.
+- It must not accept ordinals or a reading-location candidate list ref.
+- It must not judge semantic sufficiency or claim support.
+- It must not expose read-size, quote-count, or character-budget controls.
+- It must not accept `quoteKinds`.
+- Source Quote splitting and truncation are internal to the PDF/parser pipeline
+  and product reading policy.
+- If selected location content exceeds internal product limits, return
+  `CONTENT_TRUNCATED`; the tool must not ask the user for narrower locations.
+- Final paper-content answers may cite only `sourceQuoteRef` values returned here
+  or resolved by `trace_source_quotes`.
 
-### 7. `inspect_source`
+### 9. `trace_source_quotes`
 
 Purpose:
 
 ```text
-Trace existing citation, evidence, page, section, and paper source handles.
-```
-
-It replaces:
-
-```text
-inspect_reference
-inspect_page
+Resolve explicit Source Quote refs to stored Source Quote text and source location.
 ```
 
 Input:
 
 ```json
 {
-  "refs": ["citation_...", "ev_...", "page_...", "section_...", "paper_..."],
-  "include": ["PROVENANCE", "PAGE_CONTEXT", "REGISTRY_RELATIONS", "VISIBLE_TEXT"],
-  "readMode": "SNIPPET | WINDOW"
+  "sourceQuoteRefs": ["source_quote_..."]
 }
 ```
 
@@ -695,139 +831,128 @@ Output:
 
 ```json
 {
-  "sources": [
+  "sourceQuotes": [
     {
-      "ref": "ev_...",
-      "refType": "EVIDENCE",
-      "paperRef": "paper_...",
+      "sourceQuoteRef": "source_quote_...",
+      "locationRef": "page_...",
+      "paperHandle": "paper_handle_...",
+      "paperTitle": "...",
       "pageRef": "page_...",
       "sectionRef": "sec_...",
-      "text": "...",
-      "provenance": {}
+      "contentKind": "TEXT",
+      "content": "..."
     }
-  ],
-  "informationLevel": "CITEABLE_EVIDENCE",
-  "allowedAnswerTypes": ["SOURCE_INSPECTION", "PAPER_CONTENT"],
-  "contentEvidence": true,
-  "notCiteable": false
+  ]
 }
 ```
 
 Rules:
 
-- It is a source tracing tool, not a primary reading shortcut.
-- `citationRef` resolves to its underlying evidence.
-- `evidenceRef` returns evidence details.
-- `pageRef` may return bounded page context and citeable evidence.
-- `paperRef` returns identity/status only, not body text.
-- `sectionRef` returns navigation details only unless it is already tied to a
-  registered target or existing evidence path.
-- It must not allow paper-wide body reading through `paperRef`.
+- It is a deterministic Source Quote resolver.
+- It only accepts explicit `sourceQuoteRef` values supplied in the tool input.
+- It returns stored Source Quote text and source-location metadata.
+- Each returned Source Quote includes the stored `locationRef` it originally
+  came from.
+- Each returned Source Quote includes `paperTitle` for display and answer
+  wording.
+- It must not accept `paperHandle`, `sectionRef`, `pageRef`, `tableRef`, or
+  `figureRef`.
+- Returned source-location refs are metadata, not reading-location input.
+- It must not expand surrounding page, section, table, or figure content.
+- It must not search, rank, recommend, read new content, or judge sufficiency.
+- To read broader context, call `list_paper_locations` for the traced paper
+  and then call `read_locations` with refs returned by that tool.
 
-## Candidate Recall Rules
+## Final Answer Support
 
-`inspect_catalog` candidate mode may use:
-
-```text
-current turn raw user message embedding
-BM25 over lexical terms
-vector over title/abstract/catalog tags
-precomputed catalog tags
-metadata filters
-```
-
-Tool args declare only:
+The public final AnswerEnvelope types are:
 
 ```text
-useCurrentTurnEmbedding
-basis
-retrievalModes
-lexicalTerms
-maxCandidates
-```
-
-The Harness supplies and records:
-
-```text
-currentTurn.rawUserMessage
-embedding input text
-embedding model
-candidate retrieval diagnostics
-```
-
-The LLM must not pass the raw user message or natural-language query to the tool.
-
-Candidate recall output is always:
-
-```text
-SELECTION_FEATURES_ONLY
-notCiteable=true
-```
-
-## Harness Answer Intent
-
-`answerIntent` is Harness state, not a public tool.
-
-Suggested internal intents:
-
-```text
-NON_EVIDENCE
-PRODUCT_STATE
-CATALOG_LIST
-PAPER_SELECTION
-PAPER_CONTENT
-PAPER_COMPARISON
-SOURCE_INSPECTION
+GENERAL_ANSWER
+PRODUCT_STATE_ANSWER
+SOURCE_QUOTED_ANSWER
+NOT_ENOUGH_SOURCE_QUOTES
 CLARIFICATION_NEEDED
-INSUFFICIENT_EVIDENCE
 ```
 
-Required grounding:
+Support requirements:
 
-| Answer intent | Required grounding |
+| Public answer type | Required support |
 | --- | --- |
-| `NON_EVIDENCE` | No tool required; must not mention product state, paper identity, pages, citations, or paper facts. |
-| `PRODUCT_STATE` | `inspect_session` or compatible product-state result. |
-| `CATALOG_LIST` | `inspect_catalog`; must state that results are catalog candidates if not evidence-backed. |
-| `PAPER_SELECTION` | `select_papers`; cannot make paper-content claims. |
-| `PAPER_CONTENT` | `read_targets` or `inspect_source` returning `CITEABLE_EVIDENCE`. |
-| `PAPER_COMPARISON` | `CITEABLE_EVIDENCE` for every compared paper claim. |
-| `SOURCE_INSPECTION` | `inspect_source` with traceable source refs. |
-| `CLARIFICATION_NEEDED` | No unsupported product/paper claims. |
-| `INSUFFICIENT_EVIDENCE` | Evidence/source attempts or unavailable artifact status, clearly separated from paper facts. |
+| `GENERAL_ANSWER` | No product, paper, page, citation, or paper-content claim. |
+| `PRODUCT_STATE_ANSWER` | Product-state, paper-list, paper-candidate, or identity results. Must not make paper-content claims. |
+| `SOURCE_QUOTED_ANSWER` | `sourceQuoteRef` values from `read_locations` or `trace_source_quotes`. |
+| `NOT_ENOUGH_SOURCE_QUOTES` | The model could not get enough Source Quotes to answer; it must say what was tried or unavailable without adding unsupported paper facts. |
+| `CLARIFICATION_NEEDED` | No unsupported product or paper-content claims. |
+
+The LLM chooses the final answer type. The Harness validates that choice against
+tool results, accepted refs, and source-quote records. If the chosen type is not
+compatible with available support, the Harness rejects the final answer; the LLM
+does not get to self-certify support.
 
 The Harness must reject final answers that use:
 
 ```text
-catalog cards as evidence
-abstract summaries as evidence
-section summaries as evidence
-paper maps as evidence
-paper selections as evidence
+catalog cards as Source Quotes
+abstract summaries as Source Quotes
+section summaries as Source Quotes
+paper outlines as Source Quotes
+paper location lists as Source Quotes
+paper selections as Source Quotes
 product state as paper content
-model memory as paper evidence
+model memory as Source Quotes
 ```
+
+Final paper-content claims must cite `sourceQuoteRef` values, not rendered citation
+numbers. The Harness maps `sourceQuoteRef` values to display citation numbers.
 
 ## Prompt Requirements
 
 The system prompt must tell the LLM:
 
-- Use tools only when the current request needs product, catalog, paper,
-  source, or evidence grounding.
-- Ordinary smalltalk can answer directly as `NON_EVIDENCE`.
-- Tools do not accept natural-language task fields.
-- Compile the user message into typed refs, ordinals, metadata constraints,
-  taxonomy ids, and explicit selections.
+- Use tools only when the request needs product, paper, source, or source-quote
+  support.
+- Ordinary smalltalk can answer directly as `GENERAL_ANSWER`.
+- Use action-named tools; do not call old tools.
 - Do not display chain-of-thought.
 - The frontend should show only `calling <toolName>`.
 - Use progressively disclosed objects. Do not select hidden objects.
-- Candidate catalog views are not citeable.
-- Paper maps are navigation only.
-- Final paper-content claims must cite `evidenceRef` markers only.
-- Never generate final numbered citations; the Harness maps evidence refs to
+- Use `list_papers` only for browsing/filtering.
+- Use `search_paper_candidates` for topic, need, related-paper, discovery, or
+  recommendation candidate search.
+- Use `find_papers_by_identity` only for specific-paper identity fields such as
+  title, filename, DOI, arXiv id, author, or year.
+- Do not resolve typed ordinal references such as "the ninth paper"; ask the
+  user to click the paper row so the frontend can provide `paperHandle`.
+- Use `get_paper_outline` after choosing papers when structure or parser quality
+  is needed.
+- Use `list_paper_locations` when exact section/page/table/figure refs are
+  needed without semantic search.
+- Use `find_reading_locations` to find where to read inside chosen papers only
+  when there is a semantic `readingNeed`.
+- Use `read_locations` for Source Quotes.
+- Use `trace_source_quotes` only for explicit `sourceQuoteRef` values from clicked
+  source chips or current model context.
+- Product policy, not the LLM, controls output size, candidate count, read size,
+  Source Quote splitting, and truncation. Do not pass fields such as `limit`,
+  `pageSize`, `maxCandidates`, `topK`, `budget`, `maxCharsPerLocation`,
+  `maxTotalChars`, `maxQuotesPerLocation`, `quoteKinds`, or expansion-depth
+  controls.
+- If a bounded result is too broad, narrow with business inputs such as metadata
+  filters, identity hints, paper handles, location types, or a clearer
+  `searchNeed` / `readingNeed`. If the user intent is still ambiguous, ask for
+  clarification. Do not try to increase internal limits.
+- Do not resolve user-typed citation numbers such as `[2]`. If the user types a
+  displayed citation number instead of clicking the source chip, ask them to
+  click the chip. Click events should provide `sourceQuoteRefs`.
+- Candidate paper cards are not Source Quotes.
+- Paper Outlines, paper location lists, and reading-location candidates are
+  navigation only.
+- Final paper-content claims must cite `sourceQuoteRef` markers only.
+- Never generate final numbered citations; the Harness maps `sourceQuoteRef` values to
   display numbers.
-- If the round budget is exhausted or the visible candidate set remains too
-  large, ask the user to narrow or continue in a new turn. Do not fall back to
+- If Source Quotes remain insufficient, answer with
+  `NOT_ENOUGH_SOURCE_QUOTES` or ask for clarification. Do not fall back to
   unsupported answers.
 
 ## Validation Rules
@@ -835,22 +960,50 @@ The system prompt must tell the LLM:
 The Harness must validate:
 
 - unsupported tool names are rejected
-- forbidden natural-language fields are rejected
+- old public tools are rejected
+- forbidden unbounded natural-language fields are rejected
 - raw ids such as `paperId`, `chunkId`, `sql`, `esQuery`, `topK`, and rerank
   controls are rejected
-- `sourceViewRef` belongs to the current session and locked scope
-- selected ordinals exist in `sourceViewRef`
-- selected `paperRefs` exist in `sourceViewRef`
-- `paperMapRef` belongs to the selected papers
-- target refs belong to `paperMapRef`
-- `readingTargetRef` belongs to the current session and was produced by
-  `select_targets`
-- evidence refs used in final answer exist in current-turn or persisted source
-  registry
-- final answer type is compatible with successful tool result
-  `informationLevel`
+- regex filter fields are rejected
+- LLM-supplied output-size controls such as `limit`, `pageSize`,
+  `maxCandidates`, and expansion-depth controls are rejected
+- no tool call creates hidden mutable selection state required by later tools
+- all `catalogTopicIds` and `paperTypeIds` are disclosed by prior
+  `list_papers(includeFacets=true)` output or clicked UI filters
+- selected `paperHandles` are disclosed by prior tool output or clicked paper
+  rows, visible, READY, and inside fixed conversation search scope
+- `get_paper_outline` rejects `mapMode`, `pageRange`, and output-shape controls
+- `list_paper_locations` rejects semantic inputs such as `readingNeed`,
+  `searchNeed`, `query`, `question`, or topic text
+- `list_paper_locations` rejects invalid `pageRange` values: non-positive page
+  numbers, `from > to`, or pages outside the selected paper's page count
+- `find_reading_locations` rejects missing `readingNeed`
+- `locationTypes` values outside `SECTION`, `PAGE`, `TABLE`, and `FIGURE` are
+  rejected
+- selected `locationRefs` are disclosed by prior `get_paper_outline`,
+  `list_paper_locations`, `find_reading_locations` output, or clicked refs
+- selected `locationRefs` resolve to READY papers visible to the user and inside
+  fixed conversation search scope
+- ordinals are rejected in tool input
+- `read_locations` rejects LLM-supplied read-size, quote-count, and
+  character-budget controls
+- `read_locations` rejects `quoteKinds`
+- `read_locations` rejects page/section/table/figure refs that came only from
+  `trace_source_quotes` and were not separately disclosed by
+  `get_paper_outline`, `list_paper_locations`, `find_reading_locations`, or a
+  clicked reading-location ref
+- `trace_source_quotes` rejects non-`sourceQuoteRef` inputs
+- `trace_source_quotes` returns source quote text only for accepted
+  `sourceQuoteRef` values
+- Source Quote `contentKind` must be one of `TEXT`, `TABLE`, or
+  `FIGURE_CAPTION`
+- user-typed rendered citation numbers such as `[2]` are not accepted as source
+  refs and are not resolved through chat-text counting
+- `sourceQuoteRef` values used in final answer exist in current-turn results or
+  persisted Source Quote records
+- final answer type is compatible with available support
 - final answer does not contain model-generated numbered citations
-- final answer does not cite non-citeable refs
+- final answer does not cite non-`sourceQuoteRef` values
 
 ## Example Flows
 
@@ -858,7 +1011,7 @@ The Harness must validate:
 
 ```text
 User: hi
-LLM: final NON_EVIDENCE
+LLM: final GENERAL_ANSWER
 Tools: none
 ```
 
@@ -866,69 +1019,104 @@ Tools: none
 
 ```text
 User: 有多少论文可以检索
-inspect_session(include=["COUNTS", "SCOPE"])
-final PRODUCT_STATE
+get_session_state()
+final PRODUCT_STATE_ANSWER
+```
+
+### Browse Papers
+
+```text
+User: 列出最近上传的论文
+list_papers(sort="RECENT")
+final PRODUCT_STATE_ANSWER candidate/list answer
+```
+
+### Topic Candidate Search
+
+```text
+User: 有哪些 agent eval 相关论文
+search_paper_candidates(searchNeed="agent eval related papers")
+final PRODUCT_STATE_ANSWER candidate list
+```
+
+If no Source Quotes are read, the final answer must be a candidate list, not a
+source-quote-backed recommendation.
+
+### Source-Quote-Based Recommendation
+
+```text
+User: 推荐 agent eval 相关论文，并说明原因
+search_paper_candidates(...)
+get_paper_outline(paperHandles=["paper_handle_...", "paper_handle_...", "paper_handle_..."])
+find_reading_locations(paperHandles=["paper_handle_...", "paper_handle_...", "paper_handle_..."],
+                       readingNeed="why these papers are relevant to agent evaluation")
+read_locations(locationRefs=["page_...", "sec_...", "table_..."])
+final SOURCE_QUOTED_ANSWER with `sourceQuoteRef` values
 ```
 
 ### Direct Paper Request
 
 ```text
 User: 细讲一下 LoRA 那篇论文的方法
-inspect_catalog(source.type="IDENTITY", constraints.titleContains="LoRA")
-select_papers(sourceViewRef="view_...", selectionMode="ALL")
-inspect_paper(paperSelectionRef="selection_...", include=["ARTIFACT_STATUS", "MAP_SUMMARY"])
-select_targets(paperMapRef="map_...", sectionRefs=["sec_method"])
-read_targets(readingTargetRef="target_...", readMode="WINDOW")
-final PAPER_CONTENT with evidence refs
+find_papers_by_identity(identityHints.titleContains="LoRA")
+get_paper_outline(paperHandles=["paper_handle_..."])
+find_reading_locations(paperHandles=["paper_handle_..."],
+                       readingNeed="method or approach of the paper")
+read_locations(locationRefs=["sec_...", "page_..."])
+final SOURCE_QUOTED_ANSWER with `sourceQuoteRef` values
 ```
 
-### Ordinal Follow-Up
+If identity lookup is ambiguous, the model must ask the user to clarify or
+choose a candidate before making paper-content claims.
+
+### Clicked Paper Follow-Up
 
 ```text
-User: 细讲第九篇
-inspect_session(include=["REGISTRY", "RECENT_VIEWS"])
-inspect_catalog(source.type="VIEW", source.ref="last_visible_view")
-select_papers(sourceViewRef="view_...", selectionMode="ORDINALS", ordinals=[9])
-inspect_paper(...)
-select_targets(...)
-read_targets(...)
-final PAPER_CONTENT with evidence refs
+User clicks a paper row, then asks: 细讲这篇
+Frontend reference focus: paperHandle="paper_handle_..."
+get_paper_outline(paperHandles=["paper_handle_..."])
+find_reading_locations(...)
+read_locations(...)
+final SOURCE_QUOTED_ANSWER with `sourceQuoteRef` values
 ```
 
-### Evidence-Based Recommendation
+If the user only types an ordinal such as `细讲第九篇`, ask the user to click the
+paper row instead of trying to resolve the ordinal from chat text or session
+state.
+
+### Source Follow-Up
 
 ```text
-User: 推荐 agent eval 相关论文
-inspect_catalog(source.type="LIBRARY_CANDIDATES",
-                candidateRetrieval.useCurrentTurnEmbedding=true,
-                candidateRetrieval.basis=["TITLE", "ABSTRACT", "CATALOG_TAGS"],
-                candidateRetrieval.retrievalModes=["BM25", "VECTOR"],
-                candidateRetrieval.lexicalTerms=["agent", "eval"])
-select_papers(sourceViewRef="view_...", selectionMode="ORDINALS", ordinals=[...])
-inspect_paper(...)
-select_targets(...)
-read_targets(...)
-final recommendation with evidence-backed reasons
+User clicks a source chip, then asks: 解释这个引用
+Frontend reference focus: sourceQuoteRefs=["source_quote_..."]
+trace_source_quotes(sourceQuoteRefs=["source_quote_..."])
+final SOURCE_QUOTED_ANSWER with resolved `sourceQuoteRef` values
 ```
 
-If only catalog candidates are returned and no evidence is read, the final answer
-must be a catalog list, not an evidence-backed recommendation.
+If the user only types a rendered citation number such as `解释引用 [2]`, ask the
+user to click the source chip instead of trying to resolve `[2]` from
+chat text.
+
+If the user asks for broader page/section context, the model may then call
+`list_paper_locations` for the traced paper and then `read_locations` with
+explicit page/section refs from that result.
 
 ## Trace Requirements
 
 Trace artifacts must record:
 
 - current user message
-- whether no-tool `NON_EVIDENCE` path was used
+- whether no-tool `GENERAL_ANSWER` path was used
 - full prompt messages
 - tool catalog version
 - tool calls and arguments
-- tool result `informationLevel`
-- candidate retrieval basis/modes
+- search/locate inputs and diagnostics
 - current-turn embedding input used by Harness
-- source view refs and selected refs
-- paper map refs and target refs
-- evidence refs returned
+- explicit paper handles
+- paper outline outputs
+- paper location list outputs
+- explicit location refs
+- `sourceQuoteRef` values returned
 - final answer envelope
 - Harness validation decisions and rejection reasons
 - rendered citation mapping snapshot
@@ -941,41 +1129,55 @@ This catalog makes evaluation layerable:
 
 | Layer | What to score |
 | --- | --- |
-| Session registry | Can the system recover all papers/views/citations that appeared in the session? |
-| Catalog inspection | Candidate recall, pagination behavior, facet use, scope isolation. |
-| Paper selection | Ordinal/ref selection accuracy and hidden-ref rejection. |
-| Paper map | Artifact readiness, section/page/table/figure mapping coverage. |
-| Target selection | Whether the LLM chose useful visible targets. |
-| Reading | Evidence availability, provenance completeness, citation validity. |
-| Final answer | Unsupported claim rate, evidence ref validity, answer envelope validity. |
+| Paper browse/search | Candidate recall, bounded output behavior, facet use, scope isolation. |
+| Paper identity | Title/file/DOI/arXiv resolution and ambiguity handling. |
+| Paper outline | Parser quality and section outline coverage. |
+| Paper location list | Section/page/table/figure ref coverage and page-range filtering. |
+| Reading location | Whether `find_reading_locations` finds useful reading locations. |
+| Reading | Source Quote availability and citation validity. |
+| Final answer | Unsupported claim rate, source quote ref validity, answer envelope validity. |
 
 Semantic quality is evaluated offline from traces. Product tools should not try
-to score semantic quality at runtime.
+to score final semantic quality at runtime.
 
 ## Migration Notes
 
 The new prompt must not expose these old tools:
 
 ```text
+answer_without_product_state
+get_system_state
+get_session_scope
+list_papers as semantic search
 find_papers
-retrieve_evidence
 resolve_papers
+get_paper_metadata
+retrieve_evidence
+inspect_reference
+inspect_page
+inspect_session
+inspect_catalog
+select_papers
+inspect_paper
+select_targets
+inspect_source
 filter_papers
 plan_reading
-answer_without_product_state
 ```
 
-Old implementations may temporarily remain as internal compatibility code, but
-they must not be part of the new LLM-facing Product ReAct catalog.
+Old public LLM-facing tools must be removed or fully hidden from the new Product
+ReAct runtime.
 
 First implementation should prioritize:
 
-1. New tool schema definitions and validation.
-2. `informationLevel` and `allowedAnswerTypes` in all tool results.
-3. `inspect_session`, `inspect_catalog`, and `select_papers`.
-4. `inspect_paper`, `select_targets`, and `read_targets`.
-5. `inspect_source`.
-6. Prompt rewrite and answer-intent grounding validation.
-7. Trace fields for candidate views, selections, maps, targets, evidence, and
-   validation decisions.
-
+1. New tool schema definitions and validation for the 9-tool catalog.
+2. Stateless tool-call validation: no hidden current paper/location selection.
+3. `get_session_state`, `list_papers`, `search_paper_candidates`, and
+   `find_papers_by_identity`.
+4. `get_paper_outline`, `list_paper_locations`, `find_reading_locations`,
+   and `read_locations`.
+5. `trace_source_quotes`.
+6. Prompt rewrite with built-in reading skills.
+7. Final-answer support validation and `sourceQuoteRef` citation validation.
+8. Trace fields for explicit paper handles, outlines, location refs, Source Quotes,
+   and validation decisions.

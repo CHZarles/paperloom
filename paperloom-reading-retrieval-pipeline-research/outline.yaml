@@ -1,0 +1,222 @@
+topic: "PaperLoom Reading Retrieval Pipeline 技术选型"
+created_at: "2026-07-03"
+goal: >
+  调研 reading model 生成后，如何正确 chunk、index、summary，让 agent 能自己搜索、
+  阅读、记忆并最终用 Source Quote 支撑回答。
+
+pipeline_scope:
+  - "PDF"
+  - "MinerU"
+  - "Reading Model"
+  - "Chunk / Index / Summary"
+  - "Agentic Search Tools"
+  - "Memory"
+  - "Fast Model Router"
+  - "Source Quote final answer"
+
+assumptions:
+  - "Product PaperLoom 只处理 research paper PDF。"
+  - "MinerU 是默认 OCR / parser。"
+  - "Reading Model 是 PaperLoom 自己的稳定阅读数据层，不直接暴露 MinerU schema。"
+  - "READY 最低标准是 page-level readable。"
+  - "section / table / figure 是增强能力，不阻塞 READY。"
+  - "summary 和 memory 只能用于导航、检索、压缩，不能作为最终证据。"
+  - "最终论文内容 claim 必须引用 read_locations 产生或 trace_source_quotes 回查到的 Source Quote。"
+  - "Product 数据和 eval 数据隔离，不向产品 controller/chat path 增加 includeEval。"
+
+items:
+  - id: canonical_reading_model
+    name: "Canonical Reading Model / Paper DOM"
+    priority: "main_path"
+    description: "把 MinerU 输出归一为 paper、page、section、paragraph、table、figure、formula 等稳定对象。"
+    why: "没有统一坐标系，chunk、index、read、citation 都会耦合 MinerU schema。"
+
+  - id: source_span_registry
+    name: "Source Span Registry"
+    priority: "main_path"
+    description: "记录 chunk、location、source quote 与原始 PDF 页码、block、char offset、bbox 的关系。"
+    why: "支撑可回查引用、历史 source preview、final citation 校验。"
+
+  - id: multi_granularity_chunking
+    name: "Multi-granularity Chunking"
+    priority: "main_path"
+    description: "按 page、section、paragraph、table、figure caption、formula 建不同粒度 chunk。"
+    why: "research paper 问答需要既能粗定位，也能读到完整上下文。"
+
+  - id: contextual_chunk_enrichment
+    name: "Contextual Chunk Enrichment"
+    priority: "main_path"
+    description: "给 chunk 增加 paper title、section path、局部上下文等检索增强文本。"
+    why: "提升 BM25/embedding 召回，但增强文本不能当最终证据。"
+
+  - id: hybrid_indexing
+    name: "Hybrid Indexing"
+    priority: "main_path"
+    description: "BM25 + dense vector + metadata filter + rerank + fusion。"
+    why: "论文检索同时需要术语精确匹配和语义召回。"
+
+  - id: learned_sparse_retrieval
+    name: "Learned Sparse Retrieval"
+    priority: "optional_enhancement"
+    description: "ELSER/SPLADE 类 sparse retrieval。"
+    why: "补足缩写、术语、公式变量、方法名召回。"
+
+  - id: late_chunking
+    name: "Late Chunking"
+    priority: "optional_enhancement"
+    description: "先在长上下文中编码，再切 chunk，保留跨 chunk 上下文。"
+    why: "适合长文档 embedding，但实现和成本需要评估。"
+
+  - id: multi_vector_retrieval
+    name: "Multi-vector / Late-interaction Retrieval"
+    priority: "optional_enhancement"
+    description: "ColBERT / ColPali 类多向量检索。"
+    why: "复杂 PDF、表格、图像页面可能优于单 dense vector，但集成成本高。"
+
+  - id: table_figure_formula_index
+    name: "Table / Figure / Formula Specialized Index"
+    priority: "main_path"
+    description: "表格 HTML/文本、图注、公式 LaTeX 独立建模和索引。"
+    why: "不能把表格、图、公式全部混入普通段落。"
+
+  - id: summary_pipeline
+    name: "Summary Pipeline"
+    priority: "main_path"
+    description: "生成 paper summary、section summary、table summary、figure caption summary。"
+    why: "summary 用于导航、rerank、memory compression，不能用于 final citation。"
+
+  - id: raptor_like_summary_tree
+    name: "RAPTOR-like Summary Tree"
+    priority: "optional_enhancement"
+    description: "递归摘要树，用于长文档或多 paper 粗定位。"
+    why: "可能提升 long-context retrieval，但不能替代 Source Quote。"
+
+  - id: graph_rag
+    name: "GraphRAG / LightRAG"
+    priority: "optional_enhancement"
+    description: "实体关系图或轻量图索引。"
+    why: "适合跨论文关系发现；对单篇论文阅读不是第一优先级。"
+
+  - id: agentic_search
+    name: "Agentic Search Tools"
+    priority: "main_path"
+    description: "agent 自己调用 paper search、location search、read、trace、quote verify。"
+    why: "让模型通过多轮搜索和阅读解决模糊问题，而不是靠一次检索。"
+
+  - id: query_planning_expansion
+    name: "Query Planning & Iterative Query Expansion"
+    priority: "main_path"
+    description: "问题拆解、query rewrite、按 paper/section/table/location 多轮搜索。"
+    why: "research 问题通常需要反复定位、阅读、补证据。"
+
+  - id: read_window_expansion
+    name: "Read-window Expansion"
+    priority: "main_path"
+    description: "search 命中后可读相邻 chunk、整段、整页、整节、表格上下文。"
+    why: "防止 agent 只读碎片就下结论。"
+
+  - id: evidence_pack_builder
+    name: "Evidence Pack Builder"
+    priority: "main_path"
+    description: "最终综合前整理已读 quote、supporting/contradictory quote、uncertainty。"
+    why: "STRONG model 应基于已读证据包作答。"
+
+  - id: claim_to_quote_verifier
+    name: "Claim-to-Quote Citation Verifier"
+    priority: "main_path"
+    description: "校验最终 claim 是否被 sourceQuoteRef 支持。"
+    why: "防止答案正确但引用错误，或引用无法支持 claim。"
+
+  - id: memory_manager
+    name: "Memory Write/Read Manager"
+    priority: "main_path"
+    description: "管理 conversation summary、已读 sourceQuoteRef、未解决问题、用户偏好。"
+    why: "memory 提高连续任务效率，但不能当最终证据。"
+
+  - id: fast_model_router
+    name: "Fast Model Router"
+    priority: "main_path"
+    description: "FAST 模型处理 query rewrite、rerank、summary、memory；STRONG 模型处理最终综合。"
+    why: "多轮 agentic search 需要低延迟、低成本的小推理。"
+
+  - id: router_quality_gate
+    name: "Router Quality Gate"
+    priority: "main_path"
+    description: "定义 FAST 何时升级 STRONG。"
+    why: "低置信、证据冲突、引用校验失败时不能继续用快模型硬跑。"
+
+  - id: parse_quality_gate
+    name: "Parse Quality Gate"
+    priority: "main_path"
+    description: "记录 OCR、reading order、table、formula、layout 质量。"
+    why: "低质量页面应降级处理，不能污染 READY 或检索。"
+
+  - id: visual_page_index
+    name: "Visual Page Index / Visual Source Attribution"
+    priority: "optional_enhancement"
+    description: "保存 page image、region crop、bbox，用于复杂 PDF 高亮和视觉检索。"
+    why: "表格、图、公式、扫描 PDF 可能需要视觉证据。"
+
+  - id: reference_traversal
+    name: "Reference / Bibliography / Citation Traversal"
+    priority: "optional_enhancement"
+    description: "解析参考文献和文内引用，用作相关论文导航。"
+    why: "适合扩展检索范围，但最终证据仍来自已读 Product Paper。"
+
+  - id: index_versioning
+    name: "Index Versioning / Reprocessing Pipeline"
+    priority: "main_path"
+    description: "记录 parser、chunker、embedder、reranker、summary prompt 版本。"
+    why: "重跑解析和索引时保证引用可追溯，可回滚。"
+
+  - id: retrieval_evaluation
+    name: "Retrieval Evaluation Harness"
+    priority: "main_path"
+    description: "评估 recall@k、nDCG、citation faithfulness、answer support、latency、cost。"
+    why: "技术选型必须可回归，不靠感觉。"
+
+  - id: prompt_context_cache
+    name: "Prompt / Context Cache Layer"
+    priority: "optional_enhancement"
+    description: "缓存 summary、rerank、query rewrite、memory compression 等结果。"
+    why: "降低成本和延迟，但 cache key 必须带版本。"
+
+execution:
+  batch_size: 4
+  items_per_agent: 3
+  output_dir: "./results"
+  suggested_next_command: "/research-deep"
+
+sources:
+  - name: "MinerU"
+    url: "https://github.com/opendatalab/mineru"
+  - name: "MinerU paper"
+    url: "https://ar5iv.labs.arxiv.org/html/2409.18839"
+  - name: "Anthropic Contextual Retrieval"
+    url: "https://www.anthropic.com/engineering/contextual-retrieval"
+  - name: "Late Chunking"
+    url: "https://arxiv.org/abs/2409.04701"
+  - name: "Elasticsearch Reciprocal Rank Fusion"
+    url: "https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion"
+  - name: "Elasticsearch Semantic Reranking"
+    url: "https://www.elastic.co/docs/solutions/search/ranking/semantic-reranking"
+  - name: "ColPali"
+    url: "https://arxiv.org/abs/2407.01449"
+  - name: "VISA visual source attribution"
+    url: "https://huggingface.co/papers/2412.14457"
+  - name: "PaperQA2"
+    url: "https://arxiv.org/abs/2409.13740"
+  - name: "Agentic RAG Survey"
+    url: "https://arxiv.org/abs/2501.09136"
+  - name: "RAPTOR"
+    url: "https://arxiv.org/abs/2401.18059"
+  - name: "GraphRAG"
+    url: "https://arxiv.org/abs/2404.16130"
+  - name: "LightRAG"
+    url: "https://arxiv.org/abs/2410.05779"
+  - name: "RAGChecker"
+    url: "https://arxiv.org/abs/2408.08067"
+  - name: "Correctness is not Faithfulness in RAG Attributions"
+    url: "https://arxiv.org/abs/2412.18004"
+  - name: "RouteLLM"
+    url: "https://arxiv.org/abs/2406.18665"
