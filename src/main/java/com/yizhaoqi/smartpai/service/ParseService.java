@@ -1,7 +1,9 @@
 package com.yizhaoqi.smartpai.service;
 
-import com.yizhaoqi.smartpai.model.PaperTextChunk;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
+import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
+import com.yizhaoqi.smartpai.model.PaperTextChunk;
 import com.yizhaoqi.smartpai.paper.parser.PaperChunkBuilder;
 import com.yizhaoqi.smartpai.paper.parser.PaperChunkCandidate;
 import com.yizhaoqi.smartpai.paper.parser.PaperPdfParser;
@@ -58,6 +60,9 @@ public class ParseService {
     @Autowired
     private PaperFormulaService paperFormulaService;
 
+    @Autowired
+    private PaperReadingModelService paperReadingModelService;
+
     @Value("${paper.parsing.chunk-size:512}")
     private int chunkSize;
 
@@ -85,6 +90,18 @@ public class ParseService {
         updatePaperMetadata(paperId, parsedPaper);
         paperParserArtifactService.saveParserArtifact(paperId, parsedPaper, userId, orgTag, isPublic);
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_MINERU_ARTIFACT_SAVED);
+        PaperReadingModel readingModel = paperReadingModelService.replaceFromParsedPaper(
+                paperId,
+                parsedPaper,
+                userId,
+                orgTag,
+                isPublic
+        );
+        if (readingModel == null || readingModel.getModelStatus() != PaperReadingModelStatus.READING_MODEL_READY) {
+            String reason = readingModel == null ? "READING_MODEL_MISSING" : readingModel.getFailureReason();
+            throw new PaperReadingModelNotReadyException("Reading Model is not ready for paperId="
+                    + paperId + ", reason=" + reason);
+        }
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_MAPPING_STRUCTURED_CONTENT);
         var tables = paperTableService.replaceTables(paperId, parsedPaper, userId, orgTag, isPublic);
         var figures = paperFigureService.replaceFigures(paperId, parsedPaper, userId, orgTag, isPublic);

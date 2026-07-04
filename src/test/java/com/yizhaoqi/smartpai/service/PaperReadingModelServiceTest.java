@@ -1,0 +1,168 @@
+package com.yizhaoqi.smartpai.service;
+
+import com.yizhaoqi.smartpai.model.PaperLocation;
+import com.yizhaoqi.smartpai.model.PaperPage;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
+import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
+import com.yizhaoqi.smartpai.paper.parser.ParsedPaper;
+import com.yizhaoqi.smartpai.paper.parser.ParsedPaperElement;
+import com.yizhaoqi.smartpai.paper.parser.ParsedPaperElementType;
+import com.yizhaoqi.smartpai.paper.parser.ParsedPaperMetadata;
+import com.yizhaoqi.smartpai.repository.PaperLocationRepository;
+import com.yizhaoqi.smartpai.repository.PaperPageRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class PaperReadingModelServiceTest {
+
+    @Mock
+    private PaperReadingModelRepository modelRepository;
+
+    @Mock
+    private PaperPageRepository pageRepository;
+
+    @Mock
+    private PaperLocationRepository locationRepository;
+
+    @Test
+    void successfulBuildCreatesCurrentReadyModel() {
+        when(modelRepository.save(any(PaperReadingModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(pageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(locationRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        PaperReadingModelService service = new PaperReadingModelService(
+                modelRepository,
+                pageRepository,
+                locationRepository,
+                new PaperReadingModelBuilder()
+        );
+
+        PaperReadingModel model = service.replaceFromParsedPaper(
+                "paper-a",
+                parsedPaper("Readable text."),
+                "user-a",
+                "lab",
+                true
+        );
+
+        assertEquals(PaperReadingModelStatus.READING_MODEL_READY, model.getModelStatus());
+        assertTrue(model.isCurrent());
+        assertEquals(1, model.getPageCount());
+        assertEquals(1, model.getReadablePageCount());
+        assertEquals("MinerU", model.getParserName());
+        verify(pageRepository).saveAll(any());
+        verify(locationRepository).saveAll(any());
+        verify(modelRepository).clearCurrentModels(eq("paper-a"), eq(model.getModelVersion()));
+    }
+
+    @Test
+    void failedBuildDoesNotReplaceCurrentModel() {
+        when(modelRepository.save(any(PaperReadingModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        PaperReadingModelService service = new PaperReadingModelService(
+                modelRepository,
+                pageRepository,
+                locationRepository,
+                new PaperReadingModelBuilder()
+        );
+
+        PaperReadingModel model = service.replaceFromParsedPaper(
+                "paper-a",
+                parsedPaper(" "),
+                "user-a",
+                "lab",
+                false
+        );
+
+        assertEquals(PaperReadingModelStatus.READING_MODEL_FAILED, model.getModelStatus());
+        assertEquals("NO_READABLE_NUMBERED_TEXT", model.getFailureReason());
+        assertFalse(model.isCurrent());
+        verify(pageRepository, never()).saveAll(any());
+        verify(locationRepository, never()).saveAll(any());
+        verify(modelRepository, never()).clearCurrentModels(any(), any());
+    }
+
+    @Test
+    void pagesAndLocationsUseSameModelVersion() {
+        when(modelRepository.save(any(PaperReadingModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(pageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(locationRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        PaperReadingModelService service = new PaperReadingModelService(
+                modelRepository,
+                pageRepository,
+                locationRepository,
+                new PaperReadingModelBuilder()
+        );
+
+        PaperReadingModel model = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a", "lab", true);
+
+        ArgumentCaptor<Iterable<PaperPage>> pagesCaptor = ArgumentCaptor.forClass(Iterable.class);
+        ArgumentCaptor<Iterable<PaperLocation>> locationsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        verify(pageRepository).saveAll(pagesCaptor.capture());
+        verify(locationRepository).saveAll(locationsCaptor.capture());
+        PaperPage page = pagesCaptor.getValue().iterator().next();
+        PaperLocation location = locationsCaptor.getValue().iterator().next();
+
+        assertEquals(model.getModelVersion(), page.getModelVersion());
+        assertEquals(model.getModelVersion(), location.getModelVersion());
+    }
+
+    @Test
+    void repeatedBuildsUseDistinctModelVersions() {
+        when(modelRepository.save(any(PaperReadingModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(pageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(locationRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        PaperReadingModelService service = new PaperReadingModelService(
+                modelRepository,
+                pageRepository,
+                locationRepository,
+                new PaperReadingModelBuilder()
+        );
+
+        PaperReadingModel first = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a", "lab", true);
+        PaperReadingModel second = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a", "lab", true);
+
+        assertFalse(first.getModelVersion().equals(second.getModelVersion()));
+        verify(modelRepository).clearCurrentModels(eq("paper-a"), eq(first.getModelVersion()));
+        verify(modelRepository).clearCurrentModels(eq("paper-a"), eq(second.getModelVersion()));
+    }
+
+    private ParsedPaper parsedPaper(String text) {
+        return new ParsedPaper(
+                "MinerU",
+                "1.3.0",
+                new ParsedPaperMetadata("paper.pdf", "Paper", "Ada", 1, null, null),
+                List.of(new ParsedPaperElement(
+                        "p1",
+                        1,
+                        1,
+                        ParsedPaperElementType.PARAGRAPH,
+                        text,
+                        null,
+                        null,
+                        null,
+                        Map.of()
+                )),
+                Map.of(),
+                "{}",
+                List.of(),
+                List.of(),
+                List.of()
+        );
+    }
+}

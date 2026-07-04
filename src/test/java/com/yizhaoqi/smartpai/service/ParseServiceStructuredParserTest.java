@@ -2,6 +2,8 @@ package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.model.PaperTextChunk;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
+import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
 import com.yizhaoqi.smartpai.model.PaperTable;
 import com.yizhaoqi.smartpai.model.PaperVisualAsset;
 import com.yizhaoqi.smartpai.paper.parser.BoundingBox;
@@ -18,6 +20,7 @@ import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,9 +33,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
@@ -69,6 +74,9 @@ class ParseServiceStructuredParserTest {
     @Mock
     private PaperFormulaService paperFormulaService;
 
+    @Mock
+    private PaperReadingModelService paperReadingModelService;
+
     @Test
     void parseAndSavePersistsStructuredPaperChunkProvenance() throws Exception {
         ParseService parseService = new ParseService();
@@ -82,6 +90,7 @@ class ParseServiceStructuredParserTest {
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
         ReflectionTestUtils.setField(parseService, "paperFigureService", paperFigureService);
         ReflectionTestUtils.setField(parseService, "paperFormulaService", paperFormulaService);
+        ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
         ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
 
@@ -92,6 +101,13 @@ class ParseServiceStructuredParserTest {
         when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper123")).thenReturn(Optional.of(paper));
         ParsedPaper parsedPaper = parsedPaper();
         when(paperPdfParser.parse(any(), eq("uploaded.pdf"))).thenReturn(parsedPaper);
+        PaperReadingModel readyModel = new PaperReadingModel();
+        readyModel.setPaperId("paper123");
+        readyModel.setModelVersion("rm_test_1");
+        readyModel.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
+        readyModel.setCurrent(true);
+        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true))
+                .thenReturn(readyModel);
         when(paperTableService.replaceTables(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
                 .thenReturn(List.of(tableRecord()));
         when(paperFigureService.replaceFigures(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
@@ -146,6 +162,58 @@ class ParseServiceStructuredParserTest {
         verify(paperFigureService).replaceFigures("paper123", parsedPaper, "7", "lab", true);
         verify(paperFormulaService).replaceFormulas("paper123", parsedPaper, "7", "lab", true);
         verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), any(), eq(parsedPaper), any(), any(), eq("7"), eq("lab"), eq(true));
+
+        InOrder order = inOrder(paperParserArtifactService, paperReadingModelService, paperTableService);
+        order.verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7", "lab", true);
+        order.verify(paperReadingModelService).replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true);
+        order.verify(paperTableService).replaceTables("paper123", parsedPaper, "7", "lab", true);
+    }
+
+    @Test
+    void parseAndSaveStopsWhenReadingModelIsNotReady() throws Exception {
+        ParseService parseService = new ParseService();
+        ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
+        ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
+        ReflectionTestUtils.setField(parseService, "usageQuotaService", usageQuotaService);
+        ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
+        ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
+        ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
+        ReflectionTestUtils.setField(parseService, "paperTableService", paperTableService);
+        ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
+        ReflectionTestUtils.setField(parseService, "paperFigureService", paperFigureService);
+        ReflectionTestUtils.setField(parseService, "paperFormulaService", paperFormulaService);
+        ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
+        ReflectionTestUtils.setField(parseService, "chunkSize", 512);
+        ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
+
+        Paper paper = new Paper();
+        paper.setPaperId("paper123");
+        paper.setOriginalFilename("uploaded.pdf");
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper123")).thenReturn(Optional.of(paper));
+        ParsedPaper parsedPaper = parsedPaper();
+        when(paperPdfParser.parse(any(), eq("uploaded.pdf"))).thenReturn(parsedPaper);
+        PaperReadingModel failedModel = new PaperReadingModel();
+        failedModel.setPaperId("paper123");
+        failedModel.setModelVersion("rm_failed");
+        failedModel.setModelStatus(PaperReadingModelStatus.READING_MODEL_FAILED);
+        failedModel.setFailureReason("NO_READABLE_NUMBERED_TEXT");
+        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true))
+                .thenReturn(failedModel);
+
+        assertThrows(
+                PaperReadingModelNotReadyException.class,
+                () -> parseService.parseAndSave(
+                        "paper123",
+                        new ByteArrayInputStream("%PDF-test".getBytes(StandardCharsets.UTF_8)),
+                        "uploaded.pdf",
+                        "7",
+                        "lab",
+                        true
+                )
+        );
+
+        verify(paperTableService, never()).replaceTables(any(), any(), any(), any(), eq(true));
+        verify(paperTextChunkRepository, never()).save(any());
     }
 
     @Test
