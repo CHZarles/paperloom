@@ -23,6 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(
         classes = SmartPaiApplication.class,
         properties = {
+                "spring.datasource.url=jdbc:h2:mem:paper_reading_model_smoke;MODE=MySQL;INIT=CREATE SCHEMA IF NOT EXISTS paperloom_eval;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
+                "spring.datasource.driver-class-name=org.h2.Driver",
+                "spring.datasource.username=sa",
+                "spring.datasource.password=",
+                "spring.jpa.hibernate.ddl-auto=create-drop",
+                "spring.jpa.show-sql=false",
+                "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
                 "elasticsearch.init.enabled=false",
                 "spring.kafka.listener.auto-startup=false",
                 "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
