@@ -101,6 +101,34 @@ class PaperReadingModelBuilderTest {
         assertTrue(failure.diagnosticsJson().contains("\"elementsSkippedBlankText\":1"));
     }
 
+    @Test
+    void normalizesTextAndDoesNotRequireBoundingBoxes() {
+        ParsedPaper paper = parsedPaper(List.of(new ParsedPaperElement(
+                "p1",
+                1,
+                1,
+                ParsedPaperElementType.PARAGRAPH,
+                " First\r\nLine\u0000\rSecond ",
+                null,
+                null,
+                null,
+                Map.of()
+        )));
+
+        PaperReadingModelBuildResult result = builder.build(
+                "paper-a",
+                "rm_test_1",
+                paper,
+                "user-a",
+                "lab",
+                false
+        );
+
+        assertEquals("First\nLine\nSecond", result.pages().get(0).getPageText());
+        assertTrue(result.pages().get(0).getSourceSpanJson().contains("\"bbox\":null"));
+        assertTrue(result.diagnosticsJson().contains("\"hasAnyBbox\":false"));
+    }
+
     private ParsedPaper parsedPaper(List<ParsedPaperElement> elements) {
         return new ParsedPaper(
                 "MinerU",
