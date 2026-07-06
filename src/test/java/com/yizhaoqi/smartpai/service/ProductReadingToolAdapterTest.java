@@ -44,6 +44,9 @@ class ProductReadingToolAdapterTest {
     @Mock
     private ProductReadingLocationReadService readService;
 
+    @Mock
+    private ProductReadingSourceQuoteTraceService traceService;
+
     private ProductReadingToolAdapter adapter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -57,7 +60,8 @@ class ProductReadingToolAdapterTest {
                 locationRepository,
                 handleService,
                 new ReadingToolOutputMapper(),
-                readService
+                readService,
+                traceService
         );
     }
 
@@ -270,6 +274,44 @@ class ProductReadingToolAdapterTest {
         List<Map<String, Object>> sourceQuotes = (List<Map<String, Object>>) result.data().get("sourceQuotes");
         assertEquals("source_quote_abc", sourceQuotes.get(0).get("sourceQuoteRef"));
         assertEquals("Source quote content with score.", sourceQuotes.get(0).get("content"));
+        String json = objectMapper.writeValueAsString(result.data());
+        assertFalse(json.contains("paperId"));
+        assertFalse(json.contains("modelVersion"));
+        assertFalse(json.contains("readingElementId"));
+        assertFalse(json.contains("splitPolicyVersion"));
+        assertFalse(json.contains("contentHash"));
+    }
+
+    @Test
+    void traceSourceQuotesDelegatesToTraceServiceAndReturnsCiteableSourceQuotesOnly() throws Exception {
+        ProductToolContext context = new ProductToolContext(7L, "conversation-1", "generation-2", SourceScope.auto());
+        when(traceService.traceSourceQuotes(List.of("source_quote_abc"), context))
+                .thenReturn(new ProductReadingSourceQuoteTraceService.TraceResult(
+                        List.of(Map.of(
+                                "sourceQuoteRef", "source_quote_abc",
+                                "locationRef", "page_ref_old",
+                                "paperHandle", "paper_handle_ready",
+                                "paperTitle", "Ready Paper",
+                                "contentKind", "TEXT",
+                                "content", "Traced source quote content with score."
+                        )),
+                        List.of(Map.of(
+                                "sourceQuoteRef", "source_quote_abc",
+                                "status", "OK"
+                        ))
+                ));
+
+        ProductToolResult result = adapter.traceSourceQuotes(List.of("source_quote_abc"), context);
+
+        assertTrue(result.success());
+        assertEquals(ProductToolEffect.EVIDENCE, result.effect());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sourceQuotes = (List<Map<String, Object>>) result.data().get("sourceQuotes");
+        assertEquals("source_quote_abc", sourceQuotes.get(0).get("sourceQuoteRef"));
+        assertEquals("Traced source quote content with score.", sourceQuotes.get(0).get("content"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> traceStatus = (List<Map<String, Object>>) result.data().get("traceStatus");
+        assertEquals("OK", traceStatus.get(0).get("status"));
         String json = objectMapper.writeValueAsString(result.data());
         assertFalse(json.contains("paperId"));
         assertFalse(json.contains("modelVersion"));

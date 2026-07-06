@@ -53,7 +53,12 @@ class ProductReadingReActHarnessTest {
         verify(llm, times(2)).completeReActTurn(eq("7"), messagesCaptor.capture(), toolsCaptor.capture(), anyInt());
         for (List<AgentToolRegistry.AgentTool> capturedTools : toolsCaptor.getAllValues()) {
             List<String> names = capturedTools.stream().map(AgentToolRegistry.AgentTool::name).toList();
-            assertEquals(List.of("search_paper_candidates", "find_reading_locations", "read_locations"), names);
+            assertEquals(List.of(
+                    "search_paper_candidates",
+                    "find_reading_locations",
+                    "read_locations",
+                    "trace_source_quotes"
+            ), names);
             assertFalse(names.contains("find_papers"));
             assertFalse(names.contains("retrieve_evidence"));
             assertFalse(names.contains("inspect_reference"));
@@ -69,6 +74,7 @@ class ProductReadingReActHarnessTest {
         assertTrue(promptMessages.contains("search_paper_candidates"));
         assertTrue(promptMessages.contains("find_reading_locations"));
         assertTrue(promptMessages.contains("read_locations"));
+        assertTrue(promptMessages.contains("trace_source_quotes"));
     }
 
     @Test
@@ -209,6 +215,145 @@ class ProductReadingReActHarnessTest {
         ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
 
         ProductTurnResult result = harness.run(request("阅读隐藏位置"));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    void followUpQuestionTracesClickedSourceQuoteAndRendersReferences() throws Exception {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "trace_source_quotes", Map.of(
+                        "sourceQuoteRefs", List.of("source_quote_abc")
+                )))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "EVIDENCE_ANSWER",
+                          "answer": "这个来源说明 traced score 有提升 {{sourceQuoteRef:source_quote_abc}}。",
+                          "evidenceBasedClaims": [
+                            {
+                              "claim": "这个来源说明 traced score 有提升。",
+                              "sourceQuoteRefs": ["source_quote_abc"]
+                            }
+                          ],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedRefs(
+                "解释这个来源",
+                List.of("source_quote_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.EVIDENCE_ANSWER, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("[1]"));
+        assertEquals("source_quote_abc", result.references().get(0).get("sourceQuoteRef"));
+        verify(registry).execute(eq("trace_source_quotes"), any(), any());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Map<String, Object>>> messagesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(llm, times(2)).completeReActTurn(eq("7"), messagesCaptor.capture(), eq(tools), anyInt());
+        String firstPrompt = objectMapper.writeValueAsString(messagesCaptor.getAllValues().get(0));
+        assertTrue(firstPrompt.contains("source_quote_abc"));
+        assertFalse(firstPrompt.contains("Traced source quote content"));
+    }
+
+    @Test
+    void rejectsHiddenSourceQuoteRefBeforeTraceSourceQuotes() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "trace_source_quotes", Map.of(
+                        "sourceQuoteRefs", List.of("source_quote_hidden")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedRefs(
+                "解释这个来源",
+                List.of("source_quote_abc")
+        ));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("trace_source_quotes"), any(), any());
+    }
+
+    @Test
+    void rejectsClickedSourceQuoteAsFinalSupportBeforeTraceReturnsIt() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "EVIDENCE_ANSWER",
+                          "answer": "This clicked source says the score improves {{sourceQuoteRef:source_quote_abc}}.",
+                          "evidenceBasedClaims": [
+                            {
+                              "claim": "This clicked source says the score improves.",
+                              "sourceQuoteRefs": ["source_quote_abc"]
+                            }
+                          ],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedRefs(
+                "解释这个来源",
+                List.of("source_quote_abc")
+        ));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.CITATION_VALIDATION_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("trace_source_quotes"), any(), any());
+    }
+
+    @Test
+    void traceOutputDoesNotDiscloseLocationRefsForReadLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "trace_source_quotes", Map.of(
+                        "sourceQuoteRefs", List.of("source_quote_abc")
+                )))
+                .thenReturn(toolCallTurn("call_2", "read_locations", Map.of(
+                        "locationRefs", List.of("page_ref_old")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedRefs(
+                "继续读这个来源周边",
+                List.of("source_quote_abc")
+        ));
 
         assertEquals(ProductResultStatus.FAILED, result.resultStatus());
         assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
@@ -435,6 +580,19 @@ class ProductReadingReActHarnessTest {
         );
     }
 
+    private ProductTurnRequest requestWithClickedRefs(String message, List<String> clickedRefs) {
+        return new ProductTurnRequest(
+                7L,
+                "conversation-1",
+                "generation-2",
+                message,
+                SourceScope.auto(),
+                List.of(),
+                Map.of("readingTurnAnchors", Map.of("clickedSourceQuoteRefs", clickedRefs)),
+                ProductModelContext.defaults()
+        );
+    }
+
     private ProductToolResult searchResult() {
         return new ProductToolResult(
                 "search_paper_candidates",
@@ -501,8 +659,37 @@ class ProductReadingReActHarnessTest {
         );
     }
 
+    private ProductToolResult traceResult() {
+        return new ProductToolResult(
+                "trace_source_quotes",
+                true,
+                Map.of(
+                        "sourceQuotes", List.of(Map.of(
+                                "sourceQuoteRef", "source_quote_abc",
+                                "locationRef", "page_ref_old",
+                                "paperHandle", "paper_handle_abc",
+                                "paperTitle", "Agentic Eval Benchmark",
+                                "locationType", "PAGE",
+                                "pageNumber", 3,
+                                "contentKind", "TEXT",
+                                "content", "Traced source quote content with traced score."
+                        )),
+                        "traceStatus", List.of(Map.of(
+                                "sourceQuoteRef", "source_quote_abc",
+                                "status", "OK"
+                        ))
+                ),
+                ProductToolEffect.EVIDENCE
+        );
+    }
+
     private List<AgentToolRegistry.AgentTool> readingTools() {
-        return List.of(tool("search_paper_candidates"), tool("find_reading_locations"), tool("read_locations"));
+        return List.of(
+                tool("search_paper_candidates"),
+                tool("find_reading_locations"),
+                tool("read_locations"),
+                tool("trace_source_quotes")
+        );
     }
 
     private AgentToolRegistry.AgentTool tool(String name) {

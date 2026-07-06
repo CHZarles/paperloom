@@ -116,6 +116,47 @@ class ReadingToolArgumentValidatorTest {
     }
 
     @Test
+    void traceSourceQuotesRejectsEmptyRefsForbiddenControlsAndDisplayReferences() {
+        ReadingToolArgumentValidator.ValidationResult emptyRefs = validator.validateTraceSourceQuotes(Map.of(
+                "sourceQuoteRefs", List.of()
+        ));
+        ReadingToolArgumentValidator.ValidationResult locationInput = validator.validateTraceSourceQuotes(Map.of(
+                "sourceQuoteRefs", List.of("source_quote_abc"),
+                "locationRef", "page_ref_abc"
+        ));
+        ReadingToolArgumentValidator.ValidationResult queryAlias = validator.validateTraceSourceQuotes(Map.of(
+                "sourceQuoteRefs", List.of("source_quote_abc"),
+                "queryText", "explain"
+        ));
+        ReadingToolArgumentValidator.ValidationResult numberedCitation = validator.validateTraceSourceQuotes(Map.of(
+                "sourceQuoteRefs", List.of("[1]")
+        ));
+        ReadingToolArgumentValidator.ValidationResult ordinalRef = validator.validateTraceSourceQuotes(Map.of(
+                "sourceQuoteRefs", List.of("1")
+        ));
+        ReadingToolArgumentValidator.ValidationResult valid = validator.validateTraceSourceQuotes(Map.of(
+                "sourceQuoteRefs", List.of("source_quote_abc")
+        ));
+
+        assertFalse(emptyRefs.valid());
+        assertEquals("missing_argument", emptyRefs.error());
+        assertEquals("sourceQuoteRefs", emptyRefs.argument());
+        assertFalse(locationInput.valid());
+        assertEquals("forbidden_argument", locationInput.error());
+        assertEquals("locationRef", locationInput.argument());
+        assertFalse(queryAlias.valid());
+        assertEquals("forbidden_argument", queryAlias.error());
+        assertEquals("queryText", queryAlias.argument());
+        assertFalse(numberedCitation.valid());
+        assertEquals("invalid_source_quote_ref", numberedCitation.error());
+        assertEquals("sourceQuoteRefs", numberedCitation.argument());
+        assertFalse(ordinalRef.valid());
+        assertEquals("invalid_source_quote_ref", ordinalRef.error());
+        assertEquals("sourceQuoteRefs", ordinalRef.argument());
+        assertTrue(valid.valid());
+    }
+
+    @Test
     void parsesSupportedLocationTypes() {
         assertEquals(
                 List.of(PaperLocationType.PAGE, PaperLocationType.SECTION, PaperLocationType.TABLE, PaperLocationType.FIGURE),

@@ -37,7 +37,12 @@ class ProductReadingToolRegistryTest {
                 .map(AgentToolRegistry.AgentTool::parameters)
                 .toList());
 
-        assertEquals(List.of("search_paper_candidates", "find_reading_locations", "read_locations"), names);
+        assertEquals(List.of(
+                "search_paper_candidates",
+                "find_reading_locations",
+                "read_locations",
+                "trace_source_quotes"
+        ), names);
         assertTrue(schemaJson.contains("\"additionalProperties\":false"));
         assertFalse(schemaJson.contains("limit"));
         assertFalse(schemaJson.contains("topK"));
@@ -46,7 +51,6 @@ class ProductReadingToolRegistryTest {
         assertFalse(schemaJson.contains("modelVersion"));
         assertFalse(schemaJson.contains("indexName"));
         assertFalse(schemaJson.contains("chunkRef"));
-        assertFalse(schemaJson.contains("sourceQuoteRef"));
         assertFalse(names.contains("find_papers"));
         assertFalse(names.contains("retrieve_evidence"));
         assertFalse(names.contains("inspect_reference"));
@@ -93,6 +97,12 @@ class ProductReadingToolRegistryTest {
                 Map.of("sourceQuotes", List.of(), "readStatus", List.of()),
                 ProductToolEffect.EVIDENCE
         );
+        ProductToolResult traceResult = new ProductToolResult(
+                "trace_source_quotes",
+                true,
+                Map.of("sourceQuotes", List.of(), "traceStatus", List.of()),
+                ProductToolEffect.EVIDENCE
+        );
         when(adapter.searchPaperCandidates("agentic eval", context)).thenReturn(searchResult);
         when(adapter.findReadingLocations(
                 List.of("paper_handle_abc"),
@@ -101,6 +111,7 @@ class ProductReadingToolRegistryTest {
                 context
         )).thenReturn(locationResult);
         when(adapter.readLocations(List.of("page_ref_abc"), context)).thenReturn(readResult);
+        when(adapter.traceSourceQuotes(List.of("source_quote_abc"), context)).thenReturn(traceResult);
 
         assertEquals(searchResult, registry.execute("search_paper_candidates", Map.of("queryText", "agentic eval"), context));
         assertEquals(locationResult, registry.execute("find_reading_locations", Map.of(
@@ -110,8 +121,12 @@ class ProductReadingToolRegistryTest {
         assertEquals(readResult, registry.execute("read_locations", Map.of(
                 "locationRefs", List.of("page_ref_abc")
         ), context));
+        assertEquals(traceResult, registry.execute("trace_source_quotes", Map.of(
+                "sourceQuoteRefs", List.of("source_quote_abc")
+        ), context));
         verify(adapter).searchPaperCandidates("agentic eval", context);
         verify(adapter).findReadingLocations(List.of("paper_handle_abc"), "methods", List.of(), context);
         verify(adapter).readLocations(List.of("page_ref_abc"), context);
+        verify(adapter).traceSourceQuotes(List.of("source_quote_abc"), context);
     }
 }
