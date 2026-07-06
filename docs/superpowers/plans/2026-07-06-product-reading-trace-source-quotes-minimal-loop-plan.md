@@ -108,13 +108,15 @@ The final-answer support set remains current-turn tool output from
 Recommended answer:
 
 Only explicit `sourceQuoteRefs` that were disclosed to the harness as
-`clickedSourceQuoteRefs` for this turn, plus any refs returned by
-`read_locations` earlier in the same turn if needed.
+`clickedSourceQuoteRefs` for this turn.
 
 Adopted.
 
 The harness must reject arbitrary refs invented by the model or typed into the
 user message unless they are also present in the explicit clicked-ref anchor set.
+If `read_locations` returns Source Quotes earlier in the same turn, those refs
+are already citeable for final-answer support and do not need
+`trace_source_quotes`.
 
 ### 6. Should stale Reading Model versions invalidate existing Source Quotes?
 
@@ -201,6 +203,8 @@ supported by returned Source Quotes.
   Quotes.
 - No visual asset, page screenshot, bbox, table crop, or figure crop tracing.
 - No source quote expansion beyond the selected persisted quote rows.
+- No database schema change; this slice uses the existing `paper_source_quotes`
+  and `conversation_source_quotes` tables.
 
 ## Implementation Tasks
 
@@ -221,11 +225,26 @@ Responsibilities:
   `PaperSourceQuoteRepository#findFirstBySourceQuoteRef`.
 - Check paper visibility and locked scope through `ProductPaperHandleService`.
 - Resolve `paperHandle` and `paperTitle` at trace time for display metadata.
+- If `conversationId` is blank, return `SOURCE_QUOTE_NOT_IN_CONVERSATION` for
+  each requested ref and do not treat the quote as authorized.
 - Return existing persisted quote content only; do not reread page/section/table
   content and do not resplit.
 - Return per-ref status:
   `OK`, `SOURCE_QUOTE_NOT_IN_CONVERSATION`, `SOURCE_QUOTE_NOT_FOUND`, or
   `SOURCE_QUOTE_UNAVAILABLE`.
+
+Output shape:
+
+```json
+{
+  "sourceQuotes": [],
+  "traceStatus": []
+}
+```
+
+`sourceQuotes` carries only successfully traced quotes. `traceStatus` carries
+one status object per requested ref and may include only `sourceQuoteRef` and
+`status`.
 
 LLM-visible quote output may include:
 
@@ -239,6 +258,11 @@ LLM-visible quote output may include:
 - `sectionTitle`
 - `contentKind`
 - `content`
+
+`paperHandle` and `locationRef` in trace output are display metadata only in
+this slice. They do not disclose new `paperHandle` values for
+`find_reading_locations` and do not disclose new `locationRef` values for
+`read_locations`.
 
 LLM-visible quote output must not include:
 
@@ -279,10 +303,21 @@ Behavior:
 
 Implementation note:
 
-The smallest code change can place the sanitized anchor list in
-`ProductTurnRequest.memory()` under `clickedSourceQuoteRefs`. The harness must
-treat only this explicit key as turn anchors, and final answer authorization must
-still require successful `trace_source_quotes` output.
+The smallest code change can place the sanitized anchor list in the isolated
+reading request's `ProductTurnRequest.memory()` under:
+
+```json
+{
+  "readingTurnAnchors": {
+    "clickedSourceQuoteRefs": ["source_quote_..."]
+  }
+}
+```
+
+This is a temporary reading-harness carrier, not conversation memory. The
+harness must ignore all other memory keys for citation authorization, must not
+read arbitrary persisted memory as anchors, and must still require successful
+`trace_source_quotes` output before a clicked ref can support a final answer.
 
 ### Task 3: Expose `trace_source_quotes`
 
@@ -335,10 +370,15 @@ Required behavior:
 - Prompt the LLM that `trace_source_quotes` is the only way to use previously
   clicked Source Quotes.
 - Track `clickedSourceQuoteRefs` from the explicit reading turn anchors.
-- Reject `trace_source_quotes` calls for refs outside the clicked anchor set
-  unless they were returned earlier by `read_locations` in the same turn.
+- Show clicked refs to the LLM only as trace-tool input anchors; do not include
+  Source Quote content in the prompt.
+- Prompt that clicked refs are not citeable until `trace_source_quotes` returns
+  them in the current turn.
+- Reject `trace_source_quotes` calls for refs outside the clicked anchor set.
 - Track Source Quotes returned by both `read_locations` and
   `trace_source_quotes`.
+- Do not add `paperHandle` or `locationRef` values from `trace_source_quotes`
+  output to the disclosed handle/location sets.
 - Allow `EVIDENCE_ANSWER` only when every cited ref came from successful
   current-turn `read_locations` or `trace_source_quotes` output.
 - Continue requiring visible
@@ -422,12 +462,15 @@ Required negative tests:
 
 - `trace_source_quotes` rejects refs not present in
   `conversation_source_quotes`.
+- blank `conversationId` cannot authorize `trace_source_quotes`.
 - `trace_source_quotes` rejects missing `paper_source_quotes` rows.
 - `trace_source_quotes` rejects invisible or out-of-scope papers.
 - the harness rejects hidden `sourceQuoteRef` values before
   `trace_source_quotes`.
 - the harness rejects final answers that cite clicked refs before a successful
   `trace_source_quotes` call returns them.
+- clicked refs are visible to the LLM as trace-tool input anchors, but the prompt
+  does not include quote content.
 - final answers with marker but no claim-level `sourceQuoteRefs` are rejected.
 - final answers with claim-level `sourceQuoteRefs` but no visible marker are
   rejected.
@@ -451,6 +494,8 @@ Required negative tests:
 - `trace_source_quotes` checks paper visibility and locked scope.
 - `trace_source_quotes` returns stored persisted Source Quote content, not
   reread or newly split content.
+- `paperHandle` and `locationRef` returned by `trace_source_quotes` remain
+  display metadata and do not authorize later tool inputs in this slice.
 - Existing Source Quotes remain traceable even if their old `locationRef` is no
   longer current, as long as the paper is still visible and in scope.
 - The harness rejects hidden `sourceQuoteRef` values before
