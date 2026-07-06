@@ -27,7 +27,7 @@ single benchmark score is not enough to declare the system done.
 
 | Gap | Why it does not block this strategy decision | Required next evidence |
 |---|---|---|
-| Figure-heavy product QA | The current product paper has 142 chunks, 8 table chunks, and 0 figure chunks. The selected strategy is validated for text/table evidence, scoped paper QA, literature search, and trusted page inspection; figure grounding requires a figure-bearing product paper or a multimodal benchmark. The figure/table gate currently records this as table-only with figure fixture pending. | Add a committed figure-bearing PDF slice and require both figure text/caption evidence and figure crop availability before claiming figure-heavy QA. |
+| Figure-heavy product QA | The current product paper has 142 chunks, 8 table chunks, and 0 figure chunks. The selected strategy is validated for text/table evidence, scoped paper QA, literature search, and trusted page inspection; figure grounding requires a figure-bearing product paper or a multimodal benchmark. This is not a blocker for the current text/table strategy decision. The figure/table gate currently records this as table-only with figure fixture pending. | Add a committed figure-bearing PDF slice and require both figure text/caption evidence and figure crop availability before claiming figure-heavy QA. |
 
 ## Current Recommendation
 

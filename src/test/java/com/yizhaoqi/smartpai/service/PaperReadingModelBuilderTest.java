@@ -28,7 +28,7 @@ class PaperReadingModelBuilderTest {
                 element("h1", 1, 1, ParsedPaperElementType.HEADING, "Intro"),
                 element("p1", 1, 2, ParsedPaperElementType.PARAGRAPH, "First page text."),
                 element("blank", 1, 4, ParsedPaperElementType.PARAGRAPH, "   "),
-                element("no-page", null, 5, ParsedPaperElementType.PARAGRAPH, "Skipped text.")
+                element("no-page", null, 5, ParsedPaperElementType.PARAGRAPH, "Omitted from page text.")
         ));
 
         PaperReadingModelBuildResult result = builder.build(
@@ -58,8 +58,38 @@ class PaperReadingModelBuilderTest {
         assertEquals("PAGE_TEXT", location.getContentKind());
         assertEquals(page1.getSourceSpanJson(), location.getSourceSpanJson());
 
-        assertTrue(result.diagnosticsJson().contains("\"elementsSkippedNoPage\":1"));
-        assertTrue(result.diagnosticsJson().contains("\"elementsSkippedBlankText\":1"));
+        assertTrue(result.diagnosticsJson().contains("\"pageTextElementsOmittedNoPageCount\":1"));
+        assertTrue(result.diagnosticsJson().contains("\"pageTextElementsOmittedBlankTextCount\":1"));
+    }
+
+    @Test
+    void buildsPhysicalPagesAndSurfaceLocationsWhenPdfHasTextlessPages() {
+        ParsedPaper paper = parsedPaper(List.of(
+                element("p1", 1, 1, ParsedPaperElementType.PARAGRAPH, "Only readable page.")
+        ));
+
+        PaperReadingModelBuildResult result = builder.build(
+                "paper-a",
+                "rm_test_1",
+                paper,
+                3,
+                "user-a",
+                "lab",
+                false
+        );
+
+        assertEquals(3, result.pages().size());
+        assertEquals(PaperPage.TEXT_STATUS_READABLE, result.pages().get(0).getTextStatus());
+        assertEquals(PaperPage.TEXT_STATUS_TEXTLESS, result.pages().get(1).getTextStatus());
+        assertEquals("", result.pages().get(1).getPageText());
+        List<PaperLocation> pageLocations = result.locations().stream()
+                .filter(location -> location.getLocationType() == PaperLocationType.PAGE)
+                .toList();
+        assertEquals(3, pageLocations.size());
+        assertEquals("PAGE_TEXT", pageLocations.get(0).getContentKind());
+        assertEquals("PAGE_SURFACE", pageLocations.get(1).getContentKind());
+        assertTrue(result.diagnosticsJson().contains("\"physicalPageCount\":3"));
+        assertTrue(result.diagnosticsJson().contains("\"textlessPageCount\":2"));
     }
 
     @Test
@@ -97,8 +127,8 @@ class PaperReadingModelBuilderTest {
         );
 
         assertEquals("NO_READABLE_NUMBERED_TEXT", failure.failureReason());
-        assertTrue(failure.diagnosticsJson().contains("\"elementsSkippedNoPage\":1"));
-        assertTrue(failure.diagnosticsJson().contains("\"elementsSkippedBlankText\":1"));
+        assertTrue(failure.diagnosticsJson().contains("\"pageTextElementsOmittedNoPageCount\":1"));
+        assertTrue(failure.diagnosticsJson().contains("\"pageTextElementsOmittedBlankTextCount\":1"));
     }
 
     @Test

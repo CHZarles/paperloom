@@ -126,6 +126,8 @@ class EvalCorpusCleanupCliTest {
                     0,
                     0,
                     0,
+                    0,
+                    0,
                     12,
                     64254,
                     1480777,

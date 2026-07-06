@@ -57,6 +57,7 @@ class MinerUParserClientTest {
             assertTrue(multipartBody.get().contains("name=\"return_content_list\""));
             assertTrue(multipartBody.get().contains("name=\"return_middle_json\""));
             assertTrue(multipartBody.get().contains("name=\"response_format_zip\""));
+            assertTrue(multipartBody.get().matches("(?s).*name=\"return_images\".*\\R\\Rtrue.*"));
             assertTrue(multipartBody.get().contains("filename=\"paper.pdf\""));
             assertTrue(result.contentListJson().contains("MinerU parsed text"));
         } finally {
@@ -126,6 +127,7 @@ class MinerUParserClientTest {
         ReflectionTestUtils.setField(client, "returnMarkdown", true);
         ReflectionTestUtils.setField(client, "returnContentList", true);
         ReflectionTestUtils.setField(client, "returnMiddleJson", true);
+        ReflectionTestUtils.setField(client, "returnImages", true);
         ReflectionTestUtils.setField(client, "responseFormatZip", true);
         ReflectionTestUtils.setField(client, "statusPathTemplate", "/tasks/{taskId}");
         ReflectionTestUtils.setField(client, "resultPathTemplate", "/tasks/{taskId}/result");
@@ -149,6 +151,9 @@ class MinerUParserClientTest {
             zip.closeEntry();
             zip.putNextEntry(new ZipEntry("paper.md"));
             zip.write("# Large MinerU result".getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("images/figure-1.jpg"));
+            zip.write(randomBytes);
             zip.closeEntry();
         }
         return bytes.toByteArray();

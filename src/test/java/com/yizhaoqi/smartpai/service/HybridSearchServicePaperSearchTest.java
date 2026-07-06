@@ -14,9 +14,12 @@ import com.yizhaoqi.smartpai.entity.PaperChunkDocument;
 import com.yizhaoqi.smartpai.entity.PaperSearchDocument;
 import com.yizhaoqi.smartpai.entity.SearchResult;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperReadingElement;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTableRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingElementRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.repository.PaperVisualAssetRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -59,7 +62,10 @@ class HybridSearchServicePaperSearchTest {
     private PaperRepository paperRepository;
 
     @Mock
-    private PaperTableRepository paperTableRepository;
+    private PaperReadingModelRepository paperReadingModelRepository;
+
+    @Mock
+    private PaperReadingElementRepository paperReadingElementRepository;
 
     @Mock
     private PaperVisualAssetRepository paperVisualAssetRepository;
@@ -235,6 +241,89 @@ class HybridSearchServicePaperSearchTest {
         assertTrue(containsTerms(request.query(), "paperId", List.of("paper-a", "paper-b")));
     }
 
+    @Test
+    void tableEvidenceComesFromCurrentReadingElementInsteadOfLegacyTableStore() throws Exception {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("alice");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(orgTagCacheService.getUserEffectiveOrgTags("alice")).thenReturn(List.of("team-a"));
+
+        Paper paper = new Paper();
+        paper.setPaperId("paper-123");
+        paper.setOriginalFilename("paper.pdf");
+        paper.setPaperTitle("Reading Elements");
+        when(paperRepository.findByPaperIdIn(List.of("paper-123"))).thenReturn(List.of(paper));
+
+        PaperReadingModel currentModel = new PaperReadingModel();
+        currentModel.setPaperId("paper-123");
+        currentModel.setModelVersion("rm-1");
+        when(paperReadingModelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-123"))
+                .thenReturn(Optional.of(currentModel));
+
+        PaperReadingElement table = new PaperReadingElement();
+        table.setPaperId("paper-123");
+        table.setModelVersion("rm-1");
+        table.setReadingElementId("reading-table-1");
+        table.setParserElementId("table-el-1");
+        table.setSourceObjectId("table-1");
+        table.setElementType("TABLE");
+        table.setBodyText("Metric Value\nAccuracy 92");
+        table.setStructuredPayloadJson("{\"tableMarkdown\":\"Metric | Value\\nAccuracy | 92\"}");
+        when(paperReadingElementRepository.findByPaperIdAndModelVersionAndElementTypeInOrderByPageNumberAscReadingOrderAscIdAsc(
+                "paper-123",
+                "rm-1",
+                List.of("TABLE")
+        )).thenReturn(List.of(table));
+
+        com.yizhaoqi.smartpai.model.PaperVisualAsset tableCrop = new com.yizhaoqi.smartpai.model.PaperVisualAsset();
+        tableCrop.setPaperId("paper-123");
+        tableCrop.setAssetStatus(com.yizhaoqi.smartpai.model.PaperVisualAsset.STATUS_AVAILABLE);
+        tableCrop.setReadingElementId("reading-table-1");
+        tableCrop.setObjectKey("paper-assets/paper-123/tables/reading-table-1.png");
+        when(paperVisualAssetRepository.findFirstByPaperIdAndAssetTypeAndReadingElementId(
+                eq("paper-123"),
+                eq(com.yizhaoqi.smartpai.model.PaperVisualAsset.TYPE_TABLE_CROP),
+                eq("reading-table-1")
+        )).thenReturn(Optional.of(tableCrop));
+
+        PaperChunkDocument chunk = new PaperChunkDocument(
+                "chunk-1",
+                "paper-123",
+                1,
+                "This table reports the model accuracy and related benchmark values.",
+                3,
+                "Table 1",
+                "TABLE",
+                "Results",
+                1,
+                null,
+                "MinerU",
+                "self-hosted",
+                "TABLE",
+                "table-1",
+                null,
+                "rm-1",
+                "1",
+                "team-a",
+                false
+        );
+        when(esClient.search(any(SearchRequest.class), eq(PaperChunkDocument.class))).thenReturn(singleChunkResponse(chunk));
+
+        HybridSearchService.AdaptiveSearchResult result = hybridSearchService.adaptiveSearchWithPermission(
+                "model accuracy",
+                "1",
+                RetrievalBudget.forQa(),
+                List.of("paper-123")
+        );
+
+        assertEquals(1, result.results().size());
+        SearchResult match = result.results().get(0);
+        assertEquals("Metric Value\nAccuracy 92", match.getTableText());
+        assertEquals("Metric | Value\nAccuracy | 92", match.getTableMarkdown());
+        assertEquals(true, match.getTableScreenshotAvailable());
+    }
+
     private SearchResponse<PaperSearchDocument> emptyPaperSearchResponse() {
         return SearchResponse.of(search -> search
                 .took(1)
@@ -255,6 +344,23 @@ class HybridSearchServicePaperSearchTest {
                 .hits(hits -> hits
                         .total(total -> total.value(0).relation(TotalHitsRelation.Eq))
                         .hits(List.of())
+                )
+        );
+    }
+
+    private SearchResponse<PaperChunkDocument> singleChunkResponse(PaperChunkDocument document) {
+        return SearchResponse.of(search -> search
+                .took(1)
+                .timedOut(false)
+                .shards(ShardStatistics.of(shards -> shards.total(1).successful(1).failed(0)))
+                .hits(hits -> hits
+                        .total(total -> total.value(1).relation(TotalHitsRelation.Eq))
+                        .hits(List.of(Hit.of(hit -> hit
+                                .index(PaperSearchIndex.INDEX_NAME)
+                                .id(document.getId())
+                                .score(4.2d)
+                                .source(document)
+                        )))
                 )
         );
     }

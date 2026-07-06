@@ -25,6 +25,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -78,6 +79,10 @@ class RagBenchmarkRunnerTest {
             return retrievalResult(resultsFor(query));
         });
         when(retrievalService.retrieve(anyString(), eq("1"), any(RetrievalBudget.class), any())).thenAnswer(invocation -> {
+            String query = invocation.getArgument(0, String.class);
+            return retrievalResult(resultsFor(query));
+        });
+        when(retrievalService.discoverPapers(anyString(), eq("1"), any(RetrievalBudget.class))).thenAnswer(invocation -> {
             String query = invocation.getArgument(0, String.class);
             return retrievalResult(resultsFor(query));
         });
@@ -135,6 +140,9 @@ class RagBenchmarkRunnerTest {
     }
 
     private LlmProviderRouter.ReActTurn llmTurnForMessages(List<Map<String, Object>> messages) {
+        if (isTaskRouterPrompt(messages)) {
+            return routeTurnForMessages(messages);
+        }
         String user = messages.stream()
                 .filter(message -> "user".equals(message.get("role")))
                 .map(message -> String.valueOf(message.get("content")))
@@ -162,6 +170,66 @@ class RagBenchmarkRunnerTest {
                 10,
                 5
         );
+    }
+
+    private boolean isTaskRouterPrompt(List<Map<String, Object>> messages) {
+        return messages.stream()
+                .filter(message -> "system".equals(message.get("role")))
+                .map(message -> String.valueOf(message.get("content")))
+                .anyMatch(content -> content.contains("primary task router"));
+    }
+
+    private LlmProviderRouter.ReActTurn routeTurnForMessages(List<Map<String, Object>> messages) {
+        String user = messages.stream()
+                .filter(message -> "user".equals(message.get("role")))
+                .map(message -> String.valueOf(message.get("content")))
+                .findFirst()
+                .orElse("");
+        String query = routedQuery(user);
+        String normalized = query.toLowerCase(Locale.ROOT);
+        String taskType;
+        String operation;
+        if (normalized.contains("session")) {
+            taskType = "CLARIFY";
+            operation = "ASK_CLARIFICATION";
+        } else if (user.contains("scopeMode=MANUAL_SOURCE")) {
+            taskType = "PAPER_QA";
+            operation = "ANSWER_FROM_EVIDENCE";
+        } else {
+            taskType = "PAPER_DISCOVERY";
+            operation = "SEARCH_PAPER_METADATA";
+        }
+        String content = """
+                {
+                  "taskType": "%s",
+                  "operation": "%s",
+                  "query": "%s",
+                  "confidence": 0.9,
+                  "reason": "benchmark fixture route"
+                }
+                """.formatted(taskType, operation, jsonString(query));
+        return new LlmProviderRouter.ReActTurn(
+                content,
+                List.of(),
+                Map.of("role", "assistant", "content", content),
+                "stop",
+                10,
+                5
+        );
+    }
+
+    private String routedQuery(String routerUserMessage) {
+        String text = routerUserMessage == null ? "" : routerUserMessage;
+        String marker = "message=";
+        int index = text.lastIndexOf(marker);
+        return index < 0 ? text.trim() : text.substring(index + marker.length()).trim();
+    }
+
+    private String jsonString(String value) {
+        return (value == null ? "" : value)
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", " ");
     }
 
     private Map<String, Object> referenceDetail() {

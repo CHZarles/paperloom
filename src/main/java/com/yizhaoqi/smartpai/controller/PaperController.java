@@ -1,21 +1,25 @@
 package com.yizhaoqi.smartpai.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.OrganizationTag;
-import com.yizhaoqi.smartpai.model.PaperFigure;
-import com.yizhaoqi.smartpai.model.PaperFormula;
 import com.yizhaoqi.smartpai.model.PaperParserArtifact;
-import com.yizhaoqi.smartpai.model.PaperTable;
+import com.yizhaoqi.smartpai.model.PaperReadingElement;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
 import com.yizhaoqi.smartpai.model.PaperVisualAsset;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.OrganizationTagRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingElementRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.service.ChatHandler;
 import com.yizhaoqi.smartpai.service.ConversationService;
-import com.yizhaoqi.smartpai.service.PaperFigureService;
-import com.yizhaoqi.smartpai.service.PaperFormulaService;
+import com.yizhaoqi.smartpai.service.PaperCandidateSearchRequest;
 import com.yizhaoqi.smartpai.service.PaperParserArtifactService;
+import com.yizhaoqi.smartpai.service.PaperRecommendationCandidate;
+import com.yizhaoqi.smartpai.service.PaperRecommendationCandidateService;
+import com.yizhaoqi.smartpai.service.PaperRecommendationSearchRequest;
 import com.yizhaoqi.smartpai.service.PaperService;
-import com.yizhaoqi.smartpai.service.PaperTableService;
 import com.yizhaoqi.smartpai.service.PaperVisualAssetService;
 import com.yizhaoqi.smartpai.utils.LogUtils;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
@@ -76,16 +80,18 @@ public class PaperController {
     private PaperParserArtifactService paperParserArtifactService;
 
     @Autowired
-    private PaperTableService paperTableService;
+    private PaperReadingModelRepository paperReadingModelRepository;
 
     @Autowired
-    private PaperFigureService paperFigureService;
+    private PaperReadingElementRepository paperReadingElementRepository;
 
-    @Autowired
-    private PaperFormulaService paperFormulaService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private PaperVisualAssetService paperVisualAssetService;
+
+    @Autowired
+    private PaperRecommendationCandidateService paperRecommendationCandidateService;
 
     /**
      * 删除论文及其相关数据。
@@ -345,6 +351,46 @@ public class PaperController {
         return getAccessiblePapers(userId, orgTags, page, size, query, readiness);
     }
 
+    @PostMapping("/recommendation-candidates")
+    public ResponseEntity<?> recommendationCandidates(
+            @RequestBody(required = false) PaperRecommendationCandidatesRequest request,
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("orgTags") String orgTags) {
+        if (request == null || !hasText(request.queryText())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "code", HttpStatus.BAD_REQUEST.value(),
+                    "message", "queryText 不能为空"
+            ));
+        }
+
+        PaperRecommendationSearchRequest searchRequest = new PaperRecommendationSearchRequest(
+                request.queryText(),
+                userId,
+                orgTags,
+                PaperCandidateSearchRequest.clampLimit(request.paperLimit()),
+                PaperRecommendationSearchRequest.clampPerPaperLocationLimit(request.perPaperLocationLimit())
+        );
+        List<PaperRecommendationCandidate> candidates = paperRecommendationCandidateService.search(searchRequest);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("queryText", searchRequest.queryText());
+        data.put("scope", "PRODUCT_LIBRARY");
+        data.put("candidates", candidates);
+
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", "获取论文候选成功",
+                "data", data
+        ));
+    }
+
+    public record PaperRecommendationCandidatesRequest(
+            String queryText,
+            Integer paperLimit,
+            Integer perPaperLocationLimit
+    ) {
+    }
+
     private boolean isPagedRequest(Integer page, Integer size) {
         return page != null || size != null;
     }
@@ -547,7 +593,7 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        List<Map<String, Object>> tables = paperTableService.listTables(paperId).stream()
+        List<Map<String, Object>> tables = currentReadingElements(paperId, List.of("TABLE")).stream()
                 .map(this::buildTableResponse)
                 .toList();
         return ResponseEntity.ok(Map.of(
@@ -568,7 +614,7 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        return paperTableService.findTable(paperId, tableId)
+        return currentReadingElement(paperId, tableId, List.of("TABLE"))
                 .<ResponseEntity<?>>map(table -> ResponseEntity.ok(Map.of(
                         "code", 200,
                         "message", "获取论文表格成功",
@@ -591,7 +637,11 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        return paperVisualAssetService.findTableCrop(paperId, tableId)
+        return currentReadingElement(paperId, tableId, List.of("TABLE"))
+                .flatMap(table -> paperVisualAssetService.findTableCropByReadingElementId(
+                        paperId,
+                        table.getReadingElementId()
+                ))
                 .<ResponseEntity<?>>map(asset -> visualAssetUrlResponse(asset, "表格截图链接生成成功"))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                         "code", HttpStatus.NOT_FOUND.value(),
@@ -628,7 +678,7 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        List<Map<String, Object>> figures = paperFigureService.listFigures(paperId).stream()
+        List<Map<String, Object>> figures = currentReadingElements(paperId, List.of("IMAGE", "CHART")).stream()
                 .map(this::buildFigureResponse)
                 .toList();
         return ResponseEntity.ok(Map.of(
@@ -649,7 +699,7 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        return paperFigureService.findFigure(paperId, figureId)
+        return currentReadingElement(paperId, figureId, List.of("IMAGE", "CHART"))
                 .<ResponseEntity<?>>map(figure -> ResponseEntity.ok(Map.of(
                         "code", 200,
                         "message", "获取论文图像成功",
@@ -672,7 +722,11 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        return paperVisualAssetService.findFigureCrop(paperId, figureId)
+        return currentReadingElement(paperId, figureId, List.of("IMAGE", "CHART"))
+                .flatMap(figure -> paperVisualAssetService.findFigureCropByReadingElementId(
+                        paperId,
+                        figure.getReadingElementId()
+                ))
                 .<ResponseEntity<?>>map(asset -> visualAssetUrlResponse(asset, "图像截图链接生成成功"))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                         "code", HttpStatus.NOT_FOUND.value(),
@@ -690,7 +744,7 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        List<Map<String, Object>> formulas = paperFormulaService.listFormulas(paperId).stream()
+        List<Map<String, Object>> formulas = currentReadingElements(paperId, List.of("FORMULA")).stream()
                 .map(this::buildFormulaResponse)
                 .toList();
         return ResponseEntity.ok(Map.of(
@@ -711,7 +765,7 @@ public class PaperController {
             return paperNotFoundOrForbidden();
         }
 
-        return paperFormulaService.findFormula(paperId, formulaId)
+        return currentReadingElement(paperId, formulaId, List.of("FORMULA"))
                 .<ResponseEntity<?>>map(formula -> ResponseEntity.ok(Map.of(
                         "code", 200,
                         "message", "获取论文公式成功",
@@ -735,7 +789,7 @@ public class PaperController {
     }
 
     private Map<String, Object> buildTableAssetStatus(String paperId) {
-        long tableCount = paperTableService.countByPaperId(paperId);
+        long tableCount = currentReadingElements(paperId, List.of("TABLE")).size();
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("tableCount", tableCount);
         status.put("tableSearchable", tableCount > 0);
@@ -743,7 +797,7 @@ public class PaperController {
     }
 
     private Map<String, Object> buildFigureAssetStatus(String paperId) {
-        long figureCount = paperFigureService.countByPaperId(paperId);
+        long figureCount = currentReadingElements(paperId, List.of("IMAGE", "CHART")).size();
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("figureCount", figureCount);
         status.put("figureSearchable", figureCount > 0);
@@ -751,7 +805,7 @@ public class PaperController {
     }
 
     private Map<String, Object> buildFormulaAssetStatus(String paperId) {
-        long formulaCount = paperFormulaService.countByPaperId(paperId);
+        long formulaCount = currentReadingElements(paperId, List.of("FORMULA")).size();
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("formulaCount", formulaCount);
         status.put("formulaSearchable", formulaCount > 0);
@@ -818,53 +872,127 @@ public class PaperController {
         ));
     }
 
-    private Map<String, Object> buildTableResponse(PaperTable table) {
+    private List<PaperReadingElement> currentReadingElements(String paperId, List<String> elementTypes) {
+        return paperReadingModelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId)
+                .map(model -> paperReadingElementRepository.findByPaperIdAndModelVersionAndElementTypeInOrderByPageNumberAscReadingOrderAscIdAsc(
+                        paperId,
+                        model.getModelVersion(),
+                        elementTypes
+                ))
+                .orElse(List.of());
+    }
+
+    private Optional<PaperReadingElement> currentReadingElement(String paperId, String elementId, List<String> elementTypes) {
+        if (elementId == null || elementId.isBlank()) {
+            return Optional.empty();
+        }
+        return currentReadingElements(paperId, elementTypes).stream()
+                .filter(element -> elementId.equals(element.getReadingElementId())
+                        || elementId.equals(element.getSourceObjectId())
+                        || elementId.equals(element.getParserElementId()))
+                .findFirst();
+    }
+
+    private Map<String, Object> buildTableResponse(PaperReadingElement table) {
+        JsonNode payload = structuredPayload(table);
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("paperId", table.getPaperId());
-        dto.put("tableId", table.getTableId());
+        dto.put("tableId", table.getReadingElementId());
+        dto.put("readingElementId", table.getReadingElementId());
+        dto.put("parserTableId", table.getSourceObjectId());
+        dto.put("parserElementId", table.getParserElementId());
         dto.put("pageNumber", table.getPageNumber());
-        dto.put("caption", table.getCaption());
+        dto.put("caption", table.getCaptionText());
         dto.put("sectionTitle", table.getSectionTitle());
-        dto.put("rowCount", table.getRowCount());
-        dto.put("columnCount", table.getColumnCount());
-        dto.put("tableText", table.getTableText());
-        dto.put("tableMarkdown", table.getTableMarkdown());
+        dto.put("rowCount", nullableInt(payload, "rowCount"));
+        dto.put("columnCount", nullableInt(payload, "columnCount"));
+        dto.put("tableText", table.getBodyText());
+        dto.put("tableMarkdown", textValue(payload, "tableMarkdown"));
+        dto.put("searchableText", table.getSearchableText());
         dto.put("bboxJson", table.getBboxJson());
         dto.put("parserName", table.getParserName());
         dto.put("parserVersion", table.getParserVersion());
-        dto.put("screenshotAvailable", table.getScreenshotObjectKey() != null && !table.getScreenshotObjectKey().isBlank());
+        dto.put("locationRef", table.getLocationRef());
+        dto.put("locationNotCreatedReason", table.getLocationNotCreatedReason());
+        dto.put("screenshotAvailable", paperVisualAssetService.findTableCropByReadingElementId(
+                table.getPaperId(),
+                table.getReadingElementId()
+        ).filter(asset -> asset.getObjectKey() != null && !asset.getObjectKey().isBlank()).isPresent());
         return dto;
     }
 
-    private Map<String, Object> buildFigureResponse(PaperFigure figure) {
+    private Map<String, Object> buildFigureResponse(PaperReadingElement figure) {
+        JsonNode payload = structuredPayload(figure);
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("paperId", figure.getPaperId());
-        dto.put("figureId", figure.getFigureId());
+        dto.put("figureId", figure.getReadingElementId());
+        dto.put("readingElementId", figure.getReadingElementId());
+        dto.put("parserFigureId", figure.getSourceObjectId());
+        dto.put("parserElementId", figure.getParserElementId());
+        dto.put("elementType", figure.getElementType());
         dto.put("pageNumber", figure.getPageNumber());
-        dto.put("caption", figure.getCaption());
+        dto.put("caption", figure.getCaptionText());
         dto.put("sectionTitle", figure.getSectionTitle());
-        dto.put("figureText", figure.getFigureText());
+        dto.put("figureText", figure.getBodyText());
+        dto.put("searchableText", figure.getSearchableText());
         dto.put("bboxJson", figure.getBboxJson());
-        dto.put("detectionSource", figure.getDetectionSource());
-        dto.put("confidence", figure.getConfidence());
+        dto.put("detectionSource", textValue(payload, "detectionSource"));
+        dto.put("confidence", textValue(payload, "confidence"));
+        dto.put("captionSource", figure.getCaptionSource());
+        dto.put("associationStatus", figure.getAssociationStatus());
+        dto.put("attachmentRole", figure.getAttachmentRole());
+        dto.put("parentReadingElementId", figure.getParentReadingElementId());
         dto.put("parserName", figure.getParserName());
         dto.put("parserVersion", figure.getParserVersion());
-        dto.put("screenshotAvailable", figure.getScreenshotObjectKey() != null && !figure.getScreenshotObjectKey().isBlank());
+        dto.put("locationRef", figure.getLocationRef());
+        dto.put("locationNotCreatedReason", figure.getLocationNotCreatedReason());
+        dto.put("screenshotAvailable", paperVisualAssetService.findFigureCropByReadingElementId(
+                figure.getPaperId(),
+                figure.getReadingElementId()
+        ).filter(asset -> asset.getObjectKey() != null && !asset.getObjectKey().isBlank()).isPresent());
         return dto;
     }
 
-    private Map<String, Object> buildFormulaResponse(PaperFormula formula) {
+    private Map<String, Object> buildFormulaResponse(PaperReadingElement formula) {
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("paperId", formula.getPaperId());
-        dto.put("formulaId", formula.getFormulaId());
+        dto.put("formulaId", formula.getReadingElementId());
+        dto.put("readingElementId", formula.getReadingElementId());
+        dto.put("parserFormulaId", formula.getSourceObjectId());
+        dto.put("parserElementId", formula.getParserElementId());
         dto.put("pageNumber", formula.getPageNumber());
-        dto.put("latex", formula.getLatex());
-        dto.put("contextText", formula.getContextText());
+        dto.put("latex", textValue(structuredPayload(formula), "latex"));
+        dto.put("contextText", textValue(structuredPayload(formula), "contextText"));
+        dto.put("bodyText", formula.getBodyText());
+        dto.put("searchableText", formula.getSearchableText());
         dto.put("sectionTitle", formula.getSectionTitle());
         dto.put("bboxJson", formula.getBboxJson());
         dto.put("parserName", formula.getParserName());
         dto.put("parserVersion", formula.getParserVersion());
+        dto.put("locationRef", formula.getLocationRef());
+        dto.put("locationNotCreatedReason", formula.getLocationNotCreatedReason());
         return dto;
+    }
+
+    private JsonNode structuredPayload(PaperReadingElement element) {
+        if (element == null || element.getStructuredPayloadJson() == null || element.getStructuredPayloadJson().isBlank()) {
+            return objectMapper.createObjectNode();
+        }
+        try {
+            return objectMapper.readTree(element.getStructuredPayloadJson());
+        } catch (Exception ignored) {
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    private String textValue(JsonNode node, String field) {
+        JsonNode value = node == null ? null : node.path(field);
+        return value == null || value.isMissingNode() || value.isNull() ? null : value.asText();
+    }
+
+    private Integer nullableInt(JsonNode node, String field) {
+        JsonNode value = node == null ? null : node.path(field);
+        return value == null || value.isMissingNode() || value.isNull() ? null : value.asInt();
     }
 
     private ResponseEntity<?> visualAssetUrlResponse(PaperVisualAsset asset, String message) {
@@ -873,8 +1001,12 @@ public class PaperController {
         data.put("paperId", asset.getPaperId());
         data.put("assetType", asset.getAssetType());
         data.put("pageNumber", asset.getPageNumber());
-        data.put("tableId", asset.getTableId());
-        data.put("figureId", asset.getFigureId());
+        data.put("readingElementId", asset.getReadingElementId());
+        data.put("sourceObjectId", asset.getSourceObjectId());
+        data.put("parserElementId", asset.getParserElementId());
+        data.put("parserImagePath", asset.getParserImagePath());
+        data.put("assetStatus", asset.getAssetStatus());
+        data.put("failureReason", asset.getFailureReason());
         data.put("downloadUrl", url);
         data.put("contentType", asset.getContentType());
         data.put("widthPx", asset.getWidthPx());

@@ -172,6 +172,9 @@ paper:
     user-id: ${PAPER_BOOTSTRAP_USER_ID:system-bootstrap}
 
 paperloom:
+  react:
+    reading-phase1:
+      enabled: ${PAPERLOOM_REACT_READING_PHASE1_ENABLED:false}
   trace:
     enabled: ${PAPERLOOM_TRACE_ENABLED:true}
     root: ${PAPERLOOM_TRACE_ROOT:data/traces/product-react}

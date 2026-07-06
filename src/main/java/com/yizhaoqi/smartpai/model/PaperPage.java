@@ -20,6 +20,10 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_paper_pages_paper_model_page", columnList = "paper_id,model_version,page_number")
         })
 public class PaperPage {
+    public static final String TEXT_STATUS_READABLE = "READABLE";
+    public static final String TEXT_STATUS_TEXTLESS = "TEXTLESS";
+    public static final String TEXT_STATUS_PARSER_MISSING = "PARSER_MISSING";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -42,6 +46,9 @@ public class PaperPage {
 
     @Column(name = "char_count", nullable = false)
     private Integer charCount;
+
+    @Column(name = "text_status", nullable = false, length = 32)
+    private String textStatus;
 
     @Lob
     @Column(name = "source_span_json", nullable = false, columnDefinition = "TEXT")

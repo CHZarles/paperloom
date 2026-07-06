@@ -34,7 +34,7 @@ class MinerUOutputMapperTest {
                   },
                   {
                     "type": "image",
-                    "img_caption": ["Figure 1: Mean performance as noise is added."],
+                    "image_caption": ["Figure 1: Mean performance as noise is added."],
                     "page_idx": 5,
                     "bbox": [100, 200, 900, 650]
                   },
@@ -90,5 +90,76 @@ class MinerUOutputMapperTest {
         assertEquals("formula-5", formula.formulaId());
         assertEquals(6, formula.pageNumber());
         assertTrue(formula.latex().contains("bm25"));
+    }
+
+    @Test
+    void mapsOnlyObservedMinerUFigureCaptionFieldsAndSkipsPanelOnlyChartLabelsAndLegacyAliases() {
+        String contentListJson = """
+                [
+                  {
+                    "type": "image",
+                    "image_caption": ["Figure 1: Overview of the benchmark."],
+                    "page_idx": 1,
+                    "bbox": [100, 200, 900, 650]
+                  },
+                  {
+                    "type": "chart",
+                    "chart_caption": ["(a) Recall", "Figure 2: Rule-wise metrics of rules in airline domain."],
+                    "page_idx": 2,
+                    "bbox": [120, 180, 880, 620]
+                  },
+                  {
+                    "type": "chart",
+                    "chart_caption": ["(b) Correctness"],
+                    "page_idx": 2,
+                    "bbox": [120, 660, 880, 920]
+                  },
+                  {
+                    "type": "image",
+                    "img_caption": ["Figure 9: Legacy alias should not be used."],
+                    "page_idx": 3,
+                    "bbox": [100, 200, 900, 650]
+                  },
+                  {
+                    "type": "image",
+                    "caption": ["Figure 10: Generic alias should not be used."],
+                    "page_idx": 3,
+                    "bbox": [100, 200, 900, 650]
+                  }
+                ]
+                """;
+
+        ParsedPaper paper = new MinerUOutputMapper().map(
+                contentListJson,
+                "{}",
+                "",
+                "MinerU",
+                "self-hosted",
+                "paper.pdf"
+        );
+
+        assertEquals(5, paper.figures().size());
+        ParsedPaperFigure image = paper.figures().get(0);
+        assertNotNull(image.caption());
+        assertNotNull(image.figureText());
+        assertTrue(image.caption().contains("Overview of the benchmark"));
+        assertTrue(image.figureText().contains("Overview of the benchmark"));
+
+        ParsedPaperFigure chartWithFullCaption = paper.figures().get(1);
+        assertNotNull(chartWithFullCaption.caption());
+        assertTrue(chartWithFullCaption.caption().contains("Figure 2"));
+        assertTrue(chartWithFullCaption.caption().contains("(a) Recall"));
+
+        ParsedPaperFigure panelOnlyChart = paper.figures().get(2);
+        assertTrue(panelOnlyChart.caption() == null || panelOnlyChart.caption().isBlank());
+        assertTrue(panelOnlyChart.figureText() == null || panelOnlyChart.figureText().isBlank());
+
+        ParsedPaperFigure legacyAlias = paper.figures().get(3);
+        assertTrue(legacyAlias.caption() == null || legacyAlias.caption().isBlank());
+        assertTrue(legacyAlias.figureText() == null || legacyAlias.figureText().isBlank());
+
+        ParsedPaperFigure genericAlias = paper.figures().get(4);
+        assertTrue(genericAlias.caption() == null || genericAlias.caption().isBlank());
+        assertTrue(genericAlias.figureText() == null || genericAlias.figureText().isBlank());
     }
 }

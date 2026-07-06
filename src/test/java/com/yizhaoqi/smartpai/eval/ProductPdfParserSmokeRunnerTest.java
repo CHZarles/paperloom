@@ -3,12 +3,12 @@ package com.yizhaoqi.smartpai.eval;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
 import com.yizhaoqi.smartpai.model.PaperVisualAsset;
-import com.yizhaoqi.smartpai.repository.PaperFigureRepository;
-import com.yizhaoqi.smartpai.repository.PaperFormulaRepository;
 import com.yizhaoqi.smartpai.repository.PaperParserArtifactRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTableRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingElementRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.PaperVisualAssetRepository;
 import org.junit.jupiter.api.Test;
@@ -185,6 +185,51 @@ class ProductPdfParserSmokeRunnerTest {
         assertEquals("2026-06-27T102000Z-product-pdf-parser-smoke-product-pdf-parser-smoke", options.runId());
     }
 
+    @Test
+    void structuredContentCountsComeFromCurrentReadingModel() throws Exception {
+        Fixture fixture = fixture();
+        Paper paper = pdfPaper("paper-a", "adaptive.pdf");
+        when(fixture.paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-a"))
+                .thenReturn(Optional.of(paper));
+        when(fixture.chunkRepository.countByPaperId("paper-a")).thenReturn(3L);
+        when(fixture.chunkRepository.countByPaperIdAndPageNumberIsNotNull("paper-a")).thenReturn(2L);
+        when(fixture.parserArtifactRepository.countByPaperId("paper-a")).thenReturn(1L);
+
+        PaperReadingModel model = new PaperReadingModel();
+        model.setPaperId("paper-a");
+        model.setModelVersion("rm-1");
+        when(fixture.readingModelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-a"))
+                .thenReturn(Optional.of(model));
+        when(fixture.readingElementRepository.countByPaperIdAndModelVersionAndElementType("paper-a", "rm-1", "TABLE"))
+                .thenReturn(1L);
+        when(fixture.readingElementRepository.countByPaperIdAndModelVersionAndElementType("paper-a", "rm-1", "IMAGE"))
+                .thenReturn(1L);
+        when(fixture.readingElementRepository.countByPaperIdAndModelVersionAndElementType("paper-a", "rm-1", "CHART"))
+                .thenReturn(1L);
+        when(fixture.readingElementRepository.countByPaperIdAndModelVersionAndElementType("paper-a", "rm-1", "FORMULA"))
+                .thenReturn(1L);
+
+        Path runDir = fixture.runner.run(new ProductPdfParserSmokeRunner.Options(
+                manifest("""
+                        {"id":"structured","paperId":"paper-a","expectedMinChunks":1,"expectedMinPages":1,"requiresTableOrFigure":true,"expectedMinTables":1,"expectedMinFigures":2,"expectedMinFormulas":1}
+                        """),
+                tempDir.resolve("runs"),
+                "pdf-smoke-structured",
+                "2026-06-27T10:25:00Z",
+                "product-pdf-parser-smoke",
+                "product-pdf-parser-smoke"
+        ));
+
+        JsonNode row = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile())
+                .path("cases").get(0);
+        assertEquals(true, row.path("passed").asBoolean());
+        assertEquals("rm-1", row.path("diagnostics").path("readingModelVersion").asText());
+        assertEquals("paper_reading_elements", row.path("diagnostics").path("structuredContentSource").asText());
+        assertEquals(1, row.path("diagnostics").path("tableCount").asInt());
+        assertEquals(2, row.path("diagnostics").path("figureCount").asInt());
+        assertEquals(1, row.path("diagnostics").path("formulaCount").asInt());
+    }
+
     private Path manifest(String content) throws Exception {
         Path manifest = tempDir.resolve("manifest-" + System.nanoTime() + ".jsonl");
         Files.writeString(manifest, content);
@@ -207,24 +252,24 @@ class ProductPdfParserSmokeRunnerTest {
         PaperTextChunkRepository chunkRepository = mock(PaperTextChunkRepository.class);
         PaperParserArtifactRepository parserArtifactRepository = mock(PaperParserArtifactRepository.class);
         PaperVisualAssetRepository visualAssetRepository = mock(PaperVisualAssetRepository.class);
-        PaperTableRepository tableRepository = mock(PaperTableRepository.class);
-        PaperFigureRepository figureRepository = mock(PaperFigureRepository.class);
-        PaperFormulaRepository formulaRepository = mock(PaperFormulaRepository.class);
+        PaperReadingModelRepository readingModelRepository = mock(PaperReadingModelRepository.class);
+        PaperReadingElementRepository readingElementRepository = mock(PaperReadingElementRepository.class);
         ProductPdfParserSmokeRunner runner = new ProductPdfParserSmokeRunner(
                 paperRepository,
                 chunkRepository,
                 parserArtifactRepository,
                 visualAssetRepository,
-                tableRepository,
-                figureRepository,
-                formulaRepository
+                readingModelRepository,
+                readingElementRepository
         );
         return new Fixture(
                 runner,
                 paperRepository,
                 chunkRepository,
                 parserArtifactRepository,
-                visualAssetRepository
+                visualAssetRepository,
+                readingModelRepository,
+                readingElementRepository
         );
     }
 
@@ -233,7 +278,9 @@ class ProductPdfParserSmokeRunnerTest {
             PaperRepository paperRepository,
             PaperTextChunkRepository chunkRepository,
             PaperParserArtifactRepository parserArtifactRepository,
-            PaperVisualAssetRepository visualAssetRepository
+            PaperVisualAssetRepository visualAssetRepository,
+            PaperReadingModelRepository readingModelRepository,
+            PaperReadingElementRepository readingElementRepository
     ) {
     }
 }

@@ -36,6 +36,12 @@ The product-owned readable representation of a Product Paper, including pages, r
 and source spans. It is derived from parser output but is not the parser output itself.
 _Avoid_: MinerU output, raw parser artifact, chunk index
 
+**Current Reading Model**:
+The one `paper_reading_models` row for a Product Paper with `is_current=true`,
+`model_status=READING_MODEL_READY`, and `index_status=READING_INDEX_READY`. Product ReAct
+paper-reading tools read, list, and search only this model. It is not `paper.vectorizationStatus`.
+_Avoid_: vectorizationStatus, latest parser artifact, inferred readiness
+
 **Source Span**:
 A durable source-location range inside a Product Paper that connects readable text back to its paper
 page or reading location. A Source Span is not a Source Quote until the text is read.
@@ -43,8 +49,15 @@ _Avoid_: Source Quote, bbox, chunk id, parser provenance
 
 **Source Quote**:
 A quote read from a product paper PDF, such as page text, table content, or a figure
-caption, with source location back to the product paper.
-_Avoid_: paper handle, section handle, page handle, navigation anchor
+caption, with source location back to the product paper. Source Quote creation is idempotent:
+re-reading the same `paperId + modelVersion + locationRef + splitPolicyVersion + splitIndex +
+contentHash` reuses the same `sourceQuoteRef` from MySQL. `splitPolicyVersion` is internal and
+changes when the Source Quote splitting policy changes. Within one `splitPolicyVersion`, splitting
+must be deterministic, so the same input text and location produce the same `splitIndex` sequence.
+Final answers may cite only currently usable Source Quotes: this turn's read results, this turn's
+successful trace results, or refs registered in the current conversation Source Quote registry that
+still pass current paper existence, permission, and fixed search-scope checks.
+_Avoid_: paper handle, section handle, page handle, navigation anchor, Redis mapping, LLM-facing split policy, separate span-id
 
 **Source Handle**:
 An opaque reference to a product paper object or location, such as a paper, section, page, table, or
@@ -53,6 +66,72 @@ claims unless resolved to a Source Quote. LLM-facing source handles must resolve
 product data or persisted reference records, not in-memory list snapshots.
 _Avoid_: citation, proof, source quote
 
+**Paper Handle**:
+A stable product-level opaque token that resolves to one Product Paper through durable product data.
+It is used by LLM-facing paper tools instead of raw `paperId`. It must not expose raw `paperId`,
+SQL ids, user ids, org ids, filenames, or titles. Resolving a Paper Handle does not grant access;
+tools still check user permission, fixed conversation search scope, and READY status.
+_Avoid_: paperId, conversation-local ref, ordinal
+
+**Location Ref**:
+A stable opaque reading-location token inside the current READY Reading Model, such as
+`page_ref_...`, `section_ref_...`, `table_ref_...`, or `figure_ref_...`. It resolves through
+`paper_locations.location_ref`. It is not a search hit id, chunk id, SQL id, or Source Quote.
+Reading Model rebuild may create new Location Refs; existing Source Quotes remain traceable through
+stored Source Quote content and source span.
+_Avoid_: chunkRef, search hit id, sourceQuoteRef, parser id
+
+**Structured Reading Location**:
+A PAGE, SECTION, TABLE, or FIGURE location stored in `paper_locations` for one Current Reading
+Model. Structured Reading Locations are navigation and reading coordinates; PAGE and SECTION
+locations read from page/section rows, while TABLE and FIGURE locations target canonical Reading
+Model Elements rather than parser table or figure ids.
+_Avoid_: parser block, table id, figure id, section title as coordinate
+
+**Physical Page**:
+A numbered page surface in the source PDF, whether or not the parser found readable text on it. A
+Physical Page may have visual evidence and a PAGE location even when it cannot produce a textual
+Source Quote.
+_Avoid_: readable page, page text chunk
+
+**Reading Model Element**:
+A product-owned retained parser object inside one PaperLoom Reading Model, such as a heading,
+paragraph, table, image, chart panel, formula, code block, footnote, or raw labeled visual fragment.
+It may be a top-level location owner or a child attached to a parent table/figure element; either
+way, it must remain persisted and retrievable by structured inspection. Every MinerU `content_list`
+item should be represented by one canonical Reading Model Element; creating a Structured Reading
+Location is a navigation policy and not a prerequisite for retention.
+_Avoid_: skipped object, raw MinerU item, chunk, Source Quote, parser table id, parser figure id
+
+**Visual Asset**:
+A persisted visual evidence object or visual evidence gap for a Product Paper, such as a page
+screenshot, a PDF-rendered table/figure crop, or a parser-provided image referenced by
+`content_list.img_path`. Parser-provided Visual Assets must retain the parser image path, status,
+and reverse link to the owning Reading Model Element when one exists, so visual-only tables, charts,
+figures, and formulas remain inspectable even when they have no readable text or Structured Reading
+Location.
+_Avoid_: skipped figure, transient parser file, markdown image reference
+
+**Reading Chunk**:
+An internal retrieval chunk bound to a Current Reading Model and a Location Ref. `originalText` is
+the readable source block. `searchText` is retrieval text and may include headings, parser labels,
+summary hints, or expanded terms. Search tools may search `searchText`, but Source Quotes must be
+created from original readable text, not `searchText`. MVP chunking is deterministic from reading
+locations: page/section paragraph chunks, one table chunk, and one figure-caption chunk. Chunk size
+and overlap are internal policy, not LLM-facing inputs. Reading Chunks are derived only from Current
+Reading Model persistence: `PaperReadingElement`, `PaperLocation`, `PaperPage`, and `PaperSection`.
+They must not be generated directly from MinerU artifacts, `ParsedPaper`, or legacy
+`paper_text_chunks`. ReadingChunk hits are mapped back to their owning Location Ref before tool
+output; `chunkRef` is not returned to the LLM.
+_Avoid_: Source Quote, Paper Location, LLM-facing ref, search result, chunkRef, MinerU output,
+ParsedPaper, legacy paper_text_chunks
+
+**Reading Index**:
+The internal Elasticsearch index for Reading Chunks. MVP uses `paperloom_reading_chunks` and filters
+by the Current Reading Model's `modelVersion`. `indexName`, `modelVersion`, and `indexVersion` are
+internal implementation fields, not LLM-facing inputs.
+_Avoid_: tool parameter, Source Quote, Paper Location
+
 **`sourceQuoteRef`**:
 An opaque field value that points to a Source Quote. Final paper-content claims may cite only
 `sourceQuoteRef` values returned by `read_locations` or resolved by `trace_source_quotes`.
@@ -60,10 +139,20 @@ _Avoid_: citation number, paper handle, page ref, section ref
 
 **Paper Candidate Search**:
 The paper-level search operation, exposed as `search_paper_candidates`, that recalls candidate
-papers from the fixed conversation search scope using topic or need signals over title, abstract,
-catalog tags, metadata, BM25, vector search, and related paper-level retrieval methods. It finds READY
-candidate papers, not Source Quotes or final recommendations.
-_Avoid_: identity lookup, source quote retrieval, recommendation verdict
+papers from the fixed conversation search scope using caller-supplied `queryText` over title,
+abstract, catalog tags, metadata, BM25, vector search, and related paper-level retrieval methods. It
+finds READY candidate papers, not Source Quotes or final recommendations. It may return a
+non-citeable `preview` from title, abstract, tags, or metadata to help paper selection. The tool may
+normalize, tokenize, embed, filter, and rank the query, but must not call a hidden generative LLM to
+rewrite it or rerank candidates. Candidate order is the only LLM-facing ranking signal; internal
+scores and rerank reasons are not exposed.
+_Avoid_: identity lookup, source quote retrieval, recommendation verdict, score
+
+**Navigation Preview**:
+A short non-citeable text fragment returned by paper-candidate or reading-location search to help
+choose the next reading action. It is not a Source Quote, recommendation reason, answer snippet, or
+claim support.
+_Avoid_: evidence, citation, source quote, recommendation reason
 
 **Paper Identity Lookup**:
 The paper-level lookup operation, exposed as `find_papers_by_identity`, that resolves a specific
@@ -95,6 +184,12 @@ A final answer that suggests papers to the user. Recommendation reasons that men
 methods, experiments, results, limitations, or comparisons must be supported by Source Quotes.
 _Avoid_: candidate recall, catalog list, paper discovery without source quotes
 
+**Recommendation Candidate**:
+A paper-level candidate assembled before final answer generation. It may include metadata match
+reasons and supporting Reading Locations, but it is not itself a final recommendation and does not
+authorize paper-content claims unless those locations are read into Source Quotes.
+_Avoid_: final recommendation, Source Quote, raw location hit, answer citation
+
 **Paper Outline**:
 A whole-paper structure view for one or more Product Papers, including section headings, section
 roles, page ranges, and parser quality signals. A paper outline helps understand the paper shape; it
@@ -105,8 +200,28 @@ _Avoid_: Source Quote, paper summary, content answer
 **Paper Location List**:
 A deterministic navigation list of section, page, table, or figure refs for chosen Product Papers.
 It may be narrowed by explicit page range when the user asks for specific pages. It returns refs for
-`read_locations`; it is not semantic search and not a Source Quote.
+`read_locations`; it is not semantic search and not a Source Quote. PAGE locations are required for
+READY papers. SECTION, TABLE, and FIGURE locations are optional enhancements.
 _Avoid_: paper content, recommendation, semantic reading need, Source Quote
+
+**Reading Location Candidate**:
+An ordered candidate returned by `find_reading_locations`. It has a `locationRef` and may have a
+non-citeable `preview`. Candidate order is the only LLM-facing ranking signal; internal scores and
+rerank reasons are not exposed. MVP ranking uses BM25, vector search, metadata boosts, and
+deterministic ordering, not a generative LLM reranker.
+_Avoid_: Source Quote, score, rerank reason, chunk id
+
+**Reading Location Search**:
+The in-paper search operation, exposed as `find_reading_locations`, that uses caller-supplied
+`queryText` to find candidate reading locations inside explicitly selected READY papers. The tool may
+normalize, tokenize, embed, filter, and rank the query, but it must not call a hidden generative LLM
+to rewrite it, rerank candidates, summarize, or decide what the user should read. If the search
+misses, the LLM calls the tool again with a different visible `queryText`. If requested
+`locationTypes` do not exist in the selected papers, the tool returns `NO_MATCHING_LOCATION_TYPE`;
+that means the structure is unavailable, not that the paper lacks the requested concept. If the
+structure exists but the query has no hit, the tool returns `NO_MATCH`.
+_Avoid_: reading need, hidden query rewrite, generative rerank, Source Quote, answer generation,
+paper-content absence claim
 
 **Session State**:
 The current conversation's fixed search-scope label, readable paper count, and similar
@@ -120,17 +235,29 @@ Persistent conversation memory about already-read Source Quotes, attempted paper
 reading questions. Reference Memory helps navigation but cannot support final paper-content claims.
 _Avoid_: evidence, Source Quote, hidden tool state
 
+**Conversation Source Quote Registry**:
+The current conversation's citeable Source Quote set, stored in MySQL as
+`conversation_id + sourceQuoteRef + firstSeenTurnId`. It controls whether an existing Source Quote
+may be cited in this conversation after current permission and search-scope checks. It is not the
+Source Quote storage table and not the Source Quote identity source.
+_Avoid_: global paper_source_quotes lookup, Redis memory, identity table
+
 **Source Quote Trace**:
 A deterministic lookup of explicit `sourceQuoteRef` values supplied by the current model context,
 clicked source chips, or persistent Source Quote records. Source Quote Trace is used for follow-up
 questions about already-read Source Quotes. It returns stored source quote text and source-location
-metadata. It cannot trace model-invented refs, raw internal ids, paper handles,
-page refs, section refs, table refs, or figure refs. Rendered citation numbers such as `[2]` are not
-source refs. Returned source-location refs are metadata, not a shortcut for reading new paper
-content; broader context reading must first list paper locations for the traced paper and then
-read locations from that result.
+metadata. It does not require the paper to have a current READY Reading Model, but it must check the
+owning paper still exists, the user currently has permission, and the paper is inside the fixed
+conversation search scope. If not, it returns `SOURCE_QUOTE_UNAVAILABLE` without quote content. It
+cannot trace model-invented refs, raw internal ids, paper handles, page refs, section refs, table
+refs, or figure refs. Rendered citation numbers such as `[2]` are not source refs. Returned
+source-location refs are metadata, not a shortcut for reading new paper content. Broader context
+reading must use traced metadata such as `paperHandle`, page number, or section label to list current
+READY paper locations, then read current returned refs. If the current location no longer exists,
+return `CURRENT_LOCATION_NOT_FOUND`.
 _Avoid_: semantic search, new source quote retrieval, model memory, raw paper id lookup, reading shortcut,
-rendered citation number lookup, page ref lookup, section ref lookup
+rendered citation number lookup, page ref lookup, section ref lookup, old location ref reuse,
+permission bypass
 
 **Trace Artifact**:
 A JSON file written by the product runtime that records what happened during a Product ReAct turn or

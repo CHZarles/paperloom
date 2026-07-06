@@ -1,11 +1,10 @@
 package com.yizhaoqi.smartpai.eval;
 
 import com.yizhaoqi.smartpai.SmartPaiApplication;
-import com.yizhaoqi.smartpai.repository.PaperFigureRepository;
-import com.yizhaoqi.smartpai.repository.PaperFormulaRepository;
 import com.yizhaoqi.smartpai.repository.PaperParserArtifactRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTableRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingElementRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.PaperVisualAssetRepository;
 import org.springframework.boot.WebApplicationType;
@@ -43,9 +42,8 @@ public final class ProductPdfParserSmokeCli {
                     context.getBean(PaperTextChunkRepository.class),
                     context.getBean(PaperParserArtifactRepository.class),
                     context.getBean(PaperVisualAssetRepository.class),
-                    context.getBean(PaperTableRepository.class),
-                    context.getBean(PaperFigureRepository.class),
-                    context.getBean(PaperFormulaRepository.class),
+                    context.getBean(PaperReadingModelRepository.class),
+                    context.getBean(PaperReadingElementRepository.class),
                     options
             );
             System.out.println("runDir=" + runDir);
@@ -66,18 +64,16 @@ public final class ProductPdfParserSmokeCli {
                            PaperTextChunkRepository chunkRepository,
                            PaperParserArtifactRepository parserArtifactRepository,
                            PaperVisualAssetRepository visualAssetRepository,
-                           PaperTableRepository tableRepository,
-                           PaperFigureRepository figureRepository,
-                           PaperFormulaRepository formulaRepository,
+                           PaperReadingModelRepository readingModelRepository,
+                           PaperReadingElementRepository readingElementRepository,
                            Options options) throws Exception {
         ProductPdfParserSmokeRunner runner = new ProductPdfParserSmokeRunner(
                 paperRepository,
                 chunkRepository,
                 parserArtifactRepository,
                 visualAssetRepository,
-                tableRepository,
-                figureRepository,
-                formulaRepository
+                readingModelRepository,
+                readingElementRepository
         );
         return runner.run(new ProductPdfParserSmokeRunner.Options(
                 options.manifestPath(),

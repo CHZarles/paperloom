@@ -160,20 +160,21 @@ public class PaperAnswerService {
         }
 
         if (intent == Intent.AUTO_SOURCE_QA) {
+            SourceScope routingScope = scope == null || scope.paperIds().isEmpty()
+                    ? SourceScope.auto(budgetProfile(scope))
+                    : SourceScope.manual(scope.paperIds(), budgetProfile(scope));
             TaskRoutingResult routing = taskRouter.route(new TaskRoutingRequest(
                     userId,
                     conversationId,
                     userMessage,
-                    scope == null || scope.paperIds().isEmpty()
-                            ? SourceScope.auto(budgetProfile(scope))
-                            : SourceScope.manual(scope.paperIds(), budgetProfile(scope)),
+                    routingScope,
                     conversationHistory(userId, conversationId)
             ));
             if (routing.failed()) {
                 return routingFailure(routing.failure());
             }
             TaskDecision decision = routing.decision();
-            intent = intentFor(decision.taskType());
+            intent = intentFor(decision.taskType(), routingScope);
             if (!decision.query().isBlank()) {
                 taskQuery = decision.query();
             }
@@ -363,6 +364,17 @@ public class PaperAnswerService {
             case REFERENCE_QA -> Intent.REFERENCE_QA;
             case FOLLOW_UP -> Intent.FOLLOW_UP;
         };
+    }
+
+    private Intent intentFor(TaskType taskType, SourceScope sourceScope) {
+        Intent intent = intentFor(taskType);
+        if (intent == Intent.PAPER_QA
+                && sourceScope != null
+                && sourceScope.mode() == com.yizhaoqi.smartpai.service.ScopeMode.MANUAL_SOURCE
+                && !sourceScope.paperIds().isEmpty()) {
+            return Intent.MANUAL_SOURCE_QA;
+        }
+        return intent;
     }
 
     private AnswerResult routingFailure(TaskRoutingFailure failure) {
@@ -1162,7 +1174,7 @@ public class PaperAnswerService {
     }
 
     private AnswerResult clarify() {
-        return new AnswerResult("你想讲哪一篇？可以点上一条推荐里的编号，或者直接说论文标题。",
+        return new AnswerResult("我无法确定要处理哪篇论文。你想讲哪一篇？可以点上一条推荐里的编号，或者直接说论文标题。",
                 Map.of(), Intent.CLARIFY, 0, 0, false);
     }
 

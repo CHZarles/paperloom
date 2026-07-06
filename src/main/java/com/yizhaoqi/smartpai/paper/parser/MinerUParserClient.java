@@ -55,6 +55,9 @@ public class MinerUParserClient {
     @Value("${paper.parsing.mineru.return-middle-json:true}")
     private boolean returnMiddleJson;
 
+    @Value("${paper.parsing.mineru.return-images:true}")
+    private boolean returnImages;
+
     @Value("${paper.parsing.mineru.response-format-zip:true}")
     private boolean responseFormatZip;
 
@@ -123,6 +126,7 @@ public class MinerUParserClient {
         multipart.part("return_md", Boolean.toString(returnMarkdown));
         multipart.part("return_content_list", Boolean.toString(returnContentList));
         multipart.part("return_middle_json", Boolean.toString(returnMiddleJson));
+        multipart.part("return_images", Boolean.toString(returnImages));
         multipart.part("response_format_zip", Boolean.toString(responseFormatZip));
 
         try {
@@ -295,13 +299,12 @@ public class MinerUParserClient {
                     continue;
                 }
                 String name = entry.getName().toLowerCase(Locale.ROOT);
-                String content = readZipEntry(zipInputStream);
                 if (name.endsWith("content_list.json")) {
-                    contentList = content;
+                    contentList = readZipEntry(zipInputStream);
                 } else if (name.endsWith("middle.json")) {
-                    middle = content;
+                    middle = readZipEntry(zipInputStream);
                 } else if (name.endsWith(".md") && markdown == null) {
-                    markdown = content;
+                    markdown = readZipEntry(zipInputStream);
                 }
             }
         } catch (Exception e) {

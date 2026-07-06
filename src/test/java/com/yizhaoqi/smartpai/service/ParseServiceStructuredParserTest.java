@@ -4,7 +4,6 @@ import com.yizhaoqi.smartpai.model.PaperTextChunk;
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.PaperReadingModel;
 import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
-import com.yizhaoqi.smartpai.model.PaperTable;
 import com.yizhaoqi.smartpai.model.PaperVisualAsset;
 import com.yizhaoqi.smartpai.paper.parser.BoundingBox;
 import com.yizhaoqi.smartpai.paper.parser.PaperChunkBuilder;
@@ -63,16 +62,7 @@ class ParseServiceStructuredParserTest {
     private PaperParserArtifactService paperParserArtifactService;
 
     @Mock
-    private PaperTableService paperTableService;
-
-    @Mock
     private PaperVisualAssetService paperVisualAssetService;
-
-    @Mock
-    private PaperFigureService paperFigureService;
-
-    @Mock
-    private PaperFormulaService paperFormulaService;
 
     @Mock
     private PaperReadingModelService paperReadingModelService;
@@ -86,10 +76,7 @@ class ParseServiceStructuredParserTest {
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
         ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
-        ReflectionTestUtils.setField(parseService, "paperTableService", paperTableService);
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
-        ReflectionTestUtils.setField(parseService, "paperFigureService", paperFigureService);
-        ReflectionTestUtils.setField(parseService, "paperFormulaService", paperFormulaService);
         ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
         ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
@@ -108,13 +95,7 @@ class ParseServiceStructuredParserTest {
         readyModel.setCurrent(true);
         when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true))
                 .thenReturn(readyModel);
-        when(paperTableService.replaceTables(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
-                .thenReturn(List.of(tableRecord()));
-        when(paperFigureService.replaceFigures(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
-                .thenReturn(List.of());
-        when(paperFormulaService.replaceFormulas(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
-                .thenReturn(List.of());
-        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), any(), eq(parsedPaper), any(), any(), eq("7"), eq("lab"), eq(true)))
+        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
                 .thenReturn(List.of());
 
         parseService.parseAndSave(
@@ -158,15 +139,12 @@ class ParseServiceStructuredParserTest {
         assertEquals(Paper.VECTORIZATION_STATUS_CHUNKING, paper.getVectorizationStatus());
         verify(paperRepository, atLeastOnce()).save(paper);
         verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7", "lab", true);
-        verify(paperTableService).replaceTables("paper123", parsedPaper, "7", "lab", true);
-        verify(paperFigureService).replaceFigures("paper123", parsedPaper, "7", "lab", true);
-        verify(paperFormulaService).replaceFormulas("paper123", parsedPaper, "7", "lab", true);
-        verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), any(), eq(parsedPaper), any(), any(), eq("7"), eq("lab"), eq(true));
+        verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true));
 
-        InOrder order = inOrder(paperParserArtifactService, paperReadingModelService, paperTableService);
+        InOrder order = inOrder(paperParserArtifactService, paperReadingModelService, paperVisualAssetService);
         order.verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7", "lab", true);
         order.verify(paperReadingModelService).replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true);
-        order.verify(paperTableService).replaceTables("paper123", parsedPaper, "7", "lab", true);
+        order.verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true));
     }
 
     @Test
@@ -178,10 +156,7 @@ class ParseServiceStructuredParserTest {
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
         ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
-        ReflectionTestUtils.setField(parseService, "paperTableService", paperTableService);
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
-        ReflectionTestUtils.setField(parseService, "paperFigureService", paperFigureService);
-        ReflectionTestUtils.setField(parseService, "paperFormulaService", paperFormulaService);
         ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
         ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
@@ -212,7 +187,6 @@ class ParseServiceStructuredParserTest {
                 )
         );
 
-        verify(paperTableService, never()).replaceTables(any(), any(), any(), any(), eq(true));
         verify(paperTextChunkRepository, never()).save(any());
     }
 
@@ -225,10 +199,7 @@ class ParseServiceStructuredParserTest {
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
         ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
-        ReflectionTestUtils.setField(parseService, "paperTableService", paperTableService);
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
-        ReflectionTestUtils.setField(parseService, "paperFigureService", paperFigureService);
-        ReflectionTestUtils.setField(parseService, "paperFormulaService", paperFormulaService);
         ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
 
@@ -243,10 +214,7 @@ class ParseServiceStructuredParserTest {
         assertEquals(1, estimate.estimatedChunkCount());
         verify(paperPdfParser, never()).parse(any(), any());
         verify(paperParserArtifactService, never()).saveParserArtifact(any(), any(), any(), any(), eq(false));
-        verify(paperTableService, never()).replaceTables(any(), any(), any(), any(), eq(false));
-        verify(paperFigureService, never()).replaceFigures(any(), any(), any(), any(), eq(false));
-        verify(paperFormulaService, never()).replaceFormulas(any(), any(), any(), any(), eq(false));
-        verify(paperVisualAssetService, never()).replaceVisualAssets(any(), any(), any(), any(), any(), any(), any(), eq(false));
+        verify(paperVisualAssetService, never()).replaceVisualAssets(any(), any(), any(), any(), any(), any(), eq(false));
     }
 
     private ParsedPaper parsedPaper() {
@@ -332,12 +300,4 @@ class ParseServiceStructuredParserTest {
         );
     }
 
-    private PaperTable tableRecord() {
-        PaperTable table = new PaperTable();
-        table.setPaperId("paper123");
-        table.setTableId("table-t1");
-        table.setPageNumber(3);
-        table.setTableText("Metric: Accuracy\nPaperLoom: 91.2");
-        return table;
-    }
 }

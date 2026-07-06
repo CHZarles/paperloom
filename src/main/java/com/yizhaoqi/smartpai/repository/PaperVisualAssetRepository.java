@@ -22,17 +22,21 @@ public interface PaperVisualAssetRepository extends JpaRepository<PaperVisualAss
             Integer pageNumber
     );
 
-    Optional<PaperVisualAsset> findFirstByPaperIdAndAssetTypeAndTableId(
+    Optional<PaperVisualAsset> findFirstByPaperIdAndAssetTypeAndParserImagePath(
             String paperId,
             String assetType,
-            String tableId
+            String parserImagePath
     );
 
-    Optional<PaperVisualAsset> findFirstByPaperIdAndAssetTypeAndFigureId(
+    Optional<PaperVisualAsset> findFirstByPaperIdAndAssetTypeAndReadingElementId(
             String paperId,
             String assetType,
-            String figureId
+            String readingElementId
     );
+
+    List<PaperVisualAsset> findByPaperIdAndSourceObjectId(String paperId, String sourceObjectId);
+
+    List<PaperVisualAsset> findByPaperIdAndReadingElementId(String paperId, String readingElementId);
 
     long countByPaperIdAndAssetType(String paperId, String assetType);
 

@@ -75,15 +75,6 @@ public class PaperService {
     private PaperParserArtifactService paperParserArtifactService;
 
     @Autowired
-    private PaperTableService paperTableService;
-
-    @Autowired
-    private PaperFigureService paperFigureService;
-
-    @Autowired
-    private PaperFormulaService paperFormulaService;
-
-    @Autowired
     private PaperVisualAssetService paperVisualAssetService;
 
     @Autowired
@@ -163,9 +154,6 @@ public class PaperService {
         deleteUploadChunks(paperId);
         deleteParserArtifacts(paperId);
         deleteVisualAssets(paperId);
-        deleteTables(paperId);
-        deleteFigures(paperId);
-        deleteFormulas(paperId);
         deleteParsedChunks(paperId);
     }
 
@@ -244,33 +232,6 @@ public class PaperService {
         }
     }
 
-    private void deleteTables(String paperId) {
-        try {
-            paperTableService.deleteTables(paperId);
-            logger.info("成功删除论文表格 metadata: paperId={}", paperId);
-        } catch (Exception e) {
-            logger.error("删除论文表格 metadata 时出错: paperId={}", paperId, e);
-        }
-    }
-
-    private void deleteFigures(String paperId) {
-        try {
-            paperFigureService.deleteFigures(paperId);
-            logger.info("成功删除论文图像 metadata: paperId={}", paperId);
-        } catch (Exception e) {
-            logger.error("删除论文图像 metadata 时出错: paperId={}", paperId, e);
-        }
-    }
-
-    private void deleteFormulas(String paperId) {
-        try {
-            paperFormulaService.deleteFormulas(paperId);
-            logger.info("成功删除论文公式 metadata: paperId={}", paperId);
-        } catch (Exception e) {
-            logger.error("删除论文公式 metadata 时出错: paperId={}", paperId, e);
-        }
-    }
-
     public VectorizationService.VectorizationUsageResult reindexPaper(String paperId, String requesterId) {
         logger.info("开始重建论文索引: paperId={}, requesterId={}", paperId, requesterId);
 
@@ -290,9 +251,6 @@ public class PaperService {
             paperTextChunkRepository.deleteByPaperId(paperId);
             paperParserArtifactService.deleteParserArtifacts(paperId);
             paperVisualAssetService.deleteVisualAssets(paperId);
-            paperTableService.deleteTables(paperId);
-            paperFigureService.deleteFigures(paperId);
-            paperFormulaService.deleteFormulas(paperId);
 
             parseService.parseAndSave(
                     paperId,

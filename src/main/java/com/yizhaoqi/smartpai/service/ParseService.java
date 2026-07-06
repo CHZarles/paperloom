@@ -49,16 +49,7 @@ public class ParseService {
     private PaperParserArtifactService paperParserArtifactService;
 
     @Autowired
-    private PaperTableService paperTableService;
-
-    @Autowired
     private PaperVisualAssetService paperVisualAssetService;
-
-    @Autowired
-    private PaperFigureService paperFigureService;
-
-    @Autowired
-    private PaperFormulaService paperFormulaService;
 
     @Autowired
     private PaperReadingModelService paperReadingModelService;
@@ -85,14 +76,24 @@ public class ParseService {
         checkMemoryThreshold();
 
         byte[] pdfBytes = fileStream.readAllBytes();
+        Integer physicalPageCount = physicalPageCount(pdfBytes);
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_MINERU_RUNNING);
         ParsedPaper parsedPaper = paperPdfParser.parse(new ByteArrayInputStream(pdfBytes), originalFilename);
         updatePaperMetadata(paperId, parsedPaper);
         paperParserArtifactService.saveParserArtifact(paperId, parsedPaper, userId, orgTag, isPublic);
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_MINERU_ARTIFACT_SAVED);
-        PaperReadingModel readingModel = paperReadingModelService.replaceFromParsedPaper(
+        PaperReadingModel readingModel = physicalPageCount == null
+                ? paperReadingModelService.replaceFromParsedPaper(
                 paperId,
                 parsedPaper,
+                userId,
+                orgTag,
+                isPublic
+        )
+                : paperReadingModelService.replaceFromParsedPaper(
+                paperId,
+                parsedPaper,
+                physicalPageCount,
                 userId,
                 orgTag,
                 isPublic
@@ -103,11 +104,16 @@ public class ParseService {
                     + paperId + ", reason=" + reason);
         }
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_MAPPING_STRUCTURED_CONTENT);
-        var tables = paperTableService.replaceTables(paperId, parsedPaper, userId, orgTag, isPublic);
-        var figures = paperFigureService.replaceFigures(paperId, parsedPaper, userId, orgTag, isPublic);
-        paperFormulaService.replaceFormulas(paperId, parsedPaper, userId, orgTag, isPublic);
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_RENDERING_VISUAL_ASSETS);
-        paperVisualAssetService.replaceVisualAssets(paperId, pdfBytes, parsedPaper, tables, figures, userId, orgTag, isPublic);
+        paperVisualAssetService.replaceVisualAssets(
+                paperId,
+                readingModel.getModelVersion(),
+                pdfBytes,
+                parsedPaper,
+                userId,
+                orgTag,
+                isPublic
+        );
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_CHUNKING);
         List<PaperChunkCandidate> chunks = paperChunkBuilder.buildChunks(parsedPaper, chunkSize);
         saveStructuredChunks(paperId, chunks, userId, orgTag, isPublic);
@@ -136,6 +142,18 @@ public class ParseService {
             return new PDFTextStripper().getText(document);
         } catch (Exception ignored) {
             return new String(pdfBytes, StandardCharsets.UTF_8);
+        }
+    }
+
+    private Integer physicalPageCount(byte[] pdfBytes) {
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            return null;
+        }
+        try (PDDocument document = PDDocument.load(pdfBytes)) {
+            return document.getNumberOfPages();
+        } catch (Exception e) {
+            logger.warn("无法读取 PDF 物理页数，将使用 parser 页数: {}", e.getMessage());
+            return null;
         }
     }
 

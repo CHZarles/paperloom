@@ -1,5 +1,7 @@
 package com.yizhaoqi.smartpai.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -16,9 +18,10 @@ import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.model.Paper;
-import com.yizhaoqi.smartpai.model.PaperTable;
+import com.yizhaoqi.smartpai.model.PaperReadingElement;
 import com.yizhaoqi.smartpai.model.PaperVisualAsset;
-import com.yizhaoqi.smartpai.repository.PaperTableRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingElementRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.repository.PaperVisualAssetRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +37,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +49,8 @@ public class HybridSearchService {
     static final String KEYWORD_MATCH_FIELD = "retrievalTextContent";
 
     private static final Logger logger = LoggerFactory.getLogger(HybridSearchService.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Autowired
     private ElasticsearchClient esClient;
 
@@ -64,7 +70,10 @@ public class HybridSearchService {
     private PaperRepository paperRepository;
 
     @Autowired
-    private PaperTableRepository paperTableRepository;
+    private PaperReadingModelRepository paperReadingModelRepository;
+
+    @Autowired
+    private PaperReadingElementRepository paperReadingElementRepository;
 
     @Autowired
     private PaperVisualAssetRepository paperVisualAssetRepository;
@@ -711,16 +720,24 @@ public class HybridSearchService {
                 continue;
             }
             try {
-                paperTableRepository.findFirstByPaperIdAndTableId(result.getPaperId(), result.getTableId())
-                        .ifPresent(table -> applyTableEvidence(result, table));
-                boolean screenshotAvailable = paperVisualAssetRepository
-                        .findFirstByPaperIdAndAssetTypeAndTableId(
-                                result.getPaperId(),
-                                PaperVisualAsset.TYPE_TABLE_CROP,
-                                result.getTableId()
-                        )
-                        .isPresent();
-                result.setTableScreenshotAvailable(screenshotAvailable);
+                Optional<PaperReadingElement> table = currentReadingElement(
+                        result.getPaperId(),
+                        result.getTableId(),
+                        List.of("TABLE")
+                );
+                table.ifPresent(element -> {
+                    applyTableEvidence(result, element);
+                    result.setTableId(element.getReadingElementId());
+                });
+                String visualTargetId = table
+                        .map(PaperReadingElement::getReadingElementId)
+                        .orElse(result.getTableId());
+                result.setTableScreenshotAvailable(readingElementAssetAvailable(
+                        result.getPaperId(),
+                        visualTargetId,
+                        PaperVisualAsset.TYPE_TABLE_CROP,
+                        PaperVisualAsset.TYPE_PARSER_IMAGE
+                ));
             } catch (Exception e) {
                 logger.warn("补充表格 evidence 失败: paperId={}, tableId={}, error={}",
                         result.getPaperId(), result.getTableId(), e.getMessage());
@@ -728,12 +745,9 @@ public class HybridSearchService {
         }
     }
 
-    private void applyTableEvidence(SearchResult result, PaperTable table) {
-        result.setTableText(table.getTableText());
-        result.setTableMarkdown(table.getTableMarkdown());
-        if (table.getScreenshotObjectKey() != null && !table.getScreenshotObjectKey().isBlank()) {
-            result.setTableScreenshotAvailable(true);
-        }
+    private void applyTableEvidence(SearchResult result, PaperReadingElement table) {
+        result.setTableText(table.getBodyText());
+        result.setTableMarkdown(structuredPayloadText(table, "tableMarkdown"));
     }
 
     private void applySourceProvenance(SearchResult result, Paper paper) {
@@ -755,21 +769,81 @@ public class HybridSearchService {
             result.setPageScreenshotAvailable(pageAvailable);
         }
         if (result.getFigureId() != null && !result.getFigureId().isBlank()) {
-            boolean figureAvailable = paperVisualAssetRepository
-                    .findFirstByPaperIdAndAssetTypeAndFigureId(
-                            result.getPaperId(),
-                            PaperVisualAsset.TYPE_FIGURE_CROP,
-                            result.getFigureId()
-                    )
-                    .isPresent()
-                    || paperVisualAssetRepository
-                    .findFirstByPaperIdAndAssetTypeAndFigureId(
-                            result.getPaperId(),
-                            PaperVisualAsset.TYPE_CHART_CROP,
-                            result.getFigureId()
-                    )
+            Optional<PaperReadingElement> figure = currentReadingElement(
+                    result.getPaperId(),
+                    result.getFigureId(),
+                    List.of("IMAGE", "CHART")
+            );
+            figure.ifPresent(element -> result.setFigureId(element.getReadingElementId()));
+            String visualTargetId = figure
+                    .map(PaperReadingElement::getReadingElementId)
+                    .orElse(result.getFigureId());
+            result.setFigureScreenshotAvailable(readingElementAssetAvailable(
+                    result.getPaperId(),
+                    visualTargetId,
+                    PaperVisualAsset.TYPE_FIGURE_CROP,
+                    PaperVisualAsset.TYPE_CHART_CROP,
+                    PaperVisualAsset.TYPE_PARSER_IMAGE
+            ));
+        }
+    }
+
+    private Optional<PaperReadingElement> currentReadingElement(String paperId, String elementId, List<String> elementTypes) {
+        if (paperId == null || paperId.isBlank()
+                || elementId == null || elementId.isBlank()
+                || paperReadingModelRepository == null
+                || paperReadingElementRepository == null) {
+            return Optional.empty();
+        }
+        return paperReadingModelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId)
+                .flatMap(model -> paperReadingElementRepository
+                        .findByPaperIdAndModelVersionAndElementTypeInOrderByPageNumberAscReadingOrderAscIdAsc(
+                                paperId,
+                                model.getModelVersion(),
+                                elementTypes
+                        )
+                        .stream()
+                        .filter(element -> elementId.equals(element.getReadingElementId())
+                                || elementId.equals(element.getSourceObjectId())
+                                || elementId.equals(element.getParserElementId()))
+                        .findFirst());
+    }
+
+    private boolean readingElementAssetAvailable(String paperId, String readingElementId, String... assetTypes) {
+        if (paperId == null || paperId.isBlank()
+                || readingElementId == null || readingElementId.isBlank()
+                || assetTypes == null
+                || paperVisualAssetRepository == null) {
+            return false;
+        }
+        for (String assetType : assetTypes) {
+            boolean available = paperVisualAssetRepository
+                    .findFirstByPaperIdAndAssetTypeAndReadingElementId(paperId, assetType, readingElementId)
+                    .filter(this::hasStoredObject)
                     .isPresent();
-            result.setFigureScreenshotAvailable(figureAvailable);
+            if (available) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasStoredObject(PaperVisualAsset asset) {
+        return asset != null
+                && PaperVisualAsset.STATUS_AVAILABLE.equals(asset.getAssetStatus())
+                && asset.getObjectKey() != null
+                && !asset.getObjectKey().isBlank();
+    }
+
+    private String structuredPayloadText(PaperReadingElement element, String field) {
+        if (element == null || element.getStructuredPayloadJson() == null || element.getStructuredPayloadJson().isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode value = objectMapper.readTree(element.getStructuredPayloadJson()).path(field);
+            return value.isMissingNode() || value.isNull() ? null : value.asText();
+        } catch (Exception ignored) {
+            return null;
         }
     }
 

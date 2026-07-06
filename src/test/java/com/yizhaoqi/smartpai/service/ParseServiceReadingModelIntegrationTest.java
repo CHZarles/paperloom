@@ -48,16 +48,7 @@ class ParseServiceReadingModelIntegrationTest {
     private PaperParserArtifactService paperParserArtifactService;
 
     @Mock
-    private PaperTableService paperTableService;
-
-    @Mock
     private PaperVisualAssetService paperVisualAssetService;
-
-    @Mock
-    private PaperFigureService paperFigureService;
-
-    @Mock
-    private PaperFormulaService paperFormulaService;
 
     @Mock
     private PaperReadingModelService paperReadingModelService;
@@ -73,13 +64,7 @@ class ParseServiceReadingModelIntegrationTest {
         when(paperPdfParser.parse(any(), eq("uploaded.pdf"))).thenReturn(parsedPaper);
         when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true))
                 .thenReturn(readyModel());
-        when(paperTableService.replaceTables(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
-                .thenReturn(List.of());
-        when(paperFigureService.replaceFigures(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
-                .thenReturn(List.of());
-        when(paperFormulaService.replaceFormulas(eq("paper123"), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
-                .thenReturn(List.of());
-        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), any(), eq(parsedPaper), any(), any(), eq("7"), eq("lab"), eq(true)))
+        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
                 .thenReturn(List.of());
 
         parseService.parseAndSave(
@@ -91,10 +76,10 @@ class ParseServiceReadingModelIntegrationTest {
                 true
         );
 
-        InOrder order = inOrder(paperParserArtifactService, paperReadingModelService, paperTableService);
+        InOrder order = inOrder(paperParserArtifactService, paperReadingModelService, paperVisualAssetService);
         order.verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7", "lab", true);
         order.verify(paperReadingModelService).replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true);
-        order.verify(paperTableService).replaceTables("paper123", parsedPaper, "7", "lab", true);
+        order.verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true));
     }
 
     private ParseService parseService() {
@@ -105,10 +90,7 @@ class ParseServiceReadingModelIntegrationTest {
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
         ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
-        ReflectionTestUtils.setField(parseService, "paperTableService", paperTableService);
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
-        ReflectionTestUtils.setField(parseService, "paperFigureService", paperFigureService);
-        ReflectionTestUtils.setField(parseService, "paperFormulaService", paperFormulaService);
         ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
         ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);

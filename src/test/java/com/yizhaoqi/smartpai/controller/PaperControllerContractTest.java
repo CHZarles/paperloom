@@ -4,19 +4,24 @@ import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.PaperParserArtifact;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.OrganizationTagRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingElementRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.service.ChatHandler;
 import com.yizhaoqi.smartpai.service.ConversationService;
-import com.yizhaoqi.smartpai.service.PaperFigureService;
-import com.yizhaoqi.smartpai.service.PaperFormulaService;
 import com.yizhaoqi.smartpai.service.PaperParserArtifactService;
+import com.yizhaoqi.smartpai.service.PaperRecommendationCandidate;
+import com.yizhaoqi.smartpai.service.PaperRecommendationCandidateService;
+import com.yizhaoqi.smartpai.service.PaperRecommendationSearchRequest;
 import com.yizhaoqi.smartpai.service.PaperService;
-import com.yizhaoqi.smartpai.service.PaperTableService;
 import com.yizhaoqi.smartpai.service.PaperVisualAssetService;
+import com.yizhaoqi.smartpai.service.ReadingLocationCandidate;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
+import com.yizhaoqi.smartpai.model.PaperLocationType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -31,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -73,16 +79,16 @@ class PaperControllerContractTest {
     private PaperParserArtifactService paperParserArtifactService;
 
     @Mock
-    private PaperTableService paperTableService;
+    private PaperReadingModelRepository paperReadingModelRepository;
 
     @Mock
-    private PaperFigureService paperFigureService;
-
-    @Mock
-    private PaperFormulaService paperFormulaService;
+    private PaperReadingElementRepository paperReadingElementRepository;
 
     @Mock
     private PaperVisualAssetService paperVisualAssetService;
+
+    @Mock
+    private PaperRecommendationCandidateService paperRecommendationCandidateService;
 
     private PaperController paperController;
 
@@ -97,15 +103,13 @@ class PaperControllerContractTest {
         ReflectionTestUtils.setField(paperController, "chatHandler", chatHandler);
         ReflectionTestUtils.setField(paperController, "conversationService", conversationService);
         ReflectionTestUtils.setField(paperController, "paperParserArtifactService", paperParserArtifactService);
-        ReflectionTestUtils.setField(paperController, "paperTableService", paperTableService);
-        ReflectionTestUtils.setField(paperController, "paperFigureService", paperFigureService);
-        ReflectionTestUtils.setField(paperController, "paperFormulaService", paperFormulaService);
+        ReflectionTestUtils.setField(paperController, "paperReadingModelRepository", paperReadingModelRepository);
+        ReflectionTestUtils.setField(paperController, "paperReadingElementRepository", paperReadingElementRepository);
         ReflectionTestUtils.setField(paperController, "paperVisualAssetService", paperVisualAssetService);
+        ReflectionTestUtils.setField(paperController, "paperRecommendationCandidateService", paperRecommendationCandidateService);
 
         when(paperParserArtifactService.findLatestParserArtifact(anyString())).thenReturn(Optional.empty());
-        when(paperTableService.countByPaperId(anyString())).thenReturn(0L);
-        when(paperFigureService.countByPaperId(anyString())).thenReturn(0L);
-        when(paperFormulaService.countByPaperId(anyString())).thenReturn(0L);
+        when(paperReadingModelRepository.findFirstByPaperIdAndIsCurrentTrue(anyString())).thenReturn(Optional.empty());
         when(paperVisualAssetService.countPageScreenshots(anyString())).thenReturn(0L);
         when(paperVisualAssetService.countTableCrops(anyString())).thenReturn(0L);
         when(paperVisualAssetService.countFigureCrops(anyString())).thenReturn(0L);
@@ -232,6 +236,79 @@ class PaperControllerContractTest {
                 isNull(),
                 eq(PageRequest.of(0, 10))
         );
+    }
+
+    @Test
+    void recommendationCandidateEndpointReturnsPaperGroupedCandidatesAndClampsLimits() {
+        ReadingLocationCandidate location = new ReadingLocationCandidate(
+                "paper-agent",
+                "v1",
+                "section-ref-1",
+                PaperLocationType.SECTION,
+                2,
+                2,
+                "Evaluation",
+                null,
+                "Agentic eval appears here.",
+                "SECTION",
+                "SECTION_LOCATION",
+                List.of("sectionText"),
+                List.of()
+        );
+        PaperRecommendationCandidate candidate = new PaperRecommendationCandidate(
+                "paper-agent",
+                "Agentic Eval Benchmark",
+                "Ada Lovelace",
+                2025,
+                "NeurIPS",
+                "Preview",
+                "title matched all query tokens",
+                "SUPPORTED",
+                List.of(location)
+        );
+        when(paperRecommendationCandidateService.search(any(PaperRecommendationSearchRequest.class)))
+                .thenReturn(List.of(candidate));
+
+        var response = paperController.recommendationCandidates(
+                new PaperController.PaperRecommendationCandidatesRequest("Agentic eval", 999, 99),
+                "1",
+                "default"
+        );
+
+        assertEquals(200, response.getStatusCode().value());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+        List<?> candidates = (List<?>) data.get("candidates");
+        PaperRecommendationCandidate first = (PaperRecommendationCandidate) candidates.get(0);
+
+        assertEquals(200, body.get("code"));
+        assertEquals("获取论文候选成功", body.get("message"));
+        assertEquals("Agentic eval", data.get("queryText"));
+        assertEquals("PRODUCT_LIBRARY", data.get("scope"));
+        assertEquals("paper-agent", first.paperId());
+        assertEquals("SUPPORTED", first.evidenceStatus());
+
+        ArgumentCaptor<PaperRecommendationSearchRequest> requestCaptor =
+                ArgumentCaptor.forClass(PaperRecommendationSearchRequest.class);
+        verify(paperRecommendationCandidateService).search(requestCaptor.capture());
+        assertEquals("1", requestCaptor.getValue().userId());
+        assertEquals("default", requestCaptor.getValue().orgTags());
+        assertEquals(100, requestCaptor.getValue().paperLimit());
+        assertEquals(10, requestCaptor.getValue().perPaperLocationLimit());
+    }
+
+    @Test
+    void recommendationCandidateEndpointRejectsBlankQuery() {
+        var response = paperController.recommendationCandidates(
+                new PaperController.PaperRecommendationCandidatesRequest(" ", 20, 3),
+                "1",
+                "default"
+        );
+
+        assertEquals(400, response.getStatusCode().value());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        assertEquals(400, body.get("code"));
+        verify(paperRecommendationCandidateService, never()).search(any(PaperRecommendationSearchRequest.class));
     }
 
     @Test

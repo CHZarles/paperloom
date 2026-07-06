@@ -33,9 +33,11 @@ public final class EvalCorpusCleanupCli {
     private static final List<TableRef> PAPER_ID_TABLES = List.of(
             new TableRef("paper_visual_assets", "paper_id"),
             new TableRef("paper_parser_artifacts", "paper_id"),
-            new TableRef("paper_tables", "paper_id"),
-            new TableRef("paper_figures", "paper_id"),
-            new TableRef("paper_formulas", "paper_id"),
+            new TableRef("paper_reading_elements", "paper_id"),
+            new TableRef("paper_locations", "paper_id"),
+            new TableRef("paper_sections", "paper_id"),
+            new TableRef("paper_pages", "paper_id"),
+            new TableRef("paper_reading_models", "paper_id"),
             new TableRef("paper_text_chunks", "paper_id"),
             new TableRef("chunk_info", "file_md5"),
             new TableRef("file_upload", "file_md5")
@@ -89,9 +91,11 @@ public final class EvalCorpusCleanupCli {
         output.println("paper_text_chunks rows: " + counts.paperTextChunkRows());
         output.println("chunk_info rows: " + counts.uploadChunkRows());
         output.println("paper_parser_artifacts rows: " + counts.parserArtifactRows());
-        output.println("paper_tables rows: " + counts.tableRows());
-        output.println("paper_figures rows: " + counts.figureRows());
-        output.println("paper_formulas rows: " + counts.formulaRows());
+        output.println("paper_reading_models rows: " + counts.readingModelRows());
+        output.println("paper_pages rows: " + counts.readingPageRows());
+        output.println("paper_sections rows: " + counts.readingSectionRows());
+        output.println("paper_locations rows: " + counts.readingLocationRows());
+        output.println("paper_reading_elements rows: " + counts.readingElementRows());
         output.println("paper_visual_assets rows: " + counts.visualAssetRows());
         output.println("conversations rows: " + counts.conversationRows());
         output.println("product paper_search docs: " + counts.paperSearchDocs());
@@ -112,9 +116,11 @@ public final class EvalCorpusCleanupCli {
             long paperTextChunkRows,
             long uploadChunkRows,
             long parserArtifactRows,
-            long tableRows,
-            long figureRows,
-            long formulaRows,
+            long readingModelRows,
+            long readingPageRows,
+            long readingSectionRows,
+            long readingLocationRows,
+            long readingElementRows,
             long visualAssetRows,
             long conversationRows,
             long paperSearchDocs,
@@ -197,9 +203,11 @@ public final class EvalCorpusCleanupCli {
                         countPrefixRows(connection, options.sourceSchema(), "paper_text_chunks", "paper_id", prefixes),
                         countPrefixRows(connection, options.sourceSchema(), "chunk_info", "file_md5", prefixes),
                         countPrefixRows(connection, options.sourceSchema(), "paper_parser_artifacts", "paper_id", prefixes),
-                        countPrefixRows(connection, options.sourceSchema(), "paper_tables", "paper_id", prefixes),
-                        countPrefixRows(connection, options.sourceSchema(), "paper_figures", "paper_id", prefixes),
-                        countPrefixRows(connection, options.sourceSchema(), "paper_formulas", "paper_id", prefixes),
+                        countPrefixRows(connection, options.sourceSchema(), "paper_reading_models", "paper_id", prefixes),
+                        countPrefixRows(connection, options.sourceSchema(), "paper_pages", "paper_id", prefixes),
+                        countPrefixRows(connection, options.sourceSchema(), "paper_sections", "paper_id", prefixes),
+                        countPrefixRows(connection, options.sourceSchema(), "paper_locations", "paper_id", prefixes),
+                        countPrefixRows(connection, options.sourceSchema(), "paper_reading_elements", "paper_id", prefixes),
                         countPrefixRows(connection, options.sourceSchema(), "paper_visual_assets", "paper_id", prefixes),
                         countConversationRows(connection, options.sourceSchema(), prefixes),
                         productSearchStore.count(PRODUCT_PAPER_INDEX, prefixes),
@@ -218,9 +226,11 @@ public final class EvalCorpusCleanupCli {
                 List<String> prefixes = evalPaperPrefixes(connection, options.evalSchema());
                 long visualAssets = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_visual_assets", "paper_id", prefixes);
                 long parserArtifacts = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_parser_artifacts", "paper_id", prefixes);
-                long tables = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_tables", "paper_id", prefixes);
-                long figures = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_figures", "paper_id", prefixes);
-                long formulas = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_formulas", "paper_id", prefixes);
+                long readingElements = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_reading_elements", "paper_id", prefixes);
+                long locations = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_locations", "paper_id", prefixes);
+                long sections = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_sections", "paper_id", prefixes);
+                long pages = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_pages", "paper_id", prefixes);
+                long readingModels = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_reading_models", "paper_id", prefixes);
                 long chunks = deletePrefixRowsInBatches(connection, options.sourceSchema(), "paper_text_chunks", "paper_id", prefixes);
                 long uploadChunks = deletePrefixRowsInBatches(connection, options.sourceSchema(), "chunk_info", "file_md5", prefixes);
                 long papers = deletePrefixRowsInBatches(connection, options.sourceSchema(), "file_upload", "file_md5", prefixes);
@@ -235,9 +245,11 @@ public final class EvalCorpusCleanupCli {
                         chunks,
                         uploadChunks,
                         parserArtifacts,
-                        tables,
-                        figures,
-                        formulas,
+                        readingModels,
+                        pages,
+                        sections,
+                        locations,
+                        readingElements,
                         visualAssets,
                         conversations,
                         paperDocs,

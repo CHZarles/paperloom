@@ -61,15 +61,6 @@ class PaperServiceTest {
     private PaperParserArtifactService paperParserArtifactService;
 
     @Mock
-    private PaperTableService paperTableService;
-
-    @Mock
-    private PaperFigureService paperFigureService;
-
-    @Mock
-    private PaperFormulaService paperFormulaService;
-
-    @Mock
     private PaperVisualAssetService paperVisualAssetService;
 
     @Mock
@@ -91,9 +82,6 @@ class PaperServiceTest {
         ReflectionTestUtils.setField(paperService, "elasticsearchService", elasticsearchService);
         ReflectionTestUtils.setField(paperService, "uploadService", uploadService);
         ReflectionTestUtils.setField(paperService, "paperParserArtifactService", paperParserArtifactService);
-        ReflectionTestUtils.setField(paperService, "paperTableService", paperTableService);
-        ReflectionTestUtils.setField(paperService, "paperFigureService", paperFigureService);
-        ReflectionTestUtils.setField(paperService, "paperFormulaService", paperFormulaService);
         ReflectionTestUtils.setField(paperService, "paperVisualAssetService", paperVisualAssetService);
         ReflectionTestUtils.setField(paperService, "kafkaTemplate", kafkaTemplate);
         ReflectionTestUtils.setField(paperService, "kafkaConfig", kafkaConfig);

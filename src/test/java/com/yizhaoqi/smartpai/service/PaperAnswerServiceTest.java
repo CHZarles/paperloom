@@ -1088,7 +1088,7 @@ class PaperAnswerServiceTest {
                 )
         );
 
-        assertEquals(PaperAnswerService.Intent.PAPER_QA, answer.intent());
+        assertEquals(PaperAnswerService.Intent.MANUAL_SOURCE_QA, answer.intent());
         assertEquals("MANUAL_SOURCE", answer.diagnostics().scopeMode());
         assertTrue(answer.markdown().contains("[1]"));
         assertEquals("paper-a", answer.referenceMappings().get(1).paperId());

@@ -44,8 +44,17 @@ public class PaperLocation {
     @Column(name = "page_number", nullable = false)
     private Integer pageNumber;
 
+    @Column(name = "page_end_number")
+    private Integer pageEndNumber;
+
     @Column(name = "section_title", length = 500)
     private String sectionTitle;
+
+    @Column(name = "source_object_id", length = 96)
+    private String sourceObjectId;
+
+    @Column(name = "display_order")
+    private Integer displayOrder;
 
     @Lob
     @Column(name = "source_span_json", nullable = false, columnDefinition = "TEXT")

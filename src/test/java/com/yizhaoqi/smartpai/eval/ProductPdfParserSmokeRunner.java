@@ -2,12 +2,12 @@ package com.yizhaoqi.smartpai.eval;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
 import com.yizhaoqi.smartpai.model.PaperVisualAsset;
-import com.yizhaoqi.smartpai.repository.PaperFigureRepository;
-import com.yizhaoqi.smartpai.repository.PaperFormulaRepository;
 import com.yizhaoqi.smartpai.repository.PaperParserArtifactRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperTableRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingElementRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.repository.PaperTextChunkRepository;
 import com.yizhaoqi.smartpai.repository.PaperVisualAssetRepository;
 
@@ -36,24 +36,21 @@ public class ProductPdfParserSmokeRunner {
     private final PaperTextChunkRepository chunkRepository;
     private final PaperParserArtifactRepository parserArtifactRepository;
     private final PaperVisualAssetRepository visualAssetRepository;
-    private final PaperTableRepository tableRepository;
-    private final PaperFigureRepository figureRepository;
-    private final PaperFormulaRepository formulaRepository;
+    private final PaperReadingModelRepository readingModelRepository;
+    private final PaperReadingElementRepository readingElementRepository;
 
     public ProductPdfParserSmokeRunner(PaperRepository paperRepository,
                                        PaperTextChunkRepository chunkRepository,
                                        PaperParserArtifactRepository parserArtifactRepository,
                                        PaperVisualAssetRepository visualAssetRepository,
-                                       PaperTableRepository tableRepository,
-                                       PaperFigureRepository figureRepository,
-                                       PaperFormulaRepository formulaRepository) {
+                                       PaperReadingModelRepository readingModelRepository,
+                                       PaperReadingElementRepository readingElementRepository) {
         this.paperRepository = paperRepository;
         this.chunkRepository = chunkRepository;
         this.parserArtifactRepository = parserArtifactRepository;
         this.visualAssetRepository = visualAssetRepository;
-        this.tableRepository = tableRepository;
-        this.figureRepository = figureRepository;
-        this.formulaRepository = formulaRepository;
+        this.readingModelRepository = readingModelRepository;
+        this.readingElementRepository = readingElementRepository;
     }
 
     public Path run(Options options) throws IOException {
@@ -181,13 +178,17 @@ public class ProductPdfParserSmokeRunner {
                 paperId,
                 PaperVisualAsset.TYPE_CHART_CROP
         );
-        long tableCount = tableRepository.countByPaperId(paperId);
-        long figureCount = figureRepository.countByPaperId(paperId);
-        long formulaCount = formulaRepository.countByPaperId(paperId);
+        String currentModelVersion = currentReadingModelVersion(paperId);
+        long tableCount = currentReadingElementCount(paperId, currentModelVersion, "TABLE");
+        long figureCount = currentReadingElementCount(paperId, currentModelVersion, "IMAGE")
+                + currentReadingElementCount(paperId, currentModelVersion, "CHART");
+        long formulaCount = currentReadingElementCount(paperId, currentModelVersion, "FORMULA");
 
         diagnostics.put("chunkCount", chunkCount);
         diagnostics.put("pageAwareChunkCount", pageAwareChunkCount);
         diagnostics.put("parserArtifactCount", parserArtifactCount);
+        diagnostics.put("readingModelVersion", currentModelVersion);
+        diagnostics.put("structuredContentSource", "paper_reading_elements");
         diagnostics.put("pageScreenshotCount", pageScreenshotCount);
         diagnostics.put("tableCount", tableCount);
         diagnostics.put("figureCount", figureCount);
@@ -243,6 +244,23 @@ public class ProductPdfParserSmokeRunner {
                 manifestCase.minFigureCrops(), "VISUAL_ASSET");
         addMinimumCountFailure(failures, failureClass, "chart_crop_count", chartCropCount,
                 manifestCase.minChartCrops(), "VISUAL_ASSET");
+    }
+
+    private String currentReadingModelVersion(String paperId) {
+        if (paperId == null || paperId.isBlank()) {
+            return null;
+        }
+        Optional<PaperReadingModel> current = readingModelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId);
+        return current == null ? null : current.map(PaperReadingModel::getModelVersion).orElse(null);
+    }
+
+    private long currentReadingElementCount(String paperId, String modelVersion, String elementType) {
+        if (paperId == null || paperId.isBlank()
+                || modelVersion == null || modelVersion.isBlank()
+                || elementType == null || elementType.isBlank()) {
+            return 0;
+        }
+        return readingElementRepository.countByPaperIdAndModelVersionAndElementType(paperId, modelVersion, elementType);
     }
 
     private Optional<LocatedPaper> locatePaper(ManifestCase manifestCase, Path manifestPath) throws IOException {

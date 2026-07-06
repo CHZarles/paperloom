@@ -1,8 +1,12 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.SmartPaiApplication;
+import com.yizhaoqi.smartpai.model.PaperLocationType;
+import com.yizhaoqi.smartpai.paper.parser.MinerUUnavailableException;
 import com.yizhaoqi.smartpai.paper.parser.PaperPdfParser;
 import com.yizhaoqi.smartpai.paper.parser.ParsedPaper;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,22 +60,37 @@ class PaperReadingModelDataPdfSmokeTest {
 
         for (Path pdf : pdfs) {
             assertTrue(Files.exists(pdf), "missing smoke PDF: " + pdf);
+            int pdfPageCount;
+            try (PDDocument document = PDDocument.load(pdf.toFile())) {
+                pdfPageCount = document.getNumberOfPages();
+            }
             ParsedPaper parsedPaper;
             try (InputStream inputStream = Files.newInputStream(pdf)) {
-                parsedPaper = paperPdfParser.parse(inputStream, pdf.getFileName().toString());
+                try {
+                    parsedPaper = paperPdfParser.parse(inputStream, pdf.getFileName().toString());
+                } catch (MinerUUnavailableException exception) {
+                    Assumptions.abort("MinerU sidecar unavailable for real PDF smoke: " + exception.getMessage());
+                    return;
+                }
             }
 
             PaperReadingModelBuildResult result = builder.build(
                     "smoke-" + pdf.getFileName(),
                     "rm_smoke",
                     parsedPaper,
+                    pdfPageCount,
                     "smoke-user",
                     "smoke-org",
                     false
             );
 
-            assertFalse(result.pages().isEmpty(), "no pages for " + pdf);
-            assertEquals(result.pages().size(), result.locations().size(), "page/location mismatch for " + pdf);
+            assertEquals(pdfPageCount, result.pages().size(), "physical page mismatch for " + pdf);
+            long pageLocationCount = result.locations().stream()
+                    .filter(location -> location.getLocationType() == PaperLocationType.PAGE)
+                    .count();
+            assertEquals(result.pages().size(), pageLocationCount, "page/location mismatch for " + pdf);
+            assertTrue(result.pages().stream().anyMatch(page -> page.getCharCount() != null && page.getCharCount() > 0),
+                    "no readable pages for " + pdf);
             assertTrue(result.diagnosticsJson().contains("\"readablePageCount\""), result.diagnosticsJson());
             assertTrue(result.diagnosticsJson().contains("\"locationCount\""), result.diagnosticsJson());
         }

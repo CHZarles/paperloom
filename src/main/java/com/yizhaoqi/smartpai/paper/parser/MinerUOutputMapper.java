@@ -155,15 +155,18 @@ public class MinerUOutputMapper {
 
     private String extractText(JsonNode item, ParsedPaperElementType elementType) {
         return switch (elementType) {
-            case TABLE -> buildTableText(caption(item), htmlText(text(item, "table_body")));
-            case FIGURE, CHART -> firstNonBlank(caption(item), text(item, "text"), text(item, "image_text"));
+            case TABLE -> buildTableText(tableCaption(item), htmlText(text(item, "table_body")));
+            case FIGURE, CHART -> firstNonBlank(figureCaption(item, elementType),
+                    text(item, "text"),
+                    text(item, "image_text"),
+                    text(item, "content"));
             case FORMULA -> firstNonBlank(text(item, "text"), text(item, "latex"), text(item, "formula"));
             default -> firstNonBlank(text(item, "text"), text(item, "content"));
         };
     }
 
     private ParsedPaperTable toTable(JsonNode item, ParsedPaperElement element, String sectionTitle) {
-        String caption = caption(item);
+        String caption = tableCaption(item);
         String html = text(item, "table_body");
         String tablePlainText = htmlText(html);
         String tableText = buildTableText(caption, tablePlainText);
@@ -189,7 +192,7 @@ public class MinerUOutputMapper {
                 element.elementId(),
                 element.pageNumber(),
                 element.readingOrder(),
-                caption(item),
+                figureCaption(item, element.elementType()),
                 sectionTitle,
                 extractText(item, element.elementType()),
                 element.boundingBox(),
@@ -315,11 +318,25 @@ public class MinerUOutputMapper {
                 });
     }
 
-    private String caption(JsonNode item) {
-        return firstNonBlank(joinTextArray(item.path("table_caption")),
-                joinTextArray(item.path("img_caption")),
-                joinTextArray(item.path("caption")),
-                text(item, "caption"));
+    private String tableCaption(JsonNode item) {
+        return joinTextArray(item.path("table_caption"));
+    }
+
+    private String figureCaption(JsonNode item, ParsedPaperElementType elementType) {
+        String imageCaption = joinTextArray(item.path("image_caption"));
+        String chartCaption = chartCaption(item);
+        if (elementType == ParsedPaperElementType.CHART) {
+            return firstNonBlank(chartCaption, imageCaption);
+        }
+        return firstNonBlank(imageCaption, chartCaption);
+    }
+
+    private String chartCaption(JsonNode item) {
+        List<String> values = textArray(item.path("chart_caption"));
+        if (values.stream().noneMatch(this::isFullFigureCaption)) {
+            return null;
+        }
+        return String.join(" ", values);
     }
 
     private String buildTableText(String caption, String tablePlainText) {
@@ -359,14 +376,19 @@ public class MinerUOutputMapper {
     }
 
     private String joinTextArray(JsonNode node) {
+        List<String> values = textArray(node);
+        return values.isEmpty() ? null : String.join(" ", values);
+    }
+
+    private List<String> textArray(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
-            return null;
+            return List.of();
         }
         if (node.isTextual()) {
-            return node.asText();
+            return node.asText().isBlank() ? List.of() : List.of(node.asText());
         }
         if (!node.isArray()) {
-            return null;
+            return List.of();
         }
         List<String> values = new ArrayList<>();
         for (JsonNode value : node) {
@@ -374,7 +396,14 @@ public class MinerUOutputMapper {
                 values.add(value.asText());
             }
         }
-        return values.isEmpty() ? null : String.join(" ", values);
+        return values;
+    }
+
+    private boolean isFullFigureCaption(String value) {
+        String normalized = normalizeWhitespace(value);
+        return normalized != null
+                && (normalized.matches("(?i)^(fig\\.?|figure)\\s*(s?\\d+|[ivxlcdm]+)[a-z]?\\b.*")
+                || normalized.matches("^图\\s*\\d+.*"));
     }
 
     private String text(JsonNode node, String field) {
