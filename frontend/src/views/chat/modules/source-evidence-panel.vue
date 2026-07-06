@@ -36,6 +36,7 @@ interface Props {
   figureScreenshotAvailable?: boolean | null;
   assetWarnings?: string[] | null;
   conversationRecordId?: number | null;
+  sourceQuoteRef?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -326,25 +327,26 @@ function openEvidenceImageInNewTab() {
 }
 
 function askAboutThisEvidence() {
-  if (!props.paperId) {
+  if (!props.paperId && !props.sourceQuoteRef) {
     window.$message?.warning('Missing paper id.');
     return;
   }
   emit('askAboutThis', {
-    paperIds: [props.paperId],
+    paperIds: props.paperId ? [props.paperId] : [],
     paperTitles: [displayPaper.value],
     referenceNumber: props.referenceNumber,
     conversationRecordId: props.conversationRecordId || undefined,
     chunkId: props.chunkId || undefined,
     pageNumber: props.pageNumber || undefined,
-    paperId: props.paperId,
+    paperId: props.paperId || undefined,
     paperTitle: displayPaper.value,
     originalFilename: props.originalFilename || undefined,
     matchedText: matchedText.value,
     matchedChunkText: props.matchedChunkText || undefined,
     evidenceSnippet: props.evidenceSnippet || undefined,
     bboxJson: props.bboxJson || undefined,
-    sourceKind: props.sourceKind || undefined
+    sourceKind: props.sourceKind || undefined,
+    sourceQuoteRef: props.sourceQuoteRef || undefined
   });
 }
 

@@ -93,6 +93,25 @@ class ChatWebSocketHandlerTest {
     }
 
     @Test
+    void structuredChatPayloadPreservesSourceQuoteReferenceFocus() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","message":"解释这个引用","referenceFocus":{"sourceQuoteRef":"source_quote_abc","referenceNumber":1}}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("解释这个引用", request.message());
+        assertEquals("source_quote_abc", request.referenceFocus().sourceQuoteRef());
+        assertEquals(1, request.referenceFocus().referenceNumber());
+    }
+
+    @Test
     void structuredChatPayloadFallsBackToLegacyScopeWhenReferenceFocusIsNull() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);

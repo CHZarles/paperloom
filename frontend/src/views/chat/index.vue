@@ -160,6 +160,7 @@ onBeforeUnmount(() => {
             :figure-screenshot-available="referencePayload.figureScreenshotAvailable"
             :asset-warnings="referencePayload.assetWarnings"
             :conversation-record-id="referencePayload.conversationRecordId"
+            :source-quote-ref="referencePayload.sourceQuoteRef || undefined"
             @ask-about-this="handleAskAboutReference"
           />
           <div v-else class="reference-panel__empty">

@@ -53,6 +53,7 @@ const emit = defineEmits<{
       anchorText?: string | null;
       conversationRecordId?: number;
       referenceNumber: number;
+      sourceQuoteRef?: string | null;
     }
   ): void;
   (e: 'retry'): void;
@@ -120,6 +121,7 @@ const sourceFiles = ref<
     referenceNumber: number;
     paperId?: string;
     pageNumber?: number;
+    sourceQuoteRef?: string | null;
   }>
 >([]);
 const assistantContentRef = ref<HTMLElement | null>(null);
@@ -197,24 +199,35 @@ function normalizeBareUrls(text: string) {
 
 function createCompactCitationLink(sourceNum: string) {
   const persistedDetail = props.msg.referenceMappings?.[sourceNum];
-  if (!persistedDetail?.paperId) {
+  const sourceQuoteRef = persistedDetail?.sourceQuoteRef?.trim();
+  if (!persistedDetail?.paperId && !sourceQuoteRef) {
     return `<span class="source-citation-chip source-citation-chip--muted" data-reference-number="${sourceNum}" title="Evidence mapping unavailable">[${sourceNum}]</span>`;
   }
 
   const fileId = `source-file-${sourceFiles.value.length}`;
   const referenceNumber = Number.parseInt(sourceNum, 10);
+  const paperTitle =
+    persistedDetail?.paperTitle ||
+    persistedDetail?.originalFilename ||
+    persistedDetail?.evidenceSnippet ||
+    persistedDetail?.matchedChunkText ||
+    'Source Quote';
   sourceFiles.value.push({
-    paperTitle: persistedDetail.paperTitle,
-    originalFilename: persistedDetail.originalFilename,
+    paperTitle,
+    originalFilename: persistedDetail?.originalFilename,
     id: fileId,
     referenceNumber,
-    paperId: persistedDetail.paperId,
-    pageNumber: persistedDetail.pageNumber ?? undefined
+    paperId: persistedDetail?.paperId || undefined,
+    pageNumber: persistedDetail?.pageNumber ?? undefined,
+    sourceQuoteRef
   });
 
-  const title = persistedDetail.pageNumber
-    ? `${persistedDetail.paperTitle} · 第${persistedDetail.pageNumber}页`
-    : persistedDetail.paperTitle;
+  if (!persistedDetail?.paperId && sourceQuoteRef) {
+    const title = persistedDetail?.evidenceSnippet || persistedDetail?.matchedChunkText || 'Source Quote';
+    return `<span class="source-citation-chip source-quote-link" data-file-id="${fileId}" data-reference-number="${sourceNum}" tabindex="0" role="button" title="${escapeHtml(title)}">[${sourceNum}]</span>`;
+  }
+
+  const title = persistedDetail?.pageNumber ? `${paperTitle} · 第${persistedDetail.pageNumber}页` : paperTitle;
 
   return `<span class="source-citation-chip source-file-link" data-file-id="${fileId}" data-reference-number="${sourceNum}" tabindex="0" role="button" title="${escapeHtml(title)}">[${sourceNum}]</span>`;
 }
@@ -361,6 +374,7 @@ function openReferenceEvidencePage(payload: {
   anchorText?: string | null;
   conversationRecordId?: number;
   referenceNumber: number;
+  sourceQuoteRef?: string | null;
 }) {
   if (props.evidenceMode === 'drawer') {
     emit('openReference', payload);
@@ -384,7 +398,7 @@ function openReferenceEvidencePage(payload: {
 // 处理内容点击事件（事件委托）
 function handleContentClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
-  const sourceTarget = target.closest<HTMLElement>('.source-file-link');
+  const sourceTarget = target.closest<HTMLElement>('.source-file-link, .source-quote-link');
 
   // 检查点击的是否是文件链接
   if (sourceTarget) {
@@ -396,6 +410,10 @@ function handleContentClick(event: MouseEvent) {
       const file = sourceFiles.value.find(f => f.id === fileId);
       if (file) {
         activeReferenceNumber.value = file.referenceNumber;
+        if (!file.paperId && file.sourceQuoteRef) {
+          handleSourceQuoteClick(file);
+          return;
+        }
         const contextAnchorText = extractContextAnchorText(sourceTarget);
         handleSourceFileClick({
           paperTitle: file.paperTitle,
@@ -403,6 +421,7 @@ function handleContentClick(event: MouseEvent) {
           referenceNumber: file.referenceNumber,
           paperId: file.paperId,
           pageNumber: file.pageNumber,
+          sourceQuoteRef: file.sourceQuoteRef,
           anchorText: contextAnchorText
         });
       }
@@ -416,13 +435,37 @@ function handleContentKeydown(event: KeyboardEvent) {
   }
 
   const target = event.target as HTMLElement;
-  const sourceTarget = target.closest<HTMLElement>('.source-file-link');
+  const sourceTarget = target.closest<HTMLElement>('.source-file-link, .source-quote-link');
   if (!sourceTarget) {
     return;
   }
 
   event.preventDefault();
   sourceTarget.click();
+}
+
+function handleSourceQuoteClick(fileInfo: {
+  paperTitle: string;
+  originalFilename?: string | null;
+  referenceNumber: number;
+  paperId?: string;
+  pageNumber?: number;
+  sourceQuoteRef?: string | null;
+}) {
+  if (!fileInfo.sourceQuoteRef) {
+    return;
+  }
+  chatStore.setReferenceFocus({
+    sourceQuoteRef: fileInfo.sourceQuoteRef,
+    referenceNumber: fileInfo.referenceNumber,
+    paperId: fileInfo.paperId,
+    paperTitle: fileInfo.paperTitle,
+    originalFilename: fileInfo.originalFilename || undefined,
+    pageNumber: fileInfo.pageNumber
+  });
+  if (!chatStore.input.message.trim()) {
+    chatStore.input.message = '解释这个引用';
+  }
 }
 
 // 处理来源证据点击事件
@@ -434,6 +477,7 @@ async function handleSourceFileClick(fileInfo: {
   referenceNumber: number;
   paperId?: string;
   pageNumber?: number;
+  sourceQuoteRef?: string | null;
   anchorText?: string;
 }) {
   const {
@@ -442,6 +486,7 @@ async function handleSourceFileClick(fileInfo: {
     referenceNumber,
     paperId: extractedPaperId,
     pageNumber: extractedPageNumber,
+    sourceQuoteRef: extractedSourceQuoteRef,
     anchorText: clickedAnchorText
   } = fileInfo;
   const persistedDetail =
@@ -511,7 +556,8 @@ async function handleSourceFileClick(fileInfo: {
         figureScreenshotAvailable: persistedDetail.figureScreenshotAvailable,
         assetWarnings: persistedDetail.assetWarnings,
         conversationRecordId,
-        referenceNumber
+        referenceNumber,
+        sourceQuoteRef: persistedDetail.sourceQuoteRef || extractedSourceQuoteRef
       });
       return;
     }
@@ -554,7 +600,8 @@ async function handleSourceFileClick(fileInfo: {
       figureScreenshotAvailable: detail?.figureScreenshotAvailable,
       assetWarnings: detail?.assetWarnings,
       conversationRecordId,
-      referenceNumber
+      referenceNumber,
+      sourceQuoteRef: detail?.sourceQuoteRef || persistedDetail?.sourceQuoteRef || extractedSourceQuoteRef
     });
   } catch {
     window.$message?.error(`引用证据打开失败: ${paperTitle}`);
@@ -643,7 +690,8 @@ async function handleSourceFileClick(fileInfo: {
 </template>
 
 <style scoped lang="scss">
-:deep(.source-file-link) {
+:deep(.source-file-link),
+:deep(.source-quote-link) {
   cursor: pointer;
 }
 

@@ -3,10 +3,12 @@ package com.yizhaoqi.smartpai.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yizhaoqi.smartpai.config.ProductReadingReactProperties;
 import com.yizhaoqi.smartpai.exception.RateLimitExceededException;
 import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -51,6 +53,8 @@ public class ChatHandler {
     private final ChatGenerationStateService chatGenerationStateService;
     private final ChatSessionRegistry chatSessionRegistry;
     private final ProductConversationService productConversationService;
+    private final ProductReadingConversationService productReadingConversationService;
+    private final ProductReadingReactProperties productReadingReactProperties;
     private final ThreadPoolTaskExecutor chatMonitorExecutor;
     private final ObjectMapper objectMapper;
 
@@ -79,6 +83,33 @@ public class ChatHandler {
                       ProductConversationService productConversationService,
                       ObjectMapper objectMapper,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
+        this(
+                redisTemplate,
+                rateLimitService,
+                conversationService,
+                conversationScopeService,
+                chatGenerationStateService,
+                chatSessionRegistry,
+                productConversationService,
+                null,
+                new ProductReadingReactProperties(),
+                objectMapper,
+                chatMonitorExecutor
+        );
+    }
+
+    @Autowired
+    public ChatHandler(RedisTemplate<String, String> redisTemplate,
+                      RateLimitService rateLimitService,
+                      ConversationService conversationService,
+                      ConversationScopeService conversationScopeService,
+                      ChatGenerationStateService chatGenerationStateService,
+                      ChatSessionRegistry chatSessionRegistry,
+                      ProductConversationService productConversationService,
+                      ProductReadingConversationService productReadingConversationService,
+                      ProductReadingReactProperties productReadingReactProperties,
+                      ObjectMapper objectMapper,
+                      @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
         this.rateLimitService = rateLimitService;
         this.conversationService = conversationService;
@@ -86,6 +117,10 @@ public class ChatHandler {
         this.chatGenerationStateService = chatGenerationStateService;
         this.chatSessionRegistry = chatSessionRegistry;
         this.productConversationService = productConversationService;
+        this.productReadingConversationService = productReadingConversationService;
+        this.productReadingReactProperties = productReadingReactProperties == null
+                ? new ProductReadingReactProperties()
+                : productReadingReactProperties;
         this.objectMapper = objectMapper;
         this.chatMonitorExecutor = chatMonitorExecutor;
     }
@@ -111,8 +146,14 @@ public class ChatHandler {
             conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
+            boolean readingExperimentEnabled = readingExperimentEnabled();
+            String clickedSourceQuoteRef = structuredSourceQuoteRef(incomingReferenceFocus);
             ProductReferenceFocus referenceFocus =
-                    resolveReferenceFocus(userIdLong, conversationId, referenceFocus(incomingReferenceFocus, userMessage));
+                    resolveReferenceFocus(
+                            userIdLong,
+                            conversationId,
+                            referenceFocus(incomingReferenceFocus, userMessage, readingExperimentEnabled)
+                    );
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
             }
@@ -125,7 +166,11 @@ public class ChatHandler {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
             SourceScope productScope = productSourceScope(effectiveScope, retrievalBudgetProfile);
-            Map<String, Object> effectiveScopeMap = effectiveScopeMap(effectiveScope);
+            Map<String, Object> effectiveScopeMap = effectiveScopeMap(
+                    effectiveScope,
+                    clickedSourceQuoteRef,
+                    readingExperimentEnabled
+            );
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
             generationClientIds.put(finalGenerationId, requestClientId);
@@ -141,13 +186,18 @@ public class ChatHandler {
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
 
-            timing.route("PRODUCT_REACT");
+            timing.route(readingExperimentEnabled ? "PRODUCT_READING_REACT" : "PRODUCT_REACT");
             timing.mark("intent_route_decided");
 
             // 2. 异步执行 Product ReAct Harness；产品语义由 Harness 和产品工具目录处理。
             try {
-                chatMonitorExecutor.execute(() ->
-                        runProductHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, productScope, responseFuture));
+                if (readingExperimentEnabled) {
+                    chatMonitorExecutor.execute(() ->
+                            runReadingHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, productScope, responseFuture));
+                } else {
+                    chatMonitorExecutor.execute(() ->
+                            runProductHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, productScope, responseFuture));
+                }
             } catch (RejectedExecutionException ex) {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
@@ -177,11 +227,19 @@ public class ChatHandler {
         return SourceScope.auto(retrievalBudgetProfile);
     }
 
+    private boolean readingExperimentEnabled() {
+        return productReadingReactProperties != null && productReadingReactProperties.isEnabled();
+    }
+
     private ProductReferenceFocus referenceFocus(
             ProductReferenceFocus incomingScope,
-            String userMessage) {
+            String userMessage,
+            boolean readingExperimentEnabled) {
         if (hasReferenceFocus(incomingScope)) {
             return structuredReferenceFocus(incomingScope);
+        }
+        if (readingExperimentEnabled) {
+            return null;
         }
         Integer referenceNumber = firstCitedReferenceNumber(userMessage);
         if (referenceNumber == null) {
@@ -224,8 +282,16 @@ public class ChatHandler {
                 incomingScope.originalFilename(),
                 incomingScope.matchedText(),
                 incomingScope.bboxJson(),
-                incomingScope.sourceKind()
+                incomingScope.sourceKind(),
+                incomingScope.sourceQuoteRef()
         );
+    }
+
+    private String structuredSourceQuoteRef(ProductReferenceFocus incomingScope) {
+        if (!hasReferenceFocus(incomingScope)) {
+            return null;
+        }
+        return incomingScope.sourceQuoteRef();
     }
 
     private Integer firstCitedReferenceNumber(String userMessage) {
@@ -248,6 +314,9 @@ public class ChatHandler {
             String conversationId,
             ProductReferenceFocus referenceFocus) {
         if (referenceFocus == null) {
+            return referenceFocus;
+        }
+        if (referenceFocus.sourceQuoteRef() != null) {
             return referenceFocus;
         }
         if (referenceFocus.referenceNumber() == null) {
@@ -291,7 +360,8 @@ public class ChatHandler {
                 originalFilename,
                 matchedText,
                 firstNonBlank(stringDetail(detail, "bboxJson"), referenceFocus.bboxJson()),
-                firstNonBlank(stringDetail(detail, "sourceKind"), referenceFocus.sourceKind())
+                firstNonBlank(stringDetail(detail, "sourceKind"), referenceFocus.sourceKind()),
+                firstNonBlank(stringDetail(detail, "sourceQuoteRef"), referenceFocus.sourceQuoteRef())
         );
     }
 
@@ -383,10 +453,16 @@ public class ChatHandler {
         if (scope == null) {
             return false;
         }
-        return scope.referenceNumber() != null;
+        return scope.referenceNumber() != null || scope.sourceQuoteRef() != null;
     }
 
     private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope) {
+        return effectiveScopeMap(effectiveScope, null, false);
+    }
+
+    private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope,
+                                                  String clickedSourceQuoteRef,
+                                                  boolean includeClickedSourceQuoteRef) {
         ConversationScopeMode mode = effectiveScope == null ? ConversationScopeMode.AUTO_LIBRARY : effectiveScope.mode();
         List<String> paperIds = effectiveScope == null ? List.of() : effectiveScope.paperIds();
         Map<String, Object> scope = new LinkedHashMap<>();
@@ -396,6 +472,9 @@ public class ChatHandler {
                 : effectiveScope.label());
         scope.put("paperIds", paperIds);
         scope.put("paperCount", mode == ConversationScopeMode.SOURCE_SET_SNAPSHOT ? paperIds.size() : 0);
+        if (includeClickedSourceQuoteRef && clickedSourceQuoteRef != null) {
+            scope.put("clickedSourceQuoteRefs", List.of(clickedSourceQuoteRef));
+        }
         return scope;
     }
 
@@ -474,6 +553,92 @@ public class ChatHandler {
         );
     }
 
+    private void runReadingHarnessSafely(String userId,
+                                         String userMessage,
+                                         String conversationId,
+                                         String generationId,
+                                         SourceScope scope,
+                                         CompletableFuture<String> responseFuture) {
+        try {
+            runReadingHarness(userId, userMessage, conversationId, generationId, scope, responseFuture);
+        } catch (Exception e) {
+            logger.error("Product Reading ReAct Harness 执行失败: generationId={}", generationId, e);
+            chatGenerationStateService.markFailed(generationId, e.getMessage());
+            handleError(userId, generationId, e);
+            sendCompletionNotification(userId, generationId, conversationId, true, false);
+            cleanupGenerationState(generationId, e);
+        }
+    }
+
+    private void runReadingHarness(String userId,
+                                   String userMessage,
+                                   String conversationId,
+                                   String generationId,
+                                   SourceScope scope,
+                                   CompletableFuture<String> responseFuture) {
+        if (productReadingConversationService == null) {
+            throw new IllegalStateException("ProductReadingConversationService is required for reading chat");
+        }
+        ChatRequestTiming timing = generationTimings.get(generationId);
+        if (timing != null) {
+            timing.begin("product_reading_react_harness");
+        }
+        Map<String, Object> effectiveScope = generationEffectiveScopes.get(generationId);
+        ProductTurnResult answer = productReadingConversationService.runTurn(
+                Long.parseLong(userId),
+                conversationId,
+                generationId,
+                userMessage,
+                scope,
+                ProductModelContext.defaults(),
+                effectiveScope,
+                event -> sendProductToolCall(userId, generationId, conversationId, event)
+        );
+        if (timing != null) {
+            timing.end("product_reading_react_harness");
+            timing.route(answer.envelope() == null ? answer.stopReason().name() : answer.envelope().answerType().name());
+            timing.retrievalHitCount(answer.references().size());
+        }
+        Map<String, Object> diagnostics = productDiagnostics(answer);
+        if (!diagnostics.isEmpty()) {
+            diagnostics.put("harness", "PRODUCT_READING_REACT");
+            generationDiagnostics.put(generationId, diagnostics);
+            chatGenerationStateService.updateDiagnostics(generationId, diagnostics);
+        }
+        if (answer.resultStatus() == ProductResultStatus.FAILED) {
+            throw new RuntimeException(answer.finalAnswerMarkdown());
+        }
+        Map<Integer, ReferenceInfo> productReferences = productReferenceMappings(answer.references());
+        Map<String, Map<String, Object>> serializableReferences = toSerializableReferenceMappings(productReferences);
+        if (!productReferences.isEmpty()) {
+            generationReferenceMappings.put(generationId, productReferences);
+            chatGenerationStateService.updateReferenceMappings(generationId, serializableReferences);
+        }
+        conversationService.recordConversation(
+                Long.parseLong(userId),
+                userMessage,
+                answer.finalAnswerMarkdown(),
+                conversationId,
+                serializableReferences,
+                effectiveScope == null ? Map.of() : effectiveScope
+        );
+        appendStreamChunk(userId, generationId, conversationId, answer.finalAnswerMarkdown());
+        finalizeResponse(
+                userId,
+                userMessage,
+                conversationId,
+                generationId,
+                responseFuture,
+                responseBuilders.get(generationId),
+                new LlmProviderRouter.StreamCompletion(
+                        answer.stopReason().name(),
+                        0,
+                        0,
+                        answer.finalAnswerMarkdown().length()
+                )
+        );
+    }
+
     private Map<String, Object> productDiagnostics(ProductTurnResult answer) {
         if (answer == null) {
             return Map.of();
@@ -504,15 +669,18 @@ public class ChatHandler {
     }
 
     private ReferenceInfo referenceInfoFromProductReference(Map<String, Object> reference) {
+        String sourceQuoteContent = stringDetail(reference, "content");
         String matchedText = firstNonBlank(
                 stringDetail(reference, "matchedChunkText"),
                 stringDetail(reference, "matchedText"),
+                sourceQuoteContent,
                 stringDetail(reference, "snippet"),
                 stringDetail(reference, "evidenceSnippet")
         );
         String evidenceSnippet = firstNonBlank(
                 stringDetail(reference, "evidenceSnippet"),
                 stringDetail(reference, "snippet"),
+                sourceQuoteContent,
                 trimToMaxLength(matchedText, MAX_EVIDENCE_SNIPPET_LEN)
         );
         return new ReferenceInfo(
@@ -520,7 +688,7 @@ public class ChatHandler {
                 firstNonBlank(stringDetail(reference, "paperTitle"), stringDetail(reference, "title")),
                 stringDetail(reference, "originalFilename"),
                 integerDetail(reference, "pageNumber"),
-                firstNonBlank(stringDetail(reference, "anchorText"), matchedText),
+                firstNonBlank(stringDetail(reference, "anchorText"), sourceQuoteContent, matchedText),
                 firstNonBlank(stringDetail(reference, "retrievalMode"), "PRODUCT_REACT"),
                 firstNonBlank(stringDetail(reference, "retrievalLabel"), "Product ReAct evidence"),
                 firstNonBlank(stringDetail(reference, "retrievalQuery"), stringDetail(reference, "question")),
@@ -552,6 +720,7 @@ public class ChatHandler {
                 booleanDetail(reference, "figureScreenshotAvailable"),
                 stringDetail(reference, "citationRef"),
                 stringDetail(reference, "evidenceRef"),
+                stringDetail(reference, "sourceQuoteRef"),
                 stringListValue(reference.get("assetWarnings"))
         );
     }
@@ -867,6 +1036,7 @@ public class ChatHandler {
             item.put("figureScreenshotAvailable", detail.figureScreenshotAvailable());
             item.put("citationRef", detail.citationRef());
             item.put("evidenceRef", detail.evidenceRef());
+            item.put("sourceQuoteRef", detail.sourceQuoteRef());
             item.put("assetWarnings", detail.assetWarnings());
             serialized.put(String.valueOf(entry.getKey()), item);
         }
@@ -1158,6 +1328,7 @@ public class ChatHandler {
                     item.get("figureScreenshotAvailable") instanceof Boolean value && value,
                     (String) item.get("citationRef"),
                     (String) item.get("evidenceRef"),
+                    (String) item.get("sourceQuoteRef"),
                     stringListValue(item.get("assetWarnings"))
             ));
         }
@@ -1281,6 +1452,7 @@ public class ChatHandler {
             Boolean figureScreenshotAvailable,
             String citationRef,
             String evidenceRef,
+            String sourceQuoteRef,
             List<String> assetWarnings
     ) {
         public ReferenceInfo {
@@ -1293,6 +1465,7 @@ public class ChatHandler {
             figureScreenshotAvailable = Boolean.TRUE.equals(figureScreenshotAvailable);
             citationRef = citationRef == null || citationRef.isBlank() ? null : citationRef.trim();
             evidenceRef = evidenceRef == null || evidenceRef.isBlank() ? null : evidenceRef.trim();
+            sourceQuoteRef = sourceQuoteRef == null || sourceQuoteRef.isBlank() ? null : sourceQuoteRef.trim();
             evidenceAssetLevel = "PDF_VISUAL".equals(evidenceAssetLevel) || pdfEvidenceAvailable
                     ? "PDF_VISUAL"
                     : "PDF_PENDING_ASSETS";
@@ -1304,6 +1477,85 @@ public class ChatHandler {
 
         private static boolean isLegacyImportWarning(String value) {
             return value.startsWith("structured_") && value.endsWith("_text_only");
+        }
+
+        public ReferenceInfo(String paperId,
+                             String paperTitle,
+                             String originalFilename,
+                             Integer pageNumber,
+                             String anchorText,
+                             String retrievalMode,
+                             String retrievalLabel,
+                             String retrievalQuery,
+                             String matchedChunkText,
+                             String evidenceSnippet,
+                             Double score,
+                             Integer chunkId,
+                             String elementType,
+                             String sectionTitle,
+                             Integer sectionLevel,
+                             String bboxJson,
+                             String parserName,
+                             String parserVersion,
+                             String sourceKind,
+                             String tableId,
+                             String figureId,
+                             String formulaId,
+                             String evidenceRole,
+                             String retrievalRoute,
+                             String intent,
+                             String rankReason,
+                             String tableText,
+                             String tableMarkdown,
+                             Boolean tableScreenshotAvailable,
+                             String sourceType,
+                             String evidenceAssetLevel,
+                             Boolean pdfEvidenceAvailable,
+                             Boolean pageScreenshotAvailable,
+                             Boolean figureScreenshotAvailable,
+                             String citationRef,
+                             String evidenceRef,
+                             List<String> assetWarnings) {
+            this(
+                    paperId,
+                    paperTitle,
+                    originalFilename,
+                    pageNumber,
+                    anchorText,
+                    retrievalMode,
+                    retrievalLabel,
+                    retrievalQuery,
+                    matchedChunkText,
+                    evidenceSnippet,
+                    score,
+                    chunkId,
+                    elementType,
+                    sectionTitle,
+                    sectionLevel,
+                    bboxJson,
+                    parserName,
+                    parserVersion,
+                    sourceKind,
+                    tableId,
+                    figureId,
+                    formulaId,
+                    evidenceRole,
+                    retrievalRoute,
+                    intent,
+                    rankReason,
+                    tableText,
+                    tableMarkdown,
+                    tableScreenshotAvailable,
+                    sourceType,
+                    evidenceAssetLevel,
+                    pdfEvidenceAvailable,
+                    pageScreenshotAvailable,
+                    figureScreenshotAvailable,
+                    citationRef,
+                    evidenceRef,
+                    null,
+                    assetWarnings
+            );
         }
 
         public ReferenceInfo(String paperId,
@@ -1372,6 +1624,7 @@ public class ChatHandler {
                     false,
                     null,
                     null,
+                    null,
                     List.of()
             );
         }
@@ -1434,6 +1687,7 @@ public class ChatHandler {
                     false,
                     false,
                     false,
+                    null,
                     null,
                     null,
                     List.of()
@@ -1506,6 +1760,7 @@ public class ChatHandler {
                     figureScreenshotAvailable,
                     null,
                     null,
+                    null,
                     assetWarnings
             );
         }
@@ -1563,6 +1818,7 @@ public class ChatHandler {
                     false,
                     false,
                     false,
+                    null,
                     null,
                     null,
                     List.of()

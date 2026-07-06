@@ -48,6 +48,7 @@ const pdfEvidenceAvailable = ref<boolean | null>(null);
 const pageScreenshotAvailable = ref<boolean | null>(null);
 const figureScreenshotAvailable = ref<boolean | null>(null);
 const assetWarnings = ref<string[]>([]);
+const sourceQuoteRef = ref('');
 const referenceNumber = ref<number | undefined>(undefined);
 const conversationRecordId = ref<number | undefined>(undefined);
 const evidenceKey = computed(() => String(route.query.evidenceKey || ''));
@@ -85,6 +86,7 @@ function syncFromStorage() {
       anchorText?: string | null;
       conversationRecordId?: number | null;
       referenceNumber?: number | null;
+      sourceQuoteRef?: string | null;
     };
 
     paperTitle.value = payload.paperTitle || paperTitle.value;
@@ -122,6 +124,7 @@ function syncFromStorage() {
     pageScreenshotAvailable.value = payload.pageScreenshotAvailable ?? pageScreenshotAvailable.value;
     figureScreenshotAvailable.value = payload.figureScreenshotAvailable ?? figureScreenshotAvailable.value;
     assetWarnings.value = payload.assetWarnings || assetWarnings.value;
+    sourceQuoteRef.value = payload.sourceQuoteRef || sourceQuoteRef.value;
     conversationRecordId.value = payload.conversationRecordId || conversationRecordId.value;
     referenceNumber.value = payload.referenceNumber || referenceNumber.value;
     return true;
@@ -196,6 +199,7 @@ async function loadReferenceDetail() {
     pageScreenshotAvailable.value = data.pageScreenshotAvailable ?? null;
     figureScreenshotAvailable.value = data.figureScreenshotAvailable ?? null;
     assetWarnings.value = data.assetWarnings || [];
+    sourceQuoteRef.value = data.sourceQuoteRef || '';
   } catch (error: any) {
     loadError.value = error?.message || '引用详情加载失败';
   } finally {
@@ -268,6 +272,7 @@ watch(
         :figure-screenshot-available="figureScreenshotAvailable"
         :asset-warnings="assetWarnings"
         :conversation-record-id="conversationRecordId"
+        :source-quote-ref="sourceQuoteRef || undefined"
         @ask-about-this="handleAskAboutReference"
       />
       <NButton secondary class="evidence-page-back" @click="handleBack">

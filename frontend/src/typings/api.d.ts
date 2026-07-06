@@ -530,8 +530,8 @@ declare namespace Api {
     type ScopeStatus = 'READY' | 'DEGRADED' | 'INVALID';
 
     interface ReferenceEvidence {
-      paperId: string;
-      paperTitle: string;
+      paperId?: string | null;
+      paperTitle?: string | null;
       originalFilename?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
@@ -566,6 +566,7 @@ declare namespace Api {
       figureScreenshotAvailable?: boolean | null;
       citationRef?: string | null;
       evidenceRef?: string | null;
+      sourceQuoteRef?: string | null;
       assetWarnings?: string[] | null;
     }
 
@@ -643,6 +644,7 @@ declare namespace Api {
       evidenceSnippet?: string;
       bboxJson?: string;
       sourceKind?: ReferenceEvidence['sourceKind'];
+      sourceQuoteRef?: string | null;
     }
 
     interface ConversationScope {
