@@ -19,3 +19,5 @@ Conversation Source Quote Registry directly in the final-answer validator.
 - A clicked Source Quote is not citeable until `trace_source_quotes` returns it in the current turn.
 - The Conversation Source Quote Registry authorizes trace lookup, not final-answer support.
 - Follow-up UI or route integrations must pass stable clicked `sourceQuoteRef` anchors explicitly.
+- A clicked Source Quote focus may be sourceQuoteRef-only; it must not be forced through legacy
+  reference-number detail resolution that requires a raw paper id before `trace_source_quotes`.

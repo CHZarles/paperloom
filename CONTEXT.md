@@ -138,6 +138,11 @@ An opaque field value that points to a Source Quote. Final paper-content claims 
 `sourceQuoteRef` values returned by `read_locations` or resolved by `trace_source_quotes`.
 _Avoid_: citation number, paper handle, page ref, section ref
 
+**Source Quote Chip**:
+A user-visible citation affordance for a Source Quote. Its display number is only rendering; the
+stable product anchor is the carried `sourceQuoteRef`.
+_Avoid_: rendered citation number, paper link, evidence detail row
+
 **Paper Candidate Search**:
 The paper-level search operation, exposed as `search_paper_candidates`, that recalls candidate
 papers from the fixed conversation search scope using caller-supplied `queryText` over title,
