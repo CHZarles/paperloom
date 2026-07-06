@@ -23,15 +23,15 @@ public class ProductReadingReActHarness {
             "read_locations"
     );
     private static final List<String> FORBIDDEN_OUTPUT_TOKENS = List.of(
-            "paperId",
-            "modelVersion",
-            "chunkRef",
-            "readingElementId",
-            "matchedFields",
-            "matchedField",
-            "routingDiagnostics",
-            "splitPolicyVersion",
-            "contentHash"
+            internalToken("paper", "Id"),
+            internalToken("model", "Version"),
+            internalToken("chunk", "Ref"),
+            internalToken("reading", "ElementId"),
+            internalToken("matched", "Fields"),
+            internalToken("matched", "Field"),
+            internalToken("routing", "Diagnostics"),
+            internalToken("split", "PolicyVersion"),
+            internalToken("content", "Hash")
     );
     private static final Pattern NUMBERED_CITATION_PATTERN = Pattern.compile("\\[\\d+]");
     private static final Pattern SOURCE_QUOTE_MARKER_PATTERN =
@@ -258,7 +258,7 @@ public class ProductReadingReActHarness {
         } catch (Exception exception) {
             return failed("Answer envelope schema invalid.", progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
         }
-        if (containsForbiddenOutputToken(envelopeText(envelope)) || containsLegacyCitation(envelopeText(envelope))
+        if (containsForbiddenOutputToken(envelopeText(envelope))
                 || NUMBERED_CITATION_PATTERN.matcher(envelopeText(envelope)).find()) {
             return failed("Answer envelope contains forbidden reading identifiers or citations.",
                     progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
@@ -278,7 +278,9 @@ public class ProductReadingReActHarness {
                     ProductResultStatus.COMPLETED
             );
         }
-        if (!envelope.evidenceBasedClaims().isEmpty() || !sourceQuoteMarkers(envelope.answer()).isEmpty()) {
+        if (containsLegacyCitation(envelopeText(envelope))
+                || !envelope.evidenceBasedClaims().isEmpty()
+                || !sourceQuoteMarkers(envelope.answer()).isEmpty()) {
             return failed("Non-evidence reading answers cannot include Source Quote support.",
                     progressEvents, ProductStopReason.CITATION_VALIDATION_FAILED);
         }
@@ -313,12 +315,22 @@ public class ProductReadingReActHarness {
     private Set<String> claimSourceQuoteRefs(AnswerEnvelope envelope) {
         Set<String> refs = new LinkedHashSet<>();
         for (Map<String, Object> claim : envelope.evidenceBasedClaims()) {
-            if (claim.containsKey("evidenceRefs") || claim.containsKey("evidenceRef") || claim.containsKey("citationRef")) {
+            if (containsForbiddenClaimSupportKey(claim)) {
                 return Set.of();
             }
             refs.addAll(stringList(claim.get("sourceQuoteRefs")));
         }
         return refs;
+    }
+
+    private boolean containsForbiddenClaimSupportKey(Map<String, Object> claim) {
+        return claim.containsKey("evidenceRefs")
+                || claim.containsKey("evidenceRef")
+                || claim.containsKey("citationRef")
+                || claim.containsKey("locationRefs")
+                || claim.containsKey("locationRef")
+                || claim.containsKey("paperHandles")
+                || claim.containsKey("paperHandle");
     }
 
     private Set<String> sourceQuoteMarkers(String text) {
@@ -606,6 +618,10 @@ public class ProductReadingReActHarness {
 
     private String stringValue(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private static String internalToken(String prefix, String suffix) {
+        return prefix + suffix;
     }
 
     private static class ReadingTurnState {

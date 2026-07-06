@@ -21,6 +21,7 @@ import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.repository.PaperSectionRepository;
 import com.yizhaoqi.smartpai.repository.PaperSourceQuoteRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,7 +79,7 @@ public class ProductReadingLocationReadService {
         this.objectMapper = objectMapper == null ? new ObjectMapper() : objectMapper;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ReadResult readLocations(List<String> locationRefs, ProductToolContext context) {
         ProductToolContext safeContext = context == null
                 ? new ProductToolContext(null, "", "", SourceScope.auto())
@@ -270,7 +271,12 @@ public class ProductReadingLocationReadService {
         registryRow.setSourceQuoteRef(quote.getSourceQuoteRef());
         registryRow.setFirstSeenTurnId(isBlank(context.generationId()) ? "unknown" : context.generationId());
         registryRow.setUserId(context.userId() == null ? "" : String.valueOf(context.userId()));
-        conversationSourceQuoteRepository.save(registryRow);
+        try {
+            conversationSourceQuoteRepository.save(registryRow);
+        } catch (DataIntegrityViolationException ignored) {
+            conversationSourceQuoteRepository
+                    .findFirstByConversationIdAndSourceQuoteRef(context.conversationId(), quote.getSourceQuoteRef());
+        }
     }
 
     private Map<String, Object> sourceQuoteOutput(PaperSourceQuote quote, LocationReadAttempt attempt) {

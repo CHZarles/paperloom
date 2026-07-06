@@ -310,6 +310,31 @@ class ProductReadingReActHarnessTest {
     }
 
     @Test
+    void rejectsLocationPreviewRefsAsSourceQuoteSupport() {
+        ProductTurnResult result = runAfterReadWithFinalEnvelope("""
+                {
+                  "answerType": "EVIDENCE_ANSWER",
+                  "answer": "This paper reports a score improvement {{sourceQuoteRef:source_quote_abc}}.",
+                  "evidenceBasedClaims": [
+                    {
+                      "claim": "This paper reports a score improvement.",
+                      "sourceQuoteRefs": ["source_quote_abc"],
+                      "locationRefs": ["page_ref_abc"]
+                    }
+                  ],
+                  "stateClaims": [],
+                  "limitations": [],
+                  "nonEvidenceNotes": [],
+                  "missingFields": [],
+                  "reason": ""
+                }
+                """);
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.CITATION_VALIDATION_FAILED, result.stopReason());
+    }
+
+    @Test
     void rejectsNumberedCitationsAndInternalFieldNames() {
         ProductTurnResult numbered = runAfterReadWithFinalEnvelope("""
                 {

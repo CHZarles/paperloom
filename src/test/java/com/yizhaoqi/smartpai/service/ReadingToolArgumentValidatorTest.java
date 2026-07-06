@@ -87,6 +87,12 @@ class ReadingToolArgumentValidatorTest {
                 "locationRefs", List.of("page_ref_abc"),
                 "sourceQuoteRef", "source_quote_abc"
         ));
+        ReadingToolArgumentValidator.ValidationResult ordinalRef = validator.validateReadLocations(Map.of(
+                "locationRefs", List.of("1")
+        ));
+        ReadingToolArgumentValidator.ValidationResult candidateRef = validator.validateReadLocations(Map.of(
+                "locationRefs", List.of("candidate 2")
+        ));
         ReadingToolArgumentValidator.ValidationResult valid = validator.validateReadLocations(Map.of(
                 "locationRefs", List.of("page_ref_abc")
         ));
@@ -100,6 +106,12 @@ class ReadingToolArgumentValidatorTest {
         assertFalse(sourceQuoteInput.valid());
         assertEquals("forbidden_argument", sourceQuoteInput.error());
         assertEquals("sourceQuoteRef", sourceQuoteInput.argument());
+        assertFalse(ordinalRef.valid());
+        assertEquals("invalid_location_ref", ordinalRef.error());
+        assertEquals("locationRefs", ordinalRef.argument());
+        assertFalse(candidateRef.valid());
+        assertEquals("invalid_location_ref", candidateRef.error());
+        assertEquals("locationRefs", candidateRef.argument());
         assertTrue(valid.valid());
     }
 

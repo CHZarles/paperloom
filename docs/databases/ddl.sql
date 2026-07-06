@@ -225,6 +225,44 @@ CREATE TABLE IF NOT EXISTS paper_reading_elements (
     INDEX idx_paper_reading_elements_parent (paper_id, model_version, parent_reading_element_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论文 Reading Model 元素库存';
 
+CREATE TABLE IF NOT EXISTS paper_source_quotes (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    source_quote_ref VARCHAR(96) NOT NULL COMMENT 'opaque Source Quote ref',
+    paper_id VARCHAR(32) NOT NULL COMMENT '论文 ID，对应 file_upload.file_md5',
+    model_version VARCHAR(64) NOT NULL COMMENT 'Reading Model 版本',
+    location_ref VARCHAR(96) NOT NULL COMMENT '输入 reading location ref',
+    location_type VARCHAR(32) NOT NULL COMMENT 'PAGE/SECTION/TABLE/FIGURE',
+    page_number INT DEFAULT NULL COMMENT '起始页码',
+    page_end_number INT DEFAULT NULL COMMENT '结束页码',
+    section_title VARCHAR(500) DEFAULT NULL COMMENT '章节标题',
+    content_kind VARCHAR(64) NOT NULL COMMENT 'TEXT/TABLE/FIGURE_CAPTION',
+    content TEXT NOT NULL COMMENT 'Source Quote 原文内容',
+    content_hash VARCHAR(64) NOT NULL COMMENT 'Source Quote 内容 hash',
+    split_policy_version VARCHAR(64) NOT NULL COMMENT '内部 split policy 版本',
+    split_index INT NOT NULL COMMENT '同一 location 下的 split 序号',
+    source_span_json TEXT NOT NULL COMMENT 'source span JSON',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_paper_source_quotes_ref (source_quote_ref),
+    UNIQUE KEY uk_paper_source_quotes_idempotency (
+        paper_id, model_version, location_ref, split_policy_version, split_index, content_hash
+    ),
+    INDEX idx_paper_source_quotes_paper_model (paper_id, model_version),
+    INDEX idx_paper_source_quotes_location (location_ref)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论文 Source Quote';
+
+CREATE TABLE IF NOT EXISTS conversation_source_quotes (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    conversation_id VARCHAR(64) NOT NULL COMMENT '会话 ID',
+    source_quote_ref VARCHAR(96) NOT NULL COMMENT 'Source Quote ref',
+    first_seen_turn_id VARCHAR(64) NOT NULL COMMENT '首次进入会话的 generation/turn ID',
+    user_id VARCHAR(64) DEFAULT NULL COMMENT '用户 ID',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_conversation_source_quotes_conversation_ref (conversation_id, source_quote_ref),
+    INDEX idx_conversation_source_quotes_ref (source_quote_ref)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会话 Source Quote 引用注册表';
+
 CREATE TABLE IF NOT EXISTS paper_visual_assets (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     paper_id VARCHAR(32) NOT NULL COMMENT '论文 ID，对应 file_upload.file_md5',

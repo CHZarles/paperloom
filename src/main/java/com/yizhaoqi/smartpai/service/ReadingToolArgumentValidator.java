@@ -165,6 +165,9 @@ public class ReadingToolArgumentValidator {
         if (stringList(safeArguments.get("locationRefs")).isEmpty()) {
             return ValidationResult.invalid("missing_argument", "locationRefs");
         }
+        if (stringList(safeArguments.get("locationRefs")).stream().anyMatch(this::looksLikeOrdinalReference)) {
+            return ValidationResult.invalid("invalid_location_ref", "locationRefs");
+        }
         return ValidationResult.validResult();
     }
 
@@ -244,6 +247,12 @@ public class ReadingToolArgumentValidator {
             }
         }
         return null;
+    }
+
+    private boolean looksLikeOrdinalReference(String value) {
+        String normalized = stringValue(value).toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        return normalized.matches("#?\\d+")
+                || normalized.matches("(candidate|item|location|result|ref)[ _:-]*\\d+");
     }
 
     private String stringValue(Object value) {
