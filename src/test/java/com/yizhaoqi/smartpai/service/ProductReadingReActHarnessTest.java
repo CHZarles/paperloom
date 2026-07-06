@@ -55,6 +55,7 @@ class ProductReadingReActHarnessTest {
             List<String> names = capturedTools.stream().map(AgentToolRegistry.AgentTool::name).toList();
             assertEquals(List.of(
                     "search_paper_candidates",
+                    "list_paper_locations",
                     "find_reading_locations",
                     "read_locations",
                     "trace_source_quotes"
@@ -72,9 +73,13 @@ class ProductReadingReActHarnessTest {
         assertFalse(promptMessages.contains("retrieve_evidence"));
         assertFalse(promptMessages.contains("inspect_reference"));
         assertTrue(promptMessages.contains("search_paper_candidates"));
+        assertTrue(promptMessages.contains("list_paper_locations"));
         assertTrue(promptMessages.contains("find_reading_locations"));
         assertTrue(promptMessages.contains("read_locations"));
         assertTrue(promptMessages.contains("trace_source_quotes"));
+        assertTrue(promptMessages.contains("deterministic"));
+        assertTrue(promptMessages.contains("semantic"));
+        assertTrue(promptMessages.contains("trace_source_quotes returned locationRef values are metadata"));
     }
 
     @Test
@@ -197,6 +202,52 @@ class ProductReadingReActHarnessTest {
         assertEquals(1, result.references().size());
         assertEquals("source_quote_abc", result.references().get(0).get("sourceQuoteRef"));
         assertEquals(1, result.references().get(0).get("referenceNumber"));
+    }
+
+    @Test
+    void readLocationsCanUseRefsDisclosedByListPaperLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
+        when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(toolCallTurn("call_2", "list_paper_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "pageRange", Map.of("from", 3, "to", 3),
+                        "locationTypes", List.of("PAGE")
+                )))
+                .thenReturn(toolCallTurn("call_3", "read_locations", Map.of(
+                        "locationRefs", List.of("page_ref_abc")
+                )))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "EVIDENCE_ANSWER",
+                          "answer": "Page 3 reports a score improvement {{sourceQuoteRef:source_quote_abc}}.",
+                          "evidenceBasedClaims": [
+                            {
+                              "claim": "Page 3 reports a score improvement.",
+                              "sourceQuoteRefs": ["source_quote_abc"]
+                            }
+                          ],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("Read page 3"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("list_paper_locations"), any(), any());
+        verify(registry).execute(eq("read_locations"), any(), any());
     }
 
     @Test
@@ -358,6 +409,68 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductResultStatus.FAILED, result.resultStatus());
         assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
         verify(registry, never()).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    void tracePaperHandleCanBeUsedForListButTraceLocationRefStillCannotBeReadDirectly() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
+        when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "trace_source_quotes", Map.of(
+                        "sourceQuoteRefs", List.of("source_quote_abc")
+                )))
+                .thenReturn(toolCallTurn("call_2", "list_paper_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "pageRange", Map.of("from", 3, "to", 3),
+                        "locationTypes", List.of("PAGE")
+                )))
+                .thenReturn(toolCallTurn("call_3", "read_locations", Map.of(
+                        "locationRefs", List.of("page_ref_old")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedRefs(
+                "Continue around this source",
+                List.of("source_quote_abc")
+        ));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry).execute(eq("list_paper_locations"), any(), any());
+        verify(registry, never()).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    void tracePaperHandleDoesNotAuthorizeFindReadingLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "trace_source_quotes", Map.of(
+                        "sourceQuoteRefs", List.of("source_quote_abc")
+                )))
+                .thenReturn(toolCallTurn("call_2", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "nearby context"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedRefs(
+                "Search around this source",
+                List.of("source_quote_abc")
+        ));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("find_reading_locations"), any(), any());
     }
 
     @Test
@@ -635,6 +748,30 @@ class ProductReadingReActHarnessTest {
         );
     }
 
+    private ProductToolResult listLocationsResult() {
+        return new ProductToolResult(
+                "list_paper_locations",
+                true,
+                Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "status", "OK",
+                        "locations", List.of(Map.of(
+                                "locationRef", "page_ref_abc",
+                                "paperHandle", "paper_handle_abc",
+                                "locationType", "PAGE",
+                                "pageNumber", 3,
+                                "label", "Page 3"
+                        )),
+                        "constraints", Map.of(
+                                "previewIsSourceQuote", false,
+                                "locationRefIsSourceQuote", false,
+                                "paperContentClaimsAllowed", false
+                        )
+                ),
+                ProductToolEffect.PAPER_DISCOVERY
+        );
+    }
+
     private ProductToolResult readResult() {
         return new ProductToolResult(
                 "read_locations",
@@ -686,6 +823,7 @@ class ProductReadingReActHarnessTest {
     private List<AgentToolRegistry.AgentTool> readingTools() {
         return List.of(
                 tool("search_paper_candidates"),
+                tool("list_paper_locations"),
                 tool("find_reading_locations"),
                 tool("read_locations"),
                 tool("trace_source_quotes")

@@ -19,6 +19,7 @@ public class ProductReadingReActHarness {
 
     private static final List<String> REQUIRED_TOOL_NAMES = List.of(
             "search_paper_candidates",
+            "list_paper_locations",
             "find_reading_locations",
             "read_locations",
             "trace_source_quotes"
@@ -175,7 +176,13 @@ public class ProductReadingReActHarness {
         Map<String, Object> arguments = safeArguments(toolCall);
         if ("find_reading_locations".equals(toolName)) {
             List<String> paperHandles = stringList(arguments.get("paperHandles"));
-            if (paperHandles.isEmpty() || !state.disclosedPaperHandles.containsAll(paperHandles)) {
+            if (paperHandles.isEmpty() || !state.semanticPaperHandles.containsAll(paperHandles)) {
+                return ToolCallValidation.rejected("hidden_paper_handle");
+            }
+        }
+        if ("list_paper_locations".equals(toolName)) {
+            List<String> paperHandles = stringList(arguments.get("paperHandles"));
+            if (paperHandles.isEmpty() || !state.deterministicLocationPaperHandles.containsAll(paperHandles)) {
                 return ToolCallValidation.rejected("hidden_paper_handle");
             }
         }
@@ -203,7 +210,17 @@ public class ProductReadingReActHarness {
             for (Map<String, Object> item : mapList(toolResult.data().get("items"))) {
                 String paperHandle = stringValue(item.get("paperHandle"));
                 if (!paperHandle.isBlank()) {
-                    state.disclosedPaperHandles.add(paperHandle);
+                    state.semanticPaperHandles.add(paperHandle);
+                    state.deterministicLocationPaperHandles.add(paperHandle);
+                }
+            }
+            return;
+        }
+        if ("list_paper_locations".equals(toolName)) {
+            for (Map<String, Object> location : mapList(toolResult.data().get("locations"))) {
+                String locationRef = stringValue(location.get("locationRef"));
+                if (!locationRef.isBlank()) {
+                    state.disclosedLocationRefs.add(locationRef);
                 }
             }
             return;
@@ -217,8 +234,22 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("read_locations".equals(toolName) || "trace_source_quotes".equals(toolName)) {
+        if ("read_locations".equals(toolName)) {
             for (Map<String, Object> sourceQuote : mapList(toolResult.data().get("sourceQuotes"))) {
+                String sourceQuoteRef = stringValue(sourceQuote.get("sourceQuoteRef"));
+                if (!sourceQuoteRef.isBlank()) {
+                    state.allowedSourceQuoteRefs.add(sourceQuoteRef);
+                    state.sourceQuotePayloads.put(sourceQuoteRef, new LinkedHashMap<>(sourceQuote));
+                }
+            }
+            return;
+        }
+        if ("trace_source_quotes".equals(toolName)) {
+            for (Map<String, Object> sourceQuote : mapList(toolResult.data().get("sourceQuotes"))) {
+                String paperHandle = stringValue(sourceQuote.get("paperHandle"));
+                if (!paperHandle.isBlank()) {
+                    state.deterministicLocationPaperHandles.add(paperHandle);
+                }
                 String sourceQuoteRef = stringValue(sourceQuote.get("sourceQuoteRef"));
                 if (!sourceQuoteRef.isBlank()) {
                     state.allowedSourceQuoteRefs.add(sourceQuoteRef);
@@ -238,11 +269,14 @@ public class ProductReadingReActHarness {
     private String systemPrompt(ProductTurnRequest request, Set<String> clickedSourceQuoteRefs) {
         return """
                 You are PaperLoom Product Reading ReAct Source Quote MVP.
-                Available tools are exactly search_paper_candidates, find_reading_locations, read_locations, and trace_source_quotes.
+                Available tools are exactly search_paper_candidates, list_paper_locations, find_reading_locations, read_locations, and trace_source_quotes.
                 Use search_paper_candidates for paper candidate discovery.
-                Use find_reading_locations only after explicit paperHandle values were returned by search_paper_candidates in this turn.
-                Use read_locations only after explicit locationRef values were returned by find_reading_locations in this turn.
+                Use find_reading_locations for semantic in-paper location search; it requires queryText and paperHandles disclosed by search_paper_candidates in this turn.
+                Use list_paper_locations for deterministic section/page/table/figure refs; it requires paperHandles disclosed by search_paper_candidates or trace_source_quotes in this turn.
+                Use read_locations only after explicit locationRef values were returned by find_reading_locations or list_paper_locations in this turn.
                 Use trace_source_quotes only for sourceQuoteRefs listed in this turn's explicit clicked Source Quote anchors.
+                trace_source_quotes returned locationRef values are metadata, not read_locations input.
+                To read broader context around a traced Source Quote, call list_paper_locations with the traced paperHandle and pageNumber or location type, then call read_locations with refs returned by list_paper_locations.
                 Paper previews and reading-location previews are navigation only, not Source Quotes.
                 read_locations and trace_source_quotes are the only Source Quote tools in this slice.
                 clicked Source Quote anchors are trace-tool inputs only; they are not citeable until trace_source_quotes returns them in this turn.
@@ -686,7 +720,8 @@ public class ProductReadingReActHarness {
 
     private static class ReadingTurnState {
         private final Set<String> clickedSourceQuoteRefs;
-        private final Set<String> disclosedPaperHandles = new LinkedHashSet<>();
+        private final Set<String> semanticPaperHandles = new LinkedHashSet<>();
+        private final Set<String> deterministicLocationPaperHandles = new LinkedHashSet<>();
         private final Set<String> disclosedLocationRefs = new LinkedHashSet<>();
         private final Set<String> allowedSourceQuoteRefs = new LinkedHashSet<>();
         private final Map<String, Map<String, Object>> sourceQuotePayloads = new LinkedHashMap<>();
