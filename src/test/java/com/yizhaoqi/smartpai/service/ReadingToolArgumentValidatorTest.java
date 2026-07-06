@@ -75,6 +75,65 @@ class ReadingToolArgumentValidatorTest {
     }
 
     @Test
+    void listPaperLocationsRequiresHandlesAndRejectsSemanticOrdinalAndRangeControls() {
+        ReadingToolArgumentValidator.ValidationResult missingHandles =
+                validator.validateListPaperLocations(Map.of());
+        ReadingToolArgumentValidator.ValidationResult queryText =
+                validator.validateListPaperLocations(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "methods"
+                ));
+        ReadingToolArgumentValidator.ValidationResult ordinal =
+                validator.validateListPaperLocations(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "ordinal", 1
+                ));
+        ReadingToolArgumentValidator.ValidationResult unsupportedTopLevel =
+                validator.validateListPaperLocations(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "metadataFilters", Map.of()
+                ));
+        ReadingToolArgumentValidator.ValidationResult badRange =
+                validator.validateListPaperLocations(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "pageRange", Map.of("from", 4, "to", 3)
+                ));
+        ReadingToolArgumentValidator.ValidationResult badType =
+                validator.validateListPaperLocations(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "locationTypes", List.of("PAGE", "APPENDIX")
+                ));
+        ReadingToolArgumentValidator.ValidationResult valid =
+                validator.validateListPaperLocations(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "pageRange", Map.of("from", 3, "to", 3),
+                        "locationTypes", List.of("PAGE", "SECTION")
+                ));
+
+        assertFalse(missingHandles.valid());
+        assertEquals("missing_argument", missingHandles.error());
+        assertEquals("paperHandles", missingHandles.argument());
+        assertFalse(queryText.valid());
+        assertEquals("forbidden_argument", queryText.error());
+        assertEquals("queryText", queryText.argument());
+        assertFalse(ordinal.valid());
+        assertEquals("forbidden_argument", ordinal.error());
+        assertEquals("ordinal", ordinal.argument());
+        assertFalse(unsupportedTopLevel.valid());
+        assertEquals("unsupported_argument", unsupportedTopLevel.error());
+        assertEquals("metadataFilters", unsupportedTopLevel.argument());
+        assertFalse(badRange.valid());
+        assertEquals("invalid_page_range", badRange.error());
+        assertEquals("pageRange", badRange.argument());
+        assertFalse(badType.valid());
+        assertEquals("unsupported_location_type", badType.error());
+        assertEquals("APPENDIX", badType.argument());
+        assertTrue(valid.valid());
+        assertEquals(new ReadingToolArgumentValidator.PageRange(3, 3),
+                validator.pageRange(Map.of("from", 3, "to", 3)));
+    }
+
+    @Test
     void readLocationsRejectsEmptyRefsAndForbiddenReadControls() {
         ReadingToolArgumentValidator.ValidationResult emptyRefs = validator.validateReadLocations(Map.of(
                 "locationRefs", List.of()
