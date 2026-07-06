@@ -188,6 +188,19 @@ As in the source-quote MVP, reject internal score/rank fields in tool output,
 but allow paper text and final answers to discuss scores or rankings when
 supported by returned Source Quotes.
 
+### 11. Should the `paperloom.react.reading-phase1.enabled` flag be renamed now?
+
+Recommended answer:
+
+No.
+
+Adopted.
+
+Keep the existing disabled-by-default reading experiment flag for this slice,
+even though the harness stage moves beyond navigation-only Phase 1. Renaming the
+configuration key would create migration noise without closing the follow-up
+loop.
+
 ## Non-Goals
 
 - No frontend source-chip click UI.
@@ -294,8 +307,10 @@ clickedSourceQuoteRefs
 Behavior:
 
 - If `effectiveScope.clickedSourceQuoteRefs` is absent, keep the current default:
-  empty history and empty memory/anchors.
-- If present, sanitize it to distinct `source_quote_...` strings.
+  empty history and empty reading turn anchors.
+- If present as a list/array, sanitize it to distinct `source_quote_...`
+  strings. Ignore unsupported shapes rather than parsing arbitrary user text.
+- Cap clicked refs with an internal maximum before prompting or tool validation.
 - Pass the sanitized clicked refs into the isolated reading harness as a small
   internal turn-anchor map.
 - Do not treat arbitrary conversation memory as citation authorization.
@@ -370,6 +385,8 @@ Required behavior:
 - Prompt the LLM that `trace_source_quotes` is the only way to use previously
   clicked Source Quotes.
 - Track `clickedSourceQuoteRefs` from the explicit reading turn anchors.
+- Add a small system/user prompt section listing only the allowed clicked refs
+  when anchors exist.
 - Show clicked refs to the LLM only as trace-tool input anchors; do not include
   Source Quote content in the prompt.
 - Prompt that clicked refs are not citeable until `trace_source_quotes` returns
@@ -410,6 +427,9 @@ harnessKind=READING_TRACE_SOURCE_QUOTES_MVP
 - Trace payloads include `trace_source_quotes` tool calls, returned
   `sourceQuoteRef` values, rendered `references`, stop reason, and result
   status.
+- After this slice, all isolated reading harness turns may use the new
+  trace-capable trace version and harness kind because the exposed tool surface
+  changed, even when an individual turn does not call `trace_source_quotes`.
 
 ### Task 6: Keep Service Isolation
 
@@ -420,6 +440,7 @@ Invariants:
   `ProductConversationService`, `ProductReActHarness`, `ProductToolRegistry`,
   `ConversationService`, or `ProductMemoryService`.
 - `paperloom.react.reading-phase1.enabled=false` still fails closed.
+- Do not rename the existing reading experiment flag in this slice.
 - No normal chat or frontend caller uses the new clicked-ref effective-scope key
   in this slice.
 
@@ -471,6 +492,7 @@ Required negative tests:
   `trace_source_quotes` call returns them.
 - clicked refs are visible to the LLM as trace-tool input anchors, but the prompt
   does not include quote content.
+- clicked ref anchors are capped before being included in prompt context.
 - final answers with marker but no claim-level `sourceQuoteRefs` are rejected.
 - final answers with claim-level `sourceQuoteRefs` but no visible marker are
   rejected.
@@ -488,7 +510,11 @@ Required negative tests:
 - `trace_source_quotes` accepts only explicit `sourceQuoteRefs`.
 - `ProductReadingConversationService` can pass explicit
   `clickedSourceQuoteRefs` into the isolated reading harness without using
-  history, memory, normal chat, WebSocket, HTTP, or frontend code.
+  persisted history, conversation memory, normal chat, WebSocket, HTTP, or
+  frontend code.
+- Clicked source quote anchors are capped before reaching the LLM prompt.
+- Unsupported `clickedSourceQuoteRefs` shapes are ignored, not parsed from
+  arbitrary text.
 - `trace_source_quotes` requires the selected ref to be registered in the same
   conversation.
 - `trace_source_quotes` checks paper visibility and locked scope.
@@ -506,6 +532,8 @@ Required negative tests:
 - The harness rejects clicked refs as final-answer support until
   `trace_source_quotes` returns them in the current turn.
 - Normal product chat remains unchanged and isolated from this reading path.
+- The existing disabled-by-default reading experiment flag still gates this
+  service-level path.
 - UI wiring, normal chat integration, display citation number resolution, and
   conversation-history follow-up remain unimplemented in this slice.
 

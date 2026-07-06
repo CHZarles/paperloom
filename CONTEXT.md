@@ -54,9 +54,10 @@ re-reading the same `paperId + modelVersion + locationRef + splitPolicyVersion +
 contentHash` reuses the same `sourceQuoteRef` from MySQL. `splitPolicyVersion` is internal and
 changes when the Source Quote splitting policy changes. Within one `splitPolicyVersion`, splitting
 must be deterministic, so the same input text and location produce the same `splitIndex` sequence.
-Final answers may cite only currently usable Source Quotes: this turn's read results, this turn's
-successful trace results, or refs registered in the current conversation Source Quote registry that
-still pass current paper existence, permission, and fixed search-scope checks.
+Final answers may cite only currently usable Source Quotes returned by this turn's read results or
+this turn's successful trace results. Conversation Source Quote registry rows authorize trace
+lookups; they do not support final paper-content claims until a current-turn trace returns the
+stored Source Quote.
 _Avoid_: paper handle, section handle, page handle, navigation anchor, Redis mapping, LLM-facing split policy, separate span-id
 
 **Source Handle**:
@@ -235,26 +236,34 @@ Persistent conversation memory about already-read Source Quotes, attempted paper
 reading questions. Reference Memory helps navigation but cannot support final paper-content claims.
 _Avoid_: evidence, Source Quote, hidden tool state
 
+**Reading Turn Anchor**:
+An explicit, current-turn input anchor supplied by the reading entry point, such as a clicked
+`sourceQuoteRef` from a source chip. A Reading Turn Anchor may be shown to the LLM as tool input,
+but it is not quote content and cannot support a final answer until a current-turn tool returns the
+corresponding Source Quote.
+_Avoid_: conversation memory, user-typed ref, rendered citation number, final answer evidence
+
 **Conversation Source Quote Registry**:
-The current conversation's citeable Source Quote set, stored in MySQL as
+The current conversation's registered Source Quote set, stored in MySQL as
 `conversation_id + sourceQuoteRef + firstSeenTurnId`. It controls whether an existing Source Quote
-may be cited in this conversation after current permission and search-scope checks. It is not the
-Source Quote storage table and not the Source Quote identity source.
+may be traced in this conversation after current permission and search-scope checks. It is not the
+Source Quote storage table, not the Source Quote identity source, and not direct final-answer
+evidence.
 _Avoid_: global paper_source_quotes lookup, Redis memory, identity table
 
 **Source Quote Trace**:
-A deterministic lookup of explicit `sourceQuoteRef` values supplied by the current model context,
-clicked source chips, or persistent Source Quote records. Source Quote Trace is used for follow-up
+A deterministic lookup of explicit `sourceQuoteRef` values supplied as Reading Turn Anchors and
+validated against the Conversation Source Quote Registry. Source Quote Trace is used for follow-up
 questions about already-read Source Quotes. It returns stored source quote text and source-location
 metadata. It does not require the paper to have a current READY Reading Model, but it must check the
 owning paper still exists, the user currently has permission, and the paper is inside the fixed
 conversation search scope. If not, it returns `SOURCE_QUOTE_UNAVAILABLE` without quote content. It
-cannot trace model-invented refs, raw internal ids, paper handles, page refs, section refs, table
-refs, or figure refs. Rendered citation numbers such as `[2]` are not source refs. Returned
-source-location refs are metadata, not a shortcut for reading new paper content. Broader context
-reading must use traced metadata such as `paperHandle`, page number, or section label to list current
-READY paper locations, then read current returned refs. If the current location no longer exists,
-return `CURRENT_LOCATION_NOT_FOUND`.
+cannot trace model-invented refs, user-typed refs without an explicit turn anchor, raw internal ids,
+paper handles, page refs, section refs, table refs, or figure refs. Rendered citation numbers such as
+`[2]` are not source refs. Returned source-location refs are metadata, not a shortcut for reading new
+paper content. Broader context reading must use traced metadata such as `paperHandle`, page number,
+or section label to list current READY paper locations, then read current returned refs. If the
+current location no longer exists, return `CURRENT_LOCATION_NOT_FOUND`.
 _Avoid_: semantic search, new source quote retrieval, model memory, raw paper id lookup, reading shortcut,
 rendered citation number lookup, page ref lookup, section ref lookup, old location ref reuse,
 permission bypass
