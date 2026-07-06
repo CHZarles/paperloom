@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,8 +38,7 @@ class ProductReadingReActHarnessTest {
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
         List<AgentToolRegistry.AgentTool> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
-        when(registry.execute(eq("search_paper_candidates"), any(), any()))
-                .thenReturn(searchResult());
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), any(), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
                 .thenReturn(finalTurn(productStateEnvelope("找到候选论文：Agentic Eval Benchmark。")));
@@ -53,7 +53,7 @@ class ProductReadingReActHarnessTest {
         verify(llm, times(2)).completeReActTurn(eq("7"), messagesCaptor.capture(), toolsCaptor.capture(), anyInt());
         for (List<AgentToolRegistry.AgentTool> capturedTools : toolsCaptor.getAllValues()) {
             List<String> names = capturedTools.stream().map(AgentToolRegistry.AgentTool::name).toList();
-            assertEquals(List.of("search_paper_candidates", "find_reading_locations"), names);
+            assertEquals(List.of("search_paper_candidates", "find_reading_locations", "read_locations"), names);
             assertFalse(names.contains("find_papers"));
             assertFalse(names.contains("retrieve_evidence"));
             assertFalse(names.contains("inspect_reference"));
@@ -68,6 +68,7 @@ class ProductReadingReActHarnessTest {
         assertFalse(promptMessages.contains("inspect_reference"));
         assertTrue(promptMessages.contains("search_paper_candidates"));
         assertTrue(promptMessages.contains("find_reading_locations"));
+        assertTrue(promptMessages.contains("read_locations"));
     }
 
     @Test
@@ -77,8 +78,7 @@ class ProductReadingReActHarnessTest {
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
         List<AgentToolRegistry.AgentTool> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
-        when(registry.execute(eq("search_paper_candidates"), any(), any()))
-                .thenReturn(searchResult());
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
                 .thenReturn(finalTurn(productStateEnvelope("找到候选论文：Agentic Eval Benchmark。")));
@@ -96,57 +96,135 @@ class ProductReadingReActHarnessTest {
     }
 
     @Test
-    void navigationQuestionCallsLocationToolAndAcceptsProductStateAnswer() {
+    void navigationQuestionRequiresDisclosedPaperHandleBeforeLocationSearch() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
         List<AgentToolRegistry.AgentTool> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
-        when(registry.execute(eq("find_reading_locations"), any(), any()))
-                .thenReturn(new ProductToolResult(
-                        "find_reading_locations",
-                        true,
-                        Map.of(
-                                "status", "OK",
-                                "candidates", List.of(Map.of(
-                                        "locationRef", "loc_page_1",
-                                        "paperHandle", "paper_handle_abc",
-                                        "preview", "navigation preview"
-                                )),
-                                "constraints", Map.of(
-                                        "previewIsSourceQuote", false,
-                                        "paperContentClaimsAllowed", false
-                                )
-                        ),
-                        ProductToolEffect.PAPER_DISCOVERY
-                ));
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
-                .thenReturn(toolCallTurn("call_1", "find_reading_locations", Map.of(
+                .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(toolCallTurn("call_2", "find_reading_locations", Map.of(
                         "paperHandles", List.of("paper_handle_abc"),
                         "queryText", "methods"
                 )))
-                .thenReturn(finalTurn(productStateEnvelope("找到候选阅读位置：loc_page_1。")));
+                .thenReturn(finalTurn(productStateEnvelope("找到候选阅读位置：page_ref_abc。")));
         ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
 
-        ProductTurnResult result = harness.run(request("在 paper_handle_abc 里找方法部分"));
+        ProductTurnResult result = harness.run(request("在候选论文里找方法部分"));
 
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
-        assertTrue(result.finalAnswerMarkdown().contains("loc_page_1"));
+        assertTrue(result.finalAnswerMarkdown().contains("page_ref_abc"));
         assertTrue(result.references().isEmpty());
+        verify(registry).execute(eq("search_paper_candidates"), any(), any());
         verify(registry).execute(eq("find_reading_locations"), any(), any());
     }
 
     @Test
-    void rejectsEvidenceAnswerBecausePhaseOneHasNoSourceQuotes() {
-        ProductTurnResult result = runWithFinalEnvelope("""
+    void rejectsHiddenPaperHandleBeforeLocationSearch() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_hidden"),
+                        "queryText", "methods"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("在 paper_handle_hidden 里找方法"));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("find_reading_locations"), any(), any());
+    }
+
+    @Test
+    void sourceQuotedQuestionReadsLocationsAndRendersSourceQuoteReferences() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(toolCallTurn("call_2", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "score"
+                )))
+                .thenReturn(toolCallTurn("call_3", "read_locations", Map.of(
+                        "locationRefs", List.of("page_ref_abc")
+                )))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "EVIDENCE_ANSWER",
+                          "answer": "该论文报告的 score 有提升 {{sourceQuoteRef:source_quote_abc}}。",
+                          "evidenceBasedClaims": [
+                            {
+                              "claim": "该论文报告的 score 有提升。",
+                              "sourceQuoteRefs": ["source_quote_abc"]
+                            }
+                          ],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("这篇论文的 score 说明了什么"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.EVIDENCE_ANSWER, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("[1]"));
+        assertFalse(result.finalAnswerMarkdown().contains("sourceQuoteRef"));
+        assertEquals(1, result.references().size());
+        assertEquals("source_quote_abc", result.references().get(0).get("sourceQuoteRef"));
+        assertEquals(1, result.references().get(0).get("referenceNumber"));
+    }
+
+    @Test
+    void rejectsHiddenLocationRefBeforeReadLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(toolCallTurn("call_2", "read_locations", Map.of(
+                        "locationRefs", List.of("page_ref_hidden")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("阅读隐藏位置"));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    void rejectsEvidenceAnswerWithoutReadLocationsSupport() {
+        ProductTurnResult result = runAfterSearchWithFinalEnvelope("""
                 {
                   "answerType": "EVIDENCE_ANSWER",
-                  "answer": "This paper proves the method works.",
+                  "answer": "This paper proves the method works {{sourceQuoteRef:source_quote_fake}}.",
                   "evidenceBasedClaims": [
                     {
                       "claim": "This paper proves the method works.",
-                      "evidenceRefs": ["ev_fake"]
+                      "sourceQuoteRefs": ["source_quote_fake"]
                     }
                   ],
                   "stateClaims": [],
@@ -158,43 +236,16 @@ class ProductReadingReActHarnessTest {
                 """);
 
         assertEquals(ProductResultStatus.FAILED, result.resultStatus());
-        assertEquals(ProductStopReason.ANSWER_SCHEMA_INVALID, result.stopReason());
-        assertTrue(result.finalAnswerMarkdown().contains("no Source Quotes"));
+        assertEquals(ProductStopReason.CITATION_VALIDATION_FAILED, result.stopReason());
         assertTrue(result.references().isEmpty());
     }
 
     @Test
-    void rejectsProductStateEnvelopeWithEvidenceClaims() {
-        ProductTurnResult result = runWithFinalEnvelope("""
+    void rejectsEvidenceAnswerWithMarkerButNoClaimSupport() {
+        ProductTurnResult result = runAfterReadWithFinalEnvelope("""
                 {
-                  "answerType": "PRODUCT_STATE",
-                  "answer": "This paper proves the method works.",
-                  "evidenceBasedClaims": [
-                    {
-                      "claim": "This paper proves the method works.",
-                      "evidenceRefs": ["ev_fake"]
-                    }
-                  ],
-                  "stateClaims": [],
-                  "limitations": [],
-                  "nonEvidenceNotes": [],
-                  "missingFields": [],
-                  "reason": ""
-                }
-                """);
-
-        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
-        assertEquals(ProductStopReason.ANSWER_SCHEMA_INVALID, result.stopReason());
-        assertTrue(result.finalAnswerMarkdown().contains("no Source Quotes"));
-        assertTrue(result.references().isEmpty());
-    }
-
-    @Test
-    void rejectsCitationMarkersBecausePhaseOneReturnsNoReferences() {
-        ProductTurnResult result = runWithFinalEnvelope("""
-                {
-                  "answerType": "PRODUCT_STATE",
-                  "answer": "找到候选论文 [1]。",
+                  "answerType": "EVIDENCE_ANSWER",
+                  "answer": "This paper reports a score improvement {{sourceQuoteRef:source_quote_abc}}.",
                   "evidenceBasedClaims": [],
                   "stateClaims": [],
                   "limitations": [],
@@ -205,13 +256,79 @@ class ProductReadingReActHarnessTest {
                 """);
 
         assertEquals(ProductResultStatus.FAILED, result.resultStatus());
-        assertEquals(ProductStopReason.ANSWER_SCHEMA_INVALID, result.stopReason());
+        assertEquals(ProductStopReason.CITATION_VALIDATION_FAILED, result.stopReason());
         assertTrue(result.references().isEmpty());
     }
 
     @Test
-    void rejectsInternalFieldNamesInFinalAnswer() {
-        ProductTurnResult result = runWithFinalEnvelope("""
+    void rejectsEvidenceAnswerWithClaimSupportButNoVisibleMarker() {
+        ProductTurnResult result = runAfterReadWithFinalEnvelope("""
+                {
+                  "answerType": "EVIDENCE_ANSWER",
+                  "answer": "This paper reports a score improvement.",
+                  "evidenceBasedClaims": [
+                    {
+                      "claim": "This paper reports a score improvement.",
+                      "sourceQuoteRefs": ["source_quote_abc"]
+                    }
+                  ],
+                  "stateClaims": [],
+                  "limitations": [],
+                  "nonEvidenceNotes": [],
+                  "missingFields": [],
+                  "reason": ""
+                }
+                """);
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.CITATION_VALIDATION_FAILED, result.stopReason());
+        assertTrue(result.references().isEmpty());
+    }
+
+    @Test
+    void rejectsLegacyEvidenceRefsForSourceQuoteAnswers() {
+        ProductTurnResult result = runAfterReadWithFinalEnvelope("""
+                {
+                  "answerType": "EVIDENCE_ANSWER",
+                  "answer": "This paper reports a score improvement {{sourceQuoteRef:source_quote_abc}}.",
+                  "evidenceBasedClaims": [
+                    {
+                      "claim": "This paper reports a score improvement.",
+                      "evidenceRefs": ["source_quote_abc"]
+                    }
+                  ],
+                  "stateClaims": [],
+                  "limitations": [],
+                  "nonEvidenceNotes": [],
+                  "missingFields": [],
+                  "reason": ""
+                }
+                """);
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.CITATION_VALIDATION_FAILED, result.stopReason());
+    }
+
+    @Test
+    void rejectsNumberedCitationsAndInternalFieldNames() {
+        ProductTurnResult numbered = runAfterReadWithFinalEnvelope("""
+                {
+                  "answerType": "EVIDENCE_ANSWER",
+                  "answer": "This paper reports a score improvement [1] {{sourceQuoteRef:source_quote_abc}}.",
+                  "evidenceBasedClaims": [
+                    {
+                      "claim": "This paper reports a score improvement.",
+                      "sourceQuoteRefs": ["source_quote_abc"]
+                    }
+                  ],
+                  "stateClaims": [],
+                  "limitations": [],
+                  "nonEvidenceNotes": [],
+                  "missingFields": [],
+                  "reason": ""
+                }
+                """);
+        ProductTurnResult internal = runAfterSearchWithFinalEnvelope("""
                 {
                   "answerType": "PRODUCT_STATE",
                   "answer": "候选论文的 paperId 是 raw-1。",
@@ -224,9 +341,8 @@ class ProductReadingReActHarnessTest {
                 }
                 """);
 
-        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
-        assertEquals(ProductStopReason.ANSWER_SCHEMA_INVALID, result.stopReason());
-        assertTrue(result.references().isEmpty());
+        assertEquals(ProductResultStatus.FAILED, numbered.resultStatus());
+        assertEquals(ProductResultStatus.FAILED, internal.resultStatus());
     }
 
     @Test
@@ -244,16 +360,37 @@ class ProductReadingReActHarnessTest {
         verify(traceRecorder).recordReadingTurn(any(), any(), any(), any(), any(Instant.class), any(Instant.class));
     }
 
-    private ProductTurnResult runWithFinalEnvelope(String finalEnvelope) {
+    private ProductTurnResult runAfterSearchWithFinalEnvelope(String finalEnvelope) {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
         List<AgentToolRegistry.AgentTool> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
-        when(registry.execute(eq("search_paper_candidates"), any(), any()))
-                .thenReturn(searchResult());
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(finalTurn(finalEnvelope));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        return harness.run(request("说明推荐理由"));
+    }
+
+    private ProductTurnResult runAfterReadWithFinalEnvelope(String finalEnvelope) {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(toolCallTurn("call_2", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "score"
+                )))
+                .thenReturn(toolCallTurn("call_3", "read_locations", Map.of("locationRefs", List.of("page_ref_abc"))))
                 .thenReturn(finalTurn(finalEnvelope));
         ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
 
@@ -294,8 +431,53 @@ class ProductReadingReActHarnessTest {
         );
     }
 
+    private ProductToolResult locationResult() {
+        return new ProductToolResult(
+                "find_reading_locations",
+                true,
+                Map.of(
+                        "status", "OK",
+                        "candidates", List.of(Map.of(
+                                "locationRef", "page_ref_abc",
+                                "paperHandle", "paper_handle_abc",
+                                "preview", "navigation preview"
+                        )),
+                        "constraints", Map.of(
+                                "previewIsSourceQuote", false,
+                                "locationRefIsSourceQuote", false,
+                                "paperContentClaimsAllowed", false
+                        )
+                ),
+                ProductToolEffect.PAPER_DISCOVERY
+        );
+    }
+
+    private ProductToolResult readResult() {
+        return new ProductToolResult(
+                "read_locations",
+                true,
+                Map.of(
+                        "sourceQuotes", List.of(Map.of(
+                                "sourceQuoteRef", "source_quote_abc",
+                                "locationRef", "page_ref_abc",
+                                "paperHandle", "paper_handle_abc",
+                                "paperTitle", "Agentic Eval Benchmark",
+                                "locationType", "PAGE",
+                                "pageNumber", 3,
+                                "contentKind", "TEXT",
+                                "content", "The reported score improves."
+                        )),
+                        "readStatus", List.of(Map.of(
+                                "locationRef", "page_ref_abc",
+                                "status", "OK"
+                        ))
+                ),
+                ProductToolEffect.EVIDENCE
+        );
+    }
+
     private List<AgentToolRegistry.AgentTool> readingTools() {
-        return List.of(tool("search_paper_candidates"), tool("find_reading_locations"));
+        return List.of(tool("search_paper_candidates"), tool("find_reading_locations"), tool("read_locations"));
     }
 
     private AgentToolRegistry.AgentTool tool(String name) {

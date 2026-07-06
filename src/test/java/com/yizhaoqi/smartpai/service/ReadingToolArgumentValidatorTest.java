@@ -75,6 +75,35 @@ class ReadingToolArgumentValidatorTest {
     }
 
     @Test
+    void readLocationsRejectsEmptyRefsAndForbiddenReadControls() {
+        ReadingToolArgumentValidator.ValidationResult emptyRefs = validator.validateReadLocations(Map.of(
+                "locationRefs", List.of()
+        ));
+        ReadingToolArgumentValidator.ValidationResult queryAlias = validator.validateReadLocations(Map.of(
+                "locationRefs", List.of("page_ref_abc"),
+                "queryText", "methods"
+        ));
+        ReadingToolArgumentValidator.ValidationResult sourceQuoteInput = validator.validateReadLocations(Map.of(
+                "locationRefs", List.of("page_ref_abc"),
+                "sourceQuoteRef", "source_quote_abc"
+        ));
+        ReadingToolArgumentValidator.ValidationResult valid = validator.validateReadLocations(Map.of(
+                "locationRefs", List.of("page_ref_abc")
+        ));
+
+        assertFalse(emptyRefs.valid());
+        assertEquals("missing_argument", emptyRefs.error());
+        assertEquals("locationRefs", emptyRefs.argument());
+        assertFalse(queryAlias.valid());
+        assertEquals("forbidden_argument", queryAlias.error());
+        assertEquals("queryText", queryAlias.argument());
+        assertFalse(sourceQuoteInput.valid());
+        assertEquals("forbidden_argument", sourceQuoteInput.error());
+        assertEquals("sourceQuoteRef", sourceQuoteInput.argument());
+        assertTrue(valid.valid());
+    }
+
+    @Test
     void parsesSupportedLocationTypes() {
         assertEquals(
                 List.of(PaperLocationType.PAGE, PaperLocationType.SECTION, PaperLocationType.TABLE, PaperLocationType.FIGURE),

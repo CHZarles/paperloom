@@ -68,8 +68,48 @@ public class ReadingToolArgumentValidator {
             "searchMode"
     );
 
+    private static final Set<String> READ_FORBIDDEN_ARGUMENTS = Set.of(
+            "paperId",
+            "paperIds",
+            "paperRef",
+            "paperRefs",
+            "modelVersion",
+            "chunkId",
+            "chunkIds",
+            "chunkRef",
+            "readingElementId",
+            "query",
+            "queryText",
+            "question",
+            "readingNeed",
+            "semanticNeed",
+            "subQuestions",
+            "coverageTargets",
+            "limit",
+            "topK",
+            "pageSize",
+            "maxCandidates",
+            "maxChars",
+            "maxQuotes",
+            "maxCharsPerLocation",
+            "maxTotalChars",
+            "maxQuotesPerLocation",
+            "budget",
+            "chunkSize",
+            "chunkOverlap",
+            "overlap",
+            "pageWindow",
+            "indexName",
+            "indexVersion",
+            "splitPolicyVersion",
+            "contentHash",
+            "quoteKinds",
+            "sourceQuoteRef"
+    );
+
     private static final Set<String> SEARCH_ALLOWED_ARGUMENTS = Set.of("queryText");
     private static final Set<String> LOCATION_ALLOWED_ARGUMENTS = Set.of("paperHandles", "queryText", "locationTypes");
+    private static final Set<String> READ_ALLOWED_ARGUMENTS = Set.of("locationRefs");
 
     public ValidationResult validateSearchPaperCandidates(Map<String, Object> arguments) {
         Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
@@ -108,6 +148,22 @@ public class ReadingToolArgumentValidator {
             if (!locationTypesResult.valid()) {
                 return locationTypesResult;
             }
+        }
+        return ValidationResult.validResult();
+    }
+
+    public ValidationResult validateReadLocations(Map<String, Object> arguments) {
+        Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
+        String forbiddenArgument = firstForbiddenArgument(safeArguments, READ_FORBIDDEN_ARGUMENTS);
+        if (forbiddenArgument != null) {
+            return ValidationResult.invalid("forbidden_argument", forbiddenArgument);
+        }
+        String unsupportedArgument = firstUnsupportedTopLevelArgument(safeArguments, READ_ALLOWED_ARGUMENTS);
+        if (unsupportedArgument != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedArgument);
+        }
+        if (stringList(safeArguments.get("locationRefs")).isEmpty()) {
+            return ValidationResult.invalid("missing_argument", "locationRefs");
         }
         return ValidationResult.validResult();
     }

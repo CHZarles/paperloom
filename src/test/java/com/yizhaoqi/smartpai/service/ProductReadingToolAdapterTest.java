@@ -41,6 +41,9 @@ class ProductReadingToolAdapterTest {
     @Mock
     private ProductPaperHandleService handleService;
 
+    @Mock
+    private ProductReadingLocationReadService readService;
+
     private ProductReadingToolAdapter adapter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -53,7 +56,8 @@ class ProductReadingToolAdapterTest {
                 modelRepository,
                 locationRepository,
                 handleService,
-                new ReadingToolOutputMapper()
+                new ReadingToolOutputMapper(),
+                readService
         );
     }
 
@@ -237,6 +241,41 @@ class ProductReadingToolAdapterTest {
                 null,
                 60
         ));
+    }
+
+    @Test
+    void readLocationsDelegatesToReadServiceAndReturnsCiteableSourceQuotesOnly() throws Exception {
+        ProductToolContext context = new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto());
+        when(readService.readLocations(List.of("page_ref_ready"), context))
+                .thenReturn(new ProductReadingLocationReadService.ReadResult(
+                        List.of(Map.of(
+                                "sourceQuoteRef", "source_quote_abc",
+                                "locationRef", "page_ref_ready",
+                                "paperHandle", "paper_handle_ready",
+                                "paperTitle", "Ready Paper",
+                                "contentKind", "TEXT",
+                                "content", "Source quote content with score."
+                        )),
+                        List.of(Map.of(
+                                "locationRef", "page_ref_ready",
+                                "status", "OK"
+                        ))
+                ));
+
+        ProductToolResult result = adapter.readLocations(List.of("page_ref_ready"), context);
+
+        assertTrue(result.success());
+        assertEquals(ProductToolEffect.EVIDENCE, result.effect());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sourceQuotes = (List<Map<String, Object>>) result.data().get("sourceQuotes");
+        assertEquals("source_quote_abc", sourceQuotes.get(0).get("sourceQuoteRef"));
+        assertEquals("Source quote content with score.", sourceQuotes.get(0).get("content"));
+        String json = objectMapper.writeValueAsString(result.data());
+        assertFalse(json.contains("paperId"));
+        assertFalse(json.contains("modelVersion"));
+        assertFalse(json.contains("readingElementId"));
+        assertFalse(json.contains("splitPolicyVersion"));
+        assertFalse(json.contains("contentHash"));
     }
 
     private PaperCandidate paperCandidate(String paperId, String title) {

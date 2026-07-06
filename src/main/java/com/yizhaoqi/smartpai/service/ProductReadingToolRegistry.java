@@ -11,6 +11,7 @@ public class ProductReadingToolRegistry {
 
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
+    private static final String READ_TOOL_NAME = "read_locations";
 
     private final ProductReadingToolAdapter adapter;
     private final ReadingToolArgumentValidator validator;
@@ -20,7 +21,7 @@ public class ProductReadingToolRegistry {
                                       ReadingToolArgumentValidator validator) {
         this.adapter = adapter;
         this.validator = validator;
-        this.tools = List.of(searchPaperCandidatesTool(), findReadingLocationsTool());
+        this.tools = List.of(searchPaperCandidatesTool(), findReadingLocationsTool(), readLocationsTool());
     }
 
     public List<AgentToolRegistry.AgentTool> listTools() {
@@ -35,6 +36,7 @@ public class ProductReadingToolRegistry {
         return switch (toolName == null ? "" : toolName) {
             case SEARCH_TOOL_NAME -> executeSearchPaperCandidates(safeArguments, safeContext);
             case LOCATION_TOOL_NAME -> executeFindReadingLocations(safeArguments, safeContext);
+            case READ_TOOL_NAME -> executeReadLocations(safeArguments, safeContext);
             default -> error(toolName, "unsupported_reading_tool");
         };
     }
@@ -60,6 +62,14 @@ public class ProductReadingToolRegistry {
         );
     }
 
+    private ProductToolResult executeReadLocations(Map<String, Object> arguments, ProductToolContext context) {
+        ReadingToolArgumentValidator.ValidationResult validation = validator.validateReadLocations(arguments);
+        if (!validation.valid()) {
+            return invalidArgument(READ_TOOL_NAME, validation);
+        }
+        return adapter.readLocations(validator.stringList(arguments.get("locationRefs")), context);
+    }
+
     private AgentToolRegistry.AgentTool searchPaperCandidatesTool() {
         return new AgentToolRegistry.AgentTool(
                 SEARCH_TOOL_NAME,
@@ -82,6 +92,16 @@ public class ProductReadingToolRegistry {
                                 List.of("PAGE", "SECTION", "TABLE", "FIGURE")
                         )
                 ), List.of("paperHandles", "queryText"))
+        );
+    }
+
+    private AgentToolRegistry.AgentTool readLocationsTool() {
+        return new AgentToolRegistry.AgentTool(
+                READ_TOOL_NAME,
+                "Read explicitly selected current reading locations and return Source Quotes. Accepts locationRefs only; output size and splitting are product-controlled.",
+                objectSchema(Map.of(
+                        "locationRefs", arrayStringSchema("Opaque location refs returned by PaperLoom reading-location tools.")
+                ), List.of("locationRefs"))
         );
     }
 

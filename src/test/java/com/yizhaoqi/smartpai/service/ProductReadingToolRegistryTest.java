@@ -30,21 +30,23 @@ class ProductReadingToolRegistryTest {
     }
 
     @Test
-    void exposesOnlyPhaseOneReadingToolsWithClosedSchemas() throws Exception {
+    void exposesOnlySourceQuoteReadingToolsWithClosedSchemas() throws Exception {
         List<AgentToolRegistry.AgentTool> tools = registry.listTools();
         List<String> names = tools.stream().map(AgentToolRegistry.AgentTool::name).toList();
         String schemaJson = objectMapper.writeValueAsString(tools.stream()
                 .map(AgentToolRegistry.AgentTool::parameters)
                 .toList());
 
-        assertEquals(List.of("search_paper_candidates", "find_reading_locations"), names);
+        assertEquals(List.of("search_paper_candidates", "find_reading_locations", "read_locations"), names);
         assertTrue(schemaJson.contains("\"additionalProperties\":false"));
         assertFalse(schemaJson.contains("limit"));
         assertFalse(schemaJson.contains("topK"));
         assertFalse(schemaJson.contains("pageSize"));
+        assertFalse(schemaJson.contains("maxChars"));
         assertFalse(schemaJson.contains("modelVersion"));
         assertFalse(schemaJson.contains("indexName"));
         assertFalse(schemaJson.contains("chunkRef"));
+        assertFalse(schemaJson.contains("sourceQuoteRef"));
         assertFalse(names.contains("find_papers"));
         assertFalse(names.contains("retrieve_evidence"));
         assertFalse(names.contains("inspect_reference"));
@@ -71,7 +73,7 @@ class ProductReadingToolRegistryTest {
     }
 
     @Test
-    void delegatesValidatedSearchAndReadingLocationCalls() {
+    void delegatesValidatedSearchLocationAndReadCalls() {
         ProductToolContext context = new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto());
         ProductToolResult searchResult = new ProductToolResult(
                 "search_paper_candidates",
@@ -85,6 +87,12 @@ class ProductReadingToolRegistryTest {
                 Map.of("status", "NO_MATCH", "candidates", List.of()),
                 ProductToolEffect.PAPER_DISCOVERY
         );
+        ProductToolResult readResult = new ProductToolResult(
+                "read_locations",
+                true,
+                Map.of("sourceQuotes", List.of(), "readStatus", List.of()),
+                ProductToolEffect.EVIDENCE
+        );
         when(adapter.searchPaperCandidates("agentic eval", context)).thenReturn(searchResult);
         when(adapter.findReadingLocations(
                 List.of("paper_handle_abc"),
@@ -92,13 +100,18 @@ class ProductReadingToolRegistryTest {
                 List.of(),
                 context
         )).thenReturn(locationResult);
+        when(adapter.readLocations(List.of("page_ref_abc"), context)).thenReturn(readResult);
 
         assertEquals(searchResult, registry.execute("search_paper_candidates", Map.of("queryText", "agentic eval"), context));
         assertEquals(locationResult, registry.execute("find_reading_locations", Map.of(
                 "paperHandles", List.of("paper_handle_abc"),
                 "queryText", "methods"
         ), context));
+        assertEquals(readResult, registry.execute("read_locations", Map.of(
+                "locationRefs", List.of("page_ref_abc")
+        ), context));
         verify(adapter).searchPaperCandidates("agentic eval", context);
         verify(adapter).findReadingLocations(List.of("paper_handle_abc"), "methods", List.of(), context);
+        verify(adapter).readLocations(List.of("page_ref_abc"), context);
     }
 }

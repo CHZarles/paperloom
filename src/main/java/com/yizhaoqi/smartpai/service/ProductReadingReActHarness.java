@@ -7,8 +7,11 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
@@ -16,7 +19,8 @@ public class ProductReadingReActHarness {
 
     private static final List<String> REQUIRED_TOOL_NAMES = List.of(
             "search_paper_candidates",
-            "find_reading_locations"
+            "find_reading_locations",
+            "read_locations"
     );
     private static final List<String> FORBIDDEN_OUTPUT_TOKENS = List.of(
             "paperId",
@@ -26,10 +30,12 @@ public class ProductReadingReActHarness {
             "matchedFields",
             "matchedField",
             "routingDiagnostics",
-            "rank",
-            "score"
+            "splitPolicyVersion",
+            "contentHash"
     );
     private static final Pattern NUMBERED_CITATION_PATTERN = Pattern.compile("\\[\\d+]");
+    private static final Pattern SOURCE_QUOTE_MARKER_PATTERN =
+            Pattern.compile("\\{\\{\\s*sourceQuoteRef\\s*:\\s*(source_quote_[A-Za-z0-9_-]+)\\s*}}");
 
     private final LlmProviderRouter llmProviderRouter;
     private final ProductReadingToolRegistry toolRegistry;
@@ -65,6 +71,7 @@ public class ProductReadingReActHarness {
             return result;
         }
 
+        ReadingTurnState state = new ReadingTurnState();
         List<Map<String, Object>> messages = initialMessages(safeRequest);
         boolean toolSucceeded = false;
         for (int round = 0; round < safeRequest.modelContext().maxReActRounds(); round++) {
@@ -80,7 +87,7 @@ public class ProductReadingReActHarness {
                     : turn.toolCalls();
             if (decisions.isEmpty()) {
                 ProductTurnResult result = toolSucceeded
-                        ? finalResult(turn == null ? "" : turn.content(), progressEvents)
+                        ? finalResult(turn == null ? "" : turn.content(), progressEvents, state)
                         : failed(
                         "Product reading tool call is required before the final answer.",
                         progressEvents,
@@ -91,6 +98,23 @@ public class ProductReadingReActHarness {
             }
             messages.add(assistantMessage(turn));
             for (LlmProviderRouter.ToolCallDecision toolCall : decisions) {
+                ToolCallValidation validation = validateToolCall(toolCall, state);
+                if (!validation.isAllowed()) {
+                    ProductToolResult rejected = new ProductToolResult(
+                            safeToolName(toolCall),
+                            false,
+                            Map.of("error", validation.reason()),
+                            ProductToolEffect.ERROR
+                    );
+                    toolCalls.add(toolCall(round + 1, toolCall, rejected, Instant.now(), Instant.now()));
+                    ProductTurnResult result = failed(
+                            "Product reading tool rejected: " + validation.reason(),
+                            progressEvents,
+                            ProductStopReason.TOOL_FAILED
+                    );
+                    recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
+                    return result;
+                }
                 ToolProgressEvent progressEvent = new ToolProgressEvent("calling_tool", safeToolName(toolCall));
                 progressEvents.add(progressEvent);
                 safeRequest.progressListener().accept(progressEvent);
@@ -124,8 +148,9 @@ public class ProductReadingReActHarness {
                     recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
                     return result;
                 }
+                updateState(toolResult, state);
                 toolSucceeded = true;
-                messages.add(navigationPolicyMessage());
+                messages.add(toolResultPolicyMessage(toolResult));
             }
         }
 
@@ -141,6 +166,58 @@ public class ProductReadingReActHarness {
         return REQUIRED_TOOL_NAMES.equals(names);
     }
 
+    private ToolCallValidation validateToolCall(LlmProviderRouter.ToolCallDecision toolCall, ReadingTurnState state) {
+        String toolName = safeToolName(toolCall);
+        Map<String, Object> arguments = safeArguments(toolCall);
+        if ("find_reading_locations".equals(toolName)) {
+            List<String> paperHandles = stringList(arguments.get("paperHandles"));
+            if (paperHandles.isEmpty() || !state.disclosedPaperHandles.containsAll(paperHandles)) {
+                return ToolCallValidation.rejected("hidden_paper_handle");
+            }
+        }
+        if ("read_locations".equals(toolName)) {
+            List<String> locationRefs = stringList(arguments.get("locationRefs"));
+            if (locationRefs.isEmpty() || !state.disclosedLocationRefs.containsAll(locationRefs)) {
+                return ToolCallValidation.rejected("hidden_location_ref");
+            }
+        }
+        return ToolCallValidation.allowed();
+    }
+
+    private void updateState(ProductToolResult toolResult, ReadingTurnState state) {
+        if (toolResult == null || toolResult.data() == null) {
+            return;
+        }
+        String toolName = toolResult.toolName();
+        if ("search_paper_candidates".equals(toolName)) {
+            for (Map<String, Object> item : mapList(toolResult.data().get("items"))) {
+                String paperHandle = stringValue(item.get("paperHandle"));
+                if (!paperHandle.isBlank()) {
+                    state.disclosedPaperHandles.add(paperHandle);
+                }
+            }
+            return;
+        }
+        if ("find_reading_locations".equals(toolName)) {
+            for (Map<String, Object> candidate : mapList(toolResult.data().get("candidates"))) {
+                String locationRef = stringValue(candidate.get("locationRef"));
+                if (!locationRef.isBlank()) {
+                    state.disclosedLocationRefs.add(locationRef);
+                }
+            }
+            return;
+        }
+        if ("read_locations".equals(toolName)) {
+            for (Map<String, Object> sourceQuote : mapList(toolResult.data().get("sourceQuotes"))) {
+                String sourceQuoteRef = stringValue(sourceQuote.get("sourceQuoteRef"));
+                if (!sourceQuoteRef.isBlank()) {
+                    state.allowedSourceQuoteRefs.add(sourceQuoteRef);
+                    state.sourceQuotePayloads.put(sourceQuoteRef, new LinkedHashMap<>(sourceQuote));
+                }
+            }
+        }
+    }
+
     private List<Map<String, Object>> initialMessages(ProductTurnRequest request) {
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(message("system", systemPrompt(request)));
@@ -150,42 +227,60 @@ public class ProductReadingReActHarness {
 
     private String systemPrompt(ProductTurnRequest request) {
         return """
-                You are PaperLoom Product Reading ReAct Phase 1.
-                Available tools are only search_paper_candidates and find_reading_locations.
+                You are PaperLoom Product Reading ReAct Source Quote MVP.
+                Available tools are exactly search_paper_candidates, find_reading_locations, and read_locations.
                 Use search_paper_candidates for paper candidate discovery.
-                Use find_reading_locations only after explicit paperHandle values are available.
-                Paper previews are navigation only, not Source Quotes.
-                Reading-location previews are navigation only, not Source Quotes.
-                locationRef values are navigation refs, not Source Quotes.
+                Use find_reading_locations only after explicit paperHandle values were returned by search_paper_candidates in this turn.
+                Use read_locations only after explicit locationRef values were returned by find_reading_locations in this turn.
+                Paper previews and reading-location previews are navigation only, not Source Quotes.
+                read_locations is the only Source Quote tool in this slice.
                 Do not invent paperHandle, locationRef, or sourceQuoteRef values.
                 Do not pass ordinals as tool input.
-                Do not pass limit, topK, modelVersion, indexName, chunkRef, paperId, question, query, readingNeed, or semanticNeed.
-                Phase 1 can answer candidate-list, navigation, clarification, and not-enough-source-quotes answers.
-                Phase 1 cannot answer paper-content methods, results, limitations, comparisons, recommendation reasons, citations, or source-quoted answers.
-                If the user asks for paper-content reasons, answer INSUFFICIENT_EVIDENCE and say read_locations / Source Quotes are required.
+                Do not pass limit, topK, modelVersion, indexName, chunkRef, paperId, question, query, readingNeed, semanticNeed, sourceQuoteRef, splitPolicyVersion, or contentHash.
+                Candidate-list and navigation answers use PRODUCT_STATE.
+                Paper-content claims require EVIDENCE_ANSWER with sourceQuoteRefs returned by read_locations in this turn.
+                In EVIDENCE_ANSWER text, cite Source Quotes with markers exactly like {{sourceQuoteRef:source_quote_...}}.
+                In evidenceBasedClaims, use sourceQuoteRefs, not evidenceRefs.
+                If Source Quotes are unavailable or insufficient, answer INSUFFICIENT_EVIDENCE without unsupported paper facts.
                 Final answer must be one JSON AnswerEnvelope.
-                PRODUCT_STATE is allowed for candidate-list and navigation answers.
-                INSUFFICIENT_EVIDENCE is required for paper-content claims that need Source Quotes.
-                EVIDENCE_ANSWER is forbidden in Phase 1.
-                paperRef, evidenceRef, and citationRef are legacy identifiers for the old harness. Do not use them as reading tool arguments.
+                paperRef, evidenceRef, and citationRef are legacy identifiers for the old harness. Do not use them as reading tool arguments or citation support.
                 Current user request:
                 %s
                 """.formatted(request.userMessage());
     }
 
-    private ProductTurnResult finalResult(String rawContent, List<ToolProgressEvent> progressEvents) {
+    private ProductTurnResult finalResult(String rawContent,
+                                          List<ToolProgressEvent> progressEvents,
+                                          ReadingTurnState state) {
         AnswerEnvelope envelope;
         try {
             envelope = parseEnvelope(rawContent);
         } catch (Exception exception) {
             return failed("Answer envelope schema invalid.", progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
         }
-        if (!validPhaseOneEnvelope(envelope)) {
-            return failed(
-                    "Phase 1 reading tools have no Source Quotes and cannot support evidence answers or paper-content claims.",
+        if (containsForbiddenOutputToken(envelopeText(envelope)) || containsLegacyCitation(envelopeText(envelope))
+                || NUMBERED_CITATION_PATTERN.matcher(envelopeText(envelope)).find()) {
+            return failed("Answer envelope contains forbidden reading identifiers or citations.",
+                    progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
+        }
+        if (envelope.answerType() == AnswerType.EVIDENCE_ANSWER) {
+            CitationValidation validation = validateSourceQuoteAnswer(envelope, state);
+            if (!validation.isValid()) {
+                return failed(validation.reason(), progressEvents, ProductStopReason.CITATION_VALIDATION_FAILED);
+            }
+            CitationRender render = renderSourceQuoteCitations(envelope.answer(), state);
+            return new ProductTurnResult(
+                    render.markdown(),
+                    envelope,
+                    render.references(),
                     progressEvents,
-                    ProductStopReason.ANSWER_SCHEMA_INVALID
+                    ProductStopReason.COMPLETED,
+                    ProductResultStatus.COMPLETED
             );
+        }
+        if (!envelope.evidenceBasedClaims().isEmpty() || !sourceQuoteMarkers(envelope.answer()).isEmpty()) {
+            return failed("Non-evidence reading answers cannot include Source Quote support.",
+                    progressEvents, ProductStopReason.CITATION_VALIDATION_FAILED);
         }
         return new ProductTurnResult(
                 envelope.answer(),
@@ -197,31 +292,93 @@ public class ProductReadingReActHarness {
         );
     }
 
-    private boolean validPhaseOneEnvelope(AnswerEnvelope envelope) {
-        if (envelope == null) {
-            return false;
+    private CitationValidation validateSourceQuoteAnswer(AnswerEnvelope envelope, ReadingTurnState state) {
+        Set<String> visibleRefs = sourceQuoteMarkers(envelope.answer());
+        Set<String> claimRefs = claimSourceQuoteRefs(envelope);
+        if (visibleRefs.isEmpty()) {
+            return CitationValidation.invalid("Source-quoted answer requires visible sourceQuoteRef markers.");
         }
-        if (envelope.answerType() == AnswerType.EVIDENCE_ANSWER) {
-            return false;
+        if (claimRefs.isEmpty()) {
+            return CitationValidation.invalid("Source-quoted answer requires claim-level sourceQuoteRefs.");
         }
-        if (!envelope.evidenceBasedClaims().isEmpty()) {
-            return false;
+        if (!visibleRefs.equals(claimRefs)) {
+            return CitationValidation.invalid("Visible sourceQuoteRef markers and claim-level sourceQuoteRefs must match.");
         }
-        String envelopeText = envelope.answer()
-                + " " + envelope.stateClaims()
-                + " " + envelope.limitations()
-                + " " + envelope.nonEvidenceNotes()
-                + " " + envelope.missingFields()
-                + " " + envelope.reason();
-        return !containsCitation(envelopeText) && !containsForbiddenOutputToken(envelopeText);
+        if (!state.allowedSourceQuoteRefs.containsAll(visibleRefs)) {
+            return CitationValidation.invalid("Source-quoted answer contains unreturned sourceQuoteRef values.");
+        }
+        return CitationValidation.valid();
     }
 
-    private boolean containsCitation(String text) {
+    private Set<String> claimSourceQuoteRefs(AnswerEnvelope envelope) {
+        Set<String> refs = new LinkedHashSet<>();
+        for (Map<String, Object> claim : envelope.evidenceBasedClaims()) {
+            if (claim.containsKey("evidenceRefs") || claim.containsKey("evidenceRef") || claim.containsKey("citationRef")) {
+                return Set.of();
+            }
+            refs.addAll(stringList(claim.get("sourceQuoteRefs")));
+        }
+        return refs;
+    }
+
+    private Set<String> sourceQuoteMarkers(String text) {
+        Set<String> refs = new LinkedHashSet<>();
+        Matcher matcher = SOURCE_QUOTE_MARKER_PATTERN.matcher(text == null ? "" : text);
+        while (matcher.find()) {
+            refs.add(matcher.group(1));
+        }
+        return refs;
+    }
+
+    private CitationRender renderSourceQuoteCitations(String answer, ReadingTurnState state) {
+        Matcher matcher = SOURCE_QUOTE_MARKER_PATTERN.matcher(answer == null ? "" : answer);
+        StringBuffer markdown = new StringBuffer();
+        Map<String, Integer> numbersByRef = new LinkedHashMap<>();
+        List<Map<String, Object>> references = new ArrayList<>();
+        while (matcher.find()) {
+            String sourceQuoteRef = matcher.group(1);
+            Integer number = numbersByRef.get(sourceQuoteRef);
+            if (number == null) {
+                number = numbersByRef.size() + 1;
+                numbersByRef.put(sourceQuoteRef, number);
+                references.add(reference(number, sourceQuoteRef, state.sourceQuotePayloads.get(sourceQuoteRef)));
+            }
+            matcher.appendReplacement(markdown, Matcher.quoteReplacement("[" + number + "]"));
+        }
+        matcher.appendTail(markdown);
+        return new CitationRender(markdown.toString(), references);
+    }
+
+    private Map<String, Object> reference(Integer referenceNumber,
+                                          String sourceQuoteRef,
+                                          Map<String, Object> sourceQuotePayload) {
+        Map<String, Object> reference = new LinkedHashMap<>();
+        reference.put("referenceNumber", referenceNumber);
+        reference.put("sourceQuoteRef", sourceQuoteRef);
+        if (sourceQuotePayload != null) {
+            copyIfPresent(reference, sourceQuotePayload, "paperHandle");
+            copyIfPresent(reference, sourceQuotePayload, "paperTitle");
+            copyIfPresent(reference, sourceQuotePayload, "locationRef");
+            copyIfPresent(reference, sourceQuotePayload, "locationType");
+            copyIfPresent(reference, sourceQuotePayload, "pageNumber");
+            copyIfPresent(reference, sourceQuotePayload, "pageEndNumber");
+            copyIfPresent(reference, sourceQuotePayload, "sectionTitle");
+            copyIfPresent(reference, sourceQuotePayload, "contentKind");
+            copyIfPresent(reference, sourceQuotePayload, "content");
+        }
+        return reference;
+    }
+
+    private void copyIfPresent(Map<String, Object> target, Map<String, Object> source, String key) {
+        Object value = source.get(key);
+        if (value != null) {
+            target.put(key, value);
+        }
+    }
+
+    private boolean containsLegacyCitation(String text) {
         String value = text == null ? "" : text;
-        return value.contains("{{evidenceRef:")
-                || value.contains("sourceQuoteRef")
-                || value.contains("citationRef")
-                || NUMBERED_CITATION_PATTERN.matcher(value).find();
+        return value.contains("{{evidenceRef:") || value.contains("citationRef") || value.contains("evidenceRef");
     }
 
     private boolean containsForbiddenOutputToken(String text) {
@@ -232,6 +389,16 @@ public class ProductReadingReActHarness {
             }
         }
         return false;
+    }
+
+    private String envelopeText(AnswerEnvelope envelope) {
+        return envelope.answer()
+                + " " + envelope.evidenceBasedClaims()
+                + " " + envelope.stateClaims()
+                + " " + envelope.limitations()
+                + " " + envelope.nonEvidenceNotes()
+                + " " + envelope.missingFields()
+                + " " + envelope.reason();
     }
 
     private AnswerEnvelope parseEnvelope(String rawContent) throws Exception {
@@ -282,6 +449,31 @@ public class ProductReadingReActHarness {
             items.add(item.asText(""));
         }
         return items;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> mapList(Object value) {
+        if (!(value instanceof List<?> rawItems)) {
+            return List.of();
+        }
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Object rawItem : rawItems) {
+            if (rawItem instanceof Map<?, ?> map) {
+                items.add(new LinkedHashMap<>((Map<String, Object>) map));
+            }
+        }
+        return items;
+    }
+
+    private List<String> stringList(Object value) {
+        if (!(value instanceof List<?> rawValues)) {
+            return List.of();
+        }
+        return rawValues.stream()
+                .map(this::stringValue)
+                .filter(item -> !item.isBlank())
+                .distinct()
+                .toList();
     }
 
     private ProductTurnResult failed(String message,
@@ -386,10 +578,17 @@ public class ProductReadingReActHarness {
         return message;
     }
 
-    private Map<String, Object> navigationPolicyMessage() {
+    private Map<String, Object> toolResultPolicyMessage(ProductToolResult toolResult) {
+        if (toolResult != null && "read_locations".equals(toolResult.toolName())) {
+            return message("user", """
+                    Source Quotes from read_locations may support EVIDENCE_ANSWER.
+                    Cite them with {{sourceQuoteRef:source_quote_...}} markers and use sourceQuoteRefs in evidenceBasedClaims.
+                    Do not use evidenceRefs, citationRef, locationRef, or paperHandle as citation support.
+                    """);
+        }
         return message(
                 "user",
-                "Treat this result as navigation only. Do not make paper-content claims. If source-quoted reasons are needed, answer INSUFFICIENT_EVIDENCE."
+                "Treat this result as navigation only. If paper-content claims are needed, call read_locations on disclosed locationRefs."
         );
     }
 
@@ -407,5 +606,35 @@ public class ProductReadingReActHarness {
 
     private String stringValue(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private static class ReadingTurnState {
+        private final Set<String> disclosedPaperHandles = new LinkedHashSet<>();
+        private final Set<String> disclosedLocationRefs = new LinkedHashSet<>();
+        private final Set<String> allowedSourceQuoteRefs = new LinkedHashSet<>();
+        private final Map<String, Map<String, Object>> sourceQuotePayloads = new LinkedHashMap<>();
+    }
+
+    private record ToolCallValidation(boolean isAllowed, String reason) {
+        static ToolCallValidation allowed() {
+            return new ToolCallValidation(true, "");
+        }
+
+        static ToolCallValidation rejected(String reason) {
+            return new ToolCallValidation(false, reason);
+        }
+    }
+
+    private record CitationValidation(boolean isValid, String reason) {
+        static CitationValidation valid() {
+            return new CitationValidation(true, "");
+        }
+
+        static CitationValidation invalid(String reason) {
+            return new CitationValidation(false, reason);
+        }
+    }
+
+    private record CitationRender(String markdown, List<Map<String, Object>> references) {
     }
 }

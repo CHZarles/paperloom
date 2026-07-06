@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ProductReadingTraceRecorderTest {
 
     @Test
-    void recordsReadingTurnWithDistinctArtifactAndHarnessKind() {
+    void recordsReadingTurnWithDistinctArtifactAndSourceQuoteStage() {
         List<ProductTracePayload> submitted = new ArrayList<>();
         ProductReadingTraceRecorder recorder = new ProductReadingTraceRecorder(submitted::add);
         ProductTurnRequest request = new ProductTurnRequest(
@@ -37,18 +37,31 @@ class ProductReadingTraceRecorderTest {
                         List.of(),
                         ProductStopReason.ANSWER_SCHEMA_INVALID.name()
                 ),
-                List.of(),
+                List.of(Map.of("sourceQuoteRef", "source_quote_abc")),
                 List.of(),
                 ProductStopReason.ANSWER_SCHEMA_INVALID,
                 ProductResultStatus.FAILED
         );
 
-        recorder.recordReadingTurn(request, result, List.of(), List.of(), Instant.EPOCH, Instant.EPOCH);
+        recorder.recordReadingTurn(
+                request,
+                result,
+                List.of(),
+                List.of(Map.of(
+                        "toolName", "read_locations",
+                        "result", Map.of("sourceQuotes", List.of(Map.of("sourceQuoteRef", "source_quote_abc")))
+                )),
+                Instant.EPOCH,
+                Instant.EPOCH
+        );
 
         assertEquals(1, submitted.size());
         ProductTracePayload payload = submitted.get(0);
         assertEquals("PRODUCT_READING_REACT_TURN", payload.artifactType());
         assertEquals("PRODUCT_READING_REACT_TURN", payload.traceJson().get("artifactType"));
-        assertEquals("READING_PHASE1", payload.traceJson().get("harnessKind"));
+        assertEquals(2, payload.traceJson().get("traceVersion"));
+        assertEquals("SOURCE_QUOTE_MVP", payload.traceJson().get("readingLoopStage"));
+        assertEquals("READING_SOURCE_QUOTE_MVP", payload.traceJson().get("harnessKind"));
+        assertEquals(List.of(Map.of("sourceQuoteRef", "source_quote_abc")), payload.traceJson().get("references"));
     }
 }

@@ -21,6 +21,7 @@ public class ProductReadingToolAdapter {
 
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
+    private static final String READ_TOOL_NAME = "read_locations";
 
     private final PaperCandidateSearchService paperCandidateSearchService;
     private final ReadingModelGrepSearchService readingModelGrepSearchService;
@@ -28,19 +29,37 @@ public class ProductReadingToolAdapter {
     private final PaperLocationRepository locationRepository;
     private final ProductPaperHandleService handleService;
     private final ReadingToolOutputMapper outputMapper;
+    private final ProductReadingLocationReadService readService;
 
     public ProductReadingToolAdapter(PaperCandidateSearchService paperCandidateSearchService,
                                      ReadingModelGrepSearchService readingModelGrepSearchService,
                                      PaperReadingModelRepository modelRepository,
                                      PaperLocationRepository locationRepository,
                                      ProductPaperHandleService handleService,
-                                     ReadingToolOutputMapper outputMapper) {
+                                     ReadingToolOutputMapper outputMapper,
+                                     ProductReadingLocationReadService readService) {
         this.paperCandidateSearchService = paperCandidateSearchService;
         this.readingModelGrepSearchService = readingModelGrepSearchService;
         this.modelRepository = modelRepository;
         this.locationRepository = locationRepository;
         this.handleService = handleService;
         this.outputMapper = outputMapper;
+        this.readService = readService;
+    }
+
+    @Transactional
+    public ProductToolResult readLocations(List<String> locationRefs, ProductToolContext context) {
+        ProductToolContext safeContext = safeContext(context);
+        List<String> safeLocationRefs = sanitizeLocationRefs(locationRefs);
+        if (safeLocationRefs.isEmpty()) {
+            return invalidArgument(READ_TOOL_NAME, "locationRefs");
+        }
+        ProductReadingLocationReadService.ReadResult result = readService.readLocations(safeLocationRefs, safeContext);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("sourceQuotes", result.sourceQuotes());
+        data.put("readStatus", result.readStatus());
+        data.put("constraints", readConstraints());
+        return new ProductToolResult(READ_TOOL_NAME, true, data, ProductToolEffect.EVIDENCE);
     }
 
     @Transactional(readOnly = true)
@@ -217,6 +236,14 @@ public class ProductReadingToolAdapter {
         );
     }
 
+    private Map<String, Object> readConstraints() {
+        return Map.of(
+                "sourceQuotesAreCiteable", true,
+                "locationRefIsSourceQuote", false,
+                "paperContentClaimsRequireSourceQuoteRef", true
+        );
+    }
+
     private ProductToolResult invalidArgument(String toolName, String argument) {
         return new ProductToolResult(
                 toolName,
@@ -236,6 +263,17 @@ public class ProductReadingToolAdapter {
         }
         return paperHandles.stream()
                 .filter(handle -> handle != null && !handle.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+
+    private List<String> sanitizeLocationRefs(List<String> locationRefs) {
+        if (locationRefs == null) {
+            return List.of();
+        }
+        return locationRefs.stream()
+                .filter(ref -> ref != null && !ref.isBlank())
                 .map(String::trim)
                 .distinct()
                 .toList();
