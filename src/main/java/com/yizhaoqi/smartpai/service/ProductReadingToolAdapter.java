@@ -58,7 +58,6 @@ public class ProductReadingToolAdapter {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("sourceQuotes", result.sourceQuotes());
         data.put("readStatus", result.readStatus());
-        data.put("constraints", readConstraints());
         return new ProductToolResult(READ_TOOL_NAME, true, data, ProductToolEffect.EVIDENCE);
     }
 
@@ -233,14 +232,6 @@ public class ProductReadingToolAdapter {
                 "locationRefIsSourceQuote", false,
                 "paperContentClaimsAllowed", false,
                 "paperContentAbsenceClaimAllowed", false
-        );
-    }
-
-    private Map<String, Object> readConstraints() {
-        return Map.of(
-                "sourceQuotesAreCiteable", true,
-                "locationRefIsSourceQuote", false,
-                "paperContentClaimsRequireSourceQuoteRef", true
         );
     }
 
