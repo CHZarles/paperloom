@@ -10,6 +10,7 @@ import java.util.Map;
 public class ProductReadingToolRegistry {
 
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
+    private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_TOOL_NAME = "read_locations";
     private static final String TRACE_TOOL_NAME = "trace_source_quotes";
@@ -24,6 +25,7 @@ public class ProductReadingToolRegistry {
         this.validator = validator;
         this.tools = List.of(
                 searchPaperCandidatesTool(),
+                listPaperLocationsTool(),
                 findReadingLocationsTool(),
                 readLocationsTool(),
                 traceSourceQuotesTool()
@@ -41,6 +43,7 @@ public class ProductReadingToolRegistry {
                 : context;
         return switch (toolName == null ? "" : toolName) {
             case SEARCH_TOOL_NAME -> executeSearchPaperCandidates(safeArguments, safeContext);
+            case LIST_LOCATIONS_TOOL_NAME -> executeListPaperLocations(safeArguments, safeContext);
             case LOCATION_TOOL_NAME -> executeFindReadingLocations(safeArguments, safeContext);
             case READ_TOOL_NAME -> executeReadLocations(safeArguments, safeContext);
             case TRACE_TOOL_NAME -> executeTraceSourceQuotes(safeArguments, safeContext);
@@ -54,6 +57,19 @@ public class ProductReadingToolRegistry {
             return invalidArgument(SEARCH_TOOL_NAME, validation);
         }
         return adapter.searchPaperCandidates(stringValue(arguments.get("queryText")), context);
+    }
+
+    private ProductToolResult executeListPaperLocations(Map<String, Object> arguments, ProductToolContext context) {
+        ReadingToolArgumentValidator.ValidationResult validation = validator.validateListPaperLocations(arguments);
+        if (!validation.valid()) {
+            return invalidArgument(LIST_LOCATIONS_TOOL_NAME, validation);
+        }
+        return adapter.listPaperLocations(
+                validator.stringList(arguments.get("paperHandles")),
+                validator.pageRange(arguments.get("pageRange")),
+                validator.locationTypes(arguments.get("locationTypes")),
+                context
+        );
     }
 
     private ProductToolResult executeFindReadingLocations(Map<String, Object> arguments, ProductToolContext context) {
@@ -92,6 +108,24 @@ public class ProductReadingToolRegistry {
                 objectSchema(Map.of(
                         "queryText", stringSchema("Caller-authored paper candidate search text.")
                 ), List.of("queryText"))
+        );
+    }
+
+    private AgentToolRegistry.AgentTool listPaperLocationsTool() {
+        return new AgentToolRegistry.AgentTool(
+                LIST_LOCATIONS_TOOL_NAME,
+                "List deterministic current READY paper locations for explicit paperHandles. Returns locationRefs only; it does not read content and does not accept semantic search text.",
+                objectSchema(Map.of(
+                        "paperHandles", arrayStringSchema("Opaque paper handles returned by PaperLoom tools or clicked paper rows."),
+                        "pageRange", objectSchema(Map.of(
+                                "from", integerSchema("1-based inclusive start page."),
+                                "to", integerSchema("1-based inclusive end page.")
+                        ), List.of("from", "to")),
+                        "locationTypes", arrayEnumSchema(
+                                "Optional deterministic location type filter.",
+                                List.of("PAGE", "SECTION", "TABLE", "FIGURE")
+                        )
+                ), List.of("paperHandles"))
         );
     }
 
@@ -165,6 +199,13 @@ public class ProductReadingToolRegistry {
     private Map<String, Object> stringSchema(String description) {
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "string");
+        schema.put("description", description);
+        return schema;
+    }
+
+    private Map<String, Object> integerSchema(String description) {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "integer");
         schema.put("description", description);
         return schema;
     }

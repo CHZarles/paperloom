@@ -1,6 +1,7 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yizhaoqi.smartpai.model.PaperLocationType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -39,10 +40,22 @@ class ProductReadingToolRegistryTest {
 
         assertEquals(List.of(
                 "search_paper_candidates",
+                "list_paper_locations",
                 "find_reading_locations",
                 "read_locations",
                 "trace_source_quotes"
         ), names);
+        AgentToolRegistry.AgentTool listTool = tools.stream()
+                .filter(tool -> "list_paper_locations".equals(tool.name()))
+                .findFirst()
+                .orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> listProperties =
+                (Map<String, Object>) listTool.parameters().get("properties");
+        assertTrue(listProperties.containsKey("pageRange"));
+        assertTrue(listProperties.containsKey("locationTypes"));
+        assertFalse(listProperties.containsKey("queryText"));
+        assertFalse(listProperties.containsKey("query"));
         assertTrue(schemaJson.contains("\"additionalProperties\":false"));
         assertFalse(schemaJson.contains("limit"));
         assertFalse(schemaJson.contains("topK"));
@@ -91,6 +104,12 @@ class ProductReadingToolRegistryTest {
                 Map.of("status", "NO_MATCH", "candidates", List.of()),
                 ProductToolEffect.PAPER_DISCOVERY
         );
+        ProductToolResult listedLocationsResult = new ProductToolResult(
+                "list_paper_locations",
+                true,
+                Map.of("status", "OK", "locations", List.of()),
+                ProductToolEffect.PAPER_DISCOVERY
+        );
         ProductToolResult readResult = new ProductToolResult(
                 "read_locations",
                 true,
@@ -110,10 +129,21 @@ class ProductReadingToolRegistryTest {
                 List.of(),
                 context
         )).thenReturn(locationResult);
+        when(adapter.listPaperLocations(
+                List.of("paper_handle_abc"),
+                new ReadingToolArgumentValidator.PageRange(3, 3),
+                List.of(PaperLocationType.PAGE),
+                context
+        )).thenReturn(listedLocationsResult);
         when(adapter.readLocations(List.of("page_ref_abc"), context)).thenReturn(readResult);
         when(adapter.traceSourceQuotes(List.of("source_quote_abc"), context)).thenReturn(traceResult);
 
         assertEquals(searchResult, registry.execute("search_paper_candidates", Map.of("queryText", "agentic eval"), context));
+        assertEquals(listedLocationsResult, registry.execute("list_paper_locations", Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "pageRange", Map.of("from", 3, "to", 3),
+                "locationTypes", List.of("PAGE")
+        ), context));
         assertEquals(locationResult, registry.execute("find_reading_locations", Map.of(
                 "paperHandles", List.of("paper_handle_abc"),
                 "queryText", "methods"
@@ -125,6 +155,12 @@ class ProductReadingToolRegistryTest {
                 "sourceQuoteRefs", List.of("source_quote_abc")
         ), context));
         verify(adapter).searchPaperCandidates("agentic eval", context);
+        verify(adapter).listPaperLocations(
+                List.of("paper_handle_abc"),
+                new ReadingToolArgumentValidator.PageRange(3, 3),
+                List.of(PaperLocationType.PAGE),
+                context
+        );
         verify(adapter).findReadingLocations(List.of("paper_handle_abc"), "methods", List.of(), context);
         verify(adapter).readLocations(List.of("page_ref_abc"), context);
         verify(adapter).traceSourceQuotes(List.of("source_quote_abc"), context);
