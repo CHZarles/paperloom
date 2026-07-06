@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ProductReadingTraceRecorderTest {
 
     @Test
-    void recordsReadingTurnWithDistinctArtifactAndSourceQuoteStage() {
+    void recordsReadingTurnWithDistinctArtifactAndTraceSourceQuoteStage() {
         List<ProductTracePayload> submitted = new ArrayList<>();
         ProductReadingTraceRecorder recorder = new ProductReadingTraceRecorder(submitted::add);
         ProductTurnRequest request = new ProductTurnRequest(
@@ -42,15 +42,16 @@ class ProductReadingTraceRecorderTest {
                 ProductStopReason.ANSWER_SCHEMA_INVALID,
                 ProductResultStatus.FAILED
         );
+        List<Map<String, Object>> toolCalls = List.of(Map.of(
+                "toolName", "trace_source_quotes",
+                "resultJson", Map.of("sourceQuotes", List.of(Map.of("sourceQuoteRef", "source_quote_abc")))
+        ));
 
         recorder.recordReadingTurn(
                 request,
                 result,
                 List.of(),
-                List.of(Map.of(
-                        "toolName", "read_locations",
-                        "result", Map.of("sourceQuotes", List.of(Map.of("sourceQuoteRef", "source_quote_abc")))
-                )),
+                toolCalls,
                 Instant.EPOCH,
                 Instant.EPOCH
         );
@@ -59,9 +60,10 @@ class ProductReadingTraceRecorderTest {
         ProductTracePayload payload = submitted.get(0);
         assertEquals("PRODUCT_READING_REACT_TURN", payload.artifactType());
         assertEquals("PRODUCT_READING_REACT_TURN", payload.traceJson().get("artifactType"));
-        assertEquals(2, payload.traceJson().get("traceVersion"));
-        assertEquals("SOURCE_QUOTE_MVP", payload.traceJson().get("readingLoopStage"));
-        assertEquals("READING_SOURCE_QUOTE_MVP", payload.traceJson().get("harnessKind"));
+        assertEquals(3, payload.traceJson().get("traceVersion"));
+        assertEquals("TRACE_SOURCE_QUOTES_MVP", payload.traceJson().get("readingLoopStage"));
+        assertEquals("READING_TRACE_SOURCE_QUOTES_MVP", payload.traceJson().get("harnessKind"));
+        assertEquals(toolCalls, payload.traceJson().get("toolCalls"));
         assertEquals(List.of(Map.of("sourceQuoteRef", "source_quote_abc")), payload.traceJson().get("references"));
     }
 }

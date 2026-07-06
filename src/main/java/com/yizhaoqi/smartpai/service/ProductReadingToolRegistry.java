@@ -12,6 +12,7 @@ public class ProductReadingToolRegistry {
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_TOOL_NAME = "read_locations";
+    private static final String TRACE_TOOL_NAME = "trace_source_quotes";
 
     private final ProductReadingToolAdapter adapter;
     private final ReadingToolArgumentValidator validator;
@@ -21,7 +22,12 @@ public class ProductReadingToolRegistry {
                                       ReadingToolArgumentValidator validator) {
         this.adapter = adapter;
         this.validator = validator;
-        this.tools = List.of(searchPaperCandidatesTool(), findReadingLocationsTool(), readLocationsTool());
+        this.tools = List.of(
+                searchPaperCandidatesTool(),
+                findReadingLocationsTool(),
+                readLocationsTool(),
+                traceSourceQuotesTool()
+        );
     }
 
     public List<AgentToolRegistry.AgentTool> listTools() {
@@ -37,6 +43,7 @@ public class ProductReadingToolRegistry {
             case SEARCH_TOOL_NAME -> executeSearchPaperCandidates(safeArguments, safeContext);
             case LOCATION_TOOL_NAME -> executeFindReadingLocations(safeArguments, safeContext);
             case READ_TOOL_NAME -> executeReadLocations(safeArguments, safeContext);
+            case TRACE_TOOL_NAME -> executeTraceSourceQuotes(safeArguments, safeContext);
             default -> error(toolName, "unsupported_reading_tool");
         };
     }
@@ -68,6 +75,14 @@ public class ProductReadingToolRegistry {
             return invalidArgument(READ_TOOL_NAME, validation);
         }
         return adapter.readLocations(validator.stringList(arguments.get("locationRefs")), context);
+    }
+
+    private ProductToolResult executeTraceSourceQuotes(Map<String, Object> arguments, ProductToolContext context) {
+        ReadingToolArgumentValidator.ValidationResult validation = validator.validateTraceSourceQuotes(arguments);
+        if (!validation.valid()) {
+            return invalidArgument(TRACE_TOOL_NAME, validation);
+        }
+        return adapter.traceSourceQuotes(validator.stringList(arguments.get("sourceQuoteRefs")), context);
     }
 
     private AgentToolRegistry.AgentTool searchPaperCandidatesTool() {
@@ -102,6 +117,16 @@ public class ProductReadingToolRegistry {
                 objectSchema(Map.of(
                         "locationRefs", arrayStringSchema("Opaque location refs returned by PaperLoom reading-location tools.")
                 ), List.of("locationRefs"))
+        );
+    }
+
+    private AgentToolRegistry.AgentTool traceSourceQuotesTool() {
+        return new AgentToolRegistry.AgentTool(
+                TRACE_TOOL_NAME,
+                "Trace explicitly clicked Source Quote refs from this turn's reading anchors. Accepts sourceQuoteRefs only and returns stored Source Quotes.",
+                objectSchema(Map.of(
+                        "sourceQuoteRefs", arrayStringSchema("Opaque source quote refs from explicit clickedSourceQuoteRefs anchors.")
+                ), List.of("sourceQuoteRefs"))
         );
     }
 

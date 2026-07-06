@@ -14,8 +14,8 @@ public class ProductReadingTraceRecorder {
 
     private static final Logger log = LoggerFactory.getLogger(ProductReadingTraceRecorder.class);
     private static final String ARTIFACT_TYPE = "PRODUCT_READING_REACT_TURN";
-    private static final String HARNESS_KIND = "READING_SOURCE_QUOTE_MVP";
-    private static final String READING_LOOP_STAGE = "SOURCE_QUOTE_MVP";
+    private static final String HARNESS_KIND = "READING_TRACE_SOURCE_QUOTES_MVP";
+    private static final String READING_LOOP_STAGE = "TRACE_SOURCE_QUOTES_MVP";
 
     private final ProductTraceSink traceSink;
 
@@ -40,7 +40,7 @@ public class ProductReadingTraceRecorder {
             trace.put("artifactType", ARTIFACT_TYPE);
             trace.put("harnessKind", HARNESS_KIND);
             trace.put("readingLoopStage", READING_LOOP_STAGE);
-            trace.put("traceVersion", 2);
+            trace.put("traceVersion", 3);
             trace.put("conversationId", safeRequest.conversationId());
             trace.put("generationId", safeRequest.generationId());
             trace.put("userId", safeRequest.userId());

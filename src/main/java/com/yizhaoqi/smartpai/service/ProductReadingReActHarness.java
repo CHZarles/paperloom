@@ -20,8 +20,10 @@ public class ProductReadingReActHarness {
     private static final List<String> REQUIRED_TOOL_NAMES = List.of(
             "search_paper_candidates",
             "find_reading_locations",
-            "read_locations"
+            "read_locations",
+            "trace_source_quotes"
     );
+    private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
     private static final List<String> FORBIDDEN_OUTPUT_TOKENS = List.of(
             internalToken("paper", "Id"),
             internalToken("model", "Version"),
@@ -36,6 +38,8 @@ public class ProductReadingReActHarness {
     private static final Pattern NUMBERED_CITATION_PATTERN = Pattern.compile("\\[\\d+]");
     private static final Pattern SOURCE_QUOTE_MARKER_PATTERN =
             Pattern.compile("\\{\\{\\s*sourceQuoteRef\\s*:\\s*(source_quote_[A-Za-z0-9_-]+)\\s*}}");
+    private static final Pattern SOURCE_QUOTE_REF_PATTERN =
+            Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
 
     private final LlmProviderRouter llmProviderRouter;
     private final ProductReadingToolRegistry toolRegistry;
@@ -71,13 +75,13 @@ public class ProductReadingReActHarness {
             return result;
         }
 
-        ReadingTurnState state = new ReadingTurnState();
-        List<Map<String, Object>> messages = initialMessages(safeRequest);
+        ReadingTurnState state = new ReadingTurnState(clickedSourceQuoteRefs(safeRequest.memory()));
+        List<Map<String, Object>> messages = initialMessages(safeRequest, state.clickedSourceQuoteRefs);
         boolean toolSucceeded = false;
         for (int round = 0; round < safeRequest.modelContext().maxReActRounds(); round++) {
             LlmProviderRouter.ReActTurn turn = llmProviderRouter.completeReActTurn(
                     requesterId(safeRequest.userId()),
-                    messages,
+                    messageSnapshot(messages),
                     tools,
                     safeRequest.modelContext().maxCompletionTokens()
             );
@@ -181,6 +185,12 @@ public class ProductReadingReActHarness {
                 return ToolCallValidation.rejected("hidden_location_ref");
             }
         }
+        if ("trace_source_quotes".equals(toolName)) {
+            List<String> sourceQuoteRefs = stringList(arguments.get("sourceQuoteRefs"));
+            if (sourceQuoteRefs.isEmpty() || !state.clickedSourceQuoteRefs.containsAll(sourceQuoteRefs)) {
+                return ToolCallValidation.rejected("hidden_source_quote_ref");
+            }
+        }
         return ToolCallValidation.allowed();
     }
 
@@ -207,7 +217,7 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("read_locations".equals(toolName)) {
+        if ("read_locations".equals(toolName) || "trace_source_quotes".equals(toolName)) {
             for (Map<String, Object> sourceQuote : mapList(toolResult.data().get("sourceQuotes"))) {
                 String sourceQuoteRef = stringValue(sourceQuote.get("sourceQuoteRef"));
                 if (!sourceQuoteRef.isBlank()) {
@@ -218,35 +228,40 @@ public class ProductReadingReActHarness {
         }
     }
 
-    private List<Map<String, Object>> initialMessages(ProductTurnRequest request) {
+    private List<Map<String, Object>> initialMessages(ProductTurnRequest request, Set<String> clickedSourceQuoteRefs) {
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(message("system", systemPrompt(request)));
+        messages.add(message("system", systemPrompt(request, clickedSourceQuoteRefs)));
         messages.add(message("user", request.userMessage()));
         return messages;
     }
 
-    private String systemPrompt(ProductTurnRequest request) {
+    private String systemPrompt(ProductTurnRequest request, Set<String> clickedSourceQuoteRefs) {
         return """
                 You are PaperLoom Product Reading ReAct Source Quote MVP.
-                Available tools are exactly search_paper_candidates, find_reading_locations, and read_locations.
+                Available tools are exactly search_paper_candidates, find_reading_locations, read_locations, and trace_source_quotes.
                 Use search_paper_candidates for paper candidate discovery.
                 Use find_reading_locations only after explicit paperHandle values were returned by search_paper_candidates in this turn.
                 Use read_locations only after explicit locationRef values were returned by find_reading_locations in this turn.
+                Use trace_source_quotes only for sourceQuoteRefs listed in this turn's explicit clicked Source Quote anchors.
                 Paper previews and reading-location previews are navigation only, not Source Quotes.
-                read_locations is the only Source Quote tool in this slice.
+                read_locations and trace_source_quotes are the only Source Quote tools in this slice.
+                clicked Source Quote anchors are trace-tool inputs only; they are not citeable until trace_source_quotes returns them in this turn.
                 Do not invent paperHandle, locationRef, or sourceQuoteRef values.
                 Do not pass ordinals as tool input.
                 Do not pass limit, topK, modelVersion, indexName, chunkRef, paperId, question, query, readingNeed, semanticNeed, sourceQuoteRef, splitPolicyVersion, or contentHash.
+                trace_source_quotes accepts only sourceQuoteRefs from explicit clicked Source Quote anchors; never use display citations like [1] as tool input.
                 Candidate-list and navigation answers use PRODUCT_STATE.
-                Paper-content claims require EVIDENCE_ANSWER with sourceQuoteRefs returned by read_locations in this turn.
+                Paper-content claims require EVIDENCE_ANSWER with sourceQuoteRefs returned by read_locations or trace_source_quotes in this turn.
                 In EVIDENCE_ANSWER text, cite Source Quotes with markers exactly like {{sourceQuoteRef:source_quote_...}}.
                 In evidenceBasedClaims, use sourceQuoteRefs, not evidenceRefs.
                 If Source Quotes are unavailable or insufficient, answer INSUFFICIENT_EVIDENCE without unsupported paper facts.
                 Final answer must be one JSON AnswerEnvelope.
                 paperRef, evidenceRef, and citationRef are legacy identifiers for the old harness. Do not use them as reading tool arguments or citation support.
+                Explicit clicked Source Quote anchors for this turn:
+                %s
                 Current user request:
                 %s
-                """.formatted(request.userMessage());
+                """.formatted(clickedSourceQuoteAnchorPrompt(clickedSourceQuoteRefs), request.userMessage());
     }
 
     private ProductTurnResult finalResult(String rawContent,
@@ -575,6 +590,17 @@ public class ProductReadingReActHarness {
         return message;
     }
 
+    private List<Map<String, Object>> messageSnapshot(List<Map<String, Object>> messages) {
+        if (messages == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> snapshot = new ArrayList<>();
+        for (Map<String, Object> message : messages) {
+            snapshot.add(message == null ? Map.of() : new LinkedHashMap<>(message));
+        }
+        return List.copyOf(snapshot);
+    }
+
     private Map<String, Object> assistantMessage(LlmProviderRouter.ReActTurn turn) {
         if (turn != null && turn.assistantMessage() != null) {
             return turn.assistantMessage();
@@ -591,9 +617,11 @@ public class ProductReadingReActHarness {
     }
 
     private Map<String, Object> toolResultPolicyMessage(ProductToolResult toolResult) {
-        if (toolResult != null && "read_locations".equals(toolResult.toolName())) {
+        if (toolResult != null
+                && ("read_locations".equals(toolResult.toolName())
+                || "trace_source_quotes".equals(toolResult.toolName()))) {
             return message("user", """
-                    Source Quotes from read_locations may support EVIDENCE_ANSWER.
+                    Source Quotes from read_locations or trace_source_quotes may support EVIDENCE_ANSWER.
                     Cite them with {{sourceQuoteRef:source_quote_...}} markers and use sourceQuoteRefs in evidenceBasedClaims.
                     Do not use evidenceRefs, citationRef, locationRef, or paperHandle as citation support.
                     """);
@@ -606,6 +634,38 @@ public class ProductReadingReActHarness {
 
     private Map<String, Object> safeArguments(LlmProviderRouter.ToolCallDecision toolCall) {
         return toolCall == null || toolCall.arguments() == null ? Map.of() : toolCall.arguments();
+    }
+
+    private Set<String> clickedSourceQuoteRefs(Map<String, Object> memory) {
+        if (memory == null || !(memory.get("readingTurnAnchors") instanceof Map<?, ?> anchors)) {
+            return Set.of();
+        }
+        Object rawRefs = anchors.get("clickedSourceQuoteRefs");
+        if (!(rawRefs instanceof List<?> list)) {
+            return Set.of();
+        }
+        LinkedHashSet<String> refs = new LinkedHashSet<>();
+        for (Object rawRef : list) {
+            String sourceQuoteRef = stringValue(rawRef);
+            if (SOURCE_QUOTE_REF_PATTERN.matcher(sourceQuoteRef).matches()) {
+                refs.add(sourceQuoteRef);
+            }
+            if (refs.size() >= MAX_CLICKED_SOURCE_QUOTE_REFS) {
+                break;
+            }
+        }
+        return refs;
+    }
+
+    private String clickedSourceQuoteAnchorPrompt(Set<String> clickedSourceQuoteRefs) {
+        if (clickedSourceQuoteRefs == null || clickedSourceQuoteRefs.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return objectMapper.writeValueAsString(clickedSourceQuoteRefs);
+        } catch (Exception exception) {
+            return clickedSourceQuoteRefs.toString();
+        }
     }
 
     private String safeToolName(LlmProviderRouter.ToolCallDecision toolCall) {
@@ -625,10 +685,17 @@ public class ProductReadingReActHarness {
     }
 
     private static class ReadingTurnState {
+        private final Set<String> clickedSourceQuoteRefs;
         private final Set<String> disclosedPaperHandles = new LinkedHashSet<>();
         private final Set<String> disclosedLocationRefs = new LinkedHashSet<>();
         private final Set<String> allowedSourceQuoteRefs = new LinkedHashSet<>();
         private final Map<String, Map<String, Object>> sourceQuotePayloads = new LinkedHashMap<>();
+
+        private ReadingTurnState(Set<String> clickedSourceQuoteRefs) {
+            this.clickedSourceQuoteRefs = clickedSourceQuoteRefs == null
+                    ? Set.of()
+                    : new LinkedHashSet<>(clickedSourceQuoteRefs);
+        }
     }
 
     private record ToolCallValidation(boolean isAllowed, String reason) {

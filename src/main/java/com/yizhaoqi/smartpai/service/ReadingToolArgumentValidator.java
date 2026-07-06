@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Component
 public class ReadingToolArgumentValidator {
@@ -107,9 +108,42 @@ public class ReadingToolArgumentValidator {
             "sourceQuoteRef"
     );
 
+    private static final Set<String> TRACE_FORBIDDEN_ARGUMENTS = Set.of(
+            "paperId",
+            "paperIds",
+            "paperRef",
+            "paperRefs",
+            "modelVersion",
+            "locationRef",
+            "locationRefs",
+            "chunkId",
+            "chunkIds",
+            "chunkRef",
+            "readingElementId",
+            "pageNumber",
+            "pageWindow",
+            "query",
+            "queryText",
+            "question",
+            "semanticNeed",
+            "readingNeed",
+            "limit",
+            "topK",
+            "pageSize",
+            "maxQuotes",
+            "maxChars",
+            "budget",
+            "splitPolicyVersion",
+            "contentHash",
+            "quoteKinds"
+    );
+
     private static final Set<String> SEARCH_ALLOWED_ARGUMENTS = Set.of("queryText");
     private static final Set<String> LOCATION_ALLOWED_ARGUMENTS = Set.of("paperHandles", "queryText", "locationTypes");
     private static final Set<String> READ_ALLOWED_ARGUMENTS = Set.of("locationRefs");
+    private static final Set<String> TRACE_ALLOWED_ARGUMENTS = Set.of("sourceQuoteRefs");
+    private static final Pattern SOURCE_QUOTE_REF_PATTERN =
+            Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
 
     public ValidationResult validateSearchPaperCandidates(Map<String, Object> arguments) {
         Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
@@ -167,6 +201,26 @@ public class ReadingToolArgumentValidator {
         }
         if (stringList(safeArguments.get("locationRefs")).stream().anyMatch(this::looksLikeOrdinalReference)) {
             return ValidationResult.invalid("invalid_location_ref", "locationRefs");
+        }
+        return ValidationResult.validResult();
+    }
+
+    public ValidationResult validateTraceSourceQuotes(Map<String, Object> arguments) {
+        Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
+        String forbiddenArgument = firstForbiddenArgument(safeArguments, TRACE_FORBIDDEN_ARGUMENTS);
+        if (forbiddenArgument != null) {
+            return ValidationResult.invalid("forbidden_argument", forbiddenArgument);
+        }
+        String unsupportedArgument = firstUnsupportedTopLevelArgument(safeArguments, TRACE_ALLOWED_ARGUMENTS);
+        if (unsupportedArgument != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedArgument);
+        }
+        List<String> sourceQuoteRefs = stringList(safeArguments.get("sourceQuoteRefs"));
+        if (sourceQuoteRefs.isEmpty()) {
+            return ValidationResult.invalid("missing_argument", "sourceQuoteRefs");
+        }
+        if (sourceQuoteRefs.stream().anyMatch(this::invalidSourceQuoteRef)) {
+            return ValidationResult.invalid("invalid_source_quote_ref", "sourceQuoteRefs");
         }
         return ValidationResult.validResult();
     }
@@ -252,7 +306,14 @@ public class ReadingToolArgumentValidator {
     private boolean looksLikeOrdinalReference(String value) {
         String normalized = stringValue(value).toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
         return normalized.matches("#?\\d+")
+                || normalized.matches("\\[\\d+]")
                 || normalized.matches("(candidate|item|location|result|ref)[ _:-]*\\d+");
+    }
+
+    private boolean invalidSourceQuoteRef(String value) {
+        String normalized = stringValue(value);
+        return looksLikeOrdinalReference(normalized)
+                || !SOURCE_QUOTE_REF_PATTERN.matcher(normalized).matches();
     }
 
     private String stringValue(Object value) {

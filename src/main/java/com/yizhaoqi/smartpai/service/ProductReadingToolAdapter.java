@@ -22,6 +22,7 @@ public class ProductReadingToolAdapter {
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_TOOL_NAME = "read_locations";
+    private static final String TRACE_TOOL_NAME = "trace_source_quotes";
 
     private final PaperCandidateSearchService paperCandidateSearchService;
     private final ReadingModelGrepSearchService readingModelGrepSearchService;
@@ -30,6 +31,7 @@ public class ProductReadingToolAdapter {
     private final ProductPaperHandleService handleService;
     private final ReadingToolOutputMapper outputMapper;
     private final ProductReadingLocationReadService readService;
+    private final ProductReadingSourceQuoteTraceService traceService;
 
     public ProductReadingToolAdapter(PaperCandidateSearchService paperCandidateSearchService,
                                      ReadingModelGrepSearchService readingModelGrepSearchService,
@@ -37,7 +39,8 @@ public class ProductReadingToolAdapter {
                                      PaperLocationRepository locationRepository,
                                      ProductPaperHandleService handleService,
                                      ReadingToolOutputMapper outputMapper,
-                                     ProductReadingLocationReadService readService) {
+                                     ProductReadingLocationReadService readService,
+                                     ProductReadingSourceQuoteTraceService traceService) {
         this.paperCandidateSearchService = paperCandidateSearchService;
         this.readingModelGrepSearchService = readingModelGrepSearchService;
         this.modelRepository = modelRepository;
@@ -45,6 +48,7 @@ public class ProductReadingToolAdapter {
         this.handleService = handleService;
         this.outputMapper = outputMapper;
         this.readService = readService;
+        this.traceService = traceService;
     }
 
     @Transactional
@@ -59,6 +63,21 @@ public class ProductReadingToolAdapter {
         data.put("sourceQuotes", result.sourceQuotes());
         data.put("readStatus", result.readStatus());
         return new ProductToolResult(READ_TOOL_NAME, true, data, ProductToolEffect.EVIDENCE);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductToolResult traceSourceQuotes(List<String> sourceQuoteRefs, ProductToolContext context) {
+        ProductToolContext safeContext = safeContext(context);
+        List<String> safeSourceQuoteRefs = sanitizeSourceQuoteRefs(sourceQuoteRefs);
+        if (safeSourceQuoteRefs.isEmpty()) {
+            return invalidArgument(TRACE_TOOL_NAME, "sourceQuoteRefs");
+        }
+        ProductReadingSourceQuoteTraceService.TraceResult result =
+                traceService.traceSourceQuotes(safeSourceQuoteRefs, safeContext);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("sourceQuotes", result.sourceQuotes());
+        data.put("traceStatus", result.traceStatus());
+        return new ProductToolResult(TRACE_TOOL_NAME, true, data, ProductToolEffect.EVIDENCE);
     }
 
     @Transactional(readOnly = true)
@@ -264,6 +283,17 @@ public class ProductReadingToolAdapter {
             return List.of();
         }
         return locationRefs.stream()
+                .filter(ref -> ref != null && !ref.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+
+    private List<String> sanitizeSourceQuoteRefs(List<String> sourceQuoteRefs) {
+        if (sourceQuoteRefs == null) {
+            return List.of();
+        }
+        return sourceQuoteRefs.stream()
                 .filter(ref -> ref != null && !ref.isBlank())
                 .map(String::trim)
                 .distinct()

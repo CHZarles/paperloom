@@ -3,12 +3,20 @@ package com.yizhaoqi.smartpai.service;
 import com.yizhaoqi.smartpai.config.ProductReadingReactProperties;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 @Service
 public class ProductReadingConversationService {
+
+    private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
+    private static final Pattern SOURCE_QUOTE_REF_PATTERN =
+            Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
 
     private final ProductReadingReActHarness readingHarness;
     private final ProductReadingReactProperties properties;
@@ -63,6 +71,7 @@ public class ProductReadingConversationService {
         if (readingHarness == null) {
             return failed("Product Reading ReAct Phase 1 harness is unavailable.");
         }
+        List<String> clickedSourceQuoteRefs = clickedSourceQuoteRefs(effectiveScope);
         return readingHarness.run(new ProductTurnRequest(
                 userId,
                 conversationId,
@@ -70,10 +79,57 @@ public class ProductReadingConversationService {
                 userMessage,
                 lockedScope,
                 List.of(),
-                Map.of(),
+                readingMemory(clickedSourceQuoteRefs),
                 modelContext,
                 progressListener
         ));
+    }
+
+    private Map<String, Object> readingMemory(List<String> clickedSourceQuoteRefs) {
+        if (clickedSourceQuoteRefs == null || clickedSourceQuoteRefs.isEmpty()) {
+            return Map.of();
+        }
+        return Map.of(
+                "readingTurnAnchors",
+                Map.of("clickedSourceQuoteRefs", clickedSourceQuoteRefs)
+        );
+    }
+
+    private List<String> clickedSourceQuoteRefs(Map<String, Object> effectiveScope) {
+        if (effectiveScope == null || !effectiveScope.containsKey("clickedSourceQuoteRefs")) {
+            return List.of();
+        }
+        Object rawValue = effectiveScope.get("clickedSourceQuoteRefs");
+        List<Object> rawRefs = rawRefValues(rawValue);
+        if (rawRefs.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> refs = new LinkedHashSet<>();
+        for (Object rawRef : rawRefs) {
+            String sourceQuoteRef = rawRef == null ? "" : String.valueOf(rawRef).trim();
+            if (SOURCE_QUOTE_REF_PATTERN.matcher(sourceQuoteRef).matches()) {
+                refs.add(sourceQuoteRef);
+            }
+            if (refs.size() >= MAX_CLICKED_SOURCE_QUOTE_REFS) {
+                break;
+            }
+        }
+        return List.copyOf(refs);
+    }
+
+    private List<Object> rawRefValues(Object rawValue) {
+        if (rawValue instanceof List<?> list) {
+            return new ArrayList<>(list);
+        }
+        if (rawValue != null && rawValue.getClass().isArray()) {
+            int length = Array.getLength(rawValue);
+            List<Object> values = new ArrayList<>(length);
+            for (int index = 0; index < length; index++) {
+                values.add(Array.get(rawValue, index));
+            }
+            return values;
+        }
+        return List.of();
     }
 
     private ProductTurnResult disabledResult() {
