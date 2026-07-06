@@ -248,6 +248,118 @@ class ProductReadingToolAdapterTest {
     }
 
     @Test
+    void listPaperLocationsReturnsCurrentReadyModelRefsForPageRangeAndTypes() throws Exception {
+        PaperReadingModel readyModel = model("ready-paper", "model-v1");
+        readyModel.setPageCount(12);
+        PaperLocation page = location("ready-paper", "page_ref_3", PaperLocationType.PAGE);
+        page.setPageNumber(3);
+        page.setPageEndNumber(3);
+        page.setSectionTitle("Methods");
+        PaperLocation section = location("ready-paper", "section_ref_methods", PaperLocationType.SECTION);
+        section.setPageNumber(3);
+        section.setPageEndNumber(5);
+        section.setSectionTitle("Methods");
+        PaperLocation laterPage = location("ready-paper", "page_ref_9", PaperLocationType.PAGE);
+        laterPage.setPageNumber(9);
+
+        when(handleService.resolvePaperHandle("paper_handle_ready")).thenReturn(Optional.of("ready-paper"));
+        when(handleService.isPaperVisibleToUser("ready-paper", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.hasCurrentReadyReadingModel("ready-paper")).thenReturn(true);
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-paper"))
+                .thenReturn(Optional.of(readyModel));
+        when(locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc("ready-paper", "model-v1"))
+                .thenReturn(List.of(page, section, laterPage));
+
+        ProductToolResult result = adapter.listPaperLocations(
+                List.of("paper_handle_ready"),
+                new ReadingToolArgumentValidator.PageRange(3, 3),
+                List.of(PaperLocationType.PAGE, PaperLocationType.SECTION),
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertTrue(result.success());
+        assertEquals("list_paper_locations", result.toolName());
+        assertEquals(ProductToolEffect.PAPER_DISCOVERY, result.effect());
+        assertEquals("OK", result.data().get("status"));
+        assertEquals(List.of("paper_handle_ready"), result.data().get("paperHandles"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> locations = (List<Map<String, Object>>) result.data().get("locations");
+        assertEquals(2, locations.size());
+        assertEquals("page_ref_3", locations.get(0).get("locationRef"));
+        assertEquals("PAGE", locations.get(0).get("locationType"));
+        assertEquals("Page 3", locations.get(0).get("label"));
+        assertEquals("section_ref_methods", locations.get(1).get("locationRef"));
+        assertEquals("SECTION", locations.get(1).get("locationType"));
+        assertEquals("Methods", locations.get(1).get("label"));
+        @SuppressWarnings("unchecked")
+        Map<String, List<String>> supported =
+                (Map<String, List<String>>) result.data().get("supportedLocationTypesByPaper");
+        assertEquals(List.of("PAGE", "SECTION"), supported.get("paper_handle_ready"));
+
+        String json = objectMapper.writeValueAsString(result.data());
+        assertFalse(json.contains("ready-paper"));
+        assertFalse(json.contains("paperId"));
+        assertFalse(json.contains("model-v1"));
+        assertFalse(json.contains("modelVersion"));
+    }
+
+    @Test
+    void listPaperLocationsReturnsCurrentLocationNotFoundForInvisibleUnreadyOrEmptyCurrentLocations() {
+        when(handleService.resolvePaperHandle("paper_handle_missing")).thenReturn(Optional.empty());
+        when(handleService.resolvePaperHandle("paper_handle_unready")).thenReturn(Optional.of("unready-paper"));
+        when(handleService.isPaperVisibleToUser("unready-paper", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.hasCurrentReadyReadingModel("unready-paper")).thenReturn(false);
+        when(handleService.resolvePaperHandle("paper_handle_ready")).thenReturn(Optional.of("ready-paper"));
+        when(handleService.isPaperVisibleToUser("ready-paper", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.hasCurrentReadyReadingModel("ready-paper")).thenReturn(true);
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-paper"))
+                .thenReturn(Optional.of(model("ready-paper", "model-v1")));
+        when(locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc("ready-paper", "model-v1"))
+                .thenReturn(List.of(location("ready-paper", "page_ref_1", PaperLocationType.PAGE)));
+
+        ProductToolContext context =
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto());
+
+        assertEquals("CURRENT_LOCATION_NOT_FOUND",
+                adapter.listPaperLocations(List.of("paper_handle_missing"), null, List.of(), context)
+                        .data().get("status"));
+        assertEquals("CURRENT_LOCATION_NOT_FOUND",
+                adapter.listPaperLocations(List.of("paper_handle_unready"), null, List.of(), context)
+                        .data().get("status"));
+        assertEquals("CURRENT_LOCATION_NOT_FOUND",
+                adapter.listPaperLocations(
+                                List.of("paper_handle_ready"),
+                                new ReadingToolArgumentValidator.PageRange(4, 5),
+                                List.of(PaperLocationType.PAGE),
+                                context)
+                        .data().get("status"));
+    }
+
+    @Test
+    void listPaperLocationsRejectsPageRangeOutsideCurrentModelPageCount() {
+        PaperReadingModel readyModel = model("ready-paper", "model-v1");
+        readyModel.setPageCount(3);
+        when(handleService.resolvePaperHandle("paper_handle_ready")).thenReturn(Optional.of("ready-paper"));
+        when(handleService.isPaperVisibleToUser("ready-paper", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.hasCurrentReadyReadingModel("ready-paper")).thenReturn(true);
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-paper"))
+                .thenReturn(Optional.of(readyModel));
+        when(locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc("ready-paper", "model-v1"))
+                .thenReturn(List.of(location("ready-paper", "page_ref_1", PaperLocationType.PAGE)));
+
+        ProductToolResult result = adapter.listPaperLocations(
+                List.of("paper_handle_ready"),
+                new ReadingToolArgumentValidator.PageRange(4, 4),
+                List.of(PaperLocationType.PAGE),
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertFalse(result.success());
+        assertEquals("INVALID_ARGUMENT", result.data().get("status"));
+        assertEquals("pageRange", result.data().get("argument"));
+    }
+
+    @Test
     void readLocationsDelegatesToReadServiceAndReturnsCiteableSourceQuotesOnly() throws Exception {
         ProductToolContext context = new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto());
         when(readService.readLocations(List.of("page_ref_ready"), context))

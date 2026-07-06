@@ -20,6 +20,7 @@ import java.util.Optional;
 public class ProductReadingToolAdapter {
 
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
+    private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_TOOL_NAME = "read_locations";
     private static final String TRACE_TOOL_NAME = "trace_source_quotes";
@@ -114,6 +115,70 @@ public class ProductReadingToolAdapter {
     }
 
     @Transactional(readOnly = true)
+    public ProductToolResult listPaperLocations(List<String> paperHandles,
+                                                ReadingToolArgumentValidator.PageRange pageRange,
+                                                List<PaperLocationType> locationTypes,
+                                                ProductToolContext context) {
+        ProductToolContext safeContext = safeContext(context);
+        List<String> safePaperHandles = sanitizePaperHandles(paperHandles);
+        List<PaperLocationType> safeLocationTypes = locationTypes == null ? List.of() : List.copyOf(locationTypes);
+        if (safePaperHandles.isEmpty()) {
+            return invalidArgument(LIST_LOCATIONS_TOOL_NAME, "paperHandles");
+        }
+
+        Map<String, String> paperIdByHandle = new LinkedHashMap<>();
+        Map<String, PaperReadingModel> modelByHandle = new LinkedHashMap<>();
+        for (String paperHandle : safePaperHandles) {
+            Optional<String> paperId = handleService.resolvePaperHandle(paperHandle);
+            if (paperId.isEmpty()
+                    || !handleService.isPaperVisibleToUser(paperId.get(), safeContext.userId(), safeContext.lockedScope())
+                    || !handleService.hasCurrentReadyReadingModel(paperId.get())) {
+                return listLocationStatus(safePaperHandles, "CURRENT_LOCATION_NOT_FOUND", List.of(), Map.of());
+            }
+            Optional<PaperReadingModel> currentModel = modelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId.get())
+                    .filter(model -> model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY);
+            if (currentModel.isEmpty()) {
+                return listLocationStatus(safePaperHandles, "CURRENT_LOCATION_NOT_FOUND", List.of(), Map.of());
+            }
+            if (pageRangeOutsideModel(pageRange, currentModel.get())) {
+                return invalidArgument(LIST_LOCATIONS_TOOL_NAME, "pageRange");
+            }
+            paperIdByHandle.put(paperHandle, paperId.get());
+            modelByHandle.put(paperHandle, currentModel.get());
+        }
+
+        Map<String, List<String>> supportedLocationTypesByHandle = new LinkedHashMap<>();
+        List<Map<String, Object>> locations = new ArrayList<>();
+        int ordinal = 1;
+        for (String paperHandle : safePaperHandles) {
+            String paperId = paperIdByHandle.get(paperHandle);
+            PaperReadingModel model = modelByHandle.get(paperHandle);
+            List<PaperLocation> currentLocations =
+                    locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc(
+                            paperId,
+                            model.getModelVersion()
+                    );
+            supportedLocationTypesByHandle.put(paperHandle, supportedLocationTypes(currentLocations));
+            for (PaperLocation location : currentLocations == null ? List.<PaperLocation>of() : currentLocations) {
+                if (!matchesLocationType(location, safeLocationTypes) || !matchesPageRange(location, pageRange)) {
+                    continue;
+                }
+                if (SearchText.isBlank(location.getLocationRef())) {
+                    continue;
+                }
+                locations.add(outputMapper.listedLocationCard(location, paperHandle, ordinal++));
+            }
+        }
+
+        return listLocationStatus(
+                safePaperHandles,
+                locations.isEmpty() ? "CURRENT_LOCATION_NOT_FOUND" : "OK",
+                locations,
+                supportedLocationTypesByHandle
+        );
+    }
+
+    @Transactional(readOnly = true)
     public ProductToolResult findReadingLocations(List<String> paperHandles,
                                                   String queryText,
                                                   List<PaperLocationType> locationTypes,
@@ -179,6 +244,43 @@ public class ProductReadingToolAdapter {
         );
     }
 
+    private boolean pageRangeOutsideModel(ReadingToolArgumentValidator.PageRange pageRange,
+                                          PaperReadingModel model) {
+        if (pageRange == null || model == null || model.getPageCount() == null || model.getPageCount() < 1) {
+            return false;
+        }
+        return pageRange.from() > model.getPageCount() || pageRange.to() > model.getPageCount();
+    }
+
+    private boolean matchesLocationType(PaperLocation location, List<PaperLocationType> locationTypes) {
+        if (locationTypes == null || locationTypes.isEmpty()) {
+            return true;
+        }
+        return location != null && locationTypes.contains(location.getLocationType());
+    }
+
+    private boolean matchesPageRange(PaperLocation location, ReadingToolArgumentValidator.PageRange pageRange) {
+        if (pageRange == null) {
+            return true;
+        }
+        if (location == null || location.getPageNumber() == null) {
+            return false;
+        }
+        int start = location.getPageNumber();
+        int end = location.getPageEndNumber() == null ? start : location.getPageEndNumber();
+        return start <= pageRange.to() && end >= pageRange.from();
+    }
+
+    private List<String> supportedLocationTypes(List<PaperLocation> locations) {
+        LinkedHashSet<String> types = new LinkedHashSet<>();
+        for (PaperLocation location : locations == null ? List.<PaperLocation>of() : locations) {
+            if (location != null && location.getLocationType() != null) {
+                types.add(location.getLocationType().name());
+            }
+        }
+        return List.copyOf(types);
+    }
+
     private Map<String, List<String>> supportedLocationTypesByHandle(Map<String, String> paperIdByHandle) {
         Map<String, List<String>> supported = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : paperIdByHandle.entrySet()) {
@@ -191,13 +293,7 @@ public class ProductReadingToolAdapter {
                     entry.getValue(),
                     model.get().getModelVersion()
             );
-            LinkedHashSet<String> types = new LinkedHashSet<>();
-            for (PaperLocation location : locations) {
-                if (location != null && location.getLocationType() != null) {
-                    types.add(location.getLocationType().name());
-                }
-            }
-            supported.put(entry.getKey(), List.copyOf(types));
+            supported.put(entry.getKey(), supportedLocationTypes(locations));
         }
         return supported;
     }
@@ -229,6 +325,21 @@ public class ProductReadingToolAdapter {
                 : supportedLocationTypesByHandle);
         data.put("constraints", locationConstraints(status));
         return new ProductToolResult(LOCATION_TOOL_NAME, true, data, ProductToolEffect.PAPER_DISCOVERY);
+    }
+
+    private ProductToolResult listLocationStatus(List<String> paperHandles,
+                                                 String status,
+                                                 List<Map<String, Object>> locations,
+                                                 Map<String, List<String>> supportedLocationTypesByHandle) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("paperHandles", paperHandles == null ? List.of() : paperHandles);
+        data.put("status", status);
+        data.put("supportedLocationTypesByPaper", supportedLocationTypesByHandle == null
+                ? Map.of()
+                : supportedLocationTypesByHandle);
+        data.put("locations", locations == null ? List.of() : locations);
+        data.put("constraints", locationConstraints(status));
+        return new ProductToolResult(LIST_LOCATIONS_TOOL_NAME, true, data, ProductToolEffect.PAPER_DISCOVERY);
     }
 
     private Map<String, Object> paperCandidateConstraints() {
