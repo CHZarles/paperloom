@@ -59,6 +59,45 @@ public class ProductReadingLiveLaunchSmokeRunner {
         );
     }
 
+    public Path runStartupFailure(Options options, String message) throws IOException {
+        Options safeOptions = options == null ? Options.defaults() : options;
+        String safeMessage = blankToDefault(message, "startup unavailable");
+        List<ProductReadingLiveLaunchSmokeCase> cases = loadCases(safeOptions.casesPath());
+        List<CaseResult> results = cases.stream()
+                .map(testCase -> startupFailureResult(testCase, safeMessage))
+                .toList();
+        return RagEvalRunWriter.write(
+                safeOptions.runsRoot(),
+                safeOptions.runId(),
+                safeOptions.startedAt(),
+                safeOptions.harnessId(),
+                safeOptions.datasetId(),
+                safeOptions.casesPath().toString(),
+                new RagBenchmarkRun(
+                        results.stream().map(this::benchmarkCase).toList(),
+                        results.stream().map(this::actual).toList(),
+                        results.stream().map(this::verdict).toList()
+                ),
+                metrics(results)
+        );
+    }
+
+    private CaseResult startupFailureResult(ProductReadingLiveLaunchSmokeCase testCase, String message) {
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("caseId", testCase.id());
+        diagnostics.put("startupFailure", message);
+        diagnostics.put("requiredToolNames", testCase.requiredToolNames());
+        diagnostics.put("observedToolNames", List.of());
+        return new CaseResult(
+                testCase,
+                null,
+                false,
+                List.of("live_smoke_startup_failed(" + message + ")"),
+                List.of("RUNTIME_UNAVAILABLE"),
+                diagnostics
+        );
+    }
+
     static List<ProductReadingLiveLaunchSmokeCase> loadCases(Path path) throws IOException {
         List<ProductReadingLiveLaunchSmokeCase> cases = new ArrayList<>();
         for (String rawLine : Files.readAllLines(path)) {

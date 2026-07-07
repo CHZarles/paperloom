@@ -38,10 +38,27 @@ public final class ProductReadingLiveLaunchSmokeCli {
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(options.timeout())
                 .build();
-        String token = login(httpClient, options);
-        String conversationId = options.conversationId() == null || options.conversationId().isBlank()
-                ? createConversation(httpClient, options, token)
-                : options.conversationId();
+        String token;
+        String conversationId;
+        try {
+            token = login(httpClient, options);
+            conversationId = options.conversationId() == null || options.conversationId().isBlank()
+                    ? createConversation(httpClient, options, token)
+                    : options.conversationId();
+        } catch (Exception exception) {
+            ProductReadingLiveLaunchSmokeRunner runner = new ProductReadingLiveLaunchSmokeRunner(request -> {
+                throw new IllegalStateException("startup failure client should not be called");
+            });
+            return runner.runStartupFailure(new ProductReadingLiveLaunchSmokeRunner.Options(
+                    options.casesPath(),
+                    options.runsRoot(),
+                    options.runId(),
+                    options.startedAt(),
+                    options.harnessId(),
+                    options.datasetId(),
+                    ""
+            ), exception.getClass().getSimpleName() + ": " + exception.getMessage());
+        }
         ProductReadingLiveWebSocketChatClient client = new ProductReadingLiveWebSocketChatClient(
                 httpClient,
                 options.wsBase(),

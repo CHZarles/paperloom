@@ -229,7 +229,8 @@ mvn -q -DskipTests test-compile exec:java \
 `ProductReadingLiveLaunchSmokeCli` is the front-to-back live driver for producing Product Reading
 traces. It logs in, creates a conversation, sends structured WebSocket chat messages from
 `eval/rag/product-reading-live-launch-smoke-cases.jsonl`, carries clicked paper/source quote anchors
-between cases, and writes a standard eval run. It is not a replacement for the trace eval: launch
+between cases, and writes a standard eval run. Login or conversation startup failures still write a
+failed eval run before the hard gate exits non-zero. It is not a replacement for the trace eval: launch
 readiness requires runtime preflight to pass, then the 30-PDF data seed to pass, then the live smoke
 to pass, then `ProductReadingLaunchTraceEvalCli` to pass on the fresh trace artifacts, then the
 30-PDF parser gate to pass.
