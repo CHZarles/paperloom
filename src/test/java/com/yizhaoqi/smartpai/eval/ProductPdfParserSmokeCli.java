@@ -35,10 +35,14 @@ public final class ProductPdfParserSmokeCli {
     }
 
     static Path runCommand(String[] args) throws Exception {
-        Options options = Options.parse(args);
-        try (ConfigurableApplicationContext context = new SpringApplicationBuilder(SmartPaiApplication.class)
+        return runCommand(args, startupArgs -> new SpringApplicationBuilder(SmartPaiApplication.class)
                 .web(WebApplicationType.NONE)
-                .run(springStartupArgs())) {
+                .run(startupArgs));
+    }
+
+    static Path runCommand(String[] args, SpringContextFactory contextFactory) throws Exception {
+        Options options = Options.parse(args);
+        try (ConfigurableApplicationContext context = contextFactory.start(springStartupArgs())) {
             return run(
                     context.getBean(PaperRepository.class),
                     context.getBean(PaperTextChunkRepository.class),
@@ -48,7 +52,34 @@ public final class ProductPdfParserSmokeCli {
                     context.getBean(PaperReadingElementRepository.class),
                     options
             );
+        } catch (Exception exception) {
+            return ProductPdfParserSmokeRunner.runStartupFailure(
+                    new ProductPdfParserSmokeRunner.Options(
+                            options.manifestPath(),
+                            options.runsRoot(),
+                            options.runId(),
+                            options.startedAt(),
+                            options.harnessId(),
+                            options.datasetId()
+                    ),
+                    startupFailureMessage(exception)
+            );
         }
+    }
+
+    private static String startupFailureMessage(Exception exception) {
+        if (exception == null) {
+            return "startup unavailable";
+        }
+        return sanitizeFailureMessage(exception.getClass().getSimpleName() + ": " + exception.getMessage());
+    }
+
+    static String sanitizeFailureMessage(String message) {
+        String safeMessage = message == null || message.isBlank() ? "startup unavailable" : message;
+        return safeMessage
+                .replaceAll("(?i)(password|passwd|pwd|token|secret|api[_-]?key)=([^\\s,;]+)", "$1=<redacted>")
+                .replaceAll("(?i)(password|passwd|pwd|token|secret|api[_-]?key)\\s*:\\s*([^\\s,;]+)", "$1=<redacted>")
+                .replaceAll("://([^:/@\\s]+):([^@/\\s]+)@", "://$1:<redacted>@");
     }
 
     static String[] springStartupArgs() {
@@ -59,6 +90,11 @@ public final class ProductPdfParserSmokeCli {
                 "--admin.bootstrap.enabled=false",
                 "--paper.bootstrap.enabled=false"
         };
+    }
+
+    @FunctionalInterface
+    interface SpringContextFactory {
+        ConfigurableApplicationContext start(String[] startupArgs);
     }
 
     public static Path run(PaperRepository paperRepository,

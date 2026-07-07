@@ -68,11 +68,55 @@ public class ProductPdfParserSmokeRunner {
                 safeOptions.datasetId(),
                 safeOptions.manifestPath().toString(),
                 new RagBenchmarkRun(
-                        results.stream().map(this::benchmarkCase).toList(),
-                        results.stream().map(this::actual).toList(),
-                        results.stream().map(this::verdict).toList()
+                        results.stream().map(ProductPdfParserSmokeRunner::benchmarkCase).toList(),
+                        results.stream().map(ProductPdfParserSmokeRunner::actual).toList(),
+                        results.stream().map(ProductPdfParserSmokeRunner::verdict).toList()
                 ),
                 metrics(results)
+        );
+    }
+
+    public static Path runStartupFailure(Options options, String message) throws IOException {
+        Options safeOptions = options == null ? Options.defaults() : options;
+        String safeMessage = blankToDefault(message, "startup unavailable");
+        List<CaseResult> results = loadManifest(safeOptions.manifestPath()).stream()
+                .map(manifestCase -> startupFailureResult(manifestCase, safeMessage))
+                .toList();
+        return RagEvalRunWriter.write(
+                safeOptions.runsRoot(),
+                safeOptions.runId(),
+                safeOptions.startedAt(),
+                safeOptions.harnessId(),
+                safeOptions.datasetId(),
+                safeOptions.manifestPath().toString(),
+                new RagBenchmarkRun(
+                        results.stream().map(ProductPdfParserSmokeRunner::benchmarkCase).toList(),
+                        results.stream().map(ProductPdfParserSmokeRunner::actual).toList(),
+                        results.stream().map(ProductPdfParserSmokeRunner::verdict).toList()
+                ),
+                metrics(results)
+        );
+    }
+
+    private static CaseResult startupFailureResult(ManifestCase manifestCase, String message) {
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("manifestPath", manifestCase.path());
+        diagnostics.put("manifestPaperId", manifestCase.paperId());
+        diagnostics.put("manifestOriginalFilename", manifestCase.originalFilename());
+        diagnostics.put("expectedParser", manifestCase.expectedParser());
+        diagnostics.put("expectedMinChunks", manifestCase.minChunks());
+        diagnostics.put("expectedMinPages", manifestCase.minPages());
+        diagnostics.put("requiresParserArtifact", manifestCase.isParserArtifactRequired());
+        diagnostics.put("requiresPageScreenshot", manifestCase.isPageScreenshotRequired());
+        diagnostics.put("requiresTableOrFigure", manifestCase.isTableOrFigureRequired());
+        diagnostics.put("startupFailure", message);
+        return new CaseResult(
+                manifestCase.id(),
+                null,
+                false,
+                List.of("pdf_parser_smoke_startup_failed(" + message + ")"),
+                List.of("RUNTIME_UNAVAILABLE"),
+                diagnostics
         );
     }
 
@@ -295,7 +339,7 @@ public class ProductPdfParserSmokeRunner {
                 .map(paper -> new LocatedPaper(paper, "originalFilename"));
     }
 
-    private RagBenchmarkCase benchmarkCase(CaseResult result) {
+    private static RagBenchmarkCase benchmarkCase(CaseResult result) {
         List<String> expectedPaperIds = result.paperId() == null ? List.of() : List.of(result.paperId());
         return new RagBenchmarkCase(
                 result.caseId(),
@@ -314,14 +358,14 @@ public class ProductPdfParserSmokeRunner {
         );
     }
 
-    private RagBenchmarkActual actual(CaseResult result) {
+    private static RagBenchmarkActual actual(CaseResult result) {
         String markdown = result.passed()
                 ? "PDF parser smoke passed for " + result.caseId()
                 : String.join("; ", result.failures());
         return new RagBenchmarkActual(ROUTE, markdown, Map.of(), result.diagnostics());
     }
 
-    private RagBenchmarkVerdict verdict(CaseResult result) {
+    private static RagBenchmarkVerdict verdict(CaseResult result) {
         return new RagBenchmarkVerdict(
                 result.caseId(),
                 result.passed(),
@@ -330,7 +374,7 @@ public class ProductPdfParserSmokeRunner {
         );
     }
 
-    private Map<String, Double> metrics(List<CaseResult> results) {
+    private static Map<String, Double> metrics(List<CaseResult> results) {
         int caseCount = results.size();
         long passed = results.stream().filter(CaseResult::passed).count();
         Map<String, Double> metrics = new LinkedHashMap<>();
@@ -347,7 +391,7 @@ public class ProductPdfParserSmokeRunner {
         return metrics;
     }
 
-    private double averageDiagnostic(List<CaseResult> results, String key) {
+    private static double averageDiagnostic(List<CaseResult> results, String key) {
         return results.stream()
                 .map(CaseResult::diagnostics)
                 .map(map -> map.get(key))
@@ -358,7 +402,7 @@ public class ProductPdfParserSmokeRunner {
                 .orElse(0.0d);
     }
 
-    private double failureRate(List<CaseResult> results, String failureClass) {
+    private static double failureRate(List<CaseResult> results, String failureClass) {
         if (results.isEmpty()) {
             return 0.0d;
         }
@@ -479,7 +523,7 @@ public class ProductPdfParserSmokeRunner {
         return value.trim();
     }
 
-    private double fraction(double numerator, double denominator) {
+    private static double fraction(double numerator, double denominator) {
         return denominator == 0.0d ? 0.0d : numerator / denominator;
     }
 

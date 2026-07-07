@@ -192,7 +192,8 @@ already processed PDF rows in MySQL, and rejects `Paper.isEval`, `sourceDataset`
 structured imports. Use it before claiming PDF parser/OCR/page visual evidence quality.
 The one-PDF manifest remains a quick smoke. `eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl`
 is the launch-readiness parser gate over 30 local real PDFs from `data/`; it requires the active
-runtime to have already uploaded and parsed those PDFs before the smoke CLI can pass.
+runtime to have already uploaded and parsed those PDFs before the smoke CLI can pass. Spring or
+repository startup failures still write a failed eval run before the hard gate exits non-zero.
 
 Product Reading launch traces are evaluated separately by `ProductReadingLaunchTraceEvalCli`. The
 case file `eval/rag/product-reading-launch-trace-cases.jsonl` requires completed
