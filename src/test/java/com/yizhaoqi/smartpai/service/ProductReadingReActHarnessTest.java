@@ -55,6 +55,7 @@ class ProductReadingReActHarnessTest {
             List<String> names = capturedTools.stream().map(AgentToolRegistry.AgentTool::name).toList();
             assertEquals(List.of(
                     "search_paper_candidates",
+                    "get_paper_outline",
                     "list_paper_locations",
                     "find_reading_locations",
                     "read_locations",
@@ -73,10 +74,12 @@ class ProductReadingReActHarnessTest {
         assertFalse(promptMessages.contains("retrieve_evidence"));
         assertFalse(promptMessages.contains("inspect_reference"));
         assertTrue(promptMessages.contains("search_paper_candidates"));
+        assertTrue(promptMessages.contains("get_paper_outline"));
         assertTrue(promptMessages.contains("list_paper_locations"));
         assertTrue(promptMessages.contains("find_reading_locations"));
         assertTrue(promptMessages.contains("read_locations"));
         assertTrue(promptMessages.contains("trace_source_quotes"));
+        assertTrue(promptMessages.contains("parserQuality"));
         assertTrue(promptMessages.contains("deterministic"));
         assertTrue(promptMessages.contains("semantic"));
         assertTrue(promptMessages.contains("trace_source_quotes returned locationRef values are metadata"));
@@ -248,6 +251,70 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         verify(registry).execute(eq("list_paper_locations"), any(), any());
         verify(registry).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    void outlineReturnedSectionRefsCanBeRead() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
+        when(registry.execute(eq("read_locations"), any(), any())).thenReturn(sectionReadResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "search_paper_candidates", Map.of("queryText", "Agentic eval")))
+                .thenReturn(toolCallTurn("call_2", "get_paper_outline", Map.of(
+                        "paperHandles", List.of("paper_handle_abc")
+                )))
+                .thenReturn(toolCallTurn("call_3", "read_locations", Map.of(
+                        "locationRefs", List.of("section_ref_methods")
+                )))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "EVIDENCE_ANSWER",
+                          "answer": "The Methods section describes the evaluation setup {{sourceQuoteRef:source_quote_abc}}.",
+                          "evidenceBasedClaims": [
+                            {
+                              "claim": "The Methods section describes the evaluation setup.",
+                              "sourceQuoteRefs": ["source_quote_abc"]
+                            }
+                          ],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("Read the Methods section"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("get_paper_outline"), any(), any());
+        verify(registry).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    void rejectsHiddenPaperHandleBeforeOutline() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_paper_outline", Map.of(
+                        "paperHandles", List.of("paper_handle_hidden")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("Outline paper_handle_hidden"));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("get_paper_outline"), any(), any());
     }
 
     @Test
@@ -470,6 +537,35 @@ class ProductReadingReActHarnessTest {
 
         assertEquals(ProductResultStatus.FAILED, result.resultStatus());
         assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("find_reading_locations"), any(), any());
+    }
+
+    @Test
+    void tracePaperHandleCanBeUsedForOutline() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
+        when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "trace_source_quotes", Map.of(
+                        "sourceQuoteRefs", List.of("source_quote_abc")
+                )))
+                .thenReturn(toolCallTurn("call_2", "get_paper_outline", Map.of(
+                        "paperHandles", List.of("paper_handle_abc")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope("Methods section is available as navigation.")));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedRefs(
+                "Show this paper outline",
+                List.of("source_quote_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("get_paper_outline"), any(), any());
         verify(registry, never()).execute(eq("find_reading_locations"), any(), any());
     }
 
@@ -772,6 +868,41 @@ class ProductReadingReActHarnessTest {
         );
     }
 
+    private ProductToolResult outlineResult() {
+        return new ProductToolResult(
+                "get_paper_outline",
+                true,
+                Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "status", "OK",
+                        "papers", List.of(Map.of(
+                                "paperHandle", "paper_handle_abc",
+                                "title", "Agentic Eval Benchmark",
+                                "originalFilename", "agentic-eval.pdf",
+                                "supportedLocationTypes", List.of("PAGE", "SECTION"),
+                                "parserQuality", Map.of(
+                                        "pageTextCoverage", 1.0,
+                                        "outlineConfidence", "HIGH",
+                                        "warnings", List.of()
+                                ),
+                                "sections", List.of(Map.of(
+                                        "sectionRef", "section_ref_methods",
+                                        "heading", "Methods",
+                                        "sectionRole", "METHODS",
+                                        "level", 1,
+                                        "pageStart", 3,
+                                        "pageEnd", 5
+                                ))
+                        )),
+                        "constraints", Map.of(
+                                "outlineIsSourceQuote", false,
+                                "paperContentClaimsAllowed", false
+                        )
+                ),
+                ProductToolEffect.PAPER_DISCOVERY
+        );
+    }
+
     private ProductToolResult readResult() {
         return new ProductToolResult(
                 "read_locations",
@@ -789,6 +920,31 @@ class ProductReadingReActHarnessTest {
                         )),
                         "readStatus", List.of(Map.of(
                                 "locationRef", "page_ref_abc",
+                                "status", "OK"
+                        ))
+                ),
+                ProductToolEffect.EVIDENCE
+        );
+    }
+
+    private ProductToolResult sectionReadResult() {
+        return new ProductToolResult(
+                "read_locations",
+                true,
+                Map.of(
+                        "sourceQuotes", List.of(Map.of(
+                                "sourceQuoteRef", "source_quote_abc",
+                                "locationRef", "section_ref_methods",
+                                "paperHandle", "paper_handle_abc",
+                                "paperTitle", "Agentic Eval Benchmark",
+                                "locationType", "SECTION",
+                                "pageNumber", 3,
+                                "sectionTitle", "Methods",
+                                "contentKind", "TEXT",
+                                "content", "The Methods section describes the evaluation setup."
+                        )),
+                        "readStatus", List.of(Map.of(
+                                "locationRef", "section_ref_methods",
                                 "status", "OK"
                         ))
                 ),
@@ -823,6 +979,7 @@ class ProductReadingReActHarnessTest {
     private List<AgentToolRegistry.AgentTool> readingTools() {
         return List.of(
                 tool("search_paper_candidates"),
+                tool("get_paper_outline"),
                 tool("list_paper_locations"),
                 tool("find_reading_locations"),
                 tool("read_locations"),

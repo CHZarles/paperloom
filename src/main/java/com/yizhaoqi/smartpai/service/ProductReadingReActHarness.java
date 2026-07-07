@@ -19,6 +19,7 @@ public class ProductReadingReActHarness {
 
     private static final List<String> REQUIRED_TOOL_NAMES = List.of(
             "search_paper_candidates",
+            "get_paper_outline",
             "list_paper_locations",
             "find_reading_locations",
             "read_locations",
@@ -186,6 +187,12 @@ public class ProductReadingReActHarness {
                 return ToolCallValidation.rejected("hidden_paper_handle");
             }
         }
+        if ("get_paper_outline".equals(toolName)) {
+            List<String> paperHandles = stringList(arguments.get("paperHandles"));
+            if (paperHandles.isEmpty() || !state.deterministicLocationPaperHandles.containsAll(paperHandles)) {
+                return ToolCallValidation.rejected("hidden_paper_handle");
+            }
+        }
         if ("read_locations".equals(toolName)) {
             List<String> locationRefs = stringList(arguments.get("locationRefs"));
             if (locationRefs.isEmpty() || !state.disclosedLocationRefs.containsAll(locationRefs)) {
@@ -221,6 +228,17 @@ public class ProductReadingReActHarness {
                 String locationRef = stringValue(location.get("locationRef"));
                 if (!locationRef.isBlank()) {
                     state.disclosedLocationRefs.add(locationRef);
+                }
+            }
+            return;
+        }
+        if ("get_paper_outline".equals(toolName)) {
+            for (Map<String, Object> paper : mapList(toolResult.data().get("papers"))) {
+                for (Map<String, Object> section : mapList(paper.get("sections"))) {
+                    String sectionRef = stringValue(section.get("sectionRef"));
+                    if (!sectionRef.isBlank()) {
+                        state.disclosedLocationRefs.add(sectionRef);
+                    }
                 }
             }
             return;
@@ -269,15 +287,18 @@ public class ProductReadingReActHarness {
     private String systemPrompt(ProductTurnRequest request, Set<String> clickedSourceQuoteRefs) {
         return """
                 You are PaperLoom Product Reading ReAct Source Quote MVP.
-                Available tools are exactly search_paper_candidates, list_paper_locations, find_reading_locations, read_locations, and trace_source_quotes.
+                Available tools are exactly search_paper_candidates, get_paper_outline, list_paper_locations, find_reading_locations, read_locations, and trace_source_quotes.
                 Use search_paper_candidates for paper candidate discovery.
+                Use get_paper_outline after choosing papers when structure, section choices, or parser quality is needed.
+                get_paper_outline requires paperHandles disclosed by search_paper_candidates or trace_source_quotes in this turn.
+                get_paper_outline returns sectionRef values for navigation only; they are not Source Quotes.
                 Use find_reading_locations for semantic in-paper location search; it requires queryText and paperHandles disclosed by search_paper_candidates in this turn.
                 Use list_paper_locations for deterministic section/page/table/figure refs; it requires paperHandles disclosed by search_paper_candidates or trace_source_quotes in this turn.
-                Use read_locations only after explicit locationRef values were returned by find_reading_locations or list_paper_locations in this turn.
+                Use read_locations only after explicit locationRef or sectionRef values were returned by get_paper_outline, find_reading_locations, or list_paper_locations in this turn.
                 Use trace_source_quotes only for sourceQuoteRefs listed in this turn's explicit clicked Source Quote anchors.
                 trace_source_quotes returned locationRef values are metadata, not read_locations input.
                 To read broader context around a traced Source Quote, call list_paper_locations with the traced paperHandle and pageNumber or location type, then call read_locations with refs returned by list_paper_locations.
-                Paper previews and reading-location previews are navigation only, not Source Quotes.
+                Paper previews, paper outlines, parserQuality, and reading-location previews are navigation only, not Source Quotes.
                 read_locations and trace_source_quotes are the only Source Quote tools in this slice.
                 clicked Source Quote anchors are trace-tool inputs only; they are not citeable until trace_source_quotes returns them in this turn.
                 Do not invent paperHandle, locationRef, or sourceQuoteRef values.
