@@ -90,6 +90,8 @@ Page-location input rows are intentionally small:
 | `product-rescue-smoke` | product | Paper chat regression | `passRate` | runnable |
 | `product-rescue-paper-qa` | product | Scoped paper-QA slice | `passRate` | runnable |
 | `product-pdf-parser-smoke` | product | Real PDF parser smoke | `passRate` | runnable |
+| `product-pdf-launch-30` | product | 30-real-PDF parser launch gate | `passRate` | runnable |
+| `product-reading-launch-trace` | product | Product Reading 9-tool trace coverage | `passRate` | runnable |
 | `qasper-dev-200` | professional | Research-paper evidence QA | `passRate` | runnable |
 | `litsearch-full` | professional | Literature-search retrieval | `recallAt20` | offline full scored; service-backed full scored |
 
@@ -185,6 +187,15 @@ answer behavior.
 The real PDF parser smoke is that separate gate. It lives under `eval/rag/pdf-parser/`, checks
 already processed PDF rows in MySQL, and rejects `Paper.isEval`, `sourceDataset`, and `.json`
 structured imports. Use it before claiming PDF parser/OCR/page visual evidence quality.
+The one-PDF manifest remains a quick smoke. `eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl`
+is the launch-readiness parser gate over 30 local real PDFs from `data/`; it requires the active
+runtime to have already uploaded and parsed those PDFs before the smoke CLI can pass.
+
+Product Reading launch traces are evaluated separately by `ProductReadingLaunchTraceEvalCli`. The
+case file `eval/rag/product-reading-launch-trace-cases.jsonl` requires completed
+`PRODUCT_READING_REACT_TURN` artifacts that cover all 9 reading tools, paper-choice Product State
+Items from `list_papers`, `search_paper_candidates`, and `find_papers_by_identity`, plus Source
+Quote references from both `read_locations` and `trace_source_quotes`.
 
 Eval import markers now belong on `Paper` rows, with chunk rows linked by `paperId`:
 

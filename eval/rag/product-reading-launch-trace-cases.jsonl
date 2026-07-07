@@ -1,0 +1,9 @@
+{"id":"session_state","requiredToolNames":["get_session_state"],"requiredAnswerType":"PRODUCT_STATE","requiresReference":false,"expectedResultStatus":"COMPLETED"}
+{"id":"browse_paper_choice_cards","requiredToolNames":["list_papers"],"requiredAnswerType":"PRODUCT_STATE","requiredProductStateKinds":["READING_PAPER_CHOICE"],"requiredProductStateSourceTools":["list_papers"],"requiresReference":false,"expectedResultStatus":"COMPLETED"}
+{"id":"semantic_search_paper_choice_cards","requiredToolNames":["search_paper_candidates"],"requiredAnswerType":"PRODUCT_STATE","requiredProductStateKinds":["READING_PAPER_CHOICE"],"requiredProductStateSourceTools":["search_paper_candidates"],"requiresReference":false,"expectedResultStatus":"COMPLETED"}
+{"id":"identity_paper_choice_cards","requiredToolNames":["find_papers_by_identity"],"requiredAnswerType":"PRODUCT_STATE","requiredProductStateKinds":["READING_PAPER_CHOICE"],"requiredProductStateSourceTools":["find_papers_by_identity"],"requiresReference":false,"expectedResultStatus":"COMPLETED"}
+{"id":"outline_navigation","requiredToolNames":["get_paper_outline"],"requiredAnswerType":"PRODUCT_STATE","requiresReference":false,"expectedResultStatus":"COMPLETED"}
+{"id":"deterministic_location_navigation","requiredToolNames":["list_paper_locations"],"requiredAnswerType":"PRODUCT_STATE","requiresReference":false,"expectedResultStatus":"COMPLETED"}
+{"id":"semantic_location_navigation","requiredToolNames":["find_reading_locations"],"requiredAnswerType":"PRODUCT_STATE","requiresReference":false,"expectedResultStatus":"COMPLETED"}
+{"id":"read_locations_source_quotes","requiredToolNames":["read_locations"],"requiredAnswerType":"EVIDENCE_ANSWER","requiresReference":true,"expectedResultStatus":"COMPLETED"}
+{"id":"trace_source_quotes_followup","requiredToolNames":["trace_source_quotes"],"requiredAnswerType":"EVIDENCE_ANSWER","requiresReference":true,"expectedResultStatus":"COMPLETED"}

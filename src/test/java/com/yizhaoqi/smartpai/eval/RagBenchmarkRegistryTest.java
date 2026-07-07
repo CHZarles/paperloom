@@ -117,6 +117,33 @@ class RagBenchmarkRegistryTest {
     }
 
     @Test
+    void registersLaunchTraceEvalAndThirtyPdfParserGate() throws Exception {
+        RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
+
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "product-reading-launch-trace-eval".equals(harness.id())
+                        && "runnable-trace-eval".equals(harness.status())
+                        && "trace-artifact-check".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("product-reading-launch-trace"))));
+
+        RagBenchmarkRegistry.BenchmarkDefinition traceBenchmark = registry.benchmark("product-reading-launch-trace");
+        assertEquals("Product Reading Launch Trace", traceBenchmark.name());
+        assertEquals("product", traceBenchmark.tier());
+        assertEquals("Product Reading 9-tool trace coverage", traceBenchmark.task());
+        assertEquals("eval/rag/product-reading-launch-trace-cases.jsonl", traceBenchmark.path());
+        assertEquals("passRate", traceBenchmark.primaryMetric());
+        assertEquals("9", traceBenchmark.cases());
+
+        RagBenchmarkRegistry.BenchmarkDefinition pdfBenchmark = registry.benchmark("product-pdf-launch-30");
+        assertEquals("Product PDF Launch 30", pdfBenchmark.name());
+        assertEquals("product", pdfBenchmark.tier());
+        assertEquals("30-real-PDF parser launch gate", pdfBenchmark.task());
+        assertEquals("eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl", pdfBenchmark.path());
+        assertEquals("passRate", pdfBenchmark.primaryMetric());
+        assertEquals("30", pdfBenchmark.cases());
+    }
+
+    @Test
     void registersProductPaperQaSliceForServiceBackedPageWindowRuns() throws Exception {
         RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
 

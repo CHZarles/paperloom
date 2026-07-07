@@ -12,9 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ProductReadingTraceRecorderTest {
 
     @Test
-    void recordsReadingTurnWithDistinctArtifactAndTraceSourceQuoteStage() {
+    void recordsReadingTurnWithDistinctArtifactTraceSourceQuoteStageAndProductStateItems() {
         List<ProductTracePayload> submitted = new ArrayList<>();
         ProductReadingTraceRecorder recorder = new ProductReadingTraceRecorder(submitted::add);
+        List<Map<String, Object>> productStateItems = List.of(Map.of(
+                "kind", "READING_PAPER_CHOICE",
+                "sourceTool", "list_papers",
+                "paperHandle", "paper_handle_abc",
+                "title", "Agentic Eval Benchmark"
+        ));
         ProductTurnRequest request = new ProductTurnRequest(
                 7L,
                 "conversation-1",
@@ -39,6 +45,7 @@ class ProductReadingTraceRecorderTest {
                 ),
                 List.of(Map.of("sourceQuoteRef", "source_quote_abc")),
                 List.of(),
+                productStateItems,
                 ProductStopReason.ANSWER_SCHEMA_INVALID,
                 ProductResultStatus.FAILED
         );
@@ -60,10 +67,11 @@ class ProductReadingTraceRecorderTest {
         ProductTracePayload payload = submitted.get(0);
         assertEquals("PRODUCT_READING_REACT_TURN", payload.artifactType());
         assertEquals("PRODUCT_READING_REACT_TURN", payload.traceJson().get("artifactType"));
-        assertEquals(3, payload.traceJson().get("traceVersion"));
+        assertEquals(4, payload.traceJson().get("traceVersion"));
         assertEquals("TRACE_SOURCE_QUOTES_MVP", payload.traceJson().get("readingLoopStage"));
         assertEquals("READING_TRACE_SOURCE_QUOTES_MVP", payload.traceJson().get("harnessKind"));
         assertEquals(toolCalls, payload.traceJson().get("toolCalls"));
+        assertEquals(productStateItems, payload.traceJson().get("productStateItems"));
         assertEquals(List.of(Map.of("sourceQuoteRef", "source_quote_abc")), payload.traceJson().get("references"));
     }
 }

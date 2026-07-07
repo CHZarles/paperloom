@@ -22,6 +22,16 @@ Seed manifest:
 eval/rag/pdf-parser/product-pdf-smoke-manifest.jsonl
 ```
 
+Launch-readiness manifest:
+
+```text
+eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl
+```
+
+The launch manifest contains exactly 30 unique local real PDFs from `data/`. It is a broader gate
+for "can this product ship?" checks; it is not a substitute for uploading/parsing those PDFs in the
+active runtime first.
+
 Current case:
 
 ```json
@@ -62,6 +72,15 @@ Run the smoke:
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   com.yizhaoqi.smartpai.eval.ProductPdfParserSmokeCli \
   --manifest eval/rag/pdf-parser/product-pdf-smoke-manifest.jsonl \
+  --runs-root eval/rag/runs
+```
+
+Run the 30-PDF launch parser gate:
+
+```bash
+java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
+  com.yizhaoqi.smartpai.eval.ProductPdfParserSmokeCli \
+  --manifest eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl \
   --runs-root eval/rag/runs
 ```
 

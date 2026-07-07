@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class ProductReadingTraceRecorder {
             trace.put("artifactType", ARTIFACT_TYPE);
             trace.put("harnessKind", HARNESS_KIND);
             trace.put("readingLoopStage", READING_LOOP_STAGE);
-            trace.put("traceVersion", 3);
+            trace.put("traceVersion", 4);
             trace.put("conversationId", safeRequest.conversationId());
             trace.put("generationId", safeRequest.generationId());
             trace.put("userId", safeRequest.userId());
@@ -55,6 +56,7 @@ public class ProductReadingTraceRecorder {
             trace.put("llmCalls", llmCalls == null ? List.of() : llmCalls);
             trace.put("toolCalls", toolCalls == null ? List.of() : toolCalls);
             trace.put("answerEnvelope", safeResult.envelope());
+            trace.put("productStateItems", productStateItems(safeResult.productStateItems()));
             trace.put("references", safeResult.references());
             trace.put("stopReason", safeResult.stopReason().name());
             trace.put("resultStatus", safeResult.resultStatus().name());
@@ -85,6 +87,20 @@ public class ProductReadingTraceRecorder {
         snapshot.put("paperCount", safeScope.paperIds().size());
         snapshot.put("immutable", true);
         return snapshot;
+    }
+
+    private List<Map<String, Object>> productStateItems(List<Map<String, Object>> items) {
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> copies = new ArrayList<>(items.size());
+        for (Map<String, Object> item : items) {
+            if (item == null || item.isEmpty()) {
+                continue;
+            }
+            copies.add(new LinkedHashMap<>(item));
+        }
+        return List.copyOf(copies);
     }
 
     private String safeSegment(String value) {
