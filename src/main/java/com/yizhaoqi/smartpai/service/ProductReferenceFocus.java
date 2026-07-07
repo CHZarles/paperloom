@@ -16,10 +16,14 @@ public record ProductReferenceFocus(
         String matchedText,
         String bboxJson,
         String sourceKind,
-        String sourceQuoteRef
+        String sourceQuoteRef,
+        List<String> paperHandles,
+        String paperHandle
 ) {
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
+    private static final Pattern PAPER_HANDLE_PATTERN =
+            Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
 
     public ProductReferenceFocus {
         paperIds = paperIds == null ? List.of() : paperIds.stream()
@@ -37,6 +41,47 @@ public record ProductReferenceFocus(
         bboxJson = trimToNull(bboxJson);
         sourceKind = trimToNull(sourceKind);
         sourceQuoteRef = sourceQuoteRef(sourceQuoteRef);
+        paperHandle = paperHandle(paperHandle);
+        paperHandles = paperHandles == null ? List.of() : paperHandles.stream()
+                .map(ProductReferenceFocus::paperHandle)
+                .filter(value -> value != null)
+                .distinct()
+                .toList();
+        if (paperHandle != null) {
+            paperHandles = List.of(paperHandle);
+        }
+    }
+
+    public ProductReferenceFocus(List<String> paperIds,
+                                 List<String> paperTitles,
+                                 Integer referenceNumber,
+                                 Long conversationRecordId,
+                                 Integer chunkId,
+                                 Integer pageNumber,
+                                 String paperId,
+                                 String paperTitle,
+                                 String originalFilename,
+                                 String matchedText,
+                                 String bboxJson,
+                                 String sourceKind,
+                                 String sourceQuoteRef) {
+        this(
+                paperIds,
+                paperTitles,
+                referenceNumber,
+                conversationRecordId,
+                chunkId,
+                pageNumber,
+                paperId,
+                paperTitle,
+                originalFilename,
+                matchedText,
+                bboxJson,
+                sourceKind,
+                sourceQuoteRef,
+                List.of(),
+                null
+        );
     }
 
     public ProductReferenceFocus(List<String> paperIds,
@@ -64,6 +109,8 @@ public record ProductReferenceFocus(
                 matchedText,
                 bboxJson,
                 sourceKind,
+                null,
+                List.of(),
                 null
         );
     }
@@ -79,6 +126,14 @@ public record ProductReferenceFocus(
     private static String sourceQuoteRef(String value) {
         String trimmed = trimToNull(value);
         if (trimmed == null || !SOURCE_QUOTE_REF_PATTERN.matcher(trimmed).matches()) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private static String paperHandle(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null || !PAPER_HANDLE_PATTERN.matcher(trimmed).matches()) {
             return null;
         }
         return trimmed;

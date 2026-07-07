@@ -125,6 +125,152 @@ class ProductReadingConversationServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void enabledReadingPhaseOnePassesOnlyExplicitClickedPaperAnchors() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ProductReadingReactProperties properties = new ProductReadingReactProperties();
+        properties.setEnabled(true);
+        ProductTurnResult expected = productStateResult("reading answer");
+        when(readingHarness.run(any())).thenReturn(expected);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "看这篇论文",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of(
+                        "clickedPaperHandles", List.of(
+                                " paper_handle_abc ",
+                                "paper_handle_abc",
+                                "not_a_paper_handle",
+                                "paper_handle_def"
+                        ),
+                        "memory", Map.of("paperHandles", List.of("paper_handle_hidden"))
+                )
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        ProductTurnRequest request = requestCaptor.getValue();
+        assertTrue(request.history().isEmpty());
+        Map<String, Object> anchors = (Map<String, Object>) request.memory().get("readingTurnAnchors");
+        assertEquals(List.of("paper_handle_abc", "paper_handle_def"), anchors.get("clickedPaperHandles"));
+        assertEquals(null, request.memory().get("memory"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void enabledReadingPhaseOneAcceptsClickedPaperAnchorArrays() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ProductReadingReactProperties properties = new ProductReadingReactProperties();
+        properties.setEnabled(true);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "看这些论文",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of("clickedPaperHandles", new String[]{"paper_handle_array_a", "paper_handle_array_b"})
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        Map<String, Object> anchors = (Map<String, Object>) requestCaptor.getValue().memory().get("readingTurnAnchors");
+        assertEquals(List.of("paper_handle_array_a", "paper_handle_array_b"), anchors.get("clickedPaperHandles"));
+    }
+
+    @Test
+    void enabledReadingPhaseOneIgnoresUnsupportedClickedPaperAnchorShapes() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ProductReadingReactProperties properties = new ProductReadingReactProperties();
+        properties.setEnabled(true);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "看这篇论文",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of("clickedPaperHandles", "paper_handle_abc")
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        assertTrue(requestCaptor.getValue().memory().isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void enabledReadingPhaseOneCapsClickedPaperAnchors() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ProductReadingReactProperties properties = new ProductReadingReactProperties();
+        properties.setEnabled(true);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        List<String> handles = IntStream.range(0, 25)
+                .mapToObj(index -> "paper_handle_" + index)
+                .toList();
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "看这些论文",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of("clickedPaperHandles", handles)
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        Map<String, Object> anchors = (Map<String, Object>) requestCaptor.getValue().memory().get("readingTurnAnchors");
+        @SuppressWarnings("unchecked")
+        List<String> clickedHandles = (List<String>) anchors.get("clickedPaperHandles");
+        assertEquals(20, clickedHandles.size());
+        assertEquals("paper_handle_0", clickedHandles.get(0));
+        assertEquals("paper_handle_19", clickedHandles.get(19));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void enabledReadingPhaseOneMergesClickedPaperAndSourceQuoteAnchors() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ProductReadingReactProperties properties = new ProductReadingReactProperties();
+        properties.setEnabled(true);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "看这篇论文和这个来源",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of(
+                        "clickedPaperHandles", List.of("paper_handle_abc"),
+                        "clickedSourceQuoteRefs", List.of("source_quote_abc")
+                )
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        Map<String, Object> anchors = (Map<String, Object>) requestCaptor.getValue().memory().get("readingTurnAnchors");
+        assertEquals(List.of("paper_handle_abc"), anchors.get("clickedPaperHandles"));
+        assertEquals(List.of("source_quote_abc"), anchors.get("clickedSourceQuoteRefs"));
+    }
+
+    @Test
     void enabledReadingPhaseOneIgnoresUnsupportedClickedSourceQuoteAnchorShapes() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
         ProductReadingReactProperties properties = new ProductReadingReactProperties();

@@ -632,10 +632,12 @@ declare namespace Api {
     interface Scope {
       paperIds?: string[];
       paperTitles?: string[];
+      paperHandles?: string[];
       referenceNumber?: number;
       conversationRecordId?: number;
       chunkId?: number;
       pageNumber?: number;
+      paperHandle?: string;
       paperId?: string;
       paperTitle?: string;
       originalFilename?: string;

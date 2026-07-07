@@ -457,7 +457,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="source-evidence__actions">
-      <NButton type="primary" secondary :disabled="!paperId || !matchedText" @click="askAboutThisEvidence">
+      <NButton type="primary" secondary :disabled="!paperId && !sourceQuoteRef" @click="askAboutThisEvidence">
         <template #icon>
           <icon-lucide:message-square-plus />
         </template>

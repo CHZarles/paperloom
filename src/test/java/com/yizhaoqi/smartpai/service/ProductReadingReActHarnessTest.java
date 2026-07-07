@@ -439,6 +439,142 @@ class ProductReadingReActHarnessTest {
     }
 
     @Test
+    void clickedPaperHandleCanFeedOutlineAndAppearsInPromptAsNavigationOnlyAnchor() throws Exception {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_paper_outline", Map.of(
+                        "paperHandles", List.of("paper_handle_abc")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "Methods section is available as navigation.",
+                        "get_paper_outline"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "看这篇论文的大纲",
+                List.of("paper_handle_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("get_paper_outline"), any(), any());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Map<String, Object>>> messagesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(llm, times(2)).completeReActTurn(eq("7"), messagesCaptor.capture(), eq(tools), anyInt());
+        String firstPrompt = objectMapper.writeValueAsString(messagesCaptor.getAllValues().get(0));
+        assertTrue(firstPrompt.contains("Explicit clicked paper anchors"));
+        assertTrue(firstPrompt.contains("paper_handle_abc"));
+        assertTrue(firstPrompt.contains("Clicked paper anchors are navigation only"));
+    }
+
+    @Test
+    void clickedPaperHandleCanFeedListPaperLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "list_paper_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "locationTypes", List.of("SECTION")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到可导航位置：page_ref_abc。",
+                        "list_paper_locations"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "看这篇论文的位置",
+                List.of("paper_handle_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("list_paper_locations"), any(), any());
+    }
+
+    @Test
+    void clickedPaperHandleCanFeedReadingLocationSearch() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "methods"
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到候选阅读位置：page_ref_abc。",
+                        "find_reading_locations"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "在这篇论文里找方法",
+                List.of("paper_handle_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("find_reading_locations"), any(), any());
+    }
+
+    @Test
+    void clickedPaperHandleDoesNotAuthorizeDirectReadLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "read_locations", Map.of(
+                        "locationRefs", List.of("page_ref_abc")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "直接读这篇论文",
+                List.of("paper_handle_abc")
+        ));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    void invalidClickedPaperHandlesAreIgnored() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_paper_outline", Map.of(
+                        "paperHandles", List.of("not_a_paper_handle")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "看这篇论文的大纲",
+                List.of("not_a_paper_handle")
+        ));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry, never()).execute(eq("get_paper_outline"), any(), any());
+    }
+
+    @Test
     void sourceQuotedQuestionReadsLocationsAndRendersSourceQuoteReferences() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
@@ -1101,6 +1237,19 @@ class ProductReadingReActHarnessTest {
                 SourceScope.auto(),
                 List.of(),
                 Map.of("readingTurnAnchors", Map.of("clickedSourceQuoteRefs", clickedRefs)),
+                ProductModelContext.defaults()
+        );
+    }
+
+    private ProductTurnRequest requestWithClickedPaperHandles(String message, List<String> clickedPaperHandles) {
+        return new ProductTurnRequest(
+                7L,
+                "conversation-1",
+                "generation-2",
+                message,
+                SourceScope.auto(),
+                List.of(),
+                Map.of("readingTurnAnchors", Map.of("clickedPaperHandles", clickedPaperHandles)),
                 ProductModelContext.defaults()
         );
     }

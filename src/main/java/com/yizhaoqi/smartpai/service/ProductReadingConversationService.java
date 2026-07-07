@@ -15,8 +15,11 @@ import java.util.regex.Pattern;
 public class ProductReadingConversationService {
 
     private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
+    private static final int MAX_CLICKED_PAPER_HANDLES = 20;
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
+    private static final Pattern PAPER_HANDLE_PATTERN =
+            Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
 
     private final ProductReadingReActHarness readingHarness;
     private final ProductReadingReactProperties properties;
@@ -72,6 +75,7 @@ public class ProductReadingConversationService {
             return failed("Product Reading ReAct Phase 1 harness is unavailable.");
         }
         List<String> clickedSourceQuoteRefs = clickedSourceQuoteRefs(effectiveScope);
+        List<String> clickedPaperHandles = clickedPaperHandles(effectiveScope);
         return readingHarness.run(new ProductTurnRequest(
                 userId,
                 conversationId,
@@ -79,19 +83,29 @@ public class ProductReadingConversationService {
                 userMessage,
                 lockedScope,
                 List.of(),
-                readingMemory(clickedSourceQuoteRefs),
+                readingMemory(clickedSourceQuoteRefs, clickedPaperHandles),
                 modelContext,
                 progressListener
         ));
     }
 
-    private Map<String, Object> readingMemory(List<String> clickedSourceQuoteRefs) {
-        if (clickedSourceQuoteRefs == null || clickedSourceQuoteRefs.isEmpty()) {
+    private Map<String, Object> readingMemory(List<String> clickedSourceQuoteRefs,
+                                              List<String> clickedPaperHandles) {
+        boolean hasSourceQuoteRefs = clickedSourceQuoteRefs != null && !clickedSourceQuoteRefs.isEmpty();
+        boolean hasPaperHandles = clickedPaperHandles != null && !clickedPaperHandles.isEmpty();
+        if (!hasSourceQuoteRefs && !hasPaperHandles) {
             return Map.of();
+        }
+        Map<String, Object> anchors = new java.util.LinkedHashMap<>();
+        if (hasSourceQuoteRefs) {
+            anchors.put("clickedSourceQuoteRefs", clickedSourceQuoteRefs);
+        }
+        if (hasPaperHandles) {
+            anchors.put("clickedPaperHandles", clickedPaperHandles);
         }
         return Map.of(
                 "readingTurnAnchors",
-                Map.of("clickedSourceQuoteRefs", clickedSourceQuoteRefs)
+                anchors
         );
     }
 
@@ -115,6 +129,28 @@ public class ProductReadingConversationService {
             }
         }
         return List.copyOf(refs);
+    }
+
+    private List<String> clickedPaperHandles(Map<String, Object> effectiveScope) {
+        if (effectiveScope == null || !effectiveScope.containsKey("clickedPaperHandles")) {
+            return List.of();
+        }
+        Object rawValue = effectiveScope.get("clickedPaperHandles");
+        List<Object> rawHandles = rawRefValues(rawValue);
+        if (rawHandles.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> handles = new LinkedHashSet<>();
+        for (Object rawHandle : rawHandles) {
+            String paperHandle = rawHandle == null ? "" : String.valueOf(rawHandle).trim();
+            if (PAPER_HANDLE_PATTERN.matcher(paperHandle).matches()) {
+                handles.add(paperHandle);
+            }
+            if (handles.size() >= MAX_CLICKED_PAPER_HANDLES) {
+                break;
+            }
+        }
+        return List.copyOf(handles);
     }
 
     private List<Object> rawRefValues(Object rawValue) {

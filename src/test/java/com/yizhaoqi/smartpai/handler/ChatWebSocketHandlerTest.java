@@ -10,6 +10,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.net.URI;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -113,6 +114,44 @@ class ChatWebSocketHandlerTest {
         assertEquals("解释这个引用", request.message());
         assertEquals("source_quote_abc", request.referenceFocus().sourceQuoteRef());
         assertEquals(1, request.referenceFocus().referenceNumber());
+    }
+
+    @Test
+    void structuredChatPayloadPreservesClickedPaperHandleReferenceFocus() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","conversationId":"conversation-1","message":"看这篇论文","referenceFocus":{"paperHandle":" paper_handle_abc ","paperTitle":"LoRA"}}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("看这篇论文", request.message());
+        assertEquals("paper_handle_abc", request.referenceFocus().paperHandle());
+        assertEquals(List.of("paper_handle_abc"), request.referenceFocus().paperHandles());
+        assertEquals("LoRA", request.referenceFocus().paperTitle());
+    }
+
+    @Test
+    void structuredChatPayloadIgnoresInvalidClickedPaperHandles() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","conversationId":"conversation-1","message":"看这篇论文","referenceFocus":{"paperHandle":"not-a-handle","paperHandles":["paper_handle_ok","bad handle"," paper_handle_trimmed "]}}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals(null, request.referenceFocus().paperHandle());
+        assertEquals(List.of("paper_handle_ok", "paper_handle_trimmed"), request.referenceFocus().paperHandles());
     }
 
     @Test

@@ -29,6 +29,7 @@ public class ProductReadingReActHarness {
             "trace_source_quotes"
     );
     private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
+    private static final int MAX_CLICKED_PAPER_HANDLES = 20;
     private static final List<String> FORBIDDEN_OUTPUT_TOKENS = List.of(
             internalToken("paper", "Id"),
             internalToken("model", "Version"),
@@ -45,6 +46,8 @@ public class ProductReadingReActHarness {
             Pattern.compile("\\{\\{\\s*sourceQuoteRef\\s*:\\s*(source_quote_[A-Za-z0-9_-]+)\\s*}}");
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
+    private static final Pattern PAPER_HANDLE_PATTERN =
+            Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
 
     private final LlmProviderRouter llmProviderRouter;
     private final ProductReadingToolRegistry toolRegistry;
@@ -80,8 +83,15 @@ public class ProductReadingReActHarness {
             return result;
         }
 
-        ReadingTurnState state = new ReadingTurnState(clickedSourceQuoteRefs(safeRequest.memory()));
-        List<Map<String, Object>> messages = initialMessages(safeRequest, state.clickedSourceQuoteRefs);
+        ReadingTurnState state = new ReadingTurnState(
+                clickedSourceQuoteRefs(safeRequest.memory()),
+                clickedPaperHandles(safeRequest.memory())
+        );
+        List<Map<String, Object>> messages = initialMessages(
+                safeRequest,
+                state.clickedSourceQuoteRefs,
+                state.clickedPaperHandles
+        );
         boolean toolSucceeded = false;
         for (int round = 0; round < safeRequest.modelContext().maxReActRounds(); round++) {
             LlmProviderRouter.ReActTurn turn = llmProviderRouter.completeReActTurn(
@@ -306,14 +316,18 @@ public class ProductReadingReActHarness {
         }
     }
 
-    private List<Map<String, Object>> initialMessages(ProductTurnRequest request, Set<String> clickedSourceQuoteRefs) {
+    private List<Map<String, Object>> initialMessages(ProductTurnRequest request,
+                                                      Set<String> clickedSourceQuoteRefs,
+                                                      Set<String> clickedPaperHandles) {
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(message("system", systemPrompt(request, clickedSourceQuoteRefs)));
+        messages.add(message("system", systemPrompt(request, clickedSourceQuoteRefs, clickedPaperHandles)));
         messages.add(message("user", request.userMessage()));
         return messages;
     }
 
-    private String systemPrompt(ProductTurnRequest request, Set<String> clickedSourceQuoteRefs) {
+    private String systemPrompt(ProductTurnRequest request,
+                                Set<String> clickedSourceQuoteRefs,
+                                Set<String> clickedPaperHandles) {
         return """
                 You are PaperLoom Product Reading ReAct Source Quote MVP.
                 Available tools are exactly get_session_state, list_papers, search_paper_candidates, find_papers_by_identity, get_paper_outline, list_paper_locations, find_reading_locations, read_locations, and trace_source_quotes.
@@ -329,10 +343,10 @@ public class ProductReadingReActHarness {
                 Unambiguous paper handles returned by find_papers_by_identity may be used with get_paper_outline, list_paper_locations, or find_reading_locations.
                 If find_papers_by_identity returns AMBIGUOUS, ask the user to clarify or choose a paper before reading content.
                 Use get_paper_outline after choosing papers when structure, section choices, or parser quality is needed.
-                get_paper_outline requires paperHandles disclosed by list_papers, search_paper_candidates, find_papers_by_identity, or trace_source_quotes in this turn.
+                get_paper_outline requires paperHandles disclosed by list_papers, search_paper_candidates, find_papers_by_identity, trace_source_quotes, or explicit clicked paper anchors in this turn.
                 get_paper_outline returns sectionRef values for navigation only; they are not Source Quotes.
-                Use find_reading_locations for semantic in-paper location search; it requires queryText and paperHandles disclosed by list_papers, search_paper_candidates, or unambiguous find_papers_by_identity in this turn.
-                Use list_paper_locations for deterministic section/page/table/figure refs; it requires paperHandles disclosed by list_papers, search_paper_candidates, unambiguous find_papers_by_identity, or trace_source_quotes in this turn.
+                Use find_reading_locations for semantic in-paper location search; it requires queryText and paperHandles disclosed by list_papers, search_paper_candidates, unambiguous find_papers_by_identity, or explicit clicked paper anchors in this turn.
+                Use list_paper_locations for deterministic section/page/table/figure refs; it requires paperHandles disclosed by list_papers, search_paper_candidates, unambiguous find_papers_by_identity, trace_source_quotes, or explicit clicked paper anchors in this turn.
                 Use read_locations only after explicit locationRef or sectionRef values were returned by get_paper_outline, find_reading_locations, or list_paper_locations in this turn.
                 Use trace_source_quotes only for sourceQuoteRefs listed in this turn's explicit clicked Source Quote anchors.
                 trace_source_quotes returned locationRef values are metadata, not read_locations input.
@@ -351,11 +365,19 @@ public class ProductReadingReActHarness {
                 If Source Quotes are unavailable or insufficient, answer INSUFFICIENT_EVIDENCE without unsupported paper facts.
                 Final answer must be one JSON AnswerEnvelope.
                 paperRef, evidenceRef, and citationRef are legacy identifiers for the old harness. Do not use them as reading tool arguments or citation support.
+                Explicit clicked paper anchors for this turn:
+                %s
+                Clicked paper anchors are navigation only, not Source Quotes.
+                Use clicked paper handles only with get_paper_outline, list_paper_locations, or find_reading_locations.
                 Explicit clicked Source Quote anchors for this turn:
                 %s
                 Current user request:
                 %s
-                """.formatted(clickedSourceQuoteAnchorPrompt(clickedSourceQuoteRefs), request.userMessage());
+                """.formatted(
+                clickedPaperAnchorPrompt(clickedPaperHandles),
+                clickedSourceQuoteAnchorPrompt(clickedSourceQuoteRefs),
+                request.userMessage()
+        );
     }
 
     private ProductTurnResult finalResult(String rawContent,
@@ -751,6 +773,27 @@ public class ProductReadingReActHarness {
         return refs;
     }
 
+    private Set<String> clickedPaperHandles(Map<String, Object> memory) {
+        if (memory == null || !(memory.get("readingTurnAnchors") instanceof Map<?, ?> anchors)) {
+            return Set.of();
+        }
+        Object rawHandles = anchors.get("clickedPaperHandles");
+        if (!(rawHandles instanceof List<?> list)) {
+            return Set.of();
+        }
+        LinkedHashSet<String> handles = new LinkedHashSet<>();
+        for (Object rawHandle : list) {
+            String paperHandle = stringValue(rawHandle);
+            if (PAPER_HANDLE_PATTERN.matcher(paperHandle).matches()) {
+                handles.add(paperHandle);
+            }
+            if (handles.size() >= MAX_CLICKED_PAPER_HANDLES) {
+                break;
+            }
+        }
+        return handles;
+    }
+
     private String clickedSourceQuoteAnchorPrompt(Set<String> clickedSourceQuoteRefs) {
         if (clickedSourceQuoteRefs == null || clickedSourceQuoteRefs.isEmpty()) {
             return "[]";
@@ -759,6 +802,17 @@ public class ProductReadingReActHarness {
             return objectMapper.writeValueAsString(clickedSourceQuoteRefs);
         } catch (Exception exception) {
             return clickedSourceQuoteRefs.toString();
+        }
+    }
+
+    private String clickedPaperAnchorPrompt(Set<String> clickedPaperHandles) {
+        if (clickedPaperHandles == null || clickedPaperHandles.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return objectMapper.writeValueAsString(clickedPaperHandles);
+        } catch (Exception exception) {
+            return clickedPaperHandles.toString();
         }
     }
 
@@ -780,16 +834,22 @@ public class ProductReadingReActHarness {
 
     private static class ReadingTurnState {
         private final Set<String> clickedSourceQuoteRefs;
+        private final Set<String> clickedPaperHandles;
         private final Set<String> semanticPaperHandles = new LinkedHashSet<>();
         private final Set<String> deterministicLocationPaperHandles = new LinkedHashSet<>();
         private final Set<String> disclosedLocationRefs = new LinkedHashSet<>();
         private final Set<String> allowedSourceQuoteRefs = new LinkedHashSet<>();
         private final Map<String, Map<String, Object>> sourceQuotePayloads = new LinkedHashMap<>();
 
-        private ReadingTurnState(Set<String> clickedSourceQuoteRefs) {
+        private ReadingTurnState(Set<String> clickedSourceQuoteRefs, Set<String> clickedPaperHandles) {
             this.clickedSourceQuoteRefs = clickedSourceQuoteRefs == null
                     ? Set.of()
                     : new LinkedHashSet<>(clickedSourceQuoteRefs);
+            this.clickedPaperHandles = clickedPaperHandles == null
+                    ? Set.of()
+                    : new LinkedHashSet<>(clickedPaperHandles);
+            this.semanticPaperHandles.addAll(this.clickedPaperHandles);
+            this.deterministicLocationPaperHandles.addAll(this.clickedPaperHandles);
         }
     }
 

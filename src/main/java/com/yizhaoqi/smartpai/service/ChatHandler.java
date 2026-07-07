@@ -55,6 +55,7 @@ public class ChatHandler {
     private final ProductConversationService productConversationService;
     private final ProductReadingConversationService productReadingConversationService;
     private final ProductReadingReactProperties productReadingReactProperties;
+    private final ProductPaperHandleService productPaperHandleService;
     private final ThreadPoolTaskExecutor chatMonitorExecutor;
     private final ObjectMapper objectMapper;
 
@@ -93,6 +94,34 @@ public class ChatHandler {
                 productConversationService,
                 null,
                 new ProductReadingReactProperties(),
+                null,
+                objectMapper,
+                chatMonitorExecutor
+        );
+    }
+
+    public ChatHandler(RedisTemplate<String, String> redisTemplate,
+                      RateLimitService rateLimitService,
+                      ConversationService conversationService,
+                      ConversationScopeService conversationScopeService,
+                      ChatGenerationStateService chatGenerationStateService,
+                      ChatSessionRegistry chatSessionRegistry,
+                      ProductConversationService productConversationService,
+                      ProductReadingConversationService productReadingConversationService,
+                      ProductReadingReactProperties productReadingReactProperties,
+                      ObjectMapper objectMapper,
+                      @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
+        this(
+                redisTemplate,
+                rateLimitService,
+                conversationService,
+                conversationScopeService,
+                chatGenerationStateService,
+                chatSessionRegistry,
+                productConversationService,
+                productReadingConversationService,
+                productReadingReactProperties,
+                null,
                 objectMapper,
                 chatMonitorExecutor
         );
@@ -108,6 +137,7 @@ public class ChatHandler {
                       ProductConversationService productConversationService,
                       ProductReadingConversationService productReadingConversationService,
                       ProductReadingReactProperties productReadingReactProperties,
+                      ProductPaperHandleService productPaperHandleService,
                       ObjectMapper objectMapper,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
@@ -121,6 +151,7 @@ public class ChatHandler {
         this.productReadingReactProperties = productReadingReactProperties == null
                 ? new ProductReadingReactProperties()
                 : productReadingReactProperties;
+        this.productPaperHandleService = productPaperHandleService;
         this.objectMapper = objectMapper;
         this.chatMonitorExecutor = chatMonitorExecutor;
     }
@@ -171,10 +202,12 @@ public class ChatHandler {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
             SourceScope productScope = productSourceScope(effectiveScope, retrievalBudgetProfile);
+            List<String> clickedPaperHandles = clickedPaperHandles(referenceFocus, readingExperimentEnabled);
             Map<String, Object> effectiveScopeMap = effectiveScopeMap(
                     effectiveScope,
                     clickedSourceQuoteRef,
-                    readingExperimentEnabled
+                    readingExperimentEnabled,
+                    clickedPaperHandles
             );
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
@@ -240,7 +273,7 @@ public class ChatHandler {
             ProductReferenceFocus incomingScope,
             String userMessage,
             boolean readingExperimentEnabled) {
-        if (hasReferenceFocus(incomingScope)) {
+        if (hasReferenceFocus(incomingScope, readingExperimentEnabled)) {
             return structuredReferenceFocus(incomingScope);
         }
         if (readingExperimentEnabled) {
@@ -275,6 +308,10 @@ public class ChatHandler {
         List<String> focusPaperTitles = focusPaperTitle == null
                 ? incomingScope.paperTitles()
                 : List.of(focusPaperTitle);
+        String focusPaperHandle = trimToNull(incomingScope.paperHandle());
+        List<String> focusPaperHandles = focusPaperHandle == null
+                ? incomingScope.paperHandles()
+                : List.of(focusPaperHandle);
         return new ProductReferenceFocus(
                 focusPaperIds,
                 focusPaperTitles,
@@ -288,12 +325,14 @@ public class ChatHandler {
                 incomingScope.matchedText(),
                 incomingScope.bboxJson(),
                 incomingScope.sourceKind(),
-                incomingScope.sourceQuoteRef()
+                incomingScope.sourceQuoteRef(),
+                focusPaperHandles,
+                incomingScope.paperHandle()
         );
     }
 
     private String structuredSourceQuoteRef(ProductReferenceFocus incomingScope) {
-        if (!hasReferenceFocus(incomingScope)) {
+        if (incomingScope == null) {
             return null;
         }
         return incomingScope.sourceQuoteRef();
@@ -366,7 +405,9 @@ public class ChatHandler {
                 matchedText,
                 firstNonBlank(stringDetail(detail, "bboxJson"), referenceFocus.bboxJson()),
                 firstNonBlank(stringDetail(detail, "sourceKind"), referenceFocus.sourceKind()),
-                firstNonBlank(stringDetail(detail, "sourceQuoteRef"), referenceFocus.sourceQuoteRef())
+                firstNonBlank(stringDetail(detail, "sourceQuoteRef"), referenceFocus.sourceQuoteRef()),
+                referenceFocus.paperHandles(),
+                referenceFocus.paperHandle()
         );
     }
 
@@ -454,20 +495,35 @@ public class ChatHandler {
         return null;
     }
 
-    private boolean hasReferenceFocus(ProductReferenceFocus scope) {
+    private boolean hasReferenceFocus(ProductReferenceFocus scope, boolean readingExperimentEnabled) {
         if (scope == null) {
             return false;
         }
-        return scope.referenceNumber() != null || scope.sourceQuoteRef() != null;
+        if (scope.referenceNumber() != null || scope.sourceQuoteRef() != null) {
+            return true;
+        }
+        return readingExperimentEnabled && (
+                scope.paperHandle() != null
+                        || !scope.paperHandles().isEmpty()
+                        || scope.paperId() != null
+                        || !scope.paperIds().isEmpty()
+        );
     }
 
     private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope) {
-        return effectiveScopeMap(effectiveScope, null, false);
+        return effectiveScopeMap(effectiveScope, null, false, List.of());
     }
 
     private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope,
                                                   String clickedSourceQuoteRef,
                                                   boolean includeClickedSourceQuoteRef) {
+        return effectiveScopeMap(effectiveScope, clickedSourceQuoteRef, includeClickedSourceQuoteRef, List.of());
+    }
+
+    private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope,
+                                                  String clickedSourceQuoteRef,
+                                                  boolean includeClickedSourceQuoteRef,
+                                                  List<String> clickedPaperHandles) {
         ConversationScopeMode mode = effectiveScope == null ? ConversationScopeMode.AUTO_LIBRARY : effectiveScope.mode();
         List<String> paperIds = effectiveScope == null ? List.of() : effectiveScope.paperIds();
         Map<String, Object> scope = new LinkedHashMap<>();
@@ -480,7 +536,47 @@ public class ChatHandler {
         if (includeClickedSourceQuoteRef && clickedSourceQuoteRef != null) {
             scope.put("clickedSourceQuoteRefs", List.of(clickedSourceQuoteRef));
         }
+        if (includeClickedSourceQuoteRef && clickedPaperHandles != null && !clickedPaperHandles.isEmpty()) {
+            scope.put("clickedPaperHandles", clickedPaperHandles);
+        }
         return scope;
+    }
+
+    private List<String> clickedPaperHandles(ProductReferenceFocus referenceFocus, boolean readingExperimentEnabled) {
+        if (!readingExperimentEnabled || referenceFocus == null) {
+            return List.of();
+        }
+        LinkedHashMap<String, Boolean> handles = new LinkedHashMap<>();
+        for (String paperHandle : referenceFocus.paperHandles()) {
+            String trimmed = trimToNull(paperHandle);
+            if (trimmed != null) {
+                handles.put(trimmed, true);
+            }
+        }
+        if (!handles.isEmpty()) {
+            return List.copyOf(handles.keySet());
+        }
+        if (productPaperHandleService == null) {
+            return List.of();
+        }
+        LinkedHashMap<String, Boolean> paperIds = new LinkedHashMap<>();
+        for (String paperId : referenceFocus.paperIds()) {
+            String trimmed = trimToNull(paperId);
+            if (trimmed != null) {
+                paperIds.put(trimmed, true);
+            }
+        }
+        String singlePaperId = trimToNull(referenceFocus.paperId());
+        if (singlePaperId != null) {
+            paperIds.put(singlePaperId, true);
+        }
+        for (String paperId : paperIds.keySet()) {
+            String paperHandle = trimToNull(productPaperHandleService.handleForPaperId(paperId));
+            if (paperHandle != null) {
+                handles.put(paperHandle, true);
+            }
+        }
+        return List.copyOf(handles.keySet());
     }
 
     private void runProductHarnessSafely(String userId,

@@ -112,7 +112,10 @@ const cooldownText = computed(() => {
 const referenceFocusLabel = computed(() => {
   const focus = referenceFocus.value;
   if (!focus) return '';
-  const paper = focus.paperTitle || focus.originalFilename || (focus.sourceQuoteRef ? 'Source quote' : 'Reference focus');
+  const paper =
+    focus.paperTitle ||
+    focus.originalFilename ||
+    (focus.paperHandle || focus.paperId ? 'Selected paper' : focus.sourceQuoteRef ? 'Source quote' : 'Reference focus');
   const parts = [paper];
   if (focus.pageNumber) parts.push(`p${focus.pageNumber}`);
   if (focus.referenceNumber) parts.push(`[${focus.referenceNumber}]`);

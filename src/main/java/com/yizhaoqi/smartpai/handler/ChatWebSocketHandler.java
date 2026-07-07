@@ -226,7 +226,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 stringValue(firstPresent(scope, "matchedText", "matchedChunkText", "evidenceSnippet")),
                 stringValue(scope.get("bboxJson")),
                 stringValue(scope.get("sourceKind")),
-                stringValue(scope.get("sourceQuoteRef"))
+                stringValue(scope.get("sourceQuoteRef")),
+                stringList(scope.get("paperHandles")),
+                stringValue(scope.get("paperHandle"))
         );
     }
 

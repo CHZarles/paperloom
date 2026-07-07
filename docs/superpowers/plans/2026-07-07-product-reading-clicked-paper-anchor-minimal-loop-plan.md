@@ -1,6 +1,6 @@
 # Product Reading Clicked Paper Anchor Minimal Loop Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add the next smallest Product Reading caller loop: a structured clicked paper anchor can select a READY paper for outline, deterministic location listing, and in-paper location search without using ordinals, raw ids in the LLM prompt, or ambiguous identity matches.
 
@@ -194,14 +194,14 @@ Use clicked paper handles only with get_paper_outline, list_paper_locations, or 
 - Produces: inbound JSON `referenceFocus.paperHandle` and `referenceFocus.paperHandles`.
 - Preserves: existing `sourceQuoteRef`, `paperId`, `paperIds`, `referenceNumber`, and legacy scope parsing.
 
-- [ ] Add `paperHandles` and `paperHandle` fields to `ProductReferenceFocus`.
-- [ ] Sanitize paper handles with pattern `^paper_handle_[A-Za-z0-9_-]+$`.
-- [ ] Normalize a single `paperHandle` into `paperHandles` the same way `paperId` normalizes into `paperIds`.
-- [ ] Keep constructors source-compatible by adding an overload for the existing field list.
-- [ ] Parse `paperHandle` and `paperHandles` in `ChatWebSocketHandler#parseReferenceFocus`.
-- [ ] Extend `frontend/src/typings/api.d.ts` `Api.Chat.Scope` with optional `paperHandle?: string` and `paperHandles?: string[]`.
-- [ ] Add a `ChatWebSocketHandlerTest` case that parses `referenceFocus.paperHandle`.
-- [ ] Add a `ProductReferenceFocus` unit-style assertion through existing tests that invalid paper handles are ignored.
+- [x] Add `paperHandles` and `paperHandle` fields to `ProductReferenceFocus`.
+- [x] Sanitize paper handles with pattern `^paper_handle_[A-Za-z0-9_-]+$`.
+- [x] Normalize a single `paperHandle` into `paperHandles` the same way `paperId` normalizes into `paperIds`.
+- [x] Keep constructors source-compatible by adding an overload for the existing field list.
+- [x] Parse `paperHandle` and `paperHandles` in `ChatWebSocketHandler#parseReferenceFocus`.
+- [x] Extend `frontend/src/typings/api.d.ts` `Api.Chat.Scope` with optional `paperHandle?: string` and `paperHandles?: string[]`.
+- [x] Add a `ChatWebSocketHandlerTest` case that parses `referenceFocus.paperHandle`.
+- [x] Add a `ProductReferenceFocus` unit-style assertion through existing tests that invalid paper handles are ignored.
 
 Verification:
 
@@ -222,16 +222,16 @@ Expected: PASS.
 - Consumes: `ProductPaperHandleService#handleForPaperId(String)`.
 - Produces: `effectiveScope.clickedPaperHandles`.
 
-- [ ] Inject `ProductPaperHandleService` into `ChatHandler`.
-- [ ] Treat `paperHandle`, `paperHandles`, `paperId`, and `paperIds` as structured focus only when `paperloom.react.reading-phase1.enabled=true`.
-- [ ] Preserve legacy behavior when the reading flag is disabled; do not route legacy Product chat through paper handles.
-- [ ] In `structuredReferenceFocus`, preserve `paperHandle` and `paperHandles`.
-- [ ] Build clicked paper handles from valid `referenceFocus.paperHandles`.
-- [ ] If no `paperHandle` exists and the reading flag is enabled, convert structured `paperId` / `paperIds` to handles with `ProductPaperHandleService#handleForPaperId`.
-- [ ] Run existing `ConversationScopeService#assertReferenceFocusWithinScope` before converting raw product paper ids.
-- [ ] Never add raw `paperId` to `effectiveScope.clickedPaperHandles`.
-- [ ] Do not derive clicked paper handles from user message text, display citations, ordinals, paper titles, or previous tool output.
-- [ ] Add `ChatHandlerProductHarnessTest` coverage:
+- [x] Inject `ProductPaperHandleService` into `ChatHandler`.
+- [x] Treat `paperHandle`, `paperHandles`, `paperId`, and `paperIds` as structured focus only when `paperloom.react.reading-phase1.enabled=true`.
+- [x] Preserve legacy behavior when the reading flag is disabled; do not route legacy Product chat through paper handles.
+- [x] In `structuredReferenceFocus`, preserve `paperHandle` and `paperHandles`.
+- [x] Build clicked paper handles from valid `referenceFocus.paperHandles`.
+- [x] If no `paperHandle` exists and the reading flag is enabled, convert structured `paperId` / `paperIds` to handles with `ProductPaperHandleService#handleForPaperId`.
+- [x] Run existing `ConversationScopeService#assertReferenceFocusWithinScope` before converting raw product paper ids.
+- [x] Never add raw `paperId` to `effectiveScope.clickedPaperHandles`.
+- [x] Do not derive clicked paper handles from user message text, display citations, ordinals, paper titles, or previous tool output.
+- [x] Add `ChatHandlerProductHarnessTest` coverage:
   - flag false plus `referenceFocus.paperHandle` uses legacy `ProductConversationService` path unchanged.
   - flag true plus `referenceFocus.paperHandle` passes `clickedPaperHandles` to `ProductReadingConversationService`.
   - flag true plus `referenceFocus.paperId` converts to `clickedPaperHandles`.
@@ -257,14 +257,14 @@ Expected: PASS.
 - Produces: `ProductTurnRequest.memory().readingTurnAnchors.clickedPaperHandles`.
 - Preserves: `clickedSourceQuoteRefs` behavior and cap.
 
-- [ ] Add `MAX_CLICKED_PAPER_HANDLES = 20`.
-- [ ] Add a `PAPER_HANDLE_PATTERN` for `^paper_handle_[A-Za-z0-9_-]+$`.
-- [ ] Add `clickedPaperHandles(Map<String,Object>)`, mirroring `clickedSourceQuoteRefs(...)`.
-- [ ] Accept lists and arrays; ignore unsupported scalar/map values.
-- [ ] De-duplicate while preserving order.
-- [ ] Cap to 20 handles.
-- [ ] Merge `clickedPaperHandles` and `clickedSourceQuoteRefs` under one `readingTurnAnchors` object when either exists.
-- [ ] Add tests:
+- [x] Add `MAX_CLICKED_PAPER_HANDLES = 20`.
+- [x] Add a `PAPER_HANDLE_PATTERN` for `^paper_handle_[A-Za-z0-9_-]+$`.
+- [x] Add `clickedPaperHandles(Map<String,Object>)`, mirroring `clickedSourceQuoteRefs(...)`.
+- [x] Accept lists and arrays; ignore unsupported scalar/map values.
+- [x] De-duplicate while preserving order.
+- [x] Cap to 20 handles.
+- [x] Merge `clickedPaperHandles` and `clickedSourceQuoteRefs` under one `readingTurnAnchors` object when either exists.
+- [x] Add tests:
   - valid clicked paper handles reach `ProductTurnRequest.memory()`.
   - invalid handles are ignored.
   - arrays and lists work.
@@ -291,13 +291,13 @@ Expected: PASS.
 - Produces: seeded entries in `semanticPaperHandles` and `deterministicLocationPaperHandles`.
 - Preserves: hidden-handle rejection for handles not disclosed by tools or clicked anchors.
 
-- [ ] Add `clickedPaperHandles` to `ReadingTurnState`.
-- [ ] Sanitize clicked paper handles in the harness using the same `paper_handle_...` pattern.
-- [ ] Seed both `semanticPaperHandles` and `deterministicLocationPaperHandles` from clicked paper handles.
-- [ ] Add clicked paper handles to the system prompt as explicit current-turn anchors.
-- [ ] State in the prompt that clicked paper anchors are navigation only and not Source Quotes.
-- [ ] Keep `read_locations` validation unchanged; clicked paper anchors must not disclose location refs.
-- [ ] Add tests:
+- [x] Add `clickedPaperHandles` to `ReadingTurnState`.
+- [x] Sanitize clicked paper handles in the harness using the same `paper_handle_...` pattern.
+- [x] Seed both `semanticPaperHandles` and `deterministicLocationPaperHandles` from clicked paper handles.
+- [x] Add clicked paper handles to the system prompt as explicit current-turn anchors.
+- [x] State in the prompt that clicked paper anchors are navigation only and not Source Quotes.
+- [x] Keep `read_locations` validation unchanged; clicked paper anchors must not disclose location refs.
+- [x] Add tests:
   - clicked paper handle can feed `get_paper_outline`.
   - clicked paper handle can feed `list_paper_locations`.
   - clicked paper handle can feed `find_reading_locations`.
@@ -326,11 +326,11 @@ Expected: PASS.
 - Produces: outbound WebSocket `referenceFocus` preserving paper handles and paper ids.
 - Preserves: existing Source Quote click behavior and PDF/evidence panel behavior.
 
-- [ ] Keep `input-box.vue#outgoingReferenceFocus` as a structural copy so `paperHandle` and `paperHandles` are sent.
-- [ ] Update `referenceFocusLabel` to prefer `paperTitle`, then `originalFilename`, then `"Selected paper"` when `paperHandle` or `paperId` is present.
-- [ ] In `source-evidence-panel.vue`, allow `Ask about this` when either `paperId` or `sourceQuoteRef` is present; do not require matched text for a paper anchor follow-up.
-- [ ] Preserve existing `sourceQuoteRef` behavior for Source Quote chips.
-- [ ] Do not create a new paper-card renderer in this slice.
+- [x] Keep `input-box.vue#outgoingReferenceFocus` as a structural copy so `paperHandle` and `paperHandles` are sent.
+- [x] Update `referenceFocusLabel` to prefer `paperTitle`, then `originalFilename`, then `"Selected paper"` when `paperHandle` or `paperId` is present.
+- [x] In `source-evidence-panel.vue`, allow `Ask about this` when either `paperId` or `sourceQuoteRef` is present; do not require matched text for a paper anchor follow-up.
+- [x] Preserve existing `sourceQuoteRef` behavior for Source Quote chips.
+- [x] Do not create a new paper-card renderer in this slice.
 
 Verification:
 
@@ -342,37 +342,37 @@ Expected: PASS.
 
 ## Task 6: Verification And Isolation Gates
 
-- [ ] Run focused backend tests:
+- [x] Run focused backend tests:
 
 ```bash
 mvn -q -Dtest=ChatWebSocketHandlerTest,ChatHandlerProductHarnessTest,ProductReadingConversationServiceTest,ProductReadingReActHarnessTest test
 ```
 
-- [ ] Run Product Reading regression tests:
+- [x] Run Product Reading regression tests:
 
 ```bash
 mvn -q -Dtest=ReadingToolArgumentValidatorTest,ProductReadingToolRegistryTest,ProductReadingToolAdapterTest,ProductReadingReActHarnessTest test
 ```
 
-- [ ] Run legacy Product isolation tests:
+- [x] Run legacy Product isolation tests:
 
 ```bash
 mvn -q -Dtest=ProductConversationServiceTest,ProductReActHarnessTest,ProductToolRegistryTest test
 ```
 
-- [ ] Run compile gate:
+- [x] Run compile gate:
 
 ```bash
 mvn -q -DskipTests compile
 ```
 
-- [ ] Run frontend typecheck:
+- [x] Run frontend typecheck:
 
 ```bash
 cd frontend && pnpm typecheck
 ```
 
-- [ ] Run isolation searches:
+- [x] Run isolation searches:
 
 ```bash
 rg -n "clickedPaperHandles|paperHandle|ProductReadingConversationService|ProductReadingReActHarness|ProductReadingToolRegistry" src/main/java/com/yizhaoqi/smartpai/service/ProductConversationService.java src/main/java/com/yizhaoqi/smartpai/service/ProductReActHarness.java src/main/java/com/yizhaoqi/smartpai/service/ProductToolRegistry.java
@@ -386,13 +386,13 @@ rg -n "clickedPaperHandles" src/main/java frontend/src
 
 Expected: hits only in explicit caller-anchor plumbing, request DTO/type definitions, reading conversation service, reading harness, and tests.
 
-- [ ] Run full backend tests:
+- [x] Run full backend tests:
 
 ```bash
 mvn -q test
 ```
 
-- [ ] Run diff hygiene:
+- [x] Run diff hygiene:
 
 ```bash
 git diff --check

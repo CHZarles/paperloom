@@ -25,11 +25,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.InOrder;
 
 class ChatHandlerProductHarnessTest {
 
@@ -598,6 +601,30 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
+    void readingFlagDisabledKeepsClickedPaperHandleOnProductPath() {
+        ChatFixture fixture = chatFixture(false);
+        ProductReferenceFocus focus = paperHandleFocus("paper_handle_clicked");
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus), fixture.session);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> effectiveScopeCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(fixture.productConversationService).runTurn(
+                eq(1L),
+                eq("conversation-1"),
+                eq("generation-1"),
+                anyString(),
+                any(),
+                any(),
+                effectiveScopeCaptor.capture(),
+                any()
+        );
+        verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+        assertFalse(effectiveScopeCaptor.getValue().containsKey("clickedPaperHandles"));
+        verify(fixture.productPaperHandleService, never()).handleForPaperId(anyString());
+    }
+
+    @Test
     void readingFlagEnabledRoutesChatToProductReadingConversationService() {
         ChatFixture fixture = chatFixture(true);
 
@@ -614,6 +641,60 @@ class ChatHandlerProductHarnessTest {
                 any()
         );
         verify(fixture.productConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void structuredPaperHandleFocusReachesReadingEffectiveScope() {
+        ChatFixture fixture = chatFixture(true);
+        ProductReferenceFocus focus = paperHandleFocus("paper_handle_clicked");
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus), fixture.session);
+
+        Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
+        assertEquals(List.of("paper_handle_clicked"), effectiveScope.get("clickedPaperHandles"));
+        verify(fixture.productPaperHandleService, never()).handleForPaperId(anyString());
+    }
+
+    @Test
+    void structuredPaperIdFocusConvertsToReadingPaperHandleAfterScopeValidation() {
+        ChatFixture fixture = chatFixture(true);
+        ProductReferenceFocus focus = paperIdFocus("paper-1");
+        when(fixture.productPaperHandleService.handleForPaperId("paper-1")).thenReturn("paper_handle_converted");
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus), fixture.session);
+
+        Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
+        assertEquals(List.of("paper_handle_converted"), effectiveScope.get("clickedPaperHandles"));
+        assertFalse(effectiveScope.toString().contains("paper-1"));
+        InOrder inOrder = inOrder(fixture.conversationScopeService, fixture.productPaperHandleService);
+        inOrder.verify(fixture.conversationScopeService, times(2)).assertReferenceFocusWithinScope(any(), any());
+        inOrder.verify(fixture.productPaperHandleService).handleForPaperId("paper-1");
+    }
+
+    @Test
+    void typedPaperHandleWithoutStructuredFocusDoesNotReachReadingEffectiveScope() {
+        ChatFixture fixture = chatFixture(true);
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("请看 paper_handle_clicked", null), fixture.session);
+
+        Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
+        assertFalse(effectiveScope.containsKey("clickedPaperHandles"));
+        verify(fixture.productPaperHandleService, never()).handleForPaperId(anyString());
+    }
+
+    @Test
+    void outOfScopeStructuredPaperIdIsRejectedBeforePaperHandleConversion() {
+        ChatFixture fixture = chatFixture(true);
+        ProductReferenceFocus focus = paperIdFocus("outside-paper");
+        doThrow(new CustomException("Reference focus is outside the conversation source scope", HttpStatus.FORBIDDEN))
+                .when(fixture.conversationScopeService)
+                .assertReferenceFocusWithinScope(any(), argThat(scope -> "outside-paper".equals(scope.paperId())));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus), fixture.session);
+
+        verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
+        verify(fixture.productPaperHandleService, never()).handleForPaperId(anyString());
+        verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -750,6 +831,44 @@ class ChatHandlerProductHarnessTest {
         );
     }
 
+    private static ProductReferenceFocus paperHandleFocus(String paperHandle) {
+        return new ProductReferenceFocus(
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Clicked Paper",
+                "clicked.pdf",
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                paperHandle
+        );
+    }
+
+    private static ProductReferenceFocus paperIdFocus(String paperId) {
+        return new ProductReferenceFocus(
+                List.of(paperId),
+                List.of("Clicked Paper"),
+                null,
+                null,
+                null,
+                null,
+                paperId,
+                "Clicked Paper",
+                "clicked.pdf",
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
     private static ProductTurnResult completedTurn(String markdown, List<Map<String, Object>> references) {
         return new ProductTurnResult(
                 markdown,
@@ -823,6 +942,7 @@ class ChatHandlerProductHarnessTest {
         ProductReadingConversationService readingConversationService = mock(ProductReadingConversationService.class);
         when(readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
                 .thenReturn(completedTurn("reading ok", List.of()));
+        ProductPaperHandleService productPaperHandleService = mock(ProductPaperHandleService.class);
 
         ProductReadingReactProperties readingProperties = new ProductReadingReactProperties();
         readingProperties.setEnabled(readingEnabled);
@@ -837,6 +957,7 @@ class ChatHandlerProductHarnessTest {
                 productConversationService,
                 readingConversationService,
                 readingProperties,
+                productPaperHandleService,
                 new ObjectMapper(),
                 executor
         );
@@ -848,7 +969,8 @@ class ChatHandlerProductHarnessTest {
                 conversationScopeService,
                 generationStateService,
                 productConversationService,
-                readingConversationService
+                readingConversationService,
+                productPaperHandleService
         );
     }
 
@@ -859,7 +981,8 @@ class ChatHandlerProductHarnessTest {
             ConversationScopeService conversationScopeService,
             ChatGenerationStateService generationStateService,
             ProductConversationService productConversationService,
-            ProductReadingConversationService readingConversationService
+            ProductReadingConversationService readingConversationService,
+            ProductPaperHandleService productPaperHandleService
     ) {
     }
 }
