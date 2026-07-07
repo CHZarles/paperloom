@@ -28,6 +28,7 @@
 - The Product Reading LLM tool surface is complete at nine tools.
 - `find_papers_by_identity` returns `matches[]` with `paperHandle`, title, filename, authors, year, venue, and match reasons.
 - ADR `0009-do-not-authorize-ambiguous-paper-identity-matches.md` says ambiguous result cards may include `paperHandle` values so the UI can render choices, but those handles must not authorize same-turn reading.
+- ADR `0010-use-product-state-items-for-reading-paper-choice-ui.md` records the UI-channel decision: paper choice rows come from backend-controlled Product State Items, not LLM prose, raw tool streams, Source Quotes, or long-term persisted card state.
 - The clicked-paper-anchor slice added `referenceFocus.paperHandle` / `paperHandles`, backend bridge handling, and harness authorization for later turns.
 - The frontend currently renders assistant markdown and Source Quote references, but it does not render Product Reading paper choices as clickable rows.
 - `ToolProgressEvent` currently streams only tool names, so the lowest-risk UI payload is a sanitized completion payload derived from tool results, not raw tool-result streaming.
@@ -104,6 +105,40 @@ Recommended answer: no.
 
 Adopted. Paper choice cards are not Source Quotes. Existing Source Quote click, trace, and citation rendering remain unchanged.
 
+## Review Outcomes
+
+The user requested a review with recommended answers, so the recommended answers below are adopted.
+
+### 10. Should Product Reading paper choices become long-lived conversation history?
+
+Recommended answer: no.
+
+Adopted. Paper choice cards are current-turn Product State Items delivered with the WebSocket completion payload. They are not stored in MySQL conversation history and are not required in `ChatGenerationStateService` generation snapshots in this slice. If the completion payload is missed, the user can ask again; durable card replay is deferred with long-term paper-card persistence.
+
+### 11. Should `ChatHandler` trust `ProductTurnResult#productStateItems()` without checking it?
+
+Recommended answer: no.
+
+Adopted. The reading harness is the primary sanitizer, but `ChatHandler` must still defensively re-sanitize the completion payload before putting `productStateItems` on the wire. The delivery boundary should accept only `READING_PAPER_CHOICE` items with valid `paperHandle` values and should copy only the public paper-choice fields.
+
+### 12. Where should `identityStatus` and `ambiguous` come from?
+
+Recommended answer: from the `find_papers_by_identity` top-level result, not from each match row.
+
+Adopted. Match rows provide paper display metadata and `paperHandle`; the surrounding tool result provides identity resolution status. Product-state items should map top-level `status` to `identityStatus` and top-level `ambiguous` to `ambiguous`.
+
+### 13. Should this slice introduce a typed Java product-state class hierarchy?
+
+Recommended answer: no.
+
+Adopted. Keep `ProductTurnResult` as `List<Map<String,Object>> productStateItems` for the minimal completion-payload bridge, but make every producer and delivery boundary construct fresh sanitized maps. A typed hierarchy can be introduced when more Product State Item kinds are added.
+
+### 14. Should the UI expose row numbers for paper choices?
+
+Recommended answer: no.
+
+Adopted. The UI may visually group and order rows, but neither props nor click payloads should carry ordinals. The only selection identity is `paperHandle`.
+
 ## Product State Payload Contract
 
 Completion payload fragment:
@@ -158,12 +193,17 @@ Frontend click output:
 
 - [ ] Add `List<Map<String,Object>> productStateItems` to `ProductTurnResult`.
 - [ ] Keep the existing constructor signature by adding an overload that defaults `productStateItems` to `List.of()`.
+- [ ] In the compact constructor, defensively copy product-state item maps into fresh `LinkedHashMap` instances before storing an immutable list.
 - [ ] Add `productStateItems` to `ReadingTurnState`.
-- [ ] When `updateState(...)` sees a successful `find_papers_by_identity` result, copy each valid match into `productStateItems`.
+- [ ] When `updateState(...)` sees a successful `find_papers_by_identity` result, append sanitized product-state choices before the ambiguous-result authorization guard returns.
 - [ ] Include both ambiguous and unambiguous identity matches in `productStateItems`; same-turn authorization remains controlled by existing `ambiguous == false` logic.
 - [ ] Sanitize paper choices:
   - require `paperHandle` matching `^paper_handle_[A-Za-z0-9_-]+$`;
-  - copy only `title`, `originalFilename`, `authors`, `year`, `venue`, `matchReasons`, `status`, and `ambiguous`;
+  - set `kind` to `READING_PAPER_CHOICE`;
+  - set `sourceTool` to `find_papers_by_identity`;
+  - copy `identityStatus` from the top-level tool-result `status`;
+  - copy `ambiguous` from the top-level tool-result `ambiguous`;
+  - copy only match-row `title`, `originalFilename`, `authors`, `year`, `venue`, and `matchReasons`;
   - do not copy `ordinal`, raw `paperId`, scores, ranks, abstracts, previews, paper content, Source Quote text, or location refs.
 - [ ] De-duplicate by `paperHandle` while preserving first-seen order.
 - [ ] Cap paper choice cards at 10 for this slice.
@@ -173,6 +213,8 @@ Frontend click output:
   - ambiguous identity result still does not authorize `get_paper_outline`, `list_paper_locations`, or `find_reading_locations`.
   - unambiguous identity result returns one product-state item and still authorizes reading navigation/search as before.
   - invalid or missing `paperHandle` match rows are ignored.
+  - duplicate paper handles are de-duplicated and the list is capped at 10.
+  - product-state item maps are defensive copies, not aliases to raw tool-result match maps.
   - product-state item payload contains no `paperId`, `ordinal`, `preview`, `score`, `rank`, `locationRef`, or Source Quote text.
   - non-identity tools do not emit paper choice items in this slice.
 
@@ -196,14 +238,21 @@ Expected: PASS.
 - Preserves: legacy Product completion payload when reading flag is false.
 
 - [ ] Add a generation-scoped in-memory map in `ChatHandler` for `productStateItems`, similar to diagnostics/reference mappings.
-- [ ] In `runReadingHarness(...)`, after a successful Product Reading result, store sanitized `answer.productStateItems()` for the generation when non-empty.
+- [ ] Add a `sanitizeProductStateItems(...)` helper in `ChatHandler`.
+- [ ] The `ChatHandler` helper accepts only `READING_PAPER_CHOICE` items with `sourceTool=find_papers_by_identity` and valid `paperHandle`.
+- [ ] The `ChatHandler` helper copies only `kind`, `sourceTool`, `paperHandle`, `title`, `originalFilename`, `authors`, `year`, `venue`, `matchReasons`, `identityStatus`, and `ambiguous`.
+- [ ] The `ChatHandler` helper de-duplicates by `paperHandle`, caps at 10, and returns fresh maps.
+- [ ] In `runReadingHarness(...)`, after a successful Product Reading result, store defensively sanitized `answer.productStateItems()` for the generation when non-empty.
 - [ ] In `sendCompletionNotification(...)`, include `productStateItems` only for non-failed completion payloads and only when the stored list is non-empty.
 - [ ] Clear the generation product-state map in `cleanupGenerationState(...)`.
 - [ ] Do not send product-state items from `runProductHarness(...)`.
 - [ ] Do not persist product-state items to `ConversationService` or database in this slice.
+- [ ] Do not add `productStateItems` to `ChatGenerationStateService` generation snapshots in this slice.
 - [ ] Add tests:
   - reading completion sends `productStateItems` when `ProductReadingConversationService` returns them.
   - reading completion omits invalid/empty product state.
+  - reading completion strips forbidden keys from mocked `ProductTurnResult#productStateItems()`.
+  - reading completion de-duplicates and caps product-state items.
   - legacy Product completion omits `productStateItems`.
   - failed reading completion omits `productStateItems`.
 
@@ -243,6 +292,7 @@ Expected: PASS.
 - [ ] Add `productStateItems?: ProductStateItem[]` to `Api.Chat.Message`.
 - [ ] In `input-box.vue#handleCompletionPayload`, copy `payload.productStateItems` onto the active assistant message only when it is an array.
 - [ ] Ensure `productStateItems` is not overwritten by chunk handling.
+- [ ] Do not add `productStateItems` to `Api.Chat.GenerationSnapshot` in this slice.
 - [ ] If generation snapshot or loaded conversation messages do not contain `productStateItems`, treat that as expected for this slice.
 
 Verification:
@@ -339,10 +389,16 @@ rg -n "productStateItems|READING_PAPER_CHOICE|ProductReadingReActHarness|Product
 Expected: no output.
 
 ```bash
-rg -n "paperId|ordinal|preview|score|rank|locationRef|sourceQuoteRef" frontend/src/views/chat/modules/product-reading-paper-choice-list.vue src/main/java/com/yizhaoqi/smartpai/service/ProductReadingReActHarness.java
+rg -n "\"paperId\"|\"ordinal\"|\"preview\"|\"score\"|\"rank\"|\"locationRef\"|\"sourceQuoteRef\"" frontend/src/views/chat/modules/product-reading-paper-choice-list.vue
 ```
 
-Expected: no hits in the paper-choice payload construction or renderer except negative assertions/tests and unrelated Source Quote code already present in the harness.
+Expected: no output.
+
+```bash
+rg -n "READING_PAPER_CHOICE|productStateItems|identityStatus" src/main/java/com/yizhaoqi/smartpai/service/ProductReadingReActHarness.java src/main/java/com/yizhaoqi/smartpai/service/ChatHandler.java
+```
+
+Expected: hits only in the paper-choice sanitizer, product-state result wiring, and completion delivery code.
 
 - [ ] Run full backend tests:
 

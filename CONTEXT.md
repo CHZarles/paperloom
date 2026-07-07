@@ -182,6 +182,18 @@ identity hints. It is a product-state choice set, not a selected paper and not s
 authorization.
 _Avoid_: selected paper, hidden paper disclosure, source quote
 
+**Product State Item**:
+A backend-controlled Product Reading UI payload for the current chat turn. It can present
+navigation choices to the user, but it is not evidence, not a Source Quote, and not durable
+conversation history.
+_Avoid_: citation, Source Quote, raw tool result, persisted evidence
+
+**Reading Paper Choice**:
+A Product State Item representing one concrete Product Paper option with a Paper Handle and display
+metadata. Clicking it creates an explicit clicked paper anchor for a later turn; titles, filenames,
+or ordinals are not the selection identity.
+_Avoid_: ordinal selection, paper title anchor, Source Quote, recommendation reason
+
 **Paper Library Browse**:
 The paper-level browsing operation, exposed as `list_papers`, that lists from the fixed conversation
 search scope with explicit metadata filters such as title, filename, author, year, venue, type,
