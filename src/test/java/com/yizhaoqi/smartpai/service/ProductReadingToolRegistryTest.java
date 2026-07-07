@@ -40,6 +40,7 @@ class ProductReadingToolRegistryTest {
 
         assertEquals(List.of(
                 "search_paper_candidates",
+                "get_paper_outline",
                 "list_paper_locations",
                 "find_reading_locations",
                 "read_locations",
@@ -110,6 +111,12 @@ class ProductReadingToolRegistryTest {
                 Map.of("status", "OK", "locations", List.of()),
                 ProductToolEffect.PAPER_DISCOVERY
         );
+        ProductToolResult outlineResult = new ProductToolResult(
+                "get_paper_outline",
+                true,
+                Map.of("status", "OK", "papers", List.of()),
+                ProductToolEffect.PAPER_DISCOVERY
+        );
         ProductToolResult readResult = new ProductToolResult(
                 "read_locations",
                 true,
@@ -135,10 +142,14 @@ class ProductReadingToolRegistryTest {
                 List.of(PaperLocationType.PAGE),
                 context
         )).thenReturn(listedLocationsResult);
+        when(adapter.getPaperOutline(List.of("paper_handle_abc"), context)).thenReturn(outlineResult);
         when(adapter.readLocations(List.of("page_ref_abc"), context)).thenReturn(readResult);
         when(adapter.traceSourceQuotes(List.of("source_quote_abc"), context)).thenReturn(traceResult);
 
         assertEquals(searchResult, registry.execute("search_paper_candidates", Map.of("queryText", "agentic eval"), context));
+        assertEquals(outlineResult, registry.execute("get_paper_outline", Map.of(
+                "paperHandles", List.of("paper_handle_abc")
+        ), context));
         assertEquals(listedLocationsResult, registry.execute("list_paper_locations", Map.of(
                 "paperHandles", List.of("paper_handle_abc"),
                 "pageRange", Map.of("from", 3, "to", 3),
@@ -155,6 +166,7 @@ class ProductReadingToolRegistryTest {
                 "sourceQuoteRefs", List.of("source_quote_abc")
         ), context));
         verify(adapter).searchPaperCandidates("agentic eval", context);
+        verify(adapter).getPaperOutline(List.of("paper_handle_abc"), context);
         verify(adapter).listPaperLocations(
                 List.of("paper_handle_abc"),
                 new ReadingToolArgumentValidator.PageRange(3, 3),

@@ -1,12 +1,16 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.PaperLocation;
 import com.yizhaoqi.smartpai.model.PaperLocationType;
 import com.yizhaoqi.smartpai.model.PaperReadingModel;
 import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
+import com.yizhaoqi.smartpai.model.PaperSection;
 import com.yizhaoqi.smartpai.repository.PaperLocationRepository;
 import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.repository.PaperSectionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -33,7 +37,13 @@ class ProductReadingToolAdapterTest {
     private ReadingModelGrepSearchService readingModelGrepSearchService;
 
     @Mock
+    private PaperRepository paperRepository;
+
+    @Mock
     private PaperReadingModelRepository modelRepository;
+
+    @Mock
+    private PaperSectionRepository sectionRepository;
 
     @Mock
     private PaperLocationRepository locationRepository;
@@ -56,7 +66,9 @@ class ProductReadingToolAdapterTest {
         adapter = new ProductReadingToolAdapter(
                 paperCandidateSearchService,
                 readingModelGrepSearchService,
+                paperRepository,
                 modelRepository,
+                sectionRepository,
                 locationRepository,
                 handleService,
                 new ReadingToolOutputMapper(),
@@ -304,6 +316,59 @@ class ProductReadingToolAdapterTest {
     }
 
     @Test
+    void getPaperOutlineReturnsCurrentReadyStructureAndSectionRefsOnly() throws Exception {
+        PaperReadingModel readyModel = model("ready-paper", "model-v1");
+        readyModel.setPageCount(10);
+        readyModel.setReadablePageCount(10);
+        when(handleService.resolvePaperHandle("paper_handle_ready")).thenReturn(Optional.of("ready-paper"));
+        when(handleService.isPaperVisibleToUser("ready-paper", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.hasCurrentReadyReadingModel("ready-paper")).thenReturn(true);
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-paper"))
+                .thenReturn(Optional.of(readyModel));
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("ready-paper"))
+                .thenReturn(Optional.of(paper("ready-paper", "Agentic Eval Benchmark", "agentic-eval.pdf")));
+        when(sectionRepository.findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc("ready-paper", "model-v1"))
+                .thenReturn(List.of(section("ready-paper", "model-v1", "sec-methods", "Methods", 1, 3, 5, 1)));
+        when(locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc("ready-paper", "model-v1"))
+                .thenReturn(List.of(
+                        location("ready-paper", "page_ref_1", PaperLocationType.PAGE),
+                        sectionLocation("ready-paper", "section_ref_methods", "sec-methods", "Methods", 3, 5)
+                ));
+
+        ProductToolResult result = adapter.getPaperOutline(
+                List.of("paper_handle_ready"),
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertTrue(result.success());
+        assertEquals("get_paper_outline", result.toolName());
+        assertEquals(ProductToolEffect.PAPER_DISCOVERY, result.effect());
+        assertEquals("OK", result.data().get("status"));
+        assertEquals(List.of("paper_handle_ready"), result.data().get("paperHandles"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> papers = (List<Map<String, Object>>) result.data().get("papers");
+        assertEquals(1, papers.size());
+        assertEquals("paper_handle_ready", papers.get(0).get("paperHandle"));
+        assertEquals("Agentic Eval Benchmark", papers.get(0).get("title"));
+        assertEquals("agentic-eval.pdf", papers.get(0).get("originalFilename"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sections = (List<Map<String, Object>>) papers.get(0).get("sections");
+        assertEquals(1, sections.size());
+        assertEquals("section_ref_methods", sections.get(0).get("sectionRef"));
+        assertEquals("METHODS", sections.get(0).get("sectionRole"));
+
+        String json = objectMapper.writeValueAsString(result.data());
+        assertTrue(json.contains("section_ref_methods"));
+        assertTrue(json.contains("Methods"));
+        assertTrue(json.contains("outlineConfidence"));
+        assertFalse(json.contains("ready-paper"));
+        assertFalse(json.contains("model-v1"));
+        assertFalse(json.contains("paperId"));
+        assertFalse(json.contains("modelVersion"));
+        assertFalse(json.contains("sectionText"));
+    }
+
+    @Test
     void listPaperLocationsReturnsCurrentLocationNotFoundForInvisibleUnreadyOrEmptyCurrentLocations() {
         when(handleService.resolvePaperHandle("paper_handle_missing")).thenReturn(Optional.empty());
         when(handleService.resolvePaperHandle("paper_handle_unready")).thenReturn(Optional.of("unready-paper"));
@@ -455,6 +520,35 @@ class ProductReadingToolAdapterTest {
         return model;
     }
 
+    private Paper paper(String paperId, String title, String originalFilename) {
+        Paper paper = new Paper();
+        paper.setPaperId(paperId);
+        paper.setPaperTitle(title);
+        paper.setOriginalFilename(originalFilename);
+        return paper;
+    }
+
+    private PaperSection section(String paperId,
+                                 String modelVersion,
+                                 String sectionId,
+                                 String title,
+                                 Integer level,
+                                 Integer pageStart,
+                                 Integer pageEnd,
+                                 Integer displayOrder) {
+        PaperSection section = new PaperSection();
+        section.setPaperId(paperId);
+        section.setModelVersion(modelVersion);
+        section.setSectionId(sectionId);
+        section.setSectionTitle(title);
+        section.setSectionLevel(level);
+        section.setPageNumberFrom(pageStart);
+        section.setPageNumberTo(pageEnd);
+        section.setDisplayOrder(displayOrder);
+        section.setSectionText("Internal section text must not be copied.");
+        return section;
+    }
+
     private PaperLocation location(String paperId, String locationRef, PaperLocationType locationType) {
         PaperLocation location = new PaperLocation();
         location.setPaperId(paperId);
@@ -462,6 +556,20 @@ class ProductReadingToolAdapterTest {
         location.setLocationRef(locationRef);
         location.setLocationType(locationType);
         location.setPageNumber(3);
+        return location;
+    }
+
+    private PaperLocation sectionLocation(String paperId,
+                                          String locationRef,
+                                          String sectionId,
+                                          String sectionTitle,
+                                          Integer pageStart,
+                                          Integer pageEnd) {
+        PaperLocation location = location(paperId, locationRef, PaperLocationType.SECTION);
+        location.setSourceObjectId(sectionId);
+        location.setSectionTitle(sectionTitle);
+        location.setPageNumber(pageStart);
+        location.setPageEndNumber(pageEnd);
         return location;
     }
 }

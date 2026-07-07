@@ -134,6 +134,45 @@ class ReadingToolArgumentValidatorTest {
     }
 
     @Test
+    void getPaperOutlineRequiresHandlesAndRejectsSemanticOrdinalsAndControls() {
+        ReadingToolArgumentValidator.ValidationResult missing =
+                validator.validateGetPaperOutline(Map.of());
+        ReadingToolArgumentValidator.ValidationResult query =
+                validator.validateGetPaperOutline(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "methods"
+                ));
+        ReadingToolArgumentValidator.ValidationResult ordinal =
+                validator.validateGetPaperOutline(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "ordinal", 1
+                ));
+        ReadingToolArgumentValidator.ValidationResult pageRange =
+                validator.validateGetPaperOutline(Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "pageRange", Map.of("from", 1, "to", 2)
+                ));
+        ReadingToolArgumentValidator.ValidationResult valid =
+                validator.validateGetPaperOutline(Map.of(
+                        "paperHandles", List.of("paper_handle_abc")
+                ));
+
+        assertFalse(missing.valid());
+        assertEquals("missing_argument", missing.error());
+        assertEquals("paperHandles", missing.argument());
+        assertFalse(query.valid());
+        assertEquals("forbidden_argument", query.error());
+        assertEquals("queryText", query.argument());
+        assertFalse(ordinal.valid());
+        assertEquals("forbidden_argument", ordinal.error());
+        assertEquals("ordinal", ordinal.argument());
+        assertFalse(pageRange.valid());
+        assertEquals("forbidden_argument", pageRange.error());
+        assertEquals("pageRange", pageRange.argument());
+        assertTrue(valid.valid());
+    }
+
+    @Test
     void readLocationsRejectsEmptyRefsAndForbiddenReadControls() {
         ReadingToolArgumentValidator.ValidationResult emptyRefs = validator.validateReadLocations(Map.of(
                 "locationRefs", List.of()

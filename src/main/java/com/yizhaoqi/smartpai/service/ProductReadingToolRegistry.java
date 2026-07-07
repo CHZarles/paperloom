@@ -10,6 +10,7 @@ import java.util.Map;
 public class ProductReadingToolRegistry {
 
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
+    private static final String GET_OUTLINE_TOOL_NAME = "get_paper_outline";
     private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_TOOL_NAME = "read_locations";
@@ -25,6 +26,7 @@ public class ProductReadingToolRegistry {
         this.validator = validator;
         this.tools = List.of(
                 searchPaperCandidatesTool(),
+                getPaperOutlineTool(),
                 listPaperLocationsTool(),
                 findReadingLocationsTool(),
                 readLocationsTool(),
@@ -43,6 +45,7 @@ public class ProductReadingToolRegistry {
                 : context;
         return switch (toolName == null ? "" : toolName) {
             case SEARCH_TOOL_NAME -> executeSearchPaperCandidates(safeArguments, safeContext);
+            case GET_OUTLINE_TOOL_NAME -> executeGetPaperOutline(safeArguments, safeContext);
             case LIST_LOCATIONS_TOOL_NAME -> executeListPaperLocations(safeArguments, safeContext);
             case LOCATION_TOOL_NAME -> executeFindReadingLocations(safeArguments, safeContext);
             case READ_TOOL_NAME -> executeReadLocations(safeArguments, safeContext);
@@ -57,6 +60,14 @@ public class ProductReadingToolRegistry {
             return invalidArgument(SEARCH_TOOL_NAME, validation);
         }
         return adapter.searchPaperCandidates(stringValue(arguments.get("queryText")), context);
+    }
+
+    private ProductToolResult executeGetPaperOutline(Map<String, Object> arguments, ProductToolContext context) {
+        ReadingToolArgumentValidator.ValidationResult validation = validator.validateGetPaperOutline(arguments);
+        if (!validation.valid()) {
+            return invalidArgument(GET_OUTLINE_TOOL_NAME, validation);
+        }
+        return adapter.getPaperOutline(validator.stringList(arguments.get("paperHandles")), context);
     }
 
     private ProductToolResult executeListPaperLocations(Map<String, Object> arguments, ProductToolContext context) {
@@ -108,6 +119,16 @@ public class ProductReadingToolRegistry {
                 objectSchema(Map.of(
                         "queryText", stringSchema("Caller-authored paper candidate search text.")
                 ), List.of("queryText"))
+        );
+    }
+
+    private AgentToolRegistry.AgentTool getPaperOutlineTool() {
+        return new AgentToolRegistry.AgentTool(
+                GET_OUTLINE_TOOL_NAME,
+                "Inspect deterministic current READY paper structure for explicit paperHandles. Returns sectionRefs and parser-quality metadata only; it does not read paper content.",
+                objectSchema(Map.of(
+                        "paperHandles", arrayStringSchema("Opaque paper handles returned by PaperLoom tools or clicked paper rows.")
+                ), List.of("paperHandles"))
         );
     }
 

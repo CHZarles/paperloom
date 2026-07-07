@@ -104,6 +104,47 @@ public class ReadingToolArgumentValidator {
             "searchMode"
     );
 
+    private static final Set<String> OUTLINE_FORBIDDEN_ARGUMENTS = Set.of(
+            "paperId",
+            "paperIds",
+            "paperRef",
+            "paperRefs",
+            "locationId",
+            "locationIds",
+            "locationRef",
+            "locationRefs",
+            "chunkId",
+            "chunkIds",
+            "chunkRef",
+            "readingElementId",
+            "modelVersion",
+            "indexVersion",
+            "indexName",
+            "query",
+            "queryText",
+            "question",
+            "readingNeed",
+            "semanticNeed",
+            "topicText",
+            "ordinal",
+            "ordinals",
+            "candidateOrdinal",
+            "resultOrdinal",
+            "pageRange",
+            "mapMode",
+            "depth",
+            "includeText",
+            "includeContent",
+            "limit",
+            "topK",
+            "maxCandidates",
+            "pageSize",
+            "budget",
+            "rerank",
+            "rerankEnabled",
+            "searchMode"
+    );
+
     private static final Set<String> READ_FORBIDDEN_ARGUMENTS = Set.of(
             "paperId",
             "paperIds",
@@ -177,6 +218,7 @@ public class ReadingToolArgumentValidator {
     private static final Set<String> LOCATION_ALLOWED_ARGUMENTS = Set.of("paperHandles", "queryText", "locationTypes");
     private static final Set<String> LIST_LOCATIONS_ALLOWED_ARGUMENTS =
             Set.of("paperHandles", "pageRange", "locationTypes");
+    private static final Set<String> OUTLINE_ALLOWED_ARGUMENTS = Set.of("paperHandles");
     private static final Set<String> READ_ALLOWED_ARGUMENTS = Set.of("locationRefs");
     private static final Set<String> TRACE_ALLOWED_ARGUMENTS = Set.of("sourceQuoteRefs");
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
@@ -247,6 +289,22 @@ public class ReadingToolArgumentValidator {
             if (!locationTypesResult.valid()) {
                 return locationTypesResult;
             }
+        }
+        return ValidationResult.validResult();
+    }
+
+    public ValidationResult validateGetPaperOutline(Map<String, Object> arguments) {
+        Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
+        String forbiddenArgument = firstForbiddenArgument(safeArguments, OUTLINE_FORBIDDEN_ARGUMENTS);
+        if (forbiddenArgument != null) {
+            return ValidationResult.invalid("forbidden_argument", forbiddenArgument);
+        }
+        String unsupportedArgument = firstUnsupportedTopLevelArgument(safeArguments, OUTLINE_ALLOWED_ARGUMENTS);
+        if (unsupportedArgument != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedArgument);
+        }
+        if (stringList(safeArguments.get("paperHandles")).isEmpty()) {
+            return ValidationResult.invalid("missing_argument", "paperHandles");
         }
         return ValidationResult.validResult();
     }

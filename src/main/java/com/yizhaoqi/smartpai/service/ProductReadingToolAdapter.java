@@ -1,11 +1,15 @@
 package com.yizhaoqi.smartpai.service;
 
+import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.PaperLocation;
 import com.yizhaoqi.smartpai.model.PaperLocationType;
 import com.yizhaoqi.smartpai.model.PaperReadingModel;
 import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
+import com.yizhaoqi.smartpai.model.PaperSection;
 import com.yizhaoqi.smartpai.repository.PaperLocationRepository;
 import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.repository.PaperSectionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +24,7 @@ import java.util.Optional;
 public class ProductReadingToolAdapter {
 
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
+    private static final String GET_OUTLINE_TOOL_NAME = "get_paper_outline";
     private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_TOOL_NAME = "read_locations";
@@ -27,7 +32,9 @@ public class ProductReadingToolAdapter {
 
     private final PaperCandidateSearchService paperCandidateSearchService;
     private final ReadingModelGrepSearchService readingModelGrepSearchService;
+    private final PaperRepository paperRepository;
     private final PaperReadingModelRepository modelRepository;
+    private final PaperSectionRepository sectionRepository;
     private final PaperLocationRepository locationRepository;
     private final ProductPaperHandleService handleService;
     private final ReadingToolOutputMapper outputMapper;
@@ -36,7 +43,9 @@ public class ProductReadingToolAdapter {
 
     public ProductReadingToolAdapter(PaperCandidateSearchService paperCandidateSearchService,
                                      ReadingModelGrepSearchService readingModelGrepSearchService,
+                                     PaperRepository paperRepository,
                                      PaperReadingModelRepository modelRepository,
+                                     PaperSectionRepository sectionRepository,
                                      PaperLocationRepository locationRepository,
                                      ProductPaperHandleService handleService,
                                      ReadingToolOutputMapper outputMapper,
@@ -44,7 +53,9 @@ public class ProductReadingToolAdapter {
                                      ProductReadingSourceQuoteTraceService traceService) {
         this.paperCandidateSearchService = paperCandidateSearchService;
         this.readingModelGrepSearchService = readingModelGrepSearchService;
+        this.paperRepository = paperRepository;
         this.modelRepository = modelRepository;
+        this.sectionRepository = sectionRepository;
         this.locationRepository = locationRepository;
         this.handleService = handleService;
         this.outputMapper = outputMapper;
@@ -112,6 +123,66 @@ public class ProductReadingToolAdapter {
         data.put("items", items);
         data.put("constraints", paperCandidateConstraints());
         return new ProductToolResult(SEARCH_TOOL_NAME, true, data, ProductToolEffect.PAPER_DISCOVERY);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductToolResult getPaperOutline(List<String> paperHandles, ProductToolContext context) {
+        ProductToolContext safeContext = safeContext(context);
+        List<String> safePaperHandles = sanitizePaperHandles(paperHandles);
+        if (safePaperHandles.isEmpty()) {
+            return invalidArgument(GET_OUTLINE_TOOL_NAME, "paperHandles");
+        }
+
+        List<Map<String, Object>> papers = new ArrayList<>();
+        boolean anySectionOutline = false;
+        for (String paperHandle : safePaperHandles) {
+            Optional<String> paperId = handleService.resolvePaperHandle(paperHandle);
+            if (paperId.isEmpty()
+                    || !handleService.isPaperVisibleToUser(paperId.get(), safeContext.userId(), safeContext.lockedScope())) {
+                return outlineStatus(safePaperHandles, "PAPER_HANDLE_UNAVAILABLE", List.of());
+            }
+            if (!handleService.hasCurrentReadyReadingModel(paperId.get())) {
+                return outlineStatus(safePaperHandles, "READING_MODEL_UNAVAILABLE", List.of());
+            }
+            Optional<PaperReadingModel> currentModel = modelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId.get())
+                    .filter(model -> model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY);
+            if (currentModel.isEmpty()) {
+                return outlineStatus(safePaperHandles, "READING_MODEL_UNAVAILABLE", List.of());
+            }
+            Optional<Paper> paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId.get());
+            if (paper.isEmpty()) {
+                return outlineStatus(safePaperHandles, "PAPER_HANDLE_UNAVAILABLE", List.of());
+            }
+
+            String modelVersion = currentModel.get().getModelVersion();
+            List<PaperSection> currentSections =
+                    sectionRepository.findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc(
+                            paperId.get(),
+                            modelVersion
+                    );
+            List<PaperLocation> currentLocations =
+                    locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc(
+                            paperId.get(),
+                            modelVersion
+                    );
+            List<Map<String, Object>> sectionCards = sectionOutlineCards(currentSections, currentLocations);
+            boolean hasSectionOutline = !sectionCards.isEmpty();
+            anySectionOutline = anySectionOutline || hasSectionOutline;
+            papers.add(outputMapper.paperOutline(
+                    paperHandle,
+                    paper.get(),
+                    currentModel.get(),
+                    supportedLocationTypes(currentLocations),
+                    parserQuality(currentModel.get(), hasSectionOutline),
+                    sectionCards
+            ));
+        }
+
+        return outlineStatus(
+                safePaperHandles,
+                anySectionOutline ? "OK" : "OUTLINE_UNAVAILABLE",
+                papers
+        );
     }
 
     @Transactional(readOnly = true)
@@ -314,6 +385,54 @@ public class ProductReadingToolAdapter {
                 .noneMatch(requestedTypeNames::contains);
     }
 
+    private List<Map<String, Object>> sectionOutlineCards(List<PaperSection> sections, List<PaperLocation> locations) {
+        Map<String, PaperLocation> sectionLocationBySectionId = new LinkedHashMap<>();
+        for (PaperLocation location : locations == null ? List.<PaperLocation>of() : locations) {
+            if (location == null
+                    || location.getLocationType() != PaperLocationType.SECTION
+                    || SearchText.isBlank(location.getSourceObjectId())
+                    || SearchText.isBlank(location.getLocationRef())) {
+                continue;
+            }
+            sectionLocationBySectionId.putIfAbsent(location.getSourceObjectId(), location);
+        }
+
+        List<Map<String, Object>> cards = new ArrayList<>();
+        for (PaperSection section : sections == null ? List.<PaperSection>of() : sections) {
+            if (section == null || SearchText.isBlank(section.getSectionId())) {
+                continue;
+            }
+            PaperLocation sectionLocation = sectionLocationBySectionId.get(section.getSectionId());
+            if (sectionLocation != null) {
+                cards.add(outputMapper.sectionOutlineCard(section, sectionLocation));
+            }
+        }
+        return cards;
+    }
+
+    private Map<String, Object> parserQuality(PaperReadingModel model, boolean hasSectionOutline) {
+        Map<String, Object> quality = new LinkedHashMap<>();
+        List<String> warnings = new ArrayList<>();
+        double pageTextCoverage = 0.0;
+        Integer pageCount = model == null ? null : model.getPageCount();
+        Integer readablePageCount = model == null ? null : model.getReadablePageCount();
+        if (pageCount == null || pageCount < 1 || readablePageCount == null || readablePageCount < 0) {
+            warnings.add("PAGE_COVERAGE_UNKNOWN");
+        } else {
+            pageTextCoverage = Math.max(0.0, Math.min(1.0, (double) readablePageCount / pageCount));
+            if (pageTextCoverage < 1.0) {
+                warnings.add("PARTIAL_PAGE_TEXT_COVERAGE");
+            }
+        }
+        if (!hasSectionOutline) {
+            warnings.add("NO_SECTION_OUTLINE");
+        }
+        quality.put("pageTextCoverage", pageTextCoverage);
+        quality.put("outlineConfidence", hasSectionOutline ? "HIGH" : "LOW");
+        quality.put("warnings", warnings);
+        return quality;
+    }
+
     private ProductToolResult locationStatus(String status,
                                              List<Map<String, Object>> candidates,
                                              Map<String, List<String>> supportedLocationTypesByHandle) {
@@ -342,6 +461,17 @@ public class ProductReadingToolAdapter {
         return new ProductToolResult(LIST_LOCATIONS_TOOL_NAME, true, data, ProductToolEffect.PAPER_DISCOVERY);
     }
 
+    private ProductToolResult outlineStatus(List<String> paperHandles,
+                                            String status,
+                                            List<Map<String, Object>> papers) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("paperHandles", paperHandles == null ? List.of() : paperHandles);
+        data.put("status", status);
+        data.put("papers", papers == null ? List.of() : papers);
+        data.put("constraints", outlineConstraints());
+        return new ProductToolResult(GET_OUTLINE_TOOL_NAME, true, data, ProductToolEffect.PAPER_DISCOVERY);
+    }
+
     private Map<String, Object> paperCandidateConstraints() {
         return Map.of(
                 "previewIsSourceQuote", false,
@@ -362,6 +492,13 @@ public class ProductReadingToolAdapter {
                 "locationRefIsSourceQuote", false,
                 "paperContentClaimsAllowed", false,
                 "paperContentAbsenceClaimAllowed", false
+        );
+    }
+
+    private Map<String, Object> outlineConstraints() {
+        return Map.of(
+                "outlineIsSourceQuote", false,
+                "paperContentClaimsAllowed", false
         );
     }
 
