@@ -202,7 +202,8 @@ Quote references from both `read_locations` and `trace_source_quotes`.
 
 `ProductLaunchRuntimePreflightCli` is the preflight gate for the launch runtime. It reads `.env`,
 checks backend login, MySQL, Redis, Kafka, MinIO, Elasticsearch, MinerU, LLM key, embedding key, and
-trace config, then writes a standard eval run. Run it before the slower 30-PDF seed:
+trace config, then writes a standard eval run plus `remediation.md` with non-secret fixes for failed
+checks. Run it before the slower 30-PDF seed:
 
 ```bash
 mvn -q -DskipTests test-compile exec:java \

@@ -65,6 +65,9 @@ class ProductLaunchRuntimePreflightRunnerTest {
         assertEquals(10, scorecard.path("caseCount").asInt());
         assertEquals(10, scorecard.path("passed").asInt());
         assertEquals(1.0d, scorecard.path("passRate").asDouble());
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("launch preflight passed"));
+        assertTrue(remediation.contains("ProductPdfLaunchDataSeedCli"));
 
         ProductLaunchRuntimePreflightRunner.ProbeRequest mysql = probe.requests.stream()
                 .filter(request -> "mysql_tcp".equals(request.caseId()))
@@ -99,6 +102,49 @@ class ProductLaunchRuntimePreflightRunnerTest {
         assertTrue(llm.path("failureClass").toString().contains("CONFIG_MISSING"));
         assertFalse(embedding.path("passed").asBoolean());
         assertTrue(embedding.path("failureClass").toString().contains("CONFIG_MISSING"));
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("not launch-ready"));
+        assertTrue(remediation.contains("DEEPSEEK_API_KEY"));
+        assertTrue(remediation.contains("EMBEDDING_API_KEY"));
+        assertFalse(remediation.contains("secret"));
+        assertFalse(remediation.contains("llm-key"));
+        assertTrue(remediation.contains("Do not run the 30-PDF seed"));
+    }
+
+    @Test
+    void processEnvironmentOverridesEnvFileValues() throws Exception {
+        Path env = env("""
+                SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/paismart
+                DEEPSEEK_API_KEY=
+                EMBEDDING_API_KEY=
+                """);
+        FakeProbe probe = FakeProbe.configAware();
+
+        runner(probe).run(options(env, Map.of(
+                "SPRING_DATASOURCE_URL", "jdbc:mysql://localhost:13306/paismart",
+                "DEEPSEEK_API_KEY", "runtime-llm-key",
+                "EMBEDDING_API_KEY", "runtime-embedding-key"
+        )));
+
+        ProductLaunchRuntimePreflightRunner.ProbeRequest mysql = probe.requests.stream()
+                .filter(request -> "mysql_tcp".equals(request.caseId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(13306, mysql.params().get("port"));
+        assertTrue(probe.requests.stream()
+                .filter(request -> "llm_key".equals(request.caseId()))
+                .findFirst()
+                .orElseThrow()
+                .params()
+                .get("present")
+                .equals(true));
+        assertTrue(probe.requests.stream()
+                .filter(request -> "embedding_key".equals(request.caseId()))
+                .findFirst()
+                .orElseThrow()
+                .params()
+                .get("present")
+                .equals(true));
     }
 
     @Test
@@ -117,6 +163,9 @@ class ProductLaunchRuntimePreflightRunnerTest {
         assertTrue(mysql.path("failures").toString().contains("tcp_unreachable"));
         assertTrue(mysql.path("failureClass").toString().contains("RUNTIME_UNAVAILABLE"));
         assertEquals("TCP", mysql.path("diagnostics").path("kind").asText());
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("SPRING_DATASOURCE_URL"));
+        assertTrue(remediation.contains("localhost:3306"));
     }
 
     private ProductLaunchRuntimePreflightRunner runner(FakeProbe probe) {
@@ -124,6 +173,10 @@ class ProductLaunchRuntimePreflightRunnerTest {
     }
 
     private ProductLaunchRuntimePreflightRunner.Options options(Path env) {
+        return options(env, Map.of());
+    }
+
+    private ProductLaunchRuntimePreflightRunner.Options options(Path env, Map<String, String> processEnv) {
         return new ProductLaunchRuntimePreflightRunner.Options(
                 env,
                 tempDir.resolve("runs"),
@@ -134,7 +187,8 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 "http://127.0.0.1:8081/api/v1",
                 "admin",
                 "secret",
-                1
+                1,
+                processEnv
         );
     }
 

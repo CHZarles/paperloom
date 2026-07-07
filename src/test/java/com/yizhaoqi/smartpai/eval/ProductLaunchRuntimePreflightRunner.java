@@ -31,7 +31,7 @@ public class ProductLaunchRuntimePreflightRunner {
         for (ProbeRequest request : requests) {
             results.add(runRequest(request));
         }
-        return RagEvalRunWriter.write(
+        Path runDir = RagEvalRunWriter.write(
                 safeOptions.runsRoot(),
                 safeOptions.runId(),
                 safeOptions.startedAt(),
@@ -45,6 +45,8 @@ public class ProductLaunchRuntimePreflightRunner {
                 ),
                 metrics(results)
         );
+        Files.writeString(runDir.resolve("remediation.md"), remediationMarkdown(safeOptions, results));
+        return runDir;
     }
 
     static Map<String, String> loadEnv(Path envPath) throws IOException {
@@ -71,20 +73,20 @@ public class ProductLaunchRuntimePreflightRunner {
     private List<ProbeRequest> requests(Map<String, String> env, Options options) {
         List<ProbeRequest> requests = new ArrayList<>();
         requests.add(ProbeRequest.login(options.apiBase(), options.username(), options.password()));
-        requests.add(tcpFromJdbc("mysql_tcp", value(env, "SPRING_DATASOURCE_URL",
+        requests.add(tcpFromJdbc("mysql_tcp", value(env, options, "SPRING_DATASOURCE_URL",
                 "jdbc:mysql://localhost:3306/paismart")));
         requests.add(ProbeRequest.tcp(
                 "redis_tcp",
-                value(env, "SPRING_DATA_REDIS_HOST", "localhost"),
-                intValue(value(env, "SPRING_DATA_REDIS_PORT", "6379"), 6379)
+                value(env, options, "SPRING_DATA_REDIS_HOST", "localhost"),
+                intValue(value(env, options, "SPRING_DATA_REDIS_PORT", "6379"), 6379)
         ));
         requests.add(tcpFromHostPort(
                 "kafka_tcp",
-                firstHostPort(value(env, "SPRING_KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")),
+                firstHostPort(value(env, options, "SPRING_KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")),
                 "127.0.0.1",
                 9092
         ));
-        String minioEndpoint = value(env, "MINIO_ENDPOINT", "http://localhost:9000");
+        String minioEndpoint = value(env, options, "MINIO_ENDPOINT", "http://localhost:9000");
         requests.add(ProbeRequest.http(
                 "minio_health",
                 trimTrailingSlash(minioEndpoint) + "/minio/health/live",
@@ -92,17 +94,17 @@ public class ProductLaunchRuntimePreflightRunner {
         ));
         requests.add(ProbeRequest.http(
                 "elasticsearch_health",
-                elasticsearchUrl(env),
+                elasticsearchUrl(env, options),
                 List.of(200, 401, 403)
         ));
-        String mineruBase = value(env, "PAPER_PARSING_MINERU_BASE_URL", "http://localhost:8000");
-        String mineruHealth = value(env, "PAPER_PARSING_MINERU_HEALTH_PATH", "/health");
+        String mineruBase = value(env, options, "PAPER_PARSING_MINERU_BASE_URL", "http://localhost:8000");
+        String mineruHealth = value(env, options, "PAPER_PARSING_MINERU_HEALTH_PATH", "/health");
         requests.add(ProbeRequest.http("mineru_health", trimTrailingSlash(mineruBase) + ensureLeadingSlash(mineruHealth), List.of(200)));
-        requests.add(ProbeRequest.nonBlank("llm_key", "DEEPSEEK_API_KEY", value(env, "DEEPSEEK_API_KEY", "")));
-        requests.add(ProbeRequest.nonBlank("embedding_key", "EMBEDDING_API_KEY", value(env, "EMBEDDING_API_KEY", "")));
+        requests.add(ProbeRequest.nonBlank("llm_key", "DEEPSEEK_API_KEY", value(env, options, "DEEPSEEK_API_KEY", "")));
+        requests.add(ProbeRequest.nonBlank("embedding_key", "EMBEDDING_API_KEY", value(env, options, "EMBEDDING_API_KEY", "")));
         requests.add(ProbeRequest.traceConfig(
-                value(env, "PAPERLOOM_TRACE_ENABLED", "true"),
-                value(env, "PAPERLOOM_TRACE_ROOT", "data/traces/product-react")
+                value(env, options, "PAPERLOOM_TRACE_ENABLED", "true"),
+                value(env, options, "PAPERLOOM_TRACE_ROOT", "data/traces/product-react")
         ));
         return requests;
     }
@@ -125,10 +127,10 @@ public class ProductLaunchRuntimePreflightRunner {
         return ProbeRequest.tcp(caseId, host, port);
     }
 
-    private String elasticsearchUrl(Map<String, String> env) {
-        String scheme = value(env, "ELASTICSEARCH_SCHEME", "http");
-        String host = value(env, "ELASTICSEARCH_HOST", "localhost");
-        int port = intValue(value(env, "ELASTICSEARCH_PORT", "9200"), 9200);
+    private String elasticsearchUrl(Map<String, String> env, Options options) {
+        String scheme = value(env, options, "ELASTICSEARCH_SCHEME", "http");
+        String host = value(env, options, "ELASTICSEARCH_HOST", "localhost");
+        int port = intValue(value(env, options, "ELASTICSEARCH_PORT", "9200"), 9200);
         return scheme + "://" + host + ":" + port + "/_cluster/health";
     }
 
@@ -203,9 +205,95 @@ public class ProductLaunchRuntimePreflightRunner {
         return metrics;
     }
 
-    private static String value(Map<String, String> env, String key, String fallback) {
+    private static String value(Map<String, String> env, Options options, String key, String fallback) {
+        String processValue = options == null || options.processEnv() == null ? null : options.processEnv().get(key);
+        if (processValue != null && !processValue.isBlank()) {
+            return processValue;
+        }
         String value = env == null ? null : env.get(key);
         return value == null ? fallback : value;
+    }
+
+    private static String remediationMarkdown(Options options, List<CaseResult> results) {
+        long passed = results.stream().filter(CaseResult::passed).count();
+        List<CaseResult> failures = results.stream().filter(result -> !result.passed()).toList();
+        StringBuilder builder = new StringBuilder()
+                .append("# Product Launch Runtime Remediation\n\n")
+                .append("Run: `").append(options.runId()).append("`\n\n")
+                .append("Status: ").append(failures.isEmpty() ? "launch preflight passed" : "not launch-ready")
+                .append(" (").append(passed).append("/").append(results.size()).append(")\n\n");
+        if (failures.isEmpty()) {
+            builder.append("No runtime preflight blockers were detected. Continue with the launch gates below.\n\n");
+        } else {
+            builder.append("Do not run the 30-PDF seed, live Product Reading smoke, trace eval, or parser smoke ")
+                    .append("until this preflight is 10/10 on the active runtime.\n\n")
+                    .append("## Fix First\n\n");
+            for (CaseResult failure : failures) {
+                builder.append(remediationBullet(failure)).append("\n");
+            }
+            builder.append("\n");
+        }
+        builder.append("## Next Gate Order\n\n")
+                .append("1. `ProductLaunchRuntimePreflightCli`\n")
+                .append("2. `ProductPdfLaunchDataSeedCli`\n")
+                .append("3. `ProductReadingLiveLaunchSmokeCli`\n")
+                .append("4. `ProductReadingLaunchTraceEvalCli`\n")
+                .append("5. `ProductPdfParserSmokeCli --manifest eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl`\n");
+        return builder.toString();
+    }
+
+    private static String remediationBullet(CaseResult failure) {
+        String target = target(failure.diagnostics());
+        return switch (failure.caseId()) {
+            case "backend_login" -> "- `backend_login`: start the backend at `" + target
+                    + "` and verify the eval admin login credentials. Do not print or store the password in artifacts.";
+            case "mysql_tcp" -> "- `mysql_tcp`: make `SPRING_DATASOURCE_URL` point to a reachable MySQL host/port"
+                    + targetSuffix(target) + ", or expose the Docker MySQL container on the configured port.";
+            case "redis_tcp" -> "- `redis_tcp`: start Redis or align `SPRING_DATA_REDIS_HOST` and `SPRING_DATA_REDIS_PORT`"
+                    + targetSuffix(target) + ".";
+            case "kafka_tcp" -> "- `kafka_tcp`: start Kafka or align `SPRING_KAFKA_BOOTSTRAP_SERVERS`"
+                    + targetSuffix(target) + ".";
+            case "minio_health" -> "- `minio_health`: start MinIO, initialize the upload bucket, or align `MINIO_ENDPOINT`"
+                    + targetSuffix(target) + ".";
+            case "elasticsearch_health" -> "- `elasticsearch_health`: start Elasticsearch or align `ELASTICSEARCH_SCHEME`, "
+                    + "`ELASTICSEARCH_HOST`, `ELASTICSEARCH_PORT`, and credentials" + targetSuffix(target) + ".";
+            case "mineru_health" -> "- `mineru_health`: start the self-hosted MinerU sidecar or align "
+                    + "`PAPER_PARSING_MINERU_BASE_URL` and `PAPER_PARSING_MINERU_HEALTH_PATH`" + targetSuffix(target)
+                    + ". Do not switch to the OpenDataLoader fallback for launch evidence.";
+            case "llm_key" -> "- `llm_key`: set `DEEPSEEK_API_KEY` in the runtime environment or `.env`. "
+                    + "The remediation artifact intentionally omits the value.";
+            case "embedding_key" -> "- `embedding_key`: set `EMBEDDING_API_KEY` in the runtime environment or `.env`. "
+                    + "The remediation artifact intentionally omits the value.";
+            case "trace_config" -> "- `trace_config`: set `PAPERLOOM_TRACE_ENABLED=true` and a writable "
+                    + "`PAPERLOOM_TRACE_ROOT` before running the live smoke.";
+            default -> "- `" + failure.caseId() + "`: inspect `run.json` diagnostics and fix the reported "
+                    + String.join("/", failure.failureClass()) + " blocker.";
+        };
+    }
+
+    private static String target(Map<String, Object> diagnostics) {
+        Object apiBase = diagnostics.get("apiBase");
+        if (apiBase != null && !String.valueOf(apiBase).isBlank()) {
+            return String.valueOf(apiBase);
+        }
+        Object url = diagnostics.get("url");
+        if (url != null && !String.valueOf(url).isBlank()) {
+            return String.valueOf(url);
+        }
+        Object host = diagnostics.get("host");
+        Object port = diagnostics.get("port");
+        if (host != null && port != null) {
+            return host + ":" + port;
+        }
+        Object key = diagnostics.get("key");
+        if (key != null && !String.valueOf(key).isBlank()) {
+            return String.valueOf(key);
+        }
+        return "";
+    }
+
+    private static String targetSuffix(String target) {
+        return target == null || target.isBlank() ? "" : " (current target `" + target + "`)";
     }
 
     private static String firstHostPort(String value) {
@@ -373,8 +461,23 @@ public class ProductLaunchRuntimePreflightRunner {
             String apiBase,
             String username,
             String password,
-            Integer timeoutSeconds
+            Integer timeoutSeconds,
+            Map<String, String> processEnv
     ) {
+        public Options(Path envPath,
+                       Path runsRoot,
+                       String runId,
+                       String startedAt,
+                       String harnessId,
+                       String datasetId,
+                       String apiBase,
+                       String username,
+                       String password,
+                       Integer timeoutSeconds) {
+            this(envPath, runsRoot, runId, startedAt, harnessId, datasetId, apiBase, username, password,
+                    timeoutSeconds, System.getenv());
+        }
+
         public Options {
             envPath = envPath == null ? Path.of(".env") : envPath;
             runsRoot = runsRoot == null ? Path.of("eval/rag/runs") : runsRoot;
@@ -386,6 +489,7 @@ public class ProductLaunchRuntimePreflightRunner {
             username = blankToDefault(username, "admin");
             password = blankToDefault(password, "");
             timeoutSeconds = Math.max(1, timeoutSeconds == null ? 5 : timeoutSeconds);
+            processEnv = processEnv == null ? Map.of() : Map.copyOf(processEnv);
         }
 
         static Options defaults() {
@@ -399,7 +503,8 @@ public class ProductLaunchRuntimePreflightRunner {
                     "http://127.0.0.1:8081/api/v1",
                     "admin",
                     "",
-                    5
+                    5,
+                    System.getenv()
             );
         }
 
