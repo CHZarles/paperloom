@@ -194,6 +194,9 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   if (payload.diagnostics) {
     assistant.diagnostics = payload.diagnostics;
   }
+  if (Array.isArray(payload.productStateItems)) {
+    assistant.productStateItems = payload.productStateItems as Api.Chat.ProductStateItem[];
+  }
   assistant.route = normalizeChatRoute(payload.route) || assistant.route;
   assistant.route = normalizeChatRoute(payload.diagnostics?.route) || assistant.route;
   markExecutingToolsAsSuccess(assistant);

@@ -44,8 +44,13 @@ public class ChatHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatHandler.class);
     private static final int MAX_EVIDENCE_SNIPPET_LEN = 160;
+    private static final int MAX_PRODUCT_STATE_ITEMS = 10;
+    private static final String READING_PAPER_CHOICE_KIND = "READING_PAPER_CHOICE";
+    private static final String FIND_PAPERS_BY_IDENTITY_TOOL = "find_papers_by_identity";
     private static final Pattern CITED_REFERENCE_PATTERN =
             Pattern.compile("\\[(\\d+)]");
+    private static final Pattern PAPER_HANDLE_PATTERN =
+            Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
     private final RedisTemplate<String, String> redisTemplate;
     private final RateLimitService rateLimitService;
     private final ConversationService conversationService;
@@ -72,6 +77,7 @@ public class ChatHandler {
     // 用于存储每次生成任务的引用映射：generationId -> {referenceNumber -> detail}
     private final Map<String, Map<Integer, ReferenceInfo>> generationReferenceMappings = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> generationDiagnostics = new ConcurrentHashMap<>();
+    private final Map<String, List<Map<String, Object>>> generationProductStateItems = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> generationEffectiveScopes = new ConcurrentHashMap<>();
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
@@ -709,6 +715,10 @@ public class ChatHandler {
         if (answer.resultStatus() == ProductResultStatus.FAILED) {
             throw new RuntimeException(answer.finalAnswerMarkdown());
         }
+        List<Map<String, Object>> productStateItems = sanitizeProductStateItems(answer.productStateItems());
+        if (!productStateItems.isEmpty()) {
+            generationProductStateItems.put(generationId, productStateItems);
+        }
         Map<Integer, ReferenceInfo> productReferences = productReferenceMappings(answer.references());
         Map<String, Map<String, Object>> serializableReferences = toSerializableReferenceMappings(productReferences);
         if (!productReferences.isEmpty()) {
@@ -767,6 +777,78 @@ public class ChatHandler {
             mappings.put(referenceNumber, referenceInfoFromProductReference(reference));
         }
         return mappings;
+    }
+
+    private List<Map<String, Object>> sanitizeProductStateItems(List<Map<String, Object>> rawItems) {
+        if (rawItems == null || rawItems.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> items = new ArrayList<>();
+        Map<String, Boolean> seenHandles = new LinkedHashMap<>();
+        for (Map<String, Object> rawItem : rawItems) {
+            if (items.size() >= MAX_PRODUCT_STATE_ITEMS) {
+                break;
+            }
+            Map<String, Object> item = sanitizeReadingPaperChoiceItem(rawItem);
+            if (item.isEmpty()) {
+                continue;
+            }
+            String paperHandle = String.valueOf(item.get("paperHandle"));
+            if (seenHandles.putIfAbsent(paperHandle, true) != null) {
+                continue;
+            }
+            items.add(item);
+        }
+        return List.copyOf(items);
+    }
+
+    private Map<String, Object> sanitizeReadingPaperChoiceItem(Map<String, Object> rawItem) {
+        if (rawItem == null
+                || !READING_PAPER_CHOICE_KIND.equals(rawItem.get("kind"))
+                || !FIND_PAPERS_BY_IDENTITY_TOOL.equals(rawItem.get("sourceTool"))) {
+            return Map.of();
+        }
+        String paperHandle = trimToNull(String.valueOf(rawItem.get("paperHandle")));
+        if (paperHandle == null || !PAPER_HANDLE_PATTERN.matcher(paperHandle).matches()) {
+            return Map.of();
+        }
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("kind", READING_PAPER_CHOICE_KIND);
+        item.put("sourceTool", FIND_PAPERS_BY_IDENTITY_TOOL);
+        item.put("paperHandle", paperHandle);
+        copyStringDetail(item, rawItem, "title");
+        copyStringDetail(item, rawItem, "originalFilename");
+        copyStringListDetail(item, rawItem, "authors");
+        copyNumberDetail(item, rawItem, "year");
+        copyStringDetail(item, rawItem, "venue");
+        copyStringListDetail(item, rawItem, "matchReasons");
+        copyStringDetail(item, rawItem, "identityStatus");
+        Object ambiguous = rawItem.get("ambiguous");
+        if (ambiguous instanceof Boolean booleanValue) {
+            item.put("ambiguous", booleanValue);
+        }
+        return item;
+    }
+
+    private void copyStringDetail(Map<String, Object> target, Map<String, Object> source, String key) {
+        String value = stringDetail(source, key);
+        if (value != null) {
+            target.put(key, value);
+        }
+    }
+
+    private void copyStringListDetail(Map<String, Object> target, Map<String, Object> source, String key) {
+        List<String> values = stringListValue(source.get(key));
+        if (!values.isEmpty()) {
+            target.put(key, values);
+        }
+    }
+
+    private void copyNumberDetail(Map<String, Object> target, Map<String, Object> source, String key) {
+        Object value = source.get(key);
+        if (value instanceof Number number) {
+            target.put(key, number);
+        }
     }
 
     private ReferenceInfo referenceInfoFromProductReference(Map<String, Object> reference) {
@@ -932,6 +1014,7 @@ public class ChatHandler {
         generationClientIds.remove(generationId);
         generationReferenceMappings.remove(generationId);
         generationDiagnostics.remove(generationId);
+        generationProductStateItems.remove(generationId);
         generationEffectiveScopes.remove(generationId);
         generationTimings.remove(generationId);
         stopFlags.remove(generationId);
@@ -1223,6 +1306,10 @@ public class ChatHandler {
             Map<String, Object> diagnostics = generationDiagnostics.get(generationId);
             if (diagnostics != null && !diagnostics.isEmpty()) {
                 notification.put("diagnostics", diagnostics);
+            }
+            List<Map<String, Object>> productStateItems = generationProductStateItems.get(generationId);
+            if (productStateItems != null && !productStateItems.isEmpty()) {
+                notification.put("productStateItems", productStateItems);
             }
         }
         if (persistenceDegraded) {

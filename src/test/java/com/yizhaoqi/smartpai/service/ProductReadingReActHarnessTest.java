@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -192,8 +194,128 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("Agentic Eval Benchmark"));
+        assertEquals(1, result.productStateItems().size());
+        Map<String, Object> item = result.productStateItems().get(0);
+        assertEquals("READING_PAPER_CHOICE", item.get("kind"));
+        assertEquals("find_papers_by_identity", item.get("sourceTool"));
+        assertEquals("paper_handle_abc", item.get("paperHandle"));
+        assertEquals("OK", item.get("identityStatus"));
+        assertEquals(false, item.get("ambiguous"));
+        assertFalse(item.containsKey("ordinal"));
+        assertFalse(item.containsKey("paperId"));
+        assertFalse(item.containsKey("preview"));
         verify(registry).execute(eq("find_papers_by_identity"), any(), any());
         verify(registry, never()).execute(eq("search_paper_candidates"), any(), any());
+    }
+
+    @Test
+    void ambiguousIdentityResultReturnsPaperChoiceProductStateWithoutAuthorizingSameTurnReading() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(ambiguousIdentityResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("authorName", "Hu", "year", 2021)
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到两篇可能的论文，请选择。",
+                        "find_papers_by_identity"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("看 Hu 2021 那篇"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(2, result.productStateItems().size());
+        Map<String, Object> first = result.productStateItems().get(0);
+        assertEquals("READING_PAPER_CHOICE", first.get("kind"));
+        assertEquals("find_papers_by_identity", first.get("sourceTool"));
+        assertEquals("paper_handle_abc", first.get("paperHandle"));
+        assertEquals("Agentic Eval Benchmark", first.get("title"));
+        assertEquals("AMBIGUOUS", first.get("identityStatus"));
+        assertEquals(true, first.get("ambiguous"));
+        assertFalse(first.containsKey("ordinal"));
+        assertFalse(first.containsKey("paperId"));
+        assertFalse(first.containsKey("preview"));
+        assertFalse(first.containsKey("score"));
+        assertFalse(first.containsKey("rank"));
+        assertFalse(first.containsKey("locationRef"));
+        assertFalse(first.containsKey("sourceQuoteRef"));
+    }
+
+    @Test
+    void identityProductStateSkipsInvalidHandlesDedupesAndCapsSanitizedItems() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<Map<String, Object>> matches = new ArrayList<>();
+        matches.add(identityMatch("paper_handle_000", "First"));
+        matches.add(identityMatch("paper_handle_000", "Duplicate"));
+        matches.add(identityMatch("not_a_handle", "Invalid"));
+        for (int index = 1; index <= 12; index++) {
+            matches.add(identityMatch("paper_handle_" + index, "Paper " + index));
+        }
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any()))
+                .thenReturn(identityResultWithMatches("AMBIGUOUS", true, matches));
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("authorName", "Ada")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope("请选择论文。", "find_papers_by_identity")));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("看 Ada 的论文"));
+
+        List<Map<String, Object>> items = result.productStateItems();
+        assertEquals(10, items.size());
+        assertEquals("paper_handle_000", items.get(0).get("paperHandle"));
+        assertEquals("First", items.get(0).get("title"));
+        assertEquals("paper_handle_9", items.get(9).get("paperHandle"));
+        assertFalse(items.toString().contains("not_a_handle"));
+        assertFalse(items.toString().contains("Duplicate"));
+        for (Map<String, Object> item : items) {
+            assertEquals("READING_PAPER_CHOICE", item.get("kind"));
+            assertFalse(item.containsKey("ordinal"));
+            assertFalse(item.containsKey("paperId"));
+            assertFalse(item.containsKey("preview"));
+            assertFalse(item.containsKey("score"));
+            assertFalse(item.containsKey("rank"));
+            assertFalse(item.containsKey("locationRef"));
+            assertFalse(item.containsKey("sourceQuoteRef"));
+        }
+    }
+
+    @Test
+    void productStateItemsAreDefensiveCopiesOfRawIdentityToolMatches() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        Map<String, Object> rawMatch = new LinkedHashMap<>(identityMatch("paper_handle_abc", "Original"));
+        List<Map<String, Object>> matches = new ArrayList<>();
+        matches.add(rawMatch);
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any()))
+                .thenReturn(identityResultWithMatches("OK", false, matches));
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("titleContains", "Original")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope("找到论文。", "find_papers_by_identity")));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("看 Original"));
+        rawMatch.put("title", "Mutated");
+        rawMatch.put("paperId", "paper-raw");
+
+        Map<String, Object> item = result.productStateItems().get(0);
+        assertEquals("Original", item.get("title"));
+        assertFalse(item.containsKey("paperId"));
     }
 
     @Test
@@ -1400,6 +1522,42 @@ class ProductReadingReActHarnessTest {
                 ),
                 ProductToolEffect.PAPER_RESOLUTION
         );
+    }
+
+    private ProductToolResult identityResultWithMatches(String status,
+                                                        boolean ambiguous,
+                                                        List<Map<String, Object>> matches) {
+        return new ProductToolResult(
+                "find_papers_by_identity",
+                true,
+                Map.of(
+                        "status", status,
+                        "ambiguous", ambiguous,
+                        "total", matches == null ? 0 : matches.size(),
+                        "returned", matches == null ? 0 : matches.size(),
+                        "matches", matches == null ? List.of() : matches
+                ),
+                ProductToolEffect.PAPER_RESOLUTION
+        );
+    }
+
+    private Map<String, Object> identityMatch(String paperHandle, String title) {
+        Map<String, Object> match = new LinkedHashMap<>();
+        match.put("ordinal", 1);
+        match.put("paperHandle", paperHandle);
+        match.put("title", title);
+        match.put("originalFilename", title.toLowerCase().replace(' ', '-') + ".pdf");
+        match.put("authors", List.of("Ada Lovelace"));
+        match.put("year", 2025);
+        match.put("venue", "NeurIPS");
+        match.put("matchReasons", List.of("TITLE_CONTAINS"));
+        match.put("paperId", "paper-raw");
+        match.put("preview", "not evidence");
+        match.put("score", 0.9);
+        match.put("rank", 1);
+        match.put("locationRef", "page_ref_hidden");
+        match.put("sourceQuoteRef", "source_quote_hidden");
+        return match;
     }
 
     private ProductToolResult locationResult() {

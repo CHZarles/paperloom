@@ -30,6 +30,9 @@ public class ProductReadingReActHarness {
     );
     private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
     private static final int MAX_CLICKED_PAPER_HANDLES = 20;
+    private static final int MAX_PRODUCT_STATE_ITEMS = 10;
+    private static final String READING_PAPER_CHOICE_KIND = "READING_PAPER_CHOICE";
+    private static final String IDENTITY_TOOL_NAME = "find_papers_by_identity";
     private static final List<String> FORBIDDEN_OUTPUT_TOKENS = List.of(
             internalToken("paper", "Id"),
             internalToken("model", "Version"),
@@ -249,7 +252,8 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("find_papers_by_identity".equals(toolName)) {
+        if (IDENTITY_TOOL_NAME.equals(toolName)) {
+            appendIdentityPaperChoices(toolResult, state);
             if (!Boolean.FALSE.equals(toolResult.data().get("ambiguous"))) {
                 return;
             }
@@ -405,6 +409,7 @@ public class ProductReadingReActHarness {
                     envelope,
                     render.references(),
                     progressEvents,
+                    state.productStateItems,
                     ProductStopReason.COMPLETED,
                     ProductResultStatus.COMPLETED
             );
@@ -420,9 +425,64 @@ public class ProductReadingReActHarness {
                 envelope,
                 List.of(),
                 progressEvents,
+                state.productStateItems,
                 ProductStopReason.COMPLETED,
                 ProductResultStatus.COMPLETED
         );
+    }
+
+    private void appendIdentityPaperChoices(ProductToolResult toolResult, ReadingTurnState state) {
+        if (toolResult == null || state == null || state.productStateItems.size() >= MAX_PRODUCT_STATE_ITEMS) {
+            return;
+        }
+        String identityStatus = stringValue(toolResult.data().get("status"));
+        boolean ambiguous = Boolean.TRUE.equals(toolResult.data().get("ambiguous"));
+        for (Map<String, Object> match : mapList(toolResult.data().get("matches"))) {
+            if (state.productStateItems.size() >= MAX_PRODUCT_STATE_ITEMS) {
+                return;
+            }
+            String paperHandle = stringValue(match.get("paperHandle"));
+            if (!PAPER_HANDLE_PATTERN.matcher(paperHandle).matches()
+                    || !state.productStatePaperHandles.add(paperHandle)) {
+                continue;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("kind", READING_PAPER_CHOICE_KIND);
+            item.put("sourceTool", IDENTITY_TOOL_NAME);
+            item.put("paperHandle", paperHandle);
+            copyStringIfPresent(item, match, "title");
+            copyStringIfPresent(item, match, "originalFilename");
+            copyStringListIfPresent(item, match, "authors");
+            copyNumberIfPresent(item, match, "year");
+            copyStringIfPresent(item, match, "venue");
+            copyStringListIfPresent(item, match, "matchReasons");
+            if (!identityStatus.isBlank()) {
+                item.put("identityStatus", identityStatus);
+            }
+            item.put("ambiguous", ambiguous);
+            state.productStateItems.add(item);
+        }
+    }
+
+    private void copyStringIfPresent(Map<String, Object> target, Map<String, Object> source, String key) {
+        String value = stringValue(source.get(key));
+        if (!value.isBlank()) {
+            target.put(key, value);
+        }
+    }
+
+    private void copyStringListIfPresent(Map<String, Object> target, Map<String, Object> source, String key) {
+        List<String> values = stringList(source.get(key));
+        if (!values.isEmpty()) {
+            target.put(key, values);
+        }
+    }
+
+    private void copyNumberIfPresent(Map<String, Object> target, Map<String, Object> source, String key) {
+        Object value = source.get(key);
+        if (value instanceof Number number) {
+            target.put(key, number);
+        }
     }
 
     private CitationValidation validateSourceQuoteAnswer(AnswerEnvelope envelope, ReadingTurnState state) {
@@ -840,6 +900,8 @@ public class ProductReadingReActHarness {
         private final Set<String> disclosedLocationRefs = new LinkedHashSet<>();
         private final Set<String> allowedSourceQuoteRefs = new LinkedHashSet<>();
         private final Map<String, Map<String, Object>> sourceQuotePayloads = new LinkedHashMap<>();
+        private final List<Map<String, Object>> productStateItems = new ArrayList<>();
+        private final Set<String> productStatePaperHandles = new LinkedHashSet<>();
 
         private ReadingTurnState(Set<String> clickedSourceQuoteRefs, Set<String> clickedPaperHandles) {
             this.clickedSourceQuoteRefs = clickedSourceQuoteRefs == null

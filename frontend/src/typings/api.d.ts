@@ -586,6 +586,22 @@ declare namespace Api {
       timestamp?: number;
     }
 
+    interface ReadingPaperChoiceItem {
+      kind: 'READING_PAPER_CHOICE';
+      sourceTool: 'find_papers_by_identity';
+      paperHandle: string;
+      title?: string | null;
+      originalFilename?: string | null;
+      authors?: string[] | null;
+      year?: number | null;
+      venue?: string | null;
+      matchReasons?: string[] | null;
+      identityStatus?: string | null;
+      ambiguous?: boolean | null;
+    }
+
+    type ProductStateItem = ReadingPaperChoiceItem;
+
     interface Conversation {
       conversationId: string;
     }
@@ -612,6 +628,7 @@ declare namespace Api {
       route?: Route;
       referenceMappings?: Record<string, ReferenceEvidence>;
       diagnostics?: Diagnostics;
+      productStateItems?: ProductStateItem[];
       toolEvents?: AgentToolEvent[];
       feedbackRating?: 'good' | 'bad';
       effectiveScope?: ConversationScope | Record<string, any>;

@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
+import ProductReadingPaperChoiceList from './product-reading-paper-choice-list.vue';
 defineOptions({ name: 'ChatMessage' });
 
 const props = defineProps<{
@@ -645,6 +646,10 @@ async function handleSourceFileClick(fileInfo: {
           <VueMarkdownIt :content="content" />
         </div>
         <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
+        <ProductReadingPaperChoiceList
+          v-if="msg.role === 'assistant' && msg.productStateItems?.length"
+          :items="msg.productStateItems"
+        />
         <NDivider v-if="showMessageActions" class="message-divider" />
         <div v-if="showMessageActions" class="message-actions">
           <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">

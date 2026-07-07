@@ -20,6 +20,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -790,11 +791,144 @@ class ChatHandlerProductHarnessTest {
         assertSourceQuoteMapping(completedCaptor.getValue().get("1"));
     }
 
+    @Test
+    void readingCompletionSendsSanitizedProductStateItems() {
+        ChatFixture fixture = chatFixture(true);
+        List<Map<String, Object>> productStateItems = new java.util.ArrayList<>();
+        productStateItems.add(paperChoiceItem("paper_handle_000", "First"));
+        productStateItems.add(paperChoiceItem("paper_handle_000", "Duplicate"));
+        productStateItems.add(Map.of(
+                "kind", "READING_PAPER_CHOICE",
+                "sourceTool", "find_papers_by_identity",
+                "paperHandle", "not_a_handle",
+                "title", "Invalid"
+        ));
+        productStateItems.add(Map.of(
+                "kind", "OTHER",
+                "sourceTool", "find_papers_by_identity",
+                "paperHandle", "paper_handle_wrong_kind",
+                "title", "Wrong kind"
+        ));
+        for (int index = 1; index <= 12; index++) {
+            productStateItems.add(paperChoiceItem("paper_handle_" + index, "Paper " + index));
+        }
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(completedTurn("请选择论文", List.of(), productStateItems));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看 Ada 的论文", null), fixture.session);
+
+        Map<String, Object> completion = completionPayload(fixture, "finished");
+        assertTrue(completion.containsKey("productStateItems"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> payloadItems = (List<Map<String, Object>>) completion.get("productStateItems");
+        assertEquals(10, payloadItems.size());
+        assertEquals("paper_handle_000", payloadItems.get(0).get("paperHandle"));
+        assertEquals("First", payloadItems.get(0).get("title"));
+        assertEquals("paper_handle_9", payloadItems.get(9).get("paperHandle"));
+        assertFalse(payloadItems.toString().contains("Duplicate"));
+        assertFalse(payloadItems.toString().contains("not_a_handle"));
+        assertFalse(payloadItems.toString().contains("wrong_kind"));
+        for (Map<String, Object> item : payloadItems) {
+            assertEquals("READING_PAPER_CHOICE", item.get("kind"));
+            assertEquals("find_papers_by_identity", item.get("sourceTool"));
+            assertFalse(item.containsKey("paperId"));
+            assertFalse(item.containsKey("ordinal"));
+            assertFalse(item.containsKey("preview"));
+            assertFalse(item.containsKey("score"));
+            assertFalse(item.containsKey("rank"));
+            assertFalse(item.containsKey("locationRef"));
+            assertFalse(item.containsKey("sourceQuoteRef"));
+        }
+        verify(fixture.conversationService).recordConversation(eq(1L), eq("看 Ada 的论文"), eq("请选择论文"), eq("conversation-1"), any(), any());
+    }
+
+    @Test
+    void readingCompletionOmitsInvalidOnlyProductStateItems() {
+        ChatFixture fixture = chatFixture(true);
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(completedTurn("没有可选论文", List.of(), List.of(Map.of(
+                        "kind", "READING_PAPER_CHOICE",
+                        "sourceTool", "find_papers_by_identity",
+                        "paperHandle", "raw-paper-id",
+                        "title", "Invalid"
+                ))));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null), fixture.session);
+
+        assertFalse(completionPayload(fixture, "finished").containsKey("productStateItems"));
+    }
+
+    @Test
+    void legacyProductCompletionOmitsProductStateItemsEvenWhenResultContainsThem() {
+        ChatFixture fixture = chatFixture(false);
+        when(fixture.productConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(completedTurn("product ok", List.of(), List.of(paperChoiceItem("paper_handle_abc", "Legacy"))));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("列出论文", null), fixture.session);
+
+        assertFalse(completionPayload(fixture, "finished").containsKey("productStateItems"));
+        verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void failedReadingCompletionOmitsProductStateItems() {
+        ChatFixture fixture = chatFixture(true);
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(new ProductTurnResult(
+                        "failed",
+                        new AnswerEnvelope(AnswerType.CLARIFICATION_NEEDED, "failed", List.of(), List.of(), List.of(), List.of(), List.of(), ""),
+                        List.of(),
+                        List.of(),
+                        List.of(paperChoiceItem("paper_handle_abc", "Should not send")),
+                        ProductStopReason.TOOL_FAILED,
+                        ProductResultStatus.FAILED
+                ));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null), fixture.session);
+
+        assertFalse(completionPayload(fixture, "failed").containsKey("productStateItems"));
+    }
+
     private static void assertSourceQuoteMapping(Map<String, Object> item) {
         assertEquals("source_quote_answer", item.get("sourceQuoteRef"));
         assertEquals("quoted source content", item.get("matchedChunkText"));
         assertEquals("quoted source content", item.get("evidenceSnippet"));
         assertEquals("quoted source content", item.get("anchorText"));
+    }
+
+    private static Map<String, Object> completionPayload(ChatFixture fixture, String status) {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(fixture.sessionRegistry, org.mockito.Mockito.atLeastOnce())
+                .sendJsonToClient(eq("1"), eq("client-1"), payloadCaptor.capture());
+        return payloadCaptor.getAllValues().stream()
+                .filter(payload -> "completion".equals(payload.get("type")))
+                .filter(payload -> status.equals(payload.get("status")))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static Map<String, Object> paperChoiceItem(String paperHandle, String title) {
+        Map<String, Object> item = new java.util.LinkedHashMap<>();
+        item.put("kind", "READING_PAPER_CHOICE");
+        item.put("sourceTool", "find_papers_by_identity");
+        item.put("paperHandle", paperHandle);
+        item.put("title", title);
+        item.put("originalFilename", title.toLowerCase().replace(' ', '-') + ".pdf");
+        item.put("authors", List.of("Ada Lovelace"));
+        item.put("year", 2025);
+        item.put("venue", "NeurIPS");
+        item.put("matchReasons", List.of("TITLE_CONTAINS"));
+        item.put("identityStatus", "AMBIGUOUS");
+        item.put("ambiguous", true);
+        item.put("paperId", "paper-raw");
+        item.put("ordinal", 1);
+        item.put("preview", "not evidence");
+        item.put("score", 0.9);
+        item.put("rank", 1);
+        item.put("locationRef", "page_ref_hidden");
+        item.put("sourceQuoteRef", "source_quote_hidden");
+        return item;
     }
 
     private static Map<String, Object> capturedReadingEffectiveScope(ChatFixture fixture) {
@@ -870,6 +1004,12 @@ class ChatHandlerProductHarnessTest {
     }
 
     private static ProductTurnResult completedTurn(String markdown, List<Map<String, Object>> references) {
+        return completedTurn(markdown, references, List.of());
+    }
+
+    private static ProductTurnResult completedTurn(String markdown,
+                                                   List<Map<String, Object>> references,
+                                                   List<Map<String, Object>> productStateItems) {
         return new ProductTurnResult(
                 markdown,
                 new AnswerEnvelope(
@@ -884,6 +1024,7 @@ class ChatHandlerProductHarnessTest {
                 ),
                 references,
                 List.of(),
+                productStateItems,
                 ProductStopReason.COMPLETED,
                 ProductResultStatus.COMPLETED
         );
@@ -965,6 +1106,7 @@ class ChatHandlerProductHarnessTest {
         return new ChatFixture(
                 handler,
                 session,
+                sessionRegistry,
                 conversationService,
                 conversationScopeService,
                 generationStateService,
@@ -977,6 +1119,7 @@ class ChatHandlerProductHarnessTest {
     private record ChatFixture(
             ChatHandler handler,
             WebSocketSession session,
+            ChatSessionRegistry sessionRegistry,
             ConversationService conversationService,
             ConversationScopeService conversationScopeService,
             ChatGenerationStateService generationStateService,
