@@ -25,6 +25,7 @@ public final class ProductPdfLaunchDataSeedCli {
         try {
             Path runDir = runCommand(args);
             System.out.println("runDir=" + runDir);
+            exitCode = RagEvalGateStatus.printFailureAndExitCode(runDir);
         } catch (Exception exception) {
             exception.printStackTrace(System.err);
             exitCode = 1;

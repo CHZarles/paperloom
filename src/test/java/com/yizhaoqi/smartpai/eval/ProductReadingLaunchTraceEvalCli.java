@@ -15,6 +15,7 @@ public final class ProductReadingLaunchTraceEvalCli {
         try {
             Path runDir = run(Options.parse(args));
             System.out.println("runDir=" + runDir);
+            exitCode = RagEvalGateStatus.printFailureAndExitCode(runDir);
         } catch (Exception exception) {
             exception.printStackTrace(System.err);
             exitCode = 1;

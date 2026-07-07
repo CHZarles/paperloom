@@ -24,7 +24,9 @@ public final class ProductPdfParserSmokeCli {
     public static void main(String[] args) {
         int exitCode = 0;
         try {
-            runCommand(args);
+            Path runDir = runCommand(args);
+            System.out.println("runDir=" + runDir);
+            exitCode = RagEvalGateStatus.printFailureAndExitCode(runDir);
         } catch (Exception exception) {
             exception.printStackTrace(System.err);
             exitCode = 1;
@@ -32,12 +34,12 @@ public final class ProductPdfParserSmokeCli {
         System.exit(exitCode);
     }
 
-    static void runCommand(String[] args) throws Exception {
+    static Path runCommand(String[] args) throws Exception {
         Options options = Options.parse(args);
         try (ConfigurableApplicationContext context = new SpringApplicationBuilder(SmartPaiApplication.class)
                 .web(WebApplicationType.NONE)
                 .run(springStartupArgs())) {
-            Path runDir = run(
+            return run(
                     context.getBean(PaperRepository.class),
                     context.getBean(PaperTextChunkRepository.class),
                     context.getBean(PaperParserArtifactRepository.class),
@@ -46,7 +48,6 @@ public final class ProductPdfParserSmokeCli {
                     context.getBean(PaperReadingElementRepository.class),
                     options
             );
-            System.out.println("runDir=" + runDir);
         }
     }
 
