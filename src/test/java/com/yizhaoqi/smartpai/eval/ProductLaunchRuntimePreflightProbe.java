@@ -86,6 +86,7 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .timeout(timeout)
+                    .version(HttpClient.Version.HTTP_1_1)
                     .GET()
                     .build();
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());

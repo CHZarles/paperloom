@@ -209,6 +209,12 @@ the local secret values. Start/check the local MinerU sidecar with:
 scripts/paperloom-start-mineru.sh start
 ```
 
+Start/check the local frontend used by `frontend_http` with:
+
+```bash
+scripts/paperloom-start-frontend.sh start
+```
+
 Then run the full readiness wrapper with non-secret local overrides for Product Reading enablement,
 MinerU base URL, and Docker-published MySQL host port:
 
