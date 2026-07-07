@@ -218,7 +218,8 @@ mvn -q -DskipTests test-compile exec:java \
 `ProductLaunchReadinessCli` is the top-level launch wrapper. It runs the five launch gates in order,
 stops on the first failed gate, writes one readiness scorecard with skipped downstream gates marked
 as `SKIPPED_DUE_TO_PREVIOUS_GATE`, writes a top-level `remediation.md` that points to the blocking
-child gate artifact, and exits non-zero unless all five gates pass.
+child gate artifact, rolls up the blocking child run's failed case IDs and failure classes when
+`run.json` is available, and exits non-zero unless all five gates pass.
 
 ```bash
 mvn -q -DskipTests test-compile exec:java \

@@ -1,5 +1,8 @@
 package com.yizhaoqi.smartpai.eval;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,6 +14,7 @@ import java.util.Map;
 
 public class ProductLaunchReadinessRunner {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String ROUTE = "PRODUCT_LAUNCH_READINESS";
     private static final List<String> DEFAULT_GATE_IDS = List.of(
             "product-launch-runtime-preflight",
@@ -134,7 +138,55 @@ public class ProductLaunchReadinessRunner {
         diagnostics.put("childPassed", child.passed());
         diagnostics.put("childFailed", child.failed());
         diagnostics.put("childPassRate", child.passRate());
+        ChildFailedCaseRollup childFailedCases = childFailedCaseRollup(child.runDir());
+        diagnostics.put("childFailedCaseDetailsAvailable", childFailedCases.available());
+        diagnostics.put("childFailedCases", childFailedCases.failedCases().stream()
+                .map(ChildFailedCase::toDiagnostic)
+                .toList());
+        if (!childFailedCases.available()) {
+            diagnostics.put("childFailedCaseDetailsUnavailableReason", "CHILD_RUN_JSON_UNAVAILABLE");
+        }
         return diagnostics;
+    }
+
+    private static ChildFailedCaseRollup childFailedCaseRollup(Path childRunDir) {
+        try {
+            JsonNode cases = OBJECT_MAPPER.readTree(childRunDir.resolve("run.json").toFile()).path("cases");
+            if (!cases.isArray()) {
+                return ChildFailedCaseRollup.unavailable();
+            }
+            List<ChildFailedCase> failedCases = new ArrayList<>();
+            for (JsonNode childCase : cases) {
+                if (childCase.path("passed").asBoolean(false)) {
+                    continue;
+                }
+                failedCases.add(new ChildFailedCase(
+                        childCase.path("caseId").asText("unknown_child_case"),
+                        failureClass(childCase.path("failureClass"))
+                ));
+            }
+            return new ChildFailedCaseRollup(true, failedCases);
+        } catch (Exception exception) {
+            return ChildFailedCaseRollup.unavailable();
+        }
+    }
+
+    private static List<String> failureClass(JsonNode failureClassNode) {
+        if (failureClassNode == null || failureClassNode.isMissingNode() || failureClassNode.isNull()) {
+            return List.of();
+        }
+        if (failureClassNode.isArray()) {
+            List<String> classes = new ArrayList<>();
+            for (JsonNode item : failureClassNode) {
+                String value = sanitize(item.asText(""));
+                if (!value.isBlank()) {
+                    classes.add(value);
+                }
+            }
+            return classes;
+        }
+        String value = sanitize(failureClassNode.asText(""));
+        return value.isBlank() ? List.of() : List.of(value);
     }
 
     private static RagBenchmarkCase benchmarkCase(GateResult result) {
@@ -217,6 +269,7 @@ public class ProductLaunchReadinessRunner {
                         builder.append("Child remediation: `").append(childRemediation).append("`\n\n");
                     }
                 }
+                appendChildFailedCases(builder, blocker);
                 List<GateResult> skipped = safeResults.stream()
                         .filter(result -> result.failureClass().contains("SKIPPED_DUE_TO_PREVIOUS_GATE"))
                         .toList();
@@ -236,6 +289,36 @@ public class ProductLaunchReadinessRunner {
             builder.append(i + 1).append(". `").append(DEFAULT_GATE_IDS.get(i)).append("`\n");
         }
         return builder.toString();
+    }
+
+    private static void appendChildFailedCases(StringBuilder builder, GateResult blocker) {
+        Map<String, Object> diagnostics = blocker == null ? Map.of() : blocker.diagnostics();
+        if (Boolean.FALSE.equals(diagnostics.get("childFailedCaseDetailsAvailable"))) {
+            builder.append("Failed child case details unavailable.\n\n");
+            return;
+        }
+        Object failedCasesValue = diagnostics.get("childFailedCases");
+        if (!(failedCasesValue instanceof List<?> failedCases) || failedCases.isEmpty()) {
+            return;
+        }
+        builder.append("Failed child cases:\n\n");
+        for (Object failedCaseValue : failedCases) {
+            if (!(failedCaseValue instanceof Map<?, ?> failedCase)) {
+                continue;
+            }
+            Object caseIdValue = failedCase.get("caseId");
+            String caseId = caseIdValue == null ? "unknown_child_case" : String.valueOf(caseIdValue);
+            Object failureClassValue = failedCase.get("failureClass");
+            String failureClass = failureClassValue instanceof List<?> classes
+                    ? String.join(", ", classes.stream().map(String::valueOf).toList())
+                    : String.valueOf(failureClassValue);
+            builder.append("- `").append(caseId).append("`");
+            if (!failureClass.isBlank() && !"null".equals(failureClass)) {
+                builder.append(": ").append(failureClass);
+            }
+            builder.append("\n");
+        }
+        builder.append("\n");
     }
 
     private static String childRunDir(GateResult result) {
@@ -335,6 +418,30 @@ public class ProductLaunchReadinessRunner {
             failures = failures == null ? List.of() : List.copyOf(failures);
             failureClass = failureClass == null ? List.of() : List.copyOf(failureClass);
             diagnostics = diagnostics == null ? Map.of() : new LinkedHashMap<>(diagnostics);
+        }
+    }
+
+    private record ChildFailedCaseRollup(boolean available, List<ChildFailedCase> failedCases) {
+        private ChildFailedCaseRollup {
+            failedCases = failedCases == null ? List.of() : List.copyOf(failedCases);
+        }
+
+        static ChildFailedCaseRollup unavailable() {
+            return new ChildFailedCaseRollup(false, List.of());
+        }
+    }
+
+    private record ChildFailedCase(String caseId, List<String> failureClass) {
+        private ChildFailedCase {
+            caseId = blankToDefault(caseId, "unknown_child_case");
+            failureClass = failureClass == null ? List.of() : List.copyOf(failureClass);
+        }
+
+        Map<String, Object> toDiagnostic() {
+            Map<String, Object> diagnostic = new LinkedHashMap<>();
+            diagnostic.put("caseId", caseId);
+            diagnostic.put("failureClass", failureClass);
+            return diagnostic;
         }
     }
 

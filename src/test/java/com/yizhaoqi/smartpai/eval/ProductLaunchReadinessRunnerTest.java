@@ -57,6 +57,69 @@ class ProductLaunchReadinessRunnerTest {
     }
 
     @Test
+    void rollsUpFailedChildCasesForBlockingGate() throws Exception {
+        ProductLaunchReadinessRunner runner = new ProductLaunchReadinessRunner(List.of(
+                gateWithCases("product-launch-runtime-preflight", List.of(
+                        childCase("backend_login", false, List.of("BACKEND_UNAVAILABLE")),
+                        childCase("mysql_tcp", false, List.of("MYSQL_UNAVAILABLE")),
+                        childCase("redis_tcp", true, List.of())
+                )),
+                gate("product-pdf-launch-data-seed", true)
+        ));
+
+        Path runDir = runner.run(options("readiness-child-rollup"));
+
+        JsonNode failedGate = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile())
+                .path("cases")
+                .get(0);
+        JsonNode diagnostics = failedGate.path("diagnostics");
+        assertTrue(diagnostics.path("childFailedCaseDetailsAvailable").asBoolean());
+        JsonNode failedCases = diagnostics.path("childFailedCases");
+        assertEquals(2, failedCases.size());
+        assertEquals("backend_login", failedCases.get(0).path("caseId").asText());
+        assertTrue(failedCases.get(0).path("failureClass").toString().contains("BACKEND_UNAVAILABLE"));
+        assertEquals("mysql_tcp", failedCases.get(1).path("caseId").asText());
+        assertTrue(failedCases.get(1).path("failureClass").toString().contains("MYSQL_UNAVAILABLE"));
+        assertFalse(failedCases.toString().contains("redis_tcp"));
+
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("Failed child cases:"));
+        assertTrue(remediation.contains("`backend_login`: BACKEND_UNAVAILABLE"));
+        assertTrue(remediation.contains("`mysql_tcp`: MYSQL_UNAVAILABLE"));
+        assertFalse(remediation.contains("diagnostic-secret"));
+    }
+
+    @Test
+    void keepsWrapperRobustWhenFailedChildRunJsonIsMissing() throws Exception {
+        ProductLaunchReadinessRunner runner = new ProductLaunchReadinessRunner(List.of(
+                new ProductLaunchReadinessRunner.LaunchGate(
+                        "product-launch-runtime-preflight",
+                        context -> {
+                            Path childRunDir = writeChildRun(context, false);
+                            Files.delete(childRunDir.resolve("run.json"));
+                            return childRunDir;
+                        }
+                ),
+                gate("product-pdf-launch-data-seed", true)
+        ));
+
+        Path runDir = runner.run(options("readiness-child-rollup-unavailable"));
+
+        JsonNode failedGate = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile())
+                .path("cases")
+                .get(0);
+        JsonNode diagnostics = failedGate.path("diagnostics");
+        assertFalse(diagnostics.path("childFailedCaseDetailsAvailable").asBoolean());
+        assertEquals("CHILD_RUN_JSON_UNAVAILABLE",
+                diagnostics.path("childFailedCaseDetailsUnavailableReason").asText());
+        assertTrue(diagnostics.path("childFailedCases").isArray());
+        assertEquals(0, diagnostics.path("childFailedCases").size());
+
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("Failed child case details unavailable."));
+    }
+
+    @Test
     void passesOnlyWhenEveryGatePasses() throws Exception {
         ProductLaunchReadinessRunner runner = new ProductLaunchReadinessRunner(List.of(
                 gate("product-launch-runtime-preflight", true),
@@ -101,13 +164,62 @@ class ProductLaunchReadinessRunnerTest {
         );
     }
 
+    private ProductLaunchReadinessRunner.LaunchGate gateWithCases(String gateId, List<ChildCase> childCases) {
+        return new ProductLaunchReadinessRunner.LaunchGate(
+                gateId,
+                context -> writeChildRun(context, childCases)
+        );
+    }
+
+    private ChildCase childCase(String caseId, boolean passes, List<String> failureClass) {
+        return new ChildCase(caseId, passes, failureClass);
+    }
+
     private Path writeChildRun(ProductLaunchReadinessRunner.GateContext context, boolean passes) throws Exception {
-        RagBenchmarkVerdict verdict = new RagBenchmarkVerdict(
+        return writeChildRun(context, List.of(childCase(
                 context.gateId(),
                 passes,
-                passes ? List.of() : List.of("child_gate_failed"),
                 passes ? List.of() : List.of("RUNTIME_UNAVAILABLE")
-        );
+        )));
+    }
+
+    private Path writeChildRun(ProductLaunchReadinessRunner.GateContext context,
+                               List<ChildCase> childCases) throws Exception {
+        List<ChildCase> safeCases = childCases == null ? List.of() : childCases;
+        List<RagBenchmarkCase> cases = safeCases.stream()
+                .map(childCase -> new RagBenchmarkCase(
+                        childCase.caseId(),
+                        "Child gate case " + childCase.caseId(),
+                        "zh",
+                        "LAUNCH_GATE",
+                        "PRODUCT_LAUNCH",
+                        new RagBenchmarkCase.Scope(List.of(), List.of()),
+                        "CHILD_GATE",
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        false
+                ))
+                .toList();
+        List<RagBenchmarkActual> actuals = safeCases.stream()
+                .map(childCase -> new RagBenchmarkActual(
+                        "CHILD_GATE",
+                        childCase.passes() ? "passed" : "failed with diagnostic-secret",
+                        Map.of(),
+                        childCase.passes() ? Map.of() : Map.of("rawDiagnostic", "diagnostic-secret")
+                ))
+                .toList();
+        List<RagBenchmarkVerdict> verdicts = safeCases.stream()
+                .map(childCase -> new RagBenchmarkVerdict(
+                        childCase.caseId(),
+                        childCase.passes(),
+                        childCase.passes() ? List.of() : List.of("child_gate_failed"),
+                        childCase.passes() ? List.of() : childCase.failureClass()
+                ))
+                .toList();
+        boolean passes = verdicts.stream().allMatch(RagBenchmarkVerdict::passed);
         Path runDir = RagEvalRunWriter.write(
                 context.runsRoot(),
                 context.childRunId(),
@@ -115,25 +227,7 @@ class ProductLaunchReadinessRunnerTest {
                 context.gateId(),
                 context.gateId(),
                 "child-gate",
-                new RagBenchmarkRun(
-                        List.of(new RagBenchmarkCase(
-                                context.gateId(),
-                                "Child gate " + context.gateId(),
-                                "zh",
-                                "LAUNCH_GATE",
-                                "PRODUCT_LAUNCH",
-                                new RagBenchmarkCase.Scope(List.of(), List.of()),
-                                "CHILD_GATE",
-                                List.of(),
-                                List.of(),
-                                List.of(),
-                                List.of(),
-                                List.of(),
-                                false
-                        )),
-                        List.of(new RagBenchmarkActual("CHILD_GATE", passes ? "passed" : "failed", Map.of(), Map.of())),
-                        List.of(verdict)
-                ),
+                new RagBenchmarkRun(cases, actuals, verdicts),
                 Map.of()
         );
         if (!passes) {
@@ -141,5 +235,11 @@ class ProductLaunchReadinessRunnerTest {
                     "# Child Remediation\n\nFix child gate `" + context.gateId() + "`.\n");
         }
         return runDir;
+    }
+
+    private record ChildCase(String caseId, boolean passes, List<String> failureClass) {
+        private ChildCase {
+            failureClass = failureClass == null ? List.of() : List.copyOf(failureClass);
+        }
     }
 }
