@@ -163,6 +163,53 @@ class ProductReadingReActHarnessTest {
     }
 
     @Test
+    void firstNoToolProductStateAnswerIsCorrectedThenCallsSessionTool() throws Exception {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "PRODUCT_STATE",
+                          "answer": "需要先调用 get_session_state 获取当前范围内的可读论文数量。",
+                          "evidenceBasedClaims": [],
+                          "stateClaims": [
+                            {
+                              "claim": "需要调用 get_session_state 获取 READY 论文数量",
+                              "sourceTool": "get_session_state"
+                            }
+                          ],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": ["readablePaperCount"],
+                          "reason": "需要先调用 get_session_state"
+                        }
+                        """))
+                .thenReturn(toolCallTurn("call_1", "get_session_state", Map.of()))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "当前范围有 2 篇可读论文。",
+                        "get_session_state"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("现在库里有多少论文"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("2 篇"));
+        verify(registry).execute(eq("get_session_state"), any(), any());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Map<String, Object>>> messagesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(llm, times(3)).completeReActTurn(eq("7"), messagesCaptor.capture(), eq(tools), anyInt());
+        String retryPrompt = objectMapper.writeValueAsString(messagesCaptor.getAllValues().get(1));
+        assertTrue(retryPrompt.contains("previous response did not call a PaperLoom reading tool"));
+        assertTrue(retryPrompt.contains("get_session_state"));
+    }
+
+    @Test
     void sessionStateQuestionAcceptsAnswerModeProductStateAlias() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);

@@ -116,13 +116,21 @@ public class ProductReadingReActHarness {
                     ? List.of()
                     : turn.toolCalls();
             if (decisions.isEmpty()) {
-                ProductTurnResult result = toolSucceeded
-                        ? finalResult(turn == null ? "" : turn.content(), progressEvents, state)
-                        : failed(
-                        "Product reading tool call is required before the final answer.",
-                        progressEvents,
-                        ProductStopReason.ANSWER_SCHEMA_INVALID
-                );
+                if (!toolSucceeded) {
+                    if (!tools.isEmpty() && round + 1 < safeRequest.modelContext().maxReActRounds()) {
+                        messages.add(assistantMessage(turn));
+                        messages.add(firstReadingToolCallRequiredMessage());
+                        continue;
+                    }
+                    ProductTurnResult result = failed(
+                            "Product reading tool call is required before the final answer.",
+                            progressEvents,
+                            ProductStopReason.ANSWER_SCHEMA_INVALID
+                    );
+                    recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
+                    return result;
+                }
+                ProductTurnResult result = finalResult(turn == null ? "" : turn.content(), progressEvents, state);
                 recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
                 return result;
             }
@@ -864,6 +872,17 @@ public class ProductReadingReActHarness {
         message.put("tool_call_id", toolCallId == null ? "" : toolCallId);
         message.put("content", content == null ? "" : content);
         return message;
+    }
+
+    private Map<String, Object> firstReadingToolCallRequiredMessage() {
+        return message("user", """
+                The previous response did not call a PaperLoom reading tool and is rejected.
+                Your next response must contain tool_calls only. Do not output plain text, markdown, or an AnswerEnvelope yet.
+                Select and call one available reading tool for the current user request only, not for older history or memory.
+                Use get_session_state for fixed search-scope label, readable paper count, or library/session state questions.
+                Use list_papers for deterministic browse/filter and search_paper_candidates for semantic topic discovery.
+                Use find_papers_by_identity only when the user names a specific paper by title, filename, DOI, arXiv id, author, or year.
+                """);
     }
 
     private Map<String, Object> toolResultPolicyMessage(ProductToolResult toolResult) {
