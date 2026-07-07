@@ -100,6 +100,44 @@ Recommended answer: no.
 
 Adopted. It returns scope and count only. Paper handles are disclosed by `list_papers`, `search_paper_candidates`, `trace_source_quotes`, or clicked paper rows.
 
+## Review Outcomes
+
+### 10. Should `get_session_state` reuse existing product library status services?
+
+Recommended answer: no.
+
+Adopted. Existing product library status code may count legacy searchable/vectorization state. Product Reading state must count the same READY set used by the reading tools: accessible Product Papers inside the locked `SourceScope` with a current `READING_MODEL_READY` Reading Model.
+
+### 11. What should `total` and `returned` mean for `list_papers`?
+
+Recommended answer: `total` is the deterministic filtered match count before the product cap, and `returned` is the number of paper cards actually returned.
+
+Adopted. This keeps capped output honest without exposing LLM-controlled pagination or limits.
+
+### 12. Should `includeFacets=true` return bare values or value/count buckets?
+
+Recommended answer: value/count buckets.
+
+Adopted. This matches the domain meaning of Paper Facets. Facets are computed from the filtered current READY scoped paper set before the return cap. Calling `list_papers` with no filters returns whole-scope facets.
+
+### 13. How should authors be represented?
+
+Recommended answer: paper cards should expose `authors` as a list of strings, parsed defensively from the stored scalar author field.
+
+Adopted. The Product Paper table stores authors as text today, but the LLM-facing browse card should keep the historical array-shaped contract.
+
+### 14. Should `catalogTopicIds` and `paperTypeIds` be accepted now even though real metadata is not present?
+
+Recommended answer: no.
+
+Adopted. Return empty `catalogTopics` and `paperTypes` arrays in paper cards and facets, but reject catalog/topic filter ids until those ids are backed by real product metadata and disclosure rules.
+
+### 15. Is this decision ADR-worthy?
+
+Recommended answer: no new ADR for this slice.
+
+Adopted. The product-wide architectural decisions are already covered by the Product Reading plans, glossary, and earlier ADRs. This slice choice is reversible sequencing, not a hard-to-reverse architecture boundary.
+
 ## Tool Contracts
 
 ### `get_session_state`
@@ -140,6 +178,7 @@ Rules:
 
 - Accepts no arguments.
 - Counts only accessible papers in the locked `SourceScope` that have a current READY Reading Model.
+- `searchScope.label` is generated from the locked scope: `All readable papers` for `AUTO_SOURCE`, `Selected readable papers` for `MANUAL_SOURCE`, and `Referenced readable papers` for `REFERENCE_SOURCE`.
 - Does not return paper handles.
 - Does not return processing, failed, or unready papers.
 - Does not return raw ids.
@@ -187,9 +226,9 @@ Output:
     }
   ],
   "facets": {
-    "years": [2025],
-    "authors": ["Ada Lovelace"],
-    "venues": ["NeurIPS"],
+    "years": [{"value": 2025, "count": 1}],
+    "authors": [{"value": "Ada Lovelace", "count": 1}],
+    "venues": [{"value": "NeurIPS", "count": 1}],
     "catalogTopics": [],
     "paperTypes": []
   },
@@ -220,11 +259,15 @@ Rules:
 
 - Returns only current READY Reading Model papers visible to the user and inside the locked `SourceScope`.
 - Filters are deterministic metadata filters only.
+- `total` is the filtered match count before the internal return cap; `returned` is the number of returned cards.
 - Rejects raw ids, ordinals, semantic query fields, page controls, output-size controls, and retrieval tuning controls.
 - Output size is product-controlled. MVP should use an internal cap such as 20 returned paper cards.
 - If `includeFacets=false`, return `facets` as `{}`.
-- If `includeFacets=true`, return deterministic facets from the current READY scoped paper set, not from unready or inaccessible papers.
+- If `includeFacets=true`, return deterministic value/count facet buckets from the filtered current READY scoped paper set before the return cap, not from unready or inaccessible papers.
 - `catalogTopics` and `paperTypes` remain empty until real product metadata exists.
+- `catalogTopicIds` and `paperTypeIds` are not accepted as filters in this MVP.
+- `authors` is a list. Split stored author text conservatively on comma or semicolon and drop blank values.
+- `RECENT` sorts by merged time descending, then created time descending, then title ascending; internal ids may be used only as a final deterministic tie-breaker and must not be exposed.
 - Paper cards are not Source Quotes.
 
 ## Task 1: Validator And Registry Contract
@@ -237,8 +280,9 @@ Rules:
 
 - [ ] Add `validateGetSessionState(Map<String, Object>)`.
 - [ ] Add `validateListPapers(Map<String, Object>)`.
-- [ ] Add parser helpers or records for list filters, `includeFacets`, and sort.
+- [ ] Add parser helpers or records for list filters, `includeFacets`, and sort. Prefer explicit records such as `ListPaperFilters` and `ListPaperSort` over untyped maps at the adapter boundary.
 - [ ] Reject unsupported top-level arguments outside `filters`, `includeFacets`, and `sort`.
+- [ ] Reject unsupported nested filter arguments outside `titleContains`, `titleExact`, `filenameContains`, `filenameExact`, `authorName`, `doiExact`, `arxivIdExact`, `yearRange`, and `venue`.
 - [ ] Reject forbidden arguments at any depth:
 
 ```text
@@ -272,15 +316,17 @@ Expected: PASS after implementation.
 - Modify: `src/main/java/com/yizhaoqi/smartpai/service/ReadingToolOutputMapper.java`
 - Modify: `src/test/java/com/yizhaoqi/smartpai/service/ProductReadingToolAdapterTest.java`
 
-- [ ] Inject only focused dependencies needed for current READY scoped papers, likely `PaperService` plus existing `ProductPaperHandleService` and `PaperReadingModelRepository`.
+- [ ] Inject only focused dependencies needed for current READY scoped papers: `PaperService`, existing `ProductPaperHandleService`, and `PaperReadingModelRepository`.
 - [ ] Implement `getSessionState(ProductToolContext)`.
 - [ ] Implement `listPapers(filters, includeFacets, sort, ProductToolContext)`.
 - [ ] Build the READY scoped base set from `PaperService#getAccessiblePapers(userId, null)`, locked `SourceScope`, and current READY Reading Model checks.
+- [ ] Do not use `PaperLibraryStatusService`, `PaperSearchabilityService`, `Paper.vectorizationStatus`, or legacy `paper_text_chunks` as the readiness source for these Product Reading tools.
 - [ ] Filter deterministically by title, filename, author, DOI, arXiv id, year range, and venue.
 - [ ] Sort by RECENT, TITLE, or YEAR.
 - [ ] Cap returned paper cards by internal product policy.
 - [ ] Generate `paperHandle` values through `ProductPaperHandleService#handleForPaperId`.
-- [ ] Add mapper methods for session state, paper browse card, list facets, and constraints.
+- [ ] Add mapper methods for session state, paper browse card, value/count list facets, and constraints.
+- [ ] Compute facets from the filtered READY scoped paper set before the return cap.
 - [ ] Ensure LLM-visible JSON omits raw `paperId`, `modelVersion`, internal ids, abstracts, `score`, `rank`, and Source Quote text.
 
 Verification:
@@ -342,10 +388,10 @@ mvn -q -DskipTests compile
 - [ ] Run isolation search:
 
 ```bash
-rg -n "get_session_state|list_papers|ProductReadingReActHarness|ProductReadingToolRegistry" src/main/java/com/yizhaoqi/smartpai/service/ProductConversationService.java src/main/java/com/yizhaoqi/smartpai/service/ProductToolRegistry.java src/main/java/com/yizhaoqi/smartpai/service/ProductReActHarness.java
+rg -n "get_session_state|ProductReadingReActHarness|ProductReadingToolRegistry" src/main/java/com/yizhaoqi/smartpai/service/ProductConversationService.java src/main/java/com/yizhaoqi/smartpai/service/ProductToolRegistry.java src/main/java/com/yizhaoqi/smartpai/service/ProductReActHarness.java
 ```
 
-Expected: no Product Reading coupling introduced in the legacy path. Existing legacy-path `list_papers` mentions may appear because the old Product harness already has a legacy `list_papers`; do not edit those files in this slice.
+Expected: no output. Do not include `list_papers` in this search because the legacy Product path already has a legacy `list_papers`; instead rely on `git diff --name-only` to verify the legacy files were not edited.
 
 - [ ] Run LLM-visible output safety search:
 
@@ -370,8 +416,9 @@ Expected: PASS.
 - `get_session_state` counts only current READY Reading Model papers visible to the user and inside the locked `SourceScope`.
 - `list_papers` requires no semantic query text and rejects semantic fields, raw ids, ordinals, page controls, output controls, and retrieval tuning controls.
 - `list_papers` filters and sorts only deterministic metadata.
-- `list_papers` returns paper cards with `paperHandle`, title, filename, authors, year, venue, and empty catalog/paper-type arrays.
-- `list_papers(includeFacets=true)` returns deterministic facets from current READY scoped papers.
+- `list_papers` reports `total` as filtered matches before cap and `returned` as returned card count.
+- `list_papers` returns paper cards with `paperHandle`, title, filename, `authors` as a list, year, venue, and empty catalog/paper-type arrays.
+- `list_papers(includeFacets=true)` returns deterministic value/count facet buckets from filtered current READY scoped papers before cap.
 - `list_papers` does not expose abstracts, raw `paperId`, `modelVersion`, internal ids, scores, ranks, Source Quote text, or paper content.
 - `list_papers` returned handles authorize `get_paper_outline`, `list_paper_locations`, and `find_reading_locations` in the same turn.
 - `get_session_state` discloses no handles.
