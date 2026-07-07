@@ -244,6 +244,136 @@ class ProductReadingToolAdapterTest {
     }
 
     @Test
+    void findPapersByIdentityReturnsUnambiguousCanonicalMetadataMatchOnly() throws Exception {
+        Paper lora = paper("ready-lora", "LoRA: Low-Rank Adaptation of Large Language Models", "lora.pdf");
+        lora.setAuthors("Edward Hu; Yelong Shen");
+        lora.setPublicationYear(2021);
+        lora.setVenue("ICLR");
+        lora.setDoi("https://doi.org/10.48550/arXiv.2106.09685");
+        lora.setArxivId("arXiv:2106.09685v2");
+        lora.setAbstractText("Internal abstract must not be returned.");
+        Paper unready = paper("unready-lora", "LoRA Draft", "lora-draft.pdf");
+        Paper outOfScope = paper("out-of-scope-lora", "LoRA Outside", "outside.pdf");
+
+        when(paperService.getAccessiblePapers("7", null)).thenReturn(List.of(lora, unready, outOfScope));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-lora"))
+                .thenReturn(Optional.of(model("ready-lora", "model-v1")));
+        PaperReadingModel unreadyModel = model("unready-lora", "model-v1");
+        unreadyModel.setModelStatus(PaperReadingModelStatus.READING_MODEL_BUILDING);
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("unready-lora"))
+                .thenReturn(Optional.of(unreadyModel));
+        when(handleService.handleForPaperId("ready-lora")).thenReturn("paper_handle_lora");
+
+        ProductToolResult result = adapter.findPapersByIdentity(
+                new ReadingToolArgumentValidator.IdentityHints(
+                        "low-rank",
+                        "",
+                        "",
+                        "lora.pdf",
+                        "10.48550/arxiv.2106.09685",
+                        "2106.09685",
+                        "Hu",
+                        2021
+                ),
+                new ProductToolContext(
+                        7L,
+                        "conversation-1",
+                        "generation-1",
+                        SourceScope.manual(List.of("ready-lora", "unready-lora"))
+                )
+        );
+
+        assertTrue(result.success());
+        assertEquals("find_papers_by_identity", result.toolName());
+        assertEquals(ProductToolEffect.PAPER_RESOLUTION, result.effect());
+        assertEquals("OK", result.data().get("status"));
+        assertEquals(false, result.data().get("ambiguous"));
+        assertEquals(1, result.data().get("total"));
+        assertEquals(1, result.data().get("returned"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.data().get("matches");
+        assertEquals(1, matches.size());
+        assertEquals("paper_handle_lora", matches.get(0).get("paperHandle"));
+        assertEquals("LoRA: Low-Rank Adaptation of Large Language Models", matches.get(0).get("title"));
+        assertEquals("lora.pdf", matches.get(0).get("originalFilename"));
+        assertEquals(List.of("Edward Hu", "Yelong Shen"), matches.get(0).get("authors"));
+        assertEquals(2021, matches.get(0).get("year"));
+        assertEquals("ICLR", matches.get(0).get("venue"));
+        assertEquals(List.of(
+                "TITLE_CONTAINS",
+                "FILENAME_EXACT",
+                "DOI_EXACT",
+                "ARXIV_ID_EXACT",
+                "AUTHOR_NAME",
+                "YEAR"
+        ), matches.get(0).get("matchReasons"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> constraints = (Map<String, Object>) result.data().get("constraints");
+        assertEquals(false, constraints.get("paperCardIsSourceQuote"));
+        assertEquals(false, constraints.get("paperContentClaimsAllowed"));
+        assertEquals(false, constraints.get("ambiguousMatchesAuthorizeReading"));
+
+        String json = objectMapper.writeValueAsString(result.data());
+        assertFalse(json.contains("ready-lora"));
+        assertFalse(json.contains("model-v1"));
+        assertFalse(json.contains("paperId"));
+        assertFalse(json.contains("modelVersion"));
+        assertFalse(json.contains("Internal abstract"));
+        assertFalse(json.contains("abstract"));
+        assertFalse(json.contains("score"));
+        assertFalse(json.contains("rank"));
+    }
+
+    @Test
+    void findPapersByIdentityReturnsAmbiguousAfterDedupAndNoMatchForContradictoryHints() {
+        Paper first = paper("ready-lora-a", "LoRA: Low-Rank Adaptation", "lora-a.pdf");
+        first.setAuthors("Edward Hu");
+        first.setPublicationYear(2021);
+        Paper firstDuplicate = paper("ready-lora-a", "Duplicate Row", "duplicate.pdf");
+        Paper second = paper("ready-lora-b", "LoRA for Diffusion", "lora-b.pdf");
+        second.setAuthors("Edward Hu");
+        second.setPublicationYear(2021);
+
+        when(paperService.getAccessiblePapers("7", null)).thenReturn(List.of(first, firstDuplicate, second));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-lora-a"))
+                .thenReturn(Optional.of(model("ready-lora-a", "model-v1")));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-lora-b"))
+                .thenReturn(Optional.of(model("ready-lora-b", "model-v1")));
+        when(handleService.handleForPaperId("ready-lora-a")).thenReturn("paper_handle_lora_a");
+        when(handleService.handleForPaperId("ready-lora-b")).thenReturn("paper_handle_lora_b");
+
+        ProductToolContext context = new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto());
+        ProductToolResult ambiguous = adapter.findPapersByIdentity(
+                new ReadingToolArgumentValidator.IdentityHints("", "", "", "", "", "", "Hu", 2021),
+                context
+        );
+        ProductToolResult noMatch = adapter.findPapersByIdentity(
+                new ReadingToolArgumentValidator.IdentityHints("LoRA", "Wrong Exact Title", "", "", "", "", "", null),
+                context
+        );
+
+        assertTrue(ambiguous.success());
+        assertEquals("AMBIGUOUS", ambiguous.data().get("status"));
+        assertEquals(true, ambiguous.data().get("ambiguous"));
+        assertEquals(2, ambiguous.data().get("total"));
+        assertEquals(2, ambiguous.data().get("returned"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) ambiguous.data().get("matches");
+        assertEquals(List.of("paper_handle_lora_b", "paper_handle_lora_a"),
+                matches.stream().map(match -> match.get("paperHandle")).toList());
+        assertEquals(List.of("AUTHOR_NAME", "YEAR"), matches.get(0).get("matchReasons"));
+
+        assertTrue(noMatch.success());
+        assertEquals("NO_MATCH", noMatch.data().get("status"));
+        assertEquals(false, noMatch.data().get("ambiguous"));
+        assertEquals(0, noMatch.data().get("total"));
+        assertEquals(0, noMatch.data().get("returned"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> noMatches = (List<Map<String, Object>>) noMatch.data().get("matches");
+        assertTrue(noMatches.isEmpty());
+    }
+
+    @Test
     void findReadingLocationsResolvesHandlesBeforeCallingGrepAndStripsInternalFields() throws Exception {
         when(handleService.resolvePaperHandle("paper_handle_ready")).thenReturn(Optional.of("ready-paper"));
         when(handleService.isPaperVisibleToUser("ready-paper", 7L, SourceScope.auto())).thenReturn(true);

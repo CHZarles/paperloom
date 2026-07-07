@@ -183,6 +183,54 @@ public class ReadingToolArgumentValidator {
             "rank"
     );
 
+    private static final Set<String> IDENTITY_FORBIDDEN_ARGUMENTS = Set.of(
+            "paperId",
+            "paperIds",
+            "paperRef",
+            "paperRefs",
+            "paperHandle",
+            "paperHandles",
+            "locationId",
+            "locationIds",
+            "locationRef",
+            "locationRefs",
+            "sourceQuoteId",
+            "sourceQuoteIds",
+            "sourceQuoteRef",
+            "sourceQuoteRefs",
+            "modelVersion",
+            "indexVersion",
+            "indexName",
+            "chunkId",
+            "chunkIds",
+            "chunkRef",
+            "readingElementId",
+            "query",
+            "queryText",
+            "question",
+            "readingNeed",
+            "semanticNeed",
+            "topicText",
+            "recommendationNeed",
+            "relatedTo",
+            "ordinal",
+            "ordinals",
+            "candidateOrdinal",
+            "resultOrdinal",
+            "page",
+            "pageSize",
+            "pageRange",
+            "limit",
+            "topK",
+            "maxCandidates",
+            "budget",
+            "rerank",
+            "rerankEnabled",
+            "searchMode",
+            "score",
+            "rank"
+    );
+
     private static final Set<String> READ_FORBIDDEN_ARGUMENTS = Set.of(
             "paperId",
             "paperIds",
@@ -266,6 +314,17 @@ public class ReadingToolArgumentValidator {
             "yearRange",
             "venue"
     );
+    private static final Set<String> IDENTITY_ALLOWED_ARGUMENTS = Set.of("identityHints");
+    private static final Set<String> IDENTITY_HINT_ALLOWED_ARGUMENTS = Set.of(
+            "titleContains",
+            "titleExact",
+            "filenameContains",
+            "filenameExact",
+            "doiExact",
+            "arxivIdExact",
+            "authorName",
+            "year"
+    );
     private static final Set<String> SEARCH_ALLOWED_ARGUMENTS = Set.of("queryText");
     private static final Set<String> LOCATION_ALLOWED_ARGUMENTS = Set.of("paperHandles", "queryText", "locationTypes");
     private static final Set<String> LIST_LOCATIONS_ALLOWED_ARGUMENTS =
@@ -336,6 +395,38 @@ public class ReadingToolArgumentValidator {
         }
         if (!safeArguments.containsKey("queryText") || SearchText.tokens(stringValue(safeArguments.get("queryText"))).isEmpty()) {
             return ValidationResult.invalid("missing_argument", "queryText");
+        }
+        return ValidationResult.validResult();
+    }
+
+    public ValidationResult validateFindPapersByIdentity(Map<String, Object> arguments) {
+        Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
+        String forbiddenArgument = firstForbiddenArgument(safeArguments, IDENTITY_FORBIDDEN_ARGUMENTS);
+        if (forbiddenArgument != null) {
+            return ValidationResult.invalid("forbidden_argument", forbiddenArgument);
+        }
+        String unsupportedArgument = firstUnsupportedTopLevelArgument(safeArguments, IDENTITY_ALLOWED_ARGUMENTS);
+        if (unsupportedArgument != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedArgument);
+        }
+        if (!safeArguments.containsKey("identityHints")) {
+            return ValidationResult.invalid("missing_argument", "identityHints");
+        }
+        if (!(safeArguments.get("identityHints") instanceof Map<?, ?> rawHints)) {
+            return ValidationResult.invalid("unsupported_argument", "identityHints");
+        }
+        String unsupportedHint = firstUnsupportedIdentityHintArgument(rawHints);
+        if (unsupportedHint != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedHint);
+        }
+        if (rawHints.containsKey("year")) {
+            Integer year = integerValue(rawHints.get("year"));
+            if (year == null || year < 1) {
+                return ValidationResult.invalid("invalid_year", "year");
+            }
+        }
+        if (!identityHints(rawHints).hasTextualOrExternalHint()) {
+            return ValidationResult.invalid("missing_argument", "identityHints");
         }
         return ValidationResult.validResult();
     }
@@ -503,6 +594,22 @@ public class ReadingToolArgumentValidator {
         );
     }
 
+    public IdentityHints identityHints(Object value) {
+        if (!(value instanceof Map<?, ?> rawHints)) {
+            return IdentityHints.empty();
+        }
+        return new IdentityHints(
+                stringValue(rawHints.get("titleContains")),
+                stringValue(rawHints.get("titleExact")),
+                stringValue(rawHints.get("filenameContains")),
+                stringValue(rawHints.get("filenameExact")),
+                canonicalDoiExact(rawHints.get("doiExact")),
+                canonicalArxivIdExact(rawHints.get("arxivIdExact")),
+                stringValue(rawHints.get("authorName")),
+                integerValue(rawHints.get("year"))
+        );
+    }
+
     public boolean includeFacets(Object value) {
         return Boolean.TRUE.equals(value);
     }
@@ -528,6 +635,16 @@ public class ReadingToolArgumentValidator {
         for (Object rawKey : filters.keySet()) {
             String key = stringValue(rawKey);
             if (!LIST_PAPERS_FILTER_ALLOWED_ARGUMENTS.contains(key)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    private String firstUnsupportedIdentityHintArgument(Map<?, ?> hints) {
+        for (Object rawKey : hints.keySet()) {
+            String key = stringValue(rawKey);
+            if (!IDENTITY_HINT_ALLOWED_ARGUMENTS.contains(key)) {
                 return key;
             }
         }
@@ -651,6 +768,53 @@ public class ReadingToolArgumentValidator {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
+    static String canonicalDoiExact(Object value) {
+        String normalized = value == null ? "" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+        boolean stripped;
+        do {
+            stripped = false;
+            for (String prefix : List.of(
+                    "https://doi.org/",
+                    "http://doi.org/",
+                    "https://dx.doi.org/",
+                    "http://dx.doi.org/",
+                    "doi:"
+            )) {
+                if (normalized.startsWith(prefix)) {
+                    normalized = normalized.substring(prefix.length()).trim();
+                    stripped = true;
+                    break;
+                }
+            }
+        } while (stripped);
+        return normalized;
+    }
+
+    static String canonicalArxivIdExact(Object value) {
+        String normalized = value == null ? "" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+        boolean stripped;
+        do {
+            stripped = false;
+            for (String prefix : List.of(
+                    "https://arxiv.org/abs/",
+                    "http://arxiv.org/abs/",
+                    "https://arxiv.org/pdf/",
+                    "http://arxiv.org/pdf/",
+                    "arxiv:"
+            )) {
+                if (normalized.startsWith(prefix)) {
+                    normalized = normalized.substring(prefix.length()).trim();
+                    stripped = true;
+                    break;
+                }
+            }
+        } while (stripped);
+        if (normalized.endsWith(".pdf")) {
+            normalized = normalized.substring(0, normalized.length() - ".pdf".length()).trim();
+        }
+        return normalized.replaceFirst("v\\d+$", "");
+    }
+
     public record PageRange(Integer from, Integer to) {
     }
 
@@ -668,6 +832,29 @@ public class ReadingToolArgumentValidator {
                                    String venue) {
         static ListPaperFilters empty() {
             return new ListPaperFilters("", "", "", "", "", "", "", null, "");
+        }
+    }
+
+    public record IdentityHints(String titleContains,
+                                String titleExact,
+                                String filenameContains,
+                                String filenameExact,
+                                String doiExact,
+                                String arxivIdExact,
+                                String authorName,
+                                Integer year) {
+        static IdentityHints empty() {
+            return new IdentityHints("", "", "", "", "", "", "", null);
+        }
+
+        boolean hasTextualOrExternalHint() {
+            return !SearchText.isBlank(titleContains)
+                    || !SearchText.isBlank(titleExact)
+                    || !SearchText.isBlank(filenameContains)
+                    || !SearchText.isBlank(filenameExact)
+                    || !SearchText.isBlank(doiExact)
+                    || !SearchText.isBlank(arxivIdExact)
+                    || !SearchText.isBlank(authorName);
         }
     }
 

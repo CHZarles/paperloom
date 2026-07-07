@@ -28,6 +28,7 @@ public class ProductReadingToolAdapter {
     private static final String SESSION_TOOL_NAME = "get_session_state";
     private static final String LIST_PAPERS_TOOL_NAME = "list_papers";
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
+    private static final String IDENTITY_TOOL_NAME = "find_papers_by_identity";
     private static final String GET_OUTLINE_TOOL_NAME = "get_paper_outline";
     private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
@@ -121,6 +122,46 @@ public class ProductReadingToolAdapter {
         data.put("facets", includeFacets ? outputMapper.paperBrowseFacets(facets(filtered)) : Map.of());
         data.put("constraints", listPapersConstraints());
         return new ProductToolResult(LIST_PAPERS_TOOL_NAME, true, data, ProductToolEffect.PAPER_LIST);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductToolResult findPapersByIdentity(ReadingToolArgumentValidator.IdentityHints hints,
+                                                 ProductToolContext context) {
+        ProductToolContext safeContext = safeContext(context);
+        ReadingToolArgumentValidator.IdentityHints safeHints = hints == null
+                ? ReadingToolArgumentValidator.IdentityHints.empty()
+                : hints;
+        if (!safeHints.hasTextualOrExternalHint()) {
+            return invalidArgument(IDENTITY_TOOL_NAME, "identityHints");
+        }
+
+        List<IdentityMatch> sorted = readyScopedPapers(safeContext).stream()
+                .filter(paper -> matchesIdentityHints(paper, safeHints))
+                .map(paper -> new IdentityMatch(paper, identityMatchReasons(paper, safeHints)))
+                .sorted(identityMatchComparator())
+                .toList();
+        int returned = Math.min(sorted.size(), PaperCandidateSearchRequest.DEFAULT_PAPER_LIMIT);
+        List<Map<String, Object>> matches = new ArrayList<>();
+        for (int index = 0; index < returned; index++) {
+            IdentityMatch match = sorted.get(index);
+            Paper paper = match.paper();
+            matches.add(outputMapper.identityPaperCard(
+                    paper,
+                    handleService.handleForPaperId(paper.getPaperId()),
+                    index + 1,
+                    authors(paper),
+                    match.matchReasons()
+            ));
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("status", identityStatus(sorted.size()));
+        data.put("ambiguous", sorted.size() > 1);
+        data.put("total", sorted.size());
+        data.put("returned", matches.size());
+        data.put("matches", matches);
+        data.put("constraints", identityConstraints());
+        return new ProductToolResult(IDENTITY_TOOL_NAME, true, data, ProductToolEffect.PAPER_RESOLUTION);
     }
 
     @Transactional
@@ -483,6 +524,72 @@ public class ProductReadingToolAdapter {
                 && matchesContains(paper.getVenue(), filters.venue());
     }
 
+    private boolean matchesIdentityHints(Paper paper, ReadingToolArgumentValidator.IdentityHints hints) {
+        return matchesContains(displayTitle(paper), hints.titleContains())
+                && matchesExact(displayTitle(paper), hints.titleExact())
+                && matchesContains(paper.getOriginalFilename(), hints.filenameContains())
+                && matchesExact(paper.getOriginalFilename(), hints.filenameExact())
+                && matchesCanonicalDoi(paper.getDoi(), hints.doiExact())
+                && matchesCanonicalArxivId(paper.getArxivId(), hints.arxivIdExact())
+                && matchesAuthor(paper, hints.authorName())
+                && matchesYear(paper.getPublicationYear(), hints.year());
+    }
+
+    private List<String> identityMatchReasons(Paper paper, ReadingToolArgumentValidator.IdentityHints hints) {
+        List<String> reasons = new ArrayList<>();
+        if (!SearchText.isBlank(hints.titleContains()) && matchesContains(displayTitle(paper), hints.titleContains())) {
+            reasons.add("TITLE_CONTAINS");
+        }
+        if (!SearchText.isBlank(hints.titleExact()) && matchesExact(displayTitle(paper), hints.titleExact())) {
+            reasons.add("TITLE_EXACT");
+        }
+        if (!SearchText.isBlank(hints.filenameContains()) && matchesContains(paper.getOriginalFilename(), hints.filenameContains())) {
+            reasons.add("FILENAME_CONTAINS");
+        }
+        if (!SearchText.isBlank(hints.filenameExact()) && matchesExact(paper.getOriginalFilename(), hints.filenameExact())) {
+            reasons.add("FILENAME_EXACT");
+        }
+        if (!SearchText.isBlank(hints.doiExact()) && matchesCanonicalDoi(paper.getDoi(), hints.doiExact())) {
+            reasons.add("DOI_EXACT");
+        }
+        if (!SearchText.isBlank(hints.arxivIdExact()) && matchesCanonicalArxivId(paper.getArxivId(), hints.arxivIdExact())) {
+            reasons.add("ARXIV_ID_EXACT");
+        }
+        if (!SearchText.isBlank(hints.authorName()) && matchesAuthor(paper, hints.authorName())) {
+            reasons.add("AUTHOR_NAME");
+        }
+        if (hints.year() != null && matchesYear(paper.getPublicationYear(), hints.year())) {
+            reasons.add("YEAR");
+        }
+        return reasons;
+    }
+
+    private Comparator<IdentityMatch> identityMatchComparator() {
+        return Comparator
+                .comparingInt((IdentityMatch match) -> identityStrength(match.matchReasons()))
+                .thenComparing(match -> displayTitle(match.paper()), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(match -> match.paper().getPublicationYear(), Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(match -> match.paper().getId(), Comparator.nullsLast(Comparator.naturalOrder()));
+    }
+
+    private int identityStrength(List<String> matchReasons) {
+        int strongest = Integer.MAX_VALUE;
+        for (String reason : matchReasons == null ? List.<String>of() : matchReasons) {
+            strongest = Math.min(strongest, switch (reason) {
+                case "DOI_EXACT" -> 0;
+                case "ARXIV_ID_EXACT" -> 1;
+                case "FILENAME_EXACT" -> 2;
+                case "TITLE_EXACT" -> 3;
+                case "FILENAME_CONTAINS" -> 4;
+                case "TITLE_CONTAINS" -> 5;
+                case "AUTHOR_NAME" -> 6;
+                case "YEAR" -> 7;
+                default -> 100;
+            });
+        }
+        return strongest;
+    }
+
     private boolean matchesAuthor(Paper paper, String authorName) {
         if (SearchText.isBlank(authorName)) {
             return true;
@@ -499,6 +606,22 @@ public class ProductReadingToolAdapter {
 
     private boolean matchesExact(String value, String expectedValue) {
         return SearchText.isBlank(expectedValue) || normalized(value).equals(normalized(expectedValue));
+    }
+
+    private boolean matchesCanonicalDoi(String value, String expectedValue) {
+        return SearchText.isBlank(expectedValue)
+                || ReadingToolArgumentValidator.canonicalDoiExact(value)
+                .equals(ReadingToolArgumentValidator.canonicalDoiExact(expectedValue));
+    }
+
+    private boolean matchesCanonicalArxivId(String value, String expectedValue) {
+        return SearchText.isBlank(expectedValue)
+                || ReadingToolArgumentValidator.canonicalArxivIdExact(value)
+                .equals(ReadingToolArgumentValidator.canonicalArxivIdExact(expectedValue));
+    }
+
+    private boolean matchesYear(Integer year, Integer expectedYear) {
+        return expectedYear == null || expectedYear.equals(year);
     }
 
     private boolean matchesYearRange(Integer year, ReadingToolArgumentValidator.YearRange yearRange) {
@@ -714,6 +837,21 @@ public class ProductReadingToolAdapter {
         );
     }
 
+    private String identityStatus(int total) {
+        if (total == 0) {
+            return "NO_MATCH";
+        }
+        return total == 1 ? "OK" : "AMBIGUOUS";
+    }
+
+    private Map<String, Object> identityConstraints() {
+        return Map.of(
+                "paperCardIsSourceQuote", false,
+                "paperContentClaimsAllowed", false,
+                "ambiguousMatchesAuthorizeReading", false
+        );
+    }
+
     private Map<String, Object> locationConstraints(String status) {
         if ("OK".equals(status)) {
             return Map.of(
@@ -785,5 +923,8 @@ public class ProductReadingToolAdapter {
 
     private String userId(Long userId) {
         return userId == null ? "" : String.valueOf(userId);
+    }
+
+    private record IdentityMatch(Paper paper, List<String> matchReasons) {
     }
 }

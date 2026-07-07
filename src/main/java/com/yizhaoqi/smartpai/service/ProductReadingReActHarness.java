@@ -21,6 +21,7 @@ public class ProductReadingReActHarness {
             "get_session_state",
             "list_papers",
             "search_paper_candidates",
+            "find_papers_by_identity",
             "get_paper_outline",
             "list_paper_locations",
             "find_reading_locations",
@@ -238,6 +239,19 @@ public class ProductReadingReActHarness {
             }
             return;
         }
+        if ("find_papers_by_identity".equals(toolName)) {
+            if (!Boolean.FALSE.equals(toolResult.data().get("ambiguous"))) {
+                return;
+            }
+            for (Map<String, Object> match : mapList(toolResult.data().get("matches"))) {
+                String paperHandle = stringValue(match.get("paperHandle"));
+                if (!paperHandle.isBlank()) {
+                    state.semanticPaperHandles.add(paperHandle);
+                    state.deterministicLocationPaperHandles.add(paperHandle);
+                }
+            }
+            return;
+        }
         if ("list_paper_locations".equals(toolName)) {
             for (Map<String, Object> location : mapList(toolResult.data().get("locations"))) {
                 String locationRef = stringValue(location.get("locationRef"));
@@ -302,18 +316,23 @@ public class ProductReadingReActHarness {
     private String systemPrompt(ProductTurnRequest request, Set<String> clickedSourceQuoteRefs) {
         return """
                 You are PaperLoom Product Reading ReAct Source Quote MVP.
-                Available tools are exactly get_session_state, list_papers, search_paper_candidates, get_paper_outline, list_paper_locations, find_reading_locations, read_locations, and trace_source_quotes.
+                Available tools are exactly get_session_state, list_papers, search_paper_candidates, find_papers_by_identity, get_paper_outline, list_paper_locations, find_reading_locations, read_locations, and trace_source_quotes.
                 Use get_session_state for fixed search-scope label and readable paper count.
                 Use list_papers for deterministic browse/filter inside the fixed scope.
                 list_papers is not semantic search; use search_paper_candidates for topic discovery.
                 Paper cards from list_papers are navigation only, not Source Quotes.
                 Paper handles returned by list_papers may be used with get_paper_outline, list_paper_locations, or find_reading_locations.
                 Use search_paper_candidates for paper candidate discovery.
+                Use find_papers_by_identity for a specific paper by title, filename, DOI, arXiv id, author, or year.
+                find_papers_by_identity is not semantic search; use search_paper_candidates for topic discovery.
+                Identity paper cards are navigation only, not Source Quotes.
+                Unambiguous paper handles returned by find_papers_by_identity may be used with get_paper_outline, list_paper_locations, or find_reading_locations.
+                If find_papers_by_identity returns AMBIGUOUS, ask the user to clarify or choose a paper before reading content.
                 Use get_paper_outline after choosing papers when structure, section choices, or parser quality is needed.
-                get_paper_outline requires paperHandles disclosed by list_papers, search_paper_candidates, or trace_source_quotes in this turn.
+                get_paper_outline requires paperHandles disclosed by list_papers, search_paper_candidates, find_papers_by_identity, or trace_source_quotes in this turn.
                 get_paper_outline returns sectionRef values for navigation only; they are not Source Quotes.
-                Use find_reading_locations for semantic in-paper location search; it requires queryText and paperHandles disclosed by list_papers or search_paper_candidates in this turn.
-                Use list_paper_locations for deterministic section/page/table/figure refs; it requires paperHandles disclosed by list_papers, search_paper_candidates, or trace_source_quotes in this turn.
+                Use find_reading_locations for semantic in-paper location search; it requires queryText and paperHandles disclosed by list_papers, search_paper_candidates, or unambiguous find_papers_by_identity in this turn.
+                Use list_paper_locations for deterministic section/page/table/figure refs; it requires paperHandles disclosed by list_papers, search_paper_candidates, unambiguous find_papers_by_identity, or trace_source_quotes in this turn.
                 Use read_locations only after explicit locationRef or sectionRef values were returned by get_paper_outline, find_reading_locations, or list_paper_locations in this turn.
                 Use trace_source_quotes only for sourceQuoteRefs listed in this turn's explicit clicked Source Quote anchors.
                 trace_source_quotes returned locationRef values are metadata, not read_locations input.

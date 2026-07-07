@@ -170,6 +170,18 @@ model already has a `paperHandle`, it passes that handle directly to the consumi
 calling identity lookup.
 _Avoid_: paper candidate search, recommendation, source quote retrieval
 
+**Identity Hint**:
+A paper-level metadata clue used by Paper Identity Lookup, such as title, filename, DOI, arXiv id,
+author, or year. Identity hints narrow Product Papers; they are not Paper Handles, ordinals, Source
+Quotes, or paper-content evidence.
+_Avoid_: search query, paper handle, citation, ordinal
+
+**Ambiguous Paper Identity Match**:
+A Paper Identity Lookup result where multiple READY scoped Product Papers satisfy the supplied
+identity hints. It is a product-state choice set, not a selected paper and not same-turn reading
+authorization.
+_Avoid_: selected paper, hidden paper disclosure, source quote
+
 **Paper Library Browse**:
 The paper-level browsing operation, exposed as `list_papers`, that lists from the fixed conversation
 search scope with explicit metadata filters such as title, filename, author, year, venue, type,

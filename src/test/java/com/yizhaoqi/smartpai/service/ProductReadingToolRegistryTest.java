@@ -42,6 +42,7 @@ class ProductReadingToolRegistryTest {
                 "get_session_state",
                 "list_papers",
                 "search_paper_candidates",
+                "find_papers_by_identity",
                 "get_paper_outline",
                 "list_paper_locations",
                 "find_reading_locations",
@@ -63,6 +64,28 @@ class ProductReadingToolRegistryTest {
         assertTrue(paperListProperties.containsKey("filters"));
         assertTrue(paperListProperties.containsKey("includeFacets"));
         assertTrue(paperListProperties.containsKey("sort"));
+        AgentToolRegistry.AgentTool identityTool = tools.stream()
+                .filter(tool -> "find_papers_by_identity".equals(tool.name()))
+                .findFirst()
+                .orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> identityProperties =
+                (Map<String, Object>) identityTool.parameters().get("properties");
+        assertEquals(List.of("identityHints"), identityTool.parameters().get("required"));
+        assertTrue(identityProperties.containsKey("identityHints"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> identityHints =
+                (Map<String, Object>) identityProperties.get("identityHints");
+        assertEquals(false, identityHints.get("additionalProperties"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> identityHintProperties =
+                (Map<String, Object>) identityHints.get("properties");
+        assertTrue(identityHintProperties.containsKey("titleContains"));
+        assertTrue(identityHintProperties.containsKey("doiExact"));
+        assertTrue(identityHintProperties.containsKey("arxivIdExact"));
+        assertTrue(identityHintProperties.containsKey("year"));
+        assertFalse(identityHintProperties.containsKey("queryText"));
+        assertFalse(identityHintProperties.containsKey("paperHandle"));
         AgentToolRegistry.AgentTool locationListTool = tools.stream()
                 .filter(tool -> "list_paper_locations".equals(tool.name()))
                 .findFirst()
@@ -82,7 +105,6 @@ class ProductReadingToolRegistryTest {
         assertFalse(schemaJson.contains("modelVersion"));
         assertFalse(schemaJson.contains("indexName"));
         assertFalse(schemaJson.contains("chunkRef"));
-        assertFalse(names.contains("find_papers"));
         assertFalse(names.contains("retrieve_evidence"));
         assertFalse(names.contains("inspect_reference"));
     }
@@ -99,22 +121,36 @@ class ProductReadingToolRegistryTest {
                 Map.of("queryText", "agentic eval", "limit", 10),
                 new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
         );
+        ProductToolResult invalidIdentity = registry.execute(
+                "find_papers_by_identity",
+                Map.of("identityHints", Map.of("year", 2021)),
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
 
         assertFalse(unsupported.success());
         assertEquals("unsupported_reading_tool", unsupported.data().get("error"));
         assertFalse(forbidden.success());
         assertEquals("INVALID_ARGUMENT", forbidden.data().get("status"));
         assertEquals("limit", forbidden.data().get("argument"));
+        assertFalse(invalidIdentity.success());
+        assertEquals("INVALID_ARGUMENT", invalidIdentity.data().get("status"));
+        assertEquals("identityHints", invalidIdentity.data().get("argument"));
     }
 
     @Test
-    void delegatesValidatedSearchLocationAndReadCalls() {
+    void delegatesValidatedSearchIdentityLocationAndReadCalls() {
         ProductToolContext context = new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto());
         ProductToolResult searchResult = new ProductToolResult(
                 "search_paper_candidates",
                 true,
                 Map.of("status", "NO_MATCH", "items", List.of()),
                 ProductToolEffect.PAPER_DISCOVERY
+        );
+        ProductToolResult identityResult = new ProductToolResult(
+                "find_papers_by_identity",
+                true,
+                Map.of("status", "OK", "matches", List.of()),
+                ProductToolEffect.PAPER_RESOLUTION
         );
         ProductToolResult sessionResult = new ProductToolResult(
                 "get_session_state",
@@ -177,6 +213,16 @@ class ProductReadingToolRegistryTest {
                 context
         )).thenReturn(paperListResult);
         when(adapter.searchPaperCandidates("agentic eval", context)).thenReturn(searchResult);
+        when(adapter.findPapersByIdentity(new ReadingToolArgumentValidator.IdentityHints(
+                "LoRA",
+                "",
+                "",
+                "",
+                "10.48550/arxiv.2106.09685",
+                "2106.09685",
+                "",
+                2021
+        ), context)).thenReturn(identityResult);
         when(adapter.findReadingLocations(
                 List.of("paper_handle_abc"),
                 "methods",
@@ -200,6 +246,14 @@ class ProductReadingToolRegistryTest {
                 "sort", "TITLE"
         ), context));
         assertEquals(searchResult, registry.execute("search_paper_candidates", Map.of("queryText", "agentic eval"), context));
+        assertEquals(identityResult, registry.execute("find_papers_by_identity", Map.of(
+                "identityHints", Map.of(
+                        "titleContains", " LoRA ",
+                        "doiExact", "https://doi.org/10.48550/arXiv.2106.09685",
+                        "arxivIdExact", "arXiv:2106.09685v1",
+                        "year", 2021
+                )
+        ), context));
         assertEquals(outlineResult, registry.execute("get_paper_outline", Map.of(
                 "paperHandles", List.of("paper_handle_abc")
         ), context));
@@ -226,6 +280,16 @@ class ProductReadingToolRegistryTest {
                 context
         );
         verify(adapter).searchPaperCandidates("agentic eval", context);
+        verify(adapter).findPapersByIdentity(new ReadingToolArgumentValidator.IdentityHints(
+                "LoRA",
+                "",
+                "",
+                "",
+                "10.48550/arxiv.2106.09685",
+                "2106.09685",
+                "",
+                2021
+        ), context);
         verify(adapter).getPaperOutline(List.of("paper_handle_abc"), context);
         verify(adapter).listPaperLocations(
                 List.of("paper_handle_abc"),

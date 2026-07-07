@@ -56,6 +56,16 @@ public class ReadingToolOutputMapper {
         return card;
     }
 
+    public Map<String, Object> identityPaperCard(Paper paper,
+                                                 String paperHandle,
+                                                 int ordinal,
+                                                 List<String> authors,
+                                                 List<String> matchReasons) {
+        Map<String, Object> card = browsedPaperCard(paper, paperHandle, ordinal, authors);
+        card.put("matchReasons", matchReasons == null ? List.of() : matchReasons);
+        return card;
+    }
+
     public Map<String, Object> paperBrowseFacets(Map<String, List<Map<String, Object>>> facets) {
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("years", facets == null ? List.of() : facets.getOrDefault("years", List.of()));

@@ -149,6 +149,169 @@ class ReadingToolArgumentValidatorTest {
     }
 
     @Test
+    void identityLookupAcceptsOnlyCanonicalIdentityHints() {
+        ReadingToolArgumentValidator.ValidationResult valid =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", " LoRA ",
+                                "filenameExact", " lora.pdf ",
+                                "doiExact", " DOI:https://doi.org/10.48550/ARXIV.2106.09685 ",
+                                "arxivIdExact", " https://arxiv.org/abs/2106.09685v2 ",
+                                "authorName", " Hu ",
+                                "year", 2021
+                        )
+                ));
+
+        assertTrue(valid.valid());
+        assertEquals(new ReadingToolArgumentValidator.IdentityHints(
+                        "LoRA",
+                        "",
+                        "",
+                        "lora.pdf",
+                        "10.48550/arxiv.2106.09685",
+                        "2106.09685",
+                        "Hu",
+                        2021
+                ),
+                validator.identityHints(Map.of(
+                        "titleContains", " LoRA ",
+                        "filenameExact", " lora.pdf ",
+                        "doiExact", " DOI:https://doi.org/10.48550/ARXIV.2106.09685 ",
+                        "arxivIdExact", " https://arxiv.org/abs/2106.09685v2 ",
+                        "authorName", " Hu ",
+                        "year", 2021
+                )));
+    }
+
+    @Test
+    void identityLookupRejectsMissingEmptyYearOnlyAndInvalidYearHints() {
+        ReadingToolArgumentValidator.ValidationResult missing =
+                validator.validateFindPapersByIdentity(Map.of());
+        ReadingToolArgumentValidator.ValidationResult nonObject =
+                validator.validateFindPapersByIdentity(Map.of("identityHints", "LoRA"));
+        ReadingToolArgumentValidator.ValidationResult empty =
+                validator.validateFindPapersByIdentity(Map.of("identityHints", Map.of()));
+        ReadingToolArgumentValidator.ValidationResult yearOnly =
+                validator.validateFindPapersByIdentity(Map.of("identityHints", Map.of("year", 2021)));
+        ReadingToolArgumentValidator.ValidationResult invalidYear =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "year", 0
+                        )
+                ));
+
+        assertFalse(missing.valid());
+        assertEquals("missing_argument", missing.error());
+        assertEquals("identityHints", missing.argument());
+        assertFalse(nonObject.valid());
+        assertEquals("unsupported_argument", nonObject.error());
+        assertEquals("identityHints", nonObject.argument());
+        assertFalse(empty.valid());
+        assertEquals("missing_argument", empty.error());
+        assertEquals("identityHints", empty.argument());
+        assertFalse(yearOnly.valid());
+        assertEquals("missing_argument", yearOnly.error());
+        assertEquals("identityHints", yearOnly.argument());
+        assertFalse(invalidYear.valid());
+        assertEquals("invalid_year", invalidYear.error());
+        assertEquals("year", invalidYear.argument());
+    }
+
+    @Test
+    void identityLookupRejectsForbiddenAndUnsupportedArgumentsAtAnyDepth() {
+        ReadingToolArgumentValidator.ValidationResult topLevel =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of("titleContains", "LoRA"),
+                        "sort", "TITLE"
+                ));
+        ReadingToolArgumentValidator.ValidationResult nestedUnsupported =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "venue", "ICLR"
+                        )
+                ));
+        ReadingToolArgumentValidator.ValidationResult rawId =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "paperId", "raw-paper"
+                        )
+                ));
+        ReadingToolArgumentValidator.ValidationResult paperHandle =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "paperHandle", "paper_handle_abc"
+                        )
+                ));
+        ReadingToolArgumentValidator.ValidationResult semantic =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "options", Map.of("queryText", "low rank adaptation")
+                        )
+                ));
+        ReadingToolArgumentValidator.ValidationResult ordinal =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "ordinal", 1
+                        )
+                ));
+        ReadingToolArgumentValidator.ValidationResult pageSize =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "pageSize", 50
+                        )
+                ));
+        ReadingToolArgumentValidator.ValidationResult score =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "score", 0.8
+                        )
+                ));
+        ReadingToolArgumentValidator.ValidationResult rank =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of(
+                                "titleContains", "LoRA",
+                                "rank", 1
+                        )
+                ));
+
+        assertFalse(topLevel.valid());
+        assertEquals("unsupported_argument", topLevel.error());
+        assertEquals("sort", topLevel.argument());
+        assertFalse(nestedUnsupported.valid());
+        assertEquals("unsupported_argument", nestedUnsupported.error());
+        assertEquals("venue", nestedUnsupported.argument());
+        assertFalse(rawId.valid());
+        assertEquals("forbidden_argument", rawId.error());
+        assertEquals("paperId", rawId.argument());
+        assertFalse(paperHandle.valid());
+        assertEquals("forbidden_argument", paperHandle.error());
+        assertEquals("paperHandle", paperHandle.argument());
+        assertFalse(semantic.valid());
+        assertEquals("forbidden_argument", semantic.error());
+        assertEquals("queryText", semantic.argument());
+        assertFalse(ordinal.valid());
+        assertEquals("forbidden_argument", ordinal.error());
+        assertEquals("ordinal", ordinal.argument());
+        assertFalse(pageSize.valid());
+        assertEquals("forbidden_argument", pageSize.error());
+        assertEquals("pageSize", pageSize.argument());
+        assertFalse(score.valid());
+        assertEquals("forbidden_argument", score.error());
+        assertEquals("score", score.argument());
+        assertFalse(rank.valid());
+        assertEquals("forbidden_argument", rank.error());
+        assertEquals("rank", rank.argument());
+    }
+
+    @Test
     void readingLocationsRejectsEmptyHandlesUnsupportedTypesAndIntentAliases() {
         ReadingToolArgumentValidator.ValidationResult emptyHandles = validator.validateFindReadingLocations(Map.of(
                 "paperHandles", List.of(),

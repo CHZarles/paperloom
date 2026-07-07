@@ -57,13 +57,13 @@ class ProductReadingReActHarnessTest {
                     "get_session_state",
                     "list_papers",
                     "search_paper_candidates",
+                    "find_papers_by_identity",
                     "get_paper_outline",
                     "list_paper_locations",
                     "find_reading_locations",
                     "read_locations",
                     "trace_source_quotes"
             ), names);
-            assertFalse(names.contains("find_papers"));
             assertFalse(names.contains("retrieve_evidence"));
             assertFalse(names.contains("inspect_reference"));
             assertFalse(names.contains("inspect_page"));
@@ -72,12 +72,12 @@ class ProductReadingReActHarnessTest {
             assertFalse(names.contains("answer_without_product_state"));
         }
         String promptMessages = objectMapper.writeValueAsString(messagesCaptor.getAllValues().get(0));
-        assertFalse(promptMessages.contains("find_papers"));
         assertFalse(promptMessages.contains("retrieve_evidence"));
         assertFalse(promptMessages.contains("inspect_reference"));
         assertTrue(promptMessages.contains("get_session_state"));
         assertTrue(promptMessages.contains("list_papers"));
         assertTrue(promptMessages.contains("search_paper_candidates"));
+        assertTrue(promptMessages.contains("find_papers_by_identity"));
         assertTrue(promptMessages.contains("get_paper_outline"));
         assertTrue(promptMessages.contains("list_paper_locations"));
         assertTrue(promptMessages.contains("find_reading_locations"));
@@ -87,6 +87,8 @@ class ProductReadingReActHarnessTest {
         assertTrue(promptMessages.contains("deterministic"));
         assertTrue(promptMessages.contains("semantic"));
         assertTrue(promptMessages.contains("list_papers is not semantic search"));
+        assertTrue(promptMessages.contains("find_papers_by_identity is not semantic search"));
+        assertTrue(promptMessages.contains("If find_papers_by_identity returns AMBIGUOUS"));
         assertTrue(promptMessages.contains("disclosed by list_papers"));
         assertTrue(promptMessages.contains("trace_source_quotes returned locationRef values are metadata"));
     }
@@ -165,6 +167,33 @@ class ProductReadingReActHarnessTest {
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("Agentic Eval Benchmark"));
         verify(registry).execute(eq("list_papers"), any(), any());
+    }
+
+    @Test
+    void directPaperQuestionCallsIdentityToolAndAcceptsProductStateAnswer() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("titleContains", "LoRA")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到论文：Agentic Eval Benchmark。",
+                        "find_papers_by_identity"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("看 LoRA 那篇"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("Agentic Eval Benchmark"));
+        verify(registry).execute(eq("find_papers_by_identity"), any(), any());
+        verify(registry, never()).execute(eq("search_paper_candidates"), any(), any());
     }
 
     @Test
@@ -282,6 +311,110 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         verify(registry).execute(eq("list_papers"), any(), any());
         verify(registry).execute(eq("find_reading_locations"), any(), any());
+    }
+
+    @Test
+    void unambiguousIdentityHandleCanFeedOutline() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
+        when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("titleContains", "LoRA")
+                )))
+                .thenReturn(toolCallTurn("call_2", "get_paper_outline", Map.of(
+                        "paperHandles", List.of("paper_handle_abc")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "Methods section is available as navigation.",
+                        "get_paper_outline"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("看 LoRA 那篇的大纲"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("find_papers_by_identity"), any(), any());
+        verify(registry).execute(eq("get_paper_outline"), any(), any());
+    }
+
+    @Test
+    void unambiguousIdentityHandleCanFeedListPaperLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
+        when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("titleContains", "LoRA")
+                )))
+                .thenReturn(toolCallTurn("call_2", "list_paper_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "locationTypes", List.of("SECTION")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到可导航位置：page_ref_abc。",
+                        "list_paper_locations"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("看 LoRA 那篇有哪些 section"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("find_papers_by_identity"), any(), any());
+        verify(registry).execute(eq("list_paper_locations"), any(), any());
+    }
+
+    @Test
+    void unambiguousIdentityHandleCanFeedReadingLocationSearch() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("titleContains", "LoRA")
+                )))
+                .thenReturn(toolCallTurn("call_2", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "methods"
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到候选阅读位置：page_ref_abc。",
+                        "find_reading_locations"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("在 LoRA 那篇里找方法"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry).execute(eq("find_papers_by_identity"), any(), any());
+        verify(registry).execute(eq("find_reading_locations"), any(), any());
+    }
+
+    @Test
+    void ambiguousIdentityHandlesDoNotAuthorizeOutlineLocationsOrSearch() {
+        assertAmbiguousIdentityDoesNotAuthorize("get_paper_outline", Map.of(
+                "paperHandles", List.of("paper_handle_abc")
+        ));
+        assertAmbiguousIdentityDoesNotAuthorize("list_paper_locations", Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "locationTypes", List.of("SECTION")
+        ));
+        assertAmbiguousIdentityDoesNotAuthorize("find_reading_locations", Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryText", "methods"
+        ));
     }
 
     @Test
@@ -923,6 +1056,29 @@ class ProductReadingReActHarnessTest {
         return harness.run(request("说明推荐理由"));
     }
 
+    private void assertAmbiguousIdentityDoesNotAuthorize(String followUpTool, Map<String, Object> followUpArguments) {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(ambiguousIdentityResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_papers_by_identity", Map.of(
+                        "identityHints", Map.of("authorName", "Hu", "year", 2021)
+                )))
+                .thenReturn(toolCallTurn("call_2", followUpTool, followUpArguments));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("看 Hu 2021 那篇"));
+
+        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
+        assertEquals(ProductStopReason.TOOL_FAILED, result.stopReason());
+        verify(registry).execute(eq("find_papers_by_identity"), any(), any());
+        verify(registry, never()).execute(eq(followUpTool), any(), any());
+        assertTrue(ambiguousIdentityResult().data().toString().contains("paper_handle_abc"));
+    }
+
     private ProductTurnRequest request(String message) {
         return new ProductTurnRequest(
                 7L,
@@ -1018,6 +1174,82 @@ class ProductReadingReActHarnessTest {
                         )
                 ),
                 ProductToolEffect.PAPER_LIST
+        );
+    }
+
+    private ProductToolResult identityResult() {
+        return new ProductToolResult(
+                "find_papers_by_identity",
+                true,
+                Map.of(
+                        "status", "OK",
+                        "ambiguous", false,
+                        "total", 1,
+                        "returned", 1,
+                        "matches", List.of(Map.of(
+                                "ordinal", 1,
+                                "paperHandle", "paper_handle_abc",
+                                "title", "Agentic Eval Benchmark",
+                                "originalFilename", "agentic-eval.pdf",
+                                "authors", List.of("Ada Lovelace"),
+                                "year", 2025,
+                                "venue", "NeurIPS",
+                                "matchReasons", List.of("TITLE_CONTAINS"),
+                                "catalogTopics", List.of(),
+                                "paperTypes", List.of()
+                        )),
+                        "constraints", Map.of(
+                                "paperCardIsSourceQuote", false,
+                                "paperContentClaimsAllowed", false,
+                                "ambiguousMatchesAuthorizeReading", false
+                        )
+                ),
+                ProductToolEffect.PAPER_RESOLUTION
+        );
+    }
+
+    private ProductToolResult ambiguousIdentityResult() {
+        return new ProductToolResult(
+                "find_papers_by_identity",
+                true,
+                Map.of(
+                        "status", "AMBIGUOUS",
+                        "ambiguous", true,
+                        "total", 2,
+                        "returned", 2,
+                        "matches", List.of(
+                                Map.of(
+                                        "ordinal", 1,
+                                        "paperHandle", "paper_handle_abc",
+                                        "title", "Agentic Eval Benchmark",
+                                        "originalFilename", "agentic-eval.pdf",
+                                        "authors", List.of("Ada Lovelace"),
+                                        "year", 2025,
+                                        "venue", "NeurIPS",
+                                        "matchReasons", List.of("AUTHOR_NAME", "YEAR"),
+                                        "catalogTopics", List.of(),
+                                        "paperTypes", List.of()
+                                ),
+                                Map.of(
+                                        "ordinal", 2,
+                                        "paperHandle", "paper_handle_other",
+                                        "title", "Agentic Eval Followup",
+                                        "originalFilename", "agentic-followup.pdf",
+                                        "authors", List.of("Ada Lovelace"),
+                                        "year", 2025,
+                                        "venue", "ICML",
+                                        "matchReasons", List.of("AUTHOR_NAME", "YEAR"),
+                                        "catalogTopics", List.of(),
+                                        "paperTypes", List.of()
+                                )
+                        ),
+                        "constraints", Map.of(
+                                "paperCardIsSourceQuote", false,
+                                "paperContentClaimsAllowed", false,
+                                "ambiguousMatchesAuthorizeReading", false
+                        )
+                ),
+                ProductToolEffect.PAPER_RESOLUTION
         );
     }
 
@@ -1179,6 +1411,7 @@ class ProductReadingReActHarnessTest {
                 tool("get_session_state"),
                 tool("list_papers"),
                 tool("search_paper_candidates"),
+                tool("find_papers_by_identity"),
                 tool("get_paper_outline"),
                 tool("list_paper_locations"),
                 tool("find_reading_locations"),

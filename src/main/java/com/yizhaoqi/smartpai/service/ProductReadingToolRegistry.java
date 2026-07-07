@@ -12,6 +12,7 @@ public class ProductReadingToolRegistry {
     private static final String SESSION_TOOL_NAME = "get_session_state";
     private static final String LIST_PAPERS_TOOL_NAME = "list_papers";
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
+    private static final String IDENTITY_TOOL_NAME = "find_papers_by_identity";
     private static final String GET_OUTLINE_TOOL_NAME = "get_paper_outline";
     private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
@@ -30,6 +31,7 @@ public class ProductReadingToolRegistry {
                 getSessionStateTool(),
                 listPapersTool(),
                 searchPaperCandidatesTool(),
+                findPapersByIdentityTool(),
                 getPaperOutlineTool(),
                 listPaperLocationsTool(),
                 findReadingLocationsTool(),
@@ -51,6 +53,7 @@ public class ProductReadingToolRegistry {
             case SESSION_TOOL_NAME -> executeGetSessionState(safeArguments, safeContext);
             case LIST_PAPERS_TOOL_NAME -> executeListPapers(safeArguments, safeContext);
             case SEARCH_TOOL_NAME -> executeSearchPaperCandidates(safeArguments, safeContext);
+            case IDENTITY_TOOL_NAME -> executeFindPapersByIdentity(safeArguments, safeContext);
             case GET_OUTLINE_TOOL_NAME -> executeGetPaperOutline(safeArguments, safeContext);
             case LIST_LOCATIONS_TOOL_NAME -> executeListPaperLocations(safeArguments, safeContext);
             case LOCATION_TOOL_NAME -> executeFindReadingLocations(safeArguments, safeContext);
@@ -87,6 +90,14 @@ public class ProductReadingToolRegistry {
             return invalidArgument(SEARCH_TOOL_NAME, validation);
         }
         return adapter.searchPaperCandidates(stringValue(arguments.get("queryText")), context);
+    }
+
+    private ProductToolResult executeFindPapersByIdentity(Map<String, Object> arguments, ProductToolContext context) {
+        ReadingToolArgumentValidator.ValidationResult validation = validator.validateFindPapersByIdentity(arguments);
+        if (!validation.valid()) {
+            return invalidArgument(IDENTITY_TOOL_NAME, validation);
+        }
+        return adapter.findPapersByIdentity(validator.identityHints(arguments.get("identityHints")), context);
     }
 
     private AgentToolRegistry.AgentTool getSessionStateTool() {
@@ -179,6 +190,25 @@ public class ProductReadingToolRegistry {
                 objectSchema(Map.of(
                         "queryText", stringSchema("Caller-authored paper candidate search text.")
                 ), List.of("queryText"))
+        );
+    }
+
+    private AgentToolRegistry.AgentTool findPapersByIdentityTool() {
+        return new AgentToolRegistry.AgentTool(
+                IDENTITY_TOOL_NAME,
+                "Resolve a specific READY paper by deterministic identity hints such as title, filename, DOI, arXiv id, author, or year. Returns paperHandle cards and ambiguity status only; it is not semantic search and not Source Quotes.",
+                objectSchema(Map.of(
+                        "identityHints", objectSchema(Map.of(
+                                "titleContains", stringSchema("Optional deterministic title substring identity hint."),
+                                "titleExact", stringSchema("Optional deterministic exact title identity hint."),
+                                "filenameContains", stringSchema("Optional deterministic filename substring identity hint."),
+                                "filenameExact", stringSchema("Optional deterministic exact filename identity hint."),
+                                "doiExact", stringSchema("Optional canonical exact DOI identity hint."),
+                                "arxivIdExact", stringSchema("Optional canonical exact arXiv id identity hint."),
+                                "authorName", stringSchema("Optional deterministic author substring identity hint."),
+                                "year", integerSchema("Optional publication year narrowing hint; year alone is invalid.")
+                        ), List.of())
+                ), List.of("identityHints"))
         );
     }
 
