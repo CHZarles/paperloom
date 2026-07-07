@@ -843,6 +843,86 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
+    void readingCompletionSendsListAndSearchPaperChoiceProductStateItems() {
+        ChatFixture fixture = chatFixture(true);
+        List<Map<String, Object>> productStateItems = List.of(
+                paperChoiceItem("paper_handle_list", "Browse Paper", "list_papers"),
+                paperChoiceItem("paper_handle_search", "Search Paper", "search_paper_candidates")
+        );
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(completedTurn("请选择论文", List.of(), productStateItems));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("找论文", null), fixture.session);
+
+        Map<String, Object> completion = completionPayload(fixture, "finished");
+        assertTrue(completion.containsKey("productStateItems"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> payloadItems = (List<Map<String, Object>>) completion.get("productStateItems");
+        assertEquals(2, payloadItems.size());
+        assertEquals("list_papers", payloadItems.get(0).get("sourceTool"));
+        assertEquals("paper_handle_list", payloadItems.get(0).get("paperHandle"));
+        assertEquals("search_paper_candidates", payloadItems.get(1).get("sourceTool"));
+        assertEquals("paper_handle_search", payloadItems.get(1).get("paperHandle"));
+        for (Map<String, Object> item : payloadItems) {
+            assertEquals("READING_PAPER_CHOICE", item.get("kind"));
+            assertFalse(item.containsKey("preview"));
+            assertFalse(item.containsKey("ordinal"));
+            assertFalse(item.containsKey("paperId"));
+            assertFalse(item.containsKey("catalogTopics"));
+            assertFalse(item.containsKey("paperTypes"));
+            assertFalse(item.containsKey("facets"));
+            assertFalse(item.containsKey("identityStatus"));
+            assertFalse(item.containsKey("ambiguous"));
+            assertFalse(item.containsKey("matchReasons"));
+        }
+    }
+
+    @Test
+    void readingCompletionRejectsUnsupportedPaperChoiceSourceTool() {
+        ChatFixture fixture = chatFixture(true);
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(completedTurn("没有可选论文", List.of(), List.of(
+                        paperChoiceItem("paper_handle_outline", "Outline Paper", "get_paper_outline")
+                )));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看大纲", null), fixture.session);
+
+        assertFalse(completionPayload(fixture, "finished").containsKey("productStateItems"));
+    }
+
+    @Test
+    void readingCompletionStripsSearchPreviewAndBrowseFacetsFromPaperChoiceItems() {
+        ChatFixture fixture = chatFixture(true);
+        Map<String, Object> searchItem = paperChoiceItem("paper_handle_search", "Search Paper", "search_paper_candidates");
+        searchItem.put("preview", "not evidence");
+        searchItem.put("catalogTopics", List.of("Agents"));
+        searchItem.put("paperTypes", List.of("Benchmark"));
+        searchItem.put("facets", Map.of("years", List.of()));
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(completedTurn("请选择论文", List.of(), List.of(searchItem)));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("搜索论文", null), fixture.session);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> payloadItems =
+                (List<Map<String, Object>>) completionPayload(fixture, "finished").get("productStateItems");
+        assertEquals(1, payloadItems.size());
+        Map<String, Object> item = payloadItems.get(0);
+        assertEquals("search_paper_candidates", item.get("sourceTool"));
+        assertEquals("paper_handle_search", item.get("paperHandle"));
+        assertFalse(item.containsKey("preview"));
+        assertFalse(item.containsKey("catalogTopics"));
+        assertFalse(item.containsKey("paperTypes"));
+        assertFalse(item.containsKey("facets"));
+        assertFalse(item.containsKey("ordinal"));
+        assertFalse(item.containsKey("paperId"));
+        assertFalse(item.containsKey("score"));
+        assertFalse(item.containsKey("rank"));
+        assertFalse(item.containsKey("locationRef"));
+        assertFalse(item.containsKey("sourceQuoteRef"));
+    }
+
+    @Test
     void readingCompletionOmitsInvalidOnlyProductStateItems() {
         ChatFixture fixture = chatFixture(true);
         when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
@@ -909,9 +989,13 @@ class ChatHandlerProductHarnessTest {
     }
 
     private static Map<String, Object> paperChoiceItem(String paperHandle, String title) {
+        return paperChoiceItem(paperHandle, title, "find_papers_by_identity");
+    }
+
+    private static Map<String, Object> paperChoiceItem(String paperHandle, String title, String sourceTool) {
         Map<String, Object> item = new java.util.LinkedHashMap<>();
         item.put("kind", "READING_PAPER_CHOICE");
-        item.put("sourceTool", "find_papers_by_identity");
+        item.put("sourceTool", sourceTool);
         item.put("paperHandle", paperHandle);
         item.put("title", title);
         item.put("originalFilename", title.toLowerCase().replace(' ', '-') + ".pdf");
@@ -921,6 +1005,9 @@ class ChatHandlerProductHarnessTest {
         item.put("matchReasons", List.of("TITLE_CONTAINS"));
         item.put("identityStatus", "AMBIGUOUS");
         item.put("ambiguous", true);
+        item.put("catalogTopics", List.of("Agents"));
+        item.put("paperTypes", List.of("Benchmark"));
+        item.put("facets", Map.of("years", List.of()));
         item.put("paperId", "paper-raw");
         item.put("ordinal", 1);
         item.put("preview", "not evidence");

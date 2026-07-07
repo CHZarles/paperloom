@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,7 +47,14 @@ public class ChatHandler {
     private static final int MAX_EVIDENCE_SNIPPET_LEN = 160;
     private static final int MAX_PRODUCT_STATE_ITEMS = 10;
     private static final String READING_PAPER_CHOICE_KIND = "READING_PAPER_CHOICE";
+    private static final String LIST_PAPERS_TOOL = "list_papers";
+    private static final String SEARCH_PAPER_CANDIDATES_TOOL = "search_paper_candidates";
     private static final String FIND_PAPERS_BY_IDENTITY_TOOL = "find_papers_by_identity";
+    private static final Set<String> PAPER_CHOICE_SOURCE_TOOLS = Set.of(
+            LIST_PAPERS_TOOL,
+            SEARCH_PAPER_CANDIDATES_TOOL,
+            FIND_PAPERS_BY_IDENTITY_TOOL
+    );
     private static final Pattern CITED_REFERENCE_PATTERN =
             Pattern.compile("\\[(\\d+)]");
     private static final Pattern PAPER_HANDLE_PATTERN =
@@ -804,8 +812,11 @@ public class ChatHandler {
 
     private Map<String, Object> sanitizeReadingPaperChoiceItem(Map<String, Object> rawItem) {
         if (rawItem == null
-                || !READING_PAPER_CHOICE_KIND.equals(rawItem.get("kind"))
-                || !FIND_PAPERS_BY_IDENTITY_TOOL.equals(rawItem.get("sourceTool"))) {
+                || !READING_PAPER_CHOICE_KIND.equals(rawItem.get("kind"))) {
+            return Map.of();
+        }
+        String sourceTool = trimToNull(String.valueOf(rawItem.get("sourceTool")));
+        if (sourceTool == null || !PAPER_CHOICE_SOURCE_TOOLS.contains(sourceTool)) {
             return Map.of();
         }
         String paperHandle = trimToNull(String.valueOf(rawItem.get("paperHandle")));
@@ -814,18 +825,20 @@ public class ChatHandler {
         }
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("kind", READING_PAPER_CHOICE_KIND);
-        item.put("sourceTool", FIND_PAPERS_BY_IDENTITY_TOOL);
+        item.put("sourceTool", sourceTool);
         item.put("paperHandle", paperHandle);
         copyStringDetail(item, rawItem, "title");
         copyStringDetail(item, rawItem, "originalFilename");
         copyStringListDetail(item, rawItem, "authors");
         copyNumberDetail(item, rawItem, "year");
         copyStringDetail(item, rawItem, "venue");
-        copyStringListDetail(item, rawItem, "matchReasons");
-        copyStringDetail(item, rawItem, "identityStatus");
-        Object ambiguous = rawItem.get("ambiguous");
-        if (ambiguous instanceof Boolean booleanValue) {
-            item.put("ambiguous", booleanValue);
+        if (FIND_PAPERS_BY_IDENTITY_TOOL.equals(sourceTool)) {
+            copyStringListDetail(item, rawItem, "matchReasons");
+            copyStringDetail(item, rawItem, "identityStatus");
+            Object ambiguous = rawItem.get("ambiguous");
+            if (ambiguous instanceof Boolean booleanValue) {
+                item.put("ambiguous", booleanValue);
+            }
         }
         return item;
     }

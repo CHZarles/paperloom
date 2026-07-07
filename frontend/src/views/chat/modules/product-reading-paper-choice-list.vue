@@ -7,9 +7,14 @@ const props = defineProps<{
 
 const chatStore = useChatStore();
 const paperHandlePattern = /^paper_handle_[A-Za-z0-9_-]+$/;
+const paperChoiceSourceTools = new Set(['list_papers', 'search_paper_candidates', 'find_papers_by_identity']);
 
 function isPaperChoice(item: Api.Chat.ProductStateItem): item is Api.Chat.ReadingPaperChoiceItem {
-  return item.kind === 'READING_PAPER_CHOICE' && paperHandlePattern.test(item.paperHandle || '');
+  return (
+    item.kind === 'READING_PAPER_CHOICE' &&
+    paperHandlePattern.test(item.paperHandle || '') &&
+    paperChoiceSourceTools.has(item.sourceTool)
+  );
 }
 
 const choices = computed(() => (props.items || []).filter(isPaperChoice));

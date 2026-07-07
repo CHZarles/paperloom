@@ -32,7 +32,14 @@ public class ProductReadingReActHarness {
     private static final int MAX_CLICKED_PAPER_HANDLES = 20;
     private static final int MAX_PRODUCT_STATE_ITEMS = 10;
     private static final String READING_PAPER_CHOICE_KIND = "READING_PAPER_CHOICE";
+    private static final String LIST_PAPERS_TOOL_NAME = "list_papers";
+    private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String IDENTITY_TOOL_NAME = "find_papers_by_identity";
+    private static final Set<String> PAPER_CHOICE_SOURCE_TOOLS = Set.of(
+            LIST_PAPERS_TOOL_NAME,
+            SEARCH_TOOL_NAME,
+            IDENTITY_TOOL_NAME
+    );
     private static final List<String> FORBIDDEN_OUTPUT_TOKENS = List.of(
             internalToken("paper", "Id"),
             internalToken("model", "Version"),
@@ -232,7 +239,8 @@ public class ProductReadingReActHarness {
         if ("get_session_state".equals(toolName)) {
             return;
         }
-        if ("list_papers".equals(toolName)) {
+        if (LIST_PAPERS_TOOL_NAME.equals(toolName)) {
+            appendPaperChoiceItems(toolName, toolResult.data().get("items"), state, "", null);
             for (Map<String, Object> item : mapList(toolResult.data().get("items"))) {
                 String paperHandle = stringValue(item.get("paperHandle"));
                 if (!paperHandle.isBlank()) {
@@ -242,7 +250,8 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("search_paper_candidates".equals(toolName)) {
+        if (SEARCH_TOOL_NAME.equals(toolName)) {
+            appendPaperChoiceItems(toolName, toolResult.data().get("items"), state, "", null);
             for (Map<String, Object> item : mapList(toolResult.data().get("items"))) {
                 String paperHandle = stringValue(item.get("paperHandle"));
                 if (!paperHandle.isBlank()) {
@@ -436,30 +445,48 @@ public class ProductReadingReActHarness {
             return;
         }
         String identityStatus = stringValue(toolResult.data().get("status"));
-        boolean ambiguous = Boolean.TRUE.equals(toolResult.data().get("ambiguous"));
-        for (Map<String, Object> match : mapList(toolResult.data().get("matches"))) {
+        Boolean ambiguous = Boolean.TRUE.equals(toolResult.data().get("ambiguous"));
+        appendPaperChoiceItems(IDENTITY_TOOL_NAME, toolResult.data().get("matches"), state, identityStatus, ambiguous);
+    }
+
+    private void appendPaperChoiceItems(String sourceTool,
+                                        Object rawRows,
+                                        ReadingTurnState state,
+                                        String identityStatus,
+                                        Boolean ambiguous) {
+        if (state == null
+                || state.productStateItems.size() >= MAX_PRODUCT_STATE_ITEMS
+                || !PAPER_CHOICE_SOURCE_TOOLS.contains(sourceTool)) {
+            return;
+        }
+        boolean identitySource = IDENTITY_TOOL_NAME.equals(sourceTool);
+        for (Map<String, Object> row : mapList(rawRows)) {
             if (state.productStateItems.size() >= MAX_PRODUCT_STATE_ITEMS) {
                 return;
             }
-            String paperHandle = stringValue(match.get("paperHandle"));
+            String paperHandle = stringValue(row.get("paperHandle"));
             if (!PAPER_HANDLE_PATTERN.matcher(paperHandle).matches()
                     || !state.productStatePaperHandles.add(paperHandle)) {
                 continue;
             }
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("kind", READING_PAPER_CHOICE_KIND);
-            item.put("sourceTool", IDENTITY_TOOL_NAME);
+            item.put("sourceTool", sourceTool);
             item.put("paperHandle", paperHandle);
-            copyStringIfPresent(item, match, "title");
-            copyStringIfPresent(item, match, "originalFilename");
-            copyStringListIfPresent(item, match, "authors");
-            copyNumberIfPresent(item, match, "year");
-            copyStringIfPresent(item, match, "venue");
-            copyStringListIfPresent(item, match, "matchReasons");
-            if (!identityStatus.isBlank()) {
-                item.put("identityStatus", identityStatus);
+            copyStringIfPresent(item, row, "title");
+            copyStringIfPresent(item, row, "originalFilename");
+            copyStringListIfPresent(item, row, "authors");
+            copyNumberIfPresent(item, row, "year");
+            copyStringIfPresent(item, row, "venue");
+            if (identitySource) {
+                copyStringListIfPresent(item, row, "matchReasons");
+                if (!stringValue(identityStatus).isBlank()) {
+                    item.put("identityStatus", stringValue(identityStatus));
+                }
+                if (ambiguous != null) {
+                    item.put("ambiguous", ambiguous);
+                }
             }
-            item.put("ambiguous", ambiguous);
             state.productStateItems.add(item);
         }
     }

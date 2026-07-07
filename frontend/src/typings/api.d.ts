@@ -588,7 +588,7 @@ declare namespace Api {
 
     interface ReadingPaperChoiceItem {
       kind: 'READING_PAPER_CHOICE';
-      sourceTool: 'find_papers_by_identity';
+      sourceTool: 'list_papers' | 'search_paper_candidates' | 'find_papers_by_identity';
       paperHandle: string;
       title?: string | null;
       originalFilename?: string | null;

@@ -115,6 +115,24 @@ class ProductReadingReActHarnessTest {
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("Agentic Eval Benchmark"));
         assertTrue(result.references().isEmpty());
+        assertEquals(1, result.productStateItems().size());
+        Map<String, Object> item = result.productStateItems().get(0);
+        assertEquals("READING_PAPER_CHOICE", item.get("kind"));
+        assertEquals("search_paper_candidates", item.get("sourceTool"));
+        assertEquals("paper_handle_abc", item.get("paperHandle"));
+        assertEquals("Agentic Eval Benchmark", item.get("title"));
+        assertEquals(List.of("Ada Lovelace"), item.get("authors"));
+        assertEquals(2025, item.get("year"));
+        assertEquals("NeurIPS", item.get("venue"));
+        assertFalse(item.containsKey("preview"));
+        assertFalse(item.containsKey("ordinal"));
+        assertFalse(item.containsKey("paperId"));
+        assertFalse(item.containsKey("score"));
+        assertFalse(item.containsKey("rank"));
+        assertFalse(item.containsKey("locationRef"));
+        assertFalse(item.containsKey("sourceQuoteRef"));
+        assertFalse(item.containsKey("identityStatus"));
+        assertFalse(item.containsKey("ambiguous"));
         verify(registry).execute(eq("search_paper_candidates"), any(), any());
         verify(traceRecorder).recordReadingTurn(any(), any(), any(), any(), any(Instant.class), any(Instant.class));
     }
@@ -168,6 +186,24 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("Agentic Eval Benchmark"));
+        assertEquals(1, result.productStateItems().size());
+        Map<String, Object> item = result.productStateItems().get(0);
+        assertEquals("READING_PAPER_CHOICE", item.get("kind"));
+        assertEquals("list_papers", item.get("sourceTool"));
+        assertEquals("paper_handle_abc", item.get("paperHandle"));
+        assertEquals("Agentic Eval Benchmark", item.get("title"));
+        assertEquals("agentic-eval.pdf", item.get("originalFilename"));
+        assertEquals(List.of("Ada Lovelace"), item.get("authors"));
+        assertEquals(2025, item.get("year"));
+        assertEquals("NeurIPS", item.get("venue"));
+        assertFalse(item.containsKey("preview"));
+        assertFalse(item.containsKey("ordinal"));
+        assertFalse(item.containsKey("paperId"));
+        assertFalse(item.containsKey("catalogTopics"));
+        assertFalse(item.containsKey("paperTypes"));
+        assertFalse(item.containsKey("facets"));
+        assertFalse(item.containsKey("identityStatus"));
+        assertFalse(item.containsKey("ambiguous"));
         verify(registry).execute(eq("list_papers"), any(), any());
     }
 
@@ -316,6 +352,89 @@ class ProductReadingReActHarnessTest {
         Map<String, Object> item = result.productStateItems().get(0);
         assertEquals("Original", item.get("title"));
         assertFalse(item.containsKey("paperId"));
+    }
+
+    @Test
+    void paperChoiceProductStateDedupesAcrossPaperLevelToolsAndCapsAtTen() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<Map<String, Object>> listRows = new ArrayList<>();
+        listRows.add(paperChoiceRow("paper_handle_000", "First"));
+        listRows.add(paperChoiceRow("paper_handle_000", "Duplicate"));
+        listRows.add(paperChoiceRow("not_a_handle", "Invalid"));
+        List<Map<String, Object>> searchRows = new ArrayList<>();
+        for (int index = 1; index <= 12; index++) {
+            searchRows.add(paperChoiceRow("paper_handle_" + index, "Paper " + index));
+        }
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("list_papers"), any(), any())).thenReturn(paperLevelResult("list_papers", listRows));
+        when(registry.execute(eq("search_paper_candidates"), any(), any()))
+                .thenReturn(paperLevelResult("search_paper_candidates", searchRows));
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "list_papers", Map.of()))
+                .thenReturn(toolCallTurn("call_2", "search_paper_candidates", Map.of("queryText", "agent eval")))
+                .thenReturn(finalTurn(productStateEnvelope("请选择论文。", "search_paper_candidates")));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("列出再搜索论文"));
+
+        List<Map<String, Object>> items = result.productStateItems();
+        assertEquals(10, items.size());
+        assertEquals("paper_handle_000", items.get(0).get("paperHandle"));
+        assertEquals("list_papers", items.get(0).get("sourceTool"));
+        assertEquals("First", items.get(0).get("title"));
+        assertEquals("paper_handle_9", items.get(9).get("paperHandle"));
+        assertEquals("search_paper_candidates", items.get(9).get("sourceTool"));
+        assertFalse(items.toString().contains("Duplicate"));
+        assertFalse(items.toString().contains("not_a_handle"));
+        for (Map<String, Object> item : items) {
+            assertEquals("READING_PAPER_CHOICE", item.get("kind"));
+            assertFalse(item.containsKey("preview"));
+            assertFalse(item.containsKey("ordinal"));
+            assertFalse(item.containsKey("paperId"));
+            assertFalse(item.containsKey("score"));
+            assertFalse(item.containsKey("rank"));
+            assertFalse(item.containsKey("locationRef"));
+            assertFalse(item.containsKey("sourceQuoteRef"));
+            assertFalse(item.containsKey("catalogTopics"));
+            assertFalse(item.containsKey("paperTypes"));
+            assertFalse(item.containsKey("facets"));
+        }
+    }
+
+    @Test
+    void nonPaperChoiceToolsDoNotCreatePaperChoiceProductState() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
+        when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_paper_outline", Map.of(
+                        "paperHandles", List.of("paper_handle_abc")
+                )))
+                .thenReturn(toolCallTurn("call_2", "list_paper_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc")
+                )))
+                .thenReturn(toolCallTurn("call_3", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "methods"
+                )))
+                .thenReturn(finalTurn(productStateEnvelope("这些是导航结果。")));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "从已点击论文查看导航信息",
+                List.of("paper_handle_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertTrue(result.productStateItems().isEmpty());
     }
 
     @Test
@@ -1382,12 +1501,7 @@ class ProductReadingReActHarnessTest {
                 true,
                 Map.of(
                         "status", "OK",
-                        "items", List.of(Map.of(
-                                "ordinal", 1,
-                                "paperHandle", "paper_handle_abc",
-                                "title", "Agentic Eval Benchmark",
-                                "preview", "navigation preview"
-                        )),
+                        "items", List.of(paperChoiceRow("paper_handle_abc", "Agentic Eval Benchmark")),
                         "constraints", Map.of(
                                 "previewIsSourceQuote", false,
                                 "paperContentClaimsAllowed", false
@@ -1539,6 +1653,44 @@ class ProductReadingReActHarnessTest {
                 ),
                 ProductToolEffect.PAPER_RESOLUTION
         );
+    }
+
+    private ProductToolResult paperLevelResult(String toolName, List<Map<String, Object>> rows) {
+        return new ProductToolResult(
+                toolName,
+                true,
+                Map.of(
+                        "status", rows == null || rows.isEmpty() ? "NO_MATCH" : "OK",
+                        "items", rows == null ? List.of() : rows,
+                        "facets", Map.of(),
+                        "constraints", Map.of(
+                                "paperCardIsSourceQuote", false,
+                                "paperContentClaimsAllowed", false
+                        )
+                ),
+                "list_papers".equals(toolName) ? ProductToolEffect.PAPER_LIST : ProductToolEffect.PAPER_DISCOVERY
+        );
+    }
+
+    private Map<String, Object> paperChoiceRow(String paperHandle, String title) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("ordinal", 1);
+        row.put("paperHandle", paperHandle);
+        row.put("title", title);
+        row.put("originalFilename", title.toLowerCase().replace(' ', '-') + ".pdf");
+        row.put("authors", List.of("Ada Lovelace"));
+        row.put("year", 2025);
+        row.put("venue", "NeurIPS");
+        row.put("preview", "not evidence");
+        row.put("paperId", "paper-raw");
+        row.put("score", 0.9);
+        row.put("rank", 1);
+        row.put("locationRef", "page_ref_hidden");
+        row.put("sourceQuoteRef", "source_quote_hidden");
+        row.put("catalogTopics", List.of("Agents"));
+        row.put("paperTypes", List.of("Benchmark"));
+        row.put("facets", Map.of("years", List.of()));
+        return row;
     }
 
     private Map<String, Object> identityMatch(String paperHandle, String title) {
