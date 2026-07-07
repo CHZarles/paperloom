@@ -95,6 +95,14 @@ harnesses:
     verifier: front-searchable-status
     status: runnable-live-seed
     benchmarkIds: product-pdf-launch-data-seed
+  - id: product-launch-runtime-preflight
+    name: Product Launch Runtime Preflight
+    description: Runtime dependency preflight for backend login, infrastructure ports, MinerU, model keys, embedding keys, and trace config.
+    retrieval: runtime-preflight
+    planner: none
+    verifier: dependency-check
+    status: runnable-runtime-preflight
+    benchmarkIds: product-launch-runtime-preflight
   - id: semantic-only-baseline
     name: Semantic Only Baseline
     description: Semantic retrieval only with the same answer and evidence verifier.
@@ -154,6 +162,16 @@ benchmarks:
     primaryMetric: passRate
     gateMode: product-pdf-launch-data-seed
     cases: "30"
+  - id: product-launch-runtime-preflight
+    name: Product Launch Runtime Preflight
+    tier: product
+    task: launch runtime dependency preflight
+    status: runnable
+    path: .env
+    source: local runtime configuration and endpoints
+    primaryMetric: passRate
+    gateMode: product-launch-runtime-preflight
+    cases: "10"
   - id: product-reading-launch-trace
     name: Product Reading Launch Trace
     tier: product

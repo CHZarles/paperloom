@@ -135,6 +135,11 @@ class RagBenchmarkRegistryTest {
                         && "runnable-live-seed".equals(harness.status())
                         && "product-upload-http".equals(harness.retrieval())
                         && harness.benchmarkIds().equals(List.of("product-pdf-launch-data-seed"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "product-launch-runtime-preflight".equals(harness.id())
+                        && "runnable-runtime-preflight".equals(harness.status())
+                        && "runtime-preflight".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("product-launch-runtime-preflight"))));
 
         RagBenchmarkRegistry.BenchmarkDefinition traceBenchmark = registry.benchmark("product-reading-launch-trace");
         assertEquals("Product Reading Launch Trace", traceBenchmark.name());
@@ -167,6 +172,14 @@ class RagBenchmarkRegistryTest {
         assertEquals("eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl", seedBenchmark.path());
         assertEquals("passRate", seedBenchmark.primaryMetric());
         assertEquals("30", seedBenchmark.cases());
+
+        RagBenchmarkRegistry.BenchmarkDefinition preflightBenchmark = registry.benchmark("product-launch-runtime-preflight");
+        assertEquals("Product Launch Runtime Preflight", preflightBenchmark.name());
+        assertEquals("product", preflightBenchmark.tier());
+        assertEquals("launch runtime dependency preflight", preflightBenchmark.task());
+        assertEquals(".env", preflightBenchmark.path());
+        assertEquals("passRate", preflightBenchmark.primaryMetric());
+        assertEquals("10", preflightBenchmark.cases());
     }
 
     @Test
