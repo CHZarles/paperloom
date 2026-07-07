@@ -201,8 +201,9 @@ Items from `list_papers`, `search_paper_candidates`, and `find_papers_by_identit
 Quote references from both `read_locations` and `trace_source_quotes`.
 
 `ProductLaunchRuntimePreflightCli` is the preflight gate for the launch runtime. It reads `.env`,
-checks backend login, MySQL, Redis, Kafka, MinIO, Elasticsearch, MinerU, LLM key, embedding key, and
-trace config, then writes a standard eval run plus `remediation.md` with non-secret fixes for failed
+checks backend login, MySQL, Redis, Kafka, MinIO, Elasticsearch, MinerU, LLM key, embedding key,
+trace config, and explicit Product Reading enablement, then writes a standard eval run plus
+`remediation.md` with non-secret fixes for failed
 checks. Product launch CLI `main` methods exit non-zero when their scorecard has any failed cases,
 while still preserving failed run artifacts for debugging. Run preflight before the slower 30-PDF
 seed:

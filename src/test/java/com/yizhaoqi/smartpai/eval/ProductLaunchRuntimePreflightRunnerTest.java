@@ -40,6 +40,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 EMBEDDING_API_KEY=embedding-key
                 PAPERLOOM_TRACE_ENABLED=true
                 PAPERLOOM_TRACE_ROOT=data/traces/product-react
+                PAPERLOOM_REACT_READING_PHASE1_ENABLED=true
                 """);
         FakeProbe probe = FakeProbe.passAll();
 
@@ -58,12 +59,13 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 "mineru_health",
                 "llm_key",
                 "embedding_key",
-                "trace_config"
+                "trace_config",
+                "reading_phase_flag"
         ), caseIds);
 
         JsonNode scorecard = OBJECT_MAPPER.readTree(runDir.resolve("scorecard.json").toFile());
-        assertEquals(10, scorecard.path("caseCount").asInt());
-        assertEquals(10, scorecard.path("passed").asInt());
+        assertEquals(11, scorecard.path("caseCount").asInt());
+        assertEquals(11, scorecard.path("passed").asInt());
         assertEquals(1.0d, scorecard.path("passRate").asDouble());
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("launch preflight passed"));
@@ -102,13 +104,18 @@ class ProductLaunchRuntimePreflightRunnerTest {
         assertTrue(llm.path("failureClass").toString().contains("CONFIG_MISSING"));
         assertFalse(embedding.path("passed").asBoolean());
         assertTrue(embedding.path("failureClass").toString().contains("CONFIG_MISSING"));
+        JsonNode readingFlag = row(rows, "reading_phase_flag");
+        assertFalse(readingFlag.path("passed").asBoolean());
+        assertTrue(readingFlag.path("failureClass").toString().contains("CONFIG_MISSING"));
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("not launch-ready"));
         assertTrue(remediation.contains("DEEPSEEK_API_KEY"));
         assertTrue(remediation.contains("EMBEDDING_API_KEY"));
+        assertTrue(remediation.contains("PAPERLOOM_REACT_READING_PHASE1_ENABLED"));
         assertFalse(remediation.contains("secret"));
         assertFalse(remediation.contains("llm-key"));
         assertTrue(remediation.contains("Do not run the 30-PDF seed"));
+        assertTrue(remediation.contains("11/11"));
     }
 
     @Test
@@ -123,7 +130,8 @@ class ProductLaunchRuntimePreflightRunnerTest {
         runner(probe).run(options(env, Map.of(
                 "SPRING_DATASOURCE_URL", "jdbc:mysql://localhost:13306/paismart",
                 "DEEPSEEK_API_KEY", "runtime-llm-key",
-                "EMBEDDING_API_KEY", "runtime-embedding-key"
+                "EMBEDDING_API_KEY", "runtime-embedding-key",
+                "PAPERLOOM_REACT_READING_PHASE1_ENABLED", "true"
         )));
 
         ProductLaunchRuntimePreflightRunner.ProbeRequest mysql = probe.requests.stream()
@@ -145,6 +153,13 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 .params()
                 .get("present")
                 .equals(true));
+        assertTrue(probe.requests.stream()
+                .filter(request -> "reading_phase_flag".equals(request.caseId()))
+                .findFirst()
+                .orElseThrow()
+                .params()
+                .get("enabled")
+                .equals("true"));
     }
 
     @Test
@@ -249,6 +264,16 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 if (value.isBlank()) {
                     return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
                             List.of("config_missing(" + request.params().get("key") + ")"),
+                            List.of("CONFIG_MISSING"),
+                            Map.of("kind", request.kind())
+                    );
+                }
+            }
+            if (configAware && "READING_FLAG".equals(request.kind())) {
+                String enabled = String.valueOf(request.params().getOrDefault("enabled", ""));
+                if (!Boolean.parseBoolean(enabled.trim())) {
+                    return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
+                            List.of("reading_phase_flag_disabled"),
                             List.of("CONFIG_MISSING"),
                             Map.of("kind", request.kind())
                     );

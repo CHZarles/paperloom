@@ -97,7 +97,7 @@ harnesses:
     benchmarkIds: product-pdf-launch-data-seed
   - id: product-launch-runtime-preflight
     name: Product Launch Runtime Preflight
-    description: Runtime dependency preflight for backend login, infrastructure ports, MinerU, model keys, embedding keys, and trace config.
+    description: Runtime dependency preflight for backend login, infrastructure ports, MinerU, model keys, embedding keys, trace config, and Product Reading enablement.
     retrieval: runtime-preflight
     planner: none
     verifier: dependency-check
@@ -171,7 +171,7 @@ benchmarks:
     source: local runtime configuration and endpoints
     primaryMetric: passRate
     gateMode: product-launch-runtime-preflight
-    cases: "10"
+    cases: "11"
   - id: product-reading-launch-trace
     name: Product Reading Launch Trace
     tier: product

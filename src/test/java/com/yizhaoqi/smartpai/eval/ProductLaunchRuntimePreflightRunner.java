@@ -106,6 +106,7 @@ public class ProductLaunchRuntimePreflightRunner {
                 value(env, options, "PAPERLOOM_TRACE_ENABLED", "true"),
                 value(env, options, "PAPERLOOM_TRACE_ROOT", "data/traces/product-react")
         ));
+        requests.add(ProbeRequest.readingFlag(value(env, options, "PAPERLOOM_REACT_READING_PHASE1_ENABLED", "")));
         return requests;
     }
 
@@ -226,7 +227,8 @@ public class ProductLaunchRuntimePreflightRunner {
             builder.append("No runtime preflight blockers were detected. Continue with the launch gates below.\n\n");
         } else {
             builder.append("Do not run the 30-PDF seed, live Product Reading smoke, trace eval, or parser smoke ")
-                    .append("until this preflight is 10/10 on the active runtime.\n\n")
+                    .append("until this preflight is ").append(results.size()).append("/")
+                    .append(results.size()).append(" on the active runtime.\n\n")
                     .append("## Fix First\n\n");
             for (CaseResult failure : failures) {
                 builder.append(remediationBullet(failure)).append("\n");
@@ -266,6 +268,9 @@ public class ProductLaunchRuntimePreflightRunner {
                     + "The remediation artifact intentionally omits the value.";
             case "trace_config" -> "- `trace_config`: set `PAPERLOOM_TRACE_ENABLED=true` and a writable "
                     + "`PAPERLOOM_TRACE_ROOT` before running the live smoke.";
+            case "reading_phase_flag" -> "- `reading_phase_flag`: set "
+                    + "`PAPERLOOM_REACT_READING_PHASE1_ENABLED=true` on the launch runtime so the live smoke "
+                    + "exercises Product Reading. Keep the product default disabled outside launch runs.";
             default -> "- `" + failure.caseId() + "`: inspect `run.json` diagnostics and fix the reported "
                     + String.join("/", failure.failureClass()) + " blocker.";
         };
@@ -404,6 +409,13 @@ public class ProductLaunchRuntimePreflightRunner {
             return new ProbeRequest("trace_config", "TRACE_CONFIG", blankToDefault(root, ""), "", Map.of(
                     "enabled", blankToDefault(enabled, "true"),
                     "root", blankToDefault(root, "data/traces/product-react")
+            ));
+        }
+
+        static ProbeRequest readingFlag(String enabled) {
+            return new ProbeRequest("reading_phase_flag", "READING_FLAG", "PAPERLOOM_REACT_READING_PHASE1_ENABLED", "", Map.of(
+                    "key", "PAPERLOOM_REACT_READING_PHASE1_ENABLED",
+                    "enabled", blankToDefault(enabled, "")
             ));
         }
 

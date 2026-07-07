@@ -121,4 +121,20 @@ class ProductLaunchRuntimePreflightProbeTest {
         assertFalse(result.passed());
         assertTrue(result.failureClass().contains("CONFIG_MISSING"));
     }
+
+    @Test
+    void readingPhaseFlagMustBeExplicitlyEnabledForLaunch() {
+        ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
+
+        ProductLaunchRuntimePreflightRunner.ProbeResult disabled = probe.check(
+                ProductLaunchRuntimePreflightRunner.ProbeRequest.readingFlag("false")
+        );
+        ProductLaunchRuntimePreflightRunner.ProbeResult enabled = probe.check(
+                ProductLaunchRuntimePreflightRunner.ProbeRequest.readingFlag("true")
+        );
+
+        assertFalse(disabled.passed());
+        assertTrue(disabled.failureClass().contains("CONFIG_MISSING"));
+        assertTrue(enabled.passed());
+    }
 }

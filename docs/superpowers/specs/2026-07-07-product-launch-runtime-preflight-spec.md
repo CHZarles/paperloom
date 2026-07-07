@@ -28,6 +28,7 @@ The current launch gates fail before product behavior can be evaluated: backend 
    - `llm_key`: `DEEPSEEK_API_KEY` is nonblank.
    - `embedding_key`: `EMBEDDING_API_KEY` is nonblank.
    - `trace_config`: `PAPERLOOM_TRACE_ENABLED` is not false and `PAPERLOOM_TRACE_ROOT` is usable or defaults to `data/traces/product-react`.
+   - `reading_phase_flag`: `PAPERLOOM_REACT_READING_PHASE1_ENABLED` is explicitly true for launch runs.
 
 4. Failure classes:
    - `RUNTIME_UNAVAILABLE` for unreachable backend, TCP services, or HTTP health checks.
@@ -46,6 +47,7 @@ The current launch gates fail before product behavior can be evaluated: backend 
 - Do not create users or mutate product data.
 - Do not replace the 30-PDF data seed, live reading smoke, trace eval, or parser smoke.
 - Do not validate database schema or parser output; downstream gates own those checks.
+- Do not promote the default Product Reading flag; it stays disabled unless the launch runtime opts in.
 
 ## Launch Gate Order
 

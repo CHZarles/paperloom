@@ -179,7 +179,7 @@ class RagBenchmarkRegistryTest {
         assertEquals("launch runtime dependency preflight", preflightBenchmark.task());
         assertEquals(".env", preflightBenchmark.path());
         assertEquals("passRate", preflightBenchmark.primaryMetric());
-        assertEquals("10", preflightBenchmark.cases());
+        assertEquals("11", preflightBenchmark.cases());
     }
 
     @Test

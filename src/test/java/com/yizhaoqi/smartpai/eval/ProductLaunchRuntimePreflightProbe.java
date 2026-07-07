@@ -40,6 +40,7 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             case "LOGIN" -> login(request);
             case "NONBLANK" -> nonBlank(request);
             case "TRACE_CONFIG" -> traceConfig(request);
+            case "READING_FLAG" -> readingFlag(request);
             case "INVALID_CONFIG" -> ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
                     List.of("config_invalid(" + request.params().get("key") + ")"),
                     List.of("CONFIG_INVALID"),
@@ -180,6 +181,21 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             );
         }
         return ProductLaunchRuntimePreflightRunner.ProbeResult.pass(diagnostics);
+    }
+
+    private ProductLaunchRuntimePreflightRunner.ProbeResult readingFlag(
+            ProductLaunchRuntimePreflightRunner.ProbeRequest request) {
+        String enabled = String.valueOf(request.params().getOrDefault("enabled", ""));
+        Map<String, Object> diagnostics = new LinkedHashMap<>(request.params());
+        diagnostics.put("enabledForLaunch", Boolean.parseBoolean(enabled.trim()));
+        if (Boolean.parseBoolean(enabled.trim())) {
+            return ProductLaunchRuntimePreflightRunner.ProbeResult.pass(diagnostics);
+        }
+        return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
+                List.of("reading_phase_flag_disabled"),
+                List.of("CONFIG_MISSING"),
+                diagnostics
+        );
     }
 
     private static List<Integer> acceptedStatuses(Object value) {

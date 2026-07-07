@@ -9,7 +9,7 @@ The launch runtime preflight now blocks expensive launch gates when the runtime 
 1. `ProductLaunchRuntimePreflightRunner` must write `remediation.md` next to `run.json`, `scorecard.json`, and `report.md`.
 2. The remediation file must include:
    - run-level launch readiness status;
-   - a statement that downstream 30-PDF and Product Reading gates should not run until preflight is `10/10`;
+   - a statement that downstream 30-PDF and Product Reading gates should not run until every current preflight case passes;
    - one bullet per failed case with a non-secret suggested fix;
    - the launch gate order to run after preflight passes.
 3. The remediation file must never include secret values:
@@ -27,6 +27,7 @@ The launch runtime preflight now blocks expensive launch gates when the runtime 
    - `llm_key`;
    - `embedding_key`;
    - `trace_config`;
+   - `reading_phase_flag`;
    - unknown cases via a generic inspect-`run.json` fallback.
 5. Preflight configuration resolution may use shell environment variables as overrides over `.env` values, matching normal launch practice.
 

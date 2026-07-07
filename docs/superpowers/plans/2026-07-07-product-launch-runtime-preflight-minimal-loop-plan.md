@@ -187,14 +187,14 @@ Expected: test passes.
 **Files:**
 - No code files required unless a test reveals a bug.
 
-- [ ] **Step 1: Run focused verification**
+- [x] **Step 1: Run focused verification**
 
 ```bash
 mvn -q -Dtest=ProductLaunchRuntimePreflightRunnerTest,ProductLaunchRuntimePreflightProbeTest,RagBenchmarkRegistryTest test
 git diff --check
 ```
 
-- [ ] **Step 2: Run current local preflight**
+- [x] **Step 2: Run current local preflight**
 
 ```bash
 mvn -q -DskipTests test-compile exec:java \
