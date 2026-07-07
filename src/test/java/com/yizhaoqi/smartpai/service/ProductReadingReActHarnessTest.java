@@ -163,6 +163,79 @@ class ProductReadingReActHarnessTest {
     }
 
     @Test
+    void sessionStateQuestionAcceptsAnswerModeProductStateAlias() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_session_state", Map.of()))
+                .thenReturn(finalTurn("""
+                        ```json
+                        {
+                          "answerMode": "PRODUCT_STATE",
+                          "productState": {
+                            "searchScope": {
+                              "scopeMode": "AUTO_SOURCE",
+                              "label": "All readable papers",
+                              "readablePaperCountKnown": true,
+                              "readablePaperCount": 0,
+                              "immutable": true
+                            },
+                            "status": "OK"
+                          },
+                          "paperContentClaimsAllowed": false,
+                          "candidateList": [],
+                          "evidenceBasedClaims": [],
+                          "answer": "当前库中（搜索范围：All readable papers）的可读论文数量为 0 篇。"
+                        }
+                        ```
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("现在库里有多少论文"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("0 篇"));
+    }
+
+    @Test
+    void sessionStateQuestionAcceptsNestedAnswerEnvelopeAlias() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_session_state", Map.of()))
+                .thenReturn(finalTurn("""
+                        ```json
+                        {
+                          "answerEnvelope": {
+                            "answerKind": "PRODUCT_STATE",
+                            "summary": "当前搜索范围（All readable papers）内可读论文数量为 0 篇。",
+                            "scopeLabel": "All readable papers",
+                            "readablePaperCount": 0,
+                            "evidenceBasedClaims": [],
+                            "nextStepHint": "如需进一步筛选或发现论文，可调用 list_papers 浏览或 search_paper_candidates 进行主题检索。"
+                          }
+                        }
+                        ```
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("现在库里有多少论文"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("0 篇"));
+    }
+
+    @Test
     void listPapersQuestionCallsBrowseToolAndAcceptsProductStateAnswer() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);

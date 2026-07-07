@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -377,6 +378,23 @@ public class ProductReadingReActHarness {
                 In evidenceBasedClaims, use sourceQuoteRefs, not evidenceRefs.
                 If Source Quotes are unavailable or insufficient, answer INSUFFICIENT_EVIDENCE without unsupported paper facts.
                 Final answer must be one JSON AnswerEnvelope.
+                Re-output only one JSON object. Do not use markdown fences or plain text.
+                Use exactly these top-level fields:
+                answerType, answer, evidenceBasedClaims, stateClaims, limitations, nonEvidenceNotes, missingFields, reason.
+                The answer field is the visible user answer; put any tables, bullets, recommendations, or other user-facing Markdown structure inside answer.
+                Required final JSON shape:
+                {
+                  "answerType": "NON_EVIDENCE | PRODUCT_STATE | EVIDENCE_ANSWER | INSUFFICIENT_EVIDENCE | CLARIFICATION_NEEDED",
+                  "answer": "direct user-facing answer",
+                  "evidenceBasedClaims": [{"claim": "paper claim", "sourceQuoteRefs": ["source_quote_..."]}],
+                  "stateClaims": [{"claim": "product-state claim", "sourceTool": "list_papers"}],
+                  "limitations": ["limitation text"],
+                  "nonEvidenceNotes": ["non-evidence note text"],
+                  "missingFields": ["missing field name"],
+                  "reason": ""
+                }
+                evidenceBasedClaims and stateClaims must be arrays of JSON objects, never strings.
+                limitations, nonEvidenceNotes, and missingFields must be arrays of strings.
                 paperRef, evidenceRef, and citationRef are legacy identifiers for the old harness. Do not use them as reading tool arguments or citation support.
                 Explicit clicked paper anchors for this turn:
                 %s
@@ -632,10 +650,11 @@ public class ProductReadingReActHarness {
     }
 
     private AnswerEnvelope parseEnvelope(String rawContent) throws Exception {
-        JsonNode node = objectMapper.readTree(extractJson(rawContent));
+        JsonNode root = objectMapper.readTree(extractJson(rawContent));
+        JsonNode node = answerEnvelopeNode(root);
         return new AnswerEnvelope(
-                AnswerType.valueOf(node.path("answerType").asText("")),
-                node.path("answer").asText(""),
+                answerType(node),
+                firstText(node, "answer", "summary", "message"),
                 listOfMaps(node.path("evidenceBasedClaims")),
                 listOfMaps(node.path("stateClaims")),
                 listOfStrings(node.path("limitations")),
@@ -643,6 +662,34 @@ public class ProductReadingReActHarness {
                 listOfStrings(node.path("missingFields")),
                 node.path("reason").asText("")
         );
+    }
+
+    private JsonNode answerEnvelopeNode(JsonNode root) {
+        if (root != null && root.path("answerEnvelope").isObject()) {
+            return root.path("answerEnvelope");
+        }
+        return root;
+    }
+
+    private AnswerType answerType(JsonNode node) {
+        String rawType = firstText(node, "answerType", "answerKind", "answerMode");
+        if (rawType.isBlank() && node != null && node.path("productState").isObject()) {
+            rawType = AnswerType.PRODUCT_STATE.name();
+        }
+        return AnswerType.valueOf(rawType.trim().replace('-', '_').replace(' ', '_').toUpperCase(Locale.ROOT));
+    }
+
+    private String firstText(JsonNode node, String... fields) {
+        if (node == null || fields == null) {
+            return "";
+        }
+        for (String field : fields) {
+            String value = node.path(field).asText("");
+            if (!value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
     }
 
     private String extractJson(String rawContent) {
