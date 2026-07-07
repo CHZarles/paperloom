@@ -236,6 +236,21 @@ Harness. Session state supports product-state answers; it does not list historic
 paper content.
 _Avoid_: hidden ref store, paper source quote, citation trace
 
+**Chat Conversation**:
+A durable user-owned paper-reading thread whose history, memory, search scope, and reference
+mappings form one auditable answer context.
+_Avoid_: browser tab, WebSocket connection, current selection
+
+**Chat Turn Target**:
+The Chat Conversation that one outgoing user message is intended to append to and whose scope,
+memory, and references govern answer generation for that turn.
+_Avoid_: per-user current conversation, selected sidebar item, active generation
+
+**Conversation Selection**:
+The client-side navigation state showing which Chat Conversation a user is viewing. It may guide UI
+defaults, but it is not the authoritative Chat Turn Target after a message is submitted.
+_Avoid_: chat turn target, session scope, conversation ownership
+
 **Reference Memory**:
 Persistent conversation memory about already-read Source Quotes, attempted papers, and unresolved
 reading questions. Reference Memory helps navigation but cannot support final paper-content claims.

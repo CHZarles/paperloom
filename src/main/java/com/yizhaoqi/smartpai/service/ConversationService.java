@@ -196,6 +196,14 @@ public class ConversationService {
         redisTemplate.opsForValue().set(redisKey, conversationId, Duration.ofDays(7));
     }
 
+    public ConversationSession requireActiveOwnedConversationSession(Long userId, String conversationId) {
+        ConversationSession session = requireOwnedSession(userId, conversationId);
+        if (session.getStatus() != ConversationSession.SessionStatus.ACTIVE) {
+            throw new CustomException("对话不存在", HttpStatus.NOT_FOUND);
+        }
+        return session;
+    }
+
     public void updateSessionTitle(Long userId, String conversationId, String title) {
         findOwnedSession(userId, conversationId).ifPresent(session -> {
             if (session.getTitle() == null || "新对话".equals(session.getTitle())) {

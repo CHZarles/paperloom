@@ -12,8 +12,12 @@ import org.springframework.web.socket.WebSocketSession;
 import java.net.URI;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,7 +32,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","message":"explain this paper","scope":{}}
+                        {"type":"chat","conversationId":"conversation-1","message":"explain this paper","scope":{}}
                         """)
         );
 
@@ -46,7 +50,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","message":"audit the evidence","scope":{"retrievalBudgetProfile":"deep_audit"}}
+                        {"type":"chat","conversationId":"conversation-1","message":"audit the evidence","scope":{"retrievalBudgetProfile":"deep_audit"}}
                         """)
         );
 
@@ -64,7 +68,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","message":"audit the session","retrievalBudgetProfile":"deep_audit","referenceFocus":null}
+                        {"type":"chat","conversationId":"conversation-1","message":"audit the session","retrievalBudgetProfile":"deep_audit","referenceFocus":null}
                         """)
         );
 
@@ -82,7 +86,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","message":"explain this citation","referenceFocus":{"referenceNumber":2,"retrievalBudgetProfile":"high_recall"},"scope":{"referenceNumber":9,"retrievalBudgetProfile":"deep_audit"}}
+                        {"type":"chat","conversationId":"conversation-1","message":"explain this citation","referenceFocus":{"referenceNumber":2,"retrievalBudgetProfile":"high_recall"},"scope":{"referenceNumber":9,"retrievalBudgetProfile":"deep_audit"}}
                         """)
         );
 
@@ -101,7 +105,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","message":"解释这个引用","referenceFocus":{"sourceQuoteRef":"source_quote_abc","referenceNumber":1}}
+                        {"type":"chat","conversationId":"conversation-1","message":"解释这个引用","referenceFocus":{"sourceQuoteRef":"source_quote_abc","referenceNumber":1}}
                         """)
         );
 
@@ -112,7 +116,7 @@ class ChatWebSocketHandlerTest {
     }
 
     @Test
-    void structuredChatPayloadFallsBackToLegacyScopeWhenReferenceFocusIsNull() {
+    void structuredChatPayloadPreservesConversationId() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);
         WebSocketSession session = session();
@@ -120,7 +124,46 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","message":"legacy audit","referenceFocus":null,"scope":{"retrievalBudgetProfile":"deep_audit"}}
+                        {"type":"user_message","conversationId":"conversation-1","message":"keep this in the visible thread"}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("keep this in the visible thread", request.message());
+        assertEquals("conversation-1", request.conversationId());
+    }
+
+    @Test
+    void structuredChatPayloadWithoutConversationIdIsRejected() throws Exception {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"user_message","message":"missing target"}
+                        """)
+        );
+
+        verify(chatHandler, never()).processMessage(anyString(), any(ChatHandler.ChatRequest.class), eq(session));
+        verify(chatHandler, never()).processMessage(anyString(), anyString(), eq(session));
+        verify(session).sendMessage(argThat(message ->
+                message instanceof TextMessage textMessage
+                        && textMessage.getPayload().contains("conversationId")
+        ));
+    }
+
+    @Test
+    void structuredChatPayloadUsesLegacyScopeFieldWhenReferenceFocusIsNull() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","conversationId":"conversation-1","message":"legacy audit","referenceFocus":null,"scope":{"retrievalBudgetProfile":"deep_audit"}}
                         """)
         );
 

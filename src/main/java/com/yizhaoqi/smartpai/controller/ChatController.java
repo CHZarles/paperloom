@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -80,16 +81,20 @@ public class ChatController {
     }
 
     @GetMapping("/active-generation")
-    public ResponseEntity<?> getActiveGeneration(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getActiveGeneration(@RequestHeader("Authorization") String token,
+                                                 @RequestParam(value = "clientId", required = false) String clientId) {
         String userId = extractValidatedUserId(token);
         if (userId == null) {
             return ResponseEntity.status(401).body(responseBody(401, "Invalid token", null));
         }
+        String normalizedClientId = clientId == null || clientId.isBlank() ? null : clientId.trim();
 
         return ResponseEntity.ok(responseBody(
                 200,
                 "获取当前活动生成状态成功",
-                chatGenerationStateService.getActiveGenerationForUser(userId).orElse(null)
+                normalizedClientId == null
+                        ? chatGenerationStateService.getActiveGenerationForUser(userId).orElse(null)
+                        : chatGenerationStateService.getActiveGenerationForUserAndClient(userId, normalizedClientId).orElse(null)
         ));
     }
 

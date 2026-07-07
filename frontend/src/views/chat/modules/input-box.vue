@@ -11,6 +11,7 @@ const props = withDefaults(
 const chatStore = useChatStore();
 const {
   connectionStatus,
+  conversationId,
   currentScope,
   input,
   isRateLimited,
@@ -450,21 +451,33 @@ const handleSend = async (messageOverride?: string) => {
     return;
   }
 
+  let targetConversationId = conversationId.value;
+  if (!targetConversationId) {
+    targetConversationId = await chatStore.createNewSession();
+    if (!targetConversationId) {
+      window.$message?.error('无法创建对话，请稍后再试');
+      return;
+    }
+  }
+
   const outgoingReferenceFocusPayload = outgoingReferenceFocus(referenceFocus.value);
 
   list.value.push({
     content: outgoingMessage,
-    role: 'user'
+    role: 'user',
+    conversationId: targetConversationId
   });
   list.value.push({
     content: '',
     role: 'assistant',
     status: 'pending',
+    conversationId: targetConversationId,
     toolEvents: []
   });
   chatStore.wsSend(
     JSON.stringify({
       type: 'user_message',
+      conversationId: targetConversationId,
       message: outgoingMessage,
       referenceFocus: outgoingReferenceFocusPayload
     })

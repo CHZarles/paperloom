@@ -2,6 +2,7 @@ package com.yizhaoqi.smartpai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.config.ProductReadingReactProperties;
+import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.exception.RateLimitExceededException;
 import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import com.yizhaoqi.smartpai.model.ConversationScopeStatus;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -44,7 +46,7 @@ class ChatHandlerProductHarnessTest {
         when(sessionRegistry.getClientId(session)).thenReturn("client-1");
 
         ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
-        when(generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+        when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq("conversation-1"), anyString()))
                 .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
                         "generation-1",
                         "1",
@@ -124,6 +126,130 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
+    void explicitConversationIdOverridesRedisCurrentConversationForChatTurn() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("user:1:current_conversation")).thenReturn("conversation-redis");
+
+        ChatSessionRegistry sessionRegistry = mock(ChatSessionRegistry.class);
+        WebSocketSession session = mock(WebSocketSession.class);
+        when(session.getId()).thenReturn("socket-1");
+        when(sessionRegistry.getClientId(session)).thenReturn("client-1");
+
+        ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
+        when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq("conversation-explicit"), anyString()))
+                .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
+                        "generation-explicit",
+                        "1",
+                        "conversation-explicit",
+                        "question",
+                        ChatGenerationStateService.GenerationStatus.STREAMING,
+                        "",
+                        "2026-06-29T12:00:00",
+                        "2026-06-29T12:00:00",
+                        null,
+                        Map.of(),
+                        Map.of()
+                ));
+
+        ConversationScopeService conversationScopeService = mock(ConversationScopeService.class);
+        ConversationScopeService.EffectiveConversationScope scope =
+                new ConversationScopeService.EffectiveConversationScope(
+                        ConversationScopeMode.AUTO_LIBRARY,
+                        ConversationScopeStatus.READY,
+                        true,
+                        "All searchable papers",
+                        List.of(),
+                        Map.of()
+                );
+        when(conversationScopeService.resolveForChat(1L, "conversation-explicit")).thenReturn(scope);
+        when(conversationScopeService.lockForFirstMessage(1L, "conversation-explicit")).thenReturn(scope);
+
+        ThreadPoolTaskExecutor executor = mock(ThreadPoolTaskExecutor.class);
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(executor).execute(any(Runnable.class));
+
+        ProductConversationService productConversationService = mock(ProductConversationService.class);
+        when(productConversationService.runTurn(eq(1L), eq("conversation-explicit"), eq("generation-explicit"), anyString(), any(), any(), any(), any()))
+                .thenReturn(new ProductTurnResult(
+                        "ok",
+                        new AnswerEnvelope(AnswerType.NON_EVIDENCE, "ok", List.of(), List.of(), List.of(), List.of(), List.of(), ""),
+                        List.of(),
+                        List.of(),
+                        ProductStopReason.COMPLETED,
+                        ProductResultStatus.COMPLETED
+                ));
+
+        ConversationService conversationService = mock(ConversationService.class);
+        ChatHandler handler = new ChatHandler(
+                redisTemplate,
+                mock(RateLimitService.class),
+                conversationService,
+                conversationScopeService,
+                generationStateService,
+                sessionRegistry,
+                productConversationService,
+                new ObjectMapper(),
+                executor
+        );
+
+        handler.processMessage(
+                "1",
+                new ChatHandler.ChatRequest("keep this in the visible thread", null, "conversation-explicit"),
+                session
+        );
+
+        verify(conversationService).requireActiveOwnedConversationSession(1L, "conversation-explicit");
+        verify(valueOperations, never()).get("user:1:current_conversation");
+        verify(conversationService, never()).ensureConversationSession(eq(1L), eq("conversation-redis"), anyString());
+        verify(productConversationService).runTurn(eq(1L), eq("conversation-explicit"), eq("generation-explicit"), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void invalidExplicitConversationIdFailsClosedWithoutRedisFallback() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        ChatSessionRegistry sessionRegistry = mock(ChatSessionRegistry.class);
+        WebSocketSession session = mock(WebSocketSession.class);
+        when(session.getId()).thenReturn("socket-1");
+        when(sessionRegistry.getClientId(session)).thenReturn("client-1");
+
+        ConversationService conversationService = mock(ConversationService.class);
+        when(conversationService.requireActiveOwnedConversationSession(1L, "foreign-conversation"))
+                .thenThrow(new CustomException("对话不存在", HttpStatus.NOT_FOUND));
+
+        ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
+        ProductConversationService productConversationService = mock(ProductConversationService.class);
+        ChatHandler handler = new ChatHandler(
+                redisTemplate,
+                mock(RateLimitService.class),
+                conversationService,
+                mock(ConversationScopeService.class),
+                generationStateService,
+                sessionRegistry,
+                productConversationService,
+                new ObjectMapper(),
+                mock(ThreadPoolTaskExecutor.class)
+        );
+
+        handler.processMessage(
+                "1",
+                new ChatHandler.ChatRequest("do not reroute this", null, "foreign-conversation"),
+                session
+        );
+
+        verify(conversationService).requireActiveOwnedConversationSession(1L, "foreign-conversation");
+        verify(valueOperations, never()).get("user:1:current_conversation");
+        verify(generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
+        verify(productConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void rawPaperIdReferenceFocusDoesNotOverrideProductSessionScope() {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
@@ -136,7 +262,7 @@ class ChatHandlerProductHarnessTest {
         when(sessionRegistry.getClientId(session)).thenReturn("client-1");
 
         ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
-        when(generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+        when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq("conversation-1"), anyString()))
                 .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
                         "generation-1",
                         "1",
@@ -227,7 +353,7 @@ class ChatHandlerProductHarnessTest {
         when(sessionRegistry.getClientId(session)).thenReturn("client-1");
 
         ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
-        when(generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+        when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq("conversation-1"), anyString()))
                 .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
                         "generation-1",
                         "1",
@@ -309,7 +435,7 @@ class ChatHandlerProductHarnessTest {
         when(sessionRegistry.getClientId(session)).thenReturn("client-1");
 
         ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
-        when(generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+        when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq("conversation-1"), anyString()))
                 .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
                         "generation-1",
                         "1",
@@ -383,7 +509,7 @@ class ChatHandlerProductHarnessTest {
         when(sessionRegistry.getClientId(session)).thenReturn("client-1");
 
         ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
-        when(generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+        when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq("conversation-1"), anyString()))
                 .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
                         "generation-1",
                         "1",
@@ -656,7 +782,7 @@ class ChatHandlerProductHarnessTest {
         when(sessionRegistry.getClientId(session)).thenReturn("client-1");
 
         ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
-        when(generationStateService.createGeneration(eq("1"), eq("conversation-1"), anyString()))
+        when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq("conversation-1"), anyString()))
                 .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
                         "generation-1",
                         "1",

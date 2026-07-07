@@ -184,6 +184,33 @@ class ConversationServiceTest {
     }
 
     @Test
+    void requireActiveOwnedConversationSessionReturnsActiveOwnedSession() {
+        ConversationSession session = new ConversationSession();
+        session.setConversationId("conversation-1");
+        session.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L))
+                .thenReturn(Optional.of(session));
+
+        ConversationSession result = conversationService.requireActiveOwnedConversationSession(1L, "conversation-1");
+
+        assertEquals(session, result);
+    }
+
+    @Test
+    void requireActiveOwnedConversationSessionRejectsArchivedSession() {
+        ConversationSession session = new ConversationSession();
+        session.setConversationId("conversation-1");
+        session.setStatus(ConversationSession.SessionStatus.ARCHIVED);
+        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L))
+                .thenReturn(Optional.of(session));
+
+        CustomException exception = assertThrows(CustomException.class,
+                () -> conversationService.requireActiveOwnedConversationSession(1L, "conversation-1"));
+
+        assertEquals("对话不存在", exception.getMessage());
+    }
+
+    @Test
     void archiveConversationSessionRejectsConversationNotOwnedByCurrentUser() {
         when(sessionRepository.findByConversationIdAndUserId("other-conversation", 2L))
                 .thenReturn(Optional.empty());

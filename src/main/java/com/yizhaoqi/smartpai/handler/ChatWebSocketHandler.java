@@ -117,11 +117,17 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
                     Object messageText = jsonMessage.get("message");
                     if (messageText instanceof String chatText && !chatText.isBlank()) {
+                        String conversationId = trimToNull(stringValue(jsonMessage.get("conversationId")));
+                        if (conversationId == null) {
+                            sendErrorMessage(session, "conversationId is required for structured chat messages");
+                            return;
+                        }
                         chatHandler.processMessage(
                                 userId,
                                 new ChatHandler.ChatRequest(
                                         chatText,
-                                        parseReferenceFocus(referenceFocusPayload(jsonMessage))
+                                        parseReferenceFocus(referenceFocusPayload(jsonMessage)),
+                                        conversationId
                                 ),
                                 session
                         );
@@ -251,6 +257,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private String stringValue(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Integer integerValue(Object value) {

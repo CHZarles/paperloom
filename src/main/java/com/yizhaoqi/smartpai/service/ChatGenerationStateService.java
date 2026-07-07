@@ -33,9 +33,23 @@ public class ChatGenerationStateService {
     }
 
     public GenerationSnapshot createGeneration(String userId, String conversationId, String question) {
+        return createGeneration(userId, null, conversationId, question);
+    }
+
+    public GenerationSnapshot createGeneration(String userId, String clientId, String conversationId, String question) {
         String generationId = UUID.randomUUID().toString();
         String now = LocalDateTime.now().toString();
-        GenerationMeta meta = new GenerationMeta(generationId, userId, conversationId, question, GenerationStatus.STREAMING, now, now, null);
+        GenerationMeta meta = new GenerationMeta(
+                generationId,
+                userId,
+                conversationId,
+                question,
+                GenerationStatus.STREAMING,
+                now,
+                now,
+                null,
+                trimToNull(clientId)
+        );
 
         // 写入顺序：先把可读子项准备好，最后再发布 active key，避免读取者拿到 active key 后却查不到 meta/content。
         redisTemplate.delete(referenceKey(generationId));
@@ -43,6 +57,9 @@ public class ChatGenerationStateService {
         redisTemplate.opsForValue().set(contentKey(generationId), "", GENERATION_TTL);
         writeMeta(meta);
         redisTemplate.opsForValue().set(activeGenerationKey(userId), generationId, GENERATION_TTL);
+        if (meta.clientId() != null) {
+            redisTemplate.opsForValue().set(activeGenerationKey(userId, meta.clientId()), generationId, GENERATION_TTL);
+        }
         return toSnapshot(meta, "", Collections.emptyMap(), Collections.emptyMap());
     }
 
@@ -126,6 +143,18 @@ public class ChatGenerationStateService {
         return getGenerationForUser(generationId, userId);
     }
 
+    public Optional<GenerationSnapshot> getActiveGenerationForUserAndClient(String userId, String clientId) {
+        String normalizedClientId = trimToNull(clientId);
+        if (normalizedClientId == null) {
+            return Optional.empty();
+        }
+        String generationId = redisTemplate.opsForValue().get(activeGenerationKey(userId, normalizedClientId));
+        if (generationId == null || generationId.isBlank()) {
+            return Optional.empty();
+        }
+        return getGenerationForUser(generationId, userId);
+    }
+
     private void updateTerminalState(String generationId,
                                      GenerationStatus status,
                                      String errorMessage,
@@ -150,10 +179,11 @@ public class ChatGenerationStateService {
                 status,
                 meta.createdAt(),
                 now,
-                errorMessage
+                errorMessage,
+                meta.clientId()
         );
         writeMeta(updated);
-        clearActiveGeneration(meta.userId(), generationId);
+        clearActiveGeneration(meta.userId(), meta.clientId(), generationId);
     }
 
     private void touch(String generationId) {
@@ -170,19 +200,31 @@ public class ChatGenerationStateService {
                 meta.status(),
                 meta.createdAt(),
                 LocalDateTime.now().toString(),
-                meta.errorMessage()
+                meta.errorMessage(),
+                meta.clientId()
         );
         writeMeta(updated);
         redisTemplate.expire(contentKey(generationId), GENERATION_TTL);
         redisTemplate.expire(referenceKey(generationId), GENERATION_TTL);
         redisTemplate.expire(diagnosticsKey(generationId), GENERATION_TTL);
         redisTemplate.opsForValue().set(activeGenerationKey(meta.userId()), generationId, GENERATION_TTL);
+        if (meta.clientId() != null) {
+            redisTemplate.opsForValue().set(activeGenerationKey(meta.userId(), meta.clientId()), generationId, GENERATION_TTL);
+        }
     }
 
-    private void clearActiveGeneration(String userId, String generationId) {
+    private void clearActiveGeneration(String userId, String clientId, String generationId) {
         String current = redisTemplate.opsForValue().get(activeGenerationKey(userId));
         if (generationId.equals(current)) {
             redisTemplate.delete(activeGenerationKey(userId));
+        }
+        String normalizedClientId = trimToNull(clientId);
+        if (normalizedClientId == null) {
+            return;
+        }
+        String currentForClient = redisTemplate.opsForValue().get(activeGenerationKey(userId, normalizedClientId));
+        if (generationId.equals(currentForClient)) {
+            redisTemplate.delete(activeGenerationKey(userId, normalizedClientId));
         }
     }
 
@@ -275,6 +317,18 @@ public class ChatGenerationStateService {
         return "chat:user:" + userId + ":active_generation";
     }
 
+    private String activeGenerationKey(String userId, String clientId) {
+        return "chat:user:" + userId + ":client:" + clientId + ":active_generation";
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     public enum GenerationStatus {
         STREAMING,
         COMPLETED,
@@ -290,7 +344,8 @@ public class ChatGenerationStateService {
             GenerationStatus status,
             String createdAt,
             String updatedAt,
-            String errorMessage
+            String errorMessage,
+            String clientId
     ) {
     }
 

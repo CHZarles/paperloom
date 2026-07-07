@@ -183,7 +183,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
 
   async function fetchActiveGenerationSnapshot() {
     const { error, data } = await request<Api.Chat.GenerationSnapshot | null>({
-      url: 'chat/active-generation'
+      url: 'chat/active-generation',
+      params: { clientId: chatClientId }
     });
     if (error) {
       return null;

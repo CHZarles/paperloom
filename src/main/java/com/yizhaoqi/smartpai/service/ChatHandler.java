@@ -135,15 +135,20 @@ public class ChatHandler {
         RetrievalBudgetProfile retrievalBudgetProfile = RetrievalBudgetProfile.INTERACTIVE;
         logger.info("开始处理消息，用户ID: {}, 会话ID: {}", userId, session.getId());
         String requestClientId = resolveClientId(session);
+        String requestedConversationId = request == null ? null : trimToNull(request.conversationId());
         String conversationId = null;
         String generationId = null;
         try {
             rateLimitService.checkChatByUser(userId);
 
-            // 1. 获取或创建会话 ID
-            conversationId = getOrCreateConversationId(userId);
             Long userIdLong = Long.parseLong(userId);
-            conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
+            if (requestedConversationId == null) {
+                conversationId = getOrCreateConversationId(userId);
+                conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
+            } else {
+                conversationId = requestedConversationId;
+                conversationService.requireActiveOwnedConversationSession(userIdLong, conversationId);
+            }
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
             boolean readingExperimentEnabled = readingExperimentEnabled();
@@ -158,7 +163,7 @@ public class ChatHandler {
                 conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
             }
             ChatGenerationStateService.GenerationSnapshot generation =
-                    chatGenerationStateService.createGeneration(userId, conversationId, userMessage);
+                    chatGenerationStateService.createGeneration(userId, requestClientId, conversationId, userMessage);
             generationId = generation.generationId();
             ConversationScopeService.EffectiveConversationScope effectiveScope =
                     conversationScopeService.lockForFirstMessage(userIdLong, conversationId);
@@ -1212,9 +1217,16 @@ public class ChatHandler {
         String requesterClientId = resolveClientId(requesterSession);
         String resolvedGenerationId = generationId;
         if (resolvedGenerationId == null || resolvedGenerationId.isBlank()) {
-            resolvedGenerationId = chatGenerationStateService.getActiveGenerationForUser(userId)
-                    .map(ChatGenerationStateService.GenerationSnapshot::generationId)
-                    .orElse(null);
+            if (requesterClientId != null && !requesterClientId.isBlank()) {
+                resolvedGenerationId = chatGenerationStateService
+                        .getActiveGenerationForUserAndClient(userId, requesterClientId)
+                        .map(ChatGenerationStateService.GenerationSnapshot::generationId)
+                        .orElse(null);
+            } else {
+                resolvedGenerationId = chatGenerationStateService.getActiveGenerationForUser(userId)
+                        .map(ChatGenerationStateService.GenerationSnapshot::generationId)
+                        .orElse(null);
+            }
         }
 
         if (resolvedGenerationId == null || resolvedGenerationId.isBlank()) {
@@ -1829,16 +1841,26 @@ public class ChatHandler {
     public record ChatRequest(
             String message,
             ProductReferenceFocus referenceFocus,
-            RetrievalBudgetProfile retrievalBudgetProfile
+            RetrievalBudgetProfile retrievalBudgetProfile,
+            String conversationId
     ) {
         public ChatRequest {
             retrievalBudgetProfile = retrievalBudgetProfile == null
                     ? RetrievalBudgetProfile.INTERACTIVE
                     : retrievalBudgetProfile;
+            conversationId = conversationId == null || conversationId.isBlank() ? null : conversationId.trim();
         }
 
         public ChatRequest(String message, ProductReferenceFocus referenceFocus) {
-            this(message, referenceFocus, RetrievalBudgetProfile.INTERACTIVE);
+            this(message, referenceFocus, RetrievalBudgetProfile.INTERACTIVE, null);
+        }
+
+        public ChatRequest(String message, ProductReferenceFocus referenceFocus, RetrievalBudgetProfile retrievalBudgetProfile) {
+            this(message, referenceFocus, retrievalBudgetProfile, null);
+        }
+
+        public ChatRequest(String message, ProductReferenceFocus referenceFocus, String conversationId) {
+            this(message, referenceFocus, RetrievalBudgetProfile.INTERACTIVE, conversationId);
         }
     }
 }
