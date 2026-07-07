@@ -145,6 +145,44 @@ public class ReadingToolArgumentValidator {
             "searchMode"
     );
 
+    private static final Set<String> LIST_PAPERS_FORBIDDEN_ARGUMENTS = Set.of(
+            "paperId",
+            "paperIds",
+            "paperRef",
+            "paperRefs",
+            "locationRef",
+            "locationRefs",
+            "sourceQuoteRef",
+            "sourceQuoteRefs",
+            "modelVersion",
+            "indexVersion",
+            "indexName",
+            "chunkRef",
+            "readingElementId",
+            "query",
+            "queryText",
+            "question",
+            "readingNeed",
+            "semanticNeed",
+            "topicText",
+            "ordinal",
+            "ordinals",
+            "candidateOrdinal",
+            "resultOrdinal",
+            "page",
+            "pageSize",
+            "pageRange",
+            "limit",
+            "topK",
+            "maxCandidates",
+            "budget",
+            "rerank",
+            "rerankEnabled",
+            "searchMode",
+            "score",
+            "rank"
+    );
+
     private static final Set<String> READ_FORBIDDEN_ARGUMENTS = Set.of(
             "paperId",
             "paperIds",
@@ -214,6 +252,20 @@ public class ReadingToolArgumentValidator {
             "quoteKinds"
     );
 
+    private static final Set<String> SESSION_ALLOWED_ARGUMENTS = Set.of();
+    private static final Set<String> LIST_PAPERS_ALLOWED_ARGUMENTS =
+            Set.of("filters", "includeFacets", "sort");
+    private static final Set<String> LIST_PAPERS_FILTER_ALLOWED_ARGUMENTS = Set.of(
+            "titleContains",
+            "titleExact",
+            "filenameContains",
+            "filenameExact",
+            "authorName",
+            "doiExact",
+            "arxivIdExact",
+            "yearRange",
+            "venue"
+    );
     private static final Set<String> SEARCH_ALLOWED_ARGUMENTS = Set.of("queryText");
     private static final Set<String> LOCATION_ALLOWED_ARGUMENTS = Set.of("paperHandles", "queryText", "locationTypes");
     private static final Set<String> LIST_LOCATIONS_ALLOWED_ARGUMENTS =
@@ -223,6 +275,54 @@ public class ReadingToolArgumentValidator {
     private static final Set<String> TRACE_ALLOWED_ARGUMENTS = Set.of("sourceQuoteRefs");
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
+
+    public ValidationResult validateGetSessionState(Map<String, Object> arguments) {
+        Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
+        String forbiddenArgument = firstForbiddenArgument(safeArguments, LIST_PAPERS_FORBIDDEN_ARGUMENTS);
+        if (forbiddenArgument != null) {
+            return ValidationResult.invalid("forbidden_argument", forbiddenArgument);
+        }
+        String unsupportedArgument = firstUnsupportedTopLevelArgument(safeArguments, SESSION_ALLOWED_ARGUMENTS);
+        if (unsupportedArgument != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedArgument);
+        }
+        return ValidationResult.validResult();
+    }
+
+    public ValidationResult validateListPapers(Map<String, Object> arguments) {
+        Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
+        String forbiddenArgument = firstForbiddenArgument(safeArguments, LIST_PAPERS_FORBIDDEN_ARGUMENTS);
+        if (forbiddenArgument != null) {
+            return ValidationResult.invalid("forbidden_argument", forbiddenArgument);
+        }
+        String unsupportedArgument = firstUnsupportedTopLevelArgument(safeArguments, LIST_PAPERS_ALLOWED_ARGUMENTS);
+        if (unsupportedArgument != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedArgument);
+        }
+        if (safeArguments.containsKey("filters")) {
+            if (!(safeArguments.get("filters") instanceof Map<?, ?> filters)) {
+                return ValidationResult.invalid("unsupported_argument", "filters");
+            }
+            String unsupportedFilter = firstUnsupportedFilterArgument(filters);
+            if (unsupportedFilter != null) {
+                return ValidationResult.invalid("unsupported_argument", unsupportedFilter);
+            }
+            if (filters.containsKey("yearRange")) {
+                ValidationResult yearRangeResult = validateYearRange(filters.get("yearRange"));
+                if (!yearRangeResult.valid()) {
+                    return yearRangeResult;
+                }
+            }
+        }
+        if (safeArguments.containsKey("includeFacets")
+                && !(safeArguments.get("includeFacets") instanceof Boolean)) {
+            return ValidationResult.invalid("invalid_boolean", "includeFacets");
+        }
+        if (safeArguments.containsKey("sort") && !validListPaperSort(safeArguments.get("sort"))) {
+            return ValidationResult.invalid("unsupported_sort", "sort");
+        }
+        return ValidationResult.validResult();
+    }
 
     public ValidationResult validateSearchPaperCandidates(Map<String, Object> arguments) {
         Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
@@ -386,6 +486,74 @@ public class ReadingToolArgumentValidator {
                 .toList();
     }
 
+    public ListPaperFilters listPaperFilters(Object value) {
+        if (!(value instanceof Map<?, ?> rawFilters)) {
+            return ListPaperFilters.empty();
+        }
+        return new ListPaperFilters(
+                stringValue(rawFilters.get("titleContains")),
+                stringValue(rawFilters.get("titleExact")),
+                stringValue(rawFilters.get("filenameContains")),
+                stringValue(rawFilters.get("filenameExact")),
+                stringValue(rawFilters.get("authorName")),
+                stringValue(rawFilters.get("doiExact")),
+                stringValue(rawFilters.get("arxivIdExact")),
+                yearRange(rawFilters.get("yearRange")),
+                stringValue(rawFilters.get("venue"))
+        );
+    }
+
+    public boolean includeFacets(Object value) {
+        return Boolean.TRUE.equals(value);
+    }
+
+    public ListPaperSort listPaperSort(Object value) {
+        String normalized = stringValue(value).toUpperCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            return ListPaperSort.RECENT;
+        }
+        return ListPaperSort.valueOf(normalized);
+    }
+
+    private boolean validListPaperSort(Object value) {
+        try {
+            listPaperSort(value);
+            return true;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    private String firstUnsupportedFilterArgument(Map<?, ?> filters) {
+        for (Object rawKey : filters.keySet()) {
+            String key = stringValue(rawKey);
+            if (!LIST_PAPERS_FILTER_ALLOWED_ARGUMENTS.contains(key)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    private ValidationResult validateYearRange(Object value) {
+        YearRange range = yearRange(value);
+        if (range == null || range.from() < 1 || range.to() < 1 || range.from() > range.to()) {
+            return ValidationResult.invalid("invalid_year_range", "yearRange");
+        }
+        return ValidationResult.validResult();
+    }
+
+    private YearRange yearRange(Object value) {
+        if (!(value instanceof Map<?, ?> rawRange)) {
+            return null;
+        }
+        Integer from = integerValue(rawRange.get("from"));
+        Integer to = integerValue(rawRange.get("to"));
+        if (from == null || to == null) {
+            return null;
+        }
+        return new YearRange(from, to);
+    }
+
     private ValidationResult validateLocationTypes(Object value) {
         if (!(value instanceof List<?> rawValues)) {
             return ValidationResult.invalid("unsupported_location_type", "locationTypes");
@@ -484,6 +652,29 @@ public class ReadingToolArgumentValidator {
     }
 
     public record PageRange(Integer from, Integer to) {
+    }
+
+    public record YearRange(Integer from, Integer to) {
+    }
+
+    public record ListPaperFilters(String titleContains,
+                                   String titleExact,
+                                   String filenameContains,
+                                   String filenameExact,
+                                   String authorName,
+                                   String doiExact,
+                                   String arxivIdExact,
+                                   YearRange yearRange,
+                                   String venue) {
+        static ListPaperFilters empty() {
+            return new ListPaperFilters("", "", "", "", "", "", "", null, "");
+        }
+    }
+
+    public enum ListPaperSort {
+        RECENT,
+        TITLE,
+        YEAR
     }
 
     public record ValidationResult(boolean valid, String error, String argument) {

@@ -14,15 +14,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class ProductReadingToolAdapter {
 
+    private static final String SESSION_TOOL_NAME = "get_session_state";
+    private static final String LIST_PAPERS_TOOL_NAME = "list_papers";
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String GET_OUTLINE_TOOL_NAME = "get_paper_outline";
     private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
@@ -32,6 +36,7 @@ public class ProductReadingToolAdapter {
 
     private final PaperCandidateSearchService paperCandidateSearchService;
     private final ReadingModelGrepSearchService readingModelGrepSearchService;
+    private final PaperService paperService;
     private final PaperRepository paperRepository;
     private final PaperReadingModelRepository modelRepository;
     private final PaperSectionRepository sectionRepository;
@@ -43,6 +48,7 @@ public class ProductReadingToolAdapter {
 
     public ProductReadingToolAdapter(PaperCandidateSearchService paperCandidateSearchService,
                                      ReadingModelGrepSearchService readingModelGrepSearchService,
+                                     PaperService paperService,
                                      PaperRepository paperRepository,
                                      PaperReadingModelRepository modelRepository,
                                      PaperSectionRepository sectionRepository,
@@ -53,6 +59,7 @@ public class ProductReadingToolAdapter {
                                      ProductReadingSourceQuoteTraceService traceService) {
         this.paperCandidateSearchService = paperCandidateSearchService;
         this.readingModelGrepSearchService = readingModelGrepSearchService;
+        this.paperService = paperService;
         this.paperRepository = paperRepository;
         this.modelRepository = modelRepository;
         this.sectionRepository = sectionRepository;
@@ -61,6 +68,59 @@ public class ProductReadingToolAdapter {
         this.outputMapper = outputMapper;
         this.readService = readService;
         this.traceService = traceService;
+    }
+
+    @Transactional(readOnly = true)
+    public ProductToolResult getSessionState(ProductToolContext context) {
+        ProductToolContext safeContext = safeContext(context);
+        List<Paper> readyPapers = readyScopedPapers(safeContext);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("status", "OK");
+        data.put("searchScope", outputMapper.sessionSearchScope(
+                safeContext.lockedScope().mode(),
+                searchScopeLabel(safeContext.lockedScope()),
+                readyPapers.size()
+        ));
+        data.put("constraints", sessionStateConstraints());
+        return new ProductToolResult(SESSION_TOOL_NAME, true, data, ProductToolEffect.PRODUCT_STATE);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductToolResult listPapers(ReadingToolArgumentValidator.ListPaperFilters filters,
+                                        boolean includeFacets,
+                                        ReadingToolArgumentValidator.ListPaperSort sort,
+                                        ProductToolContext context) {
+        ProductToolContext safeContext = safeContext(context);
+        ReadingToolArgumentValidator.ListPaperFilters safeFilters = filters == null
+                ? ReadingToolArgumentValidator.ListPaperFilters.empty()
+                : filters;
+        ReadingToolArgumentValidator.ListPaperSort safeSort = sort == null
+                ? ReadingToolArgumentValidator.ListPaperSort.RECENT
+                : sort;
+        List<Paper> filtered = readyScopedPapers(safeContext).stream()
+                .filter(paper -> matchesListPaperFilters(paper, safeFilters))
+                .toList();
+        List<Paper> sorted = sortPapers(filtered, safeSort);
+        int returned = Math.min(sorted.size(), PaperCandidateSearchRequest.DEFAULT_PAPER_LIMIT);
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (int index = 0; index < returned; index++) {
+            Paper paper = sorted.get(index);
+            items.add(outputMapper.browsedPaperCard(
+                    paper,
+                    handleService.handleForPaperId(paper.getPaperId()),
+                    index + 1,
+                    authors(paper)
+            ));
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("status", items.isEmpty() ? "NO_MATCH" : "OK");
+        data.put("total", filtered.size());
+        data.put("returned", items.size());
+        data.put("items", items);
+        data.put("facets", includeFacets ? outputMapper.paperBrowseFacets(facets(filtered)) : Map.of());
+        data.put("constraints", listPapersConstraints());
+        return new ProductToolResult(LIST_PAPERS_TOOL_NAME, true, data, ProductToolEffect.PAPER_LIST);
     }
 
     @Transactional
@@ -385,6 +445,167 @@ public class ProductReadingToolAdapter {
                 .noneMatch(requestedTypeNames::contains);
     }
 
+    private List<Paper> readyScopedPapers(ProductToolContext context) {
+        if (paperService == null) {
+            return List.of();
+        }
+        ProductToolContext safeContext = safeContext(context);
+        List<Paper> accessible = paperService.getAccessiblePapers(userId(safeContext.userId()), null);
+        LinkedHashSet<String> requested = new LinkedHashSet<>(safeContext.lockedScope().paperIds());
+        Map<String, Paper> byPaperId = new LinkedHashMap<>();
+        for (Paper paper : accessible == null ? List.<Paper>of() : accessible) {
+            if (paper == null || SearchText.isBlank(paper.getPaperId())) {
+                continue;
+            }
+            String paperId = paper.getPaperId().trim();
+            if (!requested.isEmpty() && !requested.contains(paperId)) {
+                continue;
+            }
+            if (modelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId)
+                    .filter(model -> model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY)
+                    .isEmpty()) {
+                continue;
+            }
+            byPaperId.putIfAbsent(paperId, paper);
+        }
+        return List.copyOf(byPaperId.values());
+    }
+
+    private boolean matchesListPaperFilters(Paper paper, ReadingToolArgumentValidator.ListPaperFilters filters) {
+        return matchesContains(displayTitle(paper), filters.titleContains())
+                && matchesExact(displayTitle(paper), filters.titleExact())
+                && matchesContains(paper.getOriginalFilename(), filters.filenameContains())
+                && matchesExact(paper.getOriginalFilename(), filters.filenameExact())
+                && matchesAuthor(paper, filters.authorName())
+                && matchesExact(paper.getDoi(), filters.doiExact())
+                && matchesExact(paper.getArxivId(), filters.arxivIdExact())
+                && matchesYearRange(paper.getPublicationYear(), filters.yearRange())
+                && matchesContains(paper.getVenue(), filters.venue());
+    }
+
+    private boolean matchesAuthor(Paper paper, String authorName) {
+        if (SearchText.isBlank(authorName)) {
+            return true;
+        }
+        String normalizedNeedle = normalized(authorName);
+        return authors(paper).stream()
+                .map(this::normalized)
+                .anyMatch(author -> author.contains(normalizedNeedle));
+    }
+
+    private boolean matchesContains(String value, String expectedSubstring) {
+        return SearchText.isBlank(expectedSubstring) || normalized(value).contains(normalized(expectedSubstring));
+    }
+
+    private boolean matchesExact(String value, String expectedValue) {
+        return SearchText.isBlank(expectedValue) || normalized(value).equals(normalized(expectedValue));
+    }
+
+    private boolean matchesYearRange(Integer year, ReadingToolArgumentValidator.YearRange yearRange) {
+        if (yearRange == null) {
+            return true;
+        }
+        return year != null && year >= yearRange.from() && year <= yearRange.to();
+    }
+
+    private List<Paper> sortPapers(List<Paper> papers, ReadingToolArgumentValidator.ListPaperSort sort) {
+        Comparator<Paper> comparator = switch (sort) {
+            case TITLE -> Comparator
+                    .comparing(this::displayTitle, String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(paper -> stringValue(paper.getOriginalFilename()), String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(Paper::getPublicationYear, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(Paper::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+            case YEAR -> Comparator
+                    .comparing(Paper::getPublicationYear, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(this::displayTitle, String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(Paper::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+            case RECENT -> Comparator
+                    .comparing(Paper::getMergedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(Paper::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(this::displayTitle, String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(Paper::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+        };
+        return (papers == null ? List.<Paper>of() : papers).stream()
+                .sorted(comparator)
+                .toList();
+    }
+
+    private Map<String, List<Map<String, Object>>> facets(List<Paper> papers) {
+        Map<String, List<Map<String, Object>>> facets = new LinkedHashMap<>();
+        facets.put("years", yearBuckets(papers));
+        facets.put("authors", stringBuckets((papers == null ? List.<Paper>of() : papers).stream()
+                .flatMap(paper -> authors(paper).stream())
+                .toList()));
+        facets.put("venues", stringBuckets((papers == null ? List.<Paper>of() : papers).stream()
+                .map(Paper::getVenue)
+                .toList()));
+        facets.put("catalogTopics", List.of());
+        facets.put("paperTypes", List.of());
+        return facets;
+    }
+
+    private List<Map<String, Object>> yearBuckets(List<Paper> papers) {
+        Map<Integer, Integer> counts = new LinkedHashMap<>();
+        for (Paper paper : papers == null ? List.<Paper>of() : papers) {
+            if (paper.getPublicationYear() != null) {
+                counts.merge(paper.getPublicationYear(), 1, Integer::sum);
+            }
+        }
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Integer>comparingByKey().reversed())
+                .map(entry -> outputMapper.facetBucket(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    private List<Map<String, Object>> stringBuckets(List<String> values) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String value : values == null ? List.<String>of() : values) {
+            String normalized = stringValue(value);
+            if (!normalized.isBlank()) {
+                counts.merge(normalized, 1, Integer::sum);
+            }
+        }
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
+                .map(entry -> outputMapper.facetBucket(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    private List<String> authors(Paper paper) {
+        if (paper == null || SearchText.isBlank(paper.getAuthors())) {
+            return List.of();
+        }
+        LinkedHashSet<String> authors = new LinkedHashSet<>();
+        for (String author : paper.getAuthors().split("[,;]")) {
+            String safeAuthor = stringValue(author);
+            if (!safeAuthor.isBlank()) {
+                authors.add(safeAuthor);
+            }
+        }
+        return List.copyOf(authors);
+    }
+
+    private String displayTitle(Paper paper) {
+        return paper == null ? "" : stringValue(paper.getPaperTitle());
+    }
+
+    private String searchScopeLabel(SourceScope scope) {
+        SourceScope safeScope = scope == null ? SourceScope.auto() : scope;
+        return switch (safeScope.mode()) {
+            case MANUAL_SOURCE -> "Selected readable papers";
+            case REFERENCE_SOURCE -> "Referenced readable papers";
+            case AUTO_SOURCE -> "All readable papers";
+        };
+    }
+
+    private String normalized(String value) {
+        return stringValue(value).toLowerCase(Locale.ROOT);
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
     private List<Map<String, Object>> sectionOutlineCards(List<PaperSection> sections, List<PaperLocation> locations) {
         Map<String, PaperLocation> sectionLocationBySectionId = new LinkedHashMap<>();
         for (PaperLocation location : locations == null ? List.<PaperLocation>of() : locations) {
@@ -470,6 +691,20 @@ public class ProductReadingToolAdapter {
         data.put("papers", papers == null ? List.of() : papers);
         data.put("constraints", outlineConstraints());
         return new ProductToolResult(GET_OUTLINE_TOOL_NAME, true, data, ProductToolEffect.PAPER_DISCOVERY);
+    }
+
+    private Map<String, Object> sessionStateConstraints() {
+        return Map.of(
+                "stateIsSourceQuote", false,
+                "paperContentClaimsAllowed", false
+        );
+    }
+
+    private Map<String, Object> listPapersConstraints() {
+        return Map.of(
+                "paperCardIsSourceQuote", false,
+                "paperContentClaimsAllowed", false
+        );
     }
 
     private Map<String, Object> paperCandidateConstraints() {

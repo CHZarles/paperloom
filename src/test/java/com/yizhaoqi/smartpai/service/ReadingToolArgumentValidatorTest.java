@@ -47,6 +47,108 @@ class ReadingToolArgumentValidatorTest {
     }
 
     @Test
+    void getSessionStateAcceptsEmptyArgumentsOnly() {
+        ReadingToolArgumentValidator.ValidationResult rawId = validator.validateGetSessionState(Map.of(
+                "paperId", "ready-paper"
+        ));
+        ReadingToolArgumentValidator.ValidationResult unsupported = validator.validateGetSessionState(Map.of(
+                "includeFacets", true
+        ));
+
+        assertTrue(validator.validateGetSessionState(Map.of()).valid());
+        assertFalse(rawId.valid());
+        assertEquals("forbidden_argument", rawId.error());
+        assertEquals("paperId", rawId.argument());
+        assertFalse(unsupported.valid());
+        assertEquals("unsupported_argument", unsupported.error());
+        assertEquals("includeFacets", unsupported.argument());
+    }
+
+    @Test
+    void listPapersRejectsSemanticRawOrdinalControlAndUnsupportedFilterArguments() {
+        ReadingToolArgumentValidator.ValidationResult query =
+                validator.validateListPapers(Map.of("queryText", "agentic eval"));
+        ReadingToolArgumentValidator.ValidationResult rawId =
+                validator.validateListPapers(Map.of(
+                        "filters", Map.of("paperId", "ready-paper")
+                ));
+        ReadingToolArgumentValidator.ValidationResult ordinal =
+                validator.validateListPapers(Map.of(
+                        "filters", Map.of("titleContains", "agent"),
+                        "ordinal", 1
+                ));
+        ReadingToolArgumentValidator.ValidationResult catalogTopic =
+                validator.validateListPapers(Map.of(
+                        "filters", Map.of("catalogTopicIds", List.of("topic_abc"))
+                ));
+        ReadingToolArgumentValidator.ValidationResult pageSize =
+                validator.validateListPapers(Map.of("pageSize", 50));
+        ReadingToolArgumentValidator.ValidationResult valid =
+                validator.validateListPapers(Map.of(
+                        "filters", Map.of(
+                                "titleContains", "agent",
+                                "filenameExact", "agentic-eval.pdf",
+                                "yearRange", Map.of("from", 2023, "to", 2026)
+                        ),
+                        "includeFacets", true,
+                        "sort", "YEAR"
+                ));
+
+        assertFalse(query.valid());
+        assertEquals("forbidden_argument", query.error());
+        assertEquals("queryText", query.argument());
+        assertFalse(rawId.valid());
+        assertEquals("forbidden_argument", rawId.error());
+        assertEquals("paperId", rawId.argument());
+        assertFalse(ordinal.valid());
+        assertEquals("forbidden_argument", ordinal.error());
+        assertEquals("ordinal", ordinal.argument());
+        assertFalse(catalogTopic.valid());
+        assertEquals("unsupported_argument", catalogTopic.error());
+        assertEquals("catalogTopicIds", catalogTopic.argument());
+        assertFalse(pageSize.valid());
+        assertEquals("forbidden_argument", pageSize.error());
+        assertEquals("pageSize", pageSize.argument());
+        assertTrue(valid.valid());
+        assertEquals(new ReadingToolArgumentValidator.ListPaperFilters(
+                        "agent",
+                        "",
+                        "",
+                        "agentic-eval.pdf",
+                        "",
+                        "",
+                        "",
+                        new ReadingToolArgumentValidator.YearRange(2023, 2026),
+                        ""
+                ),
+                validator.listPaperFilters(Map.of(
+                        "titleContains", "agent",
+                        "filenameExact", "agentic-eval.pdf",
+                        "yearRange", Map.of("from", 2023, "to", 2026)
+                )));
+        assertTrue(validator.includeFacets(true));
+        assertEquals(ReadingToolArgumentValidator.ListPaperSort.YEAR, validator.listPaperSort("YEAR"));
+    }
+
+    @Test
+    void listPapersRejectsInvalidYearRangeAndSort() {
+        ReadingToolArgumentValidator.ValidationResult invalidYear =
+                validator.validateListPapers(Map.of(
+                        "filters", Map.of("yearRange", Map.of("from", 2026, "to", 2023))
+                ));
+        ReadingToolArgumentValidator.ValidationResult invalidSort =
+                validator.validateListPapers(Map.of("sort", "RELEVANCE"));
+
+        assertFalse(invalidYear.valid());
+        assertEquals("invalid_year_range", invalidYear.error());
+        assertEquals("yearRange", invalidYear.argument());
+        assertFalse(invalidSort.valid());
+        assertEquals("unsupported_sort", invalidSort.error());
+        assertEquals("sort", invalidSort.argument());
+        assertEquals(ReadingToolArgumentValidator.ListPaperSort.RECENT, validator.listPaperSort(null));
+    }
+
+    @Test
     void readingLocationsRejectsEmptyHandlesUnsupportedTypesAndIntentAliases() {
         ReadingToolArgumentValidator.ValidationResult emptyHandles = validator.validateFindReadingLocations(Map.of(
                 "paperHandles", List.of(),

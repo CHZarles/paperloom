@@ -9,6 +9,8 @@ import java.util.Map;
 @Service
 public class ProductReadingToolRegistry {
 
+    private static final String SESSION_TOOL_NAME = "get_session_state";
+    private static final String LIST_PAPERS_TOOL_NAME = "list_papers";
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String GET_OUTLINE_TOOL_NAME = "get_paper_outline";
     private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
@@ -25,6 +27,8 @@ public class ProductReadingToolRegistry {
         this.adapter = adapter;
         this.validator = validator;
         this.tools = List.of(
+                getSessionStateTool(),
+                listPapersTool(),
                 searchPaperCandidatesTool(),
                 getPaperOutlineTool(),
                 listPaperLocationsTool(),
@@ -44,6 +48,8 @@ public class ProductReadingToolRegistry {
                 ? new ProductToolContext(null, "", "", SourceScope.auto())
                 : context;
         return switch (toolName == null ? "" : toolName) {
+            case SESSION_TOOL_NAME -> executeGetSessionState(safeArguments, safeContext);
+            case LIST_PAPERS_TOOL_NAME -> executeListPapers(safeArguments, safeContext);
             case SEARCH_TOOL_NAME -> executeSearchPaperCandidates(safeArguments, safeContext);
             case GET_OUTLINE_TOOL_NAME -> executeGetPaperOutline(safeArguments, safeContext);
             case LIST_LOCATIONS_TOOL_NAME -> executeListPaperLocations(safeArguments, safeContext);
@@ -54,12 +60,66 @@ public class ProductReadingToolRegistry {
         };
     }
 
+    private ProductToolResult executeGetSessionState(Map<String, Object> arguments, ProductToolContext context) {
+        ReadingToolArgumentValidator.ValidationResult validation = validator.validateGetSessionState(arguments);
+        if (!validation.valid()) {
+            return invalidArgument(SESSION_TOOL_NAME, validation);
+        }
+        return adapter.getSessionState(context);
+    }
+
+    private ProductToolResult executeListPapers(Map<String, Object> arguments, ProductToolContext context) {
+        ReadingToolArgumentValidator.ValidationResult validation = validator.validateListPapers(arguments);
+        if (!validation.valid()) {
+            return invalidArgument(LIST_PAPERS_TOOL_NAME, validation);
+        }
+        return adapter.listPapers(
+                validator.listPaperFilters(arguments.get("filters")),
+                validator.includeFacets(arguments.get("includeFacets")),
+                validator.listPaperSort(arguments.get("sort")),
+                context
+        );
+    }
+
     private ProductToolResult executeSearchPaperCandidates(Map<String, Object> arguments, ProductToolContext context) {
         ReadingToolArgumentValidator.ValidationResult validation = validator.validateSearchPaperCandidates(arguments);
         if (!validation.valid()) {
             return invalidArgument(SEARCH_TOOL_NAME, validation);
         }
         return adapter.searchPaperCandidates(stringValue(arguments.get("queryText")), context);
+    }
+
+    private AgentToolRegistry.AgentTool getSessionStateTool() {
+        return new AgentToolRegistry.AgentTool(
+                SESSION_TOOL_NAME,
+                "Get fixed Product Reading search-scope label and READY readable paper count. Returns compact product state only; no paper handles and no paper content.",
+                objectSchema(Map.of(), List.of())
+        );
+    }
+
+    private AgentToolRegistry.AgentTool listPapersTool() {
+        return new AgentToolRegistry.AgentTool(
+                LIST_PAPERS_TOOL_NAME,
+                "Browse deterministic READY papers inside the fixed conversation search scope. Returns paperHandle cards and optional facets only; it is not semantic search and not Source Quotes.",
+                objectSchema(Map.of(
+                        "filters", objectSchema(Map.of(
+                                "titleContains", stringSchema("Optional deterministic title substring filter."),
+                                "titleExact", stringSchema("Optional deterministic exact title filter."),
+                                "filenameContains", stringSchema("Optional deterministic filename substring filter."),
+                                "filenameExact", stringSchema("Optional deterministic exact filename filter."),
+                                "authorName", stringSchema("Optional deterministic author substring filter."),
+                                "doiExact", stringSchema("Optional deterministic exact DOI filter."),
+                                "arxivIdExact", stringSchema("Optional deterministic exact arXiv id filter."),
+                                "yearRange", objectSchema(Map.of(
+                                        "from", integerSchema("Inclusive start publication year."),
+                                        "to", integerSchema("Inclusive end publication year.")
+                                ), List.of("from", "to")),
+                                "venue", stringSchema("Optional deterministic venue substring filter.")
+                        ), List.of()),
+                        "includeFacets", booleanSchema("Whether to include deterministic value/count facet buckets."),
+                        "sort", enumStringSchema("Deterministic browse sort.", List.of("RECENT", "TITLE", "YEAR"))
+                ), List.of())
+        );
     }
 
     private ProductToolResult executeGetPaperOutline(Map<String, Object> arguments, ProductToolContext context) {
@@ -228,6 +288,21 @@ public class ProductReadingToolRegistry {
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "integer");
         schema.put("description", description);
+        return schema;
+    }
+
+    private Map<String, Object> booleanSchema(String description) {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "boolean");
+        schema.put("description", description);
+        return schema;
+    }
+
+    private Map<String, Object> enumStringSchema(String description, List<String> values) {
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "string");
+        schema.put("description", description);
+        schema.put("enum", values == null ? List.of() : values);
         return schema;
     }
 

@@ -39,6 +39,8 @@ class ProductReadingToolRegistryTest {
                 .toList());
 
         assertEquals(List.of(
+                "get_session_state",
+                "list_papers",
                 "search_paper_candidates",
                 "get_paper_outline",
                 "list_paper_locations",
@@ -46,13 +48,28 @@ class ProductReadingToolRegistryTest {
                 "read_locations",
                 "trace_source_quotes"
         ), names);
+        AgentToolRegistry.AgentTool sessionTool = tools.stream()
+                .filter(tool -> "get_session_state".equals(tool.name()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(((Map<?, ?>) sessionTool.parameters().get("properties")).isEmpty());
         AgentToolRegistry.AgentTool listTool = tools.stream()
+                .filter(tool -> "list_papers".equals(tool.name()))
+                .findFirst()
+                .orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> paperListProperties =
+                (Map<String, Object>) listTool.parameters().get("properties");
+        assertTrue(paperListProperties.containsKey("filters"));
+        assertTrue(paperListProperties.containsKey("includeFacets"));
+        assertTrue(paperListProperties.containsKey("sort"));
+        AgentToolRegistry.AgentTool locationListTool = tools.stream()
                 .filter(tool -> "list_paper_locations".equals(tool.name()))
                 .findFirst()
                 .orElseThrow();
         @SuppressWarnings("unchecked")
         Map<String, Object> listProperties =
-                (Map<String, Object>) listTool.parameters().get("properties");
+                (Map<String, Object>) locationListTool.parameters().get("properties");
         assertTrue(listProperties.containsKey("pageRange"));
         assertTrue(listProperties.containsKey("locationTypes"));
         assertFalse(listProperties.containsKey("queryText"));
@@ -99,6 +116,18 @@ class ProductReadingToolRegistryTest {
                 Map.of("status", "NO_MATCH", "items", List.of()),
                 ProductToolEffect.PAPER_DISCOVERY
         );
+        ProductToolResult sessionResult = new ProductToolResult(
+                "get_session_state",
+                true,
+                Map.of("status", "OK", "searchScope", Map.of("readablePaperCount", 1)),
+                ProductToolEffect.PRODUCT_STATE
+        );
+        ProductToolResult paperListResult = new ProductToolResult(
+                "list_papers",
+                true,
+                Map.of("status", "OK", "items", List.of()),
+                ProductToolEffect.PAPER_LIST
+        );
         ProductToolResult locationResult = new ProductToolResult(
                 "find_reading_locations",
                 true,
@@ -129,6 +158,24 @@ class ProductReadingToolRegistryTest {
                 Map.of("sourceQuotes", List.of(), "traceStatus", List.of()),
                 ProductToolEffect.EVIDENCE
         );
+        ReadingToolArgumentValidator.ListPaperFilters filters = new ReadingToolArgumentValidator.ListPaperFilters(
+                "agent",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                null,
+                ""
+        );
+        when(adapter.getSessionState(context)).thenReturn(sessionResult);
+        when(adapter.listPapers(
+                filters,
+                true,
+                ReadingToolArgumentValidator.ListPaperSort.TITLE,
+                context
+        )).thenReturn(paperListResult);
         when(adapter.searchPaperCandidates("agentic eval", context)).thenReturn(searchResult);
         when(adapter.findReadingLocations(
                 List.of("paper_handle_abc"),
@@ -146,6 +193,12 @@ class ProductReadingToolRegistryTest {
         when(adapter.readLocations(List.of("page_ref_abc"), context)).thenReturn(readResult);
         when(adapter.traceSourceQuotes(List.of("source_quote_abc"), context)).thenReturn(traceResult);
 
+        assertEquals(sessionResult, registry.execute("get_session_state", Map.of(), context));
+        assertEquals(paperListResult, registry.execute("list_papers", Map.of(
+                "filters", Map.of("titleContains", "agent"),
+                "includeFacets", true,
+                "sort", "TITLE"
+        ), context));
         assertEquals(searchResult, registry.execute("search_paper_candidates", Map.of("queryText", "agentic eval"), context));
         assertEquals(outlineResult, registry.execute("get_paper_outline", Map.of(
                 "paperHandles", List.of("paper_handle_abc")
@@ -165,6 +218,13 @@ class ProductReadingToolRegistryTest {
         assertEquals(traceResult, registry.execute("trace_source_quotes", Map.of(
                 "sourceQuoteRefs", List.of("source_quote_abc")
         ), context));
+        verify(adapter).getSessionState(context);
+        verify(adapter).listPapers(
+                filters,
+                true,
+                ReadingToolArgumentValidator.ListPaperSort.TITLE,
+                context
+        );
         verify(adapter).searchPaperCandidates("agentic eval", context);
         verify(adapter).getPaperOutline(List.of("paper_handle_abc"), context);
         verify(adapter).listPaperLocations(

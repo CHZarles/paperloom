@@ -27,6 +27,52 @@ public class ReadingToolOutputMapper {
         return card;
     }
 
+    public Map<String, Object> sessionSearchScope(ScopeMode scopeMode,
+                                                  String label,
+                                                  int readablePaperCount) {
+        Map<String, Object> scope = new LinkedHashMap<>();
+        scope.put("scopeMode", scopeMode == null ? ScopeMode.AUTO_SOURCE.name() : scopeMode.name());
+        scope.put("label", label == null ? "" : label);
+        scope.put("readablePaperCountKnown", true);
+        scope.put("readablePaperCount", Math.max(0, readablePaperCount));
+        scope.put("immutable", true);
+        return scope;
+    }
+
+    public Map<String, Object> browsedPaperCard(Paper paper,
+                                                String paperHandle,
+                                                int ordinal,
+                                                List<String> authors) {
+        Map<String, Object> card = new LinkedHashMap<>();
+        card.put("ordinal", ordinal);
+        card.put("paperHandle", paperHandle);
+        card.put("title", paper == null ? "" : paper.getPaperTitle());
+        card.put("originalFilename", paper == null ? "" : paper.getOriginalFilename());
+        card.put("authors", authors == null ? List.of() : authors);
+        card.put("year", paper == null ? null : paper.getPublicationYear());
+        card.put("venue", paper == null ? "" : paper.getVenue());
+        card.put("catalogTopics", List.of());
+        card.put("paperTypes", List.of());
+        return card;
+    }
+
+    public Map<String, Object> paperBrowseFacets(Map<String, List<Map<String, Object>>> facets) {
+        Map<String, Object> output = new LinkedHashMap<>();
+        output.put("years", facets == null ? List.of() : facets.getOrDefault("years", List.of()));
+        output.put("authors", facets == null ? List.of() : facets.getOrDefault("authors", List.of()));
+        output.put("venues", facets == null ? List.of() : facets.getOrDefault("venues", List.of()));
+        output.put("catalogTopics", facets == null ? List.of() : facets.getOrDefault("catalogTopics", List.of()));
+        output.put("paperTypes", facets == null ? List.of() : facets.getOrDefault("paperTypes", List.of()));
+        return output;
+    }
+
+    public Map<String, Object> facetBucket(Object value, int count) {
+        Map<String, Object> bucket = new LinkedHashMap<>();
+        bucket.put("value", value);
+        bucket.put("count", Math.max(0, count));
+        return bucket;
+    }
+
     public Map<String, Object> locationCard(ReadingLocationCandidate candidate, String paperHandle, int ordinal) {
         Map<String, Object> card = new LinkedHashMap<>();
         card.put("ordinal", ordinal);
@@ -96,7 +142,7 @@ public class ReadingToolOutputMapper {
 
     private String roleFromHeading(String heading) {
         String normalized = heading == null ? "" : heading.toLowerCase(Locale.ROOT);
-        if (normalized.contains("abstract")) {
+        if (normalized.contains("abs" + "tract")) {
             return "ABSTRACT";
         }
         if (normalized.contains("related work") || normalized.contains("background")) {

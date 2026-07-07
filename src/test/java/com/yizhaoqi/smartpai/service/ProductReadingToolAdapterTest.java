@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +36,9 @@ class ProductReadingToolAdapterTest {
 
     @Mock
     private ReadingModelGrepSearchService readingModelGrepSearchService;
+
+    @Mock
+    private PaperService paperService;
 
     @Mock
     private PaperRepository paperRepository;
@@ -66,6 +70,7 @@ class ProductReadingToolAdapterTest {
         adapter = new ProductReadingToolAdapter(
                 paperCandidateSearchService,
                 readingModelGrepSearchService,
+                paperService,
                 paperRepository,
                 modelRepository,
                 sectionRepository,
@@ -117,6 +122,124 @@ class ProductReadingToolAdapterTest {
         assertFalse(json.contains("paperId"));
         assertFalse(json.contains("matchedFields"));
         assertFalse(json.contains("matchReason"));
+        assertFalse(json.contains("rank"));
+    }
+
+    @Test
+    void getSessionStateCountsOnlyCurrentReadyScopedPapers() throws Exception {
+        when(paperService.getAccessiblePapers("7", null)).thenReturn(List.of(
+                paper("ready-paper", "Ready Paper", "ready.pdf"),
+                paper("unready-paper", "Unready Paper", "unready.pdf"),
+                paper("out-of-scope-paper", "Out Of Scope", "scope.pdf")
+        ));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-paper"))
+                .thenReturn(Optional.of(model("ready-paper", "model-v1")));
+        PaperReadingModel unreadyModel = model("unready-paper", "model-v1");
+        unreadyModel.setModelStatus(PaperReadingModelStatus.READING_MODEL_BUILDING);
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("unready-paper"))
+                .thenReturn(Optional.of(unreadyModel));
+
+        ProductToolResult result = adapter.getSessionState(
+                new ProductToolContext(
+                        7L,
+                        "conversation-1",
+                        "generation-1",
+                        SourceScope.manual(List.of("ready-paper", "unready-paper"))
+                )
+        );
+
+        assertTrue(result.success());
+        assertEquals("get_session_state", result.toolName());
+        assertEquals(ProductToolEffect.PRODUCT_STATE, result.effect());
+        assertEquals("OK", result.data().get("status"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> searchScope = (Map<String, Object>) result.data().get("searchScope");
+        assertEquals("MANUAL_SOURCE", searchScope.get("scopeMode"));
+        assertEquals("Selected readable papers", searchScope.get("label"));
+        assertEquals(true, searchScope.get("readablePaperCountKnown"));
+        assertEquals(1, searchScope.get("readablePaperCount"));
+        assertEquals(true, searchScope.get("immutable"));
+
+        String json = objectMapper.writeValueAsString(result.data());
+        assertFalse(json.contains("ready-paper"));
+        assertFalse(json.contains("paperId"));
+        assertFalse(json.contains("model-v1"));
+        assertFalse(json.contains("modelVersion"));
+    }
+
+    @Test
+    void listPapersFiltersSortsFacetsAndReturnsHandlesOnly() throws Exception {
+        Paper agentPaper = paper("ready-agent", "Agentic Eval Benchmark", "agentic-eval.pdf");
+        agentPaper.setAuthors("Ada Lovelace; Grace Hopper");
+        agentPaper.setPublicationYear(2025);
+        agentPaper.setVenue("NeurIPS");
+        agentPaper.setDoi("10.1000/agent");
+        agentPaper.setArxivId("2501.00001");
+        agentPaper.setMergedAt(LocalDateTime.of(2026, 1, 1, 12, 0));
+        Paper otherPaper = paper("ready-other", "Different Benchmark", "different.pdf");
+        otherPaper.setAuthors("Ada Lovelace");
+        otherPaper.setPublicationYear(2024);
+        otherPaper.setVenue("ICML");
+        Paper unreadyPaper = paper("unready-paper", "Agent Draft", "draft.pdf");
+
+        when(paperService.getAccessiblePapers("7", null)).thenReturn(List.of(agentPaper, otherPaper, unreadyPaper));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-agent"))
+                .thenReturn(Optional.of(model("ready-agent", "model-v1")));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-other"))
+                .thenReturn(Optional.of(model("ready-other", "model-v1")));
+        PaperReadingModel unreadyModel = model("unready-paper", "model-v1");
+        unreadyModel.setModelStatus(PaperReadingModelStatus.READING_MODEL_FAILED);
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("unready-paper"))
+                .thenReturn(Optional.of(unreadyModel));
+        when(handleService.handleForPaperId("ready-agent")).thenReturn("paper_handle_agent");
+
+        ProductToolResult result = adapter.listPapers(
+                new ReadingToolArgumentValidator.ListPaperFilters(
+                        "agent",
+                        "",
+                        "",
+                        "",
+                        "Grace",
+                        "10.1000/agent",
+                        "2501.00001",
+                        new ReadingToolArgumentValidator.YearRange(2025, 2026),
+                        "neur"
+                ),
+                true,
+                ReadingToolArgumentValidator.ListPaperSort.TITLE,
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertTrue(result.success());
+        assertEquals("list_papers", result.toolName());
+        assertEquals(ProductToolEffect.PAPER_LIST, result.effect());
+        assertEquals("OK", result.data().get("status"));
+        assertEquals(1, result.data().get("total"));
+        assertEquals(1, result.data().get("returned"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) result.data().get("items");
+        assertEquals(1, items.size());
+        assertEquals(1, items.get(0).get("ordinal"));
+        assertEquals("paper_handle_agent", items.get(0).get("paperHandle"));
+        assertEquals("Agentic Eval Benchmark", items.get(0).get("title"));
+        assertEquals("agentic-eval.pdf", items.get(0).get("originalFilename"));
+        assertEquals(List.of("Ada Lovelace", "Grace Hopper"), items.get(0).get("authors"));
+        assertEquals(2025, items.get(0).get("year"));
+        assertEquals("NeurIPS", items.get(0).get("venue"));
+        assertEquals(List.of(), items.get(0).get("catalogTopics"));
+        assertEquals(List.of(), items.get(0).get("paperTypes"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> facets = (Map<String, Object>) result.data().get("facets");
+        assertTrue(objectMapper.writeValueAsString(facets).contains("\"value\":2025"));
+        assertTrue(objectMapper.writeValueAsString(facets).contains("\"value\":\"Grace Hopper\""));
+
+        String json = objectMapper.writeValueAsString(result.data());
+        assertFalse(json.contains("ready-agent"));
+        assertFalse(json.contains("paperId"));
+        assertFalse(json.contains("model-v1"));
+        assertFalse(json.contains("modelVersion"));
+        assertFalse(json.contains("abstract"));
+        assertFalse(json.contains("score"));
         assertFalse(json.contains("rank"));
     }
 
