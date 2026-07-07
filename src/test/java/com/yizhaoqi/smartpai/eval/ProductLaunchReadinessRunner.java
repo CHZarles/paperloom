@@ -1,6 +1,7 @@
 package com.yizhaoqi.smartpai.eval;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,7 +52,7 @@ public class ProductLaunchReadinessRunner {
                 blockingGateResult = result.childGateResult();
             }
         }
-        return RagEvalRunWriter.write(
+        Path runDir = RagEvalRunWriter.write(
                 safeOptions.runsRoot(),
                 safeOptions.runId(),
                 safeOptions.startedAt(),
@@ -65,6 +66,8 @@ public class ProductLaunchReadinessRunner {
                 ),
                 metrics(results)
         );
+        Files.writeString(runDir.resolve("remediation.md"), remediationMarkdown(safeOptions, results));
+        return runDir;
     }
 
     private GateResult runGate(LaunchGate gate, GateContext context) {
@@ -180,6 +183,66 @@ public class ProductLaunchReadinessRunner {
                 .filter(result -> result.failureClass().contains("SKIPPED_DUE_TO_PREVIOUS_GATE"))
                 .count());
         return metrics;
+    }
+
+    private static String remediationMarkdown(Options options, List<GateResult> results) {
+        Options safeOptions = options == null ? Options.defaults() : options;
+        List<GateResult> safeResults = results == null ? List.of() : results;
+        boolean launchReady = !safeResults.isEmpty() && safeResults.stream().allMatch(GateResult::passed);
+        StringBuilder builder = new StringBuilder()
+                .append("# Product Launch Readiness Remediation\n\n")
+                .append("Run: `").append(safeOptions.runId()).append("`\n\n")
+                .append("Status: ").append(launchReady ? "launch-ready" : "not launch-ready").append("\n\n");
+
+        if (launchReady) {
+            builder.append("All launch gates passed. Child run evidence:\n\n");
+            for (GateResult result : safeResults) {
+                builder.append("- `").append(result.gateId()).append("`: ")
+                        .append(childRunDir(result))
+                        .append("\n");
+            }
+            builder.append("\n");
+        } else {
+            GateResult blocker = safeResults.stream()
+                    .filter(result -> !result.passed())
+                    .findFirst()
+                    .orElse(null);
+            if (blocker != null) {
+                builder.append("Blocking gate: `").append(blocker.gateId()).append("`\n\n");
+                String childRunDir = childRunDir(blocker);
+                if (!childRunDir.isBlank()) {
+                    builder.append("Blocking child run: `").append(childRunDir).append("`\n\n");
+                    Path childRemediation = Path.of(childRunDir).resolve("remediation.md");
+                    if (Files.exists(childRemediation)) {
+                        builder.append("Child remediation: `").append(childRemediation).append("`\n\n");
+                    }
+                }
+                List<GateResult> skipped = safeResults.stream()
+                        .filter(result -> result.failureClass().contains("SKIPPED_DUE_TO_PREVIOUS_GATE"))
+                        .toList();
+                if (!skipped.isEmpty()) {
+                    builder.append("Skipped downstream gates:\n\n");
+                    for (GateResult result : skipped) {
+                        builder.append("- `").append(result.gateId())
+                                .append("`: SKIPPED_DUE_TO_PREVIOUS_GATE\n");
+                    }
+                    builder.append("\n");
+                }
+            }
+        }
+
+        builder.append("## Gate Order\n\n");
+        for (int i = 0; i < DEFAULT_GATE_IDS.size(); i++) {
+            builder.append(i + 1).append(". `").append(DEFAULT_GATE_IDS.get(i)).append("`\n");
+        }
+        return builder.toString();
+    }
+
+    private static String childRunDir(GateResult result) {
+        if (result == null || result.childGateResult() == null || result.childGateResult().runDir() == null) {
+            return "";
+        }
+        return result.childGateResult().runDir().toString();
     }
 
     private static List<LaunchGate> defaultFailingGates() {

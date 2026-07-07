@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -47,6 +48,12 @@ class ProductLaunchReadinessRunnerTest {
             assertEquals("product-launch-runtime-preflight",
                     rows.get(i).path("diagnostics").path("blockingGateId").asText());
         }
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("Status: not launch-ready"));
+        assertTrue(remediation.contains("Blocking gate: `product-launch-runtime-preflight`"));
+        assertTrue(remediation.contains("product-pdf-launch-data-seed"));
+        assertTrue(remediation.contains("SKIPPED_DUE_TO_PREVIOUS_GATE"));
+        assertTrue(remediation.contains("product-launch-runtime-preflight/remediation.md"));
     }
 
     @Test
@@ -71,6 +78,10 @@ class ProductLaunchReadinessRunnerTest {
             assertTrue(row.path("failureClass").isEmpty());
             assertTrue(row.path("diagnostics").path("childRunDir").asText().contains(row.path("caseId").asText()));
         }
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("Status: launch-ready"));
+        assertTrue(remediation.contains("All launch gates passed"));
+        assertTrue(remediation.contains("product-pdf-parser-smoke"));
     }
 
     private ProductLaunchReadinessRunner.Options options(String runId) {
@@ -97,7 +108,7 @@ class ProductLaunchReadinessRunnerTest {
                 passes ? List.of() : List.of("child_gate_failed"),
                 passes ? List.of() : List.of("RUNTIME_UNAVAILABLE")
         );
-        return RagEvalRunWriter.write(
+        Path runDir = RagEvalRunWriter.write(
                 context.runsRoot(),
                 context.childRunId(),
                 Instant.now().toString(),
@@ -125,5 +136,10 @@ class ProductLaunchReadinessRunnerTest {
                 ),
                 Map.of()
         );
+        if (!passes) {
+            Files.writeString(runDir.resolve("remediation.md"),
+                    "# Child Remediation\n\nFix child gate `" + context.gateId() + "`.\n");
+        }
+        return runDir;
     }
 }
