@@ -56,6 +56,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         assertEquals(Set.of(
                 "backend_login",
+                "frontend_http",
                 "mysql_tcp",
                 "redis_tcp",
                 "kafka_tcp",
@@ -71,13 +72,20 @@ class ProductLaunchRuntimePreflightRunnerTest {
         ), caseIds);
 
         JsonNode scorecard = OBJECT_MAPPER.readTree(runDir.resolve("scorecard.json").toFile());
-        assertEquals(13, scorecard.path("caseCount").asInt());
-        assertEquals(13, scorecard.path("passed").asInt());
+        assertEquals(14, scorecard.path("caseCount").asInt());
+        assertEquals(14, scorecard.path("passed").asInt());
         assertEquals(1.0d, scorecard.path("passRate").asDouble());
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("launch preflight passed"));
         assertTrue(remediation.contains("ProductPdfLaunchDataSeedCli"));
 
+        ProductLaunchRuntimePreflightRunner.ProbeRequest frontend = probe.requests.stream()
+                .filter(request -> "frontend_http".equals(request.caseId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("HTTP", frontend.kind());
+        assertEquals("http://127.0.0.1:9527", frontend.params().get("url"));
+        assertEquals("id=\"app\"", frontend.params().get("requiredBodyContains"));
         ProductLaunchRuntimePreflightRunner.ProbeRequest mysql = probe.requests.stream()
                 .filter(request -> "mysql_tcp".equals(request.caseId()))
                 .findFirst()
@@ -143,7 +151,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
         assertFalse(remediation.contains("secret"));
         assertFalse(remediation.contains("llm-key"));
         assertTrue(remediation.contains("Do not run the 30-PDF seed"));
-        assertTrue(remediation.contains("13/13"));
+        assertTrue(remediation.contains("14/14"));
     }
 
     @Test
@@ -235,6 +243,28 @@ class ProductLaunchRuntimePreflightRunnerTest {
         assertFalse(runJson.contains("embedding-key"));
         assertFalse(remediation.contains("llm-key"));
         assertTrue(remediation.contains("llm_api_smoke"));
+    }
+
+    @Test
+    void frontendHttpFailureHasActionableRemediation() throws Exception {
+        Path env = env("""
+                PAPERLOOM_FRONTEND_BASE_URL=http://127.0.0.1:9527
+                DEEPSEEK_API_KEY=llm-key
+                EMBEDDING_API_KEY=embedding-key
+                PAPERLOOM_REACT_READING_PHASE1_ENABLED=true
+                """);
+        FakeProbe probe = FakeProbe.failOnly("frontend_http", "http_unreachable(http://127.0.0.1:9527)",
+                "RUNTIME_UNAVAILABLE");
+
+        Path runDir = runner(probe).run(options(env));
+
+        JsonNode frontend = row(OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases"),
+                "frontend_http");
+        assertFalse(frontend.path("passed").asBoolean());
+        assertTrue(frontend.path("failureClass").toString().contains("RUNTIME_UNAVAILABLE"));
+        String remediation = Files.readString(runDir.resolve("remediation.md"));
+        assertTrue(remediation.contains("PAPERLOOM_FRONTEND_BASE_URL"));
+        assertTrue(remediation.contains("http://127.0.0.1:9527"));
     }
 
     private ProductLaunchRuntimePreflightRunner runner(FakeProbe probe) {

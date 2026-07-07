@@ -73,6 +73,59 @@ class ProductLaunchRuntimePreflightProbeTest {
     }
 
     @Test
+    void frontendHttpProbeRequiresSpaShellMarker() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            byte[] body = """
+                    <!doctype html><html><body><div id="app"></div></body></html>
+                    """.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
+
+            ProductLaunchRuntimePreflightRunner.ProbeResult result = probe.check(
+                    ProductLaunchRuntimePreflightRunner.ProbeRequest.frontendHttp(
+                            "http://127.0.0.1:" + server.getAddress().getPort()
+                    ));
+
+            assertTrue(result.passed());
+            assertTrue(Boolean.parseBoolean(String.valueOf(result.diagnostics().get("bodyMarkerPresent"))));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void frontendHttpProbeFailsWhenSpaShellMarkerIsMissing() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            byte[] body = "<html><body>not the app</body></html>".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
+
+            ProductLaunchRuntimePreflightRunner.ProbeResult result = probe.check(
+                    ProductLaunchRuntimePreflightRunner.ProbeRequest.frontendHttp(
+                            "http://127.0.0.1:" + server.getAddress().getPort()
+                    ));
+
+            assertFalse(result.passed());
+            assertTrue(result.failureClass().contains("RUNTIME_UNAVAILABLE"));
+            assertEquals(false, result.diagnostics().get("bodyMarkerPresent"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void loginProbeRequiresTokenInResponse() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api/v1/users/login", exchange -> {

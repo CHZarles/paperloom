@@ -91,6 +91,18 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             diagnostics.put("status", response.statusCode());
             if (acceptedStatuses.contains(response.statusCode())) {
+                String requiredBodyContains = String.valueOf(request.params().getOrDefault("requiredBodyContains", ""));
+                if (!requiredBodyContains.isBlank()) {
+                    boolean bodyMarkerPresent = response.body() != null && response.body().contains(requiredBodyContains);
+                    diagnostics.put("bodyMarkerPresent", bodyMarkerPresent);
+                    if (!bodyMarkerPresent) {
+                        return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
+                                List.of("http_body_marker_missing(" + url + ")"),
+                                List.of("RUNTIME_UNAVAILABLE"),
+                                diagnostics
+                        );
+                    }
+                }
                 return ProductLaunchRuntimePreflightRunner.ProbeResult.pass(diagnostics);
             }
             return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(

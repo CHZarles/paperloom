@@ -100,6 +100,7 @@ apply_local_overrides() {
 
   export PAPERLOOM_REACT_READING_PHASE1_ENABLED="${PAPERLOOM_REACT_READING_PHASE1_ENABLED:-true}"
   export PAPER_PARSING_MINERU_BASE_URL="${PAPER_PARSING_MINERU_BASE_URL:-http://127.0.0.1:8000}"
+  export PAPERLOOM_FRONTEND_BASE_URL="${PAPERLOOM_FRONTEND_BASE_URL:-http://127.0.0.1:9527}"
 
   mysql_port="$(mysql_published_port)"
   if [[ -n "$mysql_port" && "$mysql_port" != "3306" ]]; then
@@ -123,6 +124,7 @@ safe_summary() {
   echo "env_file=${ENV_FILE}"
   echo "overlay_env_file=${OVERLAY_ENV_FILE}"
   echo "spring_datasource_url=${SPRING_DATASOURCE_URL:-}"
+  echo "frontend_base_url=${PAPERLOOM_FRONTEND_BASE_URL:-}"
   echo "mineru_base_url=${PAPER_PARSING_MINERU_BASE_URL:-}"
   echo "reading_phase_flag=${PAPERLOOM_REACT_READING_PHASE1_ENABLED:-}"
   echo "deepseek_api_key=$(secret_state DEEPSEEK_API_KEY)"

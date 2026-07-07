@@ -73,6 +73,8 @@ public class ProductLaunchRuntimePreflightRunner {
     private List<ProbeRequest> requests(Map<String, String> env, Options options) {
         List<ProbeRequest> requests = new ArrayList<>();
         requests.add(ProbeRequest.login(options.apiBase(), options.username(), options.password()));
+        requests.add(ProbeRequest.frontendHttp(value(env, options, "PAPERLOOM_FRONTEND_BASE_URL",
+                "http://127.0.0.1:9527")));
         requests.add(tcpFromJdbc("mysql_tcp", value(env, options, "SPRING_DATASOURCE_URL",
                 "jdbc:mysql://localhost:3306/paismart")));
         requests.add(ProbeRequest.tcp(
@@ -258,6 +260,9 @@ public class ProductLaunchRuntimePreflightRunner {
         return switch (failure.caseId()) {
             case "backend_login" -> "- `backend_login`: start the backend at `" + target
                     + "` and verify the eval admin login credentials. Do not print or store the password in artifacts.";
+            case "frontend_http" -> "- `frontend_http`: start the frontend and set `PAPERLOOM_FRONTEND_BASE_URL` "
+                    + "to the served PaperLoom app" + targetSuffix(target)
+                    + ". The response must be the SPA shell containing `id=\"app\"`.";
             case "mysql_tcp" -> "- `mysql_tcp`: make `SPRING_DATASOURCE_URL` point to a reachable MySQL host/port"
                     + targetSuffix(target) + ", or expose the Docker MySQL container on the configured port.";
             case "redis_tcp" -> "- `redis_tcp`: start Redis or align `SPRING_DATA_REDIS_HOST` and `SPRING_DATA_REDIS_PORT`"
@@ -414,6 +419,14 @@ public class ProductLaunchRuntimePreflightRunner {
             return new ProbeRequest(caseId, "HTTP", url, "", Map.of(
                     "url", blankToDefault(url, ""),
                     "acceptedStatuses", acceptedStatuses == null ? List.of(200) : List.copyOf(acceptedStatuses)
+            ));
+        }
+
+        static ProbeRequest frontendHttp(String frontendBaseUrl) {
+            return new ProbeRequest("frontend_http", "HTTP", trimTrailingSlash(frontendBaseUrl), "", Map.of(
+                    "url", trimTrailingSlash(frontendBaseUrl),
+                    "acceptedStatuses", List.of(200),
+                    "requiredBodyContains", "id=\"app\""
             ));
         }
 
