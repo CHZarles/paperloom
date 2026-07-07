@@ -79,6 +79,14 @@ harnesses:
     verifier: trace-eval
     status: runnable-trace-eval
     benchmarkIds: product-reading-launch-trace
+  - id: product-reading-live-launch-smoke
+    name: Product Reading Live Launch Smoke
+    description: Live WebSocket smoke that drives Product Reading chat, chains clicked paper/source quote anchors, and records front-protocol evidence.
+    retrieval: websocket-product-reading-chat
+    planner: live-llm
+    verifier: front-protocol-smoke
+    status: runnable-live-smoke
+    benchmarkIds: product-reading-live-launch-smoke
   - id: semantic-only-baseline
     name: Semantic Only Baseline
     description: Semantic retrieval only with the same answer and evidence verifier.
@@ -137,6 +145,16 @@ benchmarks:
     source: local Product Reading trace artifacts
     primaryMetric: passRate
     gateMode: product-reading-trace-eval
+    cases: "9"
+  - id: product-reading-live-launch-smoke
+    name: Product Reading Live Launch Smoke
+    tier: product
+    task: Live WebSocket Product Reading launch smoke
+    status: runnable
+    path: eval/rag/product-reading-live-launch-smoke-cases.jsonl
+    source: running Product Reading backend
+    primaryMetric: passRate
+    gateMode: product-reading-live-launch-smoke
     cases: "9"
   - id: product-figure-table-smoke
     name: Product Figure/Table Smoke

@@ -92,6 +92,7 @@ Page-location input rows are intentionally small:
 | `product-pdf-parser-smoke` | product | Real PDF parser smoke | `passRate` | runnable |
 | `product-pdf-launch-30` | product | 30-real-PDF parser launch gate | `passRate` | runnable |
 | `product-reading-launch-trace` | product | Product Reading 9-tool trace coverage | `passRate` | runnable |
+| `product-reading-live-launch-smoke` | product | Live WebSocket Product Reading launch smoke | `passRate` | runnable |
 | `qasper-dev-200` | professional | Research-paper evidence QA | `passRate` | runnable |
 | `litsearch-full` | professional | Literature-search retrieval | `recallAt20` | offline full scored; service-backed full scored |
 
@@ -196,6 +197,13 @@ case file `eval/rag/product-reading-launch-trace-cases.jsonl` requires completed
 `PRODUCT_READING_REACT_TURN` artifacts that cover all 9 reading tools, paper-choice Product State
 Items from `list_papers`, `search_paper_candidates`, and `find_papers_by_identity`, plus Source
 Quote references from both `read_locations` and `trace_source_quotes`.
+
+`ProductReadingLiveLaunchSmokeCli` is the front-to-back live driver for producing those traces. It
+logs in, creates a conversation, sends structured WebSocket chat messages from
+`eval/rag/product-reading-live-launch-smoke-cases.jsonl`, carries clicked paper/source quote anchors
+between cases, and writes a standard eval run. It is not a replacement for the trace eval: launch
+readiness requires the live smoke to pass, then `ProductReadingLaunchTraceEvalCli` to pass on the
+fresh trace artifacts, then the 30-PDF parser gate to pass.
 
 Eval import markers now belong on `Paper` rows, with chunk rows linked by `paperId`:
 
