@@ -91,6 +91,7 @@ Page-location input rows are intentionally small:
 | `product-rescue-paper-qa` | product | Scoped paper-QA slice | `passRate` | runnable |
 | `product-pdf-parser-smoke` | product | Real PDF parser smoke | `passRate` | runnable |
 | `product-pdf-launch-30` | product | 30-real-PDF parser launch gate | `passRate` | runnable |
+| `product-pdf-launch-data-seed` | product | 30-PDF upload/merge/searchable live data seed | `passRate` | runnable |
 | `product-reading-launch-trace` | product | Product Reading 9-tool trace coverage | `passRate` | runnable |
 | `product-reading-live-launch-smoke` | product | Live WebSocket Product Reading launch smoke | `passRate` | runnable |
 | `qasper-dev-200` | professional | Research-paper evidence QA | `passRate` | runnable |
@@ -198,12 +199,25 @@ case file `eval/rag/product-reading-launch-trace-cases.jsonl` requires completed
 Items from `list_papers`, `search_paper_candidates`, and `find_papers_by_identity`, plus Source
 Quote references from both `read_locations` and `trace_source_quotes`.
 
-`ProductReadingLiveLaunchSmokeCli` is the front-to-back live driver for producing those traces. It
-logs in, creates a conversation, sends structured WebSocket chat messages from
+`ProductPdfLaunchDataSeedCli` is the front-to-back live driver for building the launch dataset. It
+logs in, uploads and merges every PDF from `eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl`
+through the product upload API, polls `/papers/uploads`, and requires the same frontend-searchable
+state as the knowledge-base page: upload complete, `processingStatus=COMPLETED`, actual embedding
+usage present, and `actualChunkCount > 0`.
+
+```bash
+mvn -q -DskipTests test-compile exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=com.yizhaoqi.smartpai.eval.ProductPdfLaunchDataSeedCli
+```
+
+`ProductReadingLiveLaunchSmokeCli` is the front-to-back live driver for producing Product Reading
+traces. It logs in, creates a conversation, sends structured WebSocket chat messages from
 `eval/rag/product-reading-live-launch-smoke-cases.jsonl`, carries clicked paper/source quote anchors
 between cases, and writes a standard eval run. It is not a replacement for the trace eval: launch
-readiness requires the live smoke to pass, then `ProductReadingLaunchTraceEvalCli` to pass on the
-fresh trace artifacts, then the 30-PDF parser gate to pass.
+readiness requires the 30-PDF data seed to pass, then the live smoke to pass, then
+`ProductReadingLaunchTraceEvalCli` to pass on the fresh trace artifacts, then the 30-PDF parser gate
+to pass.
 
 Eval import markers now belong on `Paper` rows, with chunk rows linked by `paperId`:
 

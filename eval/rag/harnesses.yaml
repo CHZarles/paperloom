@@ -87,6 +87,14 @@ harnesses:
     verifier: front-protocol-smoke
     status: runnable-live-smoke
     benchmarkIds: product-reading-live-launch-smoke
+  - id: product-pdf-launch-data-seed
+    name: Product PDF Launch Data Seed
+    description: Live HTTP seed that uploads and merges the 30 launch PDFs through the product API, then waits for frontend-searchable status.
+    retrieval: product-upload-http
+    planner: none
+    verifier: front-searchable-status
+    status: runnable-live-seed
+    benchmarkIds: product-pdf-launch-data-seed
   - id: semantic-only-baseline
     name: Semantic Only Baseline
     description: Semantic retrieval only with the same answer and evidence verifier.
@@ -135,6 +143,16 @@ benchmarks:
     source: local committed real-PDF manifest
     primaryMetric: passRate
     gateMode: pdf-parser-launch-30
+    cases: "30"
+  - id: product-pdf-launch-data-seed
+    name: Product PDF Launch Data Seed
+    tier: product
+    task: 30-PDF upload/merge/searchable live data seed
+    status: runnable
+    path: eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl
+    source: running PaperLoom backend
+    primaryMetric: passRate
+    gateMode: product-pdf-launch-data-seed
     cases: "30"
   - id: product-reading-launch-trace
     name: Product Reading Launch Trace

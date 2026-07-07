@@ -130,6 +130,11 @@ class RagBenchmarkRegistryTest {
                         && "runnable-live-smoke".equals(harness.status())
                         && "websocket-product-reading-chat".equals(harness.retrieval())
                         && harness.benchmarkIds().equals(List.of("product-reading-live-launch-smoke"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "product-pdf-launch-data-seed".equals(harness.id())
+                        && "runnable-live-seed".equals(harness.status())
+                        && "product-upload-http".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("product-pdf-launch-data-seed"))));
 
         RagBenchmarkRegistry.BenchmarkDefinition traceBenchmark = registry.benchmark("product-reading-launch-trace");
         assertEquals("Product Reading Launch Trace", traceBenchmark.name());
@@ -154,6 +159,14 @@ class RagBenchmarkRegistryTest {
         assertEquals("eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl", pdfBenchmark.path());
         assertEquals("passRate", pdfBenchmark.primaryMetric());
         assertEquals("30", pdfBenchmark.cases());
+
+        RagBenchmarkRegistry.BenchmarkDefinition seedBenchmark = registry.benchmark("product-pdf-launch-data-seed");
+        assertEquals("Product PDF Launch Data Seed", seedBenchmark.name());
+        assertEquals("product", seedBenchmark.tier());
+        assertEquals("30-PDF upload/merge/searchable live data seed", seedBenchmark.task());
+        assertEquals("eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl", seedBenchmark.path());
+        assertEquals("passRate", seedBenchmark.primaryMetric());
+        assertEquals("30", seedBenchmark.cases());
     }
 
     @Test
