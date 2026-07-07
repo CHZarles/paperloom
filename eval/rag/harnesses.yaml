@@ -103,6 +103,14 @@ harnesses:
     verifier: dependency-check
     status: runnable-runtime-preflight
     benchmarkIds: product-launch-runtime-preflight
+  - id: product-launch-readiness
+    name: Product Launch Readiness
+    description: Ordered launch wrapper that runs the five product launch gates, stops on first failure, and writes one top-level readiness scorecard.
+    retrieval: ordered-launch-gates
+    planner: none
+    verifier: launch-readiness
+    status: runnable-launch-readiness
+    benchmarkIds: product-launch-readiness
   - id: semantic-only-baseline
     name: Semantic Only Baseline
     description: Semantic retrieval only with the same answer and evidence verifier.
@@ -192,6 +200,16 @@ benchmarks:
     primaryMetric: passRate
     gateMode: product-reading-live-launch-smoke
     cases: "9"
+  - id: product-launch-readiness
+    name: Product Launch Readiness
+    tier: product
+    task: ordered launch gate readiness
+    status: runnable
+    path: eval/rag/runs
+    source: local launch gate scorecards
+    primaryMetric: passRate
+    gateMode: product-launch-readiness
+    cases: "5 gates"
   - id: product-figure-table-smoke
     name: Product Figure/Table Smoke
     tier: product

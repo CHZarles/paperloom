@@ -215,6 +215,16 @@ mvn -q -DskipTests test-compile exec:java \
   -Dexec.mainClass=com.yizhaoqi.smartpai.eval.ProductLaunchRuntimePreflightCli
 ```
 
+`ProductLaunchReadinessCli` is the top-level launch wrapper. It runs the five launch gates in order,
+stops on the first failed gate, writes one readiness scorecard with skipped downstream gates marked
+as `SKIPPED_DUE_TO_PREVIOUS_GATE`, and exits non-zero unless all five gates pass.
+
+```bash
+mvn -q -DskipTests test-compile exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=com.yizhaoqi.smartpai.eval.ProductLaunchReadinessCli
+```
+
 `ProductPdfLaunchDataSeedCli` is the front-to-back live driver for building the launch dataset. It
 logs in, uploads and merges every PDF from `eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl`
 through the product upload API, polls `/papers/uploads`, and requires the same frontend-searchable

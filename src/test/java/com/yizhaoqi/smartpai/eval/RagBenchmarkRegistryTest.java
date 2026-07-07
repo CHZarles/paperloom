@@ -140,6 +140,11 @@ class RagBenchmarkRegistryTest {
                         && "runnable-runtime-preflight".equals(harness.status())
                         && "runtime-preflight".equals(harness.retrieval())
                         && harness.benchmarkIds().equals(List.of("product-launch-runtime-preflight"))));
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "product-launch-readiness".equals(harness.id())
+                        && "runnable-launch-readiness".equals(harness.status())
+                        && "ordered-launch-gates".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("product-launch-readiness"))));
 
         RagBenchmarkRegistry.BenchmarkDefinition traceBenchmark = registry.benchmark("product-reading-launch-trace");
         assertEquals("Product Reading Launch Trace", traceBenchmark.name());
@@ -180,6 +185,14 @@ class RagBenchmarkRegistryTest {
         assertEquals(".env", preflightBenchmark.path());
         assertEquals("passRate", preflightBenchmark.primaryMetric());
         assertEquals("11", preflightBenchmark.cases());
+
+        RagBenchmarkRegistry.BenchmarkDefinition readinessBenchmark = registry.benchmark("product-launch-readiness");
+        assertEquals("Product Launch Readiness", readinessBenchmark.name());
+        assertEquals("product", readinessBenchmark.tier());
+        assertEquals("ordered launch gate readiness", readinessBenchmark.task());
+        assertEquals("eval/rag/runs", readinessBenchmark.path());
+        assertEquals("passRate", readinessBenchmark.primaryMetric());
+        assertEquals("5 gates", readinessBenchmark.cases());
     }
 
     @Test
