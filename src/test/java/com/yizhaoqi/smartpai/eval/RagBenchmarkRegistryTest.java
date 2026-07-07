@@ -184,7 +184,7 @@ class RagBenchmarkRegistryTest {
         assertEquals("launch runtime dependency preflight", preflightBenchmark.task());
         assertEquals(".env", preflightBenchmark.path());
         assertEquals("passRate", preflightBenchmark.primaryMetric());
-        assertEquals("11", preflightBenchmark.cases());
+        assertEquals("13", preflightBenchmark.cases());
 
         RagBenchmarkRegistry.BenchmarkDefinition readinessBenchmark = registry.benchmark("product-launch-readiness");
         assertEquals("Product Launch Readiness", readinessBenchmark.name());

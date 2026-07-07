@@ -217,15 +217,16 @@ scripts/paperloom-launch-readiness-local.sh
 ```
 
 The wrapper does not start Docker, backend, or frontend, does not print secret values, and still
-fails honestly when `DEEPSEEK_API_KEY` or `EMBEDDING_API_KEY` are missing.
+fails honestly when `DEEPSEEK_API_KEY` or `EMBEDDING_API_KEY` are missing or when the configured
+providers are not callable.
 
 `ProductLaunchRuntimePreflightCli` is the preflight gate for the launch runtime. It reads `.env`,
-checks backend login, MySQL, Redis, Kafka, MinIO, Elasticsearch, MinerU, LLM key, embedding key,
-trace config, and explicit Product Reading enablement, then writes a standard eval run plus
-`remediation.md` with non-secret fixes for failed
-checks. Product launch CLI `main` methods exit non-zero when their scorecard has any failed cases,
-while still preserving failed run artifacts for debugging. Run preflight before the slower 30-PDF
-seed:
+checks backend login, MySQL, Redis, Kafka, MinIO, Elasticsearch, MinerU, LLM key presence, a tiny
+LLM chat-completions smoke, embedding key presence, a tiny embeddings smoke, trace config, and
+explicit Product Reading enablement, then writes a standard eval run plus `remediation.md` with
+non-secret fixes for failed checks. Product launch CLI `main` methods exit non-zero when their
+scorecard has any failed cases, while still preserving failed run artifacts for debugging. Run
+preflight before the slower 30-PDF seed:
 
 ```bash
 mvn -q -DskipTests test-compile exec:java \

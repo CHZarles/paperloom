@@ -100,8 +100,17 @@ public class ProductLaunchRuntimePreflightRunner {
         String mineruBase = value(env, options, "PAPER_PARSING_MINERU_BASE_URL", "http://localhost:8000");
         String mineruHealth = value(env, options, "PAPER_PARSING_MINERU_HEALTH_PATH", "/health");
         requests.add(ProbeRequest.http("mineru_health", trimTrailingSlash(mineruBase) + ensureLeadingSlash(mineruHealth), List.of(200)));
-        requests.add(ProbeRequest.nonBlank("llm_key", "DEEPSEEK_API_KEY", value(env, options, "DEEPSEEK_API_KEY", "")));
-        requests.add(ProbeRequest.nonBlank("embedding_key", "EMBEDDING_API_KEY", value(env, options, "EMBEDDING_API_KEY", "")));
+        String llmUrl = value(env, options, "DEEPSEEK_API_URL", "https://api.deepseek.com/v1");
+        String llmModel = value(env, options, "DEEPSEEK_API_MODEL", "deepseek-chat");
+        String llmKey = value(env, options, "DEEPSEEK_API_KEY", "");
+        requests.add(ProbeRequest.nonBlank("llm_key", "DEEPSEEK_API_KEY", llmKey));
+        requests.add(ProbeRequest.llmApiSmoke(llmUrl, llmModel, llmKey));
+        String embeddingUrl = value(env, options, "EMBEDDING_API_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1");
+        String embeddingModel = value(env, options, "EMBEDDING_API_MODEL", "text-embedding-v4");
+        String embeddingKey = value(env, options, "EMBEDDING_API_KEY", "");
+        int embeddingDimension = intValue(value(env, options, "EMBEDDING_DIMENSION", "2048"), 2048);
+        requests.add(ProbeRequest.nonBlank("embedding_key", "EMBEDDING_API_KEY", embeddingKey));
+        requests.add(ProbeRequest.embeddingApiSmoke(embeddingUrl, embeddingModel, embeddingKey, embeddingDimension));
         requests.add(ProbeRequest.traceConfig(
                 value(env, options, "PAPERLOOM_TRACE_ENABLED", "true"),
                 value(env, options, "PAPERLOOM_TRACE_ROOT", "data/traces/product-react")
@@ -264,8 +273,15 @@ public class ProductLaunchRuntimePreflightRunner {
                     + ". Do not switch to the OpenDataLoader fallback for launch evidence.";
             case "llm_key" -> "- `llm_key`: set `DEEPSEEK_API_KEY` in the runtime environment or `.env`. "
                     + "The remediation artifact intentionally omits the value.";
+            case "llm_api_smoke" -> "- `llm_api_smoke`: verify `DEEPSEEK_API_URL`, `DEEPSEEK_API_MODEL`, "
+                    + "and the `DEEPSEEK_API_KEY` credential against the active launch provider"
+                    + targetSuffix(target) + ". The remediation artifact intentionally omits the key value.";
             case "embedding_key" -> "- `embedding_key`: set `EMBEDDING_API_KEY` in the runtime environment or `.env`. "
                     + "The remediation artifact intentionally omits the value.";
+            case "embedding_api_smoke" -> "- `embedding_api_smoke`: verify `EMBEDDING_API_URL`, "
+                    + "`EMBEDDING_API_MODEL`, optional `EMBEDDING_DIMENSION`, and the `EMBEDDING_API_KEY` "
+                    + "credential against the active launch provider" + targetSuffix(target)
+                    + ". The remediation artifact intentionally omits the key value.";
             case "trace_config" -> "- `trace_config`: set `PAPERLOOM_TRACE_ENABLED=true` and a writable "
                     + "`PAPERLOOM_TRACE_ROOT` before running the live smoke.";
             case "reading_phase_flag" -> "- `reading_phase_flag`: set "
@@ -284,6 +300,10 @@ public class ProductLaunchRuntimePreflightRunner {
         Object url = diagnostics.get("url");
         if (url != null && !String.valueOf(url).isBlank()) {
             return String.valueOf(url);
+        }
+        Object apiBaseUrl = diagnostics.get("apiBaseUrl");
+        if (apiBaseUrl != null && !String.valueOf(apiBaseUrl).isBlank()) {
+            return String.valueOf(apiBaseUrl);
         }
         Object host = diagnostics.get("host");
         Object port = diagnostics.get("port");
@@ -403,6 +423,39 @@ public class ProductLaunchRuntimePreflightRunner {
             params.put("value", blankToDefault(value, ""));
             params.put("present", blankToNull(value) != null);
             return new ProbeRequest(caseId, "NONBLANK", blankToDefault(key, ""), "", params);
+        }
+
+        static ProbeRequest llmApiSmoke(String apiBaseUrl, String model, String apiKey) {
+            Map<String, Object> params = new LinkedHashMap<>();
+            params.put("apiBaseUrl", trimTrailingSlash(apiBaseUrl));
+            params.put("model", blankToDefault(model, "deepseek-chat"));
+            params.put("path", "/chat/completions");
+            params.put("keyName", "DEEPSEEK_API_KEY");
+            return new ProbeRequest(
+                    "llm_api_smoke",
+                    "LLM_API_SMOKE",
+                    trimTrailingSlash(apiBaseUrl),
+                    blankToDefault(apiKey, ""),
+                    params
+            );
+        }
+
+        static ProbeRequest embeddingApiSmoke(String apiBaseUrl, String model, String apiKey, Integer dimension) {
+            Map<String, Object> params = new LinkedHashMap<>();
+            params.put("apiBaseUrl", trimTrailingSlash(apiBaseUrl));
+            params.put("model", blankToDefault(model, "text-embedding-v4"));
+            params.put("path", "/embeddings");
+            params.put("keyName", "EMBEDDING_API_KEY");
+            if (dimension != null && dimension > 0) {
+                params.put("dimension", dimension);
+            }
+            return new ProbeRequest(
+                    "embedding_api_smoke",
+                    "EMBEDDING_API_SMOKE",
+                    trimTrailingSlash(apiBaseUrl),
+                    blankToDefault(apiKey, ""),
+                    params
+            );
         }
 
         static ProbeRequest traceConfig(String enabled, String root) {

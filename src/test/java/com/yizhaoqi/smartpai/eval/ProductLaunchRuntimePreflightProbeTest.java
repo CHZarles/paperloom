@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -136,5 +137,118 @@ class ProductLaunchRuntimePreflightProbeTest {
         assertFalse(disabled.passed());
         assertTrue(disabled.failureClass().contains("CONFIG_MISSING"));
         assertTrue(enabled.passed());
+    }
+
+    @Test
+    void llmApiSmokeRequiresCallableChatCompletionsProvider() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/chat/completions", exchange -> {
+            assertEquals("Bearer llm-key", exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] body = """
+                    {"choices":[{"message":{"content":"OK"}}]}
+                    """.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
+
+            ProductLaunchRuntimePreflightRunner.ProbeResult result = probe.check(
+                    ProductLaunchRuntimePreflightRunner.ProbeRequest.llmApiSmoke(
+                            "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
+                            "deepseek-chat",
+                            "llm-key"
+                    ));
+
+            assertTrue(result.passed());
+            assertTrue(Boolean.parseBoolean(String.valueOf(result.diagnostics().get("assistantMessagePresent"))));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void embeddingApiSmokeRequiresCallableEmbeddingsProvider() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/embeddings", exchange -> {
+            assertEquals("Bearer embedding-key", exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] body = """
+                    {"data":[{"embedding":[0.1,0.2,0.3]}]}
+                    """.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
+
+            ProductLaunchRuntimePreflightRunner.ProbeResult result = probe.check(
+                    ProductLaunchRuntimePreflightRunner.ProbeRequest.embeddingApiSmoke(
+                            "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
+                            "text-embedding-v4",
+                            "embedding-key",
+                            2048
+                    ));
+
+            assertTrue(result.passed());
+            assertTrue(Boolean.parseBoolean(String.valueOf(result.diagnostics().get("embeddingPresent"))));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void providerSmokeDoesNotSendRequestWhenKeyIsBlank() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/chat/completions", exchange -> {
+            throw new AssertionError("blank-key provider smoke should not send an outbound request");
+        });
+        server.start();
+        try {
+            ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
+
+            ProductLaunchRuntimePreflightRunner.ProbeResult result = probe.check(
+                    ProductLaunchRuntimePreflightRunner.ProbeRequest.llmApiSmoke(
+                            "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
+                            "deepseek-chat",
+                            ""
+                    ));
+
+            assertFalse(result.passed());
+            assertTrue(result.failureClass().contains("CONFIG_MISSING"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void providerAuthFailureIsConfigInvalid() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/chat/completions", exchange -> {
+            byte[] body = "{\"error\":\"unauthorized\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(401, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
+
+            ProductLaunchRuntimePreflightRunner.ProbeResult result = probe.check(
+                    ProductLaunchRuntimePreflightRunner.ProbeRequest.llmApiSmoke(
+                            "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
+                            "deepseek-chat",
+                            "bad-key"
+                    ));
+
+            assertFalse(result.passed());
+            assertTrue(result.failureClass().contains("CONFIG_INVALID"));
+            assertFalse(result.diagnostics().toString().contains("bad-key"));
+        } finally {
+            server.stop(0);
+        }
     }
 }

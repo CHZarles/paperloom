@@ -39,6 +39,8 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             case "HTTP" -> http(request);
             case "LOGIN" -> login(request);
             case "NONBLANK" -> nonBlank(request);
+            case "LLM_API_SMOKE" -> llmApiSmoke(request);
+            case "EMBEDDING_API_SMOKE" -> embeddingApiSmoke(request);
             case "TRACE_CONFIG" -> traceConfig(request);
             case "READING_FLAG" -> readingFlag(request);
             case "INVALID_CONFIG" -> ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
@@ -161,6 +163,133 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
         );
     }
 
+    private ProductLaunchRuntimePreflightRunner.ProbeResult llmApiSmoke(
+            ProductLaunchRuntimePreflightRunner.ProbeRequest request) {
+        Map<String, Object> diagnostics = new LinkedHashMap<>(request.params());
+        String apiBaseUrl = String.valueOf(request.params().getOrDefault("apiBaseUrl", request.target()));
+        String model = String.valueOf(request.params().getOrDefault("model", ""));
+        if (request.secret().isBlank()) {
+            diagnostics.put("keyPresent", false);
+            return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
+                    List.of("llm_api_smoke_missing_key"),
+                    List.of("CONFIG_MISSING"),
+                    diagnostics
+            );
+        }
+        diagnostics.put("keyPresent", true);
+        try {
+            Map<String, Object> userMessage = new LinkedHashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", "Respond with the single word OK.");
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", model);
+            body.put("messages", List.of(userMessage));
+            body.put("temperature", 0);
+            body.put("max_tokens", 4);
+
+            HttpResponse<String> response = sendProviderPost(
+                    providerEndpoint(apiBaseUrl, "/chat/completions"),
+                    request.secret(),
+                    body
+            );
+            diagnostics.put("status", response.statusCode());
+            if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                return providerFailure("llm_api_smoke_rejected(status=" + response.statusCode() + ")",
+                        "CONFIG_INVALID", diagnostics);
+            }
+            if (response.statusCode() >= 500) {
+                return providerFailure("llm_api_smoke_unavailable(status=" + response.statusCode() + ")",
+                        "PROVIDER_UNAVAILABLE", diagnostics);
+            }
+            JsonNode json = OBJECT_MAPPER.readTree(response.body());
+            String content = json.path("choices").path(0).path("message").path("content").asText("");
+            diagnostics.put("assistantMessagePresent", !content.isBlank());
+            if (response.statusCode() < 300 && !content.isBlank()) {
+                return ProductLaunchRuntimePreflightRunner.ProbeResult.pass(diagnostics);
+            }
+            return providerFailure("llm_api_smoke_malformed_response", "PROVIDER_UNAVAILABLE", diagnostics);
+        } catch (Exception exception) {
+            diagnostics.put("error", exception.getClass().getSimpleName());
+            return providerFailure("llm_api_smoke_unreachable", "PROVIDER_UNAVAILABLE", diagnostics);
+        }
+    }
+
+    private ProductLaunchRuntimePreflightRunner.ProbeResult embeddingApiSmoke(
+            ProductLaunchRuntimePreflightRunner.ProbeRequest request) {
+        Map<String, Object> diagnostics = new LinkedHashMap<>(request.params());
+        String apiBaseUrl = String.valueOf(request.params().getOrDefault("apiBaseUrl", request.target()));
+        String model = String.valueOf(request.params().getOrDefault("model", ""));
+        if (request.secret().isBlank()) {
+            diagnostics.put("keyPresent", false);
+            return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
+                    List.of("embedding_api_smoke_missing_key"),
+                    List.of("CONFIG_MISSING"),
+                    diagnostics
+            );
+        }
+        diagnostics.put("keyPresent", true);
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", model);
+            body.put("input", List.of("PaperLoom launch readiness smoke"));
+            body.put("encoding_format", "float");
+            Integer dimension = integerValue(request.params().get("dimension"), null);
+            if (dimension != null && dimension > 0) {
+                body.put("dimension", dimension);
+            }
+
+            HttpResponse<String> response = sendProviderPost(
+                    providerEndpoint(apiBaseUrl, "/embeddings"),
+                    request.secret(),
+                    body
+            );
+            diagnostics.put("status", response.statusCode());
+            if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                return providerFailure("embedding_api_smoke_rejected(status=" + response.statusCode() + ")",
+                        "CONFIG_INVALID", diagnostics);
+            }
+            if (response.statusCode() >= 500) {
+                return providerFailure("embedding_api_smoke_unavailable(status=" + response.statusCode() + ")",
+                        "PROVIDER_UNAVAILABLE", diagnostics);
+            }
+            JsonNode data = OBJECT_MAPPER.readTree(response.body()).path("data");
+            boolean embeddingPresent = data.isArray()
+                    && !data.isEmpty()
+                    && data.path(0).path("embedding").isArray()
+                    && !data.path(0).path("embedding").isEmpty();
+            diagnostics.put("embeddingPresent", embeddingPresent);
+            if (response.statusCode() < 300 && embeddingPresent) {
+                return ProductLaunchRuntimePreflightRunner.ProbeResult.pass(diagnostics);
+            }
+            return providerFailure("embedding_api_smoke_malformed_response", "PROVIDER_UNAVAILABLE", diagnostics);
+        } catch (Exception exception) {
+            diagnostics.put("error", exception.getClass().getSimpleName());
+            return providerFailure("embedding_api_smoke_unreachable", "PROVIDER_UNAVAILABLE", diagnostics);
+        }
+    }
+
+    private HttpResponse<String> sendProviderPost(String url, String apiKey, Map<String, Object> body) throws Exception {
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(timeout)
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(body), StandardCharsets.UTF_8))
+                .build();
+        return httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private ProductLaunchRuntimePreflightRunner.ProbeResult providerFailure(
+            String failure,
+            String failureClass,
+            Map<String, Object> diagnostics) {
+        return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
+                List.of(failure),
+                List.of(failureClass),
+                diagnostics
+        );
+    }
+
     private ProductLaunchRuntimePreflightRunner.ProbeResult traceConfig(
             ProductLaunchRuntimePreflightRunner.ProbeRequest request) {
         String enabled = String.valueOf(request.params().getOrDefault("enabled", "true"));
@@ -225,5 +354,13 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             result = result.substring(0, result.length() - 1);
         }
         return result;
+    }
+
+    private static String providerEndpoint(String apiBaseUrl, String path) {
+        String base = trimTrailingSlash(apiBaseUrl);
+        if (base.endsWith(path)) {
+            return base;
+        }
+        return base + path;
     }
 }
