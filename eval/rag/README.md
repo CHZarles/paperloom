@@ -201,6 +201,24 @@ case file `eval/rag/product-reading-launch-trace-cases.jsonl` requires completed
 Items from `list_papers`, `search_paper_candidates`, and `find_papers_by_identity`, plus Source
 Quote references from both `read_locations` and `trace_source_quotes`.
 
+For local launch attempts, keep product credentials out of git by copying
+`docs/launch/product-launch.env.example` to ignored `.runtime/product-launch.env`, then fill only
+the local secret values. Start/check the local MinerU sidecar with:
+
+```bash
+scripts/paperloom-start-mineru.sh start
+```
+
+Then run the full readiness wrapper with non-secret local overrides for Product Reading enablement,
+MinerU base URL, and Docker-published MySQL host port:
+
+```bash
+scripts/paperloom-launch-readiness-local.sh
+```
+
+The wrapper does not start Docker, backend, or frontend, does not print secret values, and still
+fails honestly when `DEEPSEEK_API_KEY` or `EMBEDDING_API_KEY` are missing.
+
 `ProductLaunchRuntimePreflightCli` is the preflight gate for the launch runtime. It reads `.env`,
 checks backend login, MySQL, Redis, Kafka, MinIO, Elasticsearch, MinerU, LLM key, embedding key,
 trace config, and explicit Product Reading enablement, then writes a standard eval run plus
