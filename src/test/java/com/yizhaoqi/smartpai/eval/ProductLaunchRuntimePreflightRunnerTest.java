@@ -36,13 +36,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 ELASTICSEARCH_HOST=localhost
                 ELASTICSEARCH_PORT=9200
                 PAPER_PARSING_MINERU_BASE_URL=http://localhost:8000
-                DEEPSEEK_API_URL=https://api.deepseek.com/v1
-                DEEPSEEK_API_MODEL=deepseek-chat
-                DEEPSEEK_API_KEY=llm-key
-                EMBEDDING_API_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-                EMBEDDING_API_MODEL=text-embedding-v4
-                EMBEDDING_API_KEY=embedding-key
-                EMBEDDING_DIMENSION=2048
                 PAPERLOOM_TRACE_ENABLED=true
                 PAPERLOOM_TRACE_ROOT=data/traces/product-react
                 PAPERLOOM_REACT_READING_PHASE1_ENABLED=true
@@ -63,17 +56,15 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 "minio_health",
                 "elasticsearch_health",
                 "mineru_health",
-                "llm_key",
-                "llm_api_smoke",
-                "embedding_key",
-                "embedding_api_smoke",
+                "llm_active_provider_smoke",
+                "embedding_active_provider_smoke",
                 "trace_config",
                 "reading_phase_flag"
         ), caseIds);
 
         JsonNode scorecard = OBJECT_MAPPER.readTree(runDir.resolve("scorecard.json").toFile());
-        assertEquals(14, scorecard.path("caseCount").asInt());
-        assertEquals(14, scorecard.path("passed").asInt());
+        assertEquals(12, scorecard.path("caseCount").asInt());
+        assertEquals(12, scorecard.path("passed").asInt());
         assertEquals(1.0d, scorecard.path("passRate").asDouble());
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("launch preflight passed"));
@@ -92,25 +83,23 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 .orElseThrow();
         assertEquals("localhost", mysql.params().get("host"));
         assertEquals(13306, mysql.params().get("port"));
-        ProductLaunchRuntimePreflightRunner.ProbeRequest llmSmoke = probe.requests.stream()
-                .filter(request -> "llm_api_smoke".equals(request.caseId()))
+        ProductLaunchRuntimePreflightRunner.ProbeRequest llmProviderSmoke = probe.requests.stream()
+                .filter(request -> "llm_active_provider_smoke".equals(request.caseId()))
                 .findFirst()
                 .orElseThrow();
-        assertEquals("LLM_API_SMOKE", llmSmoke.kind());
-        assertEquals("llm-key", llmSmoke.secret());
-        assertEquals("https://api.deepseek.com/v1", llmSmoke.params().get("apiBaseUrl"));
-        assertEquals("deepseek-chat", llmSmoke.params().get("model"));
-        ProductLaunchRuntimePreflightRunner.ProbeRequest embeddingSmoke = probe.requests.stream()
-                .filter(request -> "embedding_api_smoke".equals(request.caseId()))
+        assertEquals("MODEL_PROVIDER_SMOKE", llmProviderSmoke.kind());
+        assertEquals("secret", llmProviderSmoke.secret());
+        assertEquals("llm", llmProviderSmoke.params().get("scope"));
+        ProductLaunchRuntimePreflightRunner.ProbeRequest embeddingProviderSmoke = probe.requests.stream()
+                .filter(request -> "embedding_active_provider_smoke".equals(request.caseId()))
                 .findFirst()
                 .orElseThrow();
-        assertEquals("EMBEDDING_API_SMOKE", embeddingSmoke.kind());
-        assertEquals("embedding-key", embeddingSmoke.secret());
-        assertEquals(2048, embeddingSmoke.params().get("dimension"));
+        assertEquals("MODEL_PROVIDER_SMOKE", embeddingProviderSmoke.kind());
+        assertEquals("embedding", embeddingProviderSmoke.params().get("scope"));
     }
 
     @Test
-    void blankModelKeysFailAsConfigMissingCases() throws Exception {
+    void blankLegacyModelKeysDoNotBlockBackendProviderConfigChecks() throws Exception {
         Path env = env("""
                 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:13306/paismart
                 SPRING_DATA_REDIS_HOST=localhost
@@ -128,30 +117,20 @@ class ProductLaunchRuntimePreflightRunnerTest {
         Path runDir = runner(probe).run(options(env));
 
         JsonNode rows = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases");
-        JsonNode llm = row(rows, "llm_key");
-        JsonNode llmSmoke = row(rows, "llm_api_smoke");
-        JsonNode embedding = row(rows, "embedding_key");
-        JsonNode embeddingSmoke = row(rows, "embedding_api_smoke");
-        assertFalse(llm.path("passed").asBoolean());
-        assertTrue(llm.path("failureClass").toString().contains("CONFIG_MISSING"));
-        assertFalse(llmSmoke.path("passed").asBoolean());
-        assertTrue(llmSmoke.path("failureClass").toString().contains("CONFIG_MISSING"));
-        assertFalse(embedding.path("passed").asBoolean());
-        assertTrue(embedding.path("failureClass").toString().contains("CONFIG_MISSING"));
-        assertFalse(embeddingSmoke.path("passed").asBoolean());
-        assertTrue(embeddingSmoke.path("failureClass").toString().contains("CONFIG_MISSING"));
+        assertTrue(row(rows, "llm_active_provider_smoke").path("passed").asBoolean());
+        assertTrue(row(rows, "embedding_active_provider_smoke").path("passed").asBoolean());
         JsonNode readingFlag = row(rows, "reading_phase_flag");
         assertFalse(readingFlag.path("passed").asBoolean());
         assertTrue(readingFlag.path("failureClass").toString().contains("CONFIG_MISSING"));
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("not launch-ready"));
-        assertTrue(remediation.contains("DEEPSEEK_API_KEY"));
-        assertTrue(remediation.contains("EMBEDDING_API_KEY"));
+        assertFalse(remediation.contains("DEEPSEEK_API_KEY"));
+        assertFalse(remediation.contains("EMBEDDING_API_KEY"));
         assertTrue(remediation.contains("PAPERLOOM_REACT_READING_PHASE1_ENABLED"));
         assertFalse(remediation.contains("secret"));
         assertFalse(remediation.contains("llm-key"));
         assertTrue(remediation.contains("Do not run the 30-PDF seed"));
-        assertTrue(remediation.contains("14/14"));
+        assertTrue(remediation.contains("12/12"));
     }
 
     @Test
@@ -165,8 +144,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
 
         runner(probe).run(options(env, Map.of(
                 "SPRING_DATASOURCE_URL", "jdbc:mysql://localhost:13306/paismart",
-                "DEEPSEEK_API_KEY", "runtime-llm-key",
-                "EMBEDDING_API_KEY", "runtime-embedding-key",
                 "PAPERLOOM_REACT_READING_PHASE1_ENABLED", "true"
         )));
 
@@ -175,20 +152,18 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals(13306, mysql.params().get("port"));
-        assertTrue(probe.requests.stream()
-                .filter(request -> "llm_key".equals(request.caseId()))
+        assertEquals("llm", probe.requests.stream()
+                .filter(request -> "llm_active_provider_smoke".equals(request.caseId()))
                 .findFirst()
                 .orElseThrow()
                 .params()
-                .get("present")
-                .equals(true));
-        assertTrue(probe.requests.stream()
-                .filter(request -> "embedding_key".equals(request.caseId()))
+                .get("scope"));
+        assertEquals("embedding", probe.requests.stream()
+                .filter(request -> "embedding_active_provider_smoke".equals(request.caseId()))
                 .findFirst()
                 .orElseThrow()
                 .params()
-                .get("present")
-                .equals(true));
+                .get("scope"));
         assertTrue(probe.requests.stream()
                 .filter(request -> "reading_phase_flag".equals(request.caseId()))
                 .findFirst()
@@ -229,20 +204,20 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 EMBEDDING_API_KEY=embedding-key
                 PAPERLOOM_REACT_READING_PHASE1_ENABLED=true
                 """);
-        FakeProbe probe = FakeProbe.failOnly("llm_api_smoke", "llm_provider_rejected(status=401)", "CONFIG_INVALID");
+        FakeProbe probe = FakeProbe.failOnly("llm_active_provider_smoke", "llm_provider_rejected(status=401)", "CONFIG_INVALID");
 
         Path runDir = runner(probe).run(options(env));
 
-        JsonNode llmSmoke = row(OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases"), "llm_api_smoke");
+        JsonNode llmSmoke = row(OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases"), "llm_active_provider_smoke");
         assertFalse(llmSmoke.path("passed").asBoolean());
         assertTrue(llmSmoke.path("failureClass").toString().contains("CONFIG_INVALID"));
-        assertEquals("LLM_API_SMOKE", llmSmoke.path("diagnostics").path("kind").asText());
+        assertEquals("MODEL_PROVIDER_SMOKE", llmSmoke.path("diagnostics").path("kind").asText());
         String runJson = Files.readString(runDir.resolve("run.json"));
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertFalse(runJson.contains("llm-key"));
         assertFalse(runJson.contains("embedding-key"));
         assertFalse(remediation.contains("llm-key"));
-        assertTrue(remediation.contains("llm_api_smoke"));
+        assertTrue(remediation.contains("llm_active_provider_smoke"));
     }
 
     @Test

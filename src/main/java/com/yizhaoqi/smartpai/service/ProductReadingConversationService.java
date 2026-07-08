@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -16,6 +17,7 @@ public class ProductReadingConversationService {
 
     private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
     private static final int MAX_CLICKED_PAPER_HANDLES = 20;
+    private static final Set<String> READING_ACTIONS = Set.of("SEARCH_PAPERS", "FIND_LOCATIONS");
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
     private static final Pattern PAPER_HANDLE_PATTERN =
@@ -76,6 +78,7 @@ public class ProductReadingConversationService {
         }
         List<String> clickedSourceQuoteRefs = clickedSourceQuoteRefs(effectiveScope);
         List<String> clickedPaperHandles = clickedPaperHandles(effectiveScope);
+        String readingAction = readingAction(effectiveScope);
         return readingHarness.run(new ProductTurnRequest(
                 userId,
                 conversationId,
@@ -83,19 +86,22 @@ public class ProductReadingConversationService {
                 userMessage,
                 lockedScope,
                 List.of(),
-                readingMemory(clickedSourceQuoteRefs, clickedPaperHandles),
+                readingMemory(clickedSourceQuoteRefs, clickedPaperHandles, readingAction),
                 modelContext,
                 progressListener
         ));
     }
 
     private Map<String, Object> readingMemory(List<String> clickedSourceQuoteRefs,
-                                              List<String> clickedPaperHandles) {
+                                              List<String> clickedPaperHandles,
+                                              String readingAction) {
         boolean hasSourceQuoteRefs = clickedSourceQuoteRefs != null && !clickedSourceQuoteRefs.isEmpty();
         boolean hasPaperHandles = clickedPaperHandles != null && !clickedPaperHandles.isEmpty();
-        if (!hasSourceQuoteRefs && !hasPaperHandles) {
+        boolean hasReadingAction = readingAction != null && !readingAction.isBlank();
+        if (!hasSourceQuoteRefs && !hasPaperHandles && !hasReadingAction) {
             return Map.of();
         }
+        Map<String, Object> memory = new java.util.LinkedHashMap<>();
         Map<String, Object> anchors = new java.util.LinkedHashMap<>();
         if (hasSourceQuoteRefs) {
             anchors.put("clickedSourceQuoteRefs", clickedSourceQuoteRefs);
@@ -103,10 +109,13 @@ public class ProductReadingConversationService {
         if (hasPaperHandles) {
             anchors.put("clickedPaperHandles", clickedPaperHandles);
         }
-        return Map.of(
-                "readingTurnAnchors",
-                anchors
-        );
+        if (!anchors.isEmpty()) {
+            memory.put("readingTurnAnchors", anchors);
+        }
+        if (hasReadingAction) {
+            memory.put("readingTurnAction", readingAction);
+        }
+        return Map.copyOf(memory);
     }
 
     private List<String> clickedSourceQuoteRefs(Map<String, Object> effectiveScope) {
@@ -151,6 +160,18 @@ public class ProductReadingConversationService {
             }
         }
         return List.copyOf(handles);
+    }
+
+    private String readingAction(Map<String, Object> effectiveScope) {
+        if (effectiveScope == null || !effectiveScope.containsKey("readingAction")) {
+            return null;
+        }
+        Object rawValue = effectiveScope.get("readingAction");
+        if (rawValue == null) {
+            return null;
+        }
+        String normalized = String.valueOf(rawValue).trim().toUpperCase(java.util.Locale.ROOT);
+        return READING_ACTIONS.contains(normalized) ? normalized : null;
     }
 
     private List<Object> rawRefValues(Object rawValue) {

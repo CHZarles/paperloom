@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -130,7 +129,6 @@ public class ReadingToolOutputMapper {
         String heading = section == null ? "" : section.getSectionTitle();
         card.put("sectionRef", sectionLocation == null ? "" : sectionLocation.getLocationRef());
         card.put("heading", heading);
-        card.put("sectionRole", roleFromHeading(heading));
         card.put("level", section == null ? null : section.getSectionLevel());
         card.put("pageStart", section == null ? null : section.getPageNumberFrom());
         card.put("pageEnd", section == null ? null : section.getPageNumberTo());
@@ -148,44 +146,5 @@ public class ReadingToolOutputMapper {
             return location.getLocationType().name() + " on page " + location.getPageNumber();
         }
         return location.getLocationType() == null ? "Location" : location.getLocationType().name();
-    }
-
-    private String roleFromHeading(String heading) {
-        String normalized = heading == null ? "" : heading.toLowerCase(Locale.ROOT);
-        if (normalized.contains("abs" + "tract")) {
-            return "ABSTRACT";
-        }
-        if (normalized.contains("related work") || normalized.contains("background")) {
-            return "RELATED_WORK";
-        }
-        if (normalized.contains("introduction")) {
-            return "INTRODUCTION";
-        }
-        if (normalized.contains("method")
-                || normalized.contains("approach")
-                || normalized.contains("model")
-                || normalized.contains("algorithm")
-                || normalized.contains("implementation")) {
-            return "METHODS";
-        }
-        if (normalized.contains("result")
-                || normalized.contains("experiment")
-                || normalized.contains("evaluation")
-                || normalized.contains("benchmark")) {
-            return "RESULTS";
-        }
-        if (normalized.contains("discussion") || normalized.contains("analysis")) {
-            return "DISCUSSION";
-        }
-        if (normalized.contains("limitation") || normalized.contains("failure")) {
-            return "LIMITATIONS";
-        }
-        if (normalized.contains("conclusion") || normalized.contains("future")) {
-            return "CONCLUSION";
-        }
-        if (normalized.contains("appendix") || normalized.contains("supplementary")) {
-            return "APPENDIX";
-        }
-        return "OTHER";
     }
 }

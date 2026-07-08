@@ -197,6 +197,31 @@ class ProductReadingLocationReadServiceTest {
         assertEquals("Table original text.", result.sourceQuotes().get(1).get("content"));
     }
 
+    @Test
+    void skipsSectionTitleOnlySplitsWhenReadingEvidence() {
+        PaperLocation sectionLocation = location("section_ref_1", PaperLocationType.SECTION, "section-1", 2);
+        sectionLocation.setSectionTitle("4 Experiments");
+        when(locationRepository.findFirstByLocationRef("section_ref_1")).thenReturn(Optional.of(sectionLocation));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-a")).thenReturn(Optional.of(model("model-v1")));
+        when(handleService.isPaperVisibleToUser("paper-a", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.handleForPaperId("paper-a")).thenReturn("paper_handle_a");
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-a")).thenReturn(Optional.of(paper("Readable Paper")));
+        PaperSection section = new PaperSection();
+        section.setSectionText("4 Experiments\n\nThis section presents the experimental setup and results.");
+        when(sectionRepository.findFirstByPaperIdAndModelVersionAndSectionId("paper-a", "model-v1", "section-1"))
+                .thenReturn(Optional.of(section));
+
+        ProductReadingLocationReadService.ReadResult result = service.readLocations(
+                List.of("section_ref_1"),
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertEquals(1, result.sourceQuotes().size());
+        assertEquals("This section presents the experimental setup and results.",
+                result.sourceQuotes().get(0).get("content"));
+        assertEquals("OK", result.readStatus().get(0).get("status"));
+    }
+
     private PaperLocation location(String locationRef,
                                    PaperLocationType type,
                                    String sourceObjectId,

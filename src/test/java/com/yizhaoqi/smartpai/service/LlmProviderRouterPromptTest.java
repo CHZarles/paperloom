@@ -1,16 +1,27 @@
 package com.yizhaoqi.smartpai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
 import com.yizhaoqi.smartpai.config.AiProperties;
+import com.yizhaoqi.smartpai.config.OutboundWebClientFactory;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class LlmProviderRouterPromptTest {
 
@@ -64,5 +75,71 @@ class LlmProviderRouterPromptTest {
         );
 
         assertEquals(Map.of("type", "disabled"), request.get("thinking"));
+    }
+
+    @Test
+    void reactTurnFailureIncludesProviderStatusBodyAndRequestDiagnosticsWithoutSecrets() throws Exception {
+        AtomicReference<String> authorizationHeader = new AtomicReference<>();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            authorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] response = """
+                    {"error":{"message":"messages with role 'tool' must follow a tool_call","type":"invalid_request_error"}}
+                    """.getBytes();
+            exchange.sendResponseHeaders(400, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+
+        try {
+            RateLimitService rateLimitService = Mockito.mock(RateLimitService.class);
+            UsageQuotaService usageQuotaService = Mockito.mock(UsageQuotaService.class);
+            ModelProviderConfigService modelProviderConfigService = Mockito.mock(ModelProviderConfigService.class);
+            UsageQuotaService.TokenReservationBundle reservation = UsageQuotaService.TokenReservationBundle.noop("llm", "user-1");
+            when(rateLimitService.reserveLlmUsage(eq("user-1"), anyInt(), anyInt())).thenReturn(reservation);
+            when(usageQuotaService.estimateTextTokens(org.mockito.ArgumentMatchers.any())).thenReturn(1);
+            when(modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM))
+                    .thenReturn(new ModelProviderConfigService.ActiveProviderView(
+                            "minimax",
+                            "MiniMax",
+                            "openai-compatible",
+                            "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
+                            "MiniMax-M3",
+                            "sk-secret-value",
+                            null
+                    ));
+            LlmProviderRouter router = new LlmProviderRouter(
+                    new AiProperties(),
+                    rateLimitService,
+                    usageQuotaService,
+                    modelProviderConfigService,
+                    new ObjectMapper(),
+                    new OutboundWebClientFactory()
+            );
+
+            RuntimeException exception = assertThrows(RuntimeException.class, () -> router.completeReActTurn(
+                    "user-1",
+                    List.of(
+                            Map.of("role", "system", "content", "system prompt"),
+                            Map.of("role", "user", "content", "find locations")
+                    ),
+                    List.of(),
+                    16
+            ));
+
+            String message = exception.getMessage();
+            assertTrue(message.contains("HTTP 400"));
+            assertTrue(message.contains("messages with role 'tool' must follow a tool_call"));
+            assertTrue(message.contains("provider=minimax"));
+            assertTrue(message.contains("model=MiniMax-M3"));
+            assertTrue(message.contains("messageCount=2"));
+            assertTrue(message.contains("roles=system,user"));
+            assertFalse(message.contains("sk-secret-value"));
+            assertEquals("Bearer sk-secret-value", authorizationHeader.get());
+            verify(usageQuotaService).abortReservation(reservation);
+        } finally {
+            server.stop(0);
+        }
     }
 }

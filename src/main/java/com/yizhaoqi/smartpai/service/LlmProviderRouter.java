@@ -224,7 +224,10 @@ public class LlmProviderRouter {
             return turn;
         } catch (Exception exception) {
             usageQuotaService.abortReservation(reservation);
-            throw new RuntimeException("ReAct 模型回合调用失败", exception);
+            String failure = reactProviderFailureMessage(provider, request, exception);
+            logger.warn(failure);
+            logger.debug(failure, exception);
+            throw new RuntimeException(failure, exception);
         }
     }
 
@@ -297,6 +300,68 @@ public class LlmProviderRouter {
             return;
         }
         logger.warn("{}: {}", message, error.getMessage(), error);
+    }
+
+    private String reactProviderFailureMessage(ModelProviderConfigService.ActiveProviderView provider,
+                                               Map<String, Object> request,
+                                               Throwable error) {
+        WebClientResponseException responseException = findResponseException(error);
+        StringBuilder builder = new StringBuilder("ReAct 模型回合调用失败");
+        if (provider != null) {
+            builder.append(": provider=").append(provider.provider())
+                    .append(", model=").append(provider.model());
+        }
+        builder.append(", ").append(reactRequestDiagnostics(request));
+        if (responseException != null) {
+            builder.append(", HTTP ").append(responseException.getStatusCode().value())
+                    .append(", responseBody=").append(limitText(responseException.getResponseBodyAsString(), 2000));
+        } else if (error != null && error.getMessage() != null) {
+            builder.append(", error=").append(limitText(error.getMessage(), 500));
+        }
+        return builder.toString();
+    }
+
+    private WebClientResponseException findResponseException(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof WebClientResponseException responseException) {
+                return responseException;
+            }
+            current = current.getCause();
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String reactRequestDiagnostics(Map<String, Object> request) {
+        List<Map<String, Object>> messages = request == null || !(request.get("messages") instanceof List<?> rawMessages)
+                ? List.of()
+                : (List<Map<String, Object>>) rawMessages;
+        List<String> roles = new ArrayList<>();
+        int toolMessageCount = 0;
+        int assistantToolCallCount = 0;
+        int contentChars = 0;
+        for (Map<String, Object> message : messages) {
+            String role = String.valueOf(message.getOrDefault("role", ""));
+            roles.add(role);
+            if ("tool".equals(role)) {
+                toolMessageCount++;
+            }
+            Object content = message.get("content");
+            if (content != null) {
+                contentChars += String.valueOf(content).length();
+            }
+            if (message.get("tool_calls") instanceof List<?> toolCalls) {
+                assistantToolCallCount += toolCalls.size();
+            }
+        }
+        int toolSpecCount = request != null && request.get("tools") instanceof List<?> tools ? tools.size() : 0;
+        return "messageCount=" + messages.size()
+                + ", roles=" + String.join(",", roles)
+                + ", toolSpecCount=" + toolSpecCount
+                + ", assistantToolCallCount=" + assistantToolCallCount
+                + ", toolMessageCount=" + toolMessageCount
+                + ", messageContentChars=" + contentChars;
     }
 
     private Map<String, Object> buildReActRequest(String model,

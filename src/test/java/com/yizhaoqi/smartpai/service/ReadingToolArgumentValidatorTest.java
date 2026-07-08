@@ -184,6 +184,48 @@ class ReadingToolArgumentValidatorTest {
     }
 
     @Test
+    void identityLookupNormalizesCommonFilenameAlias() {
+        ReadingToolArgumentValidator.ValidationResult valid =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of("filename", "Exact>2412.08972.pdf")
+                ));
+
+        assertTrue(valid.valid());
+        assertEquals(new ReadingToolArgumentValidator.IdentityHints(
+                        "",
+                        "",
+                        "",
+                        "2412.08972.pdf",
+                        "",
+                        "",
+                        "",
+                        null
+                ),
+                validator.identityHints(Map.of("filename", "Exact>2412.08972.pdf")));
+    }
+
+    @Test
+    void identityLookupNormalizesFilenameAliasWithoutSeparator() {
+        ReadingToolArgumentValidator.ValidationResult valid =
+                validator.validateFindPapersByIdentity(Map.of(
+                        "identityHints", Map.of("filename", "Exact2412.08972.pdf")
+                ));
+
+        assertTrue(valid.valid());
+        assertEquals(new ReadingToolArgumentValidator.IdentityHints(
+                        "",
+                        "",
+                        "",
+                        "2412.08972.pdf",
+                        "",
+                        "",
+                        "",
+                        null
+                ),
+                validator.identityHints(Map.of("filename", "Exact2412.08972.pdf")));
+    }
+
+    @Test
     void identityLookupRejectsMissingEmptyYearOnlyAndInvalidYearHints() {
         ReadingToolArgumentValidator.ValidationResult missing =
                 validator.validateFindPapersByIdentity(Map.of());

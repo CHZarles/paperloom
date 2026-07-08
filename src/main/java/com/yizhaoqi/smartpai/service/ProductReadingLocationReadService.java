@@ -33,6 +33,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -118,6 +119,10 @@ public class ProductReadingLocationReadService {
                     truncated = true;
                 }
                 if (safeSplit.isBlank()) {
+                    splitIndex++;
+                    continue;
+                }
+                if (isNavigationLabelOnly(safeSplit, attempt.location())) {
                     splitIndex++;
                     continue;
                 }
@@ -377,6 +382,21 @@ public class ProductReadingLocationReadService {
             return "FIGURE_CAPTION";
         }
         return "TEXT";
+    }
+
+    private boolean isNavigationLabelOnly(String content, PaperLocation location) {
+        if (location == null) {
+            return false;
+        }
+        String normalizedContent = normalizeEvidenceLabel(content);
+        if (normalizedContent.isBlank()) {
+            return false;
+        }
+        return normalizedContent.equals(normalizeEvidenceLabel(location.getSectionTitle()));
+    }
+
+    private String normalizeEvidenceLabel(String value) {
+        return trim(value).replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     private String newSourceQuoteRef() {

@@ -325,6 +325,44 @@ class ProductReadingToolAdapterTest {
     }
 
     @Test
+    void findPapersByIdentityKeepsExactFilenameMatchWhenOptionalArxivMetadataIsMissing() {
+        Paper ruleArena = paper(
+                "ready-rulearena",
+                "RULEARENA: A Benchmark for Rule-Guided Reasoning with LLMs in Real-World Scenarios",
+                "2412.08972.pdf"
+        );
+        ruleArena.setArxivId(null);
+
+        when(paperService.getAccessiblePapers("7", null)).thenReturn(List.of(ruleArena));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-rulearena"))
+                .thenReturn(Optional.of(model("ready-rulearena", "model-v1")));
+        when(handleService.handleForPaperId("ready-rulearena")).thenReturn("paper_handle_rulearena");
+
+        ProductToolResult result = adapter.findPapersByIdentity(
+                new ReadingToolArgumentValidator.IdentityHints(
+                        "",
+                        "",
+                        "",
+                        "2412.08972.pdf",
+                        "",
+                        "2412.08972",
+                        "",
+                        null
+                ),
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertTrue(result.success());
+        assertEquals("OK", result.data().get("status"));
+        assertEquals(false, result.data().get("ambiguous"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.data().get("matches");
+        assertEquals(1, matches.size());
+        assertEquals("paper_handle_rulearena", matches.get(0).get("paperHandle"));
+        assertEquals(List.of("FILENAME_EXACT"), matches.get(0).get("matchReasons"));
+    }
+
+    @Test
     void findPapersByIdentityReturnsAmbiguousAfterDedupAndNoMatchForContradictoryHints() {
         Paper first = paper("ready-lora-a", "LoRA: Low-Rank Adaptation", "lora-a.pdf");
         first.setAuthors("Edward Hu");
@@ -608,7 +646,7 @@ class ProductReadingToolAdapterTest {
         List<Map<String, Object>> sections = (List<Map<String, Object>>) papers.get(0).get("sections");
         assertEquals(1, sections.size());
         assertEquals("section_ref_methods", sections.get(0).get("sectionRef"));
-        assertEquals("METHODS", sections.get(0).get("sectionRole"));
+        assertFalse(sections.get(0).containsKey("sectionRole"));
 
         String json = objectMapper.writeValueAsString(result.data());
         assertTrue(json.contains("section_ref_methods"));

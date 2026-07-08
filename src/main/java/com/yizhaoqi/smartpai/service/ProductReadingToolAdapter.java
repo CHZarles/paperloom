@@ -525,14 +525,27 @@ public class ProductReadingToolAdapter {
     }
 
     private boolean matchesIdentityHints(Paper paper, ReadingToolArgumentValidator.IdentityHints hints) {
-        return matchesContains(displayTitle(paper), hints.titleContains())
-                && matchesExact(displayTitle(paper), hints.titleExact())
-                && matchesContains(paper.getOriginalFilename(), hints.filenameContains())
-                && matchesExact(paper.getOriginalFilename(), hints.filenameExact())
-                && matchesCanonicalDoi(paper.getDoi(), hints.doiExact())
-                && matchesCanonicalArxivId(paper.getArxivId(), hints.arxivIdExact())
-                && matchesAuthor(paper, hints.authorName())
-                && matchesYear(paper.getPublicationYear(), hints.year());
+        if (!matchesRequiredIdentityExactHints(paper, hints)) {
+            return false;
+        }
+        return !identityMatchReasons(paper, hints).isEmpty();
+    }
+
+    private boolean matchesRequiredIdentityExactHints(Paper paper, ReadingToolArgumentValidator.IdentityHints hints) {
+        if (!SearchText.isBlank(hints.titleExact()) && !matchesExact(displayTitle(paper), hints.titleExact())) {
+            return false;
+        }
+        if (!SearchText.isBlank(hints.filenameExact()) && !matchesExact(paper.getOriginalFilename(), hints.filenameExact())) {
+            return false;
+        }
+        if (!SearchText.isBlank(hints.doiExact())
+                && !SearchText.isBlank(paper.getDoi())
+                && !matchesCanonicalDoi(paper.getDoi(), hints.doiExact())) {
+            return false;
+        }
+        return SearchText.isBlank(hints.arxivIdExact())
+                || SearchText.isBlank(paper.getArxivId())
+                || matchesCanonicalArxivId(paper.getArxivId(), hints.arxivIdExact());
     }
 
     private List<String> identityMatchReasons(Paper paper, ReadingToolArgumentValidator.IdentityHints hints) {

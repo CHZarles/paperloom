@@ -1,6 +1,8 @@
 package com.yizhaoqi.smartpai.service;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public record ProductReferenceFocus(
@@ -18,8 +20,13 @@ public record ProductReferenceFocus(
         String sourceKind,
         String sourceQuoteRef,
         List<String> paperHandles,
-        String paperHandle
+        String paperHandle,
+        String readingAction
 ) {
+    private static final Set<String> READING_ACTIONS = Set.of(
+            "SEARCH_PAPERS",
+            "FIND_LOCATIONS"
+    );
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
     private static final Pattern PAPER_HANDLE_PATTERN =
@@ -42,6 +49,7 @@ public record ProductReferenceFocus(
         sourceKind = trimToNull(sourceKind);
         sourceQuoteRef = sourceQuoteRef(sourceQuoteRef);
         paperHandle = paperHandle(paperHandle);
+        readingAction = readingAction(readingAction);
         paperHandles = paperHandles == null ? List.of() : paperHandles.stream()
                 .map(ProductReferenceFocus::paperHandle)
                 .filter(value -> value != null)
@@ -80,6 +88,7 @@ public record ProductReferenceFocus(
                 sourceKind,
                 sourceQuoteRef,
                 List.of(),
+                null,
                 null
         );
     }
@@ -111,6 +120,42 @@ public record ProductReferenceFocus(
                 sourceKind,
                 null,
                 List.of(),
+                null,
+                null
+        );
+    }
+
+    public ProductReferenceFocus(List<String> paperIds,
+                                 List<String> paperTitles,
+                                 Integer referenceNumber,
+                                 Long conversationRecordId,
+                                 Integer chunkId,
+                                 Integer pageNumber,
+                                 String paperId,
+                                 String paperTitle,
+                                 String originalFilename,
+                                 String matchedText,
+                                 String bboxJson,
+                                 String sourceKind,
+                                 String sourceQuoteRef,
+                                 List<String> paperHandles,
+                                 String paperHandle) {
+        this(
+                paperIds,
+                paperTitles,
+                referenceNumber,
+                conversationRecordId,
+                chunkId,
+                pageNumber,
+                paperId,
+                paperTitle,
+                originalFilename,
+                matchedText,
+                bboxJson,
+                sourceKind,
+                sourceQuoteRef,
+                paperHandles,
+                paperHandle,
                 null
         );
     }
@@ -137,5 +182,14 @@ public record ProductReferenceFocus(
             return null;
         }
         return trimmed;
+    }
+
+    private static String readingAction(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+        String normalized = trimmed.toUpperCase(Locale.ROOT);
+        return READING_ACTIONS.contains(normalized) ? normalized : null;
     }
 }

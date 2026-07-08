@@ -127,8 +127,7 @@ safe_summary() {
   echo "frontend_base_url=${PAPERLOOM_FRONTEND_BASE_URL:-}"
   echo "mineru_base_url=${PAPER_PARSING_MINERU_BASE_URL:-}"
   echo "reading_phase_flag=${PAPERLOOM_REACT_READING_PHASE1_ENABLED:-}"
-  echo "deepseek_api_key=$(secret_state DEEPSEEK_API_KEY)"
-  echo "embedding_api_key=$(secret_state EMBEDDING_API_KEY)"
+  echo "provider_smoke=backend-active-model-providers"
 }
 
 source_env_file "$ENV_FILE" false

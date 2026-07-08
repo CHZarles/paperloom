@@ -125,7 +125,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"看这篇论文","referenceFocus":{"paperHandle":" paper_handle_abc ","paperTitle":"LoRA"}}
+                        {"type":"chat","conversationId":"conversation-1","message":"看这篇论文","referenceFocus":{"paperHandle":" paper_handle_abc ","paperTitle":"LoRA","readingAction":"find_locations"}}
                         """)
         );
 
@@ -134,6 +134,7 @@ class ChatWebSocketHandlerTest {
         assertEquals("paper_handle_abc", request.referenceFocus().paperHandle());
         assertEquals(List.of("paper_handle_abc"), request.referenceFocus().paperHandles());
         assertEquals("LoRA", request.referenceFocus().paperTitle());
+        assertEquals("FIND_LOCATIONS", request.referenceFocus().readingAction());
     }
 
     @Test

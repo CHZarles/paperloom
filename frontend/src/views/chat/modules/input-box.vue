@@ -117,6 +117,7 @@ const referenceFocusLabel = computed(() => {
     focus.originalFilename ||
     (focus.paperHandle || focus.paperId ? 'Selected paper' : focus.sourceQuoteRef ? 'Source quote' : 'Reference focus');
   const parts = [paper];
+  if (focus.readingAction === 'FIND_LOCATIONS') parts.push('Find locations');
   if (focus.pageNumber) parts.push(`p${focus.pageNumber}`);
   if (focus.referenceNumber) parts.push(`[${focus.referenceNumber}]`);
   return parts.join(' · ');

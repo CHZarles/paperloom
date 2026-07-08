@@ -163,6 +163,36 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void enabledReadingPhaseOnePassesExplicitReadingAction() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ProductReadingReactProperties properties = new ProductReadingReactProperties();
+        properties.setEnabled(true);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "查找方法相关位置",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of(
+                        "clickedPaperHandles", List.of("paper_handle_abc"),
+                        "readingAction", "find_locations"
+                )
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        ProductTurnRequest request = requestCaptor.getValue();
+        Map<String, Object> anchors = (Map<String, Object>) request.memory().get("readingTurnAnchors");
+        assertEquals(List.of("paper_handle_abc"), anchors.get("clickedPaperHandles"));
+        assertEquals("FIND_LOCATIONS", request.memory().get("readingTurnAction"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void enabledReadingPhaseOneAcceptsClickedPaperAnchorArrays() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
         ProductReadingReactProperties properties = new ProductReadingReactProperties();

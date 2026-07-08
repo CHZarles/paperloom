@@ -179,6 +179,9 @@ public class ProductReadingLiveLaunchSmokeRunner {
                 referenceFocus.put("sourceQuoteRef", sourceQuoteRef);
             }
         }
+        if (testCase.readingActionValue() != null) {
+            referenceFocus.put("readingAction", testCase.readingActionValue());
+        }
         return Map.copyOf(referenceFocus);
     }
 
@@ -485,7 +488,8 @@ public class ProductReadingLiveLaunchSmokeRunner {
             List<String> requiredProductStateSourceTools,
             Boolean requiresReference,
             String focusPaperHandleFromCase,
-            String focusSourceQuoteRefFromCase
+            String focusSourceQuoteRefFromCase,
+            String readingAction
     ) {
         public ProductReadingLiveLaunchSmokeCase {
             id = blankToDefault(id, "live_reading_case");
@@ -494,6 +498,7 @@ public class ProductReadingLiveLaunchSmokeRunner {
             requiredProductStateSourceTools = safeList(requiredProductStateSourceTools);
             focusPaperHandleFromCase = blankToNull(focusPaperHandleFromCase);
             focusSourceQuoteRefFromCase = blankToNull(focusSourceQuoteRefFromCase);
+            readingAction = blankToNull(readingAction);
         }
 
         boolean productStateItemRequired() {
@@ -510,6 +515,10 @@ public class ProductReadingLiveLaunchSmokeRunner {
 
         String focusSourceQuoteRefFromCaseValue() {
             return focusSourceQuoteRefFromCase;
+        }
+
+        String readingActionValue() {
+            return readingAction;
         }
     }
 

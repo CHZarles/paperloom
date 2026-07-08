@@ -34,15 +34,16 @@ public class ProductPdfLaunchDataSeedRunner {
         List<ProductPdfParserSmokeRunner.ManifestCase> manifestCases =
                 ProductPdfParserSmokeRunner.loadManifest(safeOptions.manifestPath());
         List<CaseAccumulator> accumulators = new ArrayList<>();
+        ExistingStatusLookup existingStatusLookup = new ExistingStatusLookup(client);
         for (ProductPdfParserSmokeRunner.ManifestCase manifestCase : manifestCases) {
-            accumulators.add(seedCase(manifestCase, safeOptions));
+            accumulators.add(seedCase(manifestCase, safeOptions, existingStatusLookup));
         }
         Map<String, PaperStatus> statuses = safeOptions.waitForSearchable()
                 ? pollStatuses(accumulators, safeOptions)
                 : Map.of();
         List<CaseResult> results = accumulators.stream()
                 .map(accumulator -> accumulator.toResult(
-                        accumulator.paperId == null ? null : statuses.get(accumulator.paperId),
+                        accumulator.resultStatus(statuses),
                         safeOptions.waitForSearchable()))
                 .toList();
         return RagEvalRunWriter.write(
@@ -61,7 +62,9 @@ public class ProductPdfLaunchDataSeedRunner {
         );
     }
 
-    private CaseAccumulator seedCase(ProductPdfParserSmokeRunner.ManifestCase manifestCase, Options options) {
+    private CaseAccumulator seedCase(ProductPdfParserSmokeRunner.ManifestCase manifestCase,
+                                     Options options,
+                                     ExistingStatusLookup existingStatusLookup) {
         CaseAccumulator accumulator = new CaseAccumulator(manifestCase);
         Path pdfPath = resolvePath(manifestCase.path(), options.manifestPath());
         accumulator.diagnostics.put("manifestPath", manifestCase.path());
@@ -80,6 +83,26 @@ public class ProductPdfLaunchDataSeedRunner {
             accumulator.diagnostics.put("computedPaperId", paperId);
             accumulator.diagnostics.put("originalFilename", originalFilename);
             accumulator.diagnostics.put("totalSizeBytes", bytes.length);
+            if (options.waitForSearchable()) {
+                PaperStatus existingStatus;
+                try {
+                    existingStatus = existingStatusLookup.find(paperId);
+                } catch (Exception exception) {
+                    if (exception instanceof RuntimeUnavailableException runtimeUnavailableException) {
+                        throw runtimeUnavailableException;
+                    }
+                    accumulator.fail("status_poll_failed("
+                            + exception.getClass().getSimpleName() + ": " + exception.getMessage() + ")",
+                            "FRONT_SEARCHABLE_MISSING");
+                    return accumulator;
+                }
+                if (isFrontendSearchable(existingStatus)) {
+                    accumulator.alreadySeeded = true;
+                    accumulator.existingStatus = existingStatus;
+                    accumulator.diagnostics.put("alreadySeeded", true);
+                    return accumulator;
+                }
+            }
             uploadChunks(paperId, originalFilename, bytes, options.chunkSizeBytes());
             try {
                 client.merge(new MergeRequest(paperId, originalFilename));
@@ -133,6 +156,8 @@ public class ProductPdfLaunchDataSeedRunner {
 
     private Map<String, PaperStatus> pollStatuses(List<CaseAccumulator> accumulators, Options options) {
         Set<String> paperIds = accumulators.stream()
+                .filter(accumulator -> accumulator.failures.isEmpty())
+                .filter(accumulator -> !accumulator.alreadySeeded)
                 .map(accumulator -> accumulator.paperId)
                 .filter(value -> value != null && !value.isBlank())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -301,6 +326,8 @@ public class ProductPdfLaunchDataSeedRunner {
         private String paperId;
         private String originalFilename;
         private boolean merged;
+        private boolean alreadySeeded;
+        private PaperStatus existingStatus;
 
         private CaseAccumulator(ProductPdfParserSmokeRunner.ManifestCase manifestCase) {
             this.manifestCase = manifestCase;
@@ -313,6 +340,7 @@ public class ProductPdfLaunchDataSeedRunner {
 
         private CaseResult toResult(PaperStatus status, boolean waitForSearchable) {
             Map<String, Object> finalDiagnostics = new LinkedHashMap<>(diagnostics);
+            finalDiagnostics.put("alreadySeeded", alreadySeeded);
             finalDiagnostics.put("merged", merged);
             finalDiagnostics.put("frontendSearchable", isFrontendSearchable(status));
             if (status != null) {
@@ -332,6 +360,13 @@ public class ProductPdfLaunchDataSeedRunner {
                     finalFailureClass,
                     finalDiagnostics
             );
+        }
+
+        private PaperStatus resultStatus(Map<String, PaperStatus> statuses) {
+            if (existingStatus != null) {
+                return existingStatus;
+            }
+            return paperId == null ? null : statuses.get(paperId);
         }
 
         private Map<String, Object> statusMap(PaperStatus status) {
@@ -395,6 +430,29 @@ public class ProductPdfLaunchDataSeedRunner {
             originalFilename = blankToDefault(originalFilename, "");
             processingStatus = blankToDefault(processingStatus, "");
             raw = raw == null ? Map.of() : new LinkedHashMap<>(raw);
+        }
+    }
+
+    private static final class ExistingStatusLookup {
+        private final LaunchDataSeedClient client;
+        private Map<String, PaperStatus> statuses;
+
+        private ExistingStatusLookup(LaunchDataSeedClient client) {
+            this.client = client;
+        }
+
+        private PaperStatus find(String paperId) {
+            if (statuses == null) {
+                statuses = client.listUploadedPapers().stream()
+                        .filter(status -> status != null && status.paperId() != null && !status.paperId().isBlank())
+                        .collect(Collectors.toMap(
+                                PaperStatus::paperId,
+                                status -> status,
+                                (first, second) -> first,
+                                LinkedHashMap::new
+                        ));
+            }
+            return statuses.get(paperId);
         }
     }
 

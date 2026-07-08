@@ -1,9 +1,9 @@
 {"id":"session_state","message":"当前 Product Reading 阅读范围里有多少篇可读论文？只回答范围状态。","requiredToolNames":["get_session_state"]}
 {"id":"browse_papers","message":"列出最近可读的论文，返回可点击的论文选择卡片，不要总结论文内容。","requiredToolNames":["list_papers"],"requiresProductStateItem":true,"requiredProductStateSourceTools":["list_papers"]}
-{"id":"semantic_search_papers","message":"找几篇和 agentic retrieval、retrieval augmented generation 或 reasoning 有关的论文，返回可点击论文卡片。","requiredToolNames":["search_paper_candidates"],"requiresProductStateItem":true,"requiredProductStateSourceTools":["search_paper_candidates"]}
+{"id":"semantic_search_papers","message":"找几篇和 agentic retrieval、retrieval augmented generation 或 reasoning 有关的论文，返回可点击论文卡片。","readingAction":"SEARCH_PAPERS","requiredToolNames":["search_paper_candidates"],"requiresProductStateItem":true,"requiredProductStateSourceTools":["search_paper_candidates"]}
 {"id":"identity_paper_lookup","message":"按文件名精确查找 2412.08972.pdf 这篇论文，并返回可点击论文卡片。","requiredToolNames":["find_papers_by_identity"],"requiresProductStateItem":true,"requiredProductStateSourceTools":["find_papers_by_identity"]}
 {"id":"outline_selected_paper","message":"打开这篇论文的大纲，列出主要章节和 parser quality。","focusPaperHandleFromCase":"identity_paper_lookup","requiredToolNames":["get_paper_outline"]}
 {"id":"deterministic_locations","message":"列出这篇论文可阅读的位置，优先给 Introduction、Method、Experiment 相关 section 或 page refs。","focusPaperHandleFromCase":"identity_paper_lookup","requiredToolNames":["list_paper_locations"]}
-{"id":"semantic_location_search","message":"在这篇论文里查找方法、实验设置或主要结论相关的阅读位置。","focusPaperHandleFromCase":"identity_paper_lookup","requiredToolNames":["find_reading_locations"]}
-{"id":"read_selected_locations","message":"阅读这篇论文中方法或实验相关的位置，并用 Source Quote 给出证据回答。","focusPaperHandleFromCase":"identity_paper_lookup","requiredToolNames":["find_reading_locations","read_locations"],"requiresReference":true}
+{"id":"semantic_location_search","message":"在这篇论文里查找方法、实验设置或主要结论相关的阅读位置。","focusPaperHandleFromCase":"identity_paper_lookup","readingAction":"FIND_LOCATIONS","requiredToolNames":["find_reading_locations"]}
+{"id":"read_selected_locations","message":"阅读这篇论文中方法或实验相关的位置，并用 Source Quote 给出证据回答。","focusPaperHandleFromCase":"identity_paper_lookup","requiredToolNames":["read_locations"],"requiresReference":true}
 {"id":"trace_clicked_source_quote","message":"解释刚才点击的 Source Quote 支持了什么结论。","focusSourceQuoteRefFromCase":"read_selected_locations","requiredToolNames":["trace_source_quotes"],"requiresReference":true}

@@ -664,6 +664,7 @@ declare namespace Api {
       bboxJson?: string;
       sourceKind?: ReferenceEvidence['sourceKind'];
       sourceQuoteRef?: string | null;
+      readingAction?: 'SEARCH_PAPERS' | 'FIND_LOCATIONS' | null;
     }
 
     interface ConversationScope {

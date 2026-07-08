@@ -221,7 +221,8 @@ public class ChatHandler {
                     effectiveScope,
                     clickedSourceQuoteRef,
                     readingExperimentEnabled,
-                    clickedPaperHandles
+                    clickedPaperHandles,
+                    referenceFocus == null ? null : referenceFocus.readingAction()
             );
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
@@ -341,7 +342,8 @@ public class ChatHandler {
                 incomingScope.sourceKind(),
                 incomingScope.sourceQuoteRef(),
                 focusPaperHandles,
-                incomingScope.paperHandle()
+                incomingScope.paperHandle(),
+                incomingScope.readingAction()
         );
     }
 
@@ -421,7 +423,8 @@ public class ChatHandler {
                 firstNonBlank(stringDetail(detail, "sourceKind"), referenceFocus.sourceKind()),
                 firstNonBlank(stringDetail(detail, "sourceQuoteRef"), referenceFocus.sourceQuoteRef()),
                 referenceFocus.paperHandles(),
-                referenceFocus.paperHandle()
+                referenceFocus.paperHandle(),
+                referenceFocus.readingAction()
         );
     }
 
@@ -521,6 +524,7 @@ public class ChatHandler {
                         || !scope.paperHandles().isEmpty()
                         || scope.paperId() != null
                         || !scope.paperIds().isEmpty()
+                        || scope.readingAction() != null
         );
     }
 
@@ -538,6 +542,14 @@ public class ChatHandler {
                                                   String clickedSourceQuoteRef,
                                                   boolean includeClickedSourceQuoteRef,
                                                   List<String> clickedPaperHandles) {
+        return effectiveScopeMap(effectiveScope, clickedSourceQuoteRef, includeClickedSourceQuoteRef, clickedPaperHandles, null);
+    }
+
+    private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope,
+                                                  String clickedSourceQuoteRef,
+                                                  boolean includeClickedSourceQuoteRef,
+                                                  List<String> clickedPaperHandles,
+                                                  String readingAction) {
         ConversationScopeMode mode = effectiveScope == null ? ConversationScopeMode.AUTO_LIBRARY : effectiveScope.mode();
         List<String> paperIds = effectiveScope == null ? List.of() : effectiveScope.paperIds();
         Map<String, Object> scope = new LinkedHashMap<>();
@@ -552,6 +564,10 @@ public class ChatHandler {
         }
         if (includeClickedSourceQuoteRef && clickedPaperHandles != null && !clickedPaperHandles.isEmpty()) {
             scope.put("clickedPaperHandles", clickedPaperHandles);
+        }
+        String safeReadingAction = trimToNull(readingAction);
+        if (includeClickedSourceQuoteRef && safeReadingAction != null) {
+            scope.put("readingAction", safeReadingAction);
         }
         return scope;
     }

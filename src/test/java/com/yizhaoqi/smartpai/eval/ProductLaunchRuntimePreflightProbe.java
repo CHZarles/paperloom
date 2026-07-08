@@ -41,6 +41,7 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             case "NONBLANK" -> nonBlank(request);
             case "LLM_API_SMOKE" -> llmApiSmoke(request);
             case "EMBEDDING_API_SMOKE" -> embeddingApiSmoke(request);
+            case "MODEL_PROVIDER_SMOKE" -> modelProviderSmoke(request);
             case "TRACE_CONFIG" -> traceConfig(request);
             case "READING_FLAG" -> readingFlag(request);
             case "INVALID_CONFIG" -> ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
@@ -281,6 +282,128 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
         }
     }
 
+    private ProductLaunchRuntimePreflightRunner.ProbeResult modelProviderSmoke(
+            ProductLaunchRuntimePreflightRunner.ProbeRequest request) {
+        String apiBase = String.valueOf(request.params().getOrDefault("apiBase", request.target()));
+        String username = String.valueOf(request.params().getOrDefault("username", ""));
+        String scope = String.valueOf(request.params().getOrDefault("scope", ""));
+        Map<String, Object> diagnostics = new LinkedHashMap<>(request.params());
+        try {
+            String token = loginToken(apiBase, username, request.secret());
+            diagnostics.put("tokenPresent", !token.isBlank());
+
+            HttpRequest settingsRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(trimTrailingSlash(apiBase) + "/admin/model-providers"))
+                    .timeout(timeout)
+                    .header("Authorization", "Bearer " + token)
+                    .GET()
+                    .build();
+            HttpResponse<String> settingsResponse = httpClient.send(settingsRequest, HttpResponse.BodyHandlers.ofString());
+            diagnostics.put("settingsStatus", settingsResponse.statusCode());
+            if (settingsResponse.statusCode() >= 300) {
+                return providerFailure(
+                        "model_provider_settings_unavailable(status=" + settingsResponse.statusCode() + ")",
+                        "RUNTIME_UNAVAILABLE",
+                        diagnostics
+                );
+            }
+
+            JsonNode scopeNode = OBJECT_MAPPER.readTree(settingsResponse.body()).path("data").path(scope);
+            String activeProvider = scopeNode.path("activeProvider").asText("");
+            diagnostics.put("activeProvider", activeProvider);
+            if (activeProvider.isBlank()) {
+                return providerFailure("model_provider_active_missing(scope=" + scope + ")", "CONFIG_INVALID", diagnostics);
+            }
+
+            JsonNode providerNode = activeProviderNode(scopeNode, activeProvider);
+            if (providerNode == null) {
+                return providerFailure("model_provider_config_missing(scope=" + scope + ",provider=" + activeProvider + ")",
+                        "CONFIG_INVALID", diagnostics);
+            }
+            String apiBaseUrl = providerNode.path("apiBaseUrl").asText("");
+            String model = providerNode.path("model").asText("");
+            diagnostics.put("provider", activeProvider);
+            diagnostics.put("displayName", providerNode.path("displayName").asText(""));
+            diagnostics.put("apiStyle", providerNode.path("apiStyle").asText(""));
+            diagnostics.put("model", model);
+            diagnostics.put("apiBaseUrl", apiBaseUrl);
+            diagnostics.put("hasApiKey", providerNode.path("hasApiKey").asBoolean(false));
+            if (!providerNode.path("dimension").isMissingNode() && !providerNode.path("dimension").isNull()) {
+                diagnostics.put("dimension", providerNode.path("dimension").asInt());
+            }
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("provider", activeProvider);
+            body.put("apiBaseUrl", apiBaseUrl);
+            body.put("model", model);
+            body.put("apiKey", "");
+            body.put("dimension", providerNode.path("dimension").isNumber() ? providerNode.path("dimension").asInt() : null);
+            HttpRequest testRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(trimTrailingSlash(apiBase) + "/admin/model-providers/" + scope + "/test"))
+                    .timeout(timeout)
+                    .header("Authorization", "Bearer " + token)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(body), StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<String> testResponse = httpClient.send(testRequest, HttpResponse.BodyHandlers.ofString());
+            diagnostics.put("testStatus", testResponse.statusCode());
+            if (testResponse.statusCode() >= 300) {
+                return providerFailure(
+                        "model_provider_test_rejected(scope=" + scope + ",status=" + testResponse.statusCode() + ")",
+                        "CONFIG_INVALID",
+                        diagnostics
+                );
+            }
+
+            JsonNode data = OBJECT_MAPPER.readTree(testResponse.body()).path("data");
+            boolean success = data.path("success").asBoolean(false);
+            diagnostics.put("success", success);
+            diagnostics.put("latencyMs", data.path("latencyMs").isNumber() ? data.path("latencyMs").asLong() : null);
+            diagnostics.put("message", sanitize(data.path("message").asText("")));
+            if (success) {
+                return ProductLaunchRuntimePreflightRunner.ProbeResult.pass(diagnostics);
+            }
+            return providerFailure("model_provider_test_failed(scope=" + scope + ",provider=" + activeProvider + ")",
+                    "CONFIG_INVALID", diagnostics);
+        } catch (Exception exception) {
+            diagnostics.put("error", exception.getClass().getSimpleName() + ": " + sanitize(exception.getMessage()));
+            return providerFailure("model_provider_smoke_unreachable(scope=" + scope + ")",
+                    "RUNTIME_UNAVAILABLE", diagnostics);
+        }
+    }
+
+    private String loginToken(String apiBase, String username, String password) throws Exception {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("username", username);
+        body.put("password", password);
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(trimTrailingSlash(apiBase) + "/users/login"))
+                .timeout(timeout)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(body), StandardCharsets.UTF_8))
+                .build();
+        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        JsonNode json = OBJECT_MAPPER.readTree(response.body());
+        String token = json.path("data").path("token").asText("");
+        if (response.statusCode() >= 300 || token.isBlank()) {
+            throw new IllegalStateException("login failed: status=" + response.statusCode());
+        }
+        return token;
+    }
+
+    private static JsonNode activeProviderNode(JsonNode scopeNode, String activeProvider) {
+        JsonNode providers = scopeNode.path("providers");
+        if (!providers.isArray()) {
+            return null;
+        }
+        for (JsonNode provider : providers) {
+            if (activeProvider.equals(provider.path("provider").asText(""))) {
+                return provider;
+            }
+        }
+        return null;
+    }
+
     private HttpResponse<String> sendProviderPost(String url, String apiKey, Map<String, Object> body) throws Exception {
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -375,5 +498,15 @@ public class ProductLaunchRuntimePreflightProbe implements ProductLaunchRuntimeP
             return base;
         }
         return base + path;
+    }
+
+    private static String sanitize(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value
+                .replaceAll("(?i)(password|passwd|pwd|token|secret|api[_-]?key)=([^\\s,;]+)", "$1=<redacted>")
+                .replaceAll("(?i)(password|passwd|pwd|token|secret|api[_-]?key)\\s*:\\s*([^\\s,;]+)", "$1=<redacted>")
+                .replaceAll("://([^:/@\\s]+):([^@/\\s]+)@", "://$1:<redacted>@");
     }
 }

@@ -32,7 +32,7 @@ class ProductPdfLaunchDataSeedRunnerTest {
         Files.write(pdf, pdfBytes);
         Path manifest = manifestFor(pdf);
         String paperId = md5(pdfBytes);
-        FakeSeedClient client = new FakeSeedClient(List.of(List.of(searchableStatus(paperId))));
+        FakeSeedClient client = new FakeSeedClient(List.of(List.of(), List.of(searchableStatus(paperId))));
 
         ProductPdfLaunchDataSeedRunner runner = new ProductPdfLaunchDataSeedRunner(client);
         Path runDir = runner.run(options(manifest, 8, 1));
@@ -48,7 +48,7 @@ class ProductPdfLaunchDataSeedRunnerTest {
                 paperId,
                 "launch-paper.pdf"
         )), client.merges);
-        assertEquals(1, client.listCalls);
+        assertEquals(2, client.listCalls);
 
         JsonNode scorecard = OBJECT_MAPPER.readTree(runDir.resolve("scorecard.json").toFile());
         assertEquals(1, scorecard.path("caseCount").asInt());
@@ -59,6 +59,30 @@ class ProductPdfLaunchDataSeedRunnerTest {
         assertTrue(row.path("passed").asBoolean());
         assertEquals(paperId, row.path("diagnostics").path("computedPaperId").asText());
         assertTrue(row.path("diagnostics").path("frontendSearchable").asBoolean());
+    }
+
+    @Test
+    void existingSearchableManifestPaperPassesWithoutReuploading() throws Exception {
+        byte[] pdfBytes = "%PDF-1.4\nexisting-launch-data".getBytes();
+        Path pdf = tempDir.resolve("existing-paper.pdf");
+        Files.write(pdf, pdfBytes);
+        Path manifest = manifestFor(pdf);
+        String paperId = md5(pdfBytes);
+        FakeSeedClient client = new FakeSeedClient(List.of(List.of(searchableStatus(paperId))));
+
+        ProductPdfLaunchDataSeedRunner runner = new ProductPdfLaunchDataSeedRunner(client);
+        Path runDir = runner.run(options(manifest, 8, 1));
+
+        assertEquals(0, client.uploads.size());
+        assertEquals(0, client.merges.size());
+        assertEquals(1, client.listCalls);
+
+        JsonNode row = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases").get(0);
+        assertTrue(row.path("passed").asBoolean());
+        assertTrue(row.path("diagnostics").path("alreadySeeded").asBoolean());
+        assertFalse(row.path("diagnostics").path("merged").asBoolean());
+        assertTrue(row.path("diagnostics").path("frontendSearchable").asBoolean());
+        assertEquals(paperId, row.path("diagnostics").path("computedPaperId").asText());
     }
 
     @Test

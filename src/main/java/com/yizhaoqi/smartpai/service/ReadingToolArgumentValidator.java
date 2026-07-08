@@ -320,6 +320,7 @@ public class ReadingToolArgumentValidator {
             "titleExact",
             "filenameContains",
             "filenameExact",
+            "filename",
             "doiExact",
             "arxivIdExact",
             "authorName",
@@ -602,7 +603,10 @@ public class ReadingToolArgumentValidator {
                 stringValue(rawHints.get("titleContains")),
                 stringValue(rawHints.get("titleExact")),
                 stringValue(rawHints.get("filenameContains")),
-                stringValue(rawHints.get("filenameExact")),
+                firstNonBlank(
+                        stringValue(rawHints.get("filenameExact")),
+                        normalizeIdentityAlias(rawHints.get("filename"))
+                ),
                 canonicalDoiExact(rawHints.get("doiExact")),
                 canonicalArxivIdExact(rawHints.get("arxivIdExact")),
                 stringValue(rawHints.get("authorName")),
@@ -612,6 +616,18 @@ public class ReadingToolArgumentValidator {
 
     public boolean includeFacets(Object value) {
         return Boolean.TRUE.equals(value);
+    }
+
+    private String normalizeIdentityAlias(Object value) {
+        String text = stringValue(value);
+        if (SearchText.isBlank(text)) {
+            return "";
+        }
+        return text.trim().replaceFirst("(?i)^exact(?:\\s*[:=>-]\\s*|\\s+|(?=\\d))", "");
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return SearchText.isBlank(first) ? stringValue(second) : stringValue(first);
     }
 
     public ListPaperSort listPaperSort(Object value) {

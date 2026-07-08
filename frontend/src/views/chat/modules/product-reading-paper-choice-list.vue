@@ -42,6 +42,15 @@ function selectPaper(item: Api.Chat.ReadingPaperChoiceItem) {
     chatStore.input.message = '看这篇论文';
   }
 }
+
+function findInPaper(item: Api.Chat.ReadingPaperChoiceItem) {
+  chatStore.setReferenceFocus({
+    paperHandle: item.paperHandle,
+    paperTitle: item.title || undefined,
+    originalFilename: item.originalFilename || undefined,
+    readingAction: 'FIND_LOCATIONS'
+  });
+}
 </script>
 
 <template>
@@ -60,11 +69,28 @@ function selectPaper(item: Api.Chat.ReadingPaperChoiceItem) {
           </span>
         </div>
       </div>
-      <NButton circle secondary size="small" title="选择论文" aria-label="选择论文" @click="selectPaper(item)">
-        <template #icon>
-          <icon-lucide:message-square-plus />
-        </template>
-      </NButton>
+      <div class="paper-choice-row__actions">
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton circle secondary size="small" title="定位阅读位置" aria-label="定位阅读位置" @click="findInPaper(item)">
+              <template #icon>
+                <icon-lucide:search />
+              </template>
+            </NButton>
+          </template>
+          定位阅读位置
+        </NTooltip>
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton circle secondary size="small" title="选择论文" aria-label="选择论文" @click="selectPaper(item)">
+              <template #icon>
+                <icon-lucide:message-square-plus />
+              </template>
+            </NButton>
+          </template>
+          选择论文
+        </NTooltip>
+      </div>
     </div>
   </div>
 </template>
@@ -121,6 +147,12 @@ function selectPaper(item: Api.Chat.ReadingPaperChoiceItem) {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
+  gap: 6px;
+}
+
+.paper-choice-row__actions {
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 

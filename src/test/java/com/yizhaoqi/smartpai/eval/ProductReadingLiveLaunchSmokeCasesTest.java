@@ -38,13 +38,17 @@ class ProductReadingLiveLaunchSmokeCasesTest {
                 && testCase.requiredProductStateSourceTools().contains("list_papers")));
         assertTrue(cases.stream().anyMatch(testCase -> "semantic_search_papers".equals(testCase.id())
                 && testCase.productStateItemRequired()
-                && testCase.requiredProductStateSourceTools().contains("search_paper_candidates")));
+                && testCase.requiredProductStateSourceTools().contains("search_paper_candidates")
+                && "SEARCH_PAPERS".equals(testCase.readingActionValue())));
         assertTrue(cases.stream().anyMatch(testCase -> "identity_paper_lookup".equals(testCase.id())
                 && testCase.productStateItemRequired()
                 && testCase.requiredProductStateSourceTools().contains("find_papers_by_identity")));
         assertTrue(cases.stream().anyMatch(testCase -> "read_selected_locations".equals(testCase.id())
                 && testCase.referenceRequired()
                 && "identity_paper_lookup".equals(testCase.focusPaperHandleFromCaseValue())));
+        assertTrue(cases.stream().anyMatch(testCase -> "semantic_location_search".equals(testCase.id())
+                && "FIND_LOCATIONS".equals(testCase.readingActionValue())
+                && testCase.requiredToolNames().contains("find_reading_locations")));
         assertTrue(cases.stream().anyMatch(testCase -> "trace_clicked_source_quote".equals(testCase.id())
                 && testCase.referenceRequired()
                 && "read_selected_locations".equals(testCase.focusSourceQuoteRefFromCaseValue())));

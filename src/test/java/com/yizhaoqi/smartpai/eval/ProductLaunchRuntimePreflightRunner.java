@@ -102,17 +102,20 @@ public class ProductLaunchRuntimePreflightRunner {
         String mineruBase = value(env, options, "PAPER_PARSING_MINERU_BASE_URL", "http://localhost:8000");
         String mineruHealth = value(env, options, "PAPER_PARSING_MINERU_HEALTH_PATH", "/health");
         requests.add(ProbeRequest.http("mineru_health", trimTrailingSlash(mineruBase) + ensureLeadingSlash(mineruHealth), List.of(200)));
-        String llmUrl = value(env, options, "DEEPSEEK_API_URL", "https://api.deepseek.com/v1");
-        String llmModel = value(env, options, "DEEPSEEK_API_MODEL", "deepseek-chat");
-        String llmKey = value(env, options, "DEEPSEEK_API_KEY", "");
-        requests.add(ProbeRequest.nonBlank("llm_key", "DEEPSEEK_API_KEY", llmKey));
-        requests.add(ProbeRequest.llmApiSmoke(llmUrl, llmModel, llmKey));
-        String embeddingUrl = value(env, options, "EMBEDDING_API_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1");
-        String embeddingModel = value(env, options, "EMBEDDING_API_MODEL", "text-embedding-v4");
-        String embeddingKey = value(env, options, "EMBEDDING_API_KEY", "");
-        int embeddingDimension = intValue(value(env, options, "EMBEDDING_DIMENSION", "2048"), 2048);
-        requests.add(ProbeRequest.nonBlank("embedding_key", "EMBEDDING_API_KEY", embeddingKey));
-        requests.add(ProbeRequest.embeddingApiSmoke(embeddingUrl, embeddingModel, embeddingKey, embeddingDimension));
+        requests.add(ProbeRequest.modelProviderSmoke(
+                "llm_active_provider_smoke",
+                options.apiBase(),
+                options.username(),
+                options.password(),
+                "llm"
+        ));
+        requests.add(ProbeRequest.modelProviderSmoke(
+                "embedding_active_provider_smoke",
+                options.apiBase(),
+                options.username(),
+                options.password(),
+                "embedding"
+        ));
         requests.add(ProbeRequest.traceConfig(
                 value(env, options, "PAPERLOOM_TRACE_ENABLED", "true"),
                 value(env, options, "PAPERLOOM_TRACE_ROOT", "data/traces/product-react")
@@ -276,17 +279,13 @@ public class ProductLaunchRuntimePreflightRunner {
             case "mineru_health" -> "- `mineru_health`: start the self-hosted MinerU sidecar or align "
                     + "`PAPER_PARSING_MINERU_BASE_URL` and `PAPER_PARSING_MINERU_HEALTH_PATH`" + targetSuffix(target)
                     + ". Do not switch to the OpenDataLoader fallback for launch evidence.";
-            case "llm_key" -> "- `llm_key`: set `DEEPSEEK_API_KEY` in the runtime environment or `.env`. "
-                    + "The remediation artifact intentionally omits the value.";
-            case "llm_api_smoke" -> "- `llm_api_smoke`: verify `DEEPSEEK_API_URL`, `DEEPSEEK_API_MODEL`, "
-                    + "and the `DEEPSEEK_API_KEY` credential against the active launch provider"
-                    + targetSuffix(target) + ". The remediation artifact intentionally omits the key value.";
-            case "embedding_key" -> "- `embedding_key`: set `EMBEDDING_API_KEY` in the runtime environment or `.env`. "
-                    + "The remediation artifact intentionally omits the value.";
-            case "embedding_api_smoke" -> "- `embedding_api_smoke`: verify `EMBEDDING_API_URL`, "
-                    + "`EMBEDDING_API_MODEL`, optional `EMBEDDING_DIMENSION`, and the `EMBEDDING_API_KEY` "
-                    + "credential against the active launch provider" + targetSuffix(target)
-                    + ". The remediation artifact intentionally omits the key value.";
+            case "llm_active_provider_smoke" -> "- `llm_active_provider_smoke`: verify the active backend LLM "
+                    + "model-provider config and stored credential through `/admin/model-providers/llm/test`"
+                    + targetSuffix(target) + ". The remediation artifact intentionally omits credentials.";
+            case "embedding_active_provider_smoke" -> "- `embedding_active_provider_smoke`: verify the active backend "
+                    + "Embedding model-provider config and stored credential through "
+                    + "`/admin/model-providers/embedding/test`" + targetSuffix(target)
+                    + ". The remediation artifact intentionally omits credentials.";
             case "trace_config" -> "- `trace_config`: set `PAPERLOOM_TRACE_ENABLED=true` and a writable "
                     + "`PAPERLOOM_TRACE_ROOT` before running the live smoke.";
             case "reading_phase_flag" -> "- `reading_phase_flag`: set "
@@ -468,6 +467,25 @@ public class ProductLaunchRuntimePreflightRunner {
                     trimTrailingSlash(apiBaseUrl),
                     blankToDefault(apiKey, ""),
                     params
+            );
+        }
+
+        static ProbeRequest modelProviderSmoke(String caseId,
+                                               String apiBase,
+                                               String username,
+                                               String password,
+                                               String scope) {
+            String normalizedScope = blankToDefault(scope, "llm").toLowerCase();
+            return new ProbeRequest(
+                    caseId,
+                    "MODEL_PROVIDER_SMOKE",
+                    trimTrailingSlash(apiBase),
+                    blankToDefault(password, ""),
+                    Map.of(
+                            "apiBase", trimTrailingSlash(apiBase),
+                            "username", blankToDefault(username, ""),
+                            "scope", normalizedScope
+                    )
             );
         }
 
