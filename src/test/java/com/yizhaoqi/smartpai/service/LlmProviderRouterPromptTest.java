@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -138,6 +139,84 @@ class LlmProviderRouterPromptTest {
             assertFalse(message.contains("sk-secret-value"));
             assertEquals("Bearer sk-secret-value", authorizationHeader.get());
             verify(usageQuotaService).abortReservation(reservation);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void reactTurnRetriesTransientProviderOverloadWithoutDoubleSettlingReservation() throws Exception {
+        AtomicReference<Integer> requestCount = new AtomicReference<>(0);
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            int attempt = requestCount.updateAndGet(value -> value + 1);
+            if (attempt == 1) {
+                byte[] response = """
+                        {"error":{"message":"temporarily overloaded","type":"overloaded_error"}}
+                        """.getBytes();
+                exchange.sendResponseHeaders(529, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.close();
+                return;
+            }
+            byte[] response = """
+                    {
+                      "choices": [
+                        {
+                          "message": {
+                            "role": "assistant",
+                            "content": "{\\"answerType\\":\\"NON_EVIDENCE\\",\\"answer\\":\\"ok\\",\\"evidenceBasedClaims\\":[],\\"stateClaims\\":[],\\"limitations\\":[],\\"nonEvidenceNotes\\":[],\\"missingFields\\":[],\\"reason\\":\\"\\"}"
+                          },
+                          "finish_reason": "stop"
+                        }
+                      ],
+                      "usage": {"prompt_tokens": 10, "completion_tokens": 5}
+                    }
+                    """.getBytes();
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+
+        try {
+            RateLimitService rateLimitService = Mockito.mock(RateLimitService.class);
+            UsageQuotaService usageQuotaService = Mockito.mock(UsageQuotaService.class);
+            ModelProviderConfigService modelProviderConfigService = Mockito.mock(ModelProviderConfigService.class);
+            UsageQuotaService.TokenReservationBundle reservation = UsageQuotaService.TokenReservationBundle.noop("llm", "user-1");
+            when(rateLimitService.reserveLlmUsage(eq("user-1"), anyInt(), anyInt())).thenReturn(reservation);
+            when(usageQuotaService.estimateTextTokens(org.mockito.ArgumentMatchers.any())).thenReturn(1);
+            when(modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM))
+                    .thenReturn(new ModelProviderConfigService.ActiveProviderView(
+                            "minimax",
+                            "MiniMax",
+                            "openai-compatible",
+                            "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",
+                            "MiniMax-M3",
+                            "sk-secret-value",
+                            null
+                    ));
+            LlmProviderRouter router = new LlmProviderRouter(
+                    new AiProperties(),
+                    rateLimitService,
+                    usageQuotaService,
+                    modelProviderConfigService,
+                    new ObjectMapper(),
+                    new OutboundWebClientFactory()
+            );
+
+            LlmProviderRouter.ReActTurn turn = router.completeReActTurn(
+                    "user-1",
+                    List.of(Map.of("role", "user", "content", "ping")),
+                    List.of(),
+                    16
+            );
+
+            assertEquals(2, requestCount.get());
+            assertEquals("stop", turn.finishReason());
+            assertTrue(turn.content().contains("NON_EVIDENCE"));
+            verify(usageQuotaService).settleReservation(reservation, 15);
+            verify(usageQuotaService, never()).abortReservation(reservation);
         } finally {
             server.stop(0);
         }

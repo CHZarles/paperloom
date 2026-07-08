@@ -25,6 +25,7 @@ public record ProductReferenceFocus(
 ) {
     private static final Set<String> READING_ACTIONS = Set.of(
             "SEARCH_PAPERS",
+            "LIST_LOCATIONS",
             "FIND_LOCATIONS"
     );
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =

@@ -112,11 +112,18 @@ const cooldownText = computed(() => {
 const referenceFocusLabel = computed(() => {
   const focus = referenceFocus.value;
   if (!focus) return '';
-  const paper =
-    focus.paperTitle ||
-    focus.originalFilename ||
-    (focus.paperHandle || focus.paperId ? 'Selected paper' : focus.sourceQuoteRef ? 'Source quote' : 'Reference focus');
+  let paper = focus.paperTitle || focus.originalFilename || '';
+  if (!paper) {
+    if (focus.paperHandle || focus.paperId) {
+      paper = 'Selected paper';
+    } else if (focus.sourceQuoteRef) {
+      paper = 'Source quote';
+    } else {
+      paper = 'Reference focus';
+    }
+  }
   const parts = [paper];
+  if (focus.readingAction === 'LIST_LOCATIONS') parts.push('List locations');
   if (focus.readingAction === 'FIND_LOCATIONS') parts.push('Find locations');
   if (focus.pageNumber) parts.push(`p${focus.pageNumber}`);
   if (focus.referenceNumber) parts.push(`[${focus.referenceNumber}]`);

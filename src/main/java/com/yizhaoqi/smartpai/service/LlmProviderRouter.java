@@ -12,14 +12,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.Disposable;
 
+import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 @Service
@@ -29,6 +32,8 @@ public class LlmProviderRouter {
     private static final int REACT_HISTORY_MAX_MESSAGES = 6;
     private static final int REACT_HISTORY_MAX_CONTENT_CHARS = 800;
     private static final int DEFAULT_REACT_MAX_COMPLETION_TOKENS = 2000;
+    private static final int REACT_PROVIDER_MAX_ATTEMPTS = 3;
+    private static final long REACT_PROVIDER_RETRY_BACKOFF_MILLIS = 200L;
 
     private final AiProperties aiProperties;
     private final RateLimitService rateLimitService;
@@ -208,27 +213,40 @@ public class LlmProviderRouter {
         UsageQuotaService.TokenReservationBundle reservation = rateLimitService.reserveLlmUsage(
                 requesterId, estimatedPromptTokens, maxCompletionTokens);
 
-        try {
-            String responseBody = buildClient(provider)
-                    .post()
-                    .uri("/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(request)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(Duration.ofSeconds(90));
-            ReActTurn turn = parseReActTurn(responseBody, estimatedPromptTokens);
-            usageQuotaService.settleReservation(reservation, turn.promptTokens() + turn.completionTokens());
-            logger.info("ReAct 回合完成: provider={}, model={}, finishReason={}, toolCalls={}, contentChars={}",
-                    provider.provider(), provider.model(), turn.finishReason(), turn.toolCalls().size(), turn.content().length());
-            return turn;
-        } catch (Exception exception) {
-            usageQuotaService.abortReservation(reservation);
-            String failure = reactProviderFailureMessage(provider, request, exception);
-            logger.warn(failure);
-            logger.debug(failure, exception);
-            throw new RuntimeException(failure, exception);
+        for (int attempt = 1; attempt <= REACT_PROVIDER_MAX_ATTEMPTS; attempt++) {
+            try {
+                String responseBody = buildClient(provider)
+                        .post()
+                        .uri("/chat/completions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(request)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(Duration.ofSeconds(90));
+                ReActTurn turn = parseReActTurn(responseBody, estimatedPromptTokens);
+                usageQuotaService.settleReservation(reservation, turn.promptTokens() + turn.completionTokens());
+                logger.info("ReAct 回合完成: provider={}, model={}, finishReason={}, toolCalls={}, contentChars={}, attempt={}",
+                        provider.provider(), provider.model(), turn.finishReason(), turn.toolCalls().size(), turn.content().length(), attempt);
+                return turn;
+            } catch (Exception exception) {
+                if (attempt < REACT_PROVIDER_MAX_ATTEMPTS && isRetryableReactProviderException(exception)) {
+                    logger.warn("ReAct 模型回合遇到临时错误，将重试: provider={}, model={}, attempt={}/{}, error={}",
+                            provider.provider(), provider.model(), attempt, REACT_PROVIDER_MAX_ATTEMPTS, shortExceptionMessage(exception));
+                    if (!sleepBeforeReactProviderRetry(attempt)) {
+                        usageQuotaService.abortReservation(reservation);
+                        throw new RuntimeException("Interrupted before retrying ReAct provider request", exception);
+                    }
+                    continue;
+                }
+                usageQuotaService.abortReservation(reservation);
+                String failure = reactProviderFailureMessage(provider, request, exception);
+                logger.warn(failure);
+                logger.debug(failure, exception);
+                throw new RuntimeException(failure, exception);
+            }
         }
+        usageQuotaService.abortReservation(reservation);
+        throw new RuntimeException("ReAct 模型回合调用失败: retry loop exited unexpectedly");
     }
 
     public StreamHandle streamReActTurn(String requesterId,
@@ -330,6 +348,45 @@ public class LlmProviderRouter {
             current = current.getCause();
         }
         return null;
+    }
+
+    private boolean isRetryableReactProviderException(Throwable error) {
+        WebClientResponseException responseException = findResponseException(error);
+        if (responseException != null) {
+            int status = responseException.getStatusCode().value();
+            return status == 429 || status == 529 || status >= 500;
+        }
+        return hasCause(error, TimeoutException.class)
+                || hasCause(error, SocketTimeoutException.class)
+                || hasCause(error, WebClientRequestException.class);
+    }
+
+    private boolean hasCause(Throwable error, Class<? extends Throwable> causeType) {
+        Throwable current = error;
+        while (current != null) {
+            if (causeType.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private boolean sleepBeforeReactProviderRetry(int attempt) {
+        try {
+            Thread.sleep(Math.min(REACT_PROVIDER_RETRY_BACKOFF_MILLIS * Math.max(attempt, 1), 1000L));
+            return true;
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private String shortExceptionMessage(Throwable error) {
+        if (error == null || error.getMessage() == null) {
+            return "";
+        }
+        return limitText(error.getMessage(), 300);
     }
 
     @SuppressWarnings("unchecked")

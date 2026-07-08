@@ -207,6 +207,46 @@ class ProductReadingReActHarnessTest {
     }
 
     @Test
+    void sourceQuoteResultsFallBackToConservativeEvidenceAnswerWhenRoundBudgetEnds() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
+        when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
+        when(registry.execute(eq("read_locations"), any(), any())).thenReturn(sectionReadResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(multiToolCallTurn(
+                        new LlmProviderRouter.ToolCallDecision("call_session", "get_session_state", Map.of()),
+                        new LlmProviderRouter.ToolCallDecision("call_outline", "get_paper_outline", Map.of(
+                                "paperHandles", List.of("paper_handle_abc")
+                        ))
+                ))
+                .thenReturn(toolCallTurn("call_read", "read_locations", Map.of(
+                        "locationRefs", List.of("section_ref_methods")
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(new ProductTurnRequest(
+                7L,
+                "conversation-1",
+                "generation-1",
+                "阅读这篇论文的方法部分并用 Source Quote 回答",
+                SourceScope.auto(),
+                List.of(),
+                Map.of("readingTurnAnchors", Map.of("clickedPaperHandles", List.of("paper_handle_abc"))),
+                new ProductModelContext(2, 1600)
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.EVIDENCE_ANSWER, result.envelope().answerType());
+        assertEquals("source_quote_evidence_fallback", result.envelope().reason());
+        assertEquals(1, result.references().size());
+        assertTrue(result.finalAnswerMarkdown().contains("[1]"));
+    }
+
+    @Test
     void sessionStateQuestionCallsSessionToolAndAcceptsProductStateAnswer() {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
@@ -229,6 +269,32 @@ class ProductReadingReActHarnessTest {
         assertTrue(result.finalAnswerMarkdown().contains("2 篇"));
         verify(registry).execute(eq("get_session_state"), any(), any());
         verify(registry, never()).execute(eq("get_paper_outline"), any(), any());
+    }
+
+    @Test
+    void sessionStateResultFallsBackToSafeProductStateWhenFinalEnvelopeIsInvalid() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "get_session_state", Map.of()))
+                .thenReturn(finalTurn("当前范围有 2 篇可读论文。"));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(request("当前范围有多少论文"));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(ProductStopReason.COMPLETED, result.stopReason());
+        assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("All readable papers"));
+        assertTrue(result.finalAnswerMarkdown().contains("2"));
+        assertTrue(result.references().isEmpty());
+        assertTrue(result.productStateItems().isEmpty());
+        assertEquals("session_state_fallback", result.envelope().reason());
+        assertEquals("get_session_state", result.envelope().stateClaims().get(0).get("sourceTool"));
     }
 
     @Test
@@ -949,13 +1015,114 @@ class ProductReadingReActHarnessTest {
                 )));
         ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
 
-        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandlesAndAction(
                 "在这篇论文里找方法",
-                List.of("paper_handle_abc")
+                List.of("paper_handle_abc"),
+                "FIND_LOCATIONS"
         ));
 
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         verify(registry).execute(eq("find_reading_locations"), any(), any());
+    }
+
+    @Test
+    void semanticLocationSearchWithoutExplicitFindActionMustReadBeforeFinalAnswer() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "methods"
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到候选阅读位置：page_ref_abc。",
+                        "find_reading_locations"
+                )))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "EVIDENCE_ANSWER",
+                          "answer": "The selected location reports an improved score. {{sourceQuoteRef:source_quote_abc}}",
+                          "evidenceBasedClaims": [
+                            {
+                              "claim": "The selected location reports an improved score.",
+                              "sourceQuoteRefs": ["source_quote_abc"]
+                            }
+                          ],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "阅读这篇论文中方法相关的位置，并用 Source Quote 给出证据回答。",
+                List.of("paper_handle_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.EVIDENCE_ANSWER, result.envelope().answerType());
+        assertEquals(1, result.references().size());
+        verify(registry).execute(eq("find_reading_locations"), any(), any());
+        verify(registry).execute(eq("read_locations"), any(), any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void semanticLocationSearchWithoutExplicitFindActionAutoReadsDisclosedRefsWhenModelStopsAtNavigation() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_1", "find_reading_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "queryText", "methods"
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到候选阅读位置：page_ref_abc。",
+                        "find_reading_locations"
+                )))
+                .thenReturn(finalTurn("""
+                        {
+                          "answerType": "EVIDENCE_ANSWER",
+                          "answer": "The selected location reports an improved score. {{sourceQuoteRef:source_quote_abc}}",
+                          "evidenceBasedClaims": [
+                            {
+                              "claim": "The selected location reports an improved score.",
+                              "sourceQuoteRefs": ["source_quote_abc"]
+                            }
+                          ],
+                          "stateClaims": [],
+                          "limitations": [],
+                          "nonEvidenceNotes": [],
+                          "missingFields": [],
+                          "reason": ""
+                        }
+                        """));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandles(
+                "阅读这篇论文中方法相关的位置，并用 Source Quote 给出证据回答。",
+                List.of("paper_handle_abc")
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.EVIDENCE_ANSWER, result.envelope().answerType());
+        ArgumentCaptor<Map<String, Object>> readArgumentsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(registry).execute(eq("read_locations"), readArgumentsCaptor.capture(), any());
+        assertEquals(List.of("page_ref_abc"), readArgumentsCaptor.getValue().get("locationRefs"));
+        verify(llm, times(3)).completeReActTurn(eq("7"), any(), eq(tools), anyInt());
     }
 
     @Test
@@ -997,6 +1164,125 @@ class ProductReadingReActHarnessTest {
         assertTrue(firstPrompt.contains("Explicit Product Reading UI action"));
         assertTrue(firstPrompt.contains("FIND_LOCATIONS"));
         assertTrue(secondPrompt.contains("explicit_product_action_requires_find_reading_locations"));
+    }
+
+    @Test
+    void explicitListLocationsActionCorrectsSessionStateBeforeListLocations() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
+        when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(toolCallTurn("call_wrong", "get_session_state", Map.of()))
+                .thenReturn(toolCallTurn("call_right", "list_paper_locations", Map.of(
+                        "paperHandles", List.of("paper_handle_abc"),
+                        "locationTypes", List.of("SECTION")
+                )))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到可导航位置：page_ref_abc。",
+                        "list_paper_locations"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandlesAndAction(
+                "列出这篇论文可阅读的位置",
+                List.of("paper_handle_abc"),
+                "LIST_LOCATIONS"
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        verify(registry, never()).execute(eq("get_session_state"), any(), any());
+        verify(registry).execute(eq("list_paper_locations"), any(), any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void explicitSearchPapersActionExecutesRequiredToolWhenModelReturnsNoTool() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(finalTurn("I can answer without a tool."))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到候选论文：Agentic Eval Benchmark。",
+                        "search_paper_candidates"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithReadingAction(
+                "找几篇 agentic retrieval 或 reasoning 相关论文",
+                "SEARCH_PAPERS"
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        ArgumentCaptor<Map<String, Object>> argumentsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(registry).execute(eq("search_paper_candidates"), argumentsCaptor.capture(), any());
+        assertEquals("找几篇 agentic retrieval 或 reasoning 相关论文", argumentsCaptor.getValue().get("queryText"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void explicitFindLocationsActionExecutesRequiredToolWhenModelReturnsNoTool() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(finalTurn("I can answer without a tool."))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到候选阅读位置：page_ref_abc。",
+                        "find_reading_locations"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandlesAndAction(
+                "在这篇论文里查找实验设置相关位置",
+                List.of("paper_handle_abc"),
+                "FIND_LOCATIONS"
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        ArgumentCaptor<Map<String, Object>> argumentsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(registry).execute(eq("find_reading_locations"), argumentsCaptor.capture(), any());
+        assertEquals(List.of("paper_handle_abc"), argumentsCaptor.getValue().get("paperHandles"));
+        assertEquals("在这篇论文里查找实验设置相关位置", argumentsCaptor.getValue().get("queryText"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void explicitListLocationsActionExecutesRequiredToolWhenModelReturnsNoTool() {
+        LlmProviderRouter llm = mock(LlmProviderRouter.class);
+        ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
+        ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
+        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        when(registry.listTools()).thenReturn(tools);
+        when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
+        when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
+                .thenReturn(finalTurn("I can answer without a tool."))
+                .thenReturn(finalTurn(productStateEnvelope(
+                        "找到可导航位置：page_ref_abc。",
+                        "list_paper_locations"
+                )));
+        ProductReadingReActHarness harness = new ProductReadingReActHarness(llm, registry, objectMapper, traceRecorder);
+
+        ProductTurnResult result = harness.run(requestWithClickedPaperHandlesAndAction(
+                "列出这篇论文可阅读的位置",
+                List.of("paper_handle_abc"),
+                "LIST_LOCATIONS"
+        ));
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        ArgumentCaptor<Map<String, Object>> argumentsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(registry).execute(eq("list_paper_locations"), argumentsCaptor.capture(), any());
+        assertEquals(List.of("paper_handle_abc"), argumentsCaptor.getValue().get("paperHandles"));
     }
 
     @Test

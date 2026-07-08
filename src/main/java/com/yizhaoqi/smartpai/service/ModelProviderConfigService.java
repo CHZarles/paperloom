@@ -65,6 +65,9 @@ public class ModelProviderConfigService {
     @Value("${embedding.api.dimension:2048}")
     private Integer embeddingDimension;
 
+    @Value("${model-provider.connection-test-timeout-seconds:30}")
+    private Long connectionTestTimeoutSeconds;
+
     public ModelProviderConfigService(ModelProviderConfigRepository repository, SecretCryptoService secretCryptoService) {
         this(repository, secretCryptoService, new OutboundWebClientFactory(), null);
     }
@@ -174,6 +177,7 @@ public class ModelProviderConfigService {
         long startAt = System.currentTimeMillis();
         String provider = normalizeOptionalProvider(request.provider());
         try {
+            Duration timeout = connectionTestTimeout();
             WebClient.Builder builder = outboundWebClientFactory
                     .builder(normalizeOpenAiCompatibleBaseUrl(request.apiBaseUrl()))
                     .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE);
@@ -196,7 +200,7 @@ public class ModelProviderConfigService {
                         .bodyValue(payload)
                         .retrieve()
                         .bodyToMono(String.class)
-                        .block(Duration.ofSeconds(8));
+                        .block(timeout);
             } else if (isMiniMaxEmbeddingProvider(normalizedScope, provider)) {
                 Map<String, Object> payload = new LinkedHashMap<>();
                 payload.put("model", request.model());
@@ -207,7 +211,7 @@ public class ModelProviderConfigService {
                         .bodyValue(payload)
                         .retrieve()
                         .bodyToMono(String.class)
-                        .block(Duration.ofSeconds(8));
+                        .block(timeout);
                 validateMiniMaxEmbeddingResponse(response);
             } else {
                 Map<String, Object> payload = new LinkedHashMap<>();
@@ -222,13 +226,18 @@ public class ModelProviderConfigService {
                         .bodyValue(payload)
                         .retrieve()
                         .bodyToMono(String.class)
-                        .block(Duration.ofSeconds(8));
+                        .block(timeout);
             }
 
             return new ConnectivityTestView(true, "连接成功", System.currentTimeMillis() - startAt);
         } catch (Exception exception) {
             return new ConnectivityTestView(false, formatConnectionFailure(provider, exception), System.currentTimeMillis() - startAt);
         }
+    }
+
+    private Duration connectionTestTimeout() {
+        long seconds = connectionTestTimeoutSeconds == null ? 30 : connectionTestTimeoutSeconds;
+        return Duration.ofSeconds(Math.max(1, Math.min(120, seconds)));
     }
 
     public synchronized void reloadSettings() {

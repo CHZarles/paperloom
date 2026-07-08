@@ -17,7 +17,7 @@ public class ProductReadingConversationService {
 
     private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
     private static final int MAX_CLICKED_PAPER_HANDLES = 20;
-    private static final Set<String> READING_ACTIONS = Set.of("SEARCH_PAPERS", "FIND_LOCATIONS");
+    private static final Set<String> READING_ACTIONS = Set.of("SEARCH_PAPERS", "LIST_LOCATIONS", "FIND_LOCATIONS");
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
     private static final Pattern PAPER_HANDLE_PATTERN =

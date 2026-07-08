@@ -16,6 +16,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -258,6 +259,47 @@ class ModelProviderConfigServiceTest {
 
             assertTrue(result.success());
             assertEquals("Bearer sk-default-deepseek", authorizationHeader.get());
+            assertEquals("/v1/chat/completions", requestPath.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void shouldHonorConfiguredConnectionTestTimeout() throws Exception {
+        AtomicReference<String> requestPath = new AtomicReference<>();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            requestPath.set(exchange.getRequestURI().getPath());
+            try {
+                Thread.sleep(1500);
+                byte[] response = "{\"ok\":true}".getBytes();
+                exchange.sendResponseHeaders(200, response.length);
+                exchange.getResponseBody().write(response);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            } finally {
+                exchange.close();
+            }
+        });
+        server.start();
+        ReflectionTestUtils.setField(service, "connectionTestTimeoutSeconds", 1L);
+
+        try {
+            int port = server.getAddress().getPort();
+            ModelProviderConfigService.ConnectivityTestView result = service.testConnection(
+                    ModelProviderConfigService.SCOPE_LLM,
+                    new ModelProviderConfigService.ProviderConnectionTestRequest(
+                            "deepseek",
+                            "http://127.0.0.1:" + port + "/v1",
+                            "deepseek-chat",
+                            "sk-test",
+                            null
+                    )
+            );
+
+            assertFalse(result.success());
+            assertTrue(result.message().toLowerCase(Locale.ROOT).contains("timeout"));
             assertEquals("/v1/chat/completions", requestPath.get());
         } finally {
             server.stop(0);

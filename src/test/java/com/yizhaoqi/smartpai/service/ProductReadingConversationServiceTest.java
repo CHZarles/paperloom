@@ -192,6 +192,32 @@ class ProductReadingConversationServiceTest {
     }
 
     @Test
+    void enabledReadingPhaseOnePassesExplicitListLocationsAction() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ProductReadingReactProperties properties = new ProductReadingReactProperties();
+        properties.setEnabled(true);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "列出这篇论文可阅读的位置",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of(
+                        "clickedPaperHandles", List.of("paper_handle_abc"),
+                        "readingAction", "LIST_LOCATIONS"
+                )
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        assertEquals("LIST_LOCATIONS", requestCaptor.getValue().memory().get("readingTurnAction"));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void enabledReadingPhaseOneAcceptsClickedPaperAnchorArrays() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);

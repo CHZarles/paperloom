@@ -138,6 +138,24 @@ class ChatWebSocketHandlerTest {
     }
 
     @Test
+    void structuredChatPayloadPreservesListLocationsReadingAction() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","conversationId":"conversation-1","message":"列出这篇论文位置","referenceFocus":{"paperHandle":"paper_handle_abc","readingAction":"LIST_LOCATIONS"}}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("paper_handle_abc", request.referenceFocus().paperHandle());
+        assertEquals("LIST_LOCATIONS", request.referenceFocus().readingAction());
+    }
+
+    @Test
     void structuredChatPayloadIgnoresInvalidClickedPaperHandles() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);

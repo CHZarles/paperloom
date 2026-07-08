@@ -38,8 +38,11 @@ public class ProductReadingReActHarness {
     private static final String LIST_PAPERS_TOOL_NAME = "list_papers";
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String IDENTITY_TOOL_NAME = "find_papers_by_identity";
+    private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
+    private static final String READ_LOCATIONS_TOOL_NAME = "read_locations";
     private static final String SEARCH_PAPERS_ACTION = "SEARCH_PAPERS";
+    private static final String LIST_LOCATIONS_ACTION = "LIST_LOCATIONS";
     private static final String FIND_LOCATIONS_ACTION = "FIND_LOCATIONS";
     private static final Set<String> PAPER_CHOICE_SOURCE_TOOLS = Set.of(
             LIST_PAPERS_TOOL_NAME,
@@ -65,6 +68,7 @@ public class ProductReadingReActHarness {
     private static final Pattern PAPER_HANDLE_PATTERN =
             Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
     private static final String ANSWER_SCHEMA_INVALID_MESSAGE = "Answer envelope schema invalid.";
+    private static final String SESSION_TOOL_NAME = "get_session_state";
 
     private final LlmProviderRouter llmProviderRouter;
     private final ProductReadingToolRegistry toolRegistry;
@@ -125,6 +129,24 @@ public class ProductReadingReActHarness {
                     : turn.toolCalls();
             if (decisions.isEmpty()) {
                 if (!toolSucceeded) {
+                    SyntheticToolExecution structuredActionExecution = executeStructuredActionToolIfAvailable(
+                            safeRequest,
+                            state,
+                            progressEvents,
+                            toolCalls,
+                            messages,
+                            round + 1
+                    );
+                    if (structuredActionExecution.terminalResult() != null) {
+                        ProductTurnResult result = structuredActionExecution.terminalResult();
+                        recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
+                        return result;
+                    }
+                    if (structuredActionExecution.executed()) {
+                        toolSucceeded = true;
+                        messages.add(toolResultsPolicyMessage(List.of(structuredActionExecution.toolResult())));
+                        continue;
+                    }
                     if (!tools.isEmpty() && round + 1 < safeRequest.modelContext().maxReActRounds()) {
                         messages.add(assistantMessage(turn));
                         messages.add(firstReadingToolCallRequiredMessage(state));
@@ -135,6 +157,36 @@ public class ProductReadingReActHarness {
                             progressEvents,
                             ProductStopReason.ANSWER_SCHEMA_INVALID
                     );
+                    recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
+                    return result;
+                }
+                if (needsReadAfterSemanticLocationSearchBeforeFinal(state)) {
+                    SyntheticToolExecution readExecution = executeReadAfterSemanticLocationSearchIfAvailable(
+                            safeRequest,
+                            state,
+                            progressEvents,
+                            toolCalls,
+                            messages,
+                            round + 1
+                    );
+                    if (readExecution.terminalResult() != null) {
+                        ProductTurnResult result = readExecution.terminalResult();
+                        recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
+                        return result;
+                    }
+                    if (readExecution.executed()) {
+                        messages.add(toolResultsPolicyMessage(List.of(readExecution.toolResult())));
+                        continue;
+                    }
+                }
+                if (needsReadAfterSemanticLocationSearchBeforeFinal(state)
+                        && round + 1 < safeRequest.modelContext().maxReActRounds()) {
+                    messages.add(assistantMessage(turn));
+                    messages.add(readLocationsRequiredAfterSemanticLocationsMessage());
+                    continue;
+                }
+                if (needsReadAfterSemanticLocationSearchBeforeFinal(state)) {
+                    ProductTurnResult result = maxReactRoundsReached(progressEvents, state);
                     recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
                     return result;
                 }
@@ -215,8 +267,15 @@ public class ProductReadingReActHarness {
                 if (SEARCH_TOOL_NAME.equals(toolResult.toolName())) {
                     state.searchPapersActionSatisfied = true;
                 }
+                if (LIST_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())) {
+                    state.listLocationsActionSatisfied = true;
+                }
                 if (LOCATION_TOOL_NAME.equals(toolResult.toolName())) {
+                    state.semanticLocationSearchUsed = true;
                     state.findLocationsActionSatisfied = true;
+                }
+                if (READ_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())) {
+                    state.readLocationsUsed = true;
                 }
                 toolSucceeded = true;
                 successfulToolResults.add(toolResult);
@@ -247,7 +306,7 @@ public class ProductReadingReActHarness {
                 return ToolCallValidation.rejected("hidden_paper_handle");
             }
         }
-        if ("list_paper_locations".equals(toolName)) {
+        if (LIST_LOCATIONS_TOOL_NAME.equals(toolName)) {
             List<String> paperHandles = stringList(arguments.get("paperHandles"));
             if (paperHandles.isEmpty() || !state.deterministicLocationPaperHandles.containsAll(paperHandles)) {
                 return ToolCallValidation.rejected("hidden_paper_handle");
@@ -259,7 +318,7 @@ public class ProductReadingReActHarness {
                 return ToolCallValidation.rejected("hidden_paper_handle");
             }
         }
-        if ("read_locations".equals(toolName)) {
+        if (READ_LOCATIONS_TOOL_NAME.equals(toolName)) {
             List<String> locationRefs = stringList(arguments.get("locationRefs"));
             if (locationRefs.isEmpty() || !state.disclosedLocationRefs.containsAll(locationRefs)) {
                 return ToolCallValidation.rejected("hidden_location_ref");
@@ -279,10 +338,13 @@ public class ProductReadingReActHarness {
             return;
         }
         String toolName = toolResult.toolName();
-        if ("get_session_state".equals(toolName)) {
+        if (SESSION_TOOL_NAME.equals(toolName)) {
+            state.sessionStatePayload.clear();
+            state.sessionStatePayload.putAll(toolResult.data());
             return;
         }
         if (LIST_PAPERS_TOOL_NAME.equals(toolName)) {
+            state.paperChoiceToolUsed = true;
             appendPaperChoiceItems(toolName, toolResult.data().get("items"), state, "", null);
             for (Map<String, Object> item : mapList(toolResult.data().get("items"))) {
                 String paperHandle = stringValue(item.get("paperHandle"));
@@ -294,6 +356,7 @@ public class ProductReadingReActHarness {
             return;
         }
         if (SEARCH_TOOL_NAME.equals(toolName)) {
+            state.paperChoiceToolUsed = true;
             appendPaperChoiceItems(toolName, toolResult.data().get("items"), state, "", null);
             for (Map<String, Object> item : mapList(toolResult.data().get("items"))) {
                 String paperHandle = stringValue(item.get("paperHandle"));
@@ -305,6 +368,7 @@ public class ProductReadingReActHarness {
             return;
         }
         if (IDENTITY_TOOL_NAME.equals(toolName)) {
+            state.paperChoiceToolUsed = true;
             appendIdentityPaperChoices(toolResult, state);
             if (!Boolean.FALSE.equals(toolResult.data().get("ambiguous"))) {
                 return;
@@ -318,7 +382,8 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("list_paper_locations".equals(toolName)) {
+        if (LIST_LOCATIONS_TOOL_NAME.equals(toolName)) {
+            state.deterministicNavigationToolUsed = true;
             for (Map<String, Object> location : mapList(toolResult.data().get("locations"))) {
                 String locationRef = stringValue(location.get("locationRef"));
                 if (!locationRef.isBlank()) {
@@ -329,6 +394,7 @@ public class ProductReadingReActHarness {
             return;
         }
         if ("get_paper_outline".equals(toolName)) {
+            state.deterministicNavigationToolUsed = true;
             for (Map<String, Object> paper : mapList(toolResult.data().get("papers"))) {
                 for (Map<String, Object> section : mapList(paper.get("sections"))) {
                     String sectionRef = stringValue(section.get("sectionRef"));
@@ -360,7 +426,7 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("read_locations".equals(toolName)) {
+        if (READ_LOCATIONS_TOOL_NAME.equals(toolName)) {
             for (Map<String, Object> sourceQuote : mapList(toolResult.data().get("sourceQuotes"))) {
                 String sourceQuoteRef = stringValue(sourceQuote.get("sourceQuoteRef"));
                 if (!sourceQuoteRef.isBlank()) {
@@ -421,10 +487,177 @@ public class ProductReadingReActHarness {
         if (SEARCH_PAPERS_ACTION.equals(state.readingAction) && !state.searchPapersActionSatisfied) {
             return SEARCH_TOOL_NAME;
         }
+        if (LIST_LOCATIONS_ACTION.equals(state.readingAction) && !state.listLocationsActionSatisfied) {
+            return LIST_LOCATIONS_TOOL_NAME;
+        }
         if (FIND_LOCATIONS_ACTION.equals(state.readingAction) && !state.findLocationsActionSatisfied) {
             return LOCATION_TOOL_NAME;
         }
         return null;
+    }
+
+    private SyntheticToolExecution executeStructuredActionToolIfAvailable(ProductTurnRequest request,
+                                                                          ReadingTurnState state,
+                                                                          List<ToolProgressEvent> progressEvents,
+                                                                          List<Map<String, Object>> toolCalls,
+                                                                          List<Map<String, Object>> messages,
+                                                                          int round) {
+        String requiredToolName = structuredActionRequiredTool(state);
+        if (requiredToolName == null) {
+            return SyntheticToolExecution.notExecuted();
+        }
+        Map<String, Object> arguments = structuredActionArguments(requiredToolName, request, state);
+        if (arguments.isEmpty()) {
+            return SyntheticToolExecution.failed(failed(
+                    "Product reading explicit action is missing required tool arguments.",
+                    progressEvents,
+                    ProductStopReason.TOOL_FAILED
+            ));
+        }
+        return executeSyntheticToolCall(
+                request,
+                state,
+                progressEvents,
+                toolCalls,
+                messages,
+                round,
+                requiredToolName,
+                arguments
+        );
+    }
+
+    private Map<String, Object> structuredActionArguments(String toolName,
+                                                          ProductTurnRequest request,
+                                                          ReadingTurnState state) {
+        String userMessage = request == null ? "" : stringValue(request.userMessage());
+        if (SEARCH_TOOL_NAME.equals(toolName)) {
+            return userMessage.isBlank() ? Map.of() : Map.of("queryText", userMessage);
+        }
+        if (LOCATION_TOOL_NAME.equals(toolName)) {
+            if (state == null || state.clickedPaperHandles.isEmpty() || userMessage.isBlank()) {
+                return Map.of();
+            }
+            return Map.of(
+                    "paperHandles", List.copyOf(state.clickedPaperHandles),
+                    "queryText", userMessage
+            );
+        }
+        if (LIST_LOCATIONS_TOOL_NAME.equals(toolName)) {
+            if (state == null || state.clickedPaperHandles.isEmpty()) {
+                return Map.of();
+            }
+            return Map.of("paperHandles", List.copyOf(state.clickedPaperHandles));
+        }
+        return Map.of();
+    }
+
+    private SyntheticToolExecution executeReadAfterSemanticLocationSearchIfAvailable(ProductTurnRequest request,
+                                                                                     ReadingTurnState state,
+                                                                                     List<ToolProgressEvent> progressEvents,
+                                                                                     List<Map<String, Object>> toolCalls,
+                                                                                     List<Map<String, Object>> messages,
+                                                                                     int round) {
+        if (state == null || state.disclosedLocationRefs.isEmpty()) {
+            return SyntheticToolExecution.notExecuted();
+        }
+        List<String> locationRefs = state.disclosedLocationRefs.stream()
+                .limit(MAX_LOCATION_FALLBACK_ITEMS)
+                .toList();
+        return executeSyntheticToolCall(
+                request,
+                state,
+                progressEvents,
+                toolCalls,
+                messages,
+                round,
+                READ_LOCATIONS_TOOL_NAME,
+                Map.of("locationRefs", locationRefs)
+        );
+    }
+
+    private SyntheticToolExecution executeSyntheticToolCall(ProductTurnRequest request,
+                                                            ReadingTurnState state,
+                                                            List<ToolProgressEvent> progressEvents,
+                                                            List<Map<String, Object>> toolCalls,
+                                                            List<Map<String, Object>> messages,
+                                                            int round,
+                                                            String toolName,
+                                                            Map<String, Object> arguments) {
+        LlmProviderRouter.ToolCallDecision toolCall = new LlmProviderRouter.ToolCallDecision(
+                syntheticToolCallId(toolName, round),
+                toolName,
+                arguments
+        );
+        ToolCallValidation validation = validateToolCall(toolCall, state);
+        if (!validation.isAllowed()) {
+            ProductToolResult rejected = new ProductToolResult(
+                    safeToolName(toolCall),
+                    false,
+                    Map.of("error", validation.reason()),
+                    ProductToolEffect.ERROR
+            );
+            toolCalls.add(toolCall(round, toolCall, rejected, Instant.now(), Instant.now()));
+            return SyntheticToolExecution.failed(failed(
+                    "Product reading tool rejected: " + validation.reason(),
+                    progressEvents,
+                    ProductStopReason.TOOL_FAILED
+            ));
+        }
+
+        messages.add(syntheticAssistantToolCallMessage(toolCall));
+        ToolProgressEvent progressEvent = new ToolProgressEvent("calling_tool", safeToolName(toolCall));
+        progressEvents.add(progressEvent);
+        request.progressListener().accept(progressEvent);
+        Instant toolStartedAt = Instant.now();
+        ProductToolResult toolResult = toolRegistry.execute(
+                safeToolName(toolCall),
+                safeArguments(toolCall),
+                new ProductToolContext(
+                        request.userId(),
+                        request.conversationId(),
+                        request.generationId(),
+                        request.lockedScope()
+                )
+        );
+        if (toolResult == null) {
+            toolResult = new ProductToolResult(
+                    safeToolName(toolCall),
+                    false,
+                    Map.of("error", "reading_tool_returned_null"),
+                    ProductToolEffect.ERROR
+            );
+        }
+        toolCalls.add(toolCall(round, toolCall, toolResult, toolStartedAt, Instant.now()));
+        messages.add(toolMessage(toolCall.id(), toolResult.contentJson(objectMapper)));
+        if (!toolResult.success()) {
+            return SyntheticToolExecution.failed(failed(
+                    "Product reading tool failed: " + toolResult.toolName(),
+                    progressEvents,
+                    ProductStopReason.TOOL_FAILED
+            ));
+        }
+        updateState(toolResult, state);
+        markToolSatisfied(toolResult, state);
+        return SyntheticToolExecution.executed(toolResult);
+    }
+
+    private void markToolSatisfied(ProductToolResult toolResult, ReadingTurnState state) {
+        if (toolResult == null || state == null) {
+            return;
+        }
+        if (SEARCH_TOOL_NAME.equals(toolResult.toolName())) {
+            state.searchPapersActionSatisfied = true;
+        }
+        if (LIST_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())) {
+            state.listLocationsActionSatisfied = true;
+        }
+        if (LOCATION_TOOL_NAME.equals(toolResult.toolName())) {
+            state.semanticLocationSearchUsed = true;
+            state.findLocationsActionSatisfied = true;
+        }
+        if (READ_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())) {
+            state.readLocationsUsed = true;
+        }
     }
 
     private ProductToolResult structuredActionRejectedTool(LlmProviderRouter.ToolCallDecision toolCall,
@@ -516,6 +749,7 @@ public class ProductReadingReActHarness {
                 Explicit Product Reading UI action for this turn:
                 %s
                 If the explicit Product Reading UI action is SEARCH_PAPERS, call search_paper_candidates before any other tool. Use the current user request as queryText.
+                If the explicit Product Reading UI action is LIST_LOCATIONS, call list_paper_locations before any other tool. Use the explicit clicked paperHandle anchors for paperHandles.
                 If the explicit Product Reading UI action is FIND_LOCATIONS, call find_reading_locations before any other navigation or reading tool. Use the current user request as the source of queryText, but write queryText in the paper's language when that is needed for retrieval.
                 Explicit clicked Source Quote anchors for this turn:
                 %s
@@ -592,12 +826,28 @@ public class ProductReadingReActHarness {
             if (canFallbackToPaperChoiceState(state)) {
                 return productStateNavigationFallback(progressEvents, state, ProductStopReason.ANSWER_SCHEMA_INVALID);
             }
+            if (canFallbackToSessionState(state)) {
+                return sessionStateFallback(progressEvents, state, ProductStopReason.ANSWER_SCHEMA_INVALID);
+            }
         }
         if (result.resultStatus() == ProductResultStatus.FAILED
                 && result.stopReason() == ProductStopReason.CITATION_VALIDATION_FAILED
                 && "Source-quoted answer requires visible sourceQuoteRef markers.".equals(result.finalAnswerMarkdown())
                 && canFallbackToSourceQuoteEvidence(state)) {
             return sourceQuoteEvidenceFallback(progressEvents, state, ProductStopReason.CITATION_VALIDATION_FAILED);
+        }
+        return result;
+    }
+
+    private Map<String, Object> objectMap(Object value) {
+        if (!(value instanceof Map<?, ?> rawMap)) {
+            return Map.of();
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            if (entry.getKey() instanceof String key) {
+                result.put(key, entry.getValue());
+            }
         }
         return result;
     }
@@ -920,8 +1170,17 @@ public class ProductReadingReActHarness {
     }
 
     private ProductTurnResult maxReactRoundsReached(List<ToolProgressEvent> progressEvents, ReadingTurnState state) {
+        if (canFallbackToSourceQuoteEvidence(state)) {
+            return sourceQuoteEvidenceFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
+        }
+        if (canFallbackToLocationState(state)) {
+            return locationNavigationFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
+        }
         if (canFallbackToPaperChoiceState(state)) {
             return productStateNavigationFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
+        }
+        if (canFallbackToSessionState(state)) {
+            return sessionStateFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
         }
         String message = "Reading ReAct round budget reached before final answer.";
         return new ProductTurnResult(
@@ -968,11 +1227,43 @@ public class ProductReadingReActHarness {
         );
     }
 
+    private ProductTurnResult sessionStateFallback(List<ToolProgressEvent> progressEvents,
+                                                   ReadingTurnState state,
+                                                   ProductStopReason originalStopReason) {
+        String answer = sessionStateAnswer(state);
+        AnswerEnvelope envelope = new AnswerEnvelope(
+                AnswerType.PRODUCT_STATE,
+                answer,
+                List.of(),
+                List.of(Map.of(
+                        "claim", "Reading session scope and count were returned by " + SESSION_TOOL_NAME + ".",
+                        "sourceTool", SESSION_TOOL_NAME
+                )),
+                List.of(),
+                List.of("Recovered a safe session-state answer after " + originalStopReason.name()),
+                List.of(),
+                "session_state_fallback"
+        );
+        return new ProductTurnResult(
+                answer,
+                envelope,
+                List.of(),
+                progressEvents,
+                state.productStateItems,
+                ProductStopReason.COMPLETED,
+                ProductResultStatus.COMPLETED
+        );
+    }
+
     private boolean canFallbackToPaperChoiceState(ReadingTurnState state) {
         return state != null
                 && !state.productStateItems.isEmpty()
                 && state.disclosedLocationRefs.isEmpty()
                 && state.sourceQuotePayloads.isEmpty();
+    }
+
+    private boolean canFallbackToSessionState(ReadingTurnState state) {
+        return state != null && !state.sessionStatePayload.isEmpty();
     }
 
     private boolean canFallbackToLocationState(ReadingTurnState state) {
@@ -983,6 +1274,17 @@ public class ProductReadingReActHarness {
 
     private boolean canFallbackToSourceQuoteEvidence(ReadingTurnState state) {
         return state != null && !fallbackSourceQuotes(state).isEmpty();
+    }
+
+    private boolean needsReadAfterSemanticLocationSearchBeforeFinal(ReadingTurnState state) {
+        return state != null
+                && state.semanticLocationSearchUsed
+                && !FIND_LOCATIONS_ACTION.equals(state.readingAction)
+                && !state.paperChoiceToolUsed
+                && !state.deterministicNavigationToolUsed
+                && !state.readLocationsUsed
+                && !state.disclosedLocationRefs.isEmpty()
+                && state.sourceQuotePayloads.isEmpty();
     }
 
     private ProductTurnResult locationNavigationFallback(List<ToolProgressEvent> progressEvents,
@@ -1053,6 +1355,28 @@ public class ProductReadingReActHarness {
             if (!filename.isBlank() && !filename.equals(title)) {
                 builder.append(" (").append(filename).append(")");
             }
+        }
+        return builder.toString();
+    }
+
+    private String sessionStateAnswer(ReadingTurnState state) {
+        Map<String, Object> searchScope = objectMap(state.sessionStatePayload.get("searchScope"));
+        String label = stringValue(searchScope.get("label"));
+        String mode = stringValue(searchScope.get("scopeMode"));
+        boolean countKnown = Boolean.TRUE.equals(searchScope.get("readablePaperCountKnown"));
+        String count = stringValue(searchScope.get("readablePaperCount"));
+        StringBuilder builder = new StringBuilder("Current reading scope");
+        if (!label.isBlank()) {
+            builder.append(": ").append(label);
+        }
+        if (!mode.isBlank()) {
+            builder.append(" (").append(mode).append(")");
+        }
+        builder.append(".");
+        if (countKnown && !count.isBlank()) {
+            builder.append(" Readable paper count: ").append(count).append(".");
+        } else {
+            builder.append(" Readable paper count is not available from this tool result.");
         }
         return builder.toString();
     }
@@ -1308,6 +1632,39 @@ public class ProductReadingReActHarness {
         return message;
     }
 
+    private Map<String, Object> syntheticAssistantToolCallMessage(LlmProviderRouter.ToolCallDecision toolCall) {
+        Map<String, Object> function = new LinkedHashMap<>();
+        function.put("name", safeToolName(toolCall));
+        function.put("arguments", toolArgumentsJson(safeArguments(toolCall)));
+
+        Map<String, Object> serializedCall = new LinkedHashMap<>();
+        serializedCall.put("id", toolCall == null ? "" : toolCall.id());
+        serializedCall.put("type", "function");
+        serializedCall.put("function", function);
+
+        Map<String, Object> assistant = new LinkedHashMap<>();
+        assistant.put("role", "assistant");
+        assistant.put("content", null);
+        assistant.put("tool_calls", List.of(serializedCall));
+        return assistant;
+    }
+
+    private String toolArgumentsJson(Map<String, Object> arguments) {
+        try {
+            return objectMapper.writeValueAsString(arguments == null ? Map.of() : arguments);
+        } catch (Exception exception) {
+            return "{}";
+        }
+    }
+
+    private String syntheticToolCallId(String toolName, int round) {
+        String normalizedToolName = stringValue(toolName).replaceAll("[^A-Za-z0-9_-]", "_");
+        if (normalizedToolName.isBlank()) {
+            normalizedToolName = "reading_tool";
+        }
+        return "synthetic_" + round + "_" + normalizedToolName;
+    }
+
     private Map<String, Object> firstReadingToolCallRequiredMessage(ReadingTurnState state) {
         String requiredToolName = structuredActionRequiredTool(state);
         if (requiredToolName != null) {
@@ -1325,14 +1682,27 @@ public class ProductReadingReActHarness {
 
     private Map<String, Object> structuredActionToolRequiredMessage(ReadingTurnState state, String requiredToolName) {
         String action = state == null || state.readingAction.isBlank() ? "UNKNOWN" : state.readingAction;
-        String anchorInstruction = LOCATION_TOOL_NAME.equals(requiredToolName)
-                ? "Use the explicit clicked paperHandle anchors and a caller-authored queryText for this turn's request."
-                : "Use a caller-authored queryText for this turn's request.";
+        String anchorInstruction;
+        if (LIST_LOCATIONS_TOOL_NAME.equals(requiredToolName)) {
+            anchorInstruction = "Use the explicit clicked paperHandle anchors as paperHandles.";
+        } else if (LOCATION_TOOL_NAME.equals(requiredToolName)) {
+            anchorInstruction = "Use the explicit clicked paperHandle anchors and a caller-authored queryText for this turn's request.";
+        } else {
+            anchorInstruction = "Use a caller-authored queryText for this turn's request.";
+        }
         return message("user", """
                 The explicit Product Reading UI action for this turn is %s.
                 The next response must contain tool_calls only and must call %s before any other tool.
                 %s
                 """.formatted(action, requiredToolName, anchorInstruction));
+    }
+
+    private Map<String, Object> readLocationsRequiredAfterSemanticLocationsMessage() {
+        return message("user", """
+                The previous response stopped at semantic reading-location navigation.
+                This turn is not an explicit FIND_LOCATIONS UI action, so navigation refs are not a final answer.
+                Your next response must contain tool_calls only and must call read_locations with locationRefs disclosed by the successful find_reading_locations result.
+                """);
     }
 
     private Map<String, Object> toolResultsPolicyMessage(List<ProductToolResult> toolResults) {
@@ -1355,7 +1725,7 @@ public class ProductReadingReActHarness {
         }
         for (ProductToolResult toolResult : toolResults) {
             if (toolResult != null
-                    && ("read_locations".equals(toolResult.toolName())
+                    && (READ_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())
                     || "trace_source_quotes".equals(toolResult.toolName()))) {
                 return true;
             }
@@ -1414,7 +1784,9 @@ public class ProductReadingReActHarness {
             return "";
         }
         String action = stringValue(memory.get("readingTurnAction")).toUpperCase(Locale.ROOT);
-        if (SEARCH_PAPERS_ACTION.equals(action) || FIND_LOCATIONS_ACTION.equals(action)) {
+        if (SEARCH_PAPERS_ACTION.equals(action)
+                || LIST_LOCATIONS_ACTION.equals(action)
+                || FIND_LOCATIONS_ACTION.equals(action)) {
             return action;
         }
         return "";
@@ -1473,11 +1845,17 @@ public class ProductReadingReActHarness {
         private final Set<String> allowedSourceQuoteRefs = new LinkedHashSet<>();
         private final Map<String, Map<String, Object>> sourceQuotePayloads = new LinkedHashMap<>();
         private final Map<String, Map<String, Object>> locationPayloads = new LinkedHashMap<>();
+        private final Map<String, Object> sessionStatePayload = new LinkedHashMap<>();
         private final Set<String> locationSourceTools = new LinkedHashSet<>();
         private final List<Map<String, Object>> productStateItems = new ArrayList<>();
         private final Set<String> productStatePaperHandles = new LinkedHashSet<>();
         private boolean searchPapersActionSatisfied;
+        private boolean listLocationsActionSatisfied;
         private boolean findLocationsActionSatisfied;
+        private boolean semanticLocationSearchUsed;
+        private boolean paperChoiceToolUsed;
+        private boolean deterministicNavigationToolUsed;
+        private boolean readLocationsUsed;
 
         private ReadingTurnState(Set<String> clickedSourceQuoteRefs,
                                  Set<String> clickedPaperHandles,
@@ -1515,5 +1893,21 @@ public class ProductReadingReActHarness {
     }
 
     private record CitationRender(String markdown, List<Map<String, Object>> references) {
+    }
+
+    private record SyntheticToolExecution(boolean executed,
+                                          ProductToolResult toolResult,
+                                          ProductTurnResult terminalResult) {
+        static SyntheticToolExecution notExecuted() {
+            return new SyntheticToolExecution(false, null, null);
+        }
+
+        static SyntheticToolExecution executed(ProductToolResult toolResult) {
+            return new SyntheticToolExecution(true, toolResult, null);
+        }
+
+        static SyntheticToolExecution failed(ProductTurnResult terminalResult) {
+            return new SyntheticToolExecution(false, null, terminalResult);
+        }
     }
 }

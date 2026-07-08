@@ -43,6 +43,18 @@ function selectPaper(item: Api.Chat.ReadingPaperChoiceItem) {
   }
 }
 
+function listLocations(item: Api.Chat.ReadingPaperChoiceItem) {
+  chatStore.setReferenceFocus({
+    paperHandle: item.paperHandle,
+    paperTitle: item.title || undefined,
+    originalFilename: item.originalFilename || undefined,
+    readingAction: 'LIST_LOCATIONS'
+  });
+  if (!chatStore.input.message.trim()) {
+    chatStore.input.message = '列出这篇论文可阅读的位置';
+  }
+}
+
 function findInPaper(item: Api.Chat.ReadingPaperChoiceItem) {
   chatStore.setReferenceFocus({
     paperHandle: item.paperHandle,
@@ -72,7 +84,31 @@ function findInPaper(item: Api.Chat.ReadingPaperChoiceItem) {
       <div class="paper-choice-row__actions">
         <NTooltip trigger="hover">
           <template #trigger>
-            <NButton circle secondary size="small" title="定位阅读位置" aria-label="定位阅读位置" @click="findInPaper(item)">
+            <NButton
+              circle
+              secondary
+              size="small"
+              title="列出阅读位置"
+              aria-label="列出阅读位置"
+              @click="listLocations(item)"
+            >
+              <template #icon>
+                <icon-lucide:list-tree />
+              </template>
+            </NButton>
+          </template>
+          列出阅读位置
+        </NTooltip>
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton
+              circle
+              secondary
+              size="small"
+              title="定位阅读位置"
+              aria-label="定位阅读位置"
+              @click="findInPaper(item)"
+            >
               <template #icon>
                 <icon-lucide:search />
               </template>
