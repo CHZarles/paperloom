@@ -107,6 +107,8 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductStopReason.COMPLETED, result.stopReason());
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("Agentic Eval Benchmark"));
+        assertTrue(result.finalAnswerMarkdown().contains("Start here: Agentic Eval Benchmark"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
         assertTrue(result.references().isEmpty());
         assertEquals(1, result.productStateItems().size());
         Map<String, Object> item = result.productStateItems().get(0);
@@ -149,6 +151,9 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductStopReason.COMPLETED, result.stopReason());
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("Agentic Eval Benchmark"));
+        assertTrue(result.finalAnswerMarkdown().contains("Start here: Agentic Eval Benchmark"));
+        assertTrue(result.finalAnswerMarkdown().contains("metadata-only"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
         assertEquals(1, result.productStateItems().size());
         assertEquals("paper_choice_navigation_fallback", result.envelope().reason());
     }
@@ -177,7 +182,9 @@ class ProductReadingReActHarnessTest {
         assertEquals(ProductStopReason.COMPLETED, result.stopReason());
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("Page 3"));
-        assertTrue(result.finalAnswerMarkdown().contains("page_ref_abc"));
+        assertFalse(result.finalAnswerMarkdown().contains("page_ref_abc"));
+        assertTrue(result.finalAnswerMarkdown().contains("Start here: Page 3"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
         assertTrue(result.references().isEmpty());
         assertTrue(result.productStateItems().isEmpty());
         assertEquals("location_navigation_fallback", result.envelope().reason());
@@ -194,6 +201,10 @@ class ProductReadingReActHarnessTest {
         assertEquals(AnswerType.EVIDENCE_ANSWER, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("[1]"));
         assertFalse(result.finalAnswerMarkdown().contains("sourceQuoteRef"));
+        assertTrue(result.finalAnswerMarkdown().contains("This quote proves"));
+        assertTrue(result.finalAnswerMarkdown().contains("This quote cannot prove"));
+        assertFalse(result.finalAnswerMarkdown().contains("Source Quote"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
         assertEquals(1, result.references().size());
         assertEquals("source_quote_abc", result.references().get(0).get("sourceQuoteRef"));
         assertEquals("source_quote_evidence_fallback", result.envelope().reason());
@@ -284,10 +295,64 @@ class ProductReadingReActHarnessTest {
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
         assertTrue(result.finalAnswerMarkdown().contains("All readable papers"));
         assertTrue(result.finalAnswerMarkdown().contains("2"));
+        assertTrue(result.finalAnswerMarkdown().contains("locked"));
+        assertFalse(result.finalAnswerMarkdown().contains("AUTO_SOURCE"));
+        assertFalse(result.finalAnswerMarkdown().contains("get_session_state"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
         assertTrue(result.references().isEmpty());
         assertTrue(result.productStateItems().isEmpty());
         assertEquals("session_state_fallback", result.envelope().reason());
         assertEquals("get_session_state", result.envelope().stateClaims().get(0).get("sourceTool"));
+    }
+
+    @Test
+    void finalPaperRecommendationWithInternalIdsFallsBackToNoviceVisibleAnswer() {
+        ProductTurnResult result = runAfterSearchWithFinalEnvelope("""
+                {
+                  "answerType": "PRODUCT_STATE",
+                  "answer": "Start with paper_handle_abc from search_paper_candidates.",
+                  "evidenceBasedClaims": [],
+                  "stateClaims": [],
+                  "limitations": [],
+                  "nonEvidenceNotes": [],
+                  "missingFields": [],
+                  "reason": ""
+                }
+                """);
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(ProductStopReason.COMPLETED, result.stopReason());
+        assertEquals("paper_choice_navigation_fallback", result.envelope().reason());
+        assertTrue(result.finalAnswerMarkdown().contains("Start here: Agentic Eval Benchmark"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
+    }
+
+    @Test
+    void finalEvidenceAnswerIsRenderedWithQuoteProofBoundary() {
+        ProductTurnResult result = runAfterReadWithFinalEnvelope("""
+                {
+                  "answerType": "EVIDENCE_ANSWER",
+                  "answer": "The selected location reports an improved score. {{sourceQuoteRef:source_quote_abc}}",
+                  "evidenceBasedClaims": [
+                    {
+                      "claim": "The selected location reports an improved score.",
+                      "sourceQuoteRefs": ["source_quote_abc"]
+                    }
+                  ],
+                  "stateClaims": [],
+                  "limitations": [],
+                  "nonEvidenceNotes": [],
+                  "missingFields": [],
+                  "reason": ""
+                }
+                """);
+
+        assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
+        assertEquals(AnswerType.EVIDENCE_ANSWER, result.envelope().answerType());
+        assertTrue(result.finalAnswerMarkdown().contains("[1]"));
+        assertTrue(result.finalAnswerMarkdown().contains("This quote proves"));
+        assertTrue(result.finalAnswerMarkdown().contains("This quote cannot prove"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
     }
 
     @Test
@@ -707,7 +772,9 @@ class ProductReadingReActHarnessTest {
 
         assertEquals(ProductResultStatus.COMPLETED, result.resultStatus());
         assertEquals(AnswerType.PRODUCT_STATE, result.envelope().answerType());
-        assertTrue(result.finalAnswerMarkdown().contains("page_ref_abc"));
+        assertTrue(result.finalAnswerMarkdown().contains("Start here:"));
+        assertFalse(result.finalAnswerMarkdown().contains("page_ref_abc"));
+        assertNoviceVisibleAnswer(result.finalAnswerMarkdown());
         assertTrue(result.references().isEmpty());
         verify(registry).execute(eq("search_paper_candidates"), any(), any());
         verify(registry).execute(eq("find_reading_locations"), any(), any());
@@ -1977,7 +2044,9 @@ class ProductReadingReActHarnessTest {
                 """);
 
         assertEquals(ProductResultStatus.FAILED, numbered.resultStatus());
-        assertEquals(ProductResultStatus.FAILED, internal.resultStatus());
+        assertEquals(ProductResultStatus.COMPLETED, internal.resultStatus());
+        assertEquals("paper_choice_navigation_fallback", internal.envelope().reason());
+        assertNoviceVisibleAnswer(internal.finalAnswerMarkdown());
     }
 
     @Test
@@ -2123,6 +2192,49 @@ class ProductReadingReActHarnessTest {
                 Map.of("readingTurnAction", readingAction),
                 ProductModelContext.defaults()
         );
+    }
+
+    private void assertNoviceVisibleAnswer(String answer) {
+        assertTrue(answer.contains("I understand your goal as:"), answer);
+        assertTrue(answer.contains("Short answer:"), answer);
+        assertTrue(answer.contains("Start here:"), answer);
+        assertTrue(answer.contains("How to verify:"), answer);
+        assertTrue(answer.contains("Not verified yet:"), answer);
+        assertTrue(answer.contains("Next step:"), answer);
+        assertNoInternalVisibleLeaks(answer);
+    }
+
+    private void assertNoInternalVisibleLeaks(String answer) {
+        List<String> forbiddenVisibleTokens = List.of(
+                "paper_handle_",
+                "page_ref_",
+                "section_ref_",
+                "location_ref_",
+                "source_quote_",
+                "paperHandle",
+                "locationRef",
+                "sourceQuoteRef",
+                "parserQuality",
+                "parserName",
+                "parserVersion",
+                "AUTO_SOURCE",
+                "AUTO_LIBRARY",
+                "SOURCE_SET_SNAPSHOT",
+                "immutable=true",
+                "Source Quote",
+                "get_session_state",
+                "list_papers",
+                "search_paper_candidates",
+                "find_papers_by_identity",
+                "get_paper_outline",
+                "list_paper_locations",
+                "find_reading_locations",
+                "read_locations",
+                "trace_source_quotes"
+        );
+        for (String token : forbiddenVisibleTokens) {
+            assertFalse(answer.contains(token), token + " leaked in: " + answer);
+        }
     }
 
     private ProductToolResult searchResult() {
