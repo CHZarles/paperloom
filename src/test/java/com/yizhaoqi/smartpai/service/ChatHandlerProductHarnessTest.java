@@ -16,6 +16,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -758,10 +759,13 @@ class ChatHandlerProductHarnessTest {
                                 "referenceNumber", 1,
                                 "sourceQuoteRef", "source_quote_answer",
                                 "content", "quoted source content",
+                                "paperHandle", "paper_handle_answer",
                                 "paperTitle", "LoRA",
                                 "retrievalRoute", "PRODUCT_READING"
                         ))
                 ));
+        when(fixture.productPaperHandleService.resolvePaperHandle("paper_handle_answer"))
+                .thenReturn(Optional.of("paper-id-answer"));
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", null), fixture.session);
 
@@ -971,6 +975,7 @@ class ChatHandlerProductHarnessTest {
 
     private static void assertSourceQuoteMapping(Map<String, Object> item) {
         assertEquals("source_quote_answer", item.get("sourceQuoteRef"));
+        assertEquals("paper-id-answer", item.get("paperId"));
         assertEquals("quoted source content", item.get("matchedChunkText"));
         assertEquals("quoted source content", item.get("evidenceSnippet"));
         assertEquals("quoted source content", item.get("anchorText"));

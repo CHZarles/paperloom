@@ -798,9 +798,24 @@ public class ChatHandler {
                 referenceNumber = fallbackNumber;
             }
             fallbackNumber = Math.max(fallbackNumber + 1, referenceNumber + 1);
-            mappings.put(referenceNumber, referenceInfoFromProductReference(reference));
+            mappings.put(referenceNumber, referenceInfoFromProductReference(enrichProductReference(reference)));
         }
         return mappings;
+    }
+
+    private Map<String, Object> enrichProductReference(Map<String, Object> reference) {
+        if (reference == null || reference.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> enriched = new LinkedHashMap<>(reference);
+        if (stringDetail(enriched, "paperId") == null) {
+            String paperHandle = stringDetail(enriched, "paperHandle");
+            if (paperHandle != null) {
+                productPaperHandleService.resolvePaperHandle(paperHandle)
+                        .ifPresent(paperId -> enriched.put("paperId", paperId));
+            }
+        }
+        return enriched;
     }
 
     private List<Map<String, Object>> sanitizeProductStateItems(List<Map<String, Object>> rawItems) {
