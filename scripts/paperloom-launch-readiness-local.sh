@@ -98,7 +98,6 @@ mysql_published_port() {
 apply_local_overrides() {
   local mysql_port
 
-  export PAPERLOOM_REACT_READING_PHASE1_ENABLED="${PAPERLOOM_REACT_READING_PHASE1_ENABLED:-true}"
   export PAPER_PARSING_MINERU_BASE_URL="${PAPER_PARSING_MINERU_BASE_URL:-http://127.0.0.1:8000}"
   export PAPERLOOM_FRONTEND_BASE_URL="${PAPERLOOM_FRONTEND_BASE_URL:-http://127.0.0.1:9527}"
 
@@ -126,7 +125,6 @@ safe_summary() {
   echo "spring_datasource_url=${SPRING_DATASOURCE_URL:-}"
   echo "frontend_base_url=${PAPERLOOM_FRONTEND_BASE_URL:-}"
   echo "mineru_base_url=${PAPER_PARSING_MINERU_BASE_URL:-}"
-  echo "reading_phase_flag=${PAPERLOOM_REACT_READING_PHASE1_ENABLED:-}"
   echo "provider_smoke=backend-active-model-providers"
 }
 

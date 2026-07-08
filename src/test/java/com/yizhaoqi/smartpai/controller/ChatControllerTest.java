@@ -1,9 +1,9 @@
 package com.yizhaoqi.smartpai.controller;
 
-import com.yizhaoqi.smartpai.service.AgentToolRegistry;
 import com.yizhaoqi.smartpai.service.ChatGenerationStateService;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
@@ -29,7 +29,7 @@ class ChatControllerTest {
         ChatController controller = new ChatController(
                 jwtUtils,
                 generationStateService,
-                mock(AgentToolRegistry.class)
+                mock(StringRedisTemplate.class)
         );
 
         ResponseEntity<?> response = controller.getActiveGeneration("Bearer token", "client-a");

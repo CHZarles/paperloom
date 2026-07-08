@@ -177,22 +177,6 @@ class ProductLaunchRuntimePreflightProbeTest {
     }
 
     @Test
-    void readingPhaseFlagMustBeExplicitlyEnabledForLaunch() {
-        ProductLaunchRuntimePreflightProbe probe = new ProductLaunchRuntimePreflightProbe(Duration.ofSeconds(2));
-
-        ProductLaunchRuntimePreflightRunner.ProbeResult disabled = probe.check(
-                ProductLaunchRuntimePreflightRunner.ProbeRequest.readingFlag("false")
-        );
-        ProductLaunchRuntimePreflightRunner.ProbeResult enabled = probe.check(
-                ProductLaunchRuntimePreflightRunner.ProbeRequest.readingFlag("true")
-        );
-
-        assertFalse(disabled.passed());
-        assertTrue(disabled.failureClass().contains("CONFIG_MISSING"));
-        assertTrue(enabled.passed());
-    }
-
-    @Test
     void llmApiSmokeRequiresCallableChatCompletionsProvider() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v1/chat/completions", exchange -> {

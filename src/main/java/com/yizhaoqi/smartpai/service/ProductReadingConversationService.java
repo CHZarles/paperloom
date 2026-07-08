@@ -1,6 +1,5 @@
 package com.yizhaoqi.smartpai.service;
 
-import com.yizhaoqi.smartpai.config.ProductReadingReactProperties;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Array;
@@ -24,12 +23,9 @@ public class ProductReadingConversationService {
             Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
 
     private final ProductReadingReActHarness readingHarness;
-    private final ProductReadingReactProperties properties;
 
-    public ProductReadingConversationService(ProductReadingReActHarness readingHarness,
-                                             ProductReadingReactProperties properties) {
+    public ProductReadingConversationService(ProductReadingReActHarness readingHarness) {
         this.readingHarness = readingHarness;
-        this.properties = properties == null ? new ProductReadingReactProperties() : properties;
     }
 
     public ProductTurnResult runTurn(Long userId,
@@ -70,9 +66,6 @@ public class ProductReadingConversationService {
                                      ProductModelContext modelContext,
                                      Map<String, Object> effectiveScope,
                                      Consumer<ToolProgressEvent> progressListener) {
-        if (!properties.isEnabled()) {
-            return disabledResult();
-        }
         if (readingHarness == null) {
             return failed("Product Reading ReAct Phase 1 harness is unavailable.");
         }
@@ -187,10 +180,6 @@ public class ProductReadingConversationService {
             return values;
         }
         return List.of();
-    }
-
-    private ProductTurnResult disabledResult() {
-        return failed("Product Reading ReAct Phase 1 is disabled.");
     }
 
     private ProductTurnResult failed(String message) {

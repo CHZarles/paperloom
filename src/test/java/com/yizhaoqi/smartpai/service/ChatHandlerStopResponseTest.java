@@ -67,7 +67,8 @@ class ChatHandlerStopResponseTest {
                 mock(ConversationScopeService.class),
                 generationStateService,
                 sessionRegistry,
-                mock(ProductConversationService.class),
+                mock(ProductReadingConversationService.class),
+                mock(ProductPaperHandleService.class),
                 new ObjectMapper(),
                 mock(ThreadPoolTaskExecutor.class)
         );

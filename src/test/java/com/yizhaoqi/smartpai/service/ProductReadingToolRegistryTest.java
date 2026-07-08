@@ -32,10 +32,10 @@ class ProductReadingToolRegistryTest {
 
     @Test
     void exposesOnlySourceQuoteReadingToolsWithClosedSchemas() throws Exception {
-        List<AgentToolRegistry.AgentTool> tools = registry.listTools();
-        List<String> names = tools.stream().map(AgentToolRegistry.AgentTool::name).toList();
+        List<ToolDefinition> tools = registry.listTools();
+        List<String> names = tools.stream().map(ToolDefinition::name).toList();
         String schemaJson = objectMapper.writeValueAsString(tools.stream()
-                .map(AgentToolRegistry.AgentTool::parameters)
+                .map(ToolDefinition::parameters)
                 .toList());
 
         assertEquals(List.of(
@@ -49,12 +49,12 @@ class ProductReadingToolRegistryTest {
                 "read_locations",
                 "trace_source_quotes"
         ), names);
-        AgentToolRegistry.AgentTool sessionTool = tools.stream()
+        ToolDefinition sessionTool = tools.stream()
                 .filter(tool -> "get_session_state".equals(tool.name()))
                 .findFirst()
                 .orElseThrow();
         assertTrue(((Map<?, ?>) sessionTool.parameters().get("properties")).isEmpty());
-        AgentToolRegistry.AgentTool listTool = tools.stream()
+        ToolDefinition listTool = tools.stream()
                 .filter(tool -> "list_papers".equals(tool.name()))
                 .findFirst()
                 .orElseThrow();
@@ -64,7 +64,7 @@ class ProductReadingToolRegistryTest {
         assertTrue(paperListProperties.containsKey("filters"));
         assertTrue(paperListProperties.containsKey("includeFacets"));
         assertTrue(paperListProperties.containsKey("sort"));
-        AgentToolRegistry.AgentTool identityTool = tools.stream()
+        ToolDefinition identityTool = tools.stream()
                 .filter(tool -> "find_papers_by_identity".equals(tool.name()))
                 .findFirst()
                 .orElseThrow();
@@ -86,7 +86,7 @@ class ProductReadingToolRegistryTest {
         assertTrue(identityHintProperties.containsKey("year"));
         assertFalse(identityHintProperties.containsKey("queryText"));
         assertFalse(identityHintProperties.containsKey("paperHandle"));
-        AgentToolRegistry.AgentTool locationListTool = tools.stream()
+        ToolDefinition locationListTool = tools.stream()
                 .filter(tool -> "list_paper_locations".equals(tool.name()))
                 .findFirst()
                 .orElseThrow();

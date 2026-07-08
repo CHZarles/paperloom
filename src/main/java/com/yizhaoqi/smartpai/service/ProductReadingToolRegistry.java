@@ -21,7 +21,7 @@ public class ProductReadingToolRegistry {
 
     private final ProductReadingToolAdapter adapter;
     private final ReadingToolArgumentValidator validator;
-    private final List<AgentToolRegistry.AgentTool> tools;
+    private final List<ToolDefinition> tools;
 
     public ProductReadingToolRegistry(ProductReadingToolAdapter adapter,
                                       ReadingToolArgumentValidator validator) {
@@ -40,7 +40,7 @@ public class ProductReadingToolRegistry {
         );
     }
 
-    public List<AgentToolRegistry.AgentTool> listTools() {
+    public List<ToolDefinition> listTools() {
         return tools;
     }
 
@@ -100,16 +100,16 @@ public class ProductReadingToolRegistry {
         return adapter.findPapersByIdentity(validator.identityHints(arguments.get("identityHints")), context);
     }
 
-    private AgentToolRegistry.AgentTool getSessionStateTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition getSessionStateTool() {
+        return new ToolDefinition(
                 SESSION_TOOL_NAME,
                 "Get fixed Product Reading search-scope label and READY readable paper count. Returns compact product state only; no paper handles and no paper content.",
                 objectSchema(Map.of(), List.of())
         );
     }
 
-    private AgentToolRegistry.AgentTool listPapersTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition listPapersTool() {
+        return new ToolDefinition(
                 LIST_PAPERS_TOOL_NAME,
                 "Browse deterministic READY papers inside the fixed conversation search scope. Returns paperHandle cards and optional facets only; it is not semantic search and not Source Quotes.",
                 objectSchema(Map.of(
@@ -183,8 +183,8 @@ public class ProductReadingToolRegistry {
         return adapter.traceSourceQuotes(validator.stringList(arguments.get("sourceQuoteRefs")), context);
     }
 
-    private AgentToolRegistry.AgentTool searchPaperCandidatesTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition searchPaperCandidatesTool() {
+        return new ToolDefinition(
                 SEARCH_TOOL_NAME,
                 "Search READY paper candidates inside the fixed conversation search scope. Returns paperHandle cards only; previews are not Source Quotes.",
                 objectSchema(Map.of(
@@ -193,8 +193,8 @@ public class ProductReadingToolRegistry {
         );
     }
 
-    private AgentToolRegistry.AgentTool findPapersByIdentityTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition findPapersByIdentityTool() {
+        return new ToolDefinition(
                 IDENTITY_TOOL_NAME,
                 "Resolve a specific READY paper by deterministic identity hints such as title, filename, DOI, arXiv id, author, or year. Returns paperHandle cards and ambiguity status only; it is not semantic search and not Source Quotes.",
                 objectSchema(Map.of(
@@ -212,8 +212,8 @@ public class ProductReadingToolRegistry {
         );
     }
 
-    private AgentToolRegistry.AgentTool getPaperOutlineTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition getPaperOutlineTool() {
+        return new ToolDefinition(
                 GET_OUTLINE_TOOL_NAME,
                 "Inspect deterministic current READY paper structure for explicit paperHandles. Returns sectionRefs and parser-quality metadata only; it does not read paper content.",
                 objectSchema(Map.of(
@@ -222,8 +222,8 @@ public class ProductReadingToolRegistry {
         );
     }
 
-    private AgentToolRegistry.AgentTool listPaperLocationsTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition listPaperLocationsTool() {
+        return new ToolDefinition(
                 LIST_LOCATIONS_TOOL_NAME,
                 "List deterministic current READY paper locations for explicit paperHandles. Returns locationRefs only; it does not read content and does not accept semantic search text.",
                 objectSchema(Map.of(
@@ -240,8 +240,8 @@ public class ProductReadingToolRegistry {
         );
     }
 
-    private AgentToolRegistry.AgentTool findReadingLocationsTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition findReadingLocationsTool() {
+        return new ToolDefinition(
                 LOCATION_TOOL_NAME,
                 "Find candidate reading locations inside explicit READY paperHandles. Returns locationRef candidates only; previews and refs are not Source Quotes.",
                 objectSchema(Map.of(
@@ -255,8 +255,8 @@ public class ProductReadingToolRegistry {
         );
     }
 
-    private AgentToolRegistry.AgentTool readLocationsTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition readLocationsTool() {
+        return new ToolDefinition(
                 READ_TOOL_NAME,
                 "Read explicitly selected current reading locations and return Source Quotes. Accepts locationRefs only; output size and splitting are product-controlled.",
                 objectSchema(Map.of(
@@ -265,8 +265,8 @@ public class ProductReadingToolRegistry {
         );
     }
 
-    private AgentToolRegistry.AgentTool traceSourceQuotesTool() {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition traceSourceQuotesTool() {
+        return new ToolDefinition(
                 TRACE_TOOL_NAME,
                 "Trace explicitly clicked Source Quote refs from this turn's reading anchors. Accepts sourceQuoteRefs only and returns stored Source Quotes.",
                 objectSchema(Map.of(

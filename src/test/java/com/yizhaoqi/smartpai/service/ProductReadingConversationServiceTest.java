@@ -1,6 +1,5 @@
 package com.yizhaoqi.smartpai.service;
 
-import com.yizhaoqi.smartpai.config.ProductReadingReactProperties;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -9,62 +8,20 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProductReadingConversationServiceTest {
 
     @Test
-    void legacyProductConversationServiceDoesNotAcceptReadingDependencies() {
-        assertNoFieldOrConstructorDependency(ProductConversationService.class, ProductReadingReActHarness.class);
-        assertNoFieldOrConstructorDependency(ProductConversationService.class, ProductReadingReactProperties.class);
-        assertNoFieldOrConstructorDependency(ProductConversationService.class, ProductReadingConversationService.class);
-    }
-
-    @Test
-    void readingConversationServiceDoesNotAcceptLegacyDependencies() {
-        assertNoFieldOrConstructorDependency(ProductReadingConversationService.class, ProductConversationService.class);
-        assertNoFieldOrConstructorDependency(ProductReadingConversationService.class, ProductReActHarness.class);
-        assertNoFieldOrConstructorDependency(ProductReadingConversationService.class, ProductToolRegistry.class);
-        assertNoFieldOrConstructorDependency(ProductReadingConversationService.class, ConversationService.class);
-        assertNoFieldOrConstructorDependency(ProductReadingConversationService.class, ProductMemoryService.class);
-    }
-
-    @Test
-    void disabledReadingPhaseOneFailsClosedWithoutCallingHarness() {
+    void readingConversationServiceCallsOnlyReadingHarnessWithEmptyHistoryAndMemory() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(false);
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
-
-        ProductTurnResult result = service.runTurn(
-                7L,
-                "conversation-1",
-                "generation-1",
-                "推荐 Agentic eval 相关论文",
-                SourceScope.auto(),
-                ProductModelContext.defaults()
-        );
-
-        assertEquals(ProductResultStatus.FAILED, result.resultStatus());
-        assertEquals(ProductStopReason.ANSWER_SCHEMA_INVALID, result.stopReason());
-        assertTrue(result.finalAnswerMarkdown().contains("disabled"));
-        verify(readingHarness, never()).run(any());
-    }
-
-    @Test
-    void enabledReadingPhaseOneCallsOnlyReadingHarnessWithEmptyHistoryAndMemory() {
-        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         ProductTurnResult expected = productStateResult("reading answer");
         when(readingHarness.run(any())).thenReturn(expected);
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         ProductTurnResult result = service.runTurn(
                 7L,
@@ -89,13 +46,11 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void enabledReadingPhaseOnePassesOnlyExplicitClickedSourceQuoteAnchors() {
+    void readingConversationServicePassesOnlyExplicitClickedSourceQuoteAnchors() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         ProductTurnResult expected = productStateResult("reading answer");
         when(readingHarness.run(any())).thenReturn(expected);
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -126,13 +81,11 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void enabledReadingPhaseOnePassesOnlyExplicitClickedPaperAnchors() {
+    void readingConversationServicePassesOnlyExplicitClickedPaperAnchors() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         ProductTurnResult expected = productStateResult("reading answer");
         when(readingHarness.run(any())).thenReturn(expected);
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -163,12 +116,10 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void enabledReadingPhaseOnePassesExplicitReadingAction() {
+    void readingConversationServicePassesExplicitReadingAction() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -192,12 +143,10 @@ class ProductReadingConversationServiceTest {
     }
 
     @Test
-    void enabledReadingPhaseOnePassesExplicitListLocationsAction() {
+    void readingConversationServicePassesExplicitListLocationsAction() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -219,12 +168,10 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void enabledReadingPhaseOneAcceptsClickedPaperAnchorArrays() {
+    void readingConversationServiceAcceptsClickedPaperAnchorArrays() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -243,12 +190,10 @@ class ProductReadingConversationServiceTest {
     }
 
     @Test
-    void enabledReadingPhaseOneIgnoresUnsupportedClickedPaperAnchorShapes() {
+    void readingConversationServiceIgnoresUnsupportedClickedPaperAnchorShapes() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -267,12 +212,10 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void enabledReadingPhaseOneCapsClickedPaperAnchors() {
+    void readingConversationServiceCapsClickedPaperAnchors() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
         List<String> handles = IntStream.range(0, 25)
                 .mapToObj(index -> "paper_handle_" + index)
                 .toList();
@@ -299,12 +242,10 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void enabledReadingPhaseOneMergesClickedPaperAndSourceQuoteAnchors() {
+    void readingConversationServiceMergesClickedPaperAndSourceQuoteAnchors() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -327,12 +268,10 @@ class ProductReadingConversationServiceTest {
     }
 
     @Test
-    void enabledReadingPhaseOneIgnoresUnsupportedClickedSourceQuoteAnchorShapes() {
+    void readingConversationServiceIgnoresUnsupportedClickedSourceQuoteAnchorShapes() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
 
         service.runTurn(
                 7L,
@@ -351,12 +290,10 @@ class ProductReadingConversationServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void enabledReadingPhaseOneCapsClickedSourceQuoteAnchors() {
+    void readingConversationServiceCapsClickedSourceQuoteAnchors() {
         ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
-        ProductReadingReactProperties properties = new ProductReadingReactProperties();
-        properties.setEnabled(true);
         when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
-        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness, properties);
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
         List<String> refs = IntStream.range(0, 25)
                 .mapToObj(index -> "source_quote_" + index)
                 .toList();
@@ -400,24 +337,5 @@ class ProductReadingConversationServiceTest {
                 ProductStopReason.COMPLETED,
                 ProductResultStatus.COMPLETED
         );
-    }
-
-    private void assertNoFieldOrConstructorDependency(Class<?> owner, Class<?> forbiddenType) {
-        for (java.lang.reflect.Field field : owner.getDeclaredFields()) {
-            assertNotEquals(
-                    forbiddenType,
-                    field.getType(),
-                    owner.getSimpleName() + " field must not use " + forbiddenType.getSimpleName()
-            );
-        }
-        for (java.lang.reflect.Constructor<?> constructor : owner.getDeclaredConstructors()) {
-            for (Class<?> parameterType : constructor.getParameterTypes()) {
-                assertNotEquals(
-                        forbiddenType,
-                        parameterType,
-                        owner.getSimpleName() + " constructor must not use " + forbiddenType.getSimpleName()
-                );
-            }
-        }
     }
 }

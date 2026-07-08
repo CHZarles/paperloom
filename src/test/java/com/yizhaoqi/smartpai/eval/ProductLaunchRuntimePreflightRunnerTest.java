@@ -38,7 +38,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 PAPER_PARSING_MINERU_BASE_URL=http://localhost:8000
                 PAPERLOOM_TRACE_ENABLED=true
                 PAPERLOOM_TRACE_ROOT=data/traces/product-react
-                PAPERLOOM_REACT_READING_PHASE1_ENABLED=true
                 """);
         FakeProbe probe = FakeProbe.passAll();
 
@@ -58,13 +57,12 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 "mineru_health",
                 "llm_active_provider_smoke",
                 "embedding_active_provider_smoke",
-                "trace_config",
-                "reading_phase_flag"
+                "trace_config"
         ), caseIds);
 
         JsonNode scorecard = OBJECT_MAPPER.readTree(runDir.resolve("scorecard.json").toFile());
-        assertEquals(12, scorecard.path("caseCount").asInt());
-        assertEquals(12, scorecard.path("passed").asInt());
+        assertEquals(11, scorecard.path("caseCount").asInt());
+        assertEquals(11, scorecard.path("passed").asInt());
         assertEquals(1.0d, scorecard.path("passRate").asDouble());
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("launch preflight passed"));
@@ -119,18 +117,14 @@ class ProductLaunchRuntimePreflightRunnerTest {
         JsonNode rows = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases");
         assertTrue(row(rows, "llm_active_provider_smoke").path("passed").asBoolean());
         assertTrue(row(rows, "embedding_active_provider_smoke").path("passed").asBoolean());
-        JsonNode readingFlag = row(rows, "reading_phase_flag");
-        assertFalse(readingFlag.path("passed").asBoolean());
-        assertTrue(readingFlag.path("failureClass").toString().contains("CONFIG_MISSING"));
         String remediation = Files.readString(runDir.resolve("remediation.md"));
-        assertTrue(remediation.contains("not launch-ready"));
+        assertTrue(remediation.contains("launch preflight passed"));
         assertFalse(remediation.contains("DEEPSEEK_API_KEY"));
         assertFalse(remediation.contains("EMBEDDING_API_KEY"));
-        assertTrue(remediation.contains("PAPERLOOM_REACT_READING_PHASE1_ENABLED"));
         assertFalse(remediation.contains("secret"));
         assertFalse(remediation.contains("llm-key"));
-        assertTrue(remediation.contains("Do not run the 30-PDF seed"));
-        assertTrue(remediation.contains("12/12"));
+        assertFalse(remediation.contains("Do not run the 30-PDF seed"));
+        assertTrue(remediation.contains("11/11"));
     }
 
     @Test
@@ -143,8 +137,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
         FakeProbe probe = FakeProbe.configAware();
 
         runner(probe).run(options(env, Map.of(
-                "SPRING_DATASOURCE_URL", "jdbc:mysql://localhost:13306/paismart",
-                "PAPERLOOM_REACT_READING_PHASE1_ENABLED", "true"
+                "SPRING_DATASOURCE_URL", "jdbc:mysql://localhost:13306/paismart"
         )));
 
         ProductLaunchRuntimePreflightRunner.ProbeRequest mysql = probe.requests.stream()
@@ -164,13 +157,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 .orElseThrow()
                 .params()
                 .get("scope"));
-        assertTrue(probe.requests.stream()
-                .filter(request -> "reading_phase_flag".equals(request.caseId()))
-                .findFirst()
-                .orElseThrow()
-                .params()
-                .get("enabled")
-                .equals("true"));
     }
 
     @Test
@@ -202,7 +188,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 DEEPSEEK_API_MODEL=deepseek-chat
                 DEEPSEEK_API_KEY=llm-key
                 EMBEDDING_API_KEY=embedding-key
-                PAPERLOOM_REACT_READING_PHASE1_ENABLED=true
                 """);
         FakeProbe probe = FakeProbe.failOnly("llm_active_provider_smoke", "llm_provider_rejected(status=401)", "CONFIG_INVALID");
 
@@ -226,7 +211,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 PAPERLOOM_FRONTEND_BASE_URL=http://127.0.0.1:9527
                 DEEPSEEK_API_KEY=llm-key
                 EMBEDDING_API_KEY=embedding-key
-                PAPERLOOM_REACT_READING_PHASE1_ENABLED=true
                 """);
         FakeProbe probe = FakeProbe.failOnly("frontend_http", "http_unreachable(http://127.0.0.1:9527)",
                 "RUNTIME_UNAVAILABLE");
@@ -335,16 +319,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
                         List.of("CONFIG_MISSING"),
                         Map.of("kind", request.kind())
                 );
-            }
-            if (configAware && "READING_FLAG".equals(request.kind())) {
-                String enabled = String.valueOf(request.params().getOrDefault("enabled", ""));
-                if (!Boolean.parseBoolean(enabled.trim())) {
-                    return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
-                            List.of("reading_phase_flag_disabled"),
-                            List.of("CONFIG_MISSING"),
-                            Map.of("kind", request.kind())
-                    );
-                }
             }
             return ProductLaunchRuntimePreflightRunner.ProbeResult.pass(Map.of("kind", request.kind()));
         }

@@ -6,11 +6,12 @@ public record ProductModelContext(
         int maxHistoryCharacters,
         int recentHistoryMessages
 ) {
-    public static final int DEFAULT_MAX_REACT_ROUNDS = 6;
+    public static final int DEFAULT_MAX_REACT_ROUNDS = 100;
+    public static final int UNLIMITED_MAX_COMPLETION_TOKENS = 0;
 
     public ProductModelContext {
         maxReActRounds = maxReActRounds <= 0 ? DEFAULT_MAX_REACT_ROUNDS : maxReActRounds;
-        maxCompletionTokens = maxCompletionTokens <= 0 ? 1600 : maxCompletionTokens;
+        maxCompletionTokens = maxCompletionTokens < 0 ? UNLIMITED_MAX_COMPLETION_TOKENS : maxCompletionTokens;
         maxHistoryCharacters = maxHistoryCharacters <= 0 ? 16000 : maxHistoryCharacters;
         recentHistoryMessages = recentHistoryMessages <= 0 ? 12 : recentHistoryMessages;
     }
@@ -20,6 +21,6 @@ public record ProductModelContext(
     }
 
     public static ProductModelContext defaults() {
-        return new ProductModelContext(DEFAULT_MAX_REACT_ROUNDS, 1600, 16000, 12);
+        return new ProductModelContext(DEFAULT_MAX_REACT_ROUNDS, UNLIMITED_MAX_COMPLETION_TOKENS, 16000, 12);
     }
 }

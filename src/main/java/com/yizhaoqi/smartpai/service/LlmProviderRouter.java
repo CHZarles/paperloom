@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.Disposable;
 
 import java.net.SocketTimeoutException;
 import java.time.Duration;
@@ -23,15 +22,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 
 @Service
 public class LlmProviderRouter {
 
     private static final Logger logger = LoggerFactory.getLogger(LlmProviderRouter.class);
-    private static final int REACT_HISTORY_MAX_MESSAGES = 6;
-    private static final int REACT_HISTORY_MAX_CONTENT_CHARS = 800;
-    private static final int DEFAULT_REACT_MAX_COMPLETION_TOKENS = 2000;
     private static final int REACT_PROVIDER_MAX_ATTEMPTS = 3;
     private static final long REACT_PROVIDER_RETRY_BACKOFF_MILLIS = 200L;
 
@@ -66,143 +61,9 @@ public class LlmProviderRouter {
         this.outboundWebClientFactory = outboundWebClientFactory;
     }
 
-    public StreamHandle streamResponse(String requesterId,
-                                       String userMessage,
-                                       String context,
-                                       List<Map<String, String>> history,
-                                       Consumer<String> onChunk,
-                                       Consumer<Throwable> onError,
-                                       Consumer<StreamCompletion> onComplete) {
-
-        ModelProviderConfigService.ActiveProviderView provider = modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM);
-        Map<String, Object> request = buildRequest(provider.model(), userMessage, context, history);
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> messages = (List<Map<String, String>>) request.get("messages");
-        int estimatedPromptTokens = usageQuotaService.estimateChatTokens(messages);
-        int maxCompletionTokens = aiProperties.getGeneration().getMaxTokens() != null
-                ? aiProperties.getGeneration().getMaxTokens()
-                : 2000;
-        UsageQuotaService.TokenReservationBundle reservation = rateLimitService.reserveLlmUsage(
-                requesterId, estimatedPromptTokens, maxCompletionTokens);
-        StreamUsageTracker usageTracker = new StreamUsageTracker(reservation, estimatedPromptTokens);
-
-        try {
-            Disposable subscription = buildClient(provider)
-                    .post()
-                    .uri("/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(request)
-                    .retrieve()
-                    .bodyToFlux(String.class)
-                    .subscribe(
-                            chunk -> processChunk(chunk, usageTracker, onChunk),
-                            error -> {
-                                settleUsage(usageTracker);
-                                onError.accept(error);
-                            },
-                            () -> {
-                                settleUsage(usageTracker);
-                                logger.info("LLM 流式响应完成: provider={}, model={}, finishReason={}, promptTokens={}, completionTokens={}, responseChars={}",
-                                        provider.provider(),
-                                        provider.model(),
-                                        usageTracker.finishReason == null ? "unknown" : usageTracker.finishReason,
-                                        usageTracker.promptTokens,
-                                        usageTracker.completionTokens,
-                                        usageTracker.responseContent.length());
-                                if (onComplete != null) {
-                                    onComplete.accept(new StreamCompletion(
-                                            usageTracker.finishReason,
-                                            usageTracker.promptTokens,
-                                            usageTracker.completionTokens,
-                                            usageTracker.responseContent.length()
-                                    ));
-                                }
-                            }
-                    );
-            return new StreamHandle(subscription, () -> settleUsage(usageTracker));
-        } catch (Exception exception) {
-            usageQuotaService.abortReservation(reservation);
-            throw exception;
-        }
-    }
-
-    public List<Map<String, Object>> buildReActMessages(String userMessage,
-                                                        String context,
-                                                        List<Map<String, String>> history) {
-        return buildReActMessages(userMessage, context, history, "");
-    }
-
-    public List<Map<String, Object>> buildReActMessages(String userMessage,
-                                                        String context,
-                                                        List<Map<String, String>> history,
-                                                        String feedbackGuidance) {
-        List<Map<String, Object>> messages = new ArrayList<>();
-        AiProperties.Prompt promptCfg = aiProperties.getPrompt();
-
-        StringBuilder sysBuilder = new StringBuilder();
-        if (promptCfg.getRules() != null) {
-            sysBuilder.append(promptCfg.getRules()).append("\n\n");
-        }
-        sysBuilder.append("本系统是「论文证据优先」的问答助手：你的首要职责是基于本系统已收录的论文片段回答用户。除非命中下方明确的白名单，否则**每一个用户问题都必须先调用 search_papers**，再基于检索结果作答。\n\n")
-                .append("强制检索原则（默认行为）：\n")
-                .append("1. 默认调用 search_papers：只要问题涉及论文观点、方法、实验、数据集、指标、结论、限制、对比或引用依据，无论你是否自认为已知答案，都必须先检索，不要等用户说「查论文」。\n")
-                .append("2. 构造 query 时严格保留用户原话中的核心术语、方法名、数据集、指标和限定词，禁止替换为泛化关键词；必要时可在同一次 query 中合并原句与等价改写。\n")
-                .append("3. 用户要求整理、总结、归纳、提炼论文内容时，先用 search_papers 圈定材料，再调用 generate_summary 生成总结。\n\n")
-                .append("可以跳过 search_papers 的白名单（必须严格匹配其一，否则一律检索）：\n")
-                .append("- 纯打招呼或寒暄；\n")
-                .append("- 纯翻译请求，且不涉及论文内容；\n")
-                .append("- 与论文材料无关的纯创作请求；\n")
-                .append("- 通用编程语法、数学计算等完全不依赖任何专有信息的常识题；\n")
-                .append("- 用户在本轮明确要求跳过论文检索。\n\n")
-                .append("回答与异常处理：\n")
-                .append("- 只要 search_papers 返回了片段，必须基于片段作答并用紧凑引用标记标注证据，例如 [1]、[2]；禁止回答「论文库暂无相关信息」。\n")
-                .append("- 引用标记只输出 [n] 锚点，不要写「来源#1: 论文标题 | 第7页」、paperId、chunk、score 或 References 列表；正文可以写论文标题、方法名、数据集和推荐理由，完整证据由前端 Source Evidence 面板展示。\n")
-                .append("- 默认回答结构为 **结论** / **依据** / **限制**：结论直接回答问题，依据按论点组织而不是按片段顺序罗列，限制说明证据不足或论文未覆盖的部分。\n")
-                .append("- 当用户要求推荐论文、找相关论文或问有哪些论文时，必须列出论文标题和推荐理由；每个推荐项末尾用 [n] 标证据，不要只输出引用锚点。\n")
-                .append("- 每条依据必须服务于结论，合并重复证据；同一条依据最多放 1-2 个引用，不要在结尾堆叠 [1][2][3][4][5]。\n")
-                .append("- 禁止使用「基于已检索片段」「以下为与...相关的论文内容摘要」「已检索到的内容显示」「这些内容共同揭示」这类模板化开头或收尾。\n")
-                .append("- 只有工具明确返回零片段时，才说明暂无相关材料并提示用户补充线索。\n")
-                .append("- 工具失败时根据错误信息决定下一步（重试 / 换 query / 继续推理），不要直接中断。\n")
-                .append("- 如需记录反馈或查看论文库统计，通过 tool_calls 调用对应工具。\n")
-                .append("拿到 tool 结果后继续推理并给出最终回答。\n\n");
-        if (feedbackGuidance != null && !feedbackGuidance.isBlank()) {
-            sysBuilder.append(feedbackGuidance.trim()).append("\n\n");
-        }
-
-        String refStart = promptCfg.getRefStart() != null ? promptCfg.getRefStart() : "<<REF>>";
-        String refEnd = promptCfg.getRefEnd() != null ? promptCfg.getRefEnd() : "<<END>>";
-        sysBuilder.append(refStart).append("\n");
-        if (context != null && !context.isEmpty()) {
-            sysBuilder.append(context);
-        } else {
-            sysBuilder.append(promptCfg.getNoResultText() != null ? promptCfg.getNoResultText() : "（本轮无预置检索结果，可按需调用工具）").append("\n");
-        }
-        sysBuilder.append(refEnd);
-
-        messages.add(newMessage("system", sysBuilder.toString()));
-        if (history != null && !history.isEmpty()) {
-            int start = Math.max(0, history.size() - REACT_HISTORY_MAX_MESSAGES);
-            for (Map<String, String> message : history.subList(start, history.size())) {
-                String role = message.get("role");
-                String content = message.get("content");
-                if (role == null || role.isBlank() || content == null || content.isBlank()) {
-                    continue;
-                }
-                if ("user".equals(role) || "assistant".equals(role) || "system".equals(role)) {
-                    if ("assistant".equals(role) && isCitationOnlyAssistantHistory(content)) {
-                        continue;
-                    }
-                    messages.add(newMessage(role, limitText(content, REACT_HISTORY_MAX_CONTENT_CHARS)));
-                }
-            }
-        }
-        messages.add(newMessage("user", userMessage));
-        return messages;
-    }
-
     public ReActTurn completeReActTurn(String requesterId,
                                        List<Map<String, Object>> messages,
-                                       List<AgentToolRegistry.AgentTool> tools,
+                                       List<ToolDefinition> tools,
                                        int maxCompletionTokens) {
         ModelProviderConfigService.ActiveProviderView provider =
                 modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM);
@@ -249,56 +110,6 @@ public class LlmProviderRouter {
         throw new RuntimeException("ReAct 模型回合调用失败: retry loop exited unexpectedly");
     }
 
-    public StreamHandle streamReActTurn(String requesterId,
-                                        List<Map<String, Object>> messages,
-                                        List<AgentToolRegistry.AgentTool> tools,
-                                        int maxCompletionTokens,
-                                        Consumer<String> onChunk,
-                                        Consumer<Throwable> onError,
-                                        Consumer<ReActTurn> onComplete) {
-        ModelProviderConfigService.ActiveProviderView provider =
-                modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM);
-        Map<String, Object> request = buildReActRequest(provider.model(), messages, tools, maxCompletionTokens, true);
-        int estimatedPromptTokens = estimateObjectMessagesTokens(messages)
-                + (tools == null || tools.isEmpty() ? 0 : estimateToolsTokens(tools));
-        UsageQuotaService.TokenReservationBundle reservation = rateLimitService.reserveLlmUsage(
-                requesterId, estimatedPromptTokens, Math.max(maxCompletionTokens, 1));
-        ReActStreamAccumulator accumulator = new ReActStreamAccumulator(reservation, estimatedPromptTokens);
-
-        try {
-            Disposable subscription = buildClient(provider)
-                    .post()
-                    .uri("/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(request)
-                    .retrieve()
-                    .bodyToFlux(String.class)
-                    .subscribe(
-                            chunk -> processReActStreamChunk(chunk, accumulator, onChunk),
-                            error -> {
-                                logProviderError("ReAct 流式回合调用失败", error);
-                                settleReActStreamUsage(accumulator);
-                                onError.accept(error);
-                            },
-                            () -> {
-                                settleReActStreamUsage(accumulator);
-                                ReActTurn turn = accumulator.toTurn();
-                                logger.info("ReAct 流式回合完成: provider={}, model={}, finishReason={}, toolCalls={}, contentChars={}",
-                                        provider.provider(),
-                                        provider.model(),
-                                        turn.finishReason(),
-                                        turn.toolCalls().size(),
-                                        turn.content().length());
-                                onComplete.accept(turn);
-                            }
-                    );
-            return new StreamHandle(subscription, () -> settleReActStreamUsage(accumulator));
-        } catch (Exception exception) {
-            usageQuotaService.abortReservation(reservation);
-            throw exception;
-        }
-    }
-
     private WebClient buildClient(ModelProviderConfigService.ActiveProviderView provider) {
         WebClient.Builder builder = outboundWebClientFactory
                 .builder(ModelProviderConfigService.normalizeOpenAiCompatibleBaseUrl(provider.apiBaseUrl()));
@@ -306,18 +117,6 @@ public class LlmProviderRouter {
             builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + provider.apiKey());
         }
         return builder.build();
-    }
-
-    private void logProviderError(String message, Throwable error) {
-        if (error instanceof WebClientResponseException responseException) {
-            logger.warn("{}: status={}, body={}",
-                    message,
-                    responseException.getStatusCode(),
-                    responseException.getResponseBodyAsString(),
-                    responseException);
-            return;
-        }
-        logger.warn("{}: {}", message, error.getMessage(), error);
     }
 
     private String reactProviderFailureMessage(ModelProviderConfigService.ActiveProviderView provider,
@@ -423,14 +222,16 @@ public class LlmProviderRouter {
 
     private Map<String, Object> buildReActRequest(String model,
                                                   List<Map<String, Object>> messages,
-                                                  List<AgentToolRegistry.AgentTool> tools,
+                                                  List<ToolDefinition> tools,
                                                   int maxCompletionTokens,
                                                   boolean stream) {
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("model", model);
         request.put("messages", messages);
         request.put("stream", stream);
-        request.put("max_tokens", Math.max(maxCompletionTokens, 1));
+        if (maxCompletionTokens > 0) {
+            request.put("max_tokens", maxCompletionTokens);
+        }
         disableMiniMaxM3Thinking(model, request);
         if (stream) {
             request.put("stream_options", Map.of("include_usage", true));
@@ -450,85 +251,10 @@ public class LlmProviderRouter {
         return request;
     }
 
-    private Map<String, Object> buildRequest(String model,
-                                             String userMessage,
-                                             String context,
-                                             List<Map<String, String>> history) {
-        Map<String, Object> request = new java.util.HashMap<>();
-        request.put("model", model);
-        request.put("messages", buildMessages(userMessage, context, history));
-        request.put("stream", true);
-        request.put("stream_options", Map.of("include_usage", true));
-
-        AiProperties.Generation gen = aiProperties.getGeneration();
-        if (gen.getTemperature() != null) {
-            request.put("temperature", gen.getTemperature());
-        }
-        if (gen.getTopP() != null) {
-            request.put("top_p", gen.getTopP());
-        }
-        if (gen.getMaxTokens() != null) {
-            request.put("max_tokens", gen.getMaxTokens());
-        }
-        disableMiniMaxM3Thinking(model, request);
-        return request;
-    }
-
     private void disableMiniMaxM3Thinking(String model, Map<String, Object> request) {
         if ("MiniMax-M3".equalsIgnoreCase(model)) {
             request.put("thinking", Map.of("type", "disabled"));
         }
-    }
-
-    private List<Map<String, String>> buildMessages(String userMessage,
-                                                    String context,
-                                                    List<Map<String, String>> history) {
-        List<Map<String, String>> messages = new ArrayList<>();
-        AiProperties.Prompt promptCfg = aiProperties.getPrompt();
-
-        StringBuilder sysBuilder = new StringBuilder();
-        if (promptCfg.getRules() != null) {
-            sysBuilder.append(promptCfg.getRules()).append("\n\n");
-        }
-
-        String refStart = promptCfg.getRefStart() != null ? promptCfg.getRefStart() : "<<REF>>";
-        String refEnd = promptCfg.getRefEnd() != null ? promptCfg.getRefEnd() : "<<END>>";
-        sysBuilder.append(refStart).append("\n");
-        if (context != null && !context.isEmpty()) {
-            sysBuilder.append(context);
-        } else {
-            sysBuilder.append(promptCfg.getNoResultText() != null ? promptCfg.getNoResultText() : "（本轮无检索结果）").append("\n");
-        }
-        sysBuilder.append(refEnd);
-
-        messages.add(Map.of("role", "system", "content", sysBuilder.toString()));
-        if (history != null && !history.isEmpty()) {
-            messages.addAll(history);
-        }
-        messages.add(Map.of("role", "user", "content", userMessage));
-        return messages;
-    }
-
-    private Map<String, Object> newMessage(String role, String content) {
-        Map<String, Object> message = new LinkedHashMap<>();
-        message.put("role", role);
-        message.put("content", content == null ? "" : content);
-        return message;
-    }
-
-    private boolean isCitationOnlyAssistantHistory(String content) {
-        if (content == null || !content.matches("(?s).*\\[\\d+].*")) {
-            return false;
-        }
-        String remaining = content
-                .replaceAll("\\[\\d+]", "")
-                .replaceAll("[\\s\\p{Punct}，。！？；：、（）【】《》“”‘’*#\\-—_`>]+", "")
-                .replace("结论", "")
-                .replace("依据", "")
-                .replace("限制", "")
-                .replace("核心", "")
-                .replace("关键", "");
-        return remaining.length() < 8;
     }
 
     private String limitText(String text, int maxChars) {
@@ -538,9 +264,9 @@ public class LlmProviderRouter {
         return text.substring(0, Math.max(maxChars, 0)) + "...";
     }
 
-    private List<Map<String, Object>> buildOpenAiTools(List<AgentToolRegistry.AgentTool> tools) {
+    private List<Map<String, Object>> buildOpenAiTools(List<ToolDefinition> tools) {
         List<Map<String, Object>> openAiTools = new ArrayList<>();
-        for (AgentToolRegistry.AgentTool tool : tools) {
+        for (ToolDefinition tool : tools) {
             Map<String, Object> function = new LinkedHashMap<>();
             function.put("name", tool.name());
             function.put("description", tool.description());
@@ -554,9 +280,9 @@ public class LlmProviderRouter {
         return openAiTools;
     }
 
-    private int estimateToolsTokens(List<AgentToolRegistry.AgentTool> tools) {
+    private int estimateToolsTokens(List<ToolDefinition> tools) {
         int tokens = 0;
-        for (AgentToolRegistry.AgentTool tool : tools) {
+        for (ToolDefinition tool : tools) {
             tokens += usageQuotaService.estimateTextTokens(tool.name());
             tokens += usageQuotaService.estimateTextTokens(tool.description());
             try {
@@ -655,287 +381,6 @@ public class LlmProviderRouter {
         }
     }
 
-    private void processChunk(String rawChunk, StreamUsageTracker usageTracker, Consumer<String> onChunk) {
-        try {
-            for (String chunk : extractPayloads(rawChunk)) {
-                if ("[DONE]".equals(chunk)) {
-                    continue;
-                }
-
-                JsonNode node = objectMapper.readTree(chunk);
-                JsonNode usageNode = node.path("usage");
-                if (usageNode.isObject()) {
-                    usageTracker.promptTokens = usageNode.path("prompt_tokens").asInt(usageTracker.promptTokens);
-                    usageTracker.completionTokens = usageNode.path("completion_tokens").asInt(usageTracker.completionTokens);
-                }
-
-                JsonNode choiceNode = node.path("choices").path(0);
-                JsonNode finishReasonNode = choiceNode.path("finish_reason");
-                if (!finishReasonNode.isMissingNode() && !finishReasonNode.isNull()) {
-                    String finishReason = finishReasonNode.asText("");
-                    if (!finishReason.isBlank()) {
-                        usageTracker.finishReason = finishReason;
-                    }
-                }
-
-                String content = node.path("choices")
-                        .path(0)
-                        .path("delta")
-                        .path("content")
-                        .asText("");
-                if (!content.isEmpty()) {
-                    usageTracker.responseContent.append(content);
-                    onChunk.accept(content);
-                }
-            }
-        } catch (Exception exception) {
-            logger.error("处理模型响应数据块失败: {}", exception.getMessage(), exception);
-        }
-    }
-
-    private void processReActStreamChunk(String rawChunk,
-                                         ReActStreamAccumulator accumulator,
-                                         Consumer<String> onChunk) {
-        try {
-            for (String chunk : extractPayloads(rawChunk)) {
-                if ("[DONE]".equals(chunk)) {
-                    continue;
-                }
-
-                JsonNode node = objectMapper.readTree(chunk);
-                JsonNode usageNode = node.path("usage");
-                if (usageNode.isObject()) {
-                    accumulator.promptTokens = usageNode.path("prompt_tokens").asInt(accumulator.promptTokens);
-                    accumulator.completionTokens = usageNode.path("completion_tokens").asInt(accumulator.completionTokens);
-                }
-
-                JsonNode choiceNode = node.path("choices").path(0);
-                if (!choiceNode.isObject()) {
-                    continue;
-                }
-
-                JsonNode finishReasonNode = choiceNode.path("finish_reason");
-                if (!finishReasonNode.isMissingNode() && !finishReasonNode.isNull()) {
-                    String finishReason = finishReasonNode.asText("");
-                    if (!finishReason.isBlank()) {
-                        accumulator.finishReason = finishReason;
-                    }
-                }
-
-                JsonNode delta = choiceNode.path("delta");
-                String reasoningContent = delta.path("reasoning_content").asText("");
-                if (!reasoningContent.isEmpty()) {
-                    accumulator.reasoningContent.append(reasoningContent);
-                }
-
-                String content = delta.path("content").asText("");
-                if (!content.isEmpty()) {
-                    accumulator.content.append(content);
-                    onChunk.accept(content);
-                }
-
-                JsonNode toolCallsNode = delta.path("tool_calls");
-                if (toolCallsNode.isArray()) {
-                    for (JsonNode toolCallDelta : toolCallsNode) {
-                        accumulator.appendToolCallDelta(toolCallDelta);
-                    }
-                }
-            }
-        } catch (Exception exception) {
-            logger.error("处理 ReAct 流式响应数据块失败: {}", exception.getMessage(), exception);
-        }
-    }
-
-    private List<String> extractPayloads(String rawChunk) {
-        List<String> payloads = new ArrayList<>();
-        if (rawChunk == null || rawChunk.isBlank()) {
-            return payloads;
-        }
-
-        String trimmed = rawChunk.trim();
-        for (String line : trimmed.split("\\r?\\n")) {
-            String payload = line.trim();
-            if (payload.isEmpty() || payload.startsWith(":")) {
-                continue;
-            }
-            if (payload.startsWith("data:")) {
-                payload = payload.substring(5).trim();
-            }
-            if (!payload.isEmpty()) {
-                payloads.add(payload);
-            }
-        }
-
-        if (payloads.isEmpty()) {
-            payloads.add(trimmed);
-        }
-        return payloads;
-    }
-
-    private void settleUsage(StreamUsageTracker usageTracker) {
-        if (usageTracker == null || usageTracker.settled) {
-            return;
-        }
-
-        usageTracker.settled = true;
-        int actualPromptTokens = usageTracker.promptTokens > 0
-                ? usageTracker.promptTokens
-                : usageTracker.estimatedPromptTokens;
-        int actualCompletionTokens = usageTracker.completionTokens > 0
-                ? usageTracker.completionTokens
-                : usageQuotaService.estimateTextTokens(usageTracker.responseContent.toString());
-
-        usageQuotaService.settleReservation(usageTracker.reservation, actualPromptTokens + actualCompletionTokens);
-    }
-
-    private void settleReActStreamUsage(ReActStreamAccumulator accumulator) {
-        if (accumulator == null || accumulator.settled) {
-            return;
-        }
-
-        accumulator.settled = true;
-        int actualPromptTokens = accumulator.promptTokens > 0
-                ? accumulator.promptTokens
-                : accumulator.estimatedPromptTokens;
-        int actualCompletionTokens = accumulator.completionTokens > 0
-                ? accumulator.completionTokens
-                : usageQuotaService.estimateTextTokens(accumulator.content.toString())
-                + estimateObjectMessagesTokens(List.of(accumulator.assistantMessage()));
-        usageQuotaService.settleReservation(accumulator.reservation, actualPromptTokens + actualCompletionTokens);
-    }
-
-    private static final class StreamUsageTracker {
-        private final UsageQuotaService.TokenReservationBundle reservation;
-        private final int estimatedPromptTokens;
-        private final StringBuilder responseContent = new StringBuilder();
-        private volatile int promptTokens;
-        private volatile int completionTokens;
-        private volatile String finishReason;
-        private volatile boolean settled;
-
-        private StreamUsageTracker(UsageQuotaService.TokenReservationBundle reservation, int estimatedPromptTokens) {
-            this.reservation = reservation;
-            this.estimatedPromptTokens = estimatedPromptTokens;
-        }
-    }
-
-    private static final class ReActStreamAccumulator {
-        private final UsageQuotaService.TokenReservationBundle reservation;
-        private final int estimatedPromptTokens;
-        private final StringBuilder content = new StringBuilder();
-        private final StringBuilder reasoningContent = new StringBuilder();
-        private final Map<Integer, StreamingToolCall> toolCalls = new LinkedHashMap<>();
-        private volatile int promptTokens;
-        private volatile int completionTokens;
-        private volatile String finishReason;
-        private volatile boolean settled;
-
-        private ReActStreamAccumulator(UsageQuotaService.TokenReservationBundle reservation, int estimatedPromptTokens) {
-            this.reservation = reservation;
-            this.estimatedPromptTokens = estimatedPromptTokens;
-        }
-
-        private void appendToolCallDelta(JsonNode delta) {
-            int index = delta.path("index").asInt(toolCalls.size());
-            StreamingToolCall toolCall = toolCalls.computeIfAbsent(index, ignored -> new StreamingToolCall());
-            String id = delta.path("id").asText("");
-            if (!id.isBlank()) {
-                toolCall.id = id;
-            }
-            String type = delta.path("type").asText("");
-            if (!type.isBlank()) {
-                toolCall.type = type;
-            }
-            JsonNode function = delta.path("function");
-            if (function.isObject()) {
-                String name = function.path("name").asText("");
-                if (!name.isBlank()) {
-                    toolCall.name.append(name);
-                }
-                String arguments = function.path("arguments").asText("");
-                if (!arguments.isEmpty()) {
-                    toolCall.arguments.append(arguments);
-                }
-            }
-        }
-
-        private Map<String, Object> assistantMessage() {
-            Map<String, Object> message = new LinkedHashMap<>();
-            List<Map<String, Object>> serializedToolCalls = serializedToolCalls();
-            message.put("role", "assistant");
-            if (!serializedToolCalls.isEmpty()) {
-                String assistantContent = content.toString();
-                message.put("content", assistantContent.isBlank() ? null : assistantContent);
-                message.put("tool_calls", serializedToolCalls);
-            } else {
-                message.put("content", content.toString());
-            }
-            if (!reasoningContent.isEmpty()) {
-                message.put("reasoning_content", reasoningContent.toString());
-            }
-            return message;
-        }
-
-        private List<Map<String, Object>> serializedToolCalls() {
-            List<Map<String, Object>> serialized = new ArrayList<>();
-            for (Map.Entry<Integer, StreamingToolCall> entry : toolCalls.entrySet()) {
-                StreamingToolCall toolCall = entry.getValue();
-                if (toolCall.name.isEmpty()) {
-                    continue;
-                }
-                Map<String, Object> function = new LinkedHashMap<>();
-                function.put("name", toolCall.name.toString());
-                function.put("arguments", toolCall.arguments.isEmpty() ? "{}" : toolCall.arguments.toString());
-
-                Map<String, Object> call = new LinkedHashMap<>();
-                call.put("id", toolCall.id == null || toolCall.id.isBlank() ? "call_" + entry.getKey() : toolCall.id);
-                call.put("type", toolCall.type == null || toolCall.type.isBlank() ? "function" : toolCall.type);
-                call.put("function", function);
-                serialized.add(call);
-            }
-            return serialized;
-        }
-
-        private ReActTurn toTurn() {
-            Map<String, Object> assistantMessage = assistantMessage();
-            List<ToolCallDecision> decisions = new ArrayList<>();
-            for (Map<String, Object> item : serializedToolCalls()) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> function = (Map<String, Object>) item.get("function");
-                String argumentsJson = String.valueOf(function.getOrDefault("arguments", "{}"));
-                Map<String, Object> arguments;
-                try {
-                    arguments = new ObjectMapper().readValue(
-                            argumentsJson == null || argumentsJson.isBlank() ? "{}" : argumentsJson,
-                            new TypeReference<Map<String, Object>>() {
-                            });
-                } catch (Exception ignored) {
-                    arguments = Map.of();
-                }
-                decisions.add(new ToolCallDecision(
-                        String.valueOf(item.getOrDefault("id", "")),
-                        String.valueOf(function.getOrDefault("name", "")),
-                        arguments
-                ));
-            }
-            return new ReActTurn(
-                    content.toString().trim(),
-                    decisions,
-                    assistantMessage,
-                    finishReason == null || finishReason.isBlank() ? "unknown" : finishReason,
-                    promptTokens > 0 ? promptTokens : estimatedPromptTokens,
-                    completionTokens > 0 ? completionTokens : DEFAULT_REACT_MAX_COMPLETION_TOKENS
-            );
-        }
-    }
-
-    private static final class StreamingToolCall {
-        private String id;
-        private String type;
-        private final StringBuilder name = new StringBuilder();
-        private final StringBuilder arguments = new StringBuilder();
-    }
-
     public record StreamCompletion(
             String finishReason,
             int promptTokens,
@@ -961,22 +406,4 @@ public class LlmProviderRouter {
     ) {
     }
 
-    public static final class StreamHandle {
-        private final Disposable subscription;
-        private final Runnable onCancel;
-
-        private StreamHandle(Disposable subscription, Runnable onCancel) {
-            this.subscription = subscription;
-            this.onCancel = onCancel;
-        }
-
-        public void cancel() {
-            if (subscription != null && !subscription.isDisposed()) {
-                subscription.dispose();
-            }
-            if (onCancel != null) {
-                onCancel.run();
-            }
-        }
-    }
 }

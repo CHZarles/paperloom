@@ -93,7 +93,7 @@ public class ProductReadingReActHarness {
         List<Map<String, Object>> llmCalls = new ArrayList<>();
         List<Map<String, Object>> toolCalls = new ArrayList<>();
         List<ToolProgressEvent> progressEvents = new ArrayList<>();
-        List<AgentToolRegistry.AgentTool> tools = toolRegistry.listTools();
+        List<ToolDefinition> tools = toolRegistry.listTools();
         if (!validToolSurface(tools)) {
             ProductTurnResult result = failed(
                     "Product reading tool surface is invalid.",
@@ -290,10 +290,10 @@ public class ProductReadingReActHarness {
         return result;
     }
 
-    private boolean validToolSurface(List<AgentToolRegistry.AgentTool> tools) {
+    private boolean validToolSurface(List<ToolDefinition> tools) {
         List<String> names = tools == null
                 ? List.of()
-                : tools.stream().map(AgentToolRegistry.AgentTool::name).toList();
+                : tools.stream().map(ToolDefinition::name).toList();
         return REQUIRED_TOOL_NAMES.equals(names);
     }
 

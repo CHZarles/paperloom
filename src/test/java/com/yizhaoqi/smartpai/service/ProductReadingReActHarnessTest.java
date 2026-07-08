@@ -12,7 +12,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -28,17 +27,11 @@ class ProductReadingReActHarnessTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void readingHarnessHasNoLegacyHarnessOrToolRegistryDependency() {
-        assertNoFieldOrConstructorDependency(ProductReadingReActHarness.class, ProductReActHarness.class);
-        assertNoFieldOrConstructorDependency(ProductReadingReActHarness.class, ProductToolRegistry.class);
-    }
-
-    @Test
     void passesExactlyReadingToolsToLlmAndPromptContainsNoLegacyToolNames() throws Exception {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), any(), anyInt()))
@@ -49,12 +42,12 @@ class ProductReadingReActHarnessTest {
         harness.run(request("推荐 Agentic eval 相关论文"));
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<AgentToolRegistry.AgentTool>> toolsCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<ToolDefinition>> toolsCaptor = ArgumentCaptor.forClass(List.class);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Map<String, Object>>> messagesCaptor = ArgumentCaptor.forClass(List.class);
         verify(llm, times(2)).completeReActTurn(eq("7"), messagesCaptor.capture(), toolsCaptor.capture(), anyInt());
-        for (List<AgentToolRegistry.AgentTool> capturedTools : toolsCaptor.getAllValues()) {
-            List<String> names = capturedTools.stream().map(AgentToolRegistry.AgentTool::name).toList();
+        for (List<ToolDefinition> capturedTools : toolsCaptor.getAllValues()) {
+            List<String> names = capturedTools.stream().map(ToolDefinition::name).toList();
             assertEquals(List.of(
                     "get_session_state",
                     "list_papers",
@@ -100,7 +93,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -142,7 +135,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -165,7 +158,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -211,7 +204,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
         when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
@@ -251,7 +244,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -276,7 +269,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -302,7 +295,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -349,7 +342,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -389,7 +382,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -422,7 +415,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("list_papers"), any(), any())).thenReturn(listPapersResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -467,7 +460,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -504,7 +497,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(ambiguousIdentityResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -542,7 +535,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         List<Map<String, Object>> matches = new ArrayList<>();
         matches.add(identityMatch("paper_handle_000", "First"));
         matches.add(identityMatch("paper_handle_000", "Duplicate"));
@@ -586,7 +579,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         Map<String, Object> rawMatch = new LinkedHashMap<>(identityMatch("paper_handle_abc", "Original"));
         List<Map<String, Object>> matches = new ArrayList<>();
         matches.add(rawMatch);
@@ -614,7 +607,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         List<Map<String, Object>> listRows = new ArrayList<>();
         listRows.add(paperChoiceRow("paper_handle_000", "First"));
         listRows.add(paperChoiceRow("paper_handle_000", "Duplicate"));
@@ -664,7 +657,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
@@ -697,7 +690,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
@@ -725,7 +718,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("list_papers"), any(), any())).thenReturn(listPapersResult());
         when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
@@ -754,7 +747,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("list_papers"), any(), any())).thenReturn(listPapersResult());
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
@@ -784,7 +777,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("list_papers"), any(), any())).thenReturn(listPapersResult());
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
@@ -814,7 +807,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
         when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
@@ -843,7 +836,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
@@ -873,7 +866,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(identityResult());
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
@@ -918,7 +911,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "find_reading_locations", Map.of(
@@ -939,7 +932,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -973,7 +966,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1001,7 +994,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1030,7 +1023,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
         when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
@@ -1080,7 +1073,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
         when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
@@ -1130,7 +1123,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1171,7 +1164,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("get_session_state"), any(), any())).thenReturn(sessionStateResult());
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
@@ -1204,7 +1197,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1232,7 +1225,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1262,7 +1255,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1290,7 +1283,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1324,7 +1317,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "read_locations", Map.of(
@@ -1347,7 +1340,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "get_paper_outline", Map.of(
@@ -1370,7 +1363,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
@@ -1419,7 +1412,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
@@ -1465,7 +1458,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
@@ -1509,7 +1502,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
         when(registry.execute(eq("read_locations"), any(), any())).thenReturn(readResult());
@@ -1562,7 +1555,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "get_paper_outline", Map.of(
@@ -1582,7 +1575,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1604,7 +1597,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1654,7 +1647,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
                 .thenReturn(toolCallTurn("call_1", "trace_source_quotes", Map.of(
@@ -1677,7 +1670,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1716,7 +1709,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1743,7 +1736,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
         when(registry.execute(eq("list_paper_locations"), any(), any())).thenReturn(listLocationsResult());
@@ -1777,7 +1770,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -1805,7 +1798,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("trace_source_quotes"), any(), any())).thenReturn(traceResult());
         when(registry.execute(eq("get_paper_outline"), any(), any())).thenReturn(outlineResult());
@@ -2006,7 +1999,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -2021,7 +2014,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("search_paper_candidates"), any(), any())).thenReturn(searchResult());
         when(registry.execute(eq("find_reading_locations"), any(), any())).thenReturn(locationResult());
@@ -2043,7 +2036,7 @@ class ProductReadingReActHarnessTest {
         LlmProviderRouter llm = mock(LlmProviderRouter.class);
         ProductReadingToolRegistry registry = mock(ProductReadingToolRegistry.class);
         ProductReadingTraceRecorder traceRecorder = mock(ProductReadingTraceRecorder.class);
-        List<AgentToolRegistry.AgentTool> tools = readingTools();
+        List<ToolDefinition> tools = readingTools();
         when(registry.listTools()).thenReturn(tools);
         when(registry.execute(eq("find_papers_by_identity"), any(), any())).thenReturn(ambiguousIdentityResult());
         when(llm.completeReActTurn(eq("7"), any(), eq(tools), anyInt()))
@@ -2501,7 +2494,7 @@ class ProductReadingReActHarnessTest {
         );
     }
 
-    private List<AgentToolRegistry.AgentTool> readingTools() {
+    private List<ToolDefinition> readingTools() {
         return List.of(
                 tool("get_session_state"),
                 tool("list_papers"),
@@ -2515,8 +2508,8 @@ class ProductReadingReActHarnessTest {
         );
     }
 
-    private AgentToolRegistry.AgentTool tool(String name) {
-        return new AgentToolRegistry.AgentTool(
+    private ToolDefinition tool(String name) {
+        return new ToolDefinition(
                 name,
                 "tool",
                 Map.of("type", "object", "additionalProperties", false)
@@ -2608,22 +2601,4 @@ class ProductReadingReActHarnessTest {
         return roles;
     }
 
-    private void assertNoFieldOrConstructorDependency(Class<?> owner, Class<?> forbiddenType) {
-        for (java.lang.reflect.Field field : owner.getDeclaredFields()) {
-            assertNotEquals(
-                    forbiddenType,
-                    field.getType(),
-                    owner.getSimpleName() + " field must not use " + forbiddenType.getSimpleName()
-            );
-        }
-        for (java.lang.reflect.Constructor<?> constructor : owner.getDeclaredConstructors()) {
-            for (Class<?> parameterType : constructor.getParameterTypes()) {
-                assertNotEquals(
-                        forbiddenType,
-                        parameterType,
-                        owner.getSimpleName() + " constructor must not use " + forbiddenType.getSimpleName()
-                );
-            }
-        }
-    }
 }

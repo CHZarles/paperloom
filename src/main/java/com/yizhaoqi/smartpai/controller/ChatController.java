@@ -1,11 +1,11 @@
 package com.yizhaoqi.smartpai.controller;
 
 import com.yizhaoqi.smartpai.handler.ChatWebSocketHandler;
-import com.yizhaoqi.smartpai.service.AgentToolRegistry;
 import com.yizhaoqi.smartpai.service.ChatGenerationStateService;
 import com.yizhaoqi.smartpai.utils.JwtUtils;
 import com.yizhaoqi.smartpai.utils.LogUtils;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/v1/chat")
@@ -25,14 +25,14 @@ public class ChatController {
 
     private final JwtUtils jwtUtils;
     private final ChatGenerationStateService chatGenerationStateService;
-    private final AgentToolRegistry agentToolRegistry;
+    private final StringRedisTemplate stringRedisTemplate;
 
     public ChatController(JwtUtils jwtUtils,
                           ChatGenerationStateService chatGenerationStateService,
-                          AgentToolRegistry agentToolRegistry) {
+                          StringRedisTemplate stringRedisTemplate) {
         this.jwtUtils = jwtUtils;
         this.chatGenerationStateService = chatGenerationStateService;
-        this.agentToolRegistry = agentToolRegistry;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
     
     /**
@@ -110,16 +110,21 @@ public class ChatController {
             return ResponseEntity.badRequest().body(responseBody(400, "rating 不能为空", null));
         }
 
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put("rating", request.rating());
-        String reason = buildFeedbackReason(request);
-        if (!reason.isBlank()) {
-            arguments.put("reason", reason);
+        String rating = request.rating().trim().toLowerCase(Locale.ROOT);
+        if (!"good".equals(rating) && !"bad".equals(rating)) {
+            return ResponseEntity.badRequest().body(responseBody(400, "rating 只允许 good 或 bad", null));
         }
-
-        AgentToolRegistry.ToolExecutionResult result =
-                agentToolRegistry.executeTool("submit_feedback", arguments, userId);
-        return ResponseEntity.ok(responseBody(200, "反馈已记录", result.data()));
+        String reason = buildFeedbackReason(request);
+        String key = "feedback:" + userId;
+        String field = String.valueOf(System.currentTimeMillis());
+        String value = reason.isBlank() ? "rating=" + rating : "rating=" + rating + "; reason=" + reason;
+        stringRedisTemplate.opsForHash().put(key, field, value);
+        return ResponseEntity.ok(responseBody(200, "反馈已记录", Map.of(
+                "key", key,
+                "field", field,
+                "rating", rating,
+                "reason", reason
+        )));
     }
 
     private String buildFeedbackReason(FeedbackRequest request) {

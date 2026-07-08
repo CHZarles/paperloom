@@ -231,7 +231,7 @@ litsearch_full_summary() {
 }
 
 all_light() {
-  run_cmd mvn -q -Dtest=EvidenceQualityTest,PaperQueryPlannerTest,PaperRetrievalServiceTest,PaperAnswerServiceTest,ChatHandlerReferenceEvidenceTest,ProductPdfParserSmokeRunnerTest,RagBenchmarkEvaluatorTest,RagBenchmarkDatasetTest,RagBenchmarkReportWriterTest,RagBenchmarkRegistryTest test
+  run_cmd mvn -q -Dtest=EvidenceQualityTest,PaperQueryPlannerTest,PaperRetrievalServiceTest,ChatHandlerReferenceEvidenceTest,ProductPdfParserSmokeRunnerTest,RagBenchmarkEvaluatorTest,RagBenchmarkDatasetTest,RagBenchmarkReportWriterTest,RagBenchmarkRegistryTest test
   echo "runDir=not-created (all-light uses unit/dataset gates only)"
 }
 

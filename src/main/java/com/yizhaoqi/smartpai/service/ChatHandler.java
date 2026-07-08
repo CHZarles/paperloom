@@ -3,7 +3,6 @@ package com.yizhaoqi.smartpai.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yizhaoqi.smartpai.config.ProductReadingReactProperties;
 import com.yizhaoqi.smartpai.exception.RateLimitExceededException;
 import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import org.slf4j.Logger;
@@ -65,9 +64,7 @@ public class ChatHandler {
     private final ConversationScopeService conversationScopeService;
     private final ChatGenerationStateService chatGenerationStateService;
     private final ChatSessionRegistry chatSessionRegistry;
-    private final ProductConversationService productConversationService;
     private final ProductReadingConversationService productReadingConversationService;
-    private final ProductReadingReactProperties productReadingReactProperties;
     private final ProductPaperHandleService productPaperHandleService;
     private final ThreadPoolTaskExecutor chatMonitorExecutor;
     private final ObjectMapper objectMapper;
@@ -89,58 +86,6 @@ public class ChatHandler {
     private final Map<String, Map<String, Object>> generationEffectiveScopes = new ConcurrentHashMap<>();
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
-    public ChatHandler(RedisTemplate<String, String> redisTemplate,
-                      RateLimitService rateLimitService,
-                      ConversationService conversationService,
-                      ConversationScopeService conversationScopeService,
-                      ChatGenerationStateService chatGenerationStateService,
-                      ChatSessionRegistry chatSessionRegistry,
-                      ProductConversationService productConversationService,
-                      ObjectMapper objectMapper,
-                      @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
-        this(
-                redisTemplate,
-                rateLimitService,
-                conversationService,
-                conversationScopeService,
-                chatGenerationStateService,
-                chatSessionRegistry,
-                productConversationService,
-                null,
-                new ProductReadingReactProperties(),
-                null,
-                objectMapper,
-                chatMonitorExecutor
-        );
-    }
-
-    public ChatHandler(RedisTemplate<String, String> redisTemplate,
-                      RateLimitService rateLimitService,
-                      ConversationService conversationService,
-                      ConversationScopeService conversationScopeService,
-                      ChatGenerationStateService chatGenerationStateService,
-                      ChatSessionRegistry chatSessionRegistry,
-                      ProductConversationService productConversationService,
-                      ProductReadingConversationService productReadingConversationService,
-                      ProductReadingReactProperties productReadingReactProperties,
-                      ObjectMapper objectMapper,
-                      @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
-        this(
-                redisTemplate,
-                rateLimitService,
-                conversationService,
-                conversationScopeService,
-                chatGenerationStateService,
-                chatSessionRegistry,
-                productConversationService,
-                productReadingConversationService,
-                productReadingReactProperties,
-                null,
-                objectMapper,
-                chatMonitorExecutor
-        );
-    }
-
     @Autowired
     public ChatHandler(RedisTemplate<String, String> redisTemplate,
                       RateLimitService rateLimitService,
@@ -148,9 +93,7 @@ public class ChatHandler {
                       ConversationScopeService conversationScopeService,
                       ChatGenerationStateService chatGenerationStateService,
                       ChatSessionRegistry chatSessionRegistry,
-                      ProductConversationService productConversationService,
                       ProductReadingConversationService productReadingConversationService,
-                      ProductReadingReactProperties productReadingReactProperties,
                       ProductPaperHandleService productPaperHandleService,
                       ObjectMapper objectMapper,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
@@ -160,11 +103,7 @@ public class ChatHandler {
         this.conversationScopeService = conversationScopeService;
         this.chatGenerationStateService = chatGenerationStateService;
         this.chatSessionRegistry = chatSessionRegistry;
-        this.productConversationService = productConversationService;
         this.productReadingConversationService = productReadingConversationService;
-        this.productReadingReactProperties = productReadingReactProperties == null
-                ? new ProductReadingReactProperties()
-                : productReadingReactProperties;
         this.productPaperHandleService = productPaperHandleService;
         this.objectMapper = objectMapper;
         this.chatMonitorExecutor = chatMonitorExecutor;
@@ -196,13 +135,12 @@ public class ChatHandler {
             }
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
-            boolean readingExperimentEnabled = readingExperimentEnabled();
             String clickedSourceQuoteRef = structuredSourceQuoteRef(incomingReferenceFocus);
             ProductReferenceFocus referenceFocus =
                     resolveReferenceFocus(
                             userIdLong,
                             conversationId,
-                            referenceFocus(incomingReferenceFocus, userMessage, readingExperimentEnabled)
+                            referenceFocus(incomingReferenceFocus)
                     );
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(resolvedScope, referenceFocus);
@@ -216,11 +154,11 @@ public class ChatHandler {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
             SourceScope productScope = productSourceScope(effectiveScope, retrievalBudgetProfile);
-            List<String> clickedPaperHandles = clickedPaperHandles(referenceFocus, readingExperimentEnabled);
+            List<String> clickedPaperHandles = clickedPaperHandles(referenceFocus);
             Map<String, Object> effectiveScopeMap = effectiveScopeMap(
                     effectiveScope,
                     clickedSourceQuoteRef,
-                    readingExperimentEnabled,
+                    true,
                     clickedPaperHandles,
                     referenceFocus == null ? null : referenceFocus.readingAction()
             );
@@ -239,18 +177,13 @@ public class ChatHandler {
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
 
-            timing.route(readingExperimentEnabled ? "PRODUCT_READING_REACT" : "PRODUCT_REACT");
+            timing.route("PRODUCT_READING_REACT");
             timing.mark("intent_route_decided");
 
-            // 2. 异步执行 Product ReAct Harness；产品语义由 Harness 和产品工具目录处理。
+            // 2. 异步执行 Product Reading ReAct Harness；产品语义由 Harness 和产品工具目录处理。
             try {
-                if (readingExperimentEnabled) {
-                    chatMonitorExecutor.execute(() ->
-                            runReadingHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, productScope, responseFuture));
-                } else {
-                    chatMonitorExecutor.execute(() ->
-                            runProductHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, productScope, responseFuture));
-                }
+                chatMonitorExecutor.execute(() ->
+                        runReadingHarnessSafely(userId, userMessage, finalConversationId, finalGenerationId, productScope, responseFuture));
             } catch (RejectedExecutionException ex) {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
@@ -280,38 +213,11 @@ public class ChatHandler {
         return SourceScope.auto(retrievalBudgetProfile);
     }
 
-    private boolean readingExperimentEnabled() {
-        return productReadingReactProperties != null && productReadingReactProperties.isEnabled();
-    }
-
-    private ProductReferenceFocus referenceFocus(
-            ProductReferenceFocus incomingScope,
-            String userMessage,
-            boolean readingExperimentEnabled) {
-        if (hasReferenceFocus(incomingScope, readingExperimentEnabled)) {
+    private ProductReferenceFocus referenceFocus(ProductReferenceFocus incomingScope) {
+        if (hasReferenceFocus(incomingScope)) {
             return structuredReferenceFocus(incomingScope);
         }
-        if (readingExperimentEnabled) {
-            return null;
-        }
-        Integer referenceNumber = firstCitedReferenceNumber(userMessage);
-        if (referenceNumber == null) {
-            return null;
-        }
-        return new ProductReferenceFocus(
-                List.of(),
-                List.of(),
-                referenceNumber,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-        );
+        return null;
     }
 
     private ProductReferenceFocus structuredReferenceFocus(ProductReferenceFocus incomingScope) {
@@ -352,21 +258,6 @@ public class ChatHandler {
             return null;
         }
         return incomingScope.sourceQuoteRef();
-    }
-
-    private Integer firstCitedReferenceNumber(String userMessage) {
-        if (userMessage == null || userMessage.isBlank()) {
-            return null;
-        }
-        Matcher matcher = CITED_REFERENCE_PATTERN.matcher(userMessage);
-        if (!matcher.find()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(matcher.group(1));
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
     }
 
     private ProductReferenceFocus resolveReferenceFocus(
@@ -512,20 +403,18 @@ public class ChatHandler {
         return null;
     }
 
-    private boolean hasReferenceFocus(ProductReferenceFocus scope, boolean readingExperimentEnabled) {
+    private boolean hasReferenceFocus(ProductReferenceFocus scope) {
         if (scope == null) {
             return false;
         }
         if (scope.referenceNumber() != null || scope.sourceQuoteRef() != null) {
             return true;
         }
-        return readingExperimentEnabled && (
-                scope.paperHandle() != null
-                        || !scope.paperHandles().isEmpty()
-                        || scope.paperId() != null
-                        || !scope.paperIds().isEmpty()
-                        || scope.readingAction() != null
-        );
+        return scope.paperHandle() != null
+                || !scope.paperHandles().isEmpty()
+                || scope.paperId() != null
+                || !scope.paperIds().isEmpty()
+                || scope.readingAction() != null;
     }
 
     private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope) {
@@ -572,8 +461,8 @@ public class ChatHandler {
         return scope;
     }
 
-    private List<String> clickedPaperHandles(ProductReferenceFocus referenceFocus, boolean readingExperimentEnabled) {
-        if (!readingExperimentEnabled || referenceFocus == null) {
+    private List<String> clickedPaperHandles(ProductReferenceFocus referenceFocus) {
+        if (referenceFocus == null) {
             return List.of();
         }
         LinkedHashMap<String, Boolean> handles = new LinkedHashMap<>();
@@ -607,81 +496,6 @@ public class ChatHandler {
             }
         }
         return List.copyOf(handles.keySet());
-    }
-
-    private void runProductHarnessSafely(String userId,
-                                         String userMessage,
-                                         String conversationId,
-                                         String generationId,
-                                         SourceScope scope,
-                                         CompletableFuture<String> responseFuture) {
-        try {
-            runProductHarness(userId, userMessage, conversationId, generationId, scope, responseFuture);
-        } catch (Exception e) {
-            logger.error("Product ReAct Harness 执行失败: generationId={}", generationId, e);
-            chatGenerationStateService.markFailed(generationId, e.getMessage());
-            handleError(userId, generationId, e);
-            sendCompletionNotification(userId, generationId, conversationId, true, false);
-            cleanupGenerationState(generationId, e);
-        }
-    }
-
-    private void runProductHarness(String userId,
-                                   String userMessage,
-                                   String conversationId,
-                                   String generationId,
-                                   SourceScope scope,
-                                   CompletableFuture<String> responseFuture) {
-        if (productConversationService == null) {
-            throw new IllegalStateException("ProductConversationService is required for product chat");
-        }
-        ChatRequestTiming timing = generationTimings.get(generationId);
-        if (timing != null) {
-            timing.begin("product_react_harness");
-        }
-        ProductTurnResult answer = productConversationService.runTurn(
-                Long.parseLong(userId),
-                conversationId,
-                generationId,
-                userMessage,
-                scope,
-                ProductModelContext.defaults(),
-                generationEffectiveScopes.get(generationId),
-                event -> sendProductToolCall(userId, generationId, conversationId, event)
-        );
-        if (timing != null) {
-            timing.end("product_react_harness");
-            timing.route(answer.envelope() == null ? answer.stopReason().name() : answer.envelope().answerType().name());
-            timing.retrievalHitCount(answer.references().size());
-        }
-        Map<String, Object> diagnostics = productDiagnostics(answer);
-        if (!diagnostics.isEmpty()) {
-            generationDiagnostics.put(generationId, diagnostics);
-            chatGenerationStateService.updateDiagnostics(generationId, diagnostics);
-        }
-        if (answer.resultStatus() == ProductResultStatus.FAILED) {
-            throw new RuntimeException(answer.finalAnswerMarkdown());
-        }
-        Map<Integer, ReferenceInfo> productReferences = productReferenceMappings(answer.references());
-        if (!productReferences.isEmpty()) {
-            generationReferenceMappings.put(generationId, productReferences);
-            chatGenerationStateService.updateReferenceMappings(generationId, toSerializableReferenceMappings(productReferences));
-        }
-        appendStreamChunk(userId, generationId, conversationId, answer.finalAnswerMarkdown());
-        finalizeResponse(
-                userId,
-                userMessage,
-                conversationId,
-                generationId,
-                responseFuture,
-                responseBuilders.get(generationId),
-                new LlmProviderRouter.StreamCompletion(
-                        answer.stopReason().name(),
-                        0,
-                        0,
-                        answer.finalAnswerMarkdown().length()
-                )
-        );
     }
 
     private void runReadingHarnessSafely(String userId,
@@ -779,7 +593,7 @@ public class ChatHandler {
             return Map.of();
         }
         Map<String, Object> diagnostics = new LinkedHashMap<>();
-        diagnostics.put("harness", "PRODUCT_REACT");
+        diagnostics.put("harness", "PRODUCT_READING_REACT");
         diagnostics.put("resultStatus", answer.resultStatus().name());
         diagnostics.put("stopReason", answer.stopReason().name());
         if (answer.envelope() != null) {
@@ -916,8 +730,8 @@ public class ChatHandler {
                 stringDetail(reference, "originalFilename"),
                 integerDetail(reference, "pageNumber"),
                 firstNonBlank(stringDetail(reference, "anchorText"), sourceQuoteContent, matchedText),
-                firstNonBlank(stringDetail(reference, "retrievalMode"), "PRODUCT_REACT"),
-                firstNonBlank(stringDetail(reference, "retrievalLabel"), "Product ReAct evidence"),
+                firstNonBlank(stringDetail(reference, "retrievalMode"), "PRODUCT_READING_REACT"),
+                firstNonBlank(stringDetail(reference, "retrievalLabel"), "Product Reading evidence"),
                 firstNonBlank(stringDetail(reference, "retrievalQuery"), stringDetail(reference, "question")),
                 matchedText,
                 evidenceSnippet,
@@ -934,7 +748,7 @@ public class ChatHandler {
                 stringDetail(reference, "figureId"),
                 stringDetail(reference, "formulaId"),
                 stringDetail(reference, "evidenceRole"),
-                firstNonBlank(stringDetail(reference, "retrievalRoute"), "PRODUCT_REACT"),
+                firstNonBlank(stringDetail(reference, "retrievalRoute"), "PRODUCT_READING_REACT"),
                 stringDetail(reference, "intent"),
                 stringDetail(reference, "rankReason"),
                 stringDetail(reference, "tableText"),
