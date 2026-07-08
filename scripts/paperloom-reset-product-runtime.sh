@@ -56,6 +56,8 @@ ES_PASSWORD="${ELASTICSEARCH_PASSWORD:-$(env_value ELASTICSEARCH_PASSWORD)}"
 ES_INSECURE="${ELASTICSEARCH_INSECURE_TRUST_ALL_CERTIFICATES:-$(env_value ELASTICSEARCH_INSECURE_TRUST_ALL_CERTIFICATES)}"
 REDIS_PASSWORD_VALUE="${SPRING_DATA_REDIS_PASSWORD:-$(env_value SPRING_DATA_REDIS_PASSWORD)}"
 MINIO_BUCKET_NAME_VALUE="${MINIO_BUCKET_NAME:-$(env_value MINIO_BUCKET_NAME)}"
+KAFKA_CONTAINER="${PAPERLOOM_KAFKA_CONTAINER:-pai_smart_kafka}"
+KAFKA_BOOTSTRAP_SERVERS="${PAPERLOOM_KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
 
 ES_SCHEME="${ES_SCHEME:-http}"
 ES_HOST="${ES_HOST:-localhost}"
@@ -76,10 +78,18 @@ declare -A ES_INDEX_EXISTS=()
 PRODUCT_DB_TABLES=(
   conversations
   conversation_sessions
+  conversation_source_quotes
+  paper_conversation_reference
   paper_collection_papers
   paper_collections
   paper_visual_assets
   paper_parser_artifacts
+  paper_source_quotes
+  paper_reading_elements
+  paper_locations
+  paper_sections
+  paper_pages
+  paper_reading_models
   paper_tables
   paper_figures
   paper_formulas
@@ -94,6 +104,10 @@ OPTIONAL_PRODUCT_DB_TABLES=(
 PRODUCT_ES_INDICES=(
   paper_chunks
   paper_search
+)
+PRODUCT_KAFKA_TOPICS=(
+  paper-processing-topic
+  paper-processing-dlt
 )
 
 fail() {
@@ -372,12 +386,19 @@ preflight_minio() {
   esac
 }
 
+preflight_kafka() {
+  if ! docker exec "$KAFKA_CONTAINER" sh -lc '/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server "$1" --list >/dev/null' sh "$KAFKA_BOOTSTRAP_SERVERS"; then
+    fail "Kafka preflight failed for container ${KAFKA_CONTAINER}."
+  fi
+}
+
 preflight() {
-  echo "Preflight: checking MySQL, Elasticsearch, Redis, and MinIO."
+  echo "Preflight: checking MySQL, Elasticsearch, Redis, MinIO, and Kafka."
   preflight_mysql
   preflight_es
   preflight_redis
   preflight_minio
+  preflight_kafka
 }
 
 reset_mysql() {
@@ -405,10 +426,18 @@ DELIMITER ;
 
 CALL paperloom_reset_delete_if_exists('conversations');
 CALL paperloom_reset_delete_if_exists('conversation_sessions');
+CALL paperloom_reset_delete_if_exists('conversation_source_quotes');
+CALL paperloom_reset_delete_if_exists('paper_conversation_reference');
 CALL paperloom_reset_delete_if_exists('paper_collection_papers');
 CALL paperloom_reset_delete_if_exists('paper_collections');
 CALL paperloom_reset_delete_if_exists('paper_visual_assets');
 CALL paperloom_reset_delete_if_exists('paper_parser_artifacts');
+CALL paperloom_reset_delete_if_exists('paper_source_quotes');
+CALL paperloom_reset_delete_if_exists('paper_reading_elements');
+CALL paperloom_reset_delete_if_exists('paper_locations');
+CALL paperloom_reset_delete_if_exists('paper_sections');
+CALL paperloom_reset_delete_if_exists('paper_pages');
+CALL paperloom_reset_delete_if_exists('paper_reading_models');
 CALL paperloom_reset_delete_if_exists('paper_tables');
 CALL paperloom_reset_delete_if_exists('paper_figures');
 CALL paperloom_reset_delete_if_exists('paper_formulas');
@@ -469,7 +498,8 @@ reset_es() {
       continue
     fi
 
-    es_request POST "/${index_name}/_delete_by_query?conflicts=proceed&refresh=true" '{"query":{"match_all":{}}}'
+    es_request DELETE "/${index_name}"
+    ES_INDEX_EXISTS["$index_name"]=0
   done
 }
 
@@ -513,6 +543,39 @@ reset_minio() {
     mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
     mc rm --recursive --force "local/${bucket}" >/dev/null
   ' sh "$MINIO_BUCKET_NAME_VALUE"
+}
+
+reset_kafka() {
+  local topic
+
+  for topic in "${PRODUCT_KAFKA_TOPICS[@]}"; do
+    docker exec "$KAFKA_CONTAINER" sh -lc '
+      set -eu
+      bootstrap="$1"
+      topic="$2"
+      /opt/bitnami/kafka/bin/kafka-topics.sh \
+        --bootstrap-server "$bootstrap" \
+        --delete \
+        --if-exists \
+        --topic "$topic" >/dev/null
+    ' sh "$KAFKA_BOOTSTRAP_SERVERS" "$topic"
+  done
+
+  for topic in "${PRODUCT_KAFKA_TOPICS[@]}"; do
+    docker exec "$KAFKA_CONTAINER" sh -lc '
+      set -eu
+      bootstrap="$1"
+      topic="$2"
+      for _ in $(seq 1 30); do
+        if ! /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server "$bootstrap" --list | grep -Fx "$topic" >/dev/null; then
+          exit 0
+        fi
+        sleep 1
+      done
+      echo "Kafka topic still exists after delete: ${topic}" >&2
+      exit 1
+    ' sh "$KAFKA_BOOTSTRAP_SERVERS" "$topic"
+  done
 }
 
 record_verification_failure() {
@@ -650,6 +713,25 @@ verify_minio_count() {
   fi
 }
 
+verify_kafka_topics() {
+  local topic
+  local exists
+
+  for topic in "${PRODUCT_KAFKA_TOPICS[@]}"; do
+    exists="$(docker exec "$KAFKA_CONTAINER" sh -lc '
+      set -eu
+      bootstrap="$1"
+      topic="$2"
+      if /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server "$bootstrap" --list | grep -Fx "$topic" >/dev/null; then
+        echo 1
+      else
+        echo 0
+      fi
+    ' sh "$KAFKA_BOOTSTRAP_SERVERS" "$topic")"
+    print_assert_zero "${topic}_kafka_topic_exists" "$exists"
+  done
+}
+
 verify_reset() {
   echo "Verification counts:"
   verify_admin_count
@@ -659,6 +741,7 @@ verify_reset() {
   verify_es_counts
   verify_redis_count
   verify_minio_count
+  verify_kafka_topics
 
   if [[ "$VERIFY_FAILURES" -ne 0 ]]; then
     fail "Reset verification failed with ${VERIFY_FAILURES} failed postcondition(s)."
@@ -673,4 +756,5 @@ reset_mysql
 reset_es
 reset_redis
 reset_minio
+reset_kafka
 verify_reset

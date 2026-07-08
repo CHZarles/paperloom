@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -82,5 +83,20 @@ class EsMappingContractTest {
         assertTrue(properties.has("formulaId"));
         assertTrue(properties.has("evidenceRole"));
         assertTrue(properties.has("retrievalTextContent"));
+    }
+
+    @Test
+    void paperChunksMappingCanAdoptTheActiveEmbeddingDimension() throws Exception {
+        InputStream mappingStream = getClass().getResourceAsStream("/es-mappings/paper_chunks.json");
+        assertNotNull(mappingStream);
+
+        String adjusted = EsIndexInitializer.applyEmbeddingDimension(
+                new String(mappingStream.readAllBytes()),
+                1536
+        );
+
+        JsonNode mapping = objectMapper.readTree(adjusted);
+
+        assertEquals(1536, mapping.path("mappings").path("properties").path("vector").path("dims").asInt());
     }
 }

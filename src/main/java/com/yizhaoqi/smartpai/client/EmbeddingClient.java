@@ -101,8 +101,9 @@ public class EmbeddingClient {
                         : rateLimitService.reserveEmbeddingUploadUsage(normalizedRequesterId, sub);
                 logger.debug("调用向量 API, 批次: {}-{} (size={})", start, end - 1, sub.size());
                 try {
-                    String response = callApiOnce(sub, timeout);
-                    EmbeddingApiResponse parsedResponse = parseEmbeddingResponse(response, sub);
+                    ModelProviderConfigService.ActiveProviderView provider = modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
+                    String response = callApiOnce(provider, sub, usageType, timeout);
+                    EmbeddingApiResponse parsedResponse = parseEmbeddingResponse(provider, response, sub);
                     usageQuotaService.settleReservation(reservation, parsedResponse.totalTokens());
                     all.addAll(parsedResponse.vectors());
                     totalTokens += parsedResponse.totalTokens();
@@ -132,18 +133,31 @@ public class EmbeddingClient {
     }
 
     private String callApiOnce(List<String> batch) {
-        return callApiOnce(batch, Duration.ofSeconds(30));
+        ModelProviderConfigService.ActiveProviderView provider = modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
+        return callApiOnce(provider, batch, UsageType.UPLOAD, Duration.ofSeconds(30));
     }
 
     private String callApiOnce(List<String> batch, Duration timeout) {
         ModelProviderConfigService.ActiveProviderView provider = modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
+        return callApiOnce(provider, batch, UsageType.UPLOAD, timeout);
+    }
+
+    private String callApiOnce(ModelProviderConfigService.ActiveProviderView provider,
+                               List<String> batch,
+                               UsageType usageType,
+                               Duration timeout) {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", provider.model());
-        requestBody.put("input", batch);
-        if (provider.dimension() != null) {
-            requestBody.put("dimension", provider.dimension());
+        if (usesMiniMaxNativeEmbeddingApi(provider)) {
+            requestBody.put("texts", batch);
+            requestBody.put("type", usageType == UsageType.QUERY ? "query" : "db");
+        } else {
+            requestBody.put("input", batch);
+            if (provider.dimension() != null) {
+                requestBody.put("dimension", provider.dimension());
+            }
+            requestBody.put("encoding_format", "float");
         }
-        requestBody.put("encoding_format", "float");
 
         logger.debug("发送嵌入请求 - Provider: {}, 模型: {}, 维度: {}, 批次大小: {}, 文本预览: {}",
                 provider.provider(), provider.model(), provider.dimension(), batch.size(),
@@ -180,8 +194,17 @@ public class EmbeddingClient {
         return builder.build();
     }
 
-    private EmbeddingApiResponse parseEmbeddingResponse(String response, List<String> inputTexts) throws Exception {
+    private boolean usesMiniMaxNativeEmbeddingApi(ModelProviderConfigService.ActiveProviderView provider) {
+        return provider != null && ModelProviderConfigService.API_STYLE_MINIMAX_EMBEDDING.equals(provider.apiStyle());
+    }
+
+    private EmbeddingApiResponse parseEmbeddingResponse(ModelProviderConfigService.ActiveProviderView provider,
+                                                        String response,
+                                                        List<String> inputTexts) throws Exception {
         JsonNode jsonNode = objectMapper.readTree(response);
+        if (usesMiniMaxNativeEmbeddingApi(provider)) {
+            return parseMiniMaxEmbeddingResponse(jsonNode, inputTexts);
+        }
         JsonNode data = jsonNode.get("data");  // 兼容模式下使用data字段
         if (data == null || !data.isArray()) {
             throw new RuntimeException("API 响应格式错误: data 字段不存在或不是数组");
@@ -201,6 +224,35 @@ public class EmbeddingClient {
 
         JsonNode usage = jsonNode.path("usage");
         int totalTokens = usage.path("total_tokens").asInt(usage.path("input_tokens").asInt(0));
+        return new EmbeddingApiResponse(vectors, totalTokens > 0 ? totalTokens : usageQuotaService.estimateEmbeddingTokens(inputTexts));
+    }
+
+    private EmbeddingApiResponse parseMiniMaxEmbeddingResponse(JsonNode jsonNode, List<String> inputTexts) {
+        JsonNode baseResponse = jsonNode.path("base_resp");
+        int statusCode = baseResponse.path("status_code").asInt(0);
+        if (statusCode != 0) {
+            String statusMessage = baseResponse.path("status_msg").asText("MiniMax Embedding 请求失败");
+            throw new RuntimeException("MiniMax Embedding API error " + statusCode + ": " + statusMessage);
+        }
+
+        JsonNode vectorsNode = jsonNode.path("vectors");
+        if (!vectorsNode.isArray()) {
+            throw new RuntimeException("MiniMax Embedding 响应格式错误: vectors 字段不存在或不是数组");
+        }
+
+        List<float[]> vectors = new ArrayList<>();
+        for (JsonNode vectorNode : vectorsNode) {
+            if (!vectorNode.isArray()) {
+                continue;
+            }
+            float[] vector = new float[vectorNode.size()];
+            for (int i = 0; i < vectorNode.size(); i++) {
+                vector[i] = (float) vectorNode.get(i).asDouble();
+            }
+            vectors.add(vector);
+        }
+
+        int totalTokens = jsonNode.path("total_tokens").asInt(0);
         return new EmbeddingApiResponse(vectors, totalTokens > 0 ? totalTokens : usageQuotaService.estimateEmbeddingTokens(inputTexts));
     }
 

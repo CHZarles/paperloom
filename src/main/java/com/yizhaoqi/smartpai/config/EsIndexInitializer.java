@@ -1,6 +1,10 @@
 package com.yizhaoqi.smartpai.config;
 
 import co.elastic.clients.transport.endpoints.BooleanResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.yizhaoqi.smartpai.service.ModelProviderConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -29,9 +33,13 @@ import java.util.Locale;
 public class EsIndexInitializer implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(EsIndexInitializer.class);
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Autowired
     private ElasticsearchClient esClient;
+
+    @Autowired(required = false)
+    private ModelProviderConfigService modelProviderConfigService;
 
     @Value("classpath:es-mappings/paper_chunks.json")
     private org.springframework.core.io.Resource chunkMappingResource;
@@ -50,6 +58,9 @@ public class EsIndexInitializer implements CommandLineRunner {
 
     @Value("${elasticsearch.username:elastic}")
     private String username;
+
+    @Value("${embedding.api.dimension:2048}")
+    private Integer embeddingDimension;
 
     @Override
     public void run(String... args) throws Exception {
@@ -102,13 +113,51 @@ public class EsIndexInitializer implements CommandLineRunner {
         try (var inputStream = mappingResource.getInputStream()) {
             mappingJson = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         }
+        String effectiveMappingJson = mappingJsonForIndex(indexName, mappingJson);
         // 创建索引并应用映射
         CreateIndexRequest createIndexRequest = CreateIndexRequest.of(c -> c
                 .index(indexName)
-                .withJson(new StringReader(mappingJson))
+                .withJson(new StringReader(effectiveMappingJson))
         );
         esClient.indices().create(createIndexRequest);
         logger.info("索引 '{}' 已创建", indexName);
+    }
+
+    private String mappingJsonForIndex(String indexName, String mappingJson) throws Exception {
+        if (!PaperSearchIndex.INDEX_NAME.equals(indexName)) {
+            return mappingJson;
+        }
+        return applyEmbeddingDimension(mappingJson, activeEmbeddingDimension());
+    }
+
+    private Integer activeEmbeddingDimension() {
+        try {
+            if (modelProviderConfigService != null) {
+                Integer dimension = modelProviderConfigService
+                        .getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING)
+                        .dimension();
+                if (dimension != null && dimension > 0) {
+                    return dimension;
+                }
+            }
+        } catch (Exception exception) {
+            logger.warn("无法读取活动 Embedding 维度，使用 embedding.api.dimension={} 创建 ES 映射: {}",
+                    embeddingDimension, exception.getMessage());
+        }
+        return embeddingDimension;
+    }
+
+    static String applyEmbeddingDimension(String mappingJson, Integer dimension) throws Exception {
+        if (dimension == null || dimension <= 0) {
+            return mappingJson;
+        }
+        JsonNode root = JSON.readTree(mappingJson);
+        JsonNode vector = root.path("mappings").path("properties").path("vector");
+        if (!vector.isObject()) {
+            return mappingJson;
+        }
+        ((ObjectNode) vector).put("dims", dimension);
+        return JSON.writeValueAsString(root);
     }
 
     private String buildDiagnosticMessage(Exception exception) {

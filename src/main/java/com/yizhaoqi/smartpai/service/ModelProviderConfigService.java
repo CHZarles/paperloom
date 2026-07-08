@@ -1,9 +1,12 @@
 package com.yizhaoqi.smartpai.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.config.OutboundWebClientFactory;
 import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.model.ModelProviderConfig;
 import com.yizhaoqi.smartpai.repository.ModelProviderConfigRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
 import com.yizhaoqi.smartpai.utils.SecretCryptoService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,12 +33,15 @@ public class ModelProviderConfigService {
     public static final String SCOPE_LLM = "llm";
     public static final String SCOPE_EMBEDDING = "embedding";
     public static final String API_STYLE_OPENAI = "openai-compatible";
+    public static final String API_STYLE_MINIMAX_EMBEDDING = "minimax-embedding";
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
     private static final String EMBEDDINGS_PATH = "/embeddings";
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final ModelProviderConfigRepository repository;
     private final SecretCryptoService secretCryptoService;
     private final OutboundWebClientFactory outboundWebClientFactory;
+    private final PaperRepository paperRepository;
     private volatile ModelProviderSettingsView currentSettings;
 
     @Value("${deepseek.api.url:https://api.deepseek.com/v1}")
@@ -60,16 +66,24 @@ public class ModelProviderConfigService {
     private Integer embeddingDimension;
 
     public ModelProviderConfigService(ModelProviderConfigRepository repository, SecretCryptoService secretCryptoService) {
-        this(repository, secretCryptoService, new OutboundWebClientFactory());
+        this(repository, secretCryptoService, new OutboundWebClientFactory(), null);
+    }
+
+    public ModelProviderConfigService(ModelProviderConfigRepository repository,
+                                      SecretCryptoService secretCryptoService,
+                                      OutboundWebClientFactory outboundWebClientFactory) {
+        this(repository, secretCryptoService, outboundWebClientFactory, null);
     }
 
     @Autowired
     public ModelProviderConfigService(ModelProviderConfigRepository repository,
                                       SecretCryptoService secretCryptoService,
-                                      OutboundWebClientFactory outboundWebClientFactory) {
+                                      OutboundWebClientFactory outboundWebClientFactory,
+                                      PaperRepository paperRepository) {
         this.repository = repository;
         this.secretCryptoService = secretCryptoService;
-        this.outboundWebClientFactory = outboundWebClientFactory;
+        this.outboundWebClientFactory = outboundWebClientFactory == null ? new OutboundWebClientFactory() : outboundWebClientFactory;
+        this.paperRepository = paperRepository;
         this.currentSettings = buildDefaultSettings();
     }
 
@@ -87,7 +101,7 @@ public class ModelProviderConfigService {
         return settings.providers().stream()
                 .filter(ProviderConfigView::active)
                 .findFirst()
-                .map(this::toActiveProvider)
+                .map(provider -> toActiveProvider(settings.scope(), provider))
                 .orElseThrow(() -> new CustomException("未找到激活的模型配置: " + scope, HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
@@ -102,7 +116,8 @@ public class ModelProviderConfigService {
 
         if (SCOPE_EMBEDDING.equals(normalizedScope) && !Objects.equals(request.activeProvider(), currentActiveProvider)) {
             ProviderUpsertRequest target = findProviderRequest(request.providers(), request.activeProvider());
-            if (target != null && currentActiveConfig != null && requiresEmbeddingReindex(currentActiveConfig, target)) {
+            if (target != null && currentActiveConfig != null && requiresEmbeddingReindex(currentActiveConfig, target)
+                    && hasProductRuntimeData()) {
                 throw new CustomException("Embedding 模型切换需要重嵌入任务，当前版本不支持直接切换 active provider", HttpStatus.CONFLICT);
             }
         }
@@ -134,7 +149,7 @@ public class ModelProviderConfigService {
             entity.setEnabled(item.enabled() == null ? fallback.enabled() : item.enabled());
             entity.setActive(provider.equals(request.activeProvider()));
             entity.setUpdatedBy(updatedBy);
-            entity.setApiKeyCiphertext(resolveCiphertext(item.apiKey(), fallback));
+            entity.setApiKeyCiphertext(resolveCiphertext(normalizedScope, item.apiKey(), fallback));
             repository.save(entity);
             persistedMap.put(provider, entity);
         }
@@ -182,6 +197,18 @@ public class ModelProviderConfigService {
                         .retrieve()
                         .bodyToMono(String.class)
                         .block(Duration.ofSeconds(8));
+            } else if (isMiniMaxEmbeddingProvider(normalizedScope, provider)) {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("model", request.model());
+                payload.put("texts", List.of("ping"));
+                payload.put("type", "db");
+                String response = client.post()
+                        .uri("/embeddings")
+                        .bodyValue(payload)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(Duration.ofSeconds(8));
+                validateMiniMaxEmbeddingResponse(response);
             } else {
                 Map<String, Object> payload = new LinkedHashMap<>();
                 payload.put("model", request.model());
@@ -209,6 +236,7 @@ public class ModelProviderConfigService {
     }
 
     private ModelProviderSettingsView buildDefaultSettings() {
+        String miniMaxEmbeddingApiKey = resolveProviderApiKey(SCOPE_EMBEDDING, "minimax").orElse(null);
         ScopeSettingsView llm = new ScopeSettingsView(
                 SCOPE_LLM,
                 "deepseek",
@@ -224,6 +252,7 @@ public class ModelProviderConfigService {
                 "aliyun",
                 List.of(
                         new ProviderConfigView("aliyun", "阿里云", API_STYLE_OPENAI, embeddingApiUrl, embeddingModel, embeddingDimension, true, true, hasValue(embeddingApiKey), secretCryptoService.mask(embeddingApiKey)),
+                        new ProviderConfigView("minimax", "MiniMax", API_STYLE_MINIMAX_EMBEDDING, "https://api.minimaxi.com/v1", "embo-01", 1536, true, false, hasValue(miniMaxEmbeddingApiKey), secretCryptoService.mask(miniMaxEmbeddingApiKey)),
                         new ProviderConfigView("zhipu", "智谱AI", API_STYLE_OPENAI, "https://open.bigmodel.cn/api/paas/v4", "embedding-3", 2048, true, false, false, "")
                 )
         );
@@ -251,6 +280,9 @@ public class ModelProviderConfigService {
             }
 
             String decryptedApiKey = secretCryptoService.decrypt(config.getApiKeyCiphertext());
+            String effectiveApiKey = hasValue(decryptedApiKey)
+                    ? decryptedApiKey
+                    : resolveSharedProviderApiKey(defaults.scope(), config.getProviderCode()).orElse(null);
             merged.put(config.getProviderCode(), new ProviderConfigView(
                     config.getProviderCode(),
                     config.getDisplayName(),
@@ -260,8 +292,8 @@ public class ModelProviderConfigService {
                     config.getEmbeddingDimension() != null ? config.getEmbeddingDimension() : fallback.dimension(),
                     config.isEnabled(),
                     config.isActive(),
-                    hasValue(decryptedApiKey),
-                    secretCryptoService.mask(decryptedApiKey)
+                    hasValue(effectiveApiKey),
+                    secretCryptoService.mask(effectiveApiKey)
             ));
 
             if (config.isActive()) {
@@ -274,17 +306,8 @@ public class ModelProviderConfigService {
         return new ScopeSettingsView(defaults.scope(), activeProvider, providers);
     }
 
-    private ActiveProviderView toActiveProvider(ProviderConfigView provider) {
-        String apiKey = null;
-        Optional<ModelProviderConfig> persisted = repository.findByConfigScopeAndProviderCode(resolveScopeByProvider(provider.provider()), provider.provider());
-        if (persisted.isPresent()) {
-            apiKey = secretCryptoService.decrypt(persisted.get().getApiKeyCiphertext());
-        } else if ("deepseek".equals(provider.provider())) {
-            apiKey = deepSeekApiKey;
-        } else if ("aliyun".equals(provider.provider())) {
-            apiKey = embeddingApiKey;
-        }
-
+    private ActiveProviderView toActiveProvider(String scope, ProviderConfigView provider) {
+        String apiKey = resolveProviderApiKey(scope, provider.provider()).orElse(null);
         return new ActiveProviderView(
                 provider.provider(),
                 provider.displayName(),
@@ -296,14 +319,6 @@ public class ModelProviderConfigService {
         );
     }
 
-    private String resolveScopeByProvider(String provider) {
-        ScopeSettingsView llm = currentSettings.llm();
-        if (llm.providers().stream().anyMatch(item -> item.provider().equals(provider))) {
-            return SCOPE_LLM;
-        }
-        return SCOPE_EMBEDDING;
-    }
-
     private boolean requiresEmbeddingReindex(ProviderConfigView current, ProviderUpsertRequest target) {
         if (!Objects.equals(current.provider(), normalizeProvider(target.provider()))) {
             return true;
@@ -312,6 +327,17 @@ public class ModelProviderConfigService {
             return true;
         }
         return !Objects.equals(current.dimension(), target.dimension());
+    }
+
+    private boolean hasProductRuntimeData() {
+        if (paperRepository == null) {
+            return true;
+        }
+        try {
+            return paperRepository.count() > 0;
+        } catch (Exception exception) {
+            return true;
+        }
     }
 
     private Map<String, ProviderConfigView> toProviderMap(List<ProviderConfigView> providers) {
@@ -446,22 +472,8 @@ public class ModelProviderConfigService {
             return null;
         }
 
-        ProviderConfigView config = resolveProvider(scope, provider, currentSettings);
-        if (!config.hasApiKey()) {
-            return null;
-        }
-
-        Optional<ModelProviderConfig> persisted = repository.findByConfigScopeAndProviderCode(scope, provider);
-        if (persisted.isPresent()) {
-            return secretCryptoService.decrypt(persisted.get().getApiKeyCiphertext());
-        }
-        if ("deepseek".equals(provider)) {
-            return deepSeekApiKey;
-        }
-        if ("aliyun".equals(provider)) {
-            return embeddingApiKey;
-        }
-        return null;
+        resolveProvider(scope, provider, currentSettings);
+        return resolveProviderApiKey(scope, provider).orElse(null);
     }
 
     private String formatConnectionFailure(String provider, Exception exception) {
@@ -506,24 +518,83 @@ public class ModelProviderConfigService {
                 .orElse(provider);
     }
 
-    private String resolveCiphertext(String rawApiKey, ProviderConfigView fallback) {
+    private String resolveCiphertext(String scope, String rawApiKey, ProviderConfigView fallback) {
         if (rawApiKey != null && !rawApiKey.isBlank()) {
             return secretCryptoService.encrypt(rawApiKey.trim());
+        }
+        Optional<ModelProviderConfig> persisted = repository.findByConfigScopeAndProviderCode(scope, fallback.provider());
+        if (persisted.isPresent() && hasValue(persisted.get().getApiKeyCiphertext())) {
+            return persisted.get().getApiKeyCiphertext();
+        }
+        Optional<ModelProviderConfig> shared = resolveSharedProviderConfig(scope, fallback.provider());
+        if (shared.isPresent() && hasValue(shared.get().getApiKeyCiphertext())) {
+            return shared.get().getApiKeyCiphertext();
         }
         if (!fallback.hasApiKey()) {
             return null;
         }
-        Optional<ModelProviderConfig> persisted = repository.findByConfigScopeAndProviderCode(resolveScopeByProvider(fallback.provider()), fallback.provider());
-        return persisted.map(ModelProviderConfig::getApiKeyCiphertext)
-                .orElseGet(() -> {
-                    if ("deepseek".equals(fallback.provider())) {
-                        return secretCryptoService.encrypt(deepSeekApiKey);
-                    }
-                    if ("aliyun".equals(fallback.provider())) {
-                        return secretCryptoService.encrypt(embeddingApiKey);
-                    }
-                    return null;
-                });
+        if (SCOPE_LLM.equals(scope) && "deepseek".equals(fallback.provider())) {
+            return secretCryptoService.encrypt(deepSeekApiKey);
+        }
+        if (SCOPE_EMBEDDING.equals(scope) && "aliyun".equals(fallback.provider())) {
+            return secretCryptoService.encrypt(embeddingApiKey);
+        }
+        return null;
+    }
+
+    private Optional<String> resolveProviderApiKey(String scope, String provider) {
+        Optional<ModelProviderConfig> persisted = repository.findByConfigScopeAndProviderCode(scope, provider);
+        if (persisted.isPresent()) {
+            String apiKey = secretCryptoService.decrypt(persisted.get().getApiKeyCiphertext());
+            if (hasValue(apiKey)) {
+                return Optional.of(apiKey);
+            }
+        }
+        if (SCOPE_LLM.equals(scope) && "deepseek".equals(provider) && hasValue(deepSeekApiKey)) {
+            return Optional.of(deepSeekApiKey);
+        }
+        if (SCOPE_EMBEDDING.equals(scope) && "aliyun".equals(provider) && hasValue(embeddingApiKey)) {
+            return Optional.of(embeddingApiKey);
+        }
+        return resolveSharedProviderApiKey(scope, provider);
+    }
+
+    private Optional<String> resolveSharedProviderApiKey(String scope, String provider) {
+        Optional<ModelProviderConfig> shared = resolveSharedProviderConfig(scope, provider);
+        if (shared.isEmpty()) {
+            return Optional.empty();
+        }
+        String apiKey = secretCryptoService.decrypt(shared.get().getApiKeyCiphertext());
+        return hasValue(apiKey) ? Optional.of(apiKey) : Optional.empty();
+    }
+
+    private Optional<ModelProviderConfig> resolveSharedProviderConfig(String scope, String provider) {
+        if (SCOPE_EMBEDDING.equals(scope) && "minimax".equals(provider)) {
+            return repository.findByConfigScopeAndProviderCode(SCOPE_LLM, provider);
+        }
+        return Optional.empty();
+    }
+
+    private boolean isMiniMaxEmbeddingProvider(String scope, String provider) {
+        if (!SCOPE_EMBEDDING.equals(scope) || provider == null) {
+            return false;
+        }
+        ProviderConfigView config = resolveProvider(scope, provider, currentSettings);
+        return API_STYLE_MINIMAX_EMBEDDING.equals(config.apiStyle());
+    }
+
+    private void validateMiniMaxEmbeddingResponse(String response) throws Exception {
+        JsonNode root = JSON.readTree(response == null ? "" : response);
+        JsonNode baseResponse = root.path("base_resp");
+        int statusCode = baseResponse.path("status_code").asInt(0);
+        if (statusCode != 0) {
+            String message = baseResponse.path("status_msg").asText("MiniMax Embedding 请求失败");
+            throw new IllegalStateException("MiniMax Embedding API error " + statusCode + ": " + message);
+        }
+        JsonNode vectors = root.path("vectors");
+        if (!vectors.isArray() || vectors.isEmpty() || !vectors.path(0).isArray()) {
+            throw new IllegalStateException("MiniMax Embedding 响应未包含 vectors");
+        }
     }
 
     private String requireNonBlank(String candidate, String fallback, String message) {
