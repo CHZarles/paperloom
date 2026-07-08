@@ -1,0 +1,569 @@
+cases:
+  - id: transformer_adam_params_001
+    schema_version: harness-golden-data/v1
+    split: seed
+    question:
+      language: en
+      text: "Transformer original paper used Adam with what beta1, beta2, and epsilon?"
+    capability_tags:
+      - precision_fact_extraction
+      - methodology_reproduction
+    difficulty: easy
+    paper_pack_ids:
+      - transformer_bert_gpt
+    corpus_scope:
+      retrieval_corpus: EVAL_HARNESS_SEED
+      required_paper_ids:
+        - attention_is_all_you_need_2017
+      allowed_paper_ids:
+        - attention_is_all_you_need_2017
+        - bert_2018
+        - gpt3_2020
+      hard_negative_paper_ids:
+        - bert_2018
+        - gpt3_2020
+    expected_result:
+      kind: answered
+      answer_type: exact_fact
+    expected_intent:
+      entities:
+        - "Transformer"
+        - "Adam"
+      ambiguity_status: "unambiguous"
+      required_evidence_types:
+        - "paragraph"
+    expected_retrieval_plan:
+      required_strategies:
+        - "paper_identity_resolution"
+        - "lexical_search"
+        - "section_search"
+    gold_evidence:
+      required_anchor_ids:
+        - transformer_adam_training_params_span
+      forbidden_anchor_ids:
+        - bert_transformer_encoder_background
+    gold_claims:
+      - claim_id: adam_beta1
+        required: true
+        canonical_text: "The Transformer paper used Adam beta1 = 0.9."
+        expected_status: supported
+        support_anchor_ids:
+          - transformer_adam_training_params_span
+        exact_value: "0.9"
+      - claim_id: adam_beta2
+        required: true
+        canonical_text: "The Transformer paper used Adam beta2 = 0.98."
+        expected_status: supported
+        support_anchor_ids:
+          - transformer_adam_training_params_span
+        exact_value: "0.98"
+      - claim_id: adam_epsilon
+        required: true
+        canonical_text: "The Transformer paper used Adam epsilon = 1e-9."
+        expected_status: supported
+        support_anchor_ids:
+          - transformer_adam_training_params_span
+        exact_value: "1e-9"
+    answer_contract:
+      type: exact_fact
+      required_fields:
+        beta1: "0.9"
+        beta2: "0.98"
+        epsilon: "1e-9"
+      citation_policy:
+        every_required_field_must_cite_anchor: true
+    required_trace:
+      obligations:
+        - id: resolve_original_transformer
+          phase: intent
+          severity: critical
+          must_include:
+            - "Attention Is All You Need"
+            - "optimizer hyperparameter lookup"
+        - id: retrieve_optimizer_span
+          phase: evidence
+          severity: critical
+          must_include_anchor_ids:
+            - transformer_adam_training_params_span
+        - id: reject_default_adam_values
+          phase: verification
+          severity: critical
+          must_include:
+            - "reject default Adam beta2=0.999"
+    failure_modes:
+      - id: default_adam_values
+        description: "Gives beta2=0.999."
+    compatibility_projection:
+      taskType: METHODOLOGY_REPRODUCTION
+      expectedRoute: MANUAL_SOURCE_QA
+      requiredEvidenceRegex:
+        - "Adam optimizer.*0\\.9.*0\\.98.*(10\\^-9|1e-9)"
+      requiredAnswerRegex:
+        - "0\\.9"
+        - "0\\.98"
+        - "1e-?9|10\\^-9"
+      forbiddenAnswerRegex:
+        - "0\\.999"
+      forbiddenEvidenceRegex:
+        - "BERT"
+      expectedPaperIds:
+        - attention_is_all_you_need_2017
+      requiresCitation: true
+
+  - id: attention_paper_ambiguous_001
+    schema_version: harness-golden-data/v1
+    split: stress
+    question:
+      language: en
+      text: "attention paper"
+    capability_tags:
+      - ambiguity_resolution
+    difficulty: easy
+    paper_pack_ids:
+      - transformer_bert_gpt
+    corpus_scope:
+      retrieval_corpus: EVAL_HARNESS_SEED
+      allowed_paper_ids:
+        - attention_is_all_you_need_2017
+        - bert_2018
+    expected_result:
+      kind: needs_clarification
+      answer_type: ambiguity_clarification
+    expected_intent:
+      ambiguity_status: "ambiguous"
+      acceptable_options:
+        - "Attention Is All You Need"
+        - "earlier neural attention papers"
+    gold_evidence:
+      required_anchor_ids: []
+    answer_contract:
+      type: ambiguity_clarification
+      required_options:
+        - "Attention Is All You Need"
+        - "earlier neural attention papers"
+      must_not_select_paper_without_user_choice: true
+    required_trace:
+      obligations:
+        - id: detect_ambiguous_attention
+          phase: intent
+          severity: critical
+          must_include:
+            - "ambiguous"
+            - "attention paper"
+    compatibility_projection:
+      taskType: AMBIGUITY_RESOLUTION
+      expectedRoute: CLARIFY
+      requiredAnswerRegex:
+        - "which|clarify|ambiguous|which paper"
+      requiredEvidenceRegex: []
+      expectedPaperIds: []
+      requiresCitation: false
+
+  - id: gpt5_architecture_boundary_001
+    schema_version: harness-golden-data/v1
+    split: stress
+    question:
+      language: en
+      text: "What are the architecture details of GPT-5?"
+    capability_tags:
+      - uncertainty_knowledge_boundary
+    difficulty: medium
+    paper_pack_ids:
+      - transformer_bert_gpt
+    corpus_scope:
+      retrieval_corpus: EVAL_HARNESS_SEED
+      allowed_paper_ids:
+        - gpt3_2020
+    expected_result:
+      kind: abstain_insufficient_evidence
+      answer_type: uncertainty_boundary
+    expected_intent:
+      entities:
+        - "GPT-5"
+      ambiguity_status: "unanswerable_from_available_evidence"
+    gold_evidence:
+      required_anchor_ids: []
+    gold_claims:
+      - claim_id: gpt5_architecture_not_supported
+        required: true
+        canonical_text: "The available corpus does not support GPT-5 architecture details."
+        expected_status: underdetermined
+        missing_evidence_reason: "No verified GPT-5 architecture paper is present in the corpus."
+    answer_contract:
+      type: uncertainty_boundary
+      required_sections:
+        - what_is_known
+        - what_is_not_supported
+        - missing_evidence
+      must_abstain_from:
+        - unsupported_architecture_claims
+    required_trace:
+      obligations:
+        - id: abstain_on_missing_gpt5_evidence
+          phase: verification
+          severity: critical
+          must_include:
+            - "insufficient evidence"
+            - "no verified GPT-5 architecture paper"
+    compatibility_projection:
+      taskType: UNCERTAINTY_BOUNDARY
+      expectedRoute: CLARIFY
+      requiredAnswerRegex:
+        - "insufficient|not supported|no verified"
+      forbiddenAnswerRegex:
+        - "GPT-5 uses"
+      requiredEvidenceRegex: []
+      expectedPaperIds: []
+      requiresCitation: false
+
+  - id: bert_transformer_role_001
+    schema_version: harness-golden-data/v1
+    split: seed
+    question:
+      language: en
+      text: "Does BERT use the Transformer as an encoder or decoder?"
+    capability_tags:
+      - precision_fact_extraction
+      - deep_comparison
+    difficulty: easy
+    paper_pack_ids:
+      - transformer_bert_gpt
+    corpus_scope:
+      retrieval_corpus: EVAL_HARNESS_SEED
+      required_paper_ids:
+        - bert_2018
+      allowed_paper_ids:
+        - attention_is_all_you_need_2017
+        - bert_2018
+    expected_result:
+      kind: answered
+      answer_type: exact_fact
+    expected_intent:
+      entities:
+        - "BERT"
+        - "Transformer"
+      required_evidence_types:
+        - "abstract"
+    gold_evidence:
+      required_anchor_ids:
+        - bert_transformer_encoder_background
+    gold_claims:
+      - claim_id: bert_uses_bidirectional_transformer_encoder
+        required: true
+        canonical_text: "BERT uses a bidirectional Transformer encoder."
+        expected_status: supported
+        support_anchor_ids:
+          - bert_transformer_encoder_background
+        exact_value: "bidirectional Transformer encoder"
+    answer_contract:
+      type: exact_fact
+      required_fields:
+        transformer_role: "bidirectional Transformer encoder"
+      citation_policy:
+        every_required_field_must_cite_anchor: true
+    required_trace:
+      obligations:
+        - id: retrieve_bert_architecture_anchor
+          phase: evidence
+          severity: critical
+          must_include_anchor_ids:
+            - bert_transformer_encoder_background
+    compatibility_projection:
+      taskType: PRECISION_FACT_EXTRACTION
+      expectedRoute: MANUAL_SOURCE_QA
+      requiredEvidenceRegex:
+        - "bidirectional Transformer"
+      requiredAnswerRegex:
+        - "encoder|bidirectional"
+      expectedPaperIds:
+        - bert_2018
+      requiresCitation: true
+
+  - id: bert_vs_transformer_comparison_001
+    schema_version: harness-golden-data/v1
+    split: seed
+    question:
+      language: en
+      text: "Compare the original Transformer and BERT on architecture role, directionality, and training objective."
+    capability_tags:
+      - deep_comparison
+      - precision_fact_extraction
+    difficulty: medium
+    paper_pack_ids:
+      - transformer_bert_gpt
+    corpus_scope:
+      retrieval_corpus: EVAL_HARNESS_SEED
+      required_paper_ids:
+        - attention_is_all_you_need_2017
+        - bert_2018
+      allowed_paper_ids:
+        - attention_is_all_you_need_2017
+        - bert_2018
+        - gpt2_2019
+      hard_negative_paper_ids:
+        - gpt2_2019
+    expected_result:
+      kind: answered
+      answer_type: comparison_matrix
+    expected_intent:
+      entities:
+        - "Transformer"
+        - "BERT"
+      ambiguity_status: "unambiguous"
+      required_evidence_types:
+        - "abstract"
+        - "paragraph"
+    expected_retrieval_plan:
+      required_strategies:
+        - "paper_identity_resolution"
+        - "lexical_search"
+    gold_evidence:
+      required_anchor_ids:
+        - transformer_encoder_decoder_architecture
+        - bert_transformer_encoder_background
+        - bert_masked_lm_pretraining
+      forbidden_anchor_ids:
+        - gpt2_transformer_language_model
+    gold_claims:
+      - claim_id: original_transformer_is_encoder_decoder
+        required: true
+        canonical_text: "The original Transformer is presented as an encoder-decoder architecture."
+        expected_status: supported
+        support_anchor_ids:
+          - transformer_encoder_decoder_architecture
+      - claim_id: bert_is_bidirectional_encoder
+        required: true
+        canonical_text: "BERT uses a bidirectional Transformer encoder."
+        expected_status: supported
+        support_anchor_ids:
+          - bert_transformer_encoder_background
+      - claim_id: bert_uses_masked_lm
+        required: true
+        canonical_text: "BERT is pre-trained with a masked language modeling objective."
+        expected_status: supported
+        support_anchor_ids:
+          - bert_masked_lm_pretraining
+    answer_contract:
+      type: comparison_matrix
+      compared_entities:
+        - "Attention Is All You Need"
+        - "BERT"
+      required_axes:
+        - architecture_role
+        - directionality
+        - training_objective
+      minimum_supported_claims: 3
+      citation_policy:
+        every_matrix_cell_must_have_support: true
+    required_trace:
+      obligations:
+        - id: build_comparison_matrix
+          phase: reasoning
+          severity: critical
+          must_include:
+            - "comparison"
+            - "architecture_role"
+        - id: cite_both_comparison_sources
+          phase: evidence
+          severity: critical
+          must_include_anchor_ids:
+            - transformer_encoder_decoder_architecture
+            - bert_transformer_encoder_background
+    compatibility_projection:
+      taskType: DEEP_COMPARISON
+      expectedRoute: MANUAL_SOURCE_QA
+      requiredEvidenceRegex:
+        - "encoder-decoder"
+        - "bidirectional Transformer"
+      requiredAnswerRegex:
+        - "encoder-decoder"
+        - "bidirectional"
+      forbiddenEvidenceRegex:
+        - "GPT-2"
+      expectedPaperIds:
+        - attention_is_all_you_need_2017
+        - bert_2018
+      requiresCitation: true
+
+  - id: transformer_to_bert_genealogy_001
+    schema_version: harness-golden-data/v1
+    split: seed
+    question:
+      language: en
+      text: "Show the direct technical lineage from Attention Is All You Need to BERT and explain the cited relationship."
+    capability_tags:
+      - association_influence_genealogy
+      - complex_multihop_reasoning
+    difficulty: medium
+    paper_pack_ids:
+      - transformer_bert_gpt
+    corpus_scope:
+      retrieval_corpus: EVAL_HARNESS_SEED
+      required_paper_ids:
+        - attention_is_all_you_need_2017
+        - bert_2018
+      allowed_paper_ids:
+        - attention_is_all_you_need_2017
+        - bert_2018
+        - gpt2_2019
+        - gpt3_2020
+    expected_result:
+      kind: answered
+      answer_type: citation_genealogy
+    expected_intent:
+      entities:
+        - "Attention Is All You Need"
+        - "BERT"
+      ambiguity_status: "unambiguous"
+      required_evidence_types:
+        - "citation_edge"
+        - "abstract"
+    expected_retrieval_plan:
+      required_strategies:
+        - "paper_identity_resolution"
+        - "citation_graph_traversal"
+    gold_evidence:
+      required_anchor_ids:
+        - bert_transformer_encoder_background
+    gold_claims:
+      - claim_id: bert_builds_on_transformer_encoder
+        required: true
+        canonical_text: "BERT's direct relationship to Attention Is All You Need is that it uses a bidirectional Transformer encoder."
+        expected_status: supported
+        support_anchor_ids:
+          - bert_transformer_encoder_background
+    answer_contract:
+      type: citation_genealogy
+      required_nodes:
+        - attention_is_all_you_need_2017
+        - bert_2018
+      required_edges:
+        - from: bert_2018
+          to: attention_is_all_you_need_2017
+          relation: uses_transformer_encoder
+      output_shape: directed_graph_plus_short_explanation
+    required_trace:
+      obligations:
+        - id: traverse_transformer_to_bert_edge
+          phase: retrieval
+          severity: critical
+          must_include_strategy:
+            - citation_graph_traversal
+          must_include_anchor_ids:
+            - bert_transformer_encoder_background
+        - id: render_genealogy_graph
+          phase: reasoning
+          severity: critical
+          must_include:
+            - "directed graph"
+            - "BERT"
+            - "Attention Is All You Need"
+    compatibility_projection:
+      taskType: ASSOCIATION_INFLUENCE_GENEALOGY
+      expectedRoute: MANUAL_SOURCE_QA
+      requiredEvidenceRegex:
+        - "bidirectional Transformer"
+      requiredAnswerRegex:
+        - "BERT"
+        - "Attention Is All You Need|Transformer"
+      expectedPaperIds:
+        - attention_is_all_you_need_2017
+        - bert_2018
+      requiresCitation: true
+
+  - id: adam_beta2_conflict_001
+    schema_version: harness-golden-data/v1
+    split: stress
+    question:
+      language: en
+      text: "Some sources say Adam beta2 is 0.999, but the Transformer paper used 0.98. Resolve this conflict."
+    capability_tags:
+      - contradiction_resolution
+      - methodology_reproduction
+    difficulty: medium
+    paper_pack_ids:
+      - transformer_bert_gpt
+    corpus_scope:
+      retrieval_corpus: EVAL_HARNESS_SEED
+      required_paper_ids:
+        - attention_is_all_you_need_2017
+        - adam_2014
+      allowed_paper_ids:
+        - attention_is_all_you_need_2017
+        - adam_2014
+        - bert_2018
+      hard_negative_paper_ids:
+        - bert_2018
+    expected_result:
+      kind: contradiction_report
+      answer_type: contradiction_arbitration
+    expected_intent:
+      entities:
+        - "Adam"
+        - "Transformer"
+      ambiguity_status: "unambiguous"
+      required_evidence_types:
+        - "paragraph"
+    expected_retrieval_plan:
+      required_strategies:
+        - "paper_identity_resolution"
+        - "negative_evidence_search"
+    gold_evidence:
+      required_anchor_ids:
+        - transformer_adam_training_params_span
+        - adam_default_beta2_span
+    gold_claims:
+      - claim_id: adam_paper_default_beta2
+        required: true
+        canonical_text: "The Adam optimizer paper gives beta2 = 0.999 as a good default."
+        expected_status: supported
+        support_anchor_ids:
+          - adam_default_beta2_span
+        exact_value: "0.999"
+      - claim_id: transformer_experiment_beta2
+        required: true
+        canonical_text: "The Transformer paper used beta2 = 0.98 in its training setup."
+        expected_status: supported
+        support_anchor_ids:
+          - transformer_adam_training_params_span
+        exact_value: "0.98"
+    answer_contract:
+      type: contradiction_arbitration
+      required_conflict_axes:
+        - claim
+        - source_a_evidence
+        - source_b_evidence
+        - setting_difference
+        - resolution
+      must_not_hide_conflict: true
+    required_trace:
+      obligations:
+        - id: retrieve_both_beta2_sources
+          phase: evidence
+          severity: critical
+          must_include_anchor_ids:
+            - transformer_adam_training_params_span
+            - adam_default_beta2_span
+        - id: explain_default_vs_experiment_setting
+          phase: verification
+          severity: critical
+          must_include:
+            - "default"
+            - "Transformer training setting"
+    failure_modes:
+      - id: collapses_default_and_experiment
+        description: "Treats 0.999 and 0.98 as a simple factual disagreement instead of different contexts."
+    compatibility_projection:
+      taskType: CONTRADICTION_RESOLUTION
+      expectedRoute: MANUAL_SOURCE_QA
+      requiredEvidenceRegex:
+        - "0\\.999"
+        - "0\\.98"
+      requiredAnswerRegex:
+        - "default"
+        - "Transformer"
+        - "0\\.98"
+      expectedPaperIds:
+        - attention_is_all_you_need_2017
+        - adam_2014
+      requiresCitation: true

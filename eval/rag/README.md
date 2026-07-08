@@ -95,12 +95,19 @@ Page-location input rows are intentionally small:
 | `product-launch-runtime-preflight` | product | Launch runtime dependency preflight | `passRate` | runnable |
 | `product-reading-launch-trace` | product | Product Reading 9-tool trace coverage | `passRate` | runnable |
 | `product-reading-live-launch-smoke` | product | Live WebSocket Product Reading launch smoke | `passRate` | runnable |
+| `harness-golden-seed-smoke` | professional | Evidence-first harness trace scoring | `tracePassRate` | runnable |
 | `qasper-dev-200` | professional | Research-paper evidence QA | `passRate` | runnable |
 | `litsearch-full` | professional | Literature-search retrieval | `recallAt20` | offline full scored; service-backed full scored |
 
 QASPER measures answer-and-evidence quality for full-text paper QA. LitSearch measures whether the
 retrieval harness finds gold papers for literature-search queries; it should use retrieval metrics
 such as `recallAt5`, `recallAt20`, and optionally MRR.
+
+`harness-golden-seed-smoke` is the first runnable evidence-first Golden Case dataset. Its canonical
+source is `research/golden-data/manifest.yaml`, not generated JSONL. The committed smoke validates
+schema loading, authoring rules, compatibility projection, and deterministic scoring of Harness Run
+Trace fixtures. Use it to evolve the research-harness schema before connecting live Product Reading
+traces.
 
 QASPER also has an offline paragraph-window smoke under `eval/rag/qasper/generated/`: structured
 abstract/full-text paragraphs are converted into eval-scoped page-like chunks, then scored with

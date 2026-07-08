@@ -111,6 +111,14 @@ harnesses:
     verifier: launch-readiness
     status: runnable-launch-readiness
     benchmarkIds: product-launch-readiness
+  - id: golden-trace-fixture
+    name: Golden Trace Fixture
+    description: Offline fixture scorer for evidence-first Golden Cases and committed Harness Run Trace YAML.
+    retrieval: fixture-trace
+    planner: declared-trace
+    verifier: trace-obligation-v1
+    status: runnable-golden-fixture
+    benchmarkIds: harness-golden-seed-smoke
   - id: semantic-only-baseline
     name: Semantic Only Baseline
     description: Semantic retrieval only with the same answer and evidence verifier.
@@ -219,6 +227,16 @@ benchmarks:
     source: local committed product paper
     primaryMetric: passRate
     cases: "2 table cases / figure fixture pending"
+  - id: harness-golden-seed-smoke
+    name: Harness Golden Seed Smoke
+    tier: professional
+    task: evidence-first harness trace scoring
+    status: runnable
+    path: research/golden-data/manifest.yaml
+    source: local committed Golden Case YAML
+    primaryMetric: tracePassRate
+    gateMode: harness-golden-seed-smoke
+    cases: "7"
   - id: qasper-dev-200
     name: QASPER Dev 200
     tier: professional

@@ -1,0 +1,83 @@
+schema_version: harness-run-trace/v1
+case_id: transformer_adam_params_001
+harness_id: golden_trace_fixture
+started_at: "2026-07-08T12:00:00Z"
+completed_at: "2026-07-08T12:00:01Z"
+result_status: completed
+intent_frame:
+  answer_type: exact_fact
+  entities:
+    - Transformer
+    - Adam
+  notes:
+    - "Attention Is All You Need"
+    - "optimizer hyperparameter lookup"
+retrieval_plan:
+  strategies:
+    - paper_identity_resolution
+    - lexical_search
+    - section_search
+evidence_ledger:
+  items:
+    - evidence_id: run_evidence_001
+      matched_anchor_id: transformer_adam_training_params_span
+      paper_id: attention_is_all_you_need_2017
+      title: "Attention Is All You Need"
+      section: "Training"
+      page: 7
+      element_type: paragraph
+      span_text: "We used the Adam optimizer with beta1 = 0.9, beta2 = 0.98 and epsilon = 10^-9."
+      retrieval_strategy: lexical_search
+      relevance_score: 0.99
+      confidence_label: high
+      supports_claim_ids:
+        - adam_beta1
+        - adam_beta2
+        - adam_epsilon
+  rejected_items:
+    - evidence_id: rejected_bert_background
+      matched_anchor_id: bert_transformer_encoder_background
+      paper_id: bert_2018
+      title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      element_type: abstract
+      retrieval_strategy: hard_negative_review
+      confidence_label: rejected
+  missing_evidence: []
+claim_graph:
+  claims:
+    - claim_id: adam_beta1
+      text: "The Transformer paper used Adam beta1 = 0.9."
+      status: supported
+    - claim_id: adam_beta2
+      text: "The Transformer paper used Adam beta2 = 0.98."
+      status: supported
+    - claim_id: adam_epsilon
+      text: "The Transformer paper used Adam epsilon = 1e-9."
+      status: supported
+reasoning_artifacts:
+  - type: field_table
+    payload:
+      beta1: "0.9"
+      beta2: "0.98"
+      epsilon: "1e-9"
+verification_pass:
+  unsupported_claim_count: 0
+  contradicted_claim_count: 0
+  missing_required_anchor_ids: []
+  satisfied_trace_obligation_ids:
+    - resolve_original_transformer
+    - retrieve_optimizer_span
+    - reject_default_adam_values
+  failed_trace_obligation_ids: []
+  abstention_required: false
+final_answer:
+  markdown: "The original Transformer paper used Adam with beta1=0.9, beta2=0.98, and epsilon=1e-9 [1]."
+  cited_anchor_ids:
+    - transformer_adam_training_params_span
+  fields:
+    beta1: "0.9"
+    beta2: "0.98"
+    epsilon: "1e-9"
+diagnostics:
+  token_count: 256
+  latency_ms: 1000

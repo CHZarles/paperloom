@@ -1,0 +1,60 @@
+schema_version: harness-run-trace/v1
+case_id: transformer_adam_params_001
+harness_id: golden_trace_fixture
+started_at: "2026-07-08T12:00:00Z"
+completed_at: "2026-07-08T12:00:01Z"
+result_status: completed
+intent_frame:
+  answer_type: exact_fact
+  entities:
+    - Transformer
+retrieval_plan:
+  strategies:
+    - semantic_search
+evidence_ledger:
+  items:
+    - evidence_id: wrong_evidence_001
+      matched_anchor_id: bert_transformer_encoder_background
+      paper_id: bert_2018
+      title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      element_type: abstract
+      span_text: "BERT is designed to pre-train deep bidirectional representations."
+      retrieval_strategy: semantic_search
+      confidence_label: low
+      supports_claim_ids: []
+  rejected_items: []
+  missing_evidence:
+    - transformer_adam_training_params_span
+claim_graph:
+  claims:
+    - claim_id: adam_beta2
+      text: "The Transformer paper used Adam beta2 = 0.999."
+      status: unsupported
+reasoning_artifacts:
+  - type: field_table
+    payload:
+      beta1: "0.9"
+      beta2: "0.999"
+      epsilon: "1e-8"
+verification_pass:
+  unsupported_claim_count: 1
+  contradicted_claim_count: 0
+  missing_required_anchor_ids:
+    - transformer_adam_training_params_span
+  satisfied_trace_obligation_ids: []
+  failed_trace_obligation_ids:
+    - resolve_original_transformer
+    - retrieve_optimizer_span
+    - reject_default_adam_values
+  abstention_required: false
+final_answer:
+  markdown: "The Transformer paper used the default Adam beta2=0.999."
+  cited_anchor_ids:
+    - bert_transformer_encoder_background
+  fields:
+    beta1: "0.9"
+    beta2: "0.999"
+    epsilon: "1e-8"
+diagnostics:
+  token_count: 128
+  latency_ms: 700

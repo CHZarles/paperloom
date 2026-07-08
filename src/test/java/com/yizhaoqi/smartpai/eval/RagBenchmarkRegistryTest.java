@@ -228,4 +228,23 @@ class RagBenchmarkRegistryTest {
                 "REFERENCE_QA"
         ).contains(testCase.taskType())));
     }
+
+    @Test
+    void registersHarnessGoldenSeedSmoke() throws Exception {
+        RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
+
+        assertTrue(registry.harnesses().stream()
+                .anyMatch(harness -> "golden-trace-fixture".equals(harness.id())
+                        && "runnable-golden-fixture".equals(harness.status())
+                        && "fixture-trace".equals(harness.retrieval())
+                        && harness.benchmarkIds().equals(List.of("harness-golden-seed-smoke"))));
+
+        RagBenchmarkRegistry.BenchmarkDefinition benchmark = registry.benchmark("harness-golden-seed-smoke");
+        assertEquals("Harness Golden Seed Smoke", benchmark.name());
+        assertEquals("professional", benchmark.tier());
+        assertEquals("evidence-first harness trace scoring", benchmark.task());
+        assertEquals("research/golden-data/manifest.yaml", benchmark.path());
+        assertEquals("tracePassRate", benchmark.primaryMetric());
+        assertEquals("7", benchmark.cases());
+    }
 }

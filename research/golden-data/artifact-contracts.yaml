@@ -1,0 +1,202 @@
+schema_version: research-harness-artifacts/v1
+purpose: "Machine-readable V0 contracts for the auditable research harness trace."
+artifact_order:
+  - IntentFrame
+  - RetrievalPlan
+  - EvidenceLedger
+  - ClaimGraph
+  - ReasoningArtifact
+  - VerificationPass
+  - ResearchAnswer
+shared_enums:
+  answer_type:
+    - exact_fact
+    - definition_trace
+    - comparison_matrix
+    - reproduction_protocol
+    - citation_genealogy
+    - critical_assessment
+    - meta_review
+    - contradiction_resolution
+    - uncertainty_boundary
+    - ambiguity_resolution
+    - constraint_filter
+    - figure_table_formula_interpretation
+    - multi_hop_chain
+  ambiguity_status:
+    - unambiguous
+    - ambiguous
+    - needs_user_choice
+    - unanswerable_from_available_evidence
+  evidence_type:
+    - paragraph
+    - table
+    - table_cell
+    - figure
+    - figure_caption
+    - formula
+    - algorithm
+    - appendix
+    - metadata
+    - citation_edge
+  claim_status:
+    - supported
+    - contradicted
+    - underdetermined
+    - ambiguous
+  retrieval_strategy:
+    - paper_identity_resolution
+    - semantic_search
+    - lexical_search
+    - metadata_filter
+    - citation_graph_traversal
+    - table_search
+    - figure_caption_search
+    - formula_search
+    - algorithm_search
+    - appendix_search
+    - author_institution_search
+    - negative_evidence_search
+    - version_comparison
+artifacts:
+  - id: IntentFrame
+    purpose: "Typed interpretation of the user question before retrieval."
+    required_fields:
+      - question_id
+      - raw_question
+      - normalized_question
+      - entities
+      - paper_mentions
+      - method_mentions
+      - dataset_mentions
+      - constraints
+      - answer_type
+      - ambiguity_status
+      - required_evidence_types
+      - required_capabilities
+    invariants:
+      - "raw_question must preserve the user wording."
+      - "answer_type must be one of shared_enums.answer_type."
+      - "ambiguity_status must explain whether the harness may proceed or must clarify/abstain."
+      - "required_capabilities must be visible to eval scoring."
+  - id: RetrievalPlan
+    purpose: "Explicit strategy plan selected from the IntentFrame."
+    required_fields:
+      - plan_id
+      - question_id
+      - target_entities
+      - strategy_steps
+      - expected_evidence_types
+      - required_recall_targets
+      - hard_negative_policy
+      - stop_conditions
+    invariants:
+      - "Each strategy step must name a retrieval_strategy."
+      - "The plan must distinguish target papers from hard distractors when known."
+      - "The plan must expose negative-evidence or version-comparison searches when the answer type requires them."
+  - id: EvidenceLedger
+    purpose: "Immutable source-grounded record of accepted, rejected, and missing evidence."
+    required_fields:
+      - ledger_id
+      - question_id
+      - items
+      - rejected_items
+      - missing_evidence
+    item_required_fields:
+      - evidence_id
+      - paper_id
+      - title
+      - paper_version
+      - section
+      - page
+      - location
+      - element_type
+      - span_text
+      - bbox_or_cell_ref
+      - retrieval_strategy
+      - relevance_score
+      - evidence_quality
+      - supports_claim_ids
+      - refutes_claim_ids
+    invariants:
+      - "Evidence items are append-only within one trace."
+      - "Every accepted evidence item must identify a paper and inspectable location."
+      - "Rejected items should be preserved when rejection affects ambiguity, contradiction, or hard-negative scoring."
+  - id: ClaimGraph
+    purpose: "Atomic claims and their support/refutation links."
+    required_fields:
+      - graph_id
+      - question_id
+      - claims
+      - edges
+    claim_required_fields:
+      - claim_id
+      - text
+      - claim_type
+      - supporting_evidence_ids
+      - refuting_evidence_ids
+      - status
+      - confidence
+      - depends_on_claim_ids
+    invariants:
+      - "Every substantive final-answer sentence must map to at least one claim."
+      - "A supported claim must have at least one supporting evidence id."
+      - "An underdetermined claim must include missing evidence or uncertainty rationale in VerificationPass."
+  - id: ReasoningArtifact
+    purpose: "Question-specific structured synthesis product shown directly in the frontend."
+    required_fields:
+      - artifact_id
+      - question_id
+      - type
+      - title
+      - source_claim_ids
+      - payload
+    allowed_types:
+      - comparison_table
+      - timeline
+      - citation_graph
+      - reproduction_checklist
+      - conflict_matrix
+      - constraint_filter_table
+      - uncertainty_boundary_report
+      - definition_evolution_trace
+      - multi_hop_chain
+    invariants:
+      - "Payload shape must match type."
+      - "Cells, nodes, edges, or checklist items must point back to claim ids or evidence ids."
+  - id: VerificationPass
+    purpose: "Pre-answer validation report proving whether the harness may answer, clarify, or abstain."
+    required_fields:
+      - verification_id
+      - question_id
+      - required_capabilities_attempted
+      - required_evidence_status
+      - unsupported_claim_count
+      - contradicted_claim_count
+      - missing_required_evidence
+      - ambiguity_resolution
+      - constraint_check_results
+      - abstention_required
+      - satisfied_trace_obligation_ids
+      - failed_trace_obligation_ids
+    invariants:
+      - "Unsupported confidence is a verification failure."
+      - "Abstention must name missing evidence, not merely say the system cannot answer."
+      - "Contradictions must be surfaced when answer_type is contradiction_resolution."
+  - id: ResearchAnswer
+    purpose: "Final user-facing answer grounded in the prior artifacts."
+    required_fields:
+      - answer_id
+      - question_id
+      - status
+      - answer_type
+      - summary
+      - sections
+      - cited_claim_ids
+      - cited_evidence_ids
+      - reasoning_artifact_ids
+      - verification_id
+    invariants:
+      - "The answer must not introduce substantive claims absent from ClaimGraph."
+      - "Every required answer field from a Golden Case must cite supporting evidence unless the expected result is clarification or abstention."
+      - "status must distinguish answered, needs_clarification, abstained, contradiction_report, and partial_with_limits."
