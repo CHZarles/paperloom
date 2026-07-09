@@ -73,7 +73,7 @@ harnesses:
     benchmarkIds: product-pdf-parser-smoke
   - id: product-reading-launch-trace-eval
     name: Product Reading Launch Trace Eval
-    description: Trace-artifact gate that verifies Product Reading 9-tool coverage, paper-choice cards, and Source Quote references.
+    description: Trace-artifact gate that verifies Product Reading tool coverage, paper-choice cards, Source Quote references, artifact completeness, and novice-readable answers.
     retrieval: trace-artifact-check
     planner: none
     verifier: trace-eval
@@ -191,13 +191,13 @@ benchmarks:
   - id: product-reading-launch-trace
     name: Product Reading Launch Trace
     tier: product
-    task: Product Reading 9-tool trace coverage
+    task: Product Reading closed-loop trace coverage
     status: runnable
     path: eval/rag/product-reading-launch-trace-cases.jsonl
     source: local Product Reading trace artifacts
     primaryMetric: passRate
     gateMode: product-reading-trace-eval
-    cases: "9"
+    cases: "16"
   - id: product-reading-live-launch-smoke
     name: Product Reading Live Launch Smoke
     tier: product
@@ -207,7 +207,7 @@ benchmarks:
     source: running Product Reading backend
     primaryMetric: passRate
     gateMode: product-reading-live-launch-smoke
-    cases: "9"
+    cases: "10"
   - id: product-launch-readiness
     name: Product Launch Readiness
     tier: product

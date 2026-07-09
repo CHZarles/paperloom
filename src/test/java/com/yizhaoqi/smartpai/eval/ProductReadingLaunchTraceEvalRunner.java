@@ -20,6 +20,33 @@ public class ProductReadingLaunchTraceEvalRunner {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String ROUTE = "PRODUCT_READING_TRACE_EVAL";
     private static final String READING_TRACE_ARTIFACT = "PRODUCT_READING_REACT_TURN";
+    private static final List<String> VISIBLE_INTERNAL_TOKENS = List.of(
+            "paper_handle_",
+            "page_ref_",
+            "section_ref_",
+            "location_ref_",
+            "source_quote_",
+            "paperHandle",
+            "locationRef",
+            "sourceQuoteRef",
+            "parserQuality",
+            "parserName",
+            "parserVersion",
+            "AUTO_SOURCE",
+            "AUTO_LIBRARY",
+            "SOURCE_SET_SNAPSHOT",
+            "immutable=true",
+            "Source Quote",
+            "get_session_state",
+            "list_papers",
+            "search_paper_candidates",
+            "find_papers_by_identity",
+            "get_paper_outline",
+            "list_paper_locations",
+            "find_reading_locations",
+            "read_locations",
+            "trace_source_quotes"
+    );
 
     public Path run(Options options) throws IOException {
         Options safeOptions = options == null ? Options.defaults() : options;
@@ -87,16 +114,28 @@ public class ProductReadingLaunchTraceEvalRunner {
             if (!READING_TRACE_ARTIFACT.equals(root.path("artifactType").asText())) {
                 return null;
             }
+            JsonNode readingArtifacts = root.path("readingArtifacts");
+            String finalAnswerMarkdown = root.path("finalAnswerMarkdown")
+                    .asText(root.path("answerEnvelope").path("answer").asText(""));
             return new TraceDocument(
                     path,
+                    root.path("input").path("userMessage").asText(""),
+                    finalAnswerMarkdown,
                     root.path("resultStatus").asText(""),
                     root.path("answerEnvelope").path("answerType").asText(""),
                     values(root.path("toolCalls"), "toolName"),
                     values(root.path("productStateItems"), "kind"),
                     values(root.path("productStateItems"), "sourceTool"),
+                    originalFilenames(root),
+                    missingEvidence(readingArtifacts),
+                    readingArtifactPanels(readingArtifacts),
+                    paperShortlistItemCount(readingArtifacts),
                     root.path("references").isArray() ? root.path("references").size() : 0,
                     hasCanonicalResearchTrace(root.path("researchTrace")),
-                    root.path("researchTrace").path("verificationPass").path("valid").asBoolean(false)
+                    root.path("researchTrace").path("verificationPass").path("valid").asBoolean(false),
+                    noviceReadable(finalAnswerMarkdown),
+                    evidenceArtifactsComplete(root),
+                    beginnerShortlistComplete(readingArtifacts)
             );
         } catch (Exception ignored) {
             return null;
@@ -140,13 +179,40 @@ public class ProductReadingLaunchTraceEvalRunner {
         if (!trace.productStateSourceTools().containsAll(testCase.requiredProductStateSourceTools())) {
             return false;
         }
+        if (!containsAll(trace.inputUserMessage(), testCase.requiredInputContains())) {
+            return false;
+        }
+        if (!containsAll(trace.finalAnswerMarkdown(), testCase.requiredAnswerContains())) {
+            return false;
+        }
+        if (containsAny(trace.finalAnswerMarkdown(), testCase.forbiddenAnswerContains())) {
+            return false;
+        }
+        if (!trace.originalFilenames().containsAll(testCase.requiredOriginalFilenames())) {
+            return false;
+        }
+        if (!trace.missingEvidence().containsAll(testCase.requiredMissingEvidence())) {
+            return false;
+        }
+        if (!trace.readingArtifactPanels().containsAll(testCase.requiredReadingArtifactPanels())) {
+            return false;
+        }
         if (testCase.referenceRequired() && trace.referenceCount() <= 0) {
             return false;
         }
         if (testCase.researchTraceRequired() && !trace.hasResearchTrace()) {
             return false;
         }
-        return !testCase.verifiedResearchTraceRequired() || trace.researchTraceVerified();
+        if (testCase.verifiedResearchTraceRequired() && !trace.researchTraceVerified()) {
+            return false;
+        }
+        if (testCase.noviceReadableAnswerRequired() && !trace.noviceReadable()) {
+            return false;
+        }
+        if (testCase.artifactCompletenessRequired() && !trace.evidenceArtifactsComplete()) {
+            return false;
+        }
+        return !testCase.beginnerShortlistRequired() || trace.beginnerShortlistComplete();
     }
 
     private List<String> validateCase(ProductReadingLaunchTraceCase testCase) {
@@ -162,7 +228,16 @@ public class ProductReadingLaunchTraceEvalRunner {
                 || testCase.referenceRequired()
                 || testCase.expectedResultStatusValue() != null
                 || testCase.researchTraceRequired()
-                || testCase.verifiedResearchTraceRequired();
+                || testCase.verifiedResearchTraceRequired()
+                || !testCase.requiredInputContains().isEmpty()
+                || !testCase.requiredAnswerContains().isEmpty()
+                || !testCase.forbiddenAnswerContains().isEmpty()
+                || !testCase.requiredOriginalFilenames().isEmpty()
+                || !testCase.requiredMissingEvidence().isEmpty()
+                || !testCase.requiredReadingArtifactPanels().isEmpty()
+                || testCase.noviceReadableAnswerRequired()
+                || testCase.artifactCompletenessRequired()
+                || testCase.beginnerShortlistRequired();
         if (!hasRequirement) {
             failures.add("trace_case_has_no_requirements");
         }
@@ -196,16 +271,33 @@ public class ProductReadingLaunchTraceEvalRunner {
         diagnostics.put("requiredAnswerType", testCase.requiredAnswerTypeValue());
         diagnostics.put("requiredProductStateKinds", testCase.requiredProductStateKinds());
         diagnostics.put("requiredProductStateSourceTools", testCase.requiredProductStateSourceTools());
+        diagnostics.put("requiredInputContains", testCase.requiredInputContains());
+        diagnostics.put("requiredAnswerContains", testCase.requiredAnswerContains());
+        diagnostics.put("forbiddenAnswerContains", testCase.forbiddenAnswerContains());
+        diagnostics.put("requiredOriginalFilenames", testCase.requiredOriginalFilenames());
+        diagnostics.put("requiredMissingEvidence", testCase.requiredMissingEvidence());
+        diagnostics.put("requiredReadingArtifactPanels", testCase.requiredReadingArtifactPanels());
         diagnostics.put("requiresReference", testCase.referenceRequired());
         diagnostics.put("requiresResearchTrace", testCase.researchTraceRequired());
         diagnostics.put("requiresVerifiedResearchTrace", testCase.verifiedResearchTraceRequired());
+        diagnostics.put("requiresNoviceReadableAnswer", testCase.noviceReadableAnswerRequired());
+        diagnostics.put("requiresArtifactCompleteness", testCase.artifactCompletenessRequired());
+        diagnostics.put("requiresBeginnerShortlist", testCase.beginnerShortlistRequired());
         if (evaluation.trace() != null) {
             diagnostics.put("matchedTracePath", evaluation.trace().path().toString());
+            diagnostics.put("matchedInputUserMessage", evaluation.trace().inputUserMessage());
             diagnostics.put("matchedToolNames", List.copyOf(evaluation.trace().toolNames()));
             diagnostics.put("matchedProductStateSourceTools", List.copyOf(evaluation.trace().productStateSourceTools()));
+            diagnostics.put("matchedOriginalFilenames", List.copyOf(evaluation.trace().originalFilenames()));
+            diagnostics.put("matchedMissingEvidence", List.copyOf(evaluation.trace().missingEvidence()));
+            diagnostics.put("matchedReadingArtifactPanels", List.copyOf(evaluation.trace().readingArtifactPanels()));
+            diagnostics.put("matchedPaperShortlistItemCount", evaluation.trace().paperShortlistItemCount());
             diagnostics.put("matchedReferenceCount", evaluation.trace().referenceCount());
             diagnostics.put("matchedResearchTrace", evaluation.trace().hasResearchTrace());
             diagnostics.put("matchedResearchTraceVerified", evaluation.trace().researchTraceVerified());
+            diagnostics.put("matchedNoviceReadableAnswer", evaluation.trace().noviceReadable());
+            diagnostics.put("matchedEvidenceArtifactsComplete", evaluation.trace().evidenceArtifactsComplete());
+            diagnostics.put("matchedBeginnerShortlistComplete", evaluation.trace().beginnerShortlistComplete());
         }
         String markdown = evaluation.passed()
                 ? "Matched Product Reading trace for " + testCase.id()
@@ -236,10 +328,19 @@ public class ProductReadingLaunchTraceEvalRunner {
                 + ", answerType=" + testCase.requiredAnswerTypeValue()
                 + ", productStateKinds=" + testCase.requiredProductStateKinds()
                 + ", productStateSourceTools=" + testCase.requiredProductStateSourceTools()
+                + ", inputContains=" + testCase.requiredInputContains()
+                + ", answerContains=" + testCase.requiredAnswerContains()
+                + ", forbiddenAnswerContains=" + testCase.forbiddenAnswerContains()
+                + ", originalFilenames=" + testCase.requiredOriginalFilenames()
+                + ", missingEvidence=" + testCase.requiredMissingEvidence()
+                + ", readingArtifactPanels=" + testCase.requiredReadingArtifactPanels()
                 + ", requiresReference=" + testCase.referenceRequired()
                 + ", resultStatus=" + testCase.expectedResultStatusValue()
                 + ", requiresResearchTrace=" + testCase.researchTraceRequired()
-                + ", requiresVerifiedResearchTrace=" + testCase.verifiedResearchTraceRequired();
+                + ", requiresVerifiedResearchTrace=" + testCase.verifiedResearchTraceRequired()
+                + ", requiresNoviceReadableAnswer=" + testCase.noviceReadableAnswerRequired()
+                + ", requiresArtifactCompleteness=" + testCase.artifactCompletenessRequired()
+                + ", requiresBeginnerShortlist=" + testCase.beginnerShortlistRequired();
     }
 
     private boolean hasCanonicalResearchTrace(JsonNode node) {
@@ -270,16 +371,183 @@ public class ProductReadingLaunchTraceEvalRunner {
         return values;
     }
 
+    private Set<String> originalFilenames(JsonNode root) {
+        LinkedHashSet<String> filenames = new LinkedHashSet<>();
+        filenames.addAll(values(root.path("productStateItems"), "originalFilename"));
+        filenames.addAll(values(root.path("readingArtifacts").path("paperShortlist").path("items"), "originalFilename"));
+        String selectedFilename = root.path("readingStatePatch").path("selectedPaper").path("originalFilename").asText("");
+        if (!selectedFilename.isBlank()) {
+            filenames.add(selectedFilename);
+        }
+        return Set.copyOf(filenames);
+    }
+
+    private Set<String> missingEvidence(JsonNode readingArtifacts) {
+        return stringValues(readingArtifacts.path("missingEvidence").path("missing"));
+    }
+
+    private Set<String> stringValues(JsonNode array) {
+        Set<String> values = new LinkedHashSet<>();
+        if (array == null || !array.isArray()) {
+            return values;
+        }
+        for (JsonNode item : array) {
+            String value = item.asText("");
+            if (!value.isBlank()) {
+                values.add(value);
+            }
+        }
+        return values;
+    }
+
+    private Set<String> readingArtifactPanels(JsonNode readingArtifacts) {
+        LinkedHashSet<String> panels = new LinkedHashSet<>();
+        if (!readingArtifacts.path("goalCard").path("interpretedGoal").asText("").isBlank()) {
+            panels.add("goalCard");
+        }
+        if (readingArtifacts.path("paperShortlist").path("items").isArray()
+                && readingArtifacts.path("paperShortlist").path("items").size() > 0) {
+            panels.add("paperShortlist");
+        }
+        if (readingArtifacts.path("readingPlan").path("steps").isArray()
+                && readingArtifacts.path("readingPlan").path("steps").size() > 0) {
+            panels.add("readingPlan");
+        }
+        if (readingArtifacts.path("claimEvidencePanel").path("rows").isArray()
+                && readingArtifacts.path("claimEvidencePanel").path("rows").size() > 0) {
+            panels.add("claimEvidencePanel");
+        }
+        if (readingArtifacts.path("missingEvidence").path("missing").isArray()
+                && readingArtifacts.path("missingEvidence").path("missing").size() > 0) {
+            panels.add("missingEvidence");
+        }
+        return Set.copyOf(panels);
+    }
+
+    private int paperShortlistItemCount(JsonNode readingArtifacts) {
+        JsonNode items = readingArtifacts.path("paperShortlist").path("items");
+        return items.isArray() ? items.size() : 0;
+    }
+
+    private boolean noviceReadable(String answer) {
+        String safeAnswer = answer == null ? "" : answer;
+        if (!safeAnswer.contains("I understand your goal as:")
+                || !safeAnswer.contains("Short answer:")
+                || !safeAnswer.contains("Start here:")
+                || !safeAnswer.contains("How to verify:")
+                || !safeAnswer.contains("Not verified yet:")
+                || !safeAnswer.contains("Next step:")) {
+            return false;
+        }
+        return !containsAny(safeAnswer, VISIBLE_INTERNAL_TOKENS);
+    }
+
+    private boolean evidenceArtifactsComplete(JsonNode root) {
+        JsonNode references = root.path("references");
+        JsonNode rows = root.path("readingArtifacts").path("claimEvidencePanel").path("rows");
+        if (!references.isArray() || references.size() == 0 || !rows.isArray() || rows.size() == 0) {
+            return false;
+        }
+        for (JsonNode reference : references) {
+            boolean hasIdentity = !reference.path("sourceQuoteRef").asText("").isBlank()
+                    && !reference.path("paperId").asText("").isBlank()
+                    && !reference.path("paperVersion").asText("").isBlank()
+                    && !reference.path("locationRef").asText("").isBlank()
+                    && !reference.path("content").asText("").isBlank();
+            boolean hasPageOrSection = reference.hasNonNull("pageNumber")
+                    || !reference.path("sectionTitle").asText("").isBlank();
+            if (!hasIdentity || !hasPageOrSection) {
+                return false;
+            }
+        }
+        for (JsonNode row : rows) {
+            String sourceQuoteRef = row.path("sourceQuoteRef").asText("");
+            boolean hasRowIdentity = !row.path("citationMarker").asText("").isBlank()
+                    && !sourceQuoteRef.isBlank()
+                    && !row.path("paperId").asText("").isBlank()
+                    && !row.path("locationRef").asText("").isBlank()
+                    && !row.path("quote").asText("").isBlank();
+            if (!hasRowIdentity || !hasOpenSourceQuoteAction(row, sourceQuoteRef)) {
+                return false;
+            }
+        }
+        return missingEvidence(root.path("readingArtifacts")).contains("visual_pdf_page_evidence");
+    }
+
+    private boolean hasOpenSourceQuoteAction(JsonNode row, String sourceQuoteRef) {
+        JsonNode actions = row.path("actions");
+        if (!actions.isArray()) {
+            return false;
+        }
+        for (JsonNode action : actions) {
+            if ("OPEN_SOURCE_QUOTE".equals(action.path("action").asText(""))
+                    && sourceQuoteRef.equals(action.path("payload").path("sourceQuoteRef").asText(""))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean beginnerShortlistComplete(JsonNode readingArtifacts) {
+        JsonNode items = readingArtifacts.path("paperShortlist").path("items");
+        if (!items.isArray() || items.size() < 3 || items.size() > 5) {
+            return false;
+        }
+        for (JsonNode item : items) {
+            String role = item.path("role").asText("").trim();
+            String roleEvidenceSource = item.path("roleEvidenceSource").asText("").trim();
+            String evidenceStatus = item.path("evidenceStatus").asText("").trim();
+            String roleEvidenceStatus = item.path("roleEvidenceStatus").asText("").trim();
+            if (role.isBlank()
+                    || roleEvidenceSource.isBlank()
+                    || "missing_role_metadata".equals(roleEvidenceSource)
+                    || "unmapped_role_metadata".equals(roleEvidenceSource)
+                    || (evidenceStatus.isBlank() && roleEvidenceStatus.isBlank())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean containsAll(String value, List<String> requiredFragments) {
+        String text = value == null ? "" : value;
+        for (String fragment : requiredFragments == null ? List.<String>of() : requiredFragments) {
+            if (!text.contains(fragment)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean containsAny(String value, List<String> forbiddenFragments) {
+        String text = value == null ? "" : value;
+        for (String fragment : forbiddenFragments == null ? List.<String>of() : forbiddenFragments) {
+            if (!fragment.isBlank() && text.contains(fragment)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private record TraceDocument(
             Path path,
+            String inputUserMessage,
+            String finalAnswerMarkdown,
             String resultStatus,
             String answerType,
             Set<String> toolNames,
             Set<String> productStateKinds,
             Set<String> productStateSourceTools,
+            Set<String> originalFilenames,
+            Set<String> missingEvidence,
+            Set<String> readingArtifactPanels,
+            int paperShortlistItemCount,
             int referenceCount,
             boolean hasResearchTrace,
-            boolean researchTraceVerified
+            boolean researchTraceVerified,
+            boolean noviceReadable,
+            boolean evidenceArtifactsComplete,
+            boolean beginnerShortlistComplete
     ) {
     }
 
@@ -304,10 +572,19 @@ public class ProductReadingLaunchTraceEvalRunner {
             String requiredAnswerType,
             List<String> requiredProductStateKinds,
             List<String> requiredProductStateSourceTools,
+            List<String> requiredInputContains,
+            List<String> requiredAnswerContains,
+            List<String> forbiddenAnswerContains,
+            List<String> requiredOriginalFilenames,
+            List<String> requiredMissingEvidence,
+            List<String> requiredReadingArtifactPanels,
             Boolean requiresReference,
             String expectedResultStatus,
             Boolean requiresResearchTrace,
-            Boolean requiresVerifiedResearchTrace
+            Boolean requiresVerifiedResearchTrace,
+            Boolean requiresNoviceReadableAnswer,
+            Boolean requiresArtifactCompleteness,
+            Boolean requiresBeginnerShortlist
     ) {
         public ProductReadingLaunchTraceCase {
             id = id == null ? "" : id.trim();
@@ -315,6 +592,12 @@ public class ProductReadingLaunchTraceEvalRunner {
             requiredAnswerType = blankToNull(requiredAnswerType);
             requiredProductStateKinds = safeList(requiredProductStateKinds);
             requiredProductStateSourceTools = safeList(requiredProductStateSourceTools);
+            requiredInputContains = safeList(requiredInputContains);
+            requiredAnswerContains = safeList(requiredAnswerContains);
+            forbiddenAnswerContains = safeList(forbiddenAnswerContains);
+            requiredOriginalFilenames = safeList(requiredOriginalFilenames);
+            requiredMissingEvidence = safeList(requiredMissingEvidence);
+            requiredReadingArtifactPanels = safeList(requiredReadingArtifactPanels);
             expectedResultStatus = blankToNull(expectedResultStatus);
         }
 
@@ -328,6 +611,18 @@ public class ProductReadingLaunchTraceEvalRunner {
 
         boolean verifiedResearchTraceRequired() {
             return Boolean.TRUE.equals(requiresVerifiedResearchTrace);
+        }
+
+        boolean noviceReadableAnswerRequired() {
+            return Boolean.TRUE.equals(requiresNoviceReadableAnswer);
+        }
+
+        boolean artifactCompletenessRequired() {
+            return Boolean.TRUE.equals(requiresArtifactCompleteness);
+        }
+
+        boolean beginnerShortlistRequired() {
+            return Boolean.TRUE.equals(requiresBeginnerShortlist);
         }
 
         String requiredAnswerTypeValue() {

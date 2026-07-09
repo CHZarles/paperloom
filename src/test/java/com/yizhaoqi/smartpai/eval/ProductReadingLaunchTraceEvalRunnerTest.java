@@ -130,6 +130,100 @@ class ProductReadingLaunchTraceEvalRunnerTest {
         assertEquals(true, row.path("diagnostics").path("matchedResearchTraceVerified").asBoolean());
     }
 
+    @Test
+    void canRequireNoviceReadableAnswerAndArtifactCompleteness() throws Exception {
+        Path traceRoot = tempDir.resolve("traces");
+        Map<String, Object> trace = trace(
+                "EVIDENCE_ANSWER",
+                List.of("find_papers_by_identity", "read_locations"),
+                List.of(Map.of(
+                        "kind", "READING_PAPER_CHOICE",
+                        "sourceTool", "find_papers_by_identity",
+                        "paperHandle", "paper_handle_rulearena",
+                        "originalFilename", "2412.08972.pdf"
+                )),
+                List.of(Map.ofEntries(
+                        Map.entry("sourceQuoteRef", "source_quote_abc"),
+                        Map.entry("paperId", "paper-rulearena"),
+                        Map.entry("paperVersion", "model-v1"),
+                        Map.entry("locationRef", "page_ref_7"),
+                        Map.entry("pageNumber", 7),
+                        Map.entry("content", "The benchmark uses rule-guided reasoning tasks.")
+                ))
+        );
+        trace.put("input", Map.of("userMessage", "按文件名查找 2412.08972.pdf 并解释引用"));
+        trace.put("finalAnswerMarkdown", """
+                I understand your goal as: explain the checked citation.
+
+                Short answer: The cited passage describes the benchmark task boundary [1].
+
+                Start here: RULEARENA, Page 7, because this is where the checked passage comes from.
+
+                How to verify: This quote proves: the benchmark uses rule-guided reasoning tasks [1].
+
+                Not verified yet: This quote cannot prove broader claims outside this passage, missing visual details, or results not stated here.
+
+                Next step: Open the cited page and read the surrounding paragraph.
+                """);
+        trace.put("readingArtifacts", Map.of(
+                "goalCard", Map.of("interpretedGoal", "explain the checked citation"),
+                "paperShortlist", Map.of("items", List.of(
+                        Map.of(
+                                "title", "RULEARENA",
+                                "originalFilename", "2412.08972.pdf",
+                                "role", "benchmark",
+                                "roleEvidenceSource", "metadata",
+                                "evidenceStatus", "metadata-only; no quoted passage has been read yet"
+                        ),
+                        Map.of(
+                                "title", "Agent Evaluation Survey",
+                                "role", "survey",
+                                "roleEvidenceSource", "metadata",
+                                "evidenceStatus", "metadata-only; no quoted passage has been read yet"
+                        ),
+                        Map.of(
+                                "title", "AI Agents That Matter",
+                                "role", "critique",
+                                "roleEvidenceSource", "metadata",
+                                "evidenceStatus", "metadata-only; no quoted passage has been read yet"
+                        )
+                )),
+                "claimEvidencePanel", Map.of("rows", List.of(Map.of(
+                        "citationMarker", "[1]",
+                        "sourceQuoteRef", "source_quote_abc",
+                        "paperId", "paper-rulearena",
+                        "locationRef", "page_ref_7",
+                        "quote", "The benchmark uses rule-guided reasoning tasks.",
+                        "actions", List.of(Map.of(
+                                "action", "OPEN_SOURCE_QUOTE",
+                                "payload", Map.of("sourceQuoteRef", "source_quote_abc")
+                        ))
+                ))),
+                "missingEvidence", Map.of("missing", List.of("visual_pdf_page_evidence"))
+        ));
+        writeTrace(traceRoot.resolve("conversation-a").resolve("reading-turn-rich.json"), trace);
+        Path cases = cases("""
+                {"id":"rich_trace_contract","requiredToolNames":["find_papers_by_identity","read_locations"],"requiredAnswerType":"EVIDENCE_ANSWER","requiredInputContains":["2412.08972.pdf"],"requiredAnswerContains":["This quote proves"],"forbiddenAnswerContains":["paper_handle_"],"requiredOriginalFilenames":["2412.08972.pdf"],"requiredMissingEvidence":["visual_pdf_page_evidence"],"requiredReadingArtifactPanels":["goalCard","paperShortlist","claimEvidencePanel","missingEvidence"],"requiresReference":true,"requiresNoviceReadableAnswer":true,"requiresArtifactCompleteness":true,"requiresBeginnerShortlist":true}
+                """);
+
+        ProductReadingLaunchTraceEvalRunner runner = new ProductReadingLaunchTraceEvalRunner();
+        Path runDir = runner.run(new ProductReadingLaunchTraceEvalRunner.Options(
+                traceRoot,
+                cases,
+                tempDir.resolve("runs"),
+                "reading-trace-rich",
+                "2026-07-08T11:00:00Z",
+                "product-reading-launch-trace-eval",
+                "product-reading-launch-trace"
+        ));
+
+        JsonNode row = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases").get(0);
+        assertEquals(true, row.path("passed").asBoolean());
+        assertEquals(true, row.path("diagnostics").path("matchedNoviceReadableAnswer").asBoolean());
+        assertEquals(true, row.path("diagnostics").path("matchedEvidenceArtifactsComplete").asBoolean());
+        assertEquals(true, row.path("diagnostics").path("matchedBeginnerShortlistComplete").asBoolean());
+    }
+
     private Path cases(String content) throws Exception {
         Path cases = tempDir.resolve("cases-" + System.nanoTime() + ".jsonl");
         Files.writeString(cases, content);

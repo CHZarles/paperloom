@@ -67,9 +67,10 @@ class ProductReadingTraceRecorderTest {
         ProductTracePayload payload = submitted.get(0);
         assertEquals("PRODUCT_READING_REACT_TURN", payload.artifactType());
         assertEquals("PRODUCT_READING_REACT_TURN", payload.traceJson().get("artifactType"));
-        assertEquals(5, payload.traceJson().get("traceVersion"));
+        assertEquals(6, payload.traceJson().get("traceVersion"));
         assertEquals("TRACE_SOURCE_QUOTES_MVP", payload.traceJson().get("readingLoopStage"));
         assertEquals("READING_TRACE_SOURCE_QUOTES_MVP", payload.traceJson().get("harnessKind"));
+        assertEquals("x", payload.traceJson().get("finalAnswerMarkdown"));
         assertEquals(toolCalls, payload.traceJson().get("toolCalls"));
         assertEquals(productStateItems, payload.traceJson().get("productStateItems"));
         assertEquals("research-harness-artifacts/v1",

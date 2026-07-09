@@ -93,7 +93,7 @@ Page-location input rows are intentionally small:
 | `product-pdf-launch-30` | product | 30-real-PDF parser launch gate | `passRate` | runnable |
 | `product-pdf-launch-data-seed` | product | 30-PDF upload/merge/searchable live data seed | `passRate` | runnable |
 | `product-launch-runtime-preflight` | product | Launch runtime dependency preflight | `passRate` | runnable |
-| `product-reading-launch-trace` | product | Product Reading 9-tool trace coverage | `passRate` | runnable |
+| `product-reading-launch-trace` | product | Product Reading closed-loop trace coverage | `passRate` | runnable |
 | `product-reading-live-launch-smoke` | product | Live WebSocket Product Reading launch smoke | `passRate` | runnable |
 | `harness-golden-seed-smoke` | professional | Evidence-first harness trace scoring | `tracePassRate` | runnable |
 | `qasper-dev-200` | professional | Research-paper evidence QA | `passRate` | runnable |
@@ -205,8 +205,11 @@ repository startup failures still write a failed eval run before the hard gate e
 Product Reading launch traces are evaluated separately by `ProductReadingLaunchTraceEvalCli`. The
 case file `eval/rag/product-reading-launch-trace-cases.jsonl` requires completed
 `PRODUCT_READING_REACT_TURN` artifacts that cover all 9 reading tools, paper-choice Product State
-Items from `list_papers`, `search_paper_candidates`, and `find_papers_by_identity`, plus Source
-Quote references from both `read_locations` and `trace_source_quotes`.
+Items from `list_papers`, `search_paper_candidates`, and `find_papers_by_identity`, Source Quote
+references from both `read_locations` and `trace_source_quotes`, novice-readable visible answers,
+artifact completeness for evidence turns, and the PM-review session regressions such as
+`2412.08972.pdf`, "this paper", Chinese method/experiment lookup, clicked citation trace, and the
+beginner recommendation flow.
 
 For local launch attempts, keep product credentials out of git by copying
 `docs/launch/product-launch.env.example` to ignored `.runtime/product-launch.env`, then fill only

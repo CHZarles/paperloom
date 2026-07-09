@@ -41,7 +41,7 @@ public class ProductReadingTraceRecorder {
             trace.put("artifactType", ARTIFACT_TYPE);
             trace.put("harnessKind", HARNESS_KIND);
             trace.put("readingLoopStage", READING_LOOP_STAGE);
-            trace.put("traceVersion", 5);
+            trace.put("traceVersion", 6);
             trace.put("conversationId", safeRequest.conversationId());
             trace.put("generationId", safeRequest.generationId());
             trace.put("userId", safeRequest.userId());
@@ -55,6 +55,7 @@ public class ProductReadingTraceRecorder {
             ));
             trace.put("llmCalls", llmCalls == null ? List.of() : llmCalls);
             trace.put("toolCalls", toolCalls == null ? List.of() : toolCalls);
+            trace.put("finalAnswerMarkdown", safeResult.finalAnswerMarkdown());
             trace.put("answerEnvelope", safeResult.envelope());
             trace.put("productStateItems", productStateItems(safeResult.productStateItems()));
             trace.put("readingArtifacts", safeResult.readingArtifacts());

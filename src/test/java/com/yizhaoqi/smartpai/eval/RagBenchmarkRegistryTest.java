@@ -149,10 +149,10 @@ class RagBenchmarkRegistryTest {
         RagBenchmarkRegistry.BenchmarkDefinition traceBenchmark = registry.benchmark("product-reading-launch-trace");
         assertEquals("Product Reading Launch Trace", traceBenchmark.name());
         assertEquals("product", traceBenchmark.tier());
-        assertEquals("Product Reading 9-tool trace coverage", traceBenchmark.task());
+        assertEquals("Product Reading closed-loop trace coverage", traceBenchmark.task());
         assertEquals("eval/rag/product-reading-launch-trace-cases.jsonl", traceBenchmark.path());
         assertEquals("passRate", traceBenchmark.primaryMetric());
-        assertEquals("9", traceBenchmark.cases());
+        assertEquals("16", traceBenchmark.cases());
 
         RagBenchmarkRegistry.BenchmarkDefinition liveSmokeBenchmark = registry.benchmark("product-reading-live-launch-smoke");
         assertEquals("Product Reading Live Launch Smoke", liveSmokeBenchmark.name());
@@ -160,7 +160,7 @@ class RagBenchmarkRegistryTest {
         assertEquals("Live WebSocket Product Reading launch smoke", liveSmokeBenchmark.task());
         assertEquals("eval/rag/product-reading-live-launch-smoke-cases.jsonl", liveSmokeBenchmark.path());
         assertEquals("passRate", liveSmokeBenchmark.primaryMetric());
-        assertEquals("9", liveSmokeBenchmark.cases());
+        assertEquals("10", liveSmokeBenchmark.cases());
 
         RagBenchmarkRegistry.BenchmarkDefinition pdfBenchmark = registry.benchmark("product-pdf-launch-30");
         assertEquals("Product PDF Launch 30", pdfBenchmark.name());

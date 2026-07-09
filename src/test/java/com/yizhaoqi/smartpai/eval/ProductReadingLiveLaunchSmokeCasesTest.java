@@ -40,6 +40,11 @@ class ProductReadingLiveLaunchSmokeCasesTest {
                 && testCase.productStateItemRequired()
                 && testCase.requiredProductStateSourceTools().contains("search_paper_candidates")
                 && "SEARCH_PAPERS".equals(testCase.readingActionValue())));
+        assertTrue(cases.stream().anyMatch(testCase -> "beginner_recommendation_flow".equals(testCase.id())
+                && testCase.message().contains("入门")
+                && testCase.productStateItemRequired()
+                && testCase.requiredProductStateSourceTools().contains("search_paper_candidates")
+                && "SEARCH_PAPERS".equals(testCase.readingActionValue())));
         assertTrue(cases.stream().anyMatch(testCase -> "identity_paper_lookup".equals(testCase.id())
                 && testCase.productStateItemRequired()
                 && testCase.requiredProductStateSourceTools().contains("find_papers_by_identity")));
