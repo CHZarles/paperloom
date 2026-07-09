@@ -29,6 +29,49 @@ const shortlist = computed(() =>
     .filter(item => displayPaperTitle(item))
     .slice(0, 5)
 );
+const groupedShortlist = computed(() => {
+  const groups: Array<{
+    key: string;
+    title: string;
+    items: Api.Chat.ReadingPaperShortlistItem[];
+  }> = [];
+  const items = shortlist.value;
+  if (!items.length) return groups;
+
+  groups.push({
+    key: 'start-here',
+    title: 'Start here',
+    items: [items[0]]
+  });
+
+  const byRole = new Map<string, Api.Chat.ReadingPaperShortlistItem[]>();
+  items.slice(1).forEach(item => {
+    const key = normalizedRole(item.role) || 'needs-role';
+    byRole.set(key, [...(byRole.get(key) || []), item]);
+  });
+
+  const roleOrder = ['survey', 'benchmark', 'method', 'critique', 'background', 'example', 'needs-role'];
+  roleOrder.forEach(role => {
+    const roleItems = byRole.get(role);
+    if (!roleItems?.length) return;
+    groups.push({
+      key: role,
+      title: roleGroupLabel(role),
+      items: roleItems
+    });
+  });
+
+  byRole.forEach((roleItems, role) => {
+    if (roleOrder.includes(role) || !roleItems.length) return;
+    groups.push({
+      key: role,
+      title: roleGroupLabel(role),
+      items: roleItems
+    });
+  });
+
+  return groups;
+});
 const readingSteps = computed(() =>
   (props.artifacts?.readingPlan?.steps || [])
     .filter(step => step.locationLabel || step.paperTitle)
@@ -178,7 +221,7 @@ function actionLabel(action: Api.Chat.ReadingUiAction) {
 }
 
 function roleLabel(role?: string | null) {
-  const normalized = (role || '').trim();
+  const normalized = normalizedRole(role);
   const labels: Record<string, string> = {
     survey: 'Survey',
     benchmark: 'Benchmark',
@@ -188,6 +231,23 @@ function roleLabel(role?: string | null) {
     example: 'Example'
   };
   return labels[normalized] || normalized;
+}
+
+function normalizedRole(role?: string | null) {
+  return (role || '').trim().toLowerCase().replaceAll('_', '-').replaceAll(' ', '-');
+}
+
+function roleGroupLabel(role: string) {
+  const labels: Record<string, string> = {
+    survey: 'Survey or map',
+    benchmark: 'Benchmark',
+    method: 'Method details',
+    critique: 'Critique or pitfalls',
+    background: 'Background',
+    example: 'Example',
+    'needs-role': 'Needs role evidence'
+  };
+  return labels[role] || roleLabel(role) || 'Other';
 }
 
 function missingEvidenceLabels(missing?: string[] | null) {
@@ -484,36 +544,41 @@ function referenceNumber(marker: unknown) {
 
     <section v-if="shortlist.length" class="reading-artifacts__section">
       <div class="reading-artifacts__eyebrow">Paper Shortlist</div>
-      <div class="reading-artifacts__rows">
-        <article v-for="item in shortlist" :key="item.paperHandle || displayPaperTitle(item)" class="reading-row">
-          <div class="reading-row__body">
-            <div class="reading-row__head">
-              <span v-if="roleLabel(item.role)" class="reading-pill">{{ roleLabel(item.role) }}</span>
-              <span class="reading-row__title">{{ displayPaperTitle(item) }}</span>
-            </div>
-            <div v-if="compactPaperMeta(item)" class="reading-artifacts__meta">{{ compactPaperMeta(item) }}</div>
-            <div v-if="item.matchReason" class="reading-row__text">{{ item.matchReason }}</div>
-            <div v-if="item.evidenceStatus" class="reading-row__status">{{ item.evidenceStatus }}</div>
-            <div v-if="item.roleEvidenceStatus" class="reading-row__status">{{ item.roleEvidenceStatus }}</div>
+      <div class="reading-shortlist-groups">
+        <div v-for="group in groupedShortlist" :key="group.key" class="reading-shortlist-group">
+          <div class="reading-shortlist-group__title">{{ group.title }}</div>
+          <div class="reading-artifacts__rows">
+            <article v-for="item in group.items" :key="item.paperHandle || displayPaperTitle(item)" class="reading-row">
+              <div class="reading-row__body">
+                <div class="reading-row__head">
+                  <span v-if="roleLabel(item.role)" class="reading-pill">{{ roleLabel(item.role) }}</span>
+                  <span class="reading-row__title">{{ displayPaperTitle(item) }}</span>
+                </div>
+                <div v-if="compactPaperMeta(item)" class="reading-artifacts__meta">{{ compactPaperMeta(item) }}</div>
+                <div v-if="item.matchReason" class="reading-row__text">{{ item.matchReason }}</div>
+                <div v-if="item.evidenceStatus" class="reading-row__status">{{ item.evidenceStatus }}</div>
+                <div v-if="item.roleEvidenceStatus" class="reading-row__status">{{ item.roleEvidenceStatus }}</div>
+              </div>
+              <div v-if="rowActions(item.actions).length" class="reading-row__actions">
+                <NButton
+                  v-for="action in rowActions(item.actions)"
+                  :key="action.action"
+                  circle
+                  secondary
+                  size="small"
+                  :title="actionLabel(action)"
+                  :aria-label="actionLabel(action)"
+                  @click="performAction(action, item)"
+                >
+                  <template #icon>
+                    <icon-lucide:list-tree v-if="actionIcon(action.action) === 'list-tree'" />
+                    <icon-lucide:message-square-plus v-else />
+                  </template>
+                </NButton>
+              </div>
+            </article>
           </div>
-          <div v-if="rowActions(item.actions).length" class="reading-row__actions">
-            <NButton
-              v-for="action in rowActions(item.actions)"
-              :key="action.action"
-              circle
-              secondary
-              size="small"
-              :title="actionLabel(action)"
-              :aria-label="actionLabel(action)"
-              @click="performAction(action, item)"
-            >
-              <template #icon>
-                <icon-lucide:list-tree v-if="actionIcon(action.action) === 'list-tree'" />
-                <icon-lucide:message-square-plus v-else />
-              </template>
-            </NButton>
-          </div>
-        </article>
+        </div>
       </div>
     </section>
 
@@ -530,7 +595,7 @@ function referenceNumber(marker: unknown) {
             <div v-if="step.paperTitle && step.locationLabel" class="reading-artifacts__meta">
               {{ step.locationLabel }}
             </div>
-            <div v-if="step.preview" class="reading-row__text">{{ step.preview }}</div>
+            <div v-if="step.preview" class="reading-row__text">You'll inspect: {{ step.preview }}</div>
             <div v-if="step.evidenceStatus" class="reading-row__status">{{ step.evidenceStatus }}</div>
           </div>
           <div v-if="rowActions(step.actions).length" class="reading-row__actions">
@@ -657,6 +722,24 @@ function referenceNumber(marker: unknown) {
 .reading-artifacts__rows {
   display: grid;
   gap: 8px;
+}
+
+.reading-shortlist-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.reading-shortlist-group {
+  display: grid;
+  gap: 6px;
+}
+
+.reading-shortlist-group__title {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .reading-row {

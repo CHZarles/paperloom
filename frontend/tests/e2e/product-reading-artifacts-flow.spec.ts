@@ -394,6 +394,22 @@ test('paper shortlist actions send structured focus and reading plan survives re
               }
             }
           ]
+        },
+        {
+          paperId: 'paper-2',
+          paperHandle: 'paper_handle_agent_method',
+          title: 'Agent Evaluation Method Notes',
+          originalFilename: 'agent-method.pdf',
+          authors: ['Grace Hopper'],
+          year: 2024,
+          venue: 'ICLR',
+          role: 'method',
+          roleEvidenceStatus: 'role metadata provided by paperTypes',
+          roleEvidenceSource: 'paperTypes',
+          matchReason: 'Matched paper metadata fields: title.',
+          evidenceStatus: 'metadata-only; no quoted passage has been read yet',
+          ambiguous: false,
+          actions: []
         }
       ]
     },
@@ -648,6 +664,8 @@ test('paper shortlist actions send structured focus and reading plan survives re
   await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('.reading-artifacts').last()).toContainText('Paper Shortlist');
+  await expect(page.locator('.reading-artifacts').last()).toContainText('Start here');
+  await expect(page.locator('.reading-artifacts').last()).toContainText('Method details');
   await page.locator('.reading-artifacts button[title="Show readable locations"]').click();
   await expect(page.locator('.scope-chip')).toContainText('Agentic Eval Benchmark');
   await expect(page.locator('.scope-chip')).toContainText('List locations');
@@ -666,6 +684,7 @@ test('paper shortlist actions send structured focus and reading plan survives re
 
   await expect(page.locator('.reading-artifacts').last()).toContainText('Reading Plan');
   await expect(page.locator('.reading-artifacts').last()).toContainText('Introduction, page 1');
+  await expect(page.locator('.reading-artifacts').last()).toContainText("You'll inspect:");
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('.reading-artifacts').last()).toContainText('Reading Plan');
