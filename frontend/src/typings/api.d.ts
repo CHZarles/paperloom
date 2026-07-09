@@ -335,7 +335,7 @@ declare namespace Api {
       originalFilename: string;
       pageNumber?: number | null;
       anchorText?: string | null;
-      retrievalMode?: 'HYBRID' | 'TEXT_ONLY' | null;
+      retrievalMode?: 'HYBRID' | 'TEXT_ONLY' | 'PRODUCT_READING_REACT' | null;
       matchedChunkText?: string | null;
     }
 
@@ -549,6 +549,7 @@ declare namespace Api {
       parserName?: string | null;
       parserVersion?: string | null;
       sourceKind?: 'TEXT' | 'TABLE' | 'FIGURE' | 'CHART' | 'FORMULA' | null;
+      contentKind?: string | null;
       tableId?: string | null;
       figureId?: string | null;
       formulaId?: string | null;
@@ -602,6 +603,143 @@ declare namespace Api {
 
     type ProductStateItem = ReadingPaperChoiceItem;
 
+    interface ReadingUiAction {
+      action: string;
+      label?: string | null;
+      payload?: Record<string, any> | null;
+    }
+
+    interface ReadingGoalCard {
+      interpretedGoal?: string | null;
+      scopeLabel?: string | null;
+      readablePaperCount?: number | null;
+      scopeLocked?: boolean | null;
+      actions?: ReadingUiAction[] | null;
+    }
+
+    interface ReadingIntentFrame {
+      originalUserRequest?: string | null;
+      readingAction?: string | null;
+      paperQueryTexts?: string[] | null;
+      locationQueryTexts?: string[] | null;
+      locationQueryPlans?: ReadingLocationQueryPlan[] | null;
+      locationTypes?: string[] | null;
+      locationIntents?: string[] | null;
+      sourceLanguages?: string[] | null;
+      retrievalLanguages?: string[] | null;
+      sectionRoles?: string[] | null;
+      planningStatus?: string | null;
+      missing?: string[] | null;
+    }
+
+    interface ReadingLocationQueryPlan {
+      queryText?: string | null;
+      intent?: string | null;
+      sourceLanguage?: string | null;
+      retrievalLanguage?: string | null;
+      sectionRoles?: string[] | null;
+      locationTypes?: string[] | null;
+    }
+
+    interface ReadingPaperShortlistItem {
+      paperId?: string | null;
+      paperHandle?: string | null;
+      title?: string | null;
+      originalFilename?: string | null;
+      authors?: string[] | null;
+      year?: number | null;
+      venue?: string | null;
+      role?: string | null;
+      roleEvidenceStatus?: string | null;
+      roleEvidenceSource?: string | null;
+      matchReason?: string | null;
+      evidenceStatus?: string | null;
+      ambiguous?: boolean | null;
+      actions?: ReadingUiAction[] | null;
+    }
+
+    interface ReadingPlanStep {
+      paperId?: string | null;
+      paperHandle?: string | null;
+      locationRef?: string | null;
+      paperTitle?: string | null;
+      locationLabel?: string | null;
+      preview?: string | null;
+      evidenceStatus?: string | null;
+      actions?: ReadingUiAction[] | null;
+    }
+
+    interface ReadingClaimEvidenceRow {
+      claim?: string | null;
+      quote?: string | null;
+      citationMarker?: string | null;
+      sourceQuoteRef?: string | null;
+      paperId?: string | null;
+      paperHandle?: string | null;
+      paperTitle?: string | null;
+      locationRef?: string | null;
+      locationLabel?: string | null;
+      contentKind?: string | null;
+      cannotProve?: string[] | null;
+      actions?: ReadingUiAction[] | null;
+    }
+
+    interface ReadingMissingEvidence {
+      missing?: string[] | null;
+      explanation?: string | null;
+      nextActions?: ReadingUiAction[] | null;
+    }
+
+    interface ReadingTraceStep {
+      stage?: string | null;
+      label?: string | null;
+      detail?: string | null;
+      status?: string | null;
+    }
+
+    interface ReadingEvidenceSummary {
+      acceptedCount?: number | null;
+      rejectedCount?: number | null;
+      missingCount?: number | null;
+      missing?: string[] | null;
+    }
+
+    interface ReadingClaimSummary {
+      totalCount?: number | null;
+      supportedCount?: number | null;
+      underdeterminedCount?: number | null;
+      contradictedCount?: number | null;
+    }
+
+    interface ReadingVerificationSummary {
+      valid?: boolean | null;
+      resultStatus?: string | null;
+      stopReason?: string | null;
+      requiredEvidenceStatus?: string | null;
+      missingRequiredEvidenceCount?: number | null;
+      failedObligationCount?: number | null;
+    }
+
+    interface ReadingResearchTraceSummary {
+      steps?: ReadingTraceStep[] | null;
+      evidence?: ReadingEvidenceSummary | null;
+      claims?: ReadingClaimSummary | null;
+      verification?: ReadingVerificationSummary | null;
+    }
+
+    interface ReadingTurnArtifacts {
+      artifactVersion?: string | null;
+      goalCard?: ReadingGoalCard | null;
+      intentFrame?: ReadingIntentFrame | null;
+      paperShortlist?: { items?: ReadingPaperShortlistItem[] | null } | null;
+      readingPlan?: { steps?: ReadingPlanStep[] | null } | null;
+      claimEvidencePanel?: { rows?: ReadingClaimEvidenceRow[] | null } | null;
+      missingEvidence?: ReadingMissingEvidence | null;
+      uiActions?: ReadingUiAction[] | null;
+      uncertaintyNotes?: string[] | null;
+      traceSummary?: ReadingResearchTraceSummary | null;
+    }
+
     interface Conversation {
       conversationId: string;
     }
@@ -629,6 +767,8 @@ declare namespace Api {
       referenceMappings?: Record<string, ReferenceEvidence>;
       diagnostics?: Diagnostics;
       productStateItems?: ProductStateItem[];
+      readingArtifacts?: ReadingTurnArtifacts;
+      readingStatePatch?: Record<string, any>;
       toolEvents?: AgentToolEvent[];
       feedbackRating?: 'good' | 'bad';
       effectiveScope?: ConversationScope | Record<string, any>;
@@ -664,7 +804,8 @@ declare namespace Api {
       bboxJson?: string;
       sourceKind?: ReferenceEvidence['sourceKind'];
       sourceQuoteRef?: string | null;
-      readingAction?: 'SEARCH_PAPERS' | 'LIST_LOCATIONS' | 'FIND_LOCATIONS' | null;
+      locationRef?: string | null;
+      readingAction?: 'SEARCH_PAPERS' | 'LIST_LOCATIONS' | 'FIND_LOCATIONS' | 'READ_LOCATION' | 'TRACE_SOURCE_QUOTE' | null;
     }
 
     interface ConversationScope {
@@ -718,8 +859,11 @@ declare namespace Api {
       createdAt: string;
       updatedAt: string;
       errorMessage?: string | null;
+      conversationRecordId?: number | null;
       referenceMappings?: Record<string, ReferenceEvidence>;
       diagnostics?: Diagnostics;
+      readingArtifacts?: ReadingTurnArtifacts;
+      readingStatePatch?: Record<string, any>;
     }
 
     interface ConversationSession {

@@ -16,7 +16,7 @@ class ReadingToolOutputMapperTest {
     private final ReadingToolOutputMapper mapper = new ReadingToolOutputMapper();
 
     @Test
-    void mapsPaperCandidateToPaperCardWithoutInternalFields() throws Exception {
+    void mapsPaperCandidateToCanonicalPaperCardWithHiddenIdentity() throws Exception {
         PaperCandidate candidate = new PaperCandidate(
                 "raw-paper-id",
                 "Agentic Eval Benchmark",
@@ -33,14 +33,14 @@ class ReadingToolOutputMapperTest {
         String json = objectMapper.writeValueAsString(card);
 
         assertEquals(1, card.get("ordinal"));
+        assertEquals("raw-paper-id", card.get("paperId"));
         assertEquals("paper_handle_abc", card.get("paperHandle"));
         assertEquals("Agentic Eval Benchmark", card.get("title"));
+        assertEquals("", card.get("originalFilename"));
         assertEquals(2025, card.get("year"));
         assertEquals("Agentic eval preview", card.get("preview"));
-        assertFalse(json.contains("raw-paper-id"));
-        assertFalse(json.contains("paperId"));
+        assertEquals(List.of("title matched all query tokens"), card.get("matchReasons"));
         assertFalse(json.contains("matchedFields"));
-        assertFalse(json.contains("matchReason"));
         assertFalse(json.contains("rank"));
     }
 
@@ -73,8 +73,7 @@ class ReadingToolOutputMapperTest {
         assertEquals(4, card.get("pageEndNumber"));
         assertEquals("Experiments", card.get("sectionTitle"));
         assertEquals("Agentic eval appears here.", card.get("preview"));
-        assertFalse(json.contains("raw-paper-id"));
-        assertFalse(json.contains("paperId"));
+        assertEquals("raw-paper-id", card.get("paperId"));
         assertFalse(json.contains("model-v1"));
         assertFalse(json.contains("modelVersion"));
         assertFalse(json.contains("reading-el-1"));

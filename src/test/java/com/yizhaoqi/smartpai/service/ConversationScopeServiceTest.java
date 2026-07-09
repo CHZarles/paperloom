@@ -7,9 +7,12 @@ import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import com.yizhaoqi.smartpai.model.ConversationScopeStatus;
 import com.yizhaoqi.smartpai.model.ConversationSession;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperReadingModel;
+import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.ConversationSessionRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +47,9 @@ class ConversationScopeServiceTest {
     private PaperRepository paperRepository;
 
     @Mock
+    private PaperReadingModelRepository readingModelRepository;
+
+    @Mock
     private PaperCollectionService paperCollectionService;
 
     @Mock
@@ -69,6 +75,7 @@ class ConversationScopeServiceTest {
                 sessionRepository,
                 userRepository,
                 paperRepository,
+                readingModelRepository,
                 paperCollectionService,
                 paperSearchabilityService,
                 orgTagCacheService,
@@ -89,9 +96,41 @@ class ConversationScopeServiceTest {
         assertEquals("AUTO_LIBRARY", defaults.get("scopeMode"));
         assertEquals(false, defaults.get("scopeLocked"));
         assertEquals("READY", defaults.get("scopeStatus"));
-        assertEquals("All searchable papers", defaults.get("sourceLabel"));
+        assertEquals("All readable papers", defaults.get("sourceLabel"));
         assertNull(defaults.get("sourcePaperCount"));
         assertIterableEquals(List.of(), (List<?>) defaults.get("paperIds"));
+    }
+
+    @Test
+    void autoLibraryScopeResponseCountsOnlyAccessibleReadyReadingModels() {
+        Paper ready = paper("paper-ready", "1", false, "default");
+        Paper readyDuplicate = paper("paper-ready", "1", false, "default");
+        Paper building = paper("paper-building", "1", false, "default");
+        Paper notSearchable = paper("paper-not-searchable", "1", false, "default");
+        when(paperRepository.findAccessiblePapersWithTags("1", List.of("default")))
+                .thenReturn(List.of(ready, readyDuplicate, building, notSearchable));
+        when(paperSearchabilityService.isSearchable(ready)).thenReturn(true);
+        when(paperSearchabilityService.isSearchable(readyDuplicate)).thenReturn(true);
+        when(paperSearchabilityService.isSearchable(building)).thenReturn(true);
+        when(paperSearchabilityService.isSearchable(notSearchable)).thenReturn(false);
+        when(readingModelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-ready"))
+                .thenReturn(Optional.of(readingModel(PaperReadingModelStatus.READING_MODEL_READY)));
+        when(readingModelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-building"))
+                .thenReturn(Optional.of(readingModel(PaperReadingModelStatus.READING_MODEL_BUILDING)));
+
+        Map<String, Object> response = service.scopeResponse(
+                1L,
+                new ConversationScopeService.EffectiveConversationScope(
+                        ConversationScopeMode.AUTO_LIBRARY,
+                        ConversationScopeStatus.READY,
+                        true,
+                        "All readable papers",
+                        List.of(),
+                        Map.of()
+                )
+        );
+
+        assertEquals(1, response.get("sourcePaperCount"));
     }
 
     @Test
@@ -666,5 +705,12 @@ class ConversationScopeServiceTest {
         paper.setStatus(Paper.STATUS_COMPLETED);
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
         return paper;
+    }
+
+    private PaperReadingModel readingModel(PaperReadingModelStatus status) {
+        PaperReadingModel model = new PaperReadingModel();
+        model.setModelStatus(status);
+        model.setCurrent(true);
+        return model;
     }
 }

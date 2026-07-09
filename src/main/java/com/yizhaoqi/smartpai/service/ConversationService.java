@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.model.Conversation;
 import com.yizhaoqi.smartpai.model.ConversationSession;
+import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperSourceQuote;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.ConversationRepository;
 import com.yizhaoqi.smartpai.repository.ConversationSessionRepository;
@@ -45,39 +47,59 @@ public class ConversationService {
     private UserRepository userRepository;
 
     @Autowired
+    private ProductReadingSourceQuoteResolver sourceQuoteResolver;
+
+    @Autowired(required = false)
+    private ConversationScopeService conversationScopeService;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
-    public void recordConversation(String username, String question, String answer) {
+    public Long recordConversation(String username, String question, String answer) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
-        saveConversation(user, question, answer, null, null, null);
+        return saveConversation(user, question, answer, null, null, null, null, null);
     }
 
     @Transactional
-    public void recordConversation(Long userId, String question, String answer, String conversationId,
+    public Long recordConversation(Long userId, String question, String answer, String conversationId,
                                    Map<String, Map<String, Object>> referenceMappings) {
-        recordConversation(userId, question, answer, conversationId, referenceMappings, null);
+        return recordConversation(userId, question, answer, conversationId, referenceMappings, null);
     }
 
     @Transactional
-    public void recordConversation(Long userId, String question, String answer, String conversationId,
+    public Long recordConversation(Long userId, String question, String answer, String conversationId,
                                    Map<String, Map<String, Object>> referenceMappings,
                                    Map<String, Object> effectiveScope) {
+        return recordConversation(userId, question, answer, conversationId, referenceMappings, effectiveScope, null, null);
+    }
+
+    @Transactional
+    public Long recordConversation(Long userId, String question, String answer, String conversationId,
+                                   Map<String, Map<String, Object>> referenceMappings,
+                                   Map<String, Object> effectiveScope,
+                                   ReadingTurnArtifacts readingArtifacts,
+                                   ReadingStatePatch readingStatePatch) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
-        saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope);
+        Long conversationRecordId = saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope,
+                readingArtifacts, readingStatePatch);
+        updateSessionReadingMemory(userId, conversationId, readingStatePatch);
         updateSessionTitleIfDefault(userId, conversationId, question);
         touchSessionUpdatedAt(userId, conversationId);
+        return conversationRecordId;
     }
 
-    private void saveConversation(User user, String question, String answer, String conversationId,
+    private Long saveConversation(User user, String question, String answer, String conversationId,
                                   Map<String, Map<String, Object>> referenceMappings,
-                                  Map<String, Object> effectiveScope) {
+                                  Map<String, Object> effectiveScope,
+                                  ReadingTurnArtifacts readingArtifacts,
+                                  ReadingStatePatch readingStatePatch) {
         Conversation conversation = new Conversation();
         conversation.setUser(user);
         conversation.setQuestion(question);
@@ -85,8 +107,14 @@ public class ConversationService {
         conversation.setConversationId(conversationId);
         conversation.setReferenceMappingsJson(writeReferenceMappings(referenceMappings));
         conversation.setEffectiveScopeJson(writeEffectiveScope(effectiveScope));
+        conversation.setReadingArtifactsJson(writeReadingArtifacts(readingArtifacts));
+        conversation.setReadingStatePatchJson(writeReadingStatePatch(readingStatePatch));
 
-        conversationRepository.save(conversation);
+        Conversation saved = conversationRepository.save(conversation);
+        if (saved != null && saved.getId() != null) {
+            return saved.getId();
+        }
+        return conversation.getId();
     }
 
     // ---- ConversationSession management ----
@@ -96,10 +124,20 @@ public class ConversationService {
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (ConversationSession session : sessions) {
-            result.add(toSessionResponse(session));
+            if (isEmptySession(userId, session)) {
+                continue;
+            }
+            result.add(toSessionResponse(userId, session));
         }
 
         return result;
+    }
+
+    private boolean isEmptySession(Long userId, ConversationSession session) {
+        if (userId == null || session == null || session.getConversationId() == null || session.getConversationId().isBlank()) {
+            return true;
+        }
+        return !conversationRepository.existsByUserIdAndConversationId(userId, session.getConversationId());
     }
 
     public Optional<Map<String, Object>> getCurrentConversationSession(Long userId) {
@@ -109,25 +147,27 @@ public class ConversationService {
         if (conversationId != null && !conversationId.isBlank()) {
             Optional<ConversationSession> current = findOwnedSession(userId, conversationId)
                     .filter(session -> session.getStatus() == ConversationSession.SessionStatus.ACTIVE);
-            if (current.isPresent()) {
-                return current.map(this::toSessionResponse);
+            if (current.isPresent() && !isEmptySession(userId, current.get())) {
+                return current.map(session -> toSessionResponse(userId, session));
             }
+            redisTemplate.delete(redisKey);
         }
 
         List<ConversationSession> activeSessions = sessionRepository.findByUserIdAndStatusOrderByUpdatedAtDesc(
                 userId,
                 ConversationSession.SessionStatus.ACTIVE
         );
-        if (activeSessions.isEmpty()) {
-            return Optional.empty();
+        for (ConversationSession session : activeSessions) {
+            if (isEmptySession(userId, session)) {
+                continue;
+            }
+            redisTemplate.opsForValue().set(redisKey, session.getConversationId(), Duration.ofDays(7));
+            return Optional.of(toSessionResponse(userId, session));
         }
-
-        ConversationSession fallback = activeSessions.get(0);
-        redisTemplate.opsForValue().set(redisKey, fallback.getConversationId(), Duration.ofDays(7));
-        return Optional.of(toSessionResponse(fallback));
+        return Optional.empty();
     }
 
-    private Map<String, Object> toSessionResponse(ConversationSession session) {
+    private Map<String, Object> toSessionResponse(Long userId, ConversationSession session) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", session.getId());
         item.put("conversationId", session.getConversationId());
@@ -135,7 +175,7 @@ public class ConversationService {
         item.put("status", session.getStatus().name());
         item.put("createdAt", formatTimestamp(session.getCreatedAt()));
         item.put("updatedAt", formatTimestamp(session.getUpdatedAt()));
-        appendScopeSummary(item, session);
+        appendScopeSummary(item, userId, session);
         return item;
     }
 
@@ -162,7 +202,7 @@ public class ConversationService {
         result.put("status", "ACTIVE");
         result.put("createdAt", formatTimestamp(session.getCreatedAt()));
         result.put("updatedAt", formatTimestamp(session.getUpdatedAt()));
-        appendScopeSummary(result, session);
+        appendScopeSummary(result, userId, session);
         return result;
     }
 
@@ -246,6 +286,30 @@ public class ConversationService {
         });
     }
 
+    private void updateSessionReadingMemory(Long userId,
+                                            String conversationId,
+                                            ReadingStatePatch readingStatePatch) {
+        if (readingStatePatch == null || readingStatePatch.isEmpty()) {
+            return;
+        }
+        findOwnedSession(userId, conversationId).ifPresent(session -> {
+            Map<String, Object> memory = parseJsonObject(
+                    session.getConversationMemoryJson(),
+                    "conversation memory"
+            );
+            Map<String, Object> updatedMemory = memory == null
+                    ? new LinkedHashMap<>()
+                    : new LinkedHashMap<>(memory);
+            updatedMemory.put("readingStatePatch", objectMapper.convertValue(
+                    readingStatePatch,
+                    new TypeReference<LinkedHashMap<String, Object>>() {
+                    }
+            ));
+            session.setConversationMemoryJson(writeJsonObject(updatedMemory, "conversation memory"));
+            sessionRepository.save(session);
+        });
+    }
+
     public void updateSessionTitleIfDefault(Long userId, String conversationId, String title) {
         if (title == null || title.isBlank()) {
             return;
@@ -278,7 +342,7 @@ public class ConversationService {
         return sessionRepository.findByConversationIdAndUserId(conversationId, userId);
     }
 
-    private void appendScopeSummary(Map<String, Object> item, ConversationSession session) {
+    private void appendScopeSummary(Map<String, Object> item, Long userId, ConversationSession session) {
         item.put("scopeMode", session.getScopeMode() == null
                 ? "AUTO_LIBRARY"
                 : session.getScopeMode().name());
@@ -287,7 +351,17 @@ public class ConversationService {
                 ? "READY"
                 : session.getScopeStatus().name());
         item.put("sourceLabel", sourceLabel(session));
-        item.put("sourcePaperCount", session.getSourcePaperCount());
+        item.put("sourcePaperCount", sourcePaperCount(userId, session));
+    }
+
+    private Integer sourcePaperCount(Long userId, ConversationSession session) {
+        if (session == null || session.getScopeMode() == null || !"AUTO_LIBRARY".equals(session.getScopeMode().name())) {
+            return session == null ? null : session.getSourcePaperCount();
+        }
+        if (conversationScopeService == null || userId == null) {
+            return session.getSourcePaperCount();
+        }
+        return conversationScopeService.autoLibraryReadablePaperCount(userId);
     }
 
     private String sourceLabel(ConversationSession session) {
@@ -375,7 +449,9 @@ public class ConversationService {
                             conversation.getId(),
                             null,
                             includeUsername ? conversation.getUser().getUsername() : null,
-                            parseEffectiveScope(conversation.getEffectiveScopeJson())
+                            parseEffectiveScope(conversation.getEffectiveScopeJson()),
+                            null,
+                            null
                     ));
                     messages.add(buildMessage(
                             "assistant",
@@ -385,7 +461,9 @@ public class ConversationService {
                             conversation.getId(),
                             parseReferenceMappings(conversation.getReferenceMappingsJson()),
                             includeUsername ? conversation.getUser().getUsername() : null,
-                            null
+                            null,
+                            parseJsonObject(conversation.getReadingArtifactsJson(), "reading artifacts"),
+                            parseJsonObject(conversation.getReadingStatePatchJson(), "reading state patch")
                     ));
                 });
 
@@ -396,7 +474,9 @@ public class ConversationService {
                                              Long conversationRecordId,
                                              Map<String, Map<String, Object>> referenceMappings,
                                              String username,
-                                             Map<String, Object> effectiveScope) {
+                                             Map<String, Object> effectiveScope,
+                                             Map<String, Object> readingArtifacts,
+                                             Map<String, Object> readingStatePatch) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
         message.put("content", content);
@@ -418,6 +498,12 @@ public class ConversationService {
         if (effectiveScope != null && !effectiveScope.isEmpty()) {
             message.put("effectiveScope", effectiveScope);
         }
+        if (readingArtifacts != null && !readingArtifacts.isEmpty()) {
+            message.put("readingArtifacts", readingArtifacts);
+        }
+        if (readingStatePatch != null && !readingStatePatch.isEmpty()) {
+            message.put("readingStatePatch", readingStatePatch);
+        }
         return message;
     }
 
@@ -426,11 +512,19 @@ public class ConversationService {
             return Optional.empty();
         }
 
-        return conversationRepository.findByIdAndUserId(conversationRecordId, userId)
-                .map(Conversation::getReferenceMappingsJson)
-                .map(this::parseReferenceMappings)
-                .map(mappings -> mappings.get(String.valueOf(referenceNumber)))
-                .map(detail -> normalizeReferenceDetail(detail, referenceNumber));
+        Optional<Conversation> conversation = conversationRepository.findByIdAndUserId(conversationRecordId, userId);
+        if (conversation.isEmpty()) {
+            return Optional.empty();
+        }
+        Map<String, Map<String, Object>> mappings = parseReferenceMappings(conversation.get().getReferenceMappingsJson());
+        if (mappings == null || mappings.isEmpty()) {
+            return Optional.empty();
+        }
+        Map<String, Object> detail = mappings.get(String.valueOf(referenceNumber));
+        if (detail == null || detail.isEmpty()) {
+            return Optional.empty();
+        }
+        return resolveReferenceDetail(conversation.get(), detail, referenceNumber);
     }
 
     public Optional<Map<String, Object>> findLatestReferenceDetail(Long userId, String conversationId, Integer referenceNumber) {
@@ -446,7 +540,7 @@ public class ConversationService {
             }
             Map<String, Object> detail = mappings.get(String.valueOf(referenceNumber));
             if (detail != null && !detail.isEmpty()) {
-                return Optional.of(normalizeReferenceDetail(detail, referenceNumber));
+                return resolveReferenceDetail(conversations.get(i), detail, referenceNumber);
             }
         }
         return Optional.empty();
@@ -464,6 +558,33 @@ public class ConversationService {
                 continue;
             }
             return Optional.of(new LinkedHashMap<>(mappings));
+        }
+        return Optional.empty();
+    }
+
+    public Optional<Map<String, Object>> findLatestReadingStatePatch(Long userId, String conversationId) {
+        if (userId == null || conversationId == null || conversationId.isBlank()) {
+            return Optional.empty();
+        }
+
+        Optional<Map<String, Object>> sessionPatch = findOwnedSession(userId, conversationId)
+                .map(ConversationSession::getConversationMemoryJson)
+                .map(json -> parseJsonObject(json, "conversation memory"))
+                .map(memory -> objectMap(memory.get("readingStatePatch")))
+                .filter(patch -> !patch.isEmpty());
+        if (sessionPatch.isPresent()) {
+            return sessionPatch;
+        }
+
+        List<Conversation> conversations = conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(userId, conversationId);
+        for (int i = conversations.size() - 1; i >= 0; i -= 1) {
+            Map<String, Object> patch = parseJsonObject(
+                    conversations.get(i).getReadingStatePatchJson(),
+                    "reading state patch"
+            );
+            if (patch != null && !patch.isEmpty()) {
+                return Optional.of(new LinkedHashMap<>(patch));
+            }
         }
         return Optional.empty();
     }
@@ -499,10 +620,102 @@ public class ConversationService {
                 : "PDF_PENDING_ASSETS");
         normalized.put("pageScreenshotAvailable", booleanValue(normalized.get("pageScreenshotAvailable")));
         normalized.put("figureScreenshotAvailable", booleanValue(normalized.get("figureScreenshotAvailable")));
-        normalized.put("assetWarnings", normalizedAssetWarnings(normalized.get("assetWarnings")));
+        normalized.put("assetWarnings", normalizedAssetWarnings(
+                normalized.get("assetWarnings"),
+                pdfEvidenceAvailable,
+                booleanValue(normalized.get("pageScreenshotAvailable"))
+        ));
         normalized.remove(legacyField("structured", "Import"));
         normalized.remove(legacyField("eval", "Import"));
         return normalized;
+    }
+
+    private Optional<Map<String, Object>> resolveReferenceDetail(Conversation conversation,
+                                                                 Map<String, Object> detail,
+                                                                 Integer referenceNumber) {
+        String sourceQuoteRef = stringValue(detail.get("sourceQuoteRef"));
+        if (sourceQuoteRef.isBlank()) {
+            return Optional.of(normalizeReferenceDetail(detail, referenceNumber));
+        }
+        return sourceQuoteReferenceDetail(conversation, detail, referenceNumber, sourceQuoteRef);
+    }
+
+    private Optional<Map<String, Object>> sourceQuoteReferenceDetail(Conversation conversation,
+                                                                    Map<String, Object> persistedDetail,
+                                                                    Integer referenceNumber,
+                                                                    String sourceQuoteRef) {
+        if (conversation == null
+                || conversation.getConversationId() == null
+                || conversation.getConversationId().isBlank()) {
+            return Optional.empty();
+        }
+        ProductReadingSourceQuoteResolver.Resolution resolution = sourceQuoteResolver.resolveRegisteredCurrentQuote(
+                conversation.getConversationId(),
+                sourceQuoteRef
+        );
+        if (!resolution.ok()) {
+            return Optional.empty();
+        }
+        Map<String, Object> normalized = normalizeReferenceDetail(persistedDetail, referenceNumber);
+        Map<String, Object> authoritative = sourceQuoteDetail(
+                resolution.sourceQuote().orElseThrow(),
+                resolution.paper(),
+                referenceNumber
+        );
+        authoritative.forEach((key, value) -> {
+            if (value != null) {
+                normalized.put(key, value);
+            }
+        });
+        normalized.put("sourceQuoteResolutionStatus", "OK");
+        return Optional.of(normalized);
+    }
+
+    private Map<String, Object> sourceQuoteDetail(PaperSourceQuote quote,
+                                                  Optional<Paper> paper,
+                                                  Integer referenceNumber) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("referenceNumber", referenceNumber);
+        detail.put("sourceQuoteRef", quote.getSourceQuoteRef());
+        detail.put("paperId", quote.getPaperId());
+        detail.put("paperVersion", quote.getModelVersion());
+        detail.put("locationRef", quote.getLocationRef());
+        detail.put("locationType", quote.getLocationType());
+        detail.put("pageNumber", quote.getPageNumber());
+        detail.put("pageEndNumber", quote.getPageEndNumber());
+        detail.put("sectionTitle", quote.getSectionTitle());
+        detail.put("contentKind", quote.getContentKind());
+        detail.put("sourceKind", sourceKindFromContentKind(quote.getContentKind()));
+        detail.put("sourceType", "PDF");
+        detail.put("retrievalMode", "PRODUCT_READING_REACT");
+        detail.put("retrievalLabel", "Product Reading evidence");
+        detail.put("retrievalRoute", "PRODUCT_READING_REACT");
+        detail.put("anchorText", quote.getContent());
+        detail.put("matchedChunkText", quote.getContent());
+        detail.put("evidenceSnippet", quote.getContent());
+        paper.ifPresent(resolvedPaper -> {
+            if (resolvedPaper.getPaperTitle() != null && !resolvedPaper.getPaperTitle().isBlank()) {
+                detail.put("paperTitle", resolvedPaper.getPaperTitle());
+            }
+            if (resolvedPaper.getOriginalFilename() != null && !resolvedPaper.getOriginalFilename().isBlank()) {
+                detail.put("originalFilename", resolvedPaper.getOriginalFilename());
+            }
+        });
+        return detail;
+    }
+
+    private String sourceKindFromContentKind(String contentKind) {
+        String normalized = stringValue(contentKind).toUpperCase();
+        if ("TABLE".equals(normalized)) {
+            return "TABLE";
+        }
+        if ("FIGURE".equals(normalized) || "CHART".equals(normalized)) {
+            return "FIGURE";
+        }
+        if ("FORMULA".equals(normalized)) {
+            return "FORMULA";
+        }
+        return "TEXT";
     }
 
     private String legacyField(String prefix, String suffix) {
@@ -513,19 +726,30 @@ public class ConversationService {
         return value instanceof Boolean bool && bool;
     }
 
-    private List<String> normalizedAssetWarnings(Object value) {
-        if (!(value instanceof List<?> list)) {
-            return List.of();
+    private List<String> normalizedAssetWarnings(Object value,
+                                                 boolean pdfEvidenceAvailable,
+                                                 boolean pageScreenshotAvailable) {
+        List<String> warnings = new ArrayList<>();
+        if (value instanceof List<?> list) {
+            warnings.addAll(list.stream()
+                    .filter(item -> item != null && !String.valueOf(item).isBlank())
+                    .map(String::valueOf)
+                    .filter(item -> !isLegacyImportWarning(item))
+                    .toList());
         }
-        return list.stream()
-                .filter(item -> item != null && !String.valueOf(item).isBlank())
-                .map(String::valueOf)
-                .filter(item -> !isLegacyImportWarning(item))
-                .toList();
+        if (!pdfEvidenceAvailable && !pageScreenshotAvailable
+                && !warnings.contains("pdf_page_visual_evidence_unavailable")) {
+            warnings.add("pdf_page_visual_evidence_unavailable");
+        }
+        return List.copyOf(warnings);
     }
 
     private boolean isLegacyImportWarning(String value) {
         return value.startsWith("structured_") && value.endsWith("_text_only");
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
     }
 
     private String writeReferenceMappings(Map<String, Map<String, Object>> referenceMappings) {
@@ -546,10 +770,41 @@ public class ConversationService {
             return null;
         }
 
+        return writeJsonObject(effectiveScope, "effective retrieval scope");
+    }
+
+    private String writeJsonObject(Map<String, Object> value, String label) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
         try {
-            return objectMapper.writeValueAsString(effectiveScope);
+            return objectMapper.writeValueAsString(value);
         } catch (Exception e) {
-            logger.warn("序列化有效检索范围失败，将跳过持久化范围审计", e);
+            logger.warn("序列化{}失败，将跳过对应持久化字段", label, e);
+            return null;
+        }
+    }
+
+    private String writeReadingArtifacts(ReadingTurnArtifacts readingArtifacts) {
+        if (readingArtifacts == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(readingArtifacts);
+        } catch (Exception e) {
+            logger.warn("序列化 reading artifacts 失败，将跳过持久化结构化阅读状态", e);
+            return null;
+        }
+    }
+
+    private String writeReadingStatePatch(ReadingStatePatch readingStatePatch) {
+        if (readingStatePatch == null || readingStatePatch.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(readingStatePatch);
+        } catch (Exception e) {
+            logger.warn("序列化 reading state patch 失败，将跳过持久化当前阅读目标", e);
             return null;
         }
     }
@@ -570,6 +825,37 @@ public class ConversationService {
             logger.warn("解析有效检索范围失败，将返回无范围审计的历史记录", e);
             return null;
         }
+    }
+
+    private Map<String, Object> parseJsonObject(String json, String label) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+
+        try {
+            Map<String, Object> parsed = objectMapper.readValue(
+                    json,
+                    new TypeReference<LinkedHashMap<String, Object>>() {
+                    }
+            );
+            return parsed == null || parsed.isEmpty() ? null : parsed;
+        } catch (Exception e) {
+            logger.warn("解析{}失败，将返回无结构化阅读状态的历史记录", label, e);
+            return null;
+        }
+    }
+
+    private Map<String, Object> objectMap(Object value) {
+        if (!(value instanceof Map<?, ?> rawMap)) {
+            return Map.of();
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            if (entry.getKey() instanceof String key) {
+                result.put(key, entry.getValue());
+            }
+        }
+        return result;
     }
 
     private Map<String, Map<String, Object>> parseReferenceMappings(String referenceMappingsJson) {

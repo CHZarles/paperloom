@@ -82,7 +82,7 @@ class ConversationSessionScopeControllerTest {
         data.put("scopeMode", "AUTO_LIBRARY");
         data.put("scopeLocked", false);
         data.put("scopeStatus", "READY");
-        data.put("sourceLabel", "All searchable papers");
+        data.put("sourceLabel", "All readable papers");
         data.put("sourcePaperCount", null);
         data.put("paperIds", List.of());
         data.put("sourceRecipe", null);
@@ -91,12 +91,12 @@ class ConversationSessionScopeControllerTest {
                         ConversationScopeMode.AUTO_LIBRARY,
                         ConversationScopeStatus.READY,
                         false,
-                        "All searchable papers",
+                        "All readable papers",
                         List.of(),
                         Map.of()
                 );
         when(conversationScopeService.resolveForChat(1L, "conversation-1")).thenReturn(scope);
-        when(conversationScopeService.scopeResponse(scope)).thenReturn(data);
+        when(conversationScopeService.scopeResponse(1L, scope)).thenReturn(data);
 
         ResponseEntity<?> response = controller.getScope("Bearer token", "conversation-1");
 
@@ -104,6 +104,7 @@ class ConversationSessionScopeControllerTest {
         assertEquals(200, body(response).get("code"));
         assertEquals(data, body(response).get("data"));
         verify(conversationScopeService).resolveForChat(1L, "conversation-1");
+        verify(conversationScopeService).scopeResponse(1L, scope);
     }
 
     @Test

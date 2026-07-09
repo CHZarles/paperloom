@@ -327,7 +327,39 @@ public class ReadingToolArgumentValidator {
             "year"
     );
     private static final Set<String> SEARCH_ALLOWED_ARGUMENTS = Set.of("queryText");
-    private static final Set<String> LOCATION_ALLOWED_ARGUMENTS = Set.of("paperHandles", "queryText", "locationTypes");
+    private static final Set<String> LOCATION_ALLOWED_ARGUMENTS =
+            Set.of("paperHandles", "locationTypes", "queryPlan");
+    private static final Set<String> LOCATION_QUERY_PLAN_ALLOWED_ARGUMENTS = Set.of(
+            "queryText",
+            "intent",
+            "sourceLanguage",
+            "retrievalLanguage",
+            "sectionRoles",
+            "locationTypes"
+    );
+    private static final Set<String> LOCATION_QUERY_PLAN_INTENTS = Set.of(
+            "METHOD",
+            "EXPERIMENT_SETUP",
+            "MAIN_CLAIM",
+            "LIMITATION",
+            "DATASET",
+            "BASELINE",
+            "ABLATION",
+            "METRIC",
+            "GENERAL"
+    );
+    private static final Set<String> LOCATION_QUERY_PLAN_SECTION_ROLES = Set.of(
+            "ABSTRACT",
+            "INTRODUCTION",
+            "BACKGROUND",
+            "METHOD",
+            "EXPERIMENT",
+            "RESULT",
+            "DISCUSSION",
+            "LIMITATION",
+            "CONCLUSION",
+            "APPENDIX"
+    );
     private static final Set<String> LIST_LOCATIONS_ALLOWED_ARGUMENTS =
             Set.of("paperHandles", "pageRange", "locationTypes");
     private static final Set<String> OUTLINE_ALLOWED_ARGUMENTS = Set.of("paperHandles");
@@ -445,14 +477,29 @@ public class ReadingToolArgumentValidator {
         if (stringList(safeArguments.get("paperHandles")).isEmpty()) {
             return ValidationResult.invalid("missing_argument", "paperHandles");
         }
-        if (!safeArguments.containsKey("queryText") || SearchText.tokens(stringValue(safeArguments.get("queryText"))).isEmpty()) {
-            return ValidationResult.invalid("missing_argument", "queryText");
+        if (!safeArguments.containsKey("queryPlan")) {
+            return ValidationResult.invalid("missing_argument", "queryPlan");
+        }
+        ValidationResult queryPlanResult = validateLocationQueryPlan(safeArguments.get("queryPlan"));
+        if (!queryPlanResult.valid()) {
+            return queryPlanResult;
+        }
+        if (SearchText.tokens(locationQueryText(safeArguments)).isEmpty()) {
+            return ValidationResult.invalid("missing_argument", "queryPlan.queryText");
         }
         if (safeArguments.containsKey("locationTypes")) {
             ValidationResult locationTypesResult = validateLocationTypes(safeArguments.get("locationTypes"));
             if (!locationTypesResult.valid()) {
                 return locationTypesResult;
             }
+        }
+        if (safeArguments.containsKey("locationTypes")
+                && safeArguments.containsKey("queryPlan")
+                && !locationTypes(safeArguments.get("locationTypes")).isEmpty()
+                && !locationQueryPlan(safeArguments.get("queryPlan")).locationTypes().isEmpty()
+                && !locationTypes(safeArguments.get("locationTypes"))
+                .equals(locationQueryPlan(safeArguments.get("queryPlan")).locationTypes())) {
+            return ValidationResult.invalid("conflicting_argument", "locationTypes");
         }
         return ValidationResult.validResult();
     }
@@ -553,6 +600,39 @@ public class ReadingToolArgumentValidator {
             types.add(PaperLocationType.valueOf(normalized));
         }
         return List.copyOf(types);
+    }
+
+    public LocationQueryPlan locationQueryPlan(Object value) {
+        if (!(value instanceof Map<?, ?> rawPlan)) {
+            return LocationQueryPlan.empty();
+        }
+        return new LocationQueryPlan(
+                stringValue(rawPlan.get("queryText")),
+                stringValue(rawPlan.get("intent")).toUpperCase(Locale.ROOT),
+                stringValue(rawPlan.get("sourceLanguage")),
+                stringValue(rawPlan.get("retrievalLanguage")),
+                normalizedSectionRoles(rawPlan.get("sectionRoles")),
+                locationTypes(rawPlan.get("locationTypes"))
+        );
+    }
+
+    public String locationQueryText(Map<String, Object> arguments) {
+        if (arguments == null || arguments.isEmpty()) {
+            return "";
+        }
+        LocationQueryPlan plan = locationQueryPlan(arguments.get("queryPlan"));
+        return plan.queryText();
+    }
+
+    public List<PaperLocationType> effectiveLocationTypes(Map<String, Object> arguments) {
+        if (arguments == null || arguments.isEmpty()) {
+            return List.of();
+        }
+        LocationQueryPlan plan = locationQueryPlan(arguments.get("queryPlan"));
+        if (!plan.locationTypes().isEmpty()) {
+            return plan.locationTypes();
+        }
+        return locationTypes(arguments.get("locationTypes"));
     }
 
     public PageRange pageRange(Object value) {
@@ -667,6 +747,16 @@ public class ReadingToolArgumentValidator {
         return null;
     }
 
+    private String firstUnsupportedLocationQueryPlanArgument(Map<?, ?> queryPlan) {
+        for (Object rawKey : queryPlan.keySet()) {
+            String key = stringValue(rawKey);
+            if (!LOCATION_QUERY_PLAN_ALLOWED_ARGUMENTS.contains(key)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
     private ValidationResult validateYearRange(Object value) {
         YearRange range = yearRange(value);
         if (range == null || range.from() < 1 || range.to() < 1 || range.from() > range.to()) {
@@ -700,6 +790,73 @@ public class ReadingToolArgumentValidator {
                 PaperLocationType.valueOf(normalized);
             } catch (IllegalArgumentException exception) {
                 return ValidationResult.invalid("unsupported_location_type", stringValue(rawValue));
+            }
+        }
+        return ValidationResult.validResult();
+    }
+
+    private ValidationResult validateLocationQueryPlan(Object value) {
+        if (!(value instanceof Map<?, ?> rawPlan)) {
+            return ValidationResult.invalid("unsupported_argument", "queryPlan");
+        }
+        String unsupportedArgument = firstUnsupportedLocationQueryPlanArgument(rawPlan);
+        if (unsupportedArgument != null) {
+            return ValidationResult.invalid("unsupported_argument", unsupportedArgument);
+        }
+        if (SearchText.tokens(stringValue(rawPlan.get("queryText"))).isEmpty()) {
+            return ValidationResult.invalid("missing_argument", "queryPlan.queryText");
+        }
+        String intent = stringValue(rawPlan.get("intent")).toUpperCase(Locale.ROOT);
+        if (intent.isBlank()) {
+            return ValidationResult.invalid("missing_argument", "queryPlan.intent");
+        }
+        if (!LOCATION_QUERY_PLAN_INTENTS.contains(intent)) {
+            return ValidationResult.invalid("unsupported_location_intent", stringValue(rawPlan.get("intent")));
+        }
+        ValidationResult sourceLanguageResult = validateRequiredString(rawPlan, "sourceLanguage");
+        if (!sourceLanguageResult.valid()) {
+            return sourceLanguageResult;
+        }
+        ValidationResult retrievalLanguageResult = validateRequiredString(rawPlan, "retrievalLanguage");
+        if (!retrievalLanguageResult.valid()) {
+            return retrievalLanguageResult;
+        }
+        if (!rawPlan.containsKey("sectionRoles") || normalizedSectionRoles(rawPlan.get("sectionRoles")).isEmpty()) {
+            return ValidationResult.invalid("missing_argument", "queryPlan.sectionRoles");
+        }
+        ValidationResult sectionRolesResult = validateSectionRoles(rawPlan.get("sectionRoles"));
+        if (!sectionRolesResult.valid()) {
+            return sectionRolesResult;
+        }
+        if (rawPlan.containsKey("locationTypes")) {
+            ValidationResult locationTypesResult = validateLocationTypes(rawPlan.get("locationTypes"));
+            if (!locationTypesResult.valid()) {
+                return locationTypesResult;
+            }
+        }
+        return ValidationResult.validResult();
+    }
+
+    private ValidationResult validateRequiredString(Map<?, ?> rawPlan, String key) {
+        if (!rawPlan.containsKey(key) || rawPlan.get(key) == null || stringValue(rawPlan.get(key)).isBlank()) {
+            return ValidationResult.invalid("missing_argument", "queryPlan." + key);
+        }
+        return rawPlan.get(key) instanceof String
+                ? ValidationResult.validResult()
+                : ValidationResult.invalid("invalid_string", "queryPlan." + key);
+    }
+
+    private ValidationResult validateSectionRoles(Object value) {
+        if (!(value instanceof List<?> rawValues)) {
+            return ValidationResult.invalid("unsupported_section_role", "queryPlan.sectionRoles");
+        }
+        for (Object rawValue : rawValues) {
+            String normalized = stringValue(rawValue).toUpperCase(Locale.ROOT);
+            if (normalized.isBlank()) {
+                continue;
+            }
+            if (!LOCATION_QUERY_PLAN_SECTION_ROLES.contains(normalized)) {
+                return ValidationResult.invalid("unsupported_section_role", stringValue(rawValue));
             }
         }
         return ValidationResult.validResult();
@@ -778,6 +935,20 @@ public class ReadingToolArgumentValidator {
             }
         }
         return null;
+    }
+
+    private List<String> normalizedSectionRoles(Object value) {
+        if (!(value instanceof List<?> rawValues)) {
+            return List.of();
+        }
+        LinkedHashSet<String> roles = new LinkedHashSet<>();
+        for (Object rawValue : rawValues) {
+            String normalized = stringValue(rawValue).toUpperCase(Locale.ROOT);
+            if (!normalized.isBlank()) {
+                roles.add(normalized);
+            }
+        }
+        return List.copyOf(roles);
     }
 
     private String stringValue(Object value) {
@@ -871,6 +1042,26 @@ public class ReadingToolArgumentValidator {
                     || !SearchText.isBlank(doiExact)
                     || !SearchText.isBlank(arxivIdExact)
                     || !SearchText.isBlank(authorName);
+        }
+    }
+
+    public record LocationQueryPlan(String queryText,
+                                    String intent,
+                                    String sourceLanguage,
+                                    String retrievalLanguage,
+                                    List<String> sectionRoles,
+                                    List<PaperLocationType> locationTypes) {
+        public LocationQueryPlan {
+            queryText = queryText == null ? "" : queryText.trim();
+            intent = intent == null ? "" : intent.trim();
+            sourceLanguage = sourceLanguage == null ? "" : sourceLanguage.trim();
+            retrievalLanguage = retrievalLanguage == null ? "" : retrievalLanguage.trim();
+            sectionRoles = sectionRoles == null ? List.of() : List.copyOf(sectionRoles);
+            locationTypes = locationTypes == null ? List.of() : List.copyOf(locationTypes);
+        }
+
+        static LocationQueryPlan empty() {
+            return new LocationQueryPlan("", "", "", "", List.of(), List.of());
         }
     }
 

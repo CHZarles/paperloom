@@ -73,6 +73,43 @@ class ChatGenerationStateServiceTest {
         verify(redisTemplate).delete("chat:user:1:client:client-a:active_generation");
     }
 
+    @Test
+    void generationSnapshotCarriesReadingArtifactsStatePatchAndConversationRecordId() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn("""
+                {
+                  "generationId": "generation-1",
+                  "userId": "1",
+                  "conversationId": "conversation-1",
+                  "question": "question",
+                  "status": "COMPLETED",
+                  "createdAt": "2026-07-07T12:00:00",
+                  "updatedAt": "2026-07-07T12:00:05",
+                  "errorMessage": null,
+                  "clientId": "client-a",
+                  "conversationRecordId": 9001
+                }
+                """);
+        when(valueOperations.get("chat:generation:generation-1:content")).thenReturn("answer");
+        when(valueOperations.get("chat:generation:generation-1:reading_artifacts")).thenReturn("""
+                {"goalCard":{"interpretedGoal":"read agent papers"}}
+                """);
+        when(valueOperations.get("chat:generation:generation-1:reading_state_patch")).thenReturn("""
+                {"selectedPaper":{"paperHandle":"paper_handle_abc"}}
+                """);
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
+
+        var snapshot = service.getGeneration("generation-1").orElseThrow();
+
+        assertEquals(9001L, snapshot.conversationRecordId());
+        assertEquals("read agent papers", ((java.util.Map<?, ?>) snapshot.readingArtifacts().get("goalCard"))
+                .get("interpretedGoal"));
+        assertEquals("paper_handle_abc", ((java.util.Map<?, ?>) snapshot.readingStatePatch().get("selectedPaper"))
+                .get("paperHandle"));
+    }
+
     private static String generationMetaJson() {
         return """
                 {

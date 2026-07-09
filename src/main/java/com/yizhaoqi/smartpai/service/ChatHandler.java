@@ -83,6 +83,9 @@ public class ChatHandler {
     private final Map<String, Map<Integer, ReferenceInfo>> generationReferenceMappings = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> generationDiagnostics = new ConcurrentHashMap<>();
     private final Map<String, List<Map<String, Object>>> generationProductStateItems = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Object>> generationReadingArtifacts = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Object>> generationReadingStatePatches = new ConcurrentHashMap<>();
+    private final Map<String, Long> generationConversationRecordIds = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> generationEffectiveScopes = new ConcurrentHashMap<>();
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
@@ -135,7 +138,6 @@ public class ChatHandler {
             }
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
-            String clickedSourceQuoteRef = structuredSourceQuoteRef(incomingReferenceFocus);
             ProductReferenceFocus referenceFocus =
                     resolveReferenceFocus(
                             userIdLong,
@@ -154,13 +156,17 @@ public class ChatHandler {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
             SourceScope productScope = productSourceScope(effectiveScope, retrievalBudgetProfile);
+            String clickedSourceQuoteRef = structuredSourceQuoteRef(referenceFocus);
             List<String> clickedPaperHandles = clickedPaperHandles(referenceFocus);
+            List<String> clickedLocationRefs = clickedLocationRefs(referenceFocus);
+            String readingAction = readingActionForReferenceFocus(referenceFocus);
             Map<String, Object> effectiveScopeMap = effectiveScopeMap(
                     effectiveScope,
                     clickedSourceQuoteRef,
                     true,
                     clickedPaperHandles,
-                    referenceFocus == null ? null : referenceFocus.readingAction()
+                    readingAction,
+                    clickedLocationRefs
             );
             final String finalConversationId = conversationId;
             final String finalGenerationId = generationId;
@@ -249,7 +255,8 @@ public class ChatHandler {
                 incomingScope.sourceQuoteRef(),
                 focusPaperHandles,
                 incomingScope.paperHandle(),
-                incomingScope.readingAction()
+                incomingScope.readingAction(),
+                incomingScope.locationRef()
         );
     }
 
@@ -258,6 +265,17 @@ public class ChatHandler {
             return null;
         }
         return incomingScope.sourceQuoteRef();
+    }
+
+    private String readingActionForReferenceFocus(ProductReferenceFocus referenceFocus) {
+        if (referenceFocus == null) {
+            return null;
+        }
+        String declaredAction = trimToNull(referenceFocus.readingAction());
+        if (declaredAction != null) {
+            return declaredAction;
+        }
+        return referenceFocus.sourceQuoteRef() == null ? null : "TRACE_SOURCE_QUOTE";
     }
 
     private ProductReferenceFocus resolveReferenceFocus(
@@ -315,7 +333,8 @@ public class ChatHandler {
                 firstNonBlank(stringDetail(detail, "sourceQuoteRef"), referenceFocus.sourceQuoteRef()),
                 referenceFocus.paperHandles(),
                 referenceFocus.paperHandle(),
-                referenceFocus.readingAction()
+                referenceFocus.readingAction(),
+                referenceFocus.locationRef()
         );
     }
 
@@ -414,7 +433,8 @@ public class ChatHandler {
                 || !scope.paperHandles().isEmpty()
                 || scope.paperId() != null
                 || !scope.paperIds().isEmpty()
-                || scope.readingAction() != null;
+                || scope.readingAction() != null
+                || scope.locationRef() != null;
     }
 
     private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope) {
@@ -439,6 +459,15 @@ public class ChatHandler {
                                                   boolean includeClickedSourceQuoteRef,
                                                   List<String> clickedPaperHandles,
                                                   String readingAction) {
+        return effectiveScopeMap(effectiveScope, clickedSourceQuoteRef, includeClickedSourceQuoteRef, clickedPaperHandles, readingAction, List.of());
+    }
+
+    private Map<String, Object> effectiveScopeMap(ConversationScopeService.EffectiveConversationScope effectiveScope,
+                                                  String clickedSourceQuoteRef,
+                                                  boolean includeClickedSourceQuoteRef,
+                                                  List<String> clickedPaperHandles,
+                                                  String readingAction,
+                                                  List<String> clickedLocationRefs) {
         ConversationScopeMode mode = effectiveScope == null ? ConversationScopeMode.AUTO_LIBRARY : effectiveScope.mode();
         List<String> paperIds = effectiveScope == null ? List.of() : effectiveScope.paperIds();
         Map<String, Object> scope = new LinkedHashMap<>();
@@ -453,6 +482,9 @@ public class ChatHandler {
         }
         if (includeClickedSourceQuoteRef && clickedPaperHandles != null && !clickedPaperHandles.isEmpty()) {
             scope.put("clickedPaperHandles", clickedPaperHandles);
+        }
+        if (includeClickedSourceQuoteRef && clickedLocationRefs != null && !clickedLocationRefs.isEmpty()) {
+            scope.put("clickedLocationRefs", clickedLocationRefs);
         }
         String safeReadingAction = trimToNull(readingAction);
         if (includeClickedSourceQuoteRef && safeReadingAction != null) {
@@ -496,6 +528,13 @@ public class ChatHandler {
             }
         }
         return List.copyOf(handles.keySet());
+    }
+
+    private List<String> clickedLocationRefs(ProductReferenceFocus referenceFocus) {
+        if (referenceFocus == null || referenceFocus.locationRef() == null) {
+            return List.of();
+        }
+        return List.of(referenceFocus.locationRef());
     }
 
     private void runReadingHarnessSafely(String userId,
@@ -557,20 +596,38 @@ public class ChatHandler {
         if (!productStateItems.isEmpty()) {
             generationProductStateItems.put(generationId, productStateItems);
         }
+        Map<String, Object> readingArtifacts = toSerializableMap(answer.readingArtifacts());
+        if (!readingArtifacts.isEmpty()) {
+            generationReadingArtifacts.put(generationId, readingArtifacts);
+            chatGenerationStateService.updateReadingArtifacts(generationId, readingArtifacts);
+        }
+        Map<String, Object> readingStatePatch = answer.readingStatePatch().isEmpty()
+                ? Map.of()
+                : toSerializableMap(answer.readingStatePatch());
+        if (!readingStatePatch.isEmpty()) {
+            generationReadingStatePatches.put(generationId, readingStatePatch);
+            chatGenerationStateService.updateReadingStatePatch(generationId, readingStatePatch);
+        }
         Map<Integer, ReferenceInfo> productReferences = productReferenceMappings(answer.references());
         Map<String, Map<String, Object>> serializableReferences = toSerializableReferenceMappings(productReferences);
         if (!productReferences.isEmpty()) {
             generationReferenceMappings.put(generationId, productReferences);
             chatGenerationStateService.updateReferenceMappings(generationId, serializableReferences);
         }
-        conversationService.recordConversation(
+        Long conversationRecordId = conversationService.recordConversation(
                 Long.parseLong(userId),
                 userMessage,
                 answer.finalAnswerMarkdown(),
                 conversationId,
                 serializableReferences,
-                effectiveScope == null ? Map.of() : effectiveScope
+                effectiveScope == null ? Map.of() : effectiveScope,
+                answer.readingArtifacts(),
+                answer.readingStatePatch()
         );
+        if (conversationRecordId != null) {
+            generationConversationRecordIds.put(generationId, conversationRecordId);
+            chatGenerationStateService.updateConversationRecordId(generationId, conversationRecordId);
+        }
         appendStreamChunk(userId, generationId, conversationId, answer.finalAnswerMarkdown());
         finalizeResponse(
                 userId,
@@ -601,6 +658,23 @@ public class ChatHandler {
         }
         diagnostics.put("referenceCount", answer.references().size());
         return diagnostics;
+    }
+
+    private Map<String, Object> toSerializableMap(Object value) {
+        if (value == null) {
+            return Map.of();
+        }
+        try {
+            Map<String, Object> converted = objectMapper.convertValue(
+                    value,
+                    new TypeReference<LinkedHashMap<String, Object>>() {
+                    }
+            );
+            return converted == null ? Map.of() : converted;
+        } catch (IllegalArgumentException exception) {
+            logger.warn("结构化阅读状态转换失败，将跳过发送", exception);
+            return Map.of();
+        }
     }
 
     private Map<Integer, ReferenceInfo> productReferenceMappings(List<Map<String, Object>> references) {
@@ -677,8 +751,8 @@ public class ChatHandler {
         copyStringListDetail(item, rawItem, "authors");
         copyNumberDetail(item, rawItem, "year");
         copyStringDetail(item, rawItem, "venue");
+        copyStringListDetail(item, rawItem, "matchReasons");
         if (FIND_PAPERS_BY_IDENTITY_TOOL.equals(sourceTool)) {
-            copyStringListDetail(item, rawItem, "matchReasons");
             copyStringDetail(item, rawItem, "identityStatus");
             Object ambiguous = rawItem.get("ambiguous");
             if (ambiguous instanceof Boolean booleanValue) {
@@ -854,7 +928,9 @@ public class ChatHandler {
                 userMessage,
                 completeResponse,
                 referenceMappings,
-                generationEffectiveScopes.get(generationId)
+                generationEffectiveScopes.get(generationId),
+                generationReadingArtifacts.get(generationId),
+                generationReadingStatePatches.get(generationId)
         );
         chatGenerationStateService.markCompleted(generationId, toSerializableReferenceMappings(referenceMappings));
         sendCompletionNotification(userId, generationId, conversationId, false, false);
@@ -873,6 +949,9 @@ public class ChatHandler {
         generationReferenceMappings.remove(generationId);
         generationDiagnostics.remove(generationId);
         generationProductStateItems.remove(generationId);
+        generationReadingArtifacts.remove(generationId);
+        generationReadingStatePatches.remove(generationId);
+        generationConversationRecordIds.remove(generationId);
         generationEffectiveScopes.remove(generationId);
         generationTimings.remove(generationId);
         stopFlags.remove(generationId);
@@ -993,7 +1072,9 @@ public class ChatHandler {
 
     private void updateConversationHistory(String conversationId, String userMessage, String response,
                                            Map<Integer, ReferenceInfo> referenceMapping,
-                                           Map<String, Object> effectiveScope) {
+                                           Map<String, Object> effectiveScope,
+                                           Map<String, Object> readingArtifacts,
+                                           Map<String, Object> readingStatePatch) {
         String key = "conversation:" + conversationId;
         List<Map<String, Object>> history = getConversationHistoryRecords(conversationId);
 
@@ -1017,6 +1098,12 @@ public class ChatHandler {
         assistantMsgMap.put("timestamp", currentTimestamp);
         if (referenceMapping != null && !referenceMapping.isEmpty()) {
             assistantMsgMap.put("referenceMappings", toSerializableReferenceMappings(referenceMapping));
+        }
+        if (readingArtifacts != null && !readingArtifacts.isEmpty()) {
+            assistantMsgMap.put("readingArtifacts", readingArtifacts);
+        }
+        if (readingStatePatch != null && !readingStatePatch.isEmpty()) {
+            assistantMsgMap.put("readingStatePatch", readingStatePatch);
         }
         history.add(assistantMsgMap);
 
@@ -1168,6 +1255,18 @@ public class ChatHandler {
             List<Map<String, Object>> productStateItems = generationProductStateItems.get(generationId);
             if (productStateItems != null && !productStateItems.isEmpty()) {
                 notification.put("productStateItems", productStateItems);
+            }
+            Map<String, Object> readingArtifacts = generationReadingArtifacts.get(generationId);
+            if (readingArtifacts != null && !readingArtifacts.isEmpty()) {
+                notification.put("readingArtifacts", readingArtifacts);
+            }
+            Map<String, Object> readingStatePatch = generationReadingStatePatches.get(generationId);
+            if (readingStatePatch != null && !readingStatePatch.isEmpty()) {
+                notification.put("readingStatePatch", readingStatePatch);
+            }
+            Long conversationRecordId = generationConversationRecordIds.get(generationId);
+            if (conversationRecordId != null) {
+                notification.put("conversationRecordId", conversationRecordId);
             }
         }
         if (persistenceDegraded) {

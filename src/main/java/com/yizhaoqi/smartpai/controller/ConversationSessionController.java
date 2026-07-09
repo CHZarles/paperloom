@@ -116,6 +116,7 @@ public class ConversationSessionController {
 
             Long userId = Long.parseLong(jwtUtils.extractUserIdFromToken(rawToken));
             Map<String, Object> scope = conversationScopeService.scopeResponse(
+                    userId,
                     conversationScopeService.resolveForChat(userId, conversationId)
             );
 

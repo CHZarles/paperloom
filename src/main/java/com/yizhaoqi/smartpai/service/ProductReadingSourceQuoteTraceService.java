@@ -2,9 +2,6 @@ package com.yizhaoqi.smartpai.service;
 
 import com.yizhaoqi.smartpai.model.Paper;
 import com.yizhaoqi.smartpai.model.PaperSourceQuote;
-import com.yizhaoqi.smartpai.repository.ConversationSourceQuoteRepository;
-import com.yizhaoqi.smartpai.repository.PaperRepository;
-import com.yizhaoqi.smartpai.repository.PaperSourceQuoteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,19 +20,13 @@ public class ProductReadingSourceQuoteTraceService {
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
 
-    private final ConversationSourceQuoteRepository conversationSourceQuoteRepository;
-    private final PaperSourceQuoteRepository sourceQuoteRepository;
+    private final ProductReadingSourceQuoteResolver sourceQuoteResolver;
     private final ProductPaperHandleService handleService;
-    private final PaperRepository paperRepository;
 
-    public ProductReadingSourceQuoteTraceService(ConversationSourceQuoteRepository conversationSourceQuoteRepository,
-                                                PaperSourceQuoteRepository sourceQuoteRepository,
-                                                ProductPaperHandleService handleService,
-                                                PaperRepository paperRepository) {
-        this.conversationSourceQuoteRepository = conversationSourceQuoteRepository;
-        this.sourceQuoteRepository = sourceQuoteRepository;
+    public ProductReadingSourceQuoteTraceService(ProductReadingSourceQuoteResolver sourceQuoteResolver,
+                                                ProductPaperHandleService handleService) {
         this.handleService = handleService;
-        this.paperRepository = paperRepository;
+        this.sourceQuoteResolver = sourceQuoteResolver;
     }
 
     @Transactional(readOnly = true)
@@ -47,46 +38,36 @@ public class ProductReadingSourceQuoteTraceService {
         List<Map<String, Object>> sourceQuotes = new ArrayList<>();
         List<Map<String, Object>> traceStatus = new ArrayList<>();
 
-        if (isBlank(safeContext.conversationId())) {
-            for (String sourceQuoteRef : refs) {
-                traceStatus.add(traceStatus(sourceQuoteRef, "SOURCE_QUOTE_NOT_IN_CONVERSATION"));
-            }
-            return new TraceResult(sourceQuotes, traceStatus);
-        }
-
         for (String sourceQuoteRef : refs) {
-            if (conversationSourceQuoteRepository
-                    .findFirstByConversationIdAndSourceQuoteRef(safeContext.conversationId(), sourceQuoteRef)
-                    .isEmpty()) {
-                traceStatus.add(traceStatus(sourceQuoteRef, "SOURCE_QUOTE_NOT_IN_CONVERSATION"));
+            ProductReadingSourceQuoteResolver.Resolution resolution =
+                    sourceQuoteResolver.resolveRegisteredCurrentQuote(safeContext.conversationId(), sourceQuoteRef);
+            if (!resolution.ok()) {
+                traceStatus.add(traceStatus(sourceQuoteRef, resolution.status()));
                 continue;
             }
-
-            Optional<PaperSourceQuote> sourceQuote = sourceQuoteRepository.findFirstBySourceQuoteRef(sourceQuoteRef);
-            if (sourceQuote.isEmpty()) {
-                traceStatus.add(traceStatus(sourceQuoteRef, "SOURCE_QUOTE_NOT_FOUND"));
-                continue;
-            }
-
-            PaperSourceQuote quote = sourceQuote.get();
+            PaperSourceQuote quote = resolution.sourceQuote().orElseThrow();
             if (!handleService.isPaperVisibleToUser(quote.getPaperId(), safeContext.userId(), safeContext.lockedScope())) {
-                traceStatus.add(traceStatus(sourceQuoteRef, "SOURCE_QUOTE_UNAVAILABLE"));
+                traceStatus.add(traceStatus(sourceQuoteRef, ProductReadingSourceQuoteResolver.STATUS_UNAVAILABLE));
                 continue;
             }
 
-            sourceQuotes.add(sourceQuoteOutput(quote));
-            traceStatus.add(traceStatus(sourceQuoteRef, "OK"));
+            sourceQuotes.add(sourceQuoteOutput(quote, resolution.paper()));
+            traceStatus.add(traceStatus(sourceQuoteRef, ProductReadingSourceQuoteResolver.STATUS_OK));
         }
 
         return new TraceResult(sourceQuotes, traceStatus);
     }
 
-    private Map<String, Object> sourceQuoteOutput(PaperSourceQuote quote) {
+    private Map<String, Object> sourceQuoteOutput(PaperSourceQuote quote, Optional<Paper> paper) {
         Map<String, Object> output = new LinkedHashMap<>();
         put(output, "sourceQuoteRef", quote.getSourceQuoteRef());
+        put(output, "paperId", quote.getPaperId());
+        put(output, "paperVersion", quote.getModelVersion());
         put(output, "locationRef", quote.getLocationRef());
         put(output, "paperHandle", handleService.handleForPaperId(quote.getPaperId()));
-        put(output, "paperTitle", paperTitle(quote.getPaperId()));
+        paper.map(Paper::getPaperTitle)
+                .filter(title -> !isBlank(title))
+                .ifPresent(title -> put(output, "paperTitle", title));
         put(output, "locationType", quote.getLocationType());
         put(output, "pageNumber", quote.getPageNumber());
         put(output, "pageEndNumber", quote.getPageEndNumber());
@@ -111,13 +92,6 @@ public class ProductReadingSourceQuoteTraceService {
             }
         }
         return List.copyOf(refs);
-    }
-
-    private String paperTitle(String paperId) {
-        return paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
-                .map(Paper::getPaperTitle)
-                .filter(title -> !isBlank(title))
-                .orElse("");
     }
 
     private Map<String, Object> traceStatus(String sourceQuoteRef, String status) {

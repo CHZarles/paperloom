@@ -58,6 +58,7 @@ const evidenceImageElement = ref<HTMLImageElement | null>(null);
 const evidenceImageDisplaySize = ref({ width: 0, height: 0 });
 
 const assetWarningLabels: Record<string, string> = {
+  pdf_page_visual_evidence_unavailable: 'PDF page visual evidence is unavailable.',
   page_screenshots_missing: 'Page screenshot is unavailable.',
   table_screenshot_missing: 'Table image is unavailable.',
   figure_screenshot_missing: 'Figure image is unavailable.',
@@ -346,7 +347,8 @@ function askAboutThisEvidence() {
     evidenceSnippet: props.evidenceSnippet || undefined,
     bboxJson: props.bboxJson || undefined,
     sourceKind: props.sourceKind || undefined,
-    sourceQuoteRef: props.sourceQuoteRef || undefined
+    sourceQuoteRef: props.sourceQuoteRef || undefined,
+    readingAction: props.sourceQuoteRef ? 'TRACE_SOURCE_QUOTE' : undefined
   });
 }
 

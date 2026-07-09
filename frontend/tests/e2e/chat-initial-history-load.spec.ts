@@ -54,8 +54,8 @@ test('chat page loads only the selected conversation history on entry', async ({
     scopeMode: 'AUTO_LIBRARY',
     scopeLocked: true,
     scopeStatus: 'READY',
-    sourceLabel: 'All searchable papers',
-    sourcePaperCount: null
+    sourceLabel: 'All readable papers',
+    sourcePaperCount: 30
   };
   const otherSession = {
     ...currentSession,
@@ -125,8 +125,8 @@ test('chat page loads only the selected conversation history on entry', async ({
       scopeMode: 'AUTO_LIBRARY',
       scopeLocked: true,
       scopeStatus: 'READY',
-      sourceLabel: 'All searchable papers',
-      sourcePaperCount: null,
+      sourceLabel: 'All readable papers',
+      sourcePaperCount: 30,
       paperIds: [],
       sourceRecipe: null
     })
@@ -141,7 +141,7 @@ test('chat page loads only the selected conversation history on entry', async ({
     return fulfillApi(route, unscopedHistory);
   });
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('.message-block')).toHaveCount(2);
   await expect(page.locator('.chat-conversation')).toContainText('Current session question');

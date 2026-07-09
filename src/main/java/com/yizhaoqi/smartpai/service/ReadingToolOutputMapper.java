@@ -17,12 +17,28 @@ public class ReadingToolOutputMapper {
     public Map<String, Object> paperCard(PaperCandidate candidate, String paperHandle, int ordinal) {
         Map<String, Object> card = new LinkedHashMap<>();
         card.put("ordinal", ordinal);
+        card.put("paperId", candidate.paperId());
         card.put("paperHandle", paperHandle);
         card.put("title", candidate.title());
+        card.put("originalFilename", "");
         card.put("authors", candidate.authors());
         card.put("year", candidate.publicationYear());
         card.put("venue", candidate.venue());
         card.put("preview", candidate.abstractPreview());
+        card.put("matchReasons", candidate.matchReason() == null || candidate.matchReason().isBlank()
+                ? List.of()
+                : List.of(candidate.matchReason()));
+        return card;
+    }
+
+    public Map<String, Object> searchPaperCard(Paper paper,
+                                               String paperHandle,
+                                               int ordinal,
+                                               List<String> authors,
+                                               List<String> matchReasons,
+                                               String preview) {
+        Map<String, Object> card = browsedPaperCard(paper, paperHandle, ordinal, authors, matchReasons);
+        card.put("preview", preview == null ? "" : preview);
         return card;
     }
 
@@ -42,14 +58,24 @@ public class ReadingToolOutputMapper {
                                                 String paperHandle,
                                                 int ordinal,
                                                 List<String> authors) {
+        return browsedPaperCard(paper, paperHandle, ordinal, authors, List.of());
+    }
+
+    public Map<String, Object> browsedPaperCard(Paper paper,
+                                                String paperHandle,
+                                                int ordinal,
+                                                List<String> authors,
+                                                List<String> matchReasons) {
         Map<String, Object> card = new LinkedHashMap<>();
         card.put("ordinal", ordinal);
+        card.put("paperId", paper == null ? "" : paper.getPaperId());
         card.put("paperHandle", paperHandle);
         card.put("title", paper == null ? "" : paper.getPaperTitle());
         card.put("originalFilename", paper == null ? "" : paper.getOriginalFilename());
         card.put("authors", authors == null ? List.of() : authors);
         card.put("year", paper == null ? null : paper.getPublicationYear());
         card.put("venue", paper == null ? "" : paper.getVenue());
+        card.put("matchReasons", matchReasons == null ? List.of() : matchReasons);
         card.put("catalogTopics", List.of());
         card.put("paperTypes", List.of());
         return card;
@@ -85,6 +111,7 @@ public class ReadingToolOutputMapper {
     public Map<String, Object> locationCard(ReadingLocationCandidate candidate, String paperHandle, int ordinal) {
         Map<String, Object> card = new LinkedHashMap<>();
         card.put("ordinal", ordinal);
+        card.put("paperId", candidate.paperId());
         card.put("paperHandle", paperHandle);
         card.put("locationRef", candidate.locationRef());
         card.put("locationType", candidate.locationType() == null ? "" : candidate.locationType().name());
@@ -98,6 +125,7 @@ public class ReadingToolOutputMapper {
     public Map<String, Object> listedLocationCard(PaperLocation location, String paperHandle, int ordinal) {
         Map<String, Object> card = new LinkedHashMap<>();
         card.put("ordinal", ordinal);
+        card.put("paperId", location.getPaperId());
         card.put("paperHandle", paperHandle);
         card.put("locationRef", location.getLocationRef());
         card.put("locationType", location.getLocationType() == null ? "" : location.getLocationType().name());
@@ -115,6 +143,7 @@ public class ReadingToolOutputMapper {
                                             Map<String, Object> parserQuality,
                                             List<Map<String, Object>> sections) {
         Map<String, Object> card = new LinkedHashMap<>();
+        card.put("paperId", paper == null ? "" : paper.getPaperId());
         card.put("paperHandle", paperHandle);
         card.put("title", paper == null ? "" : paper.getPaperTitle());
         card.put("originalFilename", paper == null ? "" : paper.getOriginalFilename());

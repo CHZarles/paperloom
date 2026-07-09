@@ -97,6 +97,24 @@ class ProductReadingToolRegistryTest {
         assertTrue(listProperties.containsKey("locationTypes"));
         assertFalse(listProperties.containsKey("queryText"));
         assertFalse(listProperties.containsKey("query"));
+        ToolDefinition locationSearchTool = tools.stream()
+                .filter(tool -> "find_reading_locations".equals(tool.name()))
+                .findFirst()
+                .orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> locationSearchProperties =
+                (Map<String, Object>) locationSearchTool.parameters().get("properties");
+        assertTrue(locationSearchProperties.containsKey("queryPlan"));
+        assertFalse(locationSearchProperties.containsKey("queryText"));
+        assertEquals(List.of("paperHandles", "queryPlan"), locationSearchTool.parameters().get("required"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> queryPlanSchema =
+                (Map<String, Object>) locationSearchProperties.get("queryPlan");
+        assertEquals(
+                List.of("queryText", "intent", "sourceLanguage", "retrievalLanguage", "sectionRoles"),
+                queryPlanSchema.get("required")
+        );
+        assertEquals(false, queryPlanSchema.get("additionalProperties"));
         assertTrue(schemaJson.contains("\"additionalProperties\":false"));
         assertFalse(schemaJson.contains("limit"));
         assertFalse(schemaJson.contains("topK"));
@@ -264,7 +282,13 @@ class ProductReadingToolRegistryTest {
         ), context));
         assertEquals(locationResult, registry.execute("find_reading_locations", Map.of(
                 "paperHandles", List.of("paper_handle_abc"),
-                "queryText", "methods"
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "sourceLanguage", "zh",
+                        "retrievalLanguage", "en",
+                        "sectionRoles", List.of("METHOD")
+                )
         ), context));
         assertEquals(readResult, registry.execute("read_locations", Map.of(
                 "locationRefs", List.of("page_ref_abc")

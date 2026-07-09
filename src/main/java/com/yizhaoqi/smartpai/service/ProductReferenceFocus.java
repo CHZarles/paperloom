@@ -21,17 +21,22 @@ public record ProductReferenceFocus(
         String sourceQuoteRef,
         List<String> paperHandles,
         String paperHandle,
-        String readingAction
+        String readingAction,
+        String locationRef
 ) {
     private static final Set<String> READING_ACTIONS = Set.of(
             "SEARCH_PAPERS",
             "LIST_LOCATIONS",
-            "FIND_LOCATIONS"
+            "FIND_LOCATIONS",
+            "READ_LOCATION",
+            "TRACE_SOURCE_QUOTE"
     );
     private static final Pattern SOURCE_QUOTE_REF_PATTERN =
             Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
     private static final Pattern PAPER_HANDLE_PATTERN =
             Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
+    private static final Pattern LOCATION_REF_PATTERN =
+            Pattern.compile("^(page_ref|section_ref|table_ref|figure_ref|location_ref)_[A-Za-z0-9_-]+$");
 
     public ProductReferenceFocus {
         paperIds = paperIds == null ? List.of() : paperIds.stream()
@@ -51,6 +56,7 @@ public record ProductReferenceFocus(
         sourceQuoteRef = sourceQuoteRef(sourceQuoteRef);
         paperHandle = paperHandle(paperHandle);
         readingAction = readingAction(readingAction);
+        locationRef = locationRef(locationRef);
         paperHandles = paperHandles == null ? List.of() : paperHandles.stream()
                 .map(ProductReferenceFocus::paperHandle)
                 .filter(value -> value != null)
@@ -90,6 +96,7 @@ public record ProductReferenceFocus(
                 sourceQuoteRef,
                 List.of(),
                 null,
+                null,
                 null
         );
     }
@@ -121,6 +128,7 @@ public record ProductReferenceFocus(
                 sourceKind,
                 null,
                 List.of(),
+                null,
                 null,
                 null
         );
@@ -157,6 +165,44 @@ public record ProductReferenceFocus(
                 sourceQuoteRef,
                 paperHandles,
                 paperHandle,
+                null,
+               null
+       );
+    }
+
+    public ProductReferenceFocus(List<String> paperIds,
+                                 List<String> paperTitles,
+                                 Integer referenceNumber,
+                                 Long conversationRecordId,
+                                 Integer chunkId,
+                                 Integer pageNumber,
+                                 String paperId,
+                                 String paperTitle,
+                                 String originalFilename,
+                                 String matchedText,
+                                 String bboxJson,
+                                 String sourceKind,
+                                 String sourceQuoteRef,
+                                 List<String> paperHandles,
+                                 String paperHandle,
+                                 String readingAction) {
+        this(
+                paperIds,
+                paperTitles,
+                referenceNumber,
+                conversationRecordId,
+                chunkId,
+                pageNumber,
+                paperId,
+                paperTitle,
+                originalFilename,
+                matchedText,
+                bboxJson,
+                sourceKind,
+                sourceQuoteRef,
+                paperHandles,
+                paperHandle,
+                readingAction,
                 null
         );
     }
@@ -192,5 +238,13 @@ public record ProductReferenceFocus(
         }
         String normalized = trimmed.toUpperCase(Locale.ROOT);
         return READING_ACTIONS.contains(normalized) ? normalized : null;
+    }
+
+    private static String locationRef(String value) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null || !LOCATION_REF_PATTERN.matcher(trimmed).matches()) {
+            return null;
+        }
+        return trimmed;
     }
 }

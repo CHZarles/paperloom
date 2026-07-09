@@ -106,12 +106,16 @@ public class ProductReadingToolAdapter {
         List<Map<String, Object>> items = new ArrayList<>();
         for (int index = 0; index < returned; index++) {
             Paper paper = sorted.get(index);
-            items.add(outputMapper.browsedPaperCard(
+            Optional<Map<String, Object>> card = validatedPaperCard(
                     paper,
-                    handleService.handleForPaperId(paper.getPaperId()),
                     index + 1,
-                    authors(paper)
-            ));
+                    listPaperMatchReasons(safeFilters),
+                    null
+            );
+            if (card.isEmpty()) {
+                return paperCardIdentityInvalid(LIST_PAPERS_TOOL_NAME, ProductToolEffect.PAPER_LIST);
+            }
+            items.add(card.get());
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -145,13 +149,11 @@ public class ProductReadingToolAdapter {
         for (int index = 0; index < returned; index++) {
             IdentityMatch match = sorted.get(index);
             Paper paper = match.paper();
-            matches.add(outputMapper.identityPaperCard(
-                    paper,
-                    handleService.handleForPaperId(paper.getPaperId()),
-                    index + 1,
-                    authors(paper),
-                    match.matchReasons()
-            ));
+            Optional<Map<String, Object>> card = validatedIdentityPaperCard(paper, index + 1, match.matchReasons(), safeHints);
+            if (card.isEmpty()) {
+                return paperCardIdentityInvalid(IDENTITY_TOOL_NAME, ProductToolEffect.PAPER_RESOLUTION);
+            }
+            matches.add(card.get());
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -215,8 +217,21 @@ public class ProductReadingToolAdapter {
             if (!handleService.hasCurrentReadyReadingModel(candidate.paperId())) {
                 continue;
             }
-            String paperHandle = handleService.handleForPaperId(candidate.paperId());
-            items.add(outputMapper.paperCard(candidate, paperHandle, ordinal++));
+            Optional<Paper> paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(candidate.paperId());
+            if (paper.isEmpty()) {
+                return paperCardIdentityInvalid(SEARCH_TOOL_NAME, ProductToolEffect.PAPER_DISCOVERY);
+            }
+            Optional<Map<String, Object>> card = validatedPaperCard(
+                    paper.get(),
+                    ordinal,
+                    paperCandidateMatchReasons(candidate),
+                    candidate.abstractPreview()
+            );
+            if (card.isEmpty()) {
+                return paperCardIdentityInvalid(SEARCH_TOOL_NAME, ProductToolEffect.PAPER_DISCOVERY);
+            }
+            items.add(card.get());
+            ordinal += 1;
         }
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -524,6 +539,149 @@ public class ProductReadingToolAdapter {
                 && matchesContains(paper.getVenue(), filters.venue());
     }
 
+    private Optional<Map<String, Object>> validatedPaperCard(Paper paper,
+                                                            int ordinal,
+                                                            List<String> matchReasons,
+                                                            String preview) {
+        if (paper == null || SearchText.isBlank(paper.getPaperId())) {
+            return Optional.empty();
+        }
+        String paperHandle = handleService.handleForPaperId(paper.getPaperId());
+        if (!paperHandleResolvesToPaper(paperHandle, paper.getPaperId())) {
+            return Optional.empty();
+        }
+        Map<String, Object> card = preview == null
+                ? outputMapper.browsedPaperCard(paper, paperHandle, ordinal, authors(paper), matchReasons)
+                : outputMapper.searchPaperCard(paper, paperHandle, ordinal, authors(paper), matchReasons, preview);
+        return canonicalPaperCard(card, paper, paperHandle) ? Optional.of(card) : Optional.empty();
+    }
+
+    private Optional<Map<String, Object>> validatedIdentityPaperCard(Paper paper,
+                                                                    int ordinal,
+                                                                    List<String> identityReasonCodes,
+                                                                    ReadingToolArgumentValidator.IdentityHints hints) {
+        return validatedPaperCard(
+                paper,
+                ordinal,
+                identityMatchReasonLabels(identityReasonCodes, hints),
+                null
+        );
+    }
+
+    private boolean paperHandleResolvesToPaper(String paperHandle, String paperId) {
+        if (SearchText.isBlank(paperHandle) || SearchText.isBlank(paperId)) {
+            return false;
+        }
+        return handleService.resolvePaperHandle(paperHandle)
+                .filter(resolvedPaperId -> paperId.equals(resolvedPaperId))
+                .isPresent();
+    }
+
+    private boolean canonicalPaperCard(Map<String, Object> card, Paper paper, String paperHandle) {
+        if (card == null || paper == null) {
+            return false;
+        }
+        String paperId = stringValue(card.get("paperId"));
+        String title = stringValue(card.get("title"));
+        String filename = stringValue(card.get("originalFilename"));
+        return paper.getPaperId().equals(paperId)
+                && paperHandle.equals(stringValue(card.get("paperHandle")))
+                && title.equals(stringValue(paper.getPaperTitle()))
+                && filename.equals(stringValue(paper.getOriginalFilename()))
+                && !stringList(card.get("matchReasons")).isEmpty();
+    }
+
+    private List<String> listPaperMatchReasons(ReadingToolArgumentValidator.ListPaperFilters filters) {
+        ReadingToolArgumentValidator.ListPaperFilters safeFilters = filters == null
+                ? ReadingToolArgumentValidator.ListPaperFilters.empty()
+                : filters;
+        List<String> reasons = new ArrayList<>();
+        if (!SearchText.isBlank(safeFilters.titleExact())) {
+            reasons.add("Title exactly matches \"" + safeFilters.titleExact() + "\".");
+        }
+        if (!SearchText.isBlank(safeFilters.titleContains())) {
+            reasons.add("Title contains \"" + safeFilters.titleContains() + "\".");
+        }
+        if (!SearchText.isBlank(safeFilters.filenameExact())) {
+            reasons.add("Filename exactly matches \"" + safeFilters.filenameExact() + "\".");
+        }
+        if (!SearchText.isBlank(safeFilters.filenameContains())) {
+            reasons.add("Filename contains \"" + safeFilters.filenameContains() + "\".");
+        }
+        if (!SearchText.isBlank(safeFilters.authorName())) {
+            reasons.add("Author metadata matches \"" + safeFilters.authorName() + "\".");
+        }
+        if (!SearchText.isBlank(safeFilters.doiExact())) {
+            reasons.add("DOI exactly matches the requested identifier.");
+        }
+        if (!SearchText.isBlank(safeFilters.arxivIdExact())) {
+            reasons.add("arXiv id exactly matches the requested identifier.");
+        }
+        if (safeFilters.yearRange() != null) {
+            reasons.add("Publication year is within the requested range.");
+        }
+        if (!SearchText.isBlank(safeFilters.venue())) {
+            reasons.add("Venue metadata contains \"" + safeFilters.venue() + "\".");
+        }
+        if (reasons.isEmpty()) {
+            reasons.add("Readable paper in the current locked scope.");
+        }
+        return List.copyOf(reasons);
+    }
+
+    private List<String> paperCandidateMatchReasons(PaperCandidate candidate) {
+        List<String> reasons = new ArrayList<>();
+        String matchReason = candidate == null ? "" : stringValue(candidate.matchReason());
+        if (!matchReason.isBlank()) {
+            reasons.add(matchReason);
+        }
+        if (candidate != null && !candidate.matchedFields().isEmpty()) {
+            reasons.add("Matched paper metadata fields: " + String.join(", ", candidate.matchedFields()) + ".");
+        }
+        if (reasons.isEmpty()) {
+            reasons.add("Paper candidate search matched metadata in the current locked scope.");
+        }
+        return List.copyOf(reasons);
+    }
+
+    private List<String> identityMatchReasonLabels(List<String> reasonCodes,
+                                                   ReadingToolArgumentValidator.IdentityHints hints) {
+        List<String> reasons = new ArrayList<>();
+        for (String reasonCode : reasonCodes == null ? List.<String>of() : reasonCodes) {
+            switch (reasonCode) {
+                case "TITLE_CONTAINS" -> reasons.add("Title contains \"" + hints.titleContains() + "\".");
+                case "TITLE_EXACT" -> reasons.add("Title exactly matches \"" + hints.titleExact() + "\".");
+                case "FILENAME_CONTAINS" -> reasons.add("Filename contains \"" + hints.filenameContains() + "\".");
+                case "FILENAME_EXACT" -> reasons.add("Filename exactly matches \"" + hints.filenameExact() + "\".");
+                case "DOI_EXACT" -> reasons.add("DOI exactly matches the requested identifier.");
+                case "ARXIV_ID_EXACT" -> reasons.add("arXiv id exactly matches the requested identifier.");
+                case "AUTHOR_NAME" -> reasons.add("Author metadata matches \"" + hints.authorName() + "\".");
+                case "YEAR" -> reasons.add("Publication year matches " + hints.year() + ".");
+                default -> {
+                }
+            }
+        }
+        if (reasons.isEmpty()) {
+            reasons.add("Paper identity metadata matched the request.");
+        }
+        return List.copyOf(reasons);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> stringList(Object value) {
+        if (!(value instanceof List<?> rawValues)) {
+            return List.of();
+        }
+        List<String> values = new ArrayList<>();
+        for (Object rawValue : rawValues) {
+            String text = stringValue(rawValue);
+            if (!text.isBlank()) {
+                values.add(text);
+            }
+        }
+        return List.copyOf(values);
+    }
+
     private boolean matchesIdentityHints(Paper paper, ReadingToolArgumentValidator.IdentityHints hints) {
         if (!matchesRequiredIdentityExactHints(paper, hints)) {
             return false;
@@ -827,6 +985,29 @@ public class ProductReadingToolAdapter {
         data.put("papers", papers == null ? List.of() : papers);
         data.put("constraints", outlineConstraints());
         return new ProductToolResult(GET_OUTLINE_TOOL_NAME, true, data, ProductToolEffect.PAPER_DISCOVERY);
+    }
+
+    private ProductToolResult paperCardIdentityInvalid(String toolName, ProductToolEffect effect) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("status", "PAPER_CARD_IDENTITY_INVALID");
+        data.put("error", "paper_card_identity_invalid");
+        if (LIST_PAPERS_TOOL_NAME.equals(toolName) || SEARCH_TOOL_NAME.equals(toolName)) {
+            data.put("total", 0);
+            data.put("returned", 0);
+            data.put("items", List.of());
+        }
+        if (IDENTITY_TOOL_NAME.equals(toolName)) {
+            data.put("ambiguous", false);
+            data.put("total", 0);
+            data.put("returned", 0);
+            data.put("matches", List.of());
+        }
+        data.put("constraints", switch (toolName) {
+            case LIST_PAPERS_TOOL_NAME -> listPapersConstraints();
+            case IDENTITY_TOOL_NAME -> identityConstraints();
+            default -> paperCandidateConstraints();
+        });
+        return new ProductToolResult(toolName, false, data, ProductToolEffect.ERROR);
     }
 
     private Map<String, Object> sessionStateConstraints() {

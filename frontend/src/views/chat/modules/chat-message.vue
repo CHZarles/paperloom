@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
+import ProductReadingArtifactsPanel from './product-reading-artifacts-panel.vue';
 import ProductReadingPaperChoiceList from './product-reading-paper-choice-list.vue';
 defineOptions({ name: 'ChatMessage' });
 
@@ -140,9 +141,23 @@ const assistantIsGenerating = computed(
 );
 const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
 const showToolProgress = computed(
-  () => props.msg.role === 'assistant' && (assistantIsGenerating.value || toolEvents.value.length > 0)
+  () => props.msg.role === 'assistant' && assistantIsGenerating.value
 );
 const canRetry = computed(() => props.msg.role === 'assistant' && Boolean(props.retrievalQueryFallback?.trim()));
+const hasReadingArtifacts = computed(() => {
+  const artifacts = props.msg.readingArtifacts;
+  if (!artifacts) return false;
+  return Boolean(
+    artifacts.goalCard?.interpretedGoal ||
+      artifacts.goalCard?.scopeLabel ||
+      typeof artifacts.goalCard?.readablePaperCount === 'number' ||
+      artifacts.paperShortlist?.items?.length ||
+      artifacts.readingPlan?.steps?.length ||
+      artifacts.claimEvidencePanel?.rows?.length ||
+      artifacts.missingEvidence?.explanation ||
+      artifacts.uncertaintyNotes?.length
+  );
+});
 
 function toolEventClass(event: Api.Chat.AgentToolEvent) {
   return {
@@ -150,6 +165,21 @@ function toolEventClass(event: Api.Chat.AgentToolEvent) {
     'assistant-process__line--success': event.status === 'success',
     'assistant-process__line--failed': event.status === 'failed'
   };
+}
+
+function toolEventLabel(event: Api.Chat.AgentToolEvent) {
+  const labels: Record<string, string> = {
+    get_session_state: 'Checking reading scope',
+    list_papers: 'Browsing readable papers',
+    search_paper_candidates: 'Finding candidate papers',
+    find_papers_by_identity: 'Resolving paper identity',
+    get_paper_outline: 'Inspecting paper outline',
+    list_paper_locations: 'Listing reading locations',
+    find_reading_locations: 'Locating relevant passages',
+    read_locations: 'Reading selected passages',
+    trace_source_quotes: 'Checking cited evidence'
+  };
+  return labels[event.tool] || 'Checking reading workspace';
 }
 
 function splitTrailingUrlPunctuation(rawUrl: string) {
@@ -212,7 +242,7 @@ function createCompactCitationLink(sourceNum: string) {
     persistedDetail?.originalFilename ||
     persistedDetail?.evidenceSnippet ||
     persistedDetail?.matchedChunkText ||
-    'Source Quote';
+    'Evidence';
   sourceFiles.value.push({
     paperTitle,
     originalFilename: persistedDetail?.originalFilename,
@@ -224,7 +254,7 @@ function createCompactCitationLink(sourceNum: string) {
   });
 
   if (!persistedDetail?.paperId && sourceQuoteRef) {
-    const title = persistedDetail?.evidenceSnippet || persistedDetail?.matchedChunkText || 'Source Quote';
+    const title = persistedDetail?.evidenceSnippet || persistedDetail?.matchedChunkText || 'Evidence';
     return `<span class="source-citation-chip source-quote-link" data-file-id="${fileId}" data-reference-number="${sourceNum}" tabindex="0" role="button" title="${escapeHtml(title)}">[${sourceNum}]</span>`;
   }
 
@@ -411,7 +441,7 @@ function handleContentClick(event: MouseEvent) {
       const file = sourceFiles.value.find(f => f.id === fileId);
       if (file) {
         activeReferenceNumber.value = file.referenceNumber;
-        if (!file.paperId && file.sourceQuoteRef) {
+        if (!file.paperId && file.sourceQuoteRef && !props.msg.conversationRecordId) {
           handleSourceQuoteClick(file);
           return;
         }
@@ -469,8 +499,44 @@ function handleSourceQuoteClick(fileInfo: {
   }
 }
 
+function handleArtifactSourceQuoteOpen(payload: {
+  sourceQuoteRef?: string;
+  paperId?: string;
+  paperTitle?: string;
+  originalFilename?: string;
+  referenceNumber?: number;
+  evidenceSnippet?: string;
+  matchedChunkText?: string;
+}) {
+  const referenceNumber = payload.referenceNumber || 0;
+  activeReferenceNumber.value = referenceNumber || null;
+  if (referenceNumber > 0) {
+    handleSourceFileClick({
+      paperTitle: payload.paperTitle || payload.evidenceSnippet || 'Evidence',
+      originalFilename: payload.originalFilename,
+      referenceNumber,
+      paperId: payload.paperId,
+      sourceQuoteRef: payload.sourceQuoteRef,
+      anchorText: payload.evidenceSnippet || payload.matchedChunkText || '',
+      evidenceSnippet: payload.evidenceSnippet,
+      matchedChunkText: payload.matchedChunkText
+    });
+    return;
+  }
+  openReferenceEvidencePage({
+    paperTitle: payload.paperTitle || payload.evidenceSnippet || 'Evidence',
+    originalFilename: payload.originalFilename,
+    paperId: payload.paperId,
+    anchorText: payload.evidenceSnippet || payload.matchedChunkText || '',
+    evidenceSnippet: payload.evidenceSnippet,
+    matchedChunkText: payload.matchedChunkText,
+    referenceNumber: 0,
+    sourceQuoteRef: payload.sourceQuoteRef
+  });
+}
+
 // 处理来源证据点击事件
-// 引用详情优先使用当前消息中的持久化映射，缺少证据文本时再从 MySQL 历史记录刷新。
+// Product Reading source quotes must be re-opened through the durable reference endpoint.
 // eslint-disable-next-line complexity
 async function handleSourceFileClick(fileInfo: {
   paperTitle: string;
@@ -480,6 +546,8 @@ async function handleSourceFileClick(fileInfo: {
   pageNumber?: number;
   sourceQuoteRef?: string | null;
   anchorText?: string;
+  evidenceSnippet?: string | null;
+  matchedChunkText?: string | null;
 }) {
   const {
     paperTitle,
@@ -493,6 +561,13 @@ async function handleSourceFileClick(fileInfo: {
   const persistedDetail =
     props.msg.referenceMappings?.[String(referenceNumber)] || props.msg.referenceMappings?.[referenceNumber];
   const conversationRecordId = props.msg.conversationRecordId;
+  const sourceQuoteRefForDetail = persistedDetail?.sourceQuoteRef || extractedSourceQuoteRef || '';
+  const requiresAuthoritativeSourceQuote = Boolean(sourceQuoteRefForDetail && conversationRecordId);
+
+  if (sourceQuoteRefForDetail && !conversationRecordId) {
+    window.$message?.error('Citation detail is not available until this reading turn is saved.');
+    return;
+  }
 
   try {
     let detail: Api.Paper.ReferenceDetailResponse | null = null;
@@ -500,7 +575,10 @@ async function handleSourceFileClick(fileInfo: {
 
     if (
       conversationRecordId &&
-      (!persistedDetail?.retrievalQuery || !persistedDetail?.matchedChunkText || !persistedDetail?.evidenceSnippet)
+      (requiresAuthoritativeSourceQuote ||
+        !persistedDetail?.retrievalQuery ||
+        !persistedDetail?.matchedChunkText ||
+        !persistedDetail?.evidenceSnippet)
     ) {
       try {
         const { error: detailError, data: detailData } = await request<Api.Paper.ReferenceDetailResponse>({
@@ -513,9 +591,15 @@ async function handleSourceFileClick(fileInfo: {
 
         if (!detailError && detailData?.paperId) {
           detail = detailData;
+        } else if (requiresAuthoritativeSourceQuote) {
+          window.$message?.error('Citation detail is unavailable for the current reading model.');
+          return;
         }
       } catch {
-        // Continue with persisted or parsed citation data when the detail endpoint is unavailable.
+        if (requiresAuthoritativeSourceQuote) {
+          window.$message?.error('Citation detail is unavailable for the current reading model.');
+          return;
+        }
       }
     }
 
@@ -529,8 +613,8 @@ async function handleSourceFileClick(fileInfo: {
         retrievalMode: persistedDetail.retrievalMode,
         retrievalLabel: persistedDetail.retrievalLabel,
         retrievalQuery: persistedDetail.retrievalQuery || fallbackRetrievalQuery,
-        evidenceSnippet: persistedDetail.evidenceSnippet,
-        matchedChunkText: persistedDetail.matchedChunkText,
+        evidenceSnippet: persistedDetail.evidenceSnippet || fileInfo.evidenceSnippet,
+        matchedChunkText: persistedDetail.matchedChunkText || fileInfo.matchedChunkText,
         score: persistedDetail.score,
         chunkId: persistedDetail.chunkId,
         elementType: persistedDetail.elementType,
@@ -573,8 +657,8 @@ async function handleSourceFileClick(fileInfo: {
       retrievalMode: detail?.retrievalMode,
       retrievalLabel: detail?.retrievalLabel,
       retrievalQuery: detail?.retrievalQuery || fallbackRetrievalQuery,
-      evidenceSnippet: detail?.evidenceSnippet,
-      matchedChunkText: detail?.matchedChunkText,
+      evidenceSnippet: detail?.evidenceSnippet || fileInfo.evidenceSnippet,
+      matchedChunkText: detail?.matchedChunkText || fileInfo.matchedChunkText,
       score: detail?.score,
       chunkId: detail?.chunkId,
       elementType: detail?.elementType,
@@ -630,7 +714,7 @@ async function handleSourceFileClick(fileInfo: {
             :class="toolEventClass(event)"
           >
             <span class="assistant-process__dot" aria-hidden="true" />
-            <span class="assistant-process__text">calling {{ event.tool }}</span>
+            <span class="assistant-process__text">{{ toolEventLabel(event) }}</span>
           </div>
         </div>
         <NText v-if="msg.status === 'error'" class="message-error">
@@ -647,8 +731,14 @@ async function handleSourceFileClick(fileInfo: {
         </div>
         <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
         <ProductReadingPaperChoiceList
-          v-if="msg.role === 'assistant' && msg.productStateItems?.length"
+          v-if="msg.role === 'assistant' && msg.productStateItems?.length && !hasReadingArtifacts"
           :items="msg.productStateItems"
+        />
+        <ProductReadingArtifactsPanel
+          v-if="msg.role === 'assistant' && hasReadingArtifacts"
+          :artifacts="msg.readingArtifacts"
+          :legacy-items="msg.productStateItems"
+          @open-source-quote="handleArtifactSourceQuoteOpen"
         />
         <NDivider v-if="showMessageActions" class="message-divider" />
         <div v-if="showMessageActions" class="message-actions">

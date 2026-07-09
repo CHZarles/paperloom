@@ -86,7 +86,10 @@ class ChatHandlerStopResponseTest {
                 "2026-07-07T12:00:00",
                 null,
                 Map.of(),
-                Map.of()
+                Map.of(),
+                Map.of(),
+                Map.of(),
+                null
         );
     }
 }

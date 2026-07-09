@@ -24,12 +24,17 @@ const scopeMode = computed(() => props.scope?.scopeMode || 'AUTO_LIBRARY');
 const isSnapshot = computed(() => scopeMode.value === 'SOURCE_SET_SNAPSHOT');
 const isLocked = computed(() => Boolean(props.scope?.scopeLocked));
 const scopeStatus = computed(() => props.scope?.scopeStatus || 'READY');
-const paperCount = computed(() => Number(props.scope?.sourcePaperCount || props.scope?.paperIds?.length || 0));
+const paperCount = computed(() => {
+  if (typeof props.scope?.sourcePaperCount === 'number') return props.scope.sourcePaperCount;
+  if (isSnapshot.value) return props.scope?.paperIds?.length ?? null;
+  return null;
+});
 
 const label = computed(() => {
   if (scopeStatus.value === 'INVALID') return 'Invalid scope';
-  if (!isSnapshot.value) return 'All searchable papers';
-  return props.scope?.sourceLabel || `${paperCount.value.toLocaleString()} papers`;
+  if (!isSnapshot.value) return props.scope?.sourceLabel || 'All readable papers';
+  const count = paperCount.value;
+  return props.scope?.sourceLabel || (typeof count === 'number' ? `${count.toLocaleString()} papers` : 'Selected papers');
 });
 
 const statusClass = computed(() => {
@@ -45,7 +50,7 @@ const statusLabel = computed(() => {
 });
 
 const countLabel = computed(() => {
-  if (!isSnapshot.value) return '';
+  if (typeof paperCount.value !== 'number') return '';
   return `${paperCount.value.toLocaleString()} papers`;
 });
 

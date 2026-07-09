@@ -162,4 +162,89 @@ class MinerUOutputMapperTest {
         assertTrue(genericAlias.caption() == null || genericAlias.caption().isBlank());
         assertTrue(genericAlias.figureText() == null || genericAlias.figureText().isBlank());
     }
+
+    @Test
+    void appendsUniqueCodeBodyBlocksFromMiddleJsonAsRetrievableEvidence() {
+        String contentListJson = """
+                [
+                  {
+                    "type": "text",
+                    "text": "Already retained code body",
+                    "page_idx": 0,
+                    "bbox": [70, 160, 930, 230]
+                  }
+                ]
+                """;
+        String middleJson = """
+                {
+                  "pdf_info": [
+                    {
+                      "preproc_blocks": [
+                        {
+                          "blocks": [
+                            {
+                              "type": "code body",
+                              "bbox": [100, 120, 900, 180],
+                              "lines": [
+                                {
+                                  "spans": [
+                                    { "content": "Already retained code body" }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "para_blocks": [
+                        {
+                          "blocks": [
+                            {
+                              "type": "code body",
+                              "bbox": [110, 220, 910, 360],
+                              "lines": [
+                                {
+                                  "spans": [
+                                    { "content": "Algorithm 1: Adam" }
+                                  ]
+                                },
+                                {
+                                  "spans": [
+                                    { "content": "Good default settings are alpha = 0.001" },
+                                    { "content": "beta1 = 0.9, beta2 = 0.999" }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """;
+
+        ParsedPaper paper = new MinerUOutputMapper().map(
+                contentListJson,
+                middleJson,
+                "",
+                "MinerU",
+                "self-hosted",
+                "adam.pdf"
+        );
+
+        assertEquals(2, paper.elements().size());
+        ParsedPaperElement codeBody = paper.elements().get(1);
+        assertEquals("middle-code-body-2-0", codeBody.elementId());
+        assertEquals(2, codeBody.pageNumber());
+        assertEquals(2, codeBody.readingOrder());
+        assertEquals(ParsedPaperElementType.LIST, codeBody.elementType());
+        assertTrue(codeBody.text().contains("Algorithm 1: Adam"));
+        assertTrue(codeBody.text().contains("beta2 = 0.999"));
+        assertNotNull(codeBody.boundingBox());
+        assertEquals("code_body", codeBody.rawAttributes().get("type"));
+        assertEquals("mineru_middle_json", codeBody.rawAttributes().get("source"));
+    }
 }

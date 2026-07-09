@@ -95,7 +95,7 @@ async function installMockLoginState(page: Page) {
     { prefix: storagePrefix }
   );
 
-  await page.route('**/users/me', route =>
+  await page.route('**/users/me**', route =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -116,7 +116,7 @@ async function installMockLoginState(page: Page) {
 async function installRegularUserState(page: Page) {
   await installLoginState(page, await login());
 
-  await page.route('**/users/me', route =>
+  await page.route('**/users/me**', route =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -197,8 +197,8 @@ async function installDeletableConversationState(page: Page) {
     scopeMode: 'AUTO_LIBRARY',
     scopeLocked: false,
     scopeStatus: 'READY',
-    sourceLabel: 'All searchable papers',
-    sourcePaperCount: null,
+    sourceLabel: 'All readable papers',
+    sourcePaperCount: 30,
     createdAt: '2026-07-01T08:00:00',
     updatedAt: '2026-07-01T09:00:00'
   };
@@ -210,8 +210,8 @@ async function installDeletableConversationState(page: Page) {
     scopeMode: 'AUTO_LIBRARY',
     scopeLocked: false,
     scopeStatus: 'READY',
-    sourceLabel: 'All searchable papers',
-    sourcePaperCount: null,
+    sourceLabel: 'All readable papers',
+    sourcePaperCount: 30,
     createdAt: '2026-07-01T08:10:00',
     updatedAt: '2026-07-01T08:30:00'
   };
@@ -238,8 +238,8 @@ async function installDeletableConversationState(page: Page) {
       scopeMode: 'AUTO_LIBRARY',
       scopeLocked: false,
       scopeStatus: 'READY',
-      sourceLabel: 'All searchable papers',
-      sourcePaperCount: null,
+      sourceLabel: 'All readable papers',
+      sourcePaperCount: 30,
       paperIds: []
     })
   );
@@ -296,7 +296,7 @@ async function installScopedConversationState(page: Page) {
 test('library uses the same sidebar shell as the chat home', async ({ page }) => {
   await installLoginState(page, await login());
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.chat-shell')).toBeVisible();
   const chatSidebar = await page.locator('.chat-sidebar').boundingBox();
 
@@ -313,7 +313,7 @@ test('library uses the same sidebar shell as the chat home', async ({ page }) =>
 test('app uses the Folio brand name and mark', async ({ page }) => {
   await installLoginState(page, await login());
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
 
   await expect(page).toHaveTitle(/Folio$/);
   await expect(page.locator('.chat-shell .brand-title')).toHaveText('Folio');
@@ -326,7 +326,7 @@ test('app uses the Folio brand name and mark', async ({ page }) => {
 test('settings entry opens the real clickable settings modal in place', async ({ page }) => {
   await installLoginState(page, await login());
 
-  await page.goto('/#/knowledge-base');
+  await page.goto('/#/knowledge-base', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.paper-library-shell .chat-sidebar')).toBeVisible();
   await page.getByRole('button', { name: '进入管理页面' }).click();
 
@@ -350,7 +350,7 @@ test('settings entry opens the real clickable settings modal in place', async ({
 test('chat settings entry opens the same modal without leaving the chat', async ({ page }) => {
   await installLoginState(page, await login());
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.chat-shell .chat-sidebar')).toBeVisible();
   await page.getByRole('button', { name: '进入管理页面' }).click();
 
@@ -365,7 +365,7 @@ test('search scope is shown above the detailed conversation input only', async (
   await installLoginState(page, await login());
   await installScopedConversationState(page);
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
 
   const session = page.getByTestId('conversation-session').filter({ hasText: 'Scoped LoRA review' });
   await expect(session).toBeVisible();
@@ -383,7 +383,7 @@ test('conversation sidebar deletes a session and falls back to the remaining act
   await installMockLoginState(page);
   await installDeletableConversationState(page);
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
 
   const deletedSession = page.getByTestId('conversation-session').filter({ hasText: 'Delete me' });
   await expect(deletedSession).toBeVisible();
@@ -403,7 +403,7 @@ test('settings modal uses the wide desktop layout', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await installLoginState(page, await login());
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.chat-shell .chat-sidebar')).toBeVisible();
   await page.getByRole('button', { name: '进入管理页面' }).click();
 
@@ -426,7 +426,7 @@ test('settings modal does not load token ledger until the ledger tab is opened',
     route.continue();
   });
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.chat-shell .chat-sidebar')).toBeVisible();
   await page.getByRole('button', { name: '进入管理页面' }).click();
 
@@ -444,7 +444,7 @@ test('settings modal does not load token ledger until the ledger tab is opened',
 test('settings modal exposes admin and billing entries in place', async ({ page }) => {
   await installLoginState(page, await login());
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.chat-shell .chat-sidebar')).toBeVisible();
   await page.getByRole('button', { name: '进入管理页面' }).click();
 
@@ -484,7 +484,7 @@ test('settings model provider entry loads real configuration in place', async ({
 
   await installLoginState(page, await login());
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.chat-shell .chat-sidebar')).toBeVisible();
   await page.getByRole('button', { name: '进入管理页面' }).click();
   await page.getByRole('button', { name: /^Model Provider/ }).click();
@@ -527,7 +527,7 @@ test('regular users do not see or load admin settings content', async ({ page })
 
   await installRegularUserState(page);
 
-  await page.goto('/#/chat');
+  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.chat-shell .chat-sidebar')).toBeVisible();
   await page.getByRole('button', { name: '进入管理页面' }).click();
 
@@ -564,7 +564,7 @@ test('regular users cannot view admin pages through direct routes', async ({ pag
   ];
 
   for (const route of adminRoutes) {
-    await page.goto(`/#${route.path}`);
+    await page.goto(`/#${route.path}`, { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/#\/403/);
     await expect(page.getByText(route.heading).first()).toHaveCount(0);
   }

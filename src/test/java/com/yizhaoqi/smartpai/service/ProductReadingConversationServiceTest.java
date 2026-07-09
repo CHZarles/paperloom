@@ -5,6 +5,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -164,6 +165,95 @@ class ProductReadingConversationServiceTest {
         ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
         verify(readingHarness).run(requestCaptor.capture());
         assertEquals("LIST_LOCATIONS", requestCaptor.getValue().memory().get("readingTurnAction"));
+    }
+
+    @Test
+    void readingConversationServicePassesExplicitTraceSourceQuoteAction() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "解释这个引用",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of(
+                        "clickedSourceQuoteRefs", List.of("source_quote_abc"),
+                        "readingAction", "trace_source_quote"
+                )
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        assertEquals("TRACE_SOURCE_QUOTE", requestCaptor.getValue().memory().get("readingTurnAction"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void readingConversationServicePassesExplicitClickedLocationAnchorForReadAction() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        ProductReadingConversationService service = new ProductReadingConversationService(readingHarness);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "读取这个位置",
+                SourceScope.auto(),
+                ProductModelContext.defaults(),
+                Map.of(
+                        "clickedLocationRefs", List.of(
+                                " page_ref_abc ",
+                                "page_ref_abc",
+                                "not_a_location_ref",
+                                "section_ref_methods"
+                        ),
+                        "readingAction", "read_location"
+                )
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        Map<String, Object> anchors = (Map<String, Object>) requestCaptor.getValue().memory().get("readingTurnAnchors");
+        assertEquals(List.of("page_ref_abc", "section_ref_methods"), anchors.get("clickedLocationRefs"));
+        assertEquals("READ_LOCATION", requestCaptor.getValue().memory().get("readingTurnAction"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void readingConversationServicePassesLatestReadingStatePatchAsConversationMemory() {
+        ProductReadingReActHarness readingHarness = mock(ProductReadingReActHarness.class);
+        ConversationService conversationService = mock(ConversationService.class);
+        when(readingHarness.run(any())).thenReturn(productStateResult("reading answer"));
+        when(conversationService.findLatestReadingStatePatch(7L, "conversation-1"))
+                .thenReturn(Optional.of(Map.of(
+                        "selectedPaper", Map.of(
+                                "paperHandle", "paper_handle_abc",
+                                "title", "Agentic Eval Benchmark"
+                        )
+                )));
+        ProductReadingConversationService service =
+                new ProductReadingConversationService(readingHarness, conversationService);
+
+        service.runTurn(
+                7L,
+                "conversation-1",
+                "generation-2",
+                "解释这篇论文",
+                SourceScope.auto(),
+                ProductModelContext.defaults()
+        );
+
+        ArgumentCaptor<ProductTurnRequest> requestCaptor = ArgumentCaptor.forClass(ProductTurnRequest.class);
+        verify(readingHarness).run(requestCaptor.capture());
+        Map<String, Object> patch = (Map<String, Object>) requestCaptor.getValue().memory().get("readingStatePatch");
+        Map<String, Object> selectedPaper = (Map<String, Object>) patch.get("selectedPaper");
+        assertEquals("paper_handle_abc", selectedPaper.get("paperHandle"));
+        assertEquals("Agentic Eval Benchmark", selectedPaper.get("title"));
     }
 
     @Test

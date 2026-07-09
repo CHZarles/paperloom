@@ -8,9 +8,11 @@ import com.yizhaoqi.smartpai.model.ConversationScopeMode;
 import com.yizhaoqi.smartpai.model.ConversationScopeStatus;
 import com.yizhaoqi.smartpai.model.ConversationSession;
 import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperReadingModelStatus;
 import com.yizhaoqi.smartpai.model.User;
 import com.yizhaoqi.smartpai.repository.ConversationSessionRepository;
 import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,11 +32,12 @@ import java.util.regex.PatternSyntaxException;
 @Service
 public class ConversationScopeService {
 
-    public static final String DEFAULT_AUTO_LIBRARY_LABEL = "All searchable papers";
+    public static final String DEFAULT_AUTO_LIBRARY_LABEL = "All readable papers";
 
     private final ConversationSessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final PaperRepository paperRepository;
+    private final PaperReadingModelRepository readingModelRepository;
     private final PaperCollectionService paperCollectionService;
     private final PaperSearchabilityService paperSearchabilityService;
     private final OrgTagCacheService orgTagCacheService;
@@ -43,6 +46,7 @@ public class ConversationScopeService {
     public ConversationScopeService(ConversationSessionRepository sessionRepository,
                                     UserRepository userRepository,
                                     PaperRepository paperRepository,
+                                    PaperReadingModelRepository readingModelRepository,
                                     PaperCollectionService paperCollectionService,
                                     PaperSearchabilityService paperSearchabilityService,
                                     OrgTagCacheService orgTagCacheService,
@@ -50,6 +54,7 @@ public class ConversationScopeService {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
         this.paperRepository = paperRepository;
+        this.readingModelRepository = readingModelRepository;
         this.paperCollectionService = paperCollectionService;
         this.paperSearchabilityService = paperSearchabilityService;
         this.orgTagCacheService = orgTagCacheService;
@@ -100,7 +105,7 @@ public class ConversationScopeService {
         if (mode == ConversationScopeMode.AUTO_LIBRARY) {
             applyAutoLibraryScope(session);
             sessionRepository.save(session);
-            return scopeResponse(resolveSession(session));
+            return scopeResponse(userId, resolveSession(session));
         }
 
         User user = resolveUser(userId);
@@ -130,7 +135,7 @@ public class ConversationScopeService {
         session.setSourceSnapshotJson(writeJson(sourceSnapshot));
         session.setSourcePaperCount(paperIds.size());
         sessionRepository.save(session);
-        return scopeResponse(resolveSession(session));
+        return scopeResponse(userId, resolveSession(session));
     }
 
     @Transactional(readOnly = true)
@@ -215,19 +220,55 @@ public class ConversationScopeService {
     }
 
     public Map<String, Object> scopeResponse(EffectiveConversationScope scope) {
+        return scopeResponse(null, scope);
+    }
+
+    public Map<String, Object> scopeResponse(Long userId, EffectiveConversationScope scope) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("scopeMode", scope.mode().name());
         response.put("scopeLocked", scope.locked());
         response.put("scopeStatus", scope.status().name());
         response.put("sourceLabel", scope.label());
-        response.put("sourcePaperCount", scope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT
-                ? scope.paperIds().size()
-                : null);
+        response.put("sourcePaperCount", sourcePaperCount(userId, scope));
         response.put("paperIds", scope.paperIds());
         response.put("sourceRecipe", scope.sourceRecipe() != null && !scope.sourceRecipe().isEmpty()
                 ? scope.sourceRecipe()
                 : null);
         return response;
+    }
+
+    public Integer autoLibraryReadablePaperCount(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        User user = resolveUser(userId);
+        List<String> effectiveOrgTags = effectiveOrgTags(user);
+        LinkedHashSet<String> countedPaperIds = new LinkedHashSet<>();
+        int count = 0;
+        for (Paper paper : accessiblePapersForTitleMatch(user, effectiveOrgTags)) {
+            String paperId = trimToNull(paper == null ? null : paper.getPaperId());
+            if (paper == null
+                    || paperId == null
+                    || !canAccessPaper(user, paper, effectiveOrgTags)
+                    || !paperSearchabilityService.isSearchable(paper)
+                    || !hasCurrentReadyReadingModel(paperId)) {
+                continue;
+            }
+            if (countedPaperIds.add(paperId)) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+    private Integer sourcePaperCount(Long userId, EffectiveConversationScope scope) {
+        if (scope == null) {
+            return null;
+        }
+        if (scope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT) {
+            return scope.paperIds().size();
+        }
+        return autoLibraryReadablePaperCount(userId);
     }
 
     private void applyAutoLibraryScope(ConversationSession session) {
@@ -434,6 +475,16 @@ public class ConversationScopeService {
             }
         }
         return true;
+    }
+
+    private boolean hasCurrentReadyReadingModel(String paperId) {
+        String normalizedPaperId = trimToNull(paperId);
+        if (normalizedPaperId == null) {
+            return false;
+        }
+        return readingModelRepository.findFirstByPaperIdAndIsCurrentTrue(normalizedPaperId)
+                .filter(model -> model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY)
+                .isPresent();
     }
 
     private Map<String, List<Paper>> productPapersByPaperId(List<String> paperIds) {

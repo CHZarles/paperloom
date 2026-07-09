@@ -100,6 +100,36 @@ class ProductReadingLaunchTraceEvalRunnerTest {
         assertTrue(row.path("failureClass").toString().contains("TRACE_MISSING"));
     }
 
+    @Test
+    void canRequireCanonicalVerifiedResearchTrace() throws Exception {
+        Path traceRoot = tempDir.resolve("traces");
+        writeTrace(traceRoot.resolve("conversation-a").resolve("reading-turn-evidence.json"), trace(
+                "EVIDENCE_ANSWER",
+                List.of("read_locations"),
+                List.of(),
+                List.of(Map.of("sourceQuoteRef", "source_quote_abc"))
+        ));
+        Path cases = cases("""
+                {"id":"verified_trace","requiredToolNames":["read_locations"],"requiredAnswerType":"EVIDENCE_ANSWER","requiresReference":true,"requiresResearchTrace":true,"requiresVerifiedResearchTrace":true}
+                """);
+
+        ProductReadingLaunchTraceEvalRunner runner = new ProductReadingLaunchTraceEvalRunner();
+        Path runDir = runner.run(new ProductReadingLaunchTraceEvalRunner.Options(
+                traceRoot,
+                cases,
+                tempDir.resolve("runs"),
+                "reading-trace-verified",
+                "2026-07-08T10:00:00Z",
+                "product-reading-launch-trace-eval",
+                "product-reading-launch-trace"
+        ));
+
+        JsonNode row = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases").get(0);
+        assertEquals(true, row.path("passed").asBoolean());
+        assertEquals(true, row.path("diagnostics").path("matchedResearchTrace").asBoolean());
+        assertEquals(true, row.path("diagnostics").path("matchedResearchTraceVerified").asBoolean());
+    }
+
     private Path cases(String content) throws Exception {
         Path cases = tempDir.resolve("cases-" + System.nanoTime() + ".jsonl");
         Files.writeString(cases, content);
@@ -117,7 +147,7 @@ class ProductReadingLaunchTraceEvalRunnerTest {
                                       List<Map<String, Object>> references) {
         Map<String, Object> trace = new LinkedHashMap<>();
         trace.put("artifactType", "PRODUCT_READING_REACT_TURN");
-        trace.put("traceVersion", 4);
+        trace.put("traceVersion", 5);
         trace.put("resultStatus", "COMPLETED");
         trace.put("answerEnvelope", Map.of("answerType", answerType, "answer", "ok"));
         trace.put("toolCalls", toolNames.stream()
@@ -125,6 +155,20 @@ class ProductReadingLaunchTraceEvalRunnerTest {
                 .toList());
         trace.put("productStateItems", productStateItems);
         trace.put("references", references);
+        trace.put("researchTrace", researchTrace());
         return trace;
+    }
+
+    private Map<String, Object> researchTrace() {
+        return Map.of(
+                "schemaVersion", "research-harness-artifacts/v1",
+                "intentFrame", Map.of("questionId", "case"),
+                "retrievalPlan", Map.of("planId", "plan"),
+                "evidenceLedger", Map.of("ledgerId", "ledger"),
+                "claimGraph", Map.of("graphId", "graph"),
+                "reasoningArtifacts", List.of(Map.of("artifactId", "reasoning")),
+                "verificationPass", Map.of("verificationId", "verification", "valid", true),
+                "researchAnswer", Map.of("answerId", "answer")
+        );
     }
 }

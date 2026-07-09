@@ -38,6 +38,12 @@ public class Conversation {
     @Column(name = "effective_scope_json", columnDefinition = "LONGTEXT")
     private String effectiveScopeJson;
 
+    @Column(name = "reading_artifacts_json", columnDefinition = "LONGTEXT")
+    private String readingArtifactsJson;
+
+    @Column(name = "reading_state_patch_json", columnDefinition = "LONGTEXT")
+    private String readingStatePatchJson;
+
     @CreationTimestamp
     private LocalDateTime timestamp; // 对话时间戳
 }

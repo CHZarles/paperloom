@@ -76,6 +76,8 @@ class ChatHandlerProductHarnessTest {
                 eq("当前 session scope 内有 2 篇 READY 论文。"),
                 eq("conversation-1"),
                 any(),
+                any(),
+                any(),
                 any()
         );
     }
@@ -307,6 +309,38 @@ class ChatHandlerProductHarnessTest {
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertEquals(List.of("source_quote_clicked"), effectiveScope.get("clickedSourceQuoteRefs"));
+        assertEquals("TRACE_SOURCE_QUOTE", effectiveScope.get("readingAction"));
+    }
+
+    @Test
+    void resolvedReferenceNumberSourceQuoteReachesReadingEffectiveScope() {
+        ChatFixture fixture = chatFixture();
+        ProductReferenceFocus focus = sourceQuoteFocus(null, 1);
+        when(fixture.conversationService.findLatestReferenceDetail(1L, "conversation-1", 1))
+                .thenReturn(java.util.Optional.of(Map.of(
+                        "paperId", "paper-1",
+                        "paperTitle", "Clicked Paper",
+                        "sourceQuoteRef", "source_quote_resolved",
+                        "matchedChunkText", "resolved quote"
+                )));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", focus), fixture.session);
+
+        Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
+        assertEquals(List.of("source_quote_resolved"), effectiveScope.get("clickedSourceQuoteRefs"));
+        assertEquals("TRACE_SOURCE_QUOTE", effectiveScope.get("readingAction"));
+    }
+
+    @Test
+    void structuredLocationFocusReachesReadingEffectiveScopeAsReadLocationAction() {
+        ChatFixture fixture = chatFixture();
+        ProductReferenceFocus focus = locationFocus("page_ref_clicked");
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("读取这个位置", focus), fixture.session);
+
+        Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
+        assertEquals(List.of("page_ref_clicked"), effectiveScope.get("clickedLocationRefs"));
+        assertEquals("READ_LOCATION", effectiveScope.get("readingAction"));
     }
 
     @Test
@@ -368,7 +402,9 @@ class ChatHandlerProductHarnessTest {
                 eq("这段引用说明了方法细节 [1]"),
                 eq("conversation-1"),
                 persistedReferencesCaptor.capture(),
-                persistedScopeCaptor.capture()
+                persistedScopeCaptor.capture(),
+                any(),
+                any()
         );
         assertSourceQuoteMapping(persistedReferencesCaptor.getValue().get("1"));
         assertEquals("AUTO_LIBRARY", persistedScopeCaptor.getValue().get("scopeMode"));
@@ -377,6 +413,39 @@ class ChatHandlerProductHarnessTest {
         ArgumentCaptor<Map<String, Map<String, Object>>> completedCaptor = ArgumentCaptor.forClass(Map.class);
         verify(fixture.generationStateService).markCompleted(eq("generation-1"), completedCaptor.capture());
         assertSourceQuoteMapping(completedCaptor.getValue().get("1"));
+    }
+
+    @Test
+    void readingCompletionSendsConversationRecordIdForDurableCitationDetailClick() {
+        ChatFixture fixture = chatFixture();
+        when(fixture.conversationService.recordConversation(
+                eq(1L),
+                eq("解释这个引用"),
+                anyString(),
+                eq("conversation-1"),
+                any(),
+                any(),
+                any(),
+                any()
+        )).thenReturn(9001L);
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(completedTurn(
+                        "这段引用说明了方法细节 [1]",
+                        List.of(Map.of(
+                                "referenceNumber", 1,
+                                "sourceQuoteRef", "source_quote_answer",
+                                "content", "quoted source content",
+                                "paperId", "paper-id-answer",
+                                "paperTitle", "LoRA",
+                                "retrievalRoute", "PRODUCT_READING"
+                        ))
+                ));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", null), fixture.session);
+
+        Map<String, Object> completion = completionPayload(fixture, "finished");
+        assertEquals(9001L, completion.get("conversationRecordId"));
+        verify(fixture.generationStateService).updateConversationRecordId("generation-1", 9001L);
     }
 
     @Test
@@ -473,6 +542,40 @@ class ChatHandlerProductHarnessTest {
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null), fixture.session);
 
         assertFalse(completionPayload(fixture, "failed").containsKey("productStateItems"));
+    }
+
+    @Test
+    void incompletePreciseReadingCompletionFinishesInsteadOfServiceError() {
+        ChatFixture fixture = chatFixture();
+        String answer = "I understand your goal as: inspect the current paper.\n\n"
+                + "Short answer: A validated answer is not ready yet.\n\n"
+                + "Start here: the current reading target.\n\n"
+                + "How to verify: choose a concrete passage.\n\n"
+                + "Not verified yet: no quoted passage was validated.\n\n"
+                + "Next step: open a readable location.";
+        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(new ProductTurnResult(
+                        answer,
+                        new AnswerEnvelope(
+                                AnswerType.INSUFFICIENT_EVIDENCE,
+                                answer,
+                                List.of(),
+                                List.of(),
+                                List.of("A validated reading observation is required before answering."),
+                                List.of(),
+                                List.of("validated_final_answer"),
+                                ProductStopReason.TOOL_FAILED.name()
+                        ),
+                        List.of(),
+                        List.of(),
+                        ProductStopReason.TOOL_FAILED,
+                        ProductResultStatus.INCOMPLETE_PRECISE
+                ));
+
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null), fixture.session);
+
+        assertTrue(completionPayload(fixture, "finished").containsKey("diagnostics"));
+        verify(fixture.generationStateService, never()).markFailed(eq("generation-1"), anyString());
     }
 
     private static void assertSourceQuoteMapping(Map<String, Object> item) {
@@ -573,6 +676,28 @@ class ChatHandlerProductHarnessTest {
         );
     }
 
+    private static ProductReferenceFocus locationFocus(String locationRef) {
+        return new ProductReferenceFocus(
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Clicked Paper",
+                "clicked.pdf",
+                null,
+                null,
+                null,
+                null,
+                List.of("paper_handle_clicked"),
+                "paper_handle_clicked",
+                "READ_LOCATION",
+                locationRef
+        );
+    }
+
     private static ProductReferenceFocus paperIdFocus(String paperId) {
         return new ProductReferenceFocus(
                 List.of(paperId),
@@ -648,7 +773,10 @@ class ChatHandlerProductHarnessTest {
                         "2026-06-29T12:00:00",
                         null,
                         Map.of(),
-                        Map.of()
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        null
                 ));
 
         ConversationScopeService conversationScopeService = mock(ConversationScopeService.class);
@@ -699,7 +827,7 @@ class ChatHandlerProductHarnessTest {
                 ConversationScopeMode.AUTO_LIBRARY,
                 ConversationScopeStatus.READY,
                 true,
-                "All searchable papers",
+                "All readable papers",
                 List.of(),
                 Map.of()
         );

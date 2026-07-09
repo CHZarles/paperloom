@@ -357,17 +357,36 @@ class ReadingToolArgumentValidatorTest {
     void readingLocationsRejectsEmptyHandlesUnsupportedTypesAndIntentAliases() {
         ReadingToolArgumentValidator.ValidationResult emptyHandles = validator.validateFindReadingLocations(Map.of(
                 "paperHandles", List.of(),
-                "queryText", "methods"
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD"
+                )
         ));
         ReadingToolArgumentValidator.ValidationResult unsupportedType = validator.validateFindReadingLocations(Map.of(
                 "paperHandles", List.of("paper_handle_abc"),
-                "queryText", "methods",
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "sourceLanguage", "zh",
+                        "retrievalLanguage", "en",
+                        "sectionRoles", List.of("METHOD")
+                ),
                 "locationTypes", List.of("SECTION", "APPENDIX")
         ));
         ReadingToolArgumentValidator.ValidationResult alias = validator.validateFindReadingLocations(Map.of(
                 "paperHandles", List.of("paper_handle_abc"),
-                "queryText", "methods",
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "sourceLanguage", "zh",
+                        "retrievalLanguage", "en",
+                        "sectionRoles", List.of("METHOD")
+                ),
                 "readingNeed", "find limitations"
+        ));
+        ReadingToolArgumentValidator.ValidationResult rawQueryText = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryText", "methods"
         ));
 
         assertFalse(emptyHandles.valid());
@@ -379,6 +398,124 @@ class ReadingToolArgumentValidatorTest {
         assertFalse(alias.valid());
         assertEquals("forbidden_argument", alias.error());
         assertEquals("readingNeed", alias.argument());
+        assertFalse(rawQueryText.valid());
+        assertEquals("unsupported_argument", rawQueryText.error());
+        assertEquals("queryText", rawQueryText.argument());
+    }
+
+    @Test
+    void readingLocationsAcceptsTypedQueryPlanAndExposesEffectiveSearchFields() {
+        Map<String, Object> arguments = Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryPlan", Map.of(
+                        "queryText", "experiment settings",
+                        "intent", "EXPERIMENT_SETUP",
+                        "sourceLanguage", "zh",
+                        "retrievalLanguage", "en",
+                        "sectionRoles", List.of("EXPERIMENT", "METHOD"),
+                        "locationTypes", List.of("SECTION")
+                )
+        );
+
+        ReadingToolArgumentValidator.ValidationResult valid = validator.validateFindReadingLocations(arguments);
+
+        assertTrue(valid.valid());
+        assertEquals("experiment settings", validator.locationQueryText(arguments));
+        assertEquals(List.of(PaperLocationType.SECTION), validator.effectiveLocationTypes(arguments));
+        assertEquals(new ReadingToolArgumentValidator.LocationQueryPlan(
+                        "experiment settings",
+                        "EXPERIMENT_SETUP",
+                        "zh",
+                        "en",
+                        List.of("EXPERIMENT", "METHOD"),
+                        List.of(PaperLocationType.SECTION)
+                ),
+                validator.locationQueryPlan(arguments.get("queryPlan")));
+    }
+
+    @Test
+    void readingLocationsRejectsInvalidTypedQueryPlan() {
+        ReadingToolArgumentValidator.ValidationResult missingPlanText = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryPlan", Map.of("intent", "METHOD")
+        ));
+        ReadingToolArgumentValidator.ValidationResult invalidIntent = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHODS"
+                )
+        ));
+        ReadingToolArgumentValidator.ValidationResult invalidSectionRole = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "sourceLanguage", "zh",
+                        "retrievalLanguage", "en",
+                        "sectionRoles", List.of("METHODS")
+                )
+        ));
+        ReadingToolArgumentValidator.ValidationResult unsupportedRawQuery = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryText", "raw user text",
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "sourceLanguage", "zh",
+                        "retrievalLanguage", "en",
+                        "sectionRoles", List.of("METHOD")
+                )
+        ));
+        ReadingToolArgumentValidator.ValidationResult missingSourceLanguage = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "retrievalLanguage", "en",
+                        "sectionRoles", List.of("METHOD")
+                )
+        ));
+        ReadingToolArgumentValidator.ValidationResult missingRetrievalLanguage = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "sourceLanguage", "zh",
+                        "sectionRoles", List.of("METHOD")
+                )
+        ));
+        ReadingToolArgumentValidator.ValidationResult missingSectionRoles = validator.validateFindReadingLocations(Map.of(
+                "paperHandles", List.of("paper_handle_abc"),
+                "queryPlan", Map.of(
+                        "queryText", "methods",
+                        "intent", "METHOD",
+                        "sourceLanguage", "zh",
+                        "retrievalLanguage", "en"
+                )
+        ));
+
+        assertFalse(missingPlanText.valid());
+        assertEquals("missing_argument", missingPlanText.error());
+        assertEquals("queryPlan.queryText", missingPlanText.argument());
+        assertFalse(invalidIntent.valid());
+        assertEquals("unsupported_location_intent", invalidIntent.error());
+        assertEquals("METHODS", invalidIntent.argument());
+        assertFalse(invalidSectionRole.valid());
+        assertEquals("unsupported_section_role", invalidSectionRole.error());
+        assertEquals("METHODS", invalidSectionRole.argument());
+        assertFalse(unsupportedRawQuery.valid());
+        assertEquals("unsupported_argument", unsupportedRawQuery.error());
+        assertEquals("queryText", unsupportedRawQuery.argument());
+        assertFalse(missingSourceLanguage.valid());
+        assertEquals("missing_argument", missingSourceLanguage.error());
+        assertEquals("queryPlan.sourceLanguage", missingSourceLanguage.argument());
+        assertFalse(missingRetrievalLanguage.valid());
+        assertEquals("missing_argument", missingRetrievalLanguage.error());
+        assertEquals("queryPlan.retrievalLanguage", missingRetrievalLanguage.argument());
+        assertFalse(missingSectionRoles.valid());
+        assertEquals("missing_argument", missingSectionRoles.error());
+        assertEquals("queryPlan.sectionRoles", missingSectionRoles.argument());
     }
 
     @Test

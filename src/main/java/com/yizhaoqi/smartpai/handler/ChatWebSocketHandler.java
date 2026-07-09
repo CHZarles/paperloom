@@ -229,7 +229,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 stringValue(scope.get("sourceQuoteRef")),
                 stringList(scope.get("paperHandles")),
                 stringValue(scope.get("paperHandle")),
-                stringValue(scope.get("readingAction"))
+                stringValue(scope.get("readingAction")),
+                stringValue(scope.get("locationRef"))
         );
     }
 

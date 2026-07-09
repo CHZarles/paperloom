@@ -11,6 +11,9 @@ public record ProductTurnResult(
         List<Map<String, Object>> references,
         List<ToolProgressEvent> progressEvents,
         List<Map<String, Object>> productStateItems,
+        ReadingTurnArtifacts readingArtifacts,
+        ReadingStatePatch readingStatePatch,
+        ReadingResearchTrace researchTrace,
         ProductStopReason stopReason,
         ProductResultStatus resultStatus
 ) {
@@ -20,7 +23,30 @@ public record ProductTurnResult(
                              List<ToolProgressEvent> progressEvents,
                              ProductStopReason stopReason,
                              ProductResultStatus resultStatus) {
-        this(finalAnswerMarkdown, envelope, references, progressEvents, List.of(), stopReason, resultStatus);
+        this(finalAnswerMarkdown, envelope, references, progressEvents, List.of(), null, null, null, stopReason, resultStatus);
+    }
+
+    public ProductTurnResult(String finalAnswerMarkdown,
+                             AnswerEnvelope envelope,
+                             List<Map<String, Object>> references,
+                             List<ToolProgressEvent> progressEvents,
+                             List<Map<String, Object>> productStateItems,
+                             ProductStopReason stopReason,
+                             ProductResultStatus resultStatus) {
+        this(finalAnswerMarkdown, envelope, references, progressEvents, productStateItems, null, null, null, stopReason, resultStatus);
+    }
+
+    public ProductTurnResult(String finalAnswerMarkdown,
+                             AnswerEnvelope envelope,
+                             List<Map<String, Object>> references,
+                             List<ToolProgressEvent> progressEvents,
+                             List<Map<String, Object>> productStateItems,
+                             ReadingTurnArtifacts readingArtifacts,
+                             ReadingStatePatch readingStatePatch,
+                             ProductStopReason stopReason,
+                             ProductResultStatus resultStatus) {
+        this(finalAnswerMarkdown, envelope, references, progressEvents, productStateItems, readingArtifacts,
+                readingStatePatch, null, stopReason, resultStatus);
     }
 
     public ProductTurnResult {
@@ -28,6 +54,9 @@ public record ProductTurnResult(
         references = references == null ? List.of() : List.copyOf(references);
         progressEvents = progressEvents == null ? List.of() : List.copyOf(progressEvents);
         productStateItems = copyMapList(productStateItems);
+        readingArtifacts = readingArtifacts == null ? ReadingTurnArtifacts.empty("") : readingArtifacts;
+        readingStatePatch = readingStatePatch == null ? ReadingStatePatch.empty() : readingStatePatch;
+        researchTrace = researchTrace == null ? ReadingResearchTrace.empty() : researchTrace;
         stopReason = stopReason == null ? ProductStopReason.COMPLETED : stopReason;
         resultStatus = resultStatus == null ? ProductResultStatus.COMPLETED : resultStatus;
     }

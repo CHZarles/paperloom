@@ -98,7 +98,10 @@ class ProductReadingToolAdapterTest {
                 .thenReturn(false);
         when(handleService.hasCurrentReadyReadingModel("ready-paper")).thenReturn(true);
         when(handleService.hasCurrentReadyReadingModel("not-ready-paper")).thenReturn(false);
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("ready-paper"))
+                .thenReturn(Optional.of(paper("ready-paper", "Ready Paper", "ready.pdf")));
         when(handleService.handleForPaperId("ready-paper")).thenReturn("paper_handle_ready");
+        when(handleService.resolvePaperHandle("paper_handle_ready")).thenReturn(Optional.of("ready-paper"));
 
         ProductToolResult result = adapter.searchPaperCandidates(
                 "agentic eval",
@@ -110,19 +113,74 @@ class ProductReadingToolAdapterTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.data().get("items");
         assertEquals(1, items.size());
+        assertEquals("ready-paper", items.get(0).get("paperId"));
         assertEquals("paper_handle_ready", items.get(0).get("paperHandle"));
         assertEquals("Ready Paper", items.get(0).get("title"));
+        assertEquals("ready.pdf", items.get(0).get("originalFilename"));
+        assertEquals(List.of(
+                "title matched all query tokens",
+                "Matched paper metadata fields: title."
+        ), items.get(0).get("matchReasons"));
         @SuppressWarnings("unchecked")
         Map<String, Object> constraints = (Map<String, Object>) result.data().get("constraints");
         assertEquals(false, constraints.get("previewIsSourceQuote"));
         assertEquals(false, constraints.get("paperContentClaimsAllowed"));
 
         String json = objectMapper.writeValueAsString(result.data());
-        assertFalse(json.contains("ready-paper"));
-        assertFalse(json.contains("paperId"));
         assertFalse(json.contains("matchedFields"));
-        assertFalse(json.contains("matchReason"));
         assertFalse(json.contains("rank"));
+    }
+
+    @Test
+    void searchPaperCandidatesFailsClosedWhenGeneratedHandleResolvesToDifferentPaper() {
+        when(paperCandidateSearchService.search(new PaperCandidateSearchRequest("agentic eval", "7", null, 20)))
+                .thenReturn(List.of(paperCandidate("ready-paper", "Ready Paper")));
+        when(handleService.isPaperVisibleToUser("ready-paper", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.hasCurrentReadyReadingModel("ready-paper")).thenReturn(true);
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("ready-paper"))
+                .thenReturn(Optional.of(paper("ready-paper", "Ready Paper", "ready.pdf")));
+        when(handleService.handleForPaperId("ready-paper")).thenReturn("paper_handle_wrong");
+        when(handleService.resolvePaperHandle("paper_handle_wrong")).thenReturn(Optional.of("other-paper"));
+
+        ProductToolResult result = adapter.searchPaperCandidates(
+                "agentic eval",
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertFalse(result.success());
+        assertEquals("PAPER_CARD_IDENTITY_INVALID", result.data().get("status"));
+        assertEquals("paper_card_identity_invalid", result.data().get("error"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) result.data().get("items");
+        assertTrue(items.isEmpty());
+    }
+
+    @Test
+    void searchPaperCandidatesUsesCanonicalPaperRecordInsteadOfCandidateTitle() throws Exception {
+        when(paperCandidateSearchService.search(new PaperCandidateSearchRequest("agentic eval", "7", null, 20)))
+                .thenReturn(List.of(paperCandidate("ready-paper", "Wrong Candidate Title")));
+        when(handleService.isPaperVisibleToUser("ready-paper", 7L, SourceScope.auto())).thenReturn(true);
+        when(handleService.hasCurrentReadyReadingModel("ready-paper")).thenReturn(true);
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("ready-paper"))
+                .thenReturn(Optional.of(paper("ready-paper", "Canonical Ready Paper", "canonical-ready.pdf")));
+        when(handleService.handleForPaperId("ready-paper")).thenReturn("paper_handle_ready");
+        when(handleService.resolvePaperHandle("paper_handle_ready")).thenReturn(Optional.of("ready-paper"));
+
+        ProductToolResult result = adapter.searchPaperCandidates(
+                "agentic eval",
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertTrue(result.success());
+        assertEquals("OK", result.data().get("status"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) result.data().get("items");
+        assertEquals(1, items.size());
+        assertEquals("ready-paper", items.get(0).get("paperId"));
+        assertEquals("paper_handle_ready", items.get(0).get("paperHandle"));
+        assertEquals("Canonical Ready Paper", items.get(0).get("title"));
+        assertEquals("canonical-ready.pdf", items.get(0).get("originalFilename"));
+        assertFalse(objectMapper.writeValueAsString(result.data()).contains("Wrong Candidate Title"));
     }
 
     @Test
@@ -192,6 +250,7 @@ class ProductReadingToolAdapterTest {
         when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("unready-paper"))
                 .thenReturn(Optional.of(unreadyModel));
         when(handleService.handleForPaperId("ready-agent")).thenReturn("paper_handle_agent");
+        when(handleService.resolvePaperHandle("paper_handle_agent")).thenReturn(Optional.of("ready-agent"));
 
         ProductToolResult result = adapter.listPapers(
                 new ReadingToolArgumentValidator.ListPaperFilters(
@@ -220,12 +279,21 @@ class ProductReadingToolAdapterTest {
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.data().get("items");
         assertEquals(1, items.size());
         assertEquals(1, items.get(0).get("ordinal"));
+        assertEquals("ready-agent", items.get(0).get("paperId"));
         assertEquals("paper_handle_agent", items.get(0).get("paperHandle"));
         assertEquals("Agentic Eval Benchmark", items.get(0).get("title"));
         assertEquals("agentic-eval.pdf", items.get(0).get("originalFilename"));
         assertEquals(List.of("Ada Lovelace", "Grace Hopper"), items.get(0).get("authors"));
         assertEquals(2025, items.get(0).get("year"));
         assertEquals("NeurIPS", items.get(0).get("venue"));
+        assertEquals(List.of(
+                "Title contains \"agent\".",
+                "Author metadata matches \"Grace\".",
+                "DOI exactly matches the requested identifier.",
+                "arXiv id exactly matches the requested identifier.",
+                "Publication year is within the requested range.",
+                "Venue metadata contains \"neur\"."
+        ), items.get(0).get("matchReasons"));
         assertEquals(List.of(), items.get(0).get("catalogTopics"));
         assertEquals(List.of(), items.get(0).get("paperTypes"));
         @SuppressWarnings("unchecked")
@@ -234,8 +302,6 @@ class ProductReadingToolAdapterTest {
         assertTrue(objectMapper.writeValueAsString(facets).contains("\"value\":\"Grace Hopper\""));
 
         String json = objectMapper.writeValueAsString(result.data());
-        assertFalse(json.contains("ready-agent"));
-        assertFalse(json.contains("paperId"));
         assertFalse(json.contains("model-v1"));
         assertFalse(json.contains("modelVersion"));
         assertFalse(json.contains("abstract"));
@@ -263,6 +329,7 @@ class ProductReadingToolAdapterTest {
         when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("unready-lora"))
                 .thenReturn(Optional.of(unreadyModel));
         when(handleService.handleForPaperId("ready-lora")).thenReturn("paper_handle_lora");
+        when(handleService.resolvePaperHandle("paper_handle_lora")).thenReturn(Optional.of("ready-lora"));
 
         ProductToolResult result = adapter.findPapersByIdentity(
                 new ReadingToolArgumentValidator.IdentityHints(
@@ -293,6 +360,7 @@ class ProductReadingToolAdapterTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> matches = (List<Map<String, Object>>) result.data().get("matches");
         assertEquals(1, matches.size());
+        assertEquals("ready-lora", matches.get(0).get("paperId"));
         assertEquals("paper_handle_lora", matches.get(0).get("paperHandle"));
         assertEquals("LoRA: Low-Rank Adaptation of Large Language Models", matches.get(0).get("title"));
         assertEquals("lora.pdf", matches.get(0).get("originalFilename"));
@@ -300,12 +368,12 @@ class ProductReadingToolAdapterTest {
         assertEquals(2021, matches.get(0).get("year"));
         assertEquals("ICLR", matches.get(0).get("venue"));
         assertEquals(List.of(
-                "TITLE_CONTAINS",
-                "FILENAME_EXACT",
-                "DOI_EXACT",
-                "ARXIV_ID_EXACT",
-                "AUTHOR_NAME",
-                "YEAR"
+                "Title contains \"low-rank\".",
+                "Filename exactly matches \"lora.pdf\".",
+                "DOI exactly matches the requested identifier.",
+                "arXiv id exactly matches the requested identifier.",
+                "Author metadata matches \"Hu\".",
+                "Publication year matches 2021."
         ), matches.get(0).get("matchReasons"));
         @SuppressWarnings("unchecked")
         Map<String, Object> constraints = (Map<String, Object>) result.data().get("constraints");
@@ -314,14 +382,12 @@ class ProductReadingToolAdapterTest {
         assertEquals(false, constraints.get("ambiguousMatchesAuthorizeReading"));
 
         String json = objectMapper.writeValueAsString(result.data());
-        assertFalse(json.contains("ready-lora"));
         assertFalse(json.contains("model-v1"));
-        assertFalse(json.contains("paperId"));
         assertFalse(json.contains("modelVersion"));
         assertFalse(json.contains("Internal abstract"));
         assertFalse(json.contains("abstract"));
-        assertFalse(json.contains("score"));
-        assertFalse(json.contains("rank"));
+        assertFalse(matches.get(0).containsKey("score"));
+        assertFalse(matches.get(0).containsKey("rank"));
     }
 
     @Test
@@ -337,6 +403,7 @@ class ProductReadingToolAdapterTest {
         when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-rulearena"))
                 .thenReturn(Optional.of(model("ready-rulearena", "model-v1")));
         when(handleService.handleForPaperId("ready-rulearena")).thenReturn("paper_handle_rulearena");
+        when(handleService.resolvePaperHandle("paper_handle_rulearena")).thenReturn(Optional.of("ready-rulearena"));
 
         ProductToolResult result = adapter.findPapersByIdentity(
                 new ReadingToolArgumentValidator.IdentityHints(
@@ -358,8 +425,51 @@ class ProductReadingToolAdapterTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> matches = (List<Map<String, Object>>) result.data().get("matches");
         assertEquals(1, matches.size());
+        assertEquals("ready-rulearena", matches.get(0).get("paperId"));
         assertEquals("paper_handle_rulearena", matches.get(0).get("paperHandle"));
-        assertEquals(List.of("FILENAME_EXACT"), matches.get(0).get("matchReasons"));
+        assertEquals(List.of("Filename exactly matches \"2412.08972.pdf\"."), matches.get(0).get("matchReasons"));
+    }
+
+    @Test
+    void listPapersKeepsExactFilenameMatchForArxivStylePdfName() {
+        Paper ruleArena = paper(
+                "ready-rulearena",
+                "RULEARENA: A Benchmark for Rule-Guided Reasoning with LLMs in Real-World Scenarios",
+                "2412.08972.pdf"
+        );
+
+        when(paperService.getAccessiblePapers("7", null)).thenReturn(List.of(ruleArena));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("ready-rulearena"))
+                .thenReturn(Optional.of(model("ready-rulearena", "model-v1")));
+        when(handleService.handleForPaperId("ready-rulearena")).thenReturn("paper_handle_rulearena");
+        when(handleService.resolvePaperHandle("paper_handle_rulearena")).thenReturn(Optional.of("ready-rulearena"));
+
+        ProductToolResult result = adapter.listPapers(
+                new ReadingToolArgumentValidator.ListPaperFilters(
+                        "",
+                        "",
+                        "",
+                        "2412.08972.pdf",
+                        "",
+                        "",
+                        "",
+                        null,
+                        ""
+                ),
+                false,
+                ReadingToolArgumentValidator.ListPaperSort.TITLE,
+                new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto())
+        );
+
+        assertTrue(result.success());
+        assertEquals("OK", result.data().get("status"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) result.data().get("items");
+        assertEquals(1, items.size());
+        assertEquals("ready-rulearena", items.get(0).get("paperId"));
+        assertEquals("paper_handle_rulearena", items.get(0).get("paperHandle"));
+        assertEquals("2412.08972.pdf", items.get(0).get("originalFilename"));
+        assertEquals(List.of("Filename exactly matches \"2412.08972.pdf\"."), items.get(0).get("matchReasons"));
     }
 
     @Test
@@ -379,6 +489,8 @@ class ProductReadingToolAdapterTest {
                 .thenReturn(Optional.of(model("ready-lora-b", "model-v1")));
         when(handleService.handleForPaperId("ready-lora-a")).thenReturn("paper_handle_lora_a");
         when(handleService.handleForPaperId("ready-lora-b")).thenReturn("paper_handle_lora_b");
+        when(handleService.resolvePaperHandle("paper_handle_lora_a")).thenReturn(Optional.of("ready-lora-a"));
+        when(handleService.resolvePaperHandle("paper_handle_lora_b")).thenReturn(Optional.of("ready-lora-b"));
 
         ProductToolContext context = new ProductToolContext(7L, "conversation-1", "generation-1", SourceScope.auto());
         ProductToolResult ambiguous = adapter.findPapersByIdentity(
@@ -399,7 +511,10 @@ class ProductReadingToolAdapterTest {
         List<Map<String, Object>> matches = (List<Map<String, Object>>) ambiguous.data().get("matches");
         assertEquals(List.of("paper_handle_lora_b", "paper_handle_lora_a"),
                 matches.stream().map(match -> match.get("paperHandle")).toList());
-        assertEquals(List.of("AUTHOR_NAME", "YEAR"), matches.get(0).get("matchReasons"));
+        assertEquals(List.of(
+                "Author metadata matches \"Hu\".",
+                "Publication year matches 2021."
+        ), matches.get(0).get("matchReasons"));
 
         assertTrue(noMatch.success());
         assertEquals("NO_MATCH", noMatch.data().get("status"));
@@ -456,6 +571,7 @@ class ProductReadingToolAdapterTest {
         List<Map<String, Object>> candidates = (List<Map<String, Object>>) result.data().get("candidates");
         assertEquals(1, candidates.size());
         assertEquals("paper_handle_ready", candidates.get(0).get("paperHandle"));
+        assertEquals("ready-paper", candidates.get(0).get("paperId"));
         assertEquals("section_ref_ready", candidates.get(0).get("locationRef"));
         @SuppressWarnings("unchecked")
         Map<String, List<String>> supported = (Map<String, List<String>>) result.data().get("supportedLocationTypesByPaper");
@@ -467,8 +583,6 @@ class ProductReadingToolAdapterTest {
         assertEquals(List.of("ready-paper"), requestCaptor.getValue().paperIds());
 
         String json = objectMapper.writeValueAsString(result.data());
-        assertFalse(json.contains("ready-paper"));
-        assertFalse(json.contains("paperId"));
         assertFalse(json.contains("model-v1"));
         assertFalse(json.contains("modelVersion"));
         assertFalse(json.contains("reading-el-1"));
@@ -589,9 +703,11 @@ class ProductReadingToolAdapterTest {
         List<Map<String, Object>> locations = (List<Map<String, Object>>) result.data().get("locations");
         assertEquals(2, locations.size());
         assertEquals("page_ref_3", locations.get(0).get("locationRef"));
+        assertEquals("ready-paper", locations.get(0).get("paperId"));
         assertEquals("PAGE", locations.get(0).get("locationType"));
         assertEquals("Page 3", locations.get(0).get("label"));
         assertEquals("section_ref_methods", locations.get(1).get("locationRef"));
+        assertEquals("ready-paper", locations.get(1).get("paperId"));
         assertEquals("SECTION", locations.get(1).get("locationType"));
         assertEquals("Methods", locations.get(1).get("label"));
         @SuppressWarnings("unchecked")
@@ -600,8 +716,6 @@ class ProductReadingToolAdapterTest {
         assertEquals(List.of("PAGE", "SECTION"), supported.get("paper_handle_ready"));
 
         String json = objectMapper.writeValueAsString(result.data());
-        assertFalse(json.contains("ready-paper"));
-        assertFalse(json.contains("paperId"));
         assertFalse(json.contains("model-v1"));
         assertFalse(json.contains("modelVersion"));
     }
@@ -639,6 +753,7 @@ class ProductReadingToolAdapterTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> papers = (List<Map<String, Object>>) result.data().get("papers");
         assertEquals(1, papers.size());
+        assertEquals("ready-paper", papers.get(0).get("paperId"));
         assertEquals("paper_handle_ready", papers.get(0).get("paperHandle"));
         assertEquals("Agentic Eval Benchmark", papers.get(0).get("title"));
         assertEquals("agentic-eval.pdf", papers.get(0).get("originalFilename"));
@@ -652,9 +767,7 @@ class ProductReadingToolAdapterTest {
         assertTrue(json.contains("section_ref_methods"));
         assertTrue(json.contains("Methods"));
         assertTrue(json.contains("outlineConfidence"));
-        assertFalse(json.contains("ready-paper"));
         assertFalse(json.contains("model-v1"));
-        assertFalse(json.contains("paperId"));
         assertFalse(json.contains("modelVersion"));
         assertFalse(json.contains("sectionText"));
     }

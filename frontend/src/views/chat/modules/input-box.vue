@@ -117,7 +117,7 @@ const referenceFocusLabel = computed(() => {
     if (focus.paperHandle || focus.paperId) {
       paper = 'Selected paper';
     } else if (focus.sourceQuoteRef) {
-      paper = 'Source quote';
+      paper = 'Citation';
     } else {
       paper = 'Reference focus';
     }
@@ -125,6 +125,8 @@ const referenceFocusLabel = computed(() => {
   const parts = [paper];
   if (focus.readingAction === 'LIST_LOCATIONS') parts.push('List locations');
   if (focus.readingAction === 'FIND_LOCATIONS') parts.push('Find locations');
+  if (focus.readingAction === 'READ_LOCATION') parts.push('Read location');
+  if (focus.readingAction === 'TRACE_SOURCE_QUOTE') parts.push('Trace citation');
   if (focus.pageNumber) parts.push(`p${focus.pageNumber}`);
   if (focus.referenceNumber) parts.push(`[${focus.referenceNumber}]`);
   return parts.join(' · ');
@@ -136,9 +138,14 @@ const searchScopeHint = computed(() => {
   if (scope.scopeStatus === 'INVALID') return 'Search scope unavailable';
 
   const isSnapshot = scope.scopeMode === 'SOURCE_SET_SNAPSHOT';
-  const label = isSnapshot ? scope.sourceLabel || 'Selected papers' : 'All searchable papers';
-  const count = Number(scope.sourcePaperCount || scope.paperIds?.length || 0);
-  const countText = isSnapshot && count > 0 ? ` · ${count.toLocaleString()} papers` : '';
+  const label = isSnapshot ? scope.sourceLabel || 'Selected papers' : scope.sourceLabel || 'All readable papers';
+  const count =
+    typeof scope.sourcePaperCount === 'number'
+      ? scope.sourcePaperCount
+      : isSnapshot
+        ? scope.paperIds?.length
+        : undefined;
+  const countText = typeof count === 'number' ? ` · ${count.toLocaleString()} papers` : '';
   const statusText = scope.scopeStatus === 'DEGRADED' ? ' · limited availability' : '';
   return `Search scope: ${label}${countText}${statusText}`;
 });
@@ -199,11 +206,20 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   if (payload.referenceMappings) {
     assistant.referenceMappings = payload.referenceMappings;
   }
+  if (typeof payload.conversationRecordId === 'number') {
+    assistant.conversationRecordId = payload.conversationRecordId;
+  }
   if (payload.diagnostics) {
     assistant.diagnostics = payload.diagnostics;
   }
   if (Array.isArray(payload.productStateItems)) {
     assistant.productStateItems = payload.productStateItems as Api.Chat.ProductStateItem[];
+  }
+  if (payload.readingArtifacts && typeof payload.readingArtifacts === 'object') {
+    assistant.readingArtifacts = payload.readingArtifacts;
+  }
+  if (payload.readingStatePatch && typeof payload.readingStatePatch === 'object') {
+    assistant.readingStatePatch = payload.readingStatePatch;
   }
   assistant.route = normalizeChatRoute(payload.route) || assistant.route;
   assistant.route = normalizeChatRoute(payload.diagnostics?.route) || assistant.route;

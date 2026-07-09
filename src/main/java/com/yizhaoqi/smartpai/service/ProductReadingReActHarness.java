@@ -29,21 +29,21 @@ public class ProductReadingReActHarness {
             "read_locations",
             "trace_source_quotes"
     );
-    private static final int MAX_CLICKED_SOURCE_QUOTE_REFS = 20;
-    private static final int MAX_CLICKED_PAPER_HANDLES = 20;
     private static final int MAX_PRODUCT_STATE_ITEMS = 10;
-    private static final int MAX_LOCATION_FALLBACK_ITEMS = 8;
-    private static final int MAX_SOURCE_QUOTE_FALLBACK_ITEMS = 5;
     private static final String READING_PAPER_CHOICE_KIND = "READING_PAPER_CHOICE";
     private static final String LIST_PAPERS_TOOL_NAME = "list_papers";
     private static final String SEARCH_TOOL_NAME = "search_paper_candidates";
     private static final String IDENTITY_TOOL_NAME = "find_papers_by_identity";
+    private static final String OUTLINE_TOOL_NAME = "get_paper_outline";
     private static final String LIST_LOCATIONS_TOOL_NAME = "list_paper_locations";
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_LOCATIONS_TOOL_NAME = "read_locations";
+    private static final String TRACE_SOURCE_QUOTES_TOOL_NAME = "trace_source_quotes";
     private static final String SEARCH_PAPERS_ACTION = "SEARCH_PAPERS";
     private static final String LIST_LOCATIONS_ACTION = "LIST_LOCATIONS";
     private static final String FIND_LOCATIONS_ACTION = "FIND_LOCATIONS";
+    private static final String READ_LOCATION_ACTION = "READ_LOCATION";
+    private static final String TRACE_SOURCE_QUOTE_ACTION = "TRACE_SOURCE_QUOTE";
     private static final Set<String> PAPER_CHOICE_SOURCE_TOOLS = Set.of(
             LIST_PAPERS_TOOL_NAME,
             SEARCH_TOOL_NAME,
@@ -63,8 +63,6 @@ public class ProductReadingReActHarness {
     private static final Pattern NUMBERED_CITATION_PATTERN = Pattern.compile("\\[\\d+]");
     private static final Pattern SOURCE_QUOTE_MARKER_PATTERN =
             Pattern.compile("\\{\\{\\s*sourceQuoteRef\\s*:\\s*(source_quote_[A-Za-z0-9_-]+)\\s*}}");
-    private static final Pattern SOURCE_QUOTE_REF_PATTERN =
-            Pattern.compile("^source_quote_[A-Za-z0-9_-]+$");
     private static final Pattern PAPER_HANDLE_PATTERN =
             Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
     private static final String ANSWER_SCHEMA_INVALID_MESSAGE = "Answer envelope schema invalid.";
@@ -77,6 +75,14 @@ public class ProductReadingReActHarness {
     private final ObjectMapper objectMapper;
     private final ProductReadingTraceRecorder traceRecorder;
     private final ReadingAnswerPresenter answerPresenter = new ReadingAnswerPresenter();
+    private final ReadingTurnArtifactProjector artifactProjector = new ReadingTurnArtifactProjector();
+    private final ReadingResearchTraceProjector researchTraceProjector = new ReadingResearchTraceProjector();
+    private final ReadingResearchTraceSummaryProjector researchTraceSummaryProjector =
+            new ReadingResearchTraceSummaryProjector();
+    private final ReadingArtifactContractValidator artifactContractValidator = new ReadingArtifactContractValidator();
+    private final ReadingResearchTraceContractValidator researchTraceContractValidator =
+            new ReadingResearchTraceContractValidator();
+    private final ReadingToolCallGate toolCallGate = new ReadingToolCallGate();
 
     public ProductReadingReActHarness(LlmProviderRouter llmProviderRouter,
                                       ProductReadingToolRegistry toolRegistry,
@@ -98,35 +104,44 @@ public class ProductReadingReActHarness {
         List<ToolProgressEvent> progressEvents = new ArrayList<>();
         List<ToolDefinition> tools = toolRegistry.listTools();
         if (!validToolSurface(tools)) {
-            ProductTurnResult result = failed(
-                    "Product reading tool surface is invalid.",
+            ReadingTurnState state = new ReadingTurnState(ReadingTurnFrame.from(safeRequest));
+            ProductTurnResult result = preciseIncompleteResult(
+                    safeRequest,
                     progressEvents,
-                    ProductStopReason.TOOL_FAILED
+                    state,
+                    ProductStopReason.TOOL_FAILED,
+                    "The reading flow is not ready to produce a precise paper-reading answer."
             );
             recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
             return result;
         }
 
-        ReadingTurnState state = new ReadingTurnState(
-                clickedSourceQuoteRefs(safeRequest.memory()),
-                clickedPaperHandles(safeRequest.memory()),
-                readingTurnAction(safeRequest.memory()),
-                safeRequest.userMessage()
-        );
-        List<Map<String, Object>> messages = initialMessages(
-                safeRequest,
-                state.clickedSourceQuoteRefs,
-                state.clickedPaperHandles,
-                state.readingAction
-        );
+        ReadingTurnState state = new ReadingTurnState(ReadingTurnFrame.from(safeRequest));
+        List<Map<String, Object>> messages = initialMessages(safeRequest, state);
         boolean toolSucceeded = false;
+        boolean firstToolCallRequiredIssued = false;
+        reactLoop:
         for (int round = 0; round < safeRequest.modelContext().maxReActRounds(); round++) {
-            LlmProviderRouter.ReActTurn turn = llmProviderRouter.completeReActTurn(
-                    requesterId(safeRequest.userId()),
-                    messageSnapshot(messages),
-                    tools,
-                    safeRequest.modelContext().maxCompletionTokens()
-            );
+            LlmProviderRouter.ReActTurn turn;
+            try {
+                turn = llmProviderRouter.completeReActTurn(
+                        requesterId(safeRequest.userId()),
+                        messageSnapshot(messages),
+                        tools,
+                        safeRequest.modelContext().maxCompletionTokens()
+                );
+            } catch (Exception exception) {
+                ProductTurnResult result = modelUnavailableResult(
+                        safeRequest,
+                        progressEvents,
+                        state,
+                        toolCalls,
+                        messages,
+                        round + 1
+                );
+                recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
+                return result;
+            }
             llmCalls.add(llmCall(round + 1, turn));
             List<LlmProviderRouter.ToolCallDecision> decisions = turn == null || turn.toolCalls() == null
                     ? List.of()
@@ -154,34 +169,18 @@ public class ProductReadingReActHarness {
                     if (!tools.isEmpty() && round + 1 < safeRequest.modelContext().maxReActRounds()) {
                         messages.add(assistantMessage(turn));
                         messages.add(firstReadingToolCallRequiredMessage(state));
+                        firstToolCallRequiredIssued = true;
                         continue;
                     }
-                    ProductTurnResult result = failed(
-                            "Product reading tool call is required before the final answer.",
+                    ProductTurnResult result = preciseIncompleteResult(
+                            safeRequest,
                             progressEvents,
-                            ProductStopReason.ANSWER_SCHEMA_INVALID
+                            state,
+                            ProductStopReason.ANSWER_SCHEMA_INVALID,
+                            "A validated reading observation is required before answering."
                     );
                     recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
                     return result;
-                }
-                if (needsReadAfterSemanticLocationSearchBeforeFinal(state)) {
-                    SyntheticToolExecution readExecution = executeReadAfterSemanticLocationSearchIfAvailable(
-                            safeRequest,
-                            state,
-                            progressEvents,
-                            toolCalls,
-                            messages,
-                            round + 1
-                    );
-                    if (readExecution.terminalResult() != null) {
-                        ProductTurnResult result = readExecution.terminalResult();
-                        recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
-                        return result;
-                    }
-                    if (readExecution.executed()) {
-                        messages.add(toolResultsPolicyMessage(List.of(readExecution.toolResult())));
-                        continue;
-                    }
                 }
                 if (needsReadAfterSemanticLocationSearchBeforeFinal(state)
                         && round + 1 < safeRequest.modelContext().maxReActRounds()) {
@@ -190,11 +189,12 @@ public class ProductReadingReActHarness {
                     continue;
                 }
                 if (needsReadAfterSemanticLocationSearchBeforeFinal(state)) {
-                    ProductTurnResult result = maxReactRoundsReached(progressEvents, state);
+                    ProductTurnResult result = maxReactRoundsReached(safeRequest, progressEvents, state);
                     recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
                     return result;
                 }
-                ProductTurnResult result = finalResultOrProductStateFallback(
+                ProductTurnResult result = finalResultOrPreciseIncomplete(
+                        safeRequest,
                         turn == null ? "" : turn.content(),
                         progressEvents,
                         state
@@ -217,8 +217,19 @@ public class ProductReadingReActHarness {
             messages.add(assistantMessage(turn));
             List<ProductToolResult> successfulToolResults = new ArrayList<>();
             for (LlmProviderRouter.ToolCallDecision toolCall : decisions) {
-                ToolCallValidation validation = validateToolCall(toolCall, state);
+                ReadingToolCallValidation validation = validateToolCall(toolCall, state);
                 if (!validation.isAllowed()) {
+                    if ("typed_location_query_plan_missing".equals(validation.reason())) {
+                        ProductTurnResult result = preciseIncompleteResult(
+                                safeRequest,
+                                progressEvents,
+                                state,
+                                ProductStopReason.ANSWER_SCHEMA_INVALID,
+                                "The location search needs a validated typed query plan before reading."
+                        );
+                        recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
+                        return result;
+                    }
                     ProductToolResult rejected = new ProductToolResult(
                             safeToolName(toolCall),
                             false,
@@ -226,10 +237,19 @@ public class ProductReadingReActHarness {
                             ProductToolEffect.ERROR
                     );
                     toolCalls.add(toolCall(round + 1, toolCall, rejected, Instant.now(), Instant.now()));
-                    ProductTurnResult result = failed(
-                            "Product reading tool rejected: " + validation.reason(),
+                    if (firstToolCallRequiredIssued
+                            && isRecoverableToolValidation(validation.reason())
+                            && round + 1 < safeRequest.modelContext().maxReActRounds()) {
+                        messages.add(toolMessage(toolCall == null ? "" : toolCall.id(), rejected.contentJson(objectMapper)));
+                        messages.add(toolValidationCorrectionMessage(validation.reason()));
+                        continue reactLoop;
+                    }
+                    ProductTurnResult result = preciseIncompleteResult(
+                            safeRequest,
                             progressEvents,
-                            ProductStopReason.TOOL_FAILED
+                            state,
+                            ProductStopReason.TOOL_FAILED,
+                            toolValidationMessage(validation.reason())
                     );
                     recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
                     return result;
@@ -259,14 +279,17 @@ public class ProductReadingReActHarness {
                 toolCalls.add(toolCall(round + 1, toolCall, toolResult, toolStartedAt, Instant.now()));
                 messages.add(toolMessage(toolCall == null ? "" : toolCall.id(), toolResult.contentJson(objectMapper)));
                 if (!toolResult.success()) {
-                    ProductTurnResult result = failed(
-                            "Product reading tool failed: " + toolResult.toolName(),
+                    ProductTurnResult result = preciseIncompleteResult(
+                            safeRequest,
                             progressEvents,
-                            ProductStopReason.TOOL_FAILED
+                            state,
+                            ProductStopReason.TOOL_FAILED,
+                            "A reading operation failed before returning validated observations."
                     );
                     recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
                     return result;
                 }
+                rememberToolArguments(toolResult.toolName(), safeArguments(toolCall), state);
                 updateState(toolResult, state);
                 if (SEARCH_TOOL_NAME.equals(toolResult.toolName())) {
                     state.searchPapersActionSatisfied = true;
@@ -281,6 +304,9 @@ public class ProductReadingReActHarness {
                 if (READ_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())) {
                     state.readLocationsUsed = true;
                 }
+                if (TRACE_SOURCE_QUOTES_TOOL_NAME.equals(toolResult.toolName())) {
+                    state.traceSourceQuotesUsed = true;
+                }
                 toolSucceeded = true;
                 successfulToolResults.add(toolResult);
             }
@@ -289,7 +315,7 @@ public class ProductReadingReActHarness {
             }
         }
 
-        ProductTurnResult result = maxReactRoundsReached(progressEvents, state);
+        ProductTurnResult result = maxReactRoundsReached(safeRequest, progressEvents, state);
         recordTrace(safeRequest, result, llmCalls, toolCalls, startedAt);
         return result;
     }
@@ -301,40 +327,51 @@ public class ProductReadingReActHarness {
         return REQUIRED_TOOL_NAMES.equals(names);
     }
 
-    private ToolCallValidation validateToolCall(LlmProviderRouter.ToolCallDecision toolCall, ReadingTurnState state) {
-        String toolName = safeToolName(toolCall);
-        Map<String, Object> arguments = safeArguments(toolCall);
-        if ("find_reading_locations".equals(toolName)) {
-            List<String> paperHandles = stringList(arguments.get("paperHandles"));
-            if (paperHandles.isEmpty() || !state.semanticPaperHandles.containsAll(paperHandles)) {
-                return ToolCallValidation.rejected("hidden_paper_handle");
-            }
+    private ProductTurnResult modelUnavailableResult(ProductTurnRequest request,
+                                                     List<ToolProgressEvent> progressEvents,
+                                                     ReadingTurnState state,
+                                                     List<Map<String, Object>> toolCalls,
+                                                     List<Map<String, Object>> messages,
+                                                     int round) {
+        if (state != null && !state.sourceQuotePayloads.isEmpty()) {
+            return deterministicSourceQuoteResult(request, progressEvents, state);
         }
-        if (LIST_LOCATIONS_TOOL_NAME.equals(toolName)) {
-            List<String> paperHandles = stringList(arguments.get("paperHandles"));
-            if (paperHandles.isEmpty() || !state.deterministicLocationPaperHandles.containsAll(paperHandles)) {
-                return ToolCallValidation.rejected("hidden_paper_handle");
-            }
+        SyntheticToolExecution structuredActionExecution = executeStructuredActionToolIfAvailable(
+                request,
+                state,
+                progressEvents,
+                toolCalls,
+                messages,
+                round
+        );
+        if (structuredActionExecution.terminalResult() != null) {
+            return structuredActionExecution.terminalResult();
         }
-        if ("get_paper_outline".equals(toolName)) {
-            List<String> paperHandles = stringList(arguments.get("paperHandles"));
-            if (paperHandles.isEmpty() || !state.deterministicLocationPaperHandles.containsAll(paperHandles)) {
-                return ToolCallValidation.rejected("hidden_paper_handle");
+        if (structuredActionExecution.executed()) {
+            if (state != null && !state.sourceQuotePayloads.isEmpty()) {
+                return deterministicSourceQuoteResult(request, progressEvents, state);
             }
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.ANSWER_SCHEMA_INVALID,
+                    "The selected reading action returned observations, but no quote-backed claim was validated."
+            );
         }
-        if (READ_LOCATIONS_TOOL_NAME.equals(toolName)) {
-            List<String> locationRefs = stringList(arguments.get("locationRefs"));
-            if (locationRefs.isEmpty() || !state.disclosedLocationRefs.containsAll(locationRefs)) {
-                return ToolCallValidation.rejected("hidden_location_ref");
-            }
-        }
-        if ("trace_source_quotes".equals(toolName)) {
-            List<String> sourceQuoteRefs = stringList(arguments.get("sourceQuoteRefs"));
-            if (sourceQuoteRefs.isEmpty() || !state.clickedSourceQuoteRefs.containsAll(sourceQuoteRefs)) {
-                return ToolCallValidation.rejected("hidden_source_quote_ref");
-            }
-        }
-        return ToolCallValidation.allowed();
+        return preciseIncompleteResult(
+                request,
+                progressEvents,
+                state,
+                ProductStopReason.ANSWER_SCHEMA_INVALID,
+                hasPreciseObservationState(state)
+                        ? "The cards below are checkable observations, but no quote-backed claim has been validated yet."
+                        : "The model call failed before producing a validated reading answer."
+        );
+    }
+
+    private ReadingToolCallValidation validateToolCall(LlmProviderRouter.ToolCallDecision toolCall, ReadingTurnState state) {
+        return toolCallGate.validate(safeToolName(toolCall), safeArguments(toolCall), state);
     }
 
     private void updateState(ProductToolResult toolResult, ReadingTurnState state) {
@@ -397,7 +434,7 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("get_paper_outline".equals(toolName)) {
+        if (OUTLINE_TOOL_NAME.equals(toolName)) {
             state.deterministicNavigationToolUsed = true;
             for (Map<String, Object> paper : mapList(toolResult.data().get("papers"))) {
                 for (Map<String, Object> section : mapList(paper.get("sections"))) {
@@ -407,6 +444,7 @@ public class ProductReadingReActHarness {
                         Map<String, Object> location = new LinkedHashMap<>();
                         location.put("locationRef", sectionRef);
                         location.put("locationType", "SECTION");
+                        copyIfPresent(location, paper, "paperId");
                         copyIfPresent(location, paper, "paperHandle");
                         copyIfPresent(location, paper, "title");
                         copyIfPresent(location, paper, "originalFilename");
@@ -421,6 +459,7 @@ public class ProductReadingReActHarness {
             return;
         }
         if ("find_reading_locations".equals(toolName)) {
+            rememberSemanticLocationStatus(toolResult, state);
             for (Map<String, Object> candidate : mapList(toolResult.data().get("candidates"))) {
                 String locationRef = stringValue(candidate.get("locationRef"));
                 if (!locationRef.isBlank()) {
@@ -440,7 +479,7 @@ public class ProductReadingReActHarness {
             }
             return;
         }
-        if ("trace_source_quotes".equals(toolName)) {
+        if (TRACE_SOURCE_QUOTES_TOOL_NAME.equals(toolName)) {
             for (Map<String, Object> sourceQuote : mapList(toolResult.data().get("sourceQuotes"))) {
                 String paperHandle = stringValue(sourceQuote.get("paperHandle"));
                 if (!paperHandle.isBlank()) {
@@ -452,6 +491,20 @@ public class ProductReadingReActHarness {
                     state.sourceQuotePayloads.put(sourceQuoteRef, new LinkedHashMap<>(sourceQuote));
                 }
             }
+        }
+    }
+
+    private void rememberSemanticLocationStatus(ProductToolResult toolResult, ReadingTurnState state) {
+        if (toolResult == null || state == null || toolResult.data() == null) {
+            return;
+        }
+        String status = stringValue(toolResult.data().get("status"));
+        if ("NO_MATCH".equals(status)) {
+            state.semanticLocationEvidenceMissing = true;
+            state.retrievalStatusPayload.put("semanticLocationEvidence", Map.of(
+                    "status", status,
+                    "missingEvidence", "semantic_location_evidence"
+            ));
         }
     }
 
@@ -468,6 +521,7 @@ public class ProductReadingReActHarness {
             location.put("sourceTool", sourceTool);
             state.locationSourceTools.add(sourceTool);
         }
+        copyIfPresent(location, rawLocation, "paperId");
         copyIfPresent(location, rawLocation, "paperHandle");
         copyIfPresent(location, rawLocation, "title");
         copyIfPresent(location, rawLocation, "originalFilename");
@@ -497,6 +551,12 @@ public class ProductReadingReActHarness {
         if (FIND_LOCATIONS_ACTION.equals(state.readingAction) && !state.findLocationsActionSatisfied) {
             return LOCATION_TOOL_NAME;
         }
+        if (READ_LOCATION_ACTION.equals(state.readingAction) && !state.readLocationsUsed) {
+            return READ_LOCATIONS_TOOL_NAME;
+        }
+        if (TRACE_SOURCE_QUOTE_ACTION.equals(state.readingAction) && !state.traceSourceQuotesUsed) {
+            return TRACE_SOURCE_QUOTES_TOOL_NAME;
+        }
         return null;
     }
 
@@ -510,12 +570,23 @@ public class ProductReadingReActHarness {
         if (requiredToolName == null) {
             return SyntheticToolExecution.notExecuted();
         }
+        if (LOCATION_TOOL_NAME.equals(requiredToolName)) {
+            return SyntheticToolExecution.failed(preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.ANSWER_SCHEMA_INVALID,
+                    "The location search needs a validated typed query plan before reading."
+            ));
+        }
         Map<String, Object> arguments = structuredActionArguments(requiredToolName, request, state);
         if (arguments.isEmpty()) {
-            return SyntheticToolExecution.failed(failed(
-                    "Product reading explicit action is missing required tool arguments.",
+            return SyntheticToolExecution.failed(preciseIncompleteResult(
+                    request,
                     progressEvents,
-                    ProductStopReason.TOOL_FAILED
+                    state,
+                    ProductStopReason.TOOL_FAILED,
+                    "The requested reading action is missing a validated target."
             ));
         }
         return executeSyntheticToolCall(
@@ -537,46 +608,25 @@ public class ProductReadingReActHarness {
         if (SEARCH_TOOL_NAME.equals(toolName)) {
             return userMessage.isBlank() ? Map.of() : Map.of("queryText", userMessage);
         }
-        if (LOCATION_TOOL_NAME.equals(toolName)) {
-            if (state == null || state.clickedPaperHandles.isEmpty() || userMessage.isBlank()) {
-                return Map.of();
-            }
-            return Map.of(
-                    "paperHandles", List.copyOf(state.clickedPaperHandles),
-                    "queryText", userMessage
-            );
-        }
         if (LIST_LOCATIONS_TOOL_NAME.equals(toolName)) {
-            if (state == null || state.clickedPaperHandles.isEmpty()) {
+            if (state == null || state.deterministicLocationPaperHandles.isEmpty()) {
                 return Map.of();
             }
-            return Map.of("paperHandles", List.copyOf(state.clickedPaperHandles));
+            return Map.of("paperHandles", List.copyOf(state.deterministicLocationPaperHandles));
+        }
+        if (READ_LOCATIONS_TOOL_NAME.equals(toolName)) {
+            if (state == null || state.disclosedLocationRefs.isEmpty()) {
+                return Map.of();
+            }
+            return Map.of("locationRefs", List.copyOf(state.disclosedLocationRefs));
+        }
+        if (TRACE_SOURCE_QUOTES_TOOL_NAME.equals(toolName)) {
+            if (state == null || state.traceableSourceQuoteRefs.isEmpty()) {
+                return Map.of();
+            }
+            return Map.of("sourceQuoteRefs", List.copyOf(state.traceableSourceQuoteRefs));
         }
         return Map.of();
-    }
-
-    private SyntheticToolExecution executeReadAfterSemanticLocationSearchIfAvailable(ProductTurnRequest request,
-                                                                                     ReadingTurnState state,
-                                                                                     List<ToolProgressEvent> progressEvents,
-                                                                                     List<Map<String, Object>> toolCalls,
-                                                                                     List<Map<String, Object>> messages,
-                                                                                     int round) {
-        if (state == null || state.disclosedLocationRefs.isEmpty()) {
-            return SyntheticToolExecution.notExecuted();
-        }
-        List<String> locationRefs = state.disclosedLocationRefs.stream()
-                .limit(MAX_LOCATION_FALLBACK_ITEMS)
-                .toList();
-        return executeSyntheticToolCall(
-                request,
-                state,
-                progressEvents,
-                toolCalls,
-                messages,
-                round,
-                READ_LOCATIONS_TOOL_NAME,
-                Map.of("locationRefs", locationRefs)
-        );
     }
 
     private SyntheticToolExecution executeSyntheticToolCall(ProductTurnRequest request,
@@ -592,7 +642,7 @@ public class ProductReadingReActHarness {
                 toolName,
                 arguments
         );
-        ToolCallValidation validation = validateToolCall(toolCall, state);
+        ReadingToolCallValidation validation = validateToolCall(toolCall, state);
         if (!validation.isAllowed()) {
             ProductToolResult rejected = new ProductToolResult(
                     safeToolName(toolCall),
@@ -601,10 +651,12 @@ public class ProductReadingReActHarness {
                     ProductToolEffect.ERROR
             );
             toolCalls.add(toolCall(round, toolCall, rejected, Instant.now(), Instant.now()));
-            return SyntheticToolExecution.failed(failed(
-                    "Product reading tool rejected: " + validation.reason(),
+            return SyntheticToolExecution.failed(preciseIncompleteResult(
+                    request,
                     progressEvents,
-                    ProductStopReason.TOOL_FAILED
+                    state,
+                    ProductStopReason.TOOL_FAILED,
+                    toolValidationMessage(validation.reason())
             ));
         }
 
@@ -634,15 +686,66 @@ public class ProductReadingReActHarness {
         toolCalls.add(toolCall(round, toolCall, toolResult, toolStartedAt, Instant.now()));
         messages.add(toolMessage(toolCall.id(), toolResult.contentJson(objectMapper)));
         if (!toolResult.success()) {
-            return SyntheticToolExecution.failed(failed(
-                    "Product reading tool failed: " + toolResult.toolName(),
+            return SyntheticToolExecution.failed(preciseIncompleteResult(
+                    request,
                     progressEvents,
-                    ProductStopReason.TOOL_FAILED
+                    state,
+                    ProductStopReason.TOOL_FAILED,
+                    "A reading operation failed before returning validated observations."
             ));
         }
+        rememberToolArguments(toolResult.toolName(), arguments, state);
         updateState(toolResult, state);
         markToolSatisfied(toolResult, state);
         return SyntheticToolExecution.executed(toolResult);
+    }
+
+    private void rememberToolArguments(String toolName, Map<String, Object> arguments, ReadingTurnState state) {
+        if (state == null || arguments == null || arguments.isEmpty()) {
+            return;
+        }
+        if (SEARCH_TOOL_NAME.equals(toolName)) {
+            String queryText = stringValue(arguments.get("queryText"));
+            if (!queryText.isBlank()) {
+                state.paperQueryTexts.add(queryText);
+            }
+        }
+        if (LOCATION_TOOL_NAME.equals(toolName)) {
+            Map<String, Object> queryPlan = objectMap(arguments.get("queryPlan"));
+            String queryText = stringValue(queryPlan.get("queryText"));
+            if (!queryText.isBlank()) {
+                state.locationQueryTexts.add(queryText);
+            }
+            String intent = stringValue(queryPlan.get("intent")).toUpperCase(Locale.ROOT);
+            if (!intent.isBlank()) {
+                state.locationIntents.add(intent);
+            }
+            String sourceLanguage = stringValue(queryPlan.get("sourceLanguage"));
+            if (!sourceLanguage.isBlank()) {
+                state.sourceLanguages.add(sourceLanguage);
+            }
+            String retrievalLanguage = stringValue(queryPlan.get("retrievalLanguage"));
+            if (!retrievalLanguage.isBlank()) {
+                state.retrievalLanguages.add(retrievalLanguage);
+            }
+            state.sectionRoles.addAll(upperStringList(queryPlan.get("sectionRoles")));
+            List<String> queryPlanLocationTypes = upperStringList(queryPlan.get("locationTypes"));
+            if (queryPlanLocationTypes.isEmpty()) {
+                state.locationTypes.addAll(upperStringList(arguments.get("locationTypes")));
+            } else {
+                state.locationTypes.addAll(queryPlanLocationTypes);
+            }
+            state.locationQueryPlans.add(new ReadingIntentFrame.LocationQueryPlan(
+                    queryText,
+                    intent,
+                    sourceLanguage,
+                    retrievalLanguage,
+                    upperStringList(queryPlan.get("sectionRoles")),
+                    queryPlanLocationTypes.isEmpty()
+                            ? upperStringList(arguments.get("locationTypes"))
+                            : queryPlanLocationTypes
+            ));
+        }
     }
 
     private void markToolSatisfied(ProductToolResult toolResult, ReadingTurnState state) {
@@ -662,6 +765,9 @@ public class ProductReadingReActHarness {
         if (READ_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())) {
             state.readLocationsUsed = true;
         }
+        if (TRACE_SOURCE_QUOTES_TOOL_NAME.equals(toolResult.toolName())) {
+            state.traceSourceQuotesUsed = true;
+        }
     }
 
     private ProductToolResult structuredActionRejectedTool(LlmProviderRouter.ToolCallDecision toolCall,
@@ -679,19 +785,19 @@ public class ProductReadingReActHarness {
     }
 
     private List<Map<String, Object>> initialMessages(ProductTurnRequest request,
-                                                      Set<String> clickedSourceQuoteRefs,
-                                                      Set<String> clickedPaperHandles,
-                                                      String readingAction) {
+                                                      ReadingTurnState state) {
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(message("system", systemPrompt(request, clickedSourceQuoteRefs, clickedPaperHandles, readingAction)));
+        messages.add(message("system", systemPrompt(request, state)));
         messages.add(message("user", request.userMessage()));
         return messages;
     }
 
     private String systemPrompt(ProductTurnRequest request,
-                                Set<String> clickedSourceQuoteRefs,
-                                Set<String> clickedPaperHandles,
-                                String readingAction) {
+                                ReadingTurnState state) {
+        Set<String> clickedPaperHandles = state == null ? Set.of() : state.clickedPaperHandles;
+        String readingAction = state == null ? "" : state.readingAction;
+        Set<String> clickedSourceQuoteRefs = state == null ? Set.of() : state.clickedSourceQuoteRefs;
+        Set<String> clickedLocationRefs = state == null ? Set.of() : state.clickedLocationRefs;
         return """
                 You are PaperLoom Product Reading ReAct Source Quote MVP.
                 Available tools are exactly get_session_state, list_papers, search_paper_candidates, find_papers_by_identity, get_paper_outline, list_paper_locations, find_reading_locations, read_locations, and trace_source_quotes.
@@ -701,6 +807,7 @@ public class ProductReadingReActHarness {
                 Paper cards from list_papers are navigation only, not Source Quotes.
                 Paper handles returned by list_papers may be used with get_paper_outline, list_paper_locations, or find_reading_locations.
                 Use search_paper_candidates for paper candidate discovery.
+                Fresh topic discovery is a paper-shortlist step: after search_paper_candidates returns candidates for a turn with no explicit location/read/citation UI action, complete with PRODUCT_STATE paper cards instead of immediately searching inside those newly discovered papers.
                 Use find_papers_by_identity for a specific paper by title, filename, DOI, arXiv id, author, or year.
                 find_papers_by_identity is not semantic search; use search_paper_candidates for topic discovery.
                 Identity paper cards are navigation only, not Source Quotes.
@@ -709,10 +816,10 @@ public class ProductReadingReActHarness {
                 Use get_paper_outline after choosing papers when structure, section choices, or parser quality is needed.
                 get_paper_outline requires paperHandles disclosed by list_papers, search_paper_candidates, find_papers_by_identity, trace_source_quotes, or explicit clicked paper anchors in this turn.
                 get_paper_outline returns sectionRef values for navigation only; they are not Source Quotes.
-                Use find_reading_locations for semantic in-paper location search; it requires queryText and paperHandles disclosed by list_papers, search_paper_candidates, unambiguous find_papers_by_identity, or explicit clicked paper anchors in this turn.
+                Use find_reading_locations for semantic in-paper location search; it requires paperHandles disclosed by list_papers, search_paper_candidates, unambiguous find_papers_by_identity, or explicit clicked paper anchors in this turn, plus queryPlan with paper-language queryText, intent, languages, sectionRoles, and optional locationTypes.
                 Use list_paper_locations for deterministic section/page/table/figure refs; it requires paperHandles disclosed by list_papers, search_paper_candidates, unambiguous find_papers_by_identity, trace_source_quotes, or explicit clicked paper anchors in this turn.
-                Use read_locations only after explicit locationRef or sectionRef values were returned by get_paper_outline, find_reading_locations, or list_paper_locations in this turn.
-                Use trace_source_quotes only for sourceQuoteRefs listed in this turn's explicit clicked Source Quote anchors.
+                Use read_locations only after explicit locationRef or sectionRef values were returned by get_paper_outline, find_reading_locations, or list_paper_locations in this turn, or provided as explicit clicked location anchors in this turn.
+                Use trace_source_quotes only for sourceQuoteRefs listed in this turn's explicit clicked Source Quote anchors or in the persisted selected Source Quote target.
                 trace_source_quotes returned locationRef values are metadata, not read_locations input.
                 To read broader context around a traced Source Quote, call list_paper_locations with the traced paperHandle and pageNumber or location type, then call read_locations with refs returned by list_paper_locations.
                 Paper previews, paper outlines, parserQuality, and reading-location previews are navigation only, not Source Quotes.
@@ -721,7 +828,7 @@ public class ProductReadingReActHarness {
                 Do not invent paperHandle, locationRef, or sourceQuoteRef values.
                 Do not pass ordinals as tool input.
                 Do not pass limit, topK, modelVersion, indexName, chunkRef, paperId, question, query, readingNeed, semanticNeed, sourceQuoteRef, splitPolicyVersion, or contentHash.
-                trace_source_quotes accepts only sourceQuoteRefs from explicit clicked Source Quote anchors; never use display citations like [1] as tool input.
+                trace_source_quotes accepts only sourceQuoteRefs from explicit clicked Source Quote anchors or the persisted selected Source Quote target; never use display citations like [1] as tool input.
                 Candidate-list and navigation answers use PRODUCT_STATE.
                 Paper-content claims require EVIDENCE_ANSWER with sourceQuoteRefs returned by read_locations or trace_source_quotes in this turn.
                 In EVIDENCE_ANSWER text, cite Source Quotes with markers exactly like {{sourceQuoteRef:source_quote_...}}.
@@ -745,6 +852,8 @@ public class ProductReadingReActHarness {
                 }
                 evidenceBasedClaims and stateClaims must be arrays of JSON objects, never strings.
                 limitations, nonEvidenceNotes, and missingFields must be arrays of strings.
+                Do not put beginnerRole, paperRole, or role decisions in stateClaims. Beginner paper roles must come from product metadata returned by tools or from quote-backed evidence, not model inference over titles.
+                If a quoted passage directly supports a beginner paper role, put beginnerRole on that evidenceBasedClaims item only when it has exactly one sourceQuoteRefs value.
                 paperRef, evidenceRef, and citationRef are legacy identifiers for the old harness. Do not use them as reading tool arguments or citation support.
                 Explicit clicked paper anchors for this turn:
                 %s
@@ -754,20 +863,31 @@ public class ProductReadingReActHarness {
                 %s
                 If the explicit Product Reading UI action is SEARCH_PAPERS, call search_paper_candidates before any other tool. Use the current user request as queryText.
                 If the explicit Product Reading UI action is LIST_LOCATIONS, call list_paper_locations before any other tool. Use the explicit clicked paperHandle anchors for paperHandles.
-                If the explicit Product Reading UI action is FIND_LOCATIONS, call find_reading_locations before any other navigation or reading tool. Use the current user request as the source of queryText, but write queryText in the paper's language when that is needed for retrieval.
+                If the explicit Product Reading UI action is FIND_LOCATIONS, call find_reading_locations before any other navigation or reading tool. You must provide queryPlan with queryText, intent, sourceLanguage, retrievalLanguage, sectionRoles, and optional locationTypes. Do not rely on Java keyword routing; declare the plan yourself.
+                If the explicit Product Reading UI action is READ_LOCATION, call read_locations before any other tool. Use the explicit clicked locationRef anchors for locationRefs.
+                If the explicit Product Reading UI action is TRACE_SOURCE_QUOTE, call trace_source_quotes before any other tool. Use the explicit clicked Source Quote anchors for sourceQuoteRefs.
+                Explicit clicked location anchors for this turn:
+                %s
+                Clicked location anchors are read_locations inputs only; they are not citeable until read_locations returns Source Quotes in this turn.
                 Explicit clicked Source Quote anchors for this turn:
                 %s
+                Persisted current reading target for this conversation:
+                %s
+                Persisted current paper and location targets are navigation inputs only. Persisted selected Source Quote targets are trace inputs only. They are not paper-content evidence until get_paper_outline, list_paper_locations, find_reading_locations, read_locations, or trace_source_quotes returns current-turn observations.
                 Current user request:
                 %s
                 """.formatted(
                 clickedPaperAnchorPrompt(clickedPaperHandles),
                 readingActionPrompt(readingAction),
+                clickedLocationAnchorPrompt(clickedLocationRefs),
                 clickedSourceQuoteAnchorPrompt(clickedSourceQuoteRefs),
+                readingStatePatchPrompt(state == null ? Map.of() : state.persistedReadingStatePatch),
                 request.userMessage()
         );
     }
 
-    private ProductTurnResult finalResult(String rawContent,
+    private ProductTurnResult finalResult(ProductTurnRequest request,
+                                          String rawContent,
                                           List<ToolProgressEvent> progressEvents,
                                           ReadingTurnState state) {
         AnswerEnvelope envelope;
@@ -776,7 +896,7 @@ public class ProductReadingReActHarness {
         } catch (Exception exception) {
             return failed(ANSWER_SCHEMA_INVALID_MESSAGE, progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
         }
-        if (containsVisibleInternalLeak(envelope.answer(), envelope.answerType())) {
+        if (containsVisibleInternalLeak(envelope.answer(), envelope.answerType(), state)) {
             return failed(VISIBLE_INTERNAL_LEAK_MESSAGE,
                     progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
         }
@@ -789,20 +909,68 @@ public class ProductReadingReActHarness {
             if (!validation.isValid()) {
                 return failed(validation.reason(), progressEvents, ProductStopReason.CITATION_VALIDATION_FAILED);
             }
-            CitationRender render = renderSourceQuoteCitations(envelope.answer(), state);
-            ReadingTurnArtifacts artifacts = readingTurnArtifacts(state, envelope, render);
+            if (claimTextContainsVisibleInternalLeak(envelope, state)) {
+                return failed(VISIBLE_INTERNAL_LEAK_MESSAGE,
+                        progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
+            }
+            CitationRender render = renderSourceQuoteCitations(envelope, state);
+            ReadingTurnProjection projection = artifactProjection(state, envelope, render);
+            ReadingArtifactContractValidation artifactValidation = artifactContractValidator.validate(
+                    envelope,
+                    projection,
+                    render.references()
+            );
+            if (!artifactValidation.valid()) {
+                return preciseIncompleteResult(
+                        request,
+                        progressEvents,
+                        state,
+                        ProductStopReason.CITATION_VALIDATION_FAILED,
+                        artifactValidation.reason()
+                );
+            }
+            ReadingTurnArtifacts artifacts = projection.artifacts();
             String answer = answerPresenter.render(envelope, artifacts, render.markdown());
-            if (containsVisibleInternalLeak(answer, envelope.answerType())) {
+            if (containsVisibleInternalLeak(answer, envelope.answerType(), state)) {
                 return failed(VISIBLE_INTERNAL_LEAK_MESSAGE,
                         progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
             }
             AnswerEnvelope presentedEnvelope = envelopeWithAnswer(envelope, answer);
+            ReadingResearchTrace researchTrace = researchTrace(
+                    request,
+                    state,
+                    presentedEnvelope,
+                    artifacts,
+                    render.references(),
+                    artifactValidation,
+                    ProductStopReason.COMPLETED,
+                    ProductResultStatus.COMPLETED
+            );
+            ReadingResearchTraceContractValidation traceValidation =
+                    researchTraceContractValidator.validateForCompletion(
+                            researchTrace,
+                            presentedEnvelope,
+                            ProductResultStatus.COMPLETED
+                    );
+            if (!traceValidation.valid()) {
+                return preciseIncompleteResult(
+                        request,
+                        progressEvents,
+                        state,
+                        ProductStopReason.CITATION_VALIDATION_FAILED,
+                        traceValidation.reason()
+                );
+            }
+            artifacts = withTraceSummary(artifacts, researchTrace);
             return new ProductTurnResult(
                     answer,
                     presentedEnvelope,
                     render.references(),
                     progressEvents,
                     state.productStateItems,
+                    artifacts,
+                    projection.statePatch(),
+                    researchTrace,
                     ProductStopReason.COMPLETED,
                     ProductResultStatus.COMPLETED
             );
@@ -813,56 +981,206 @@ public class ProductReadingReActHarness {
             return failed("Non-evidence reading answers cannot include Source Quote support.",
                     progressEvents, ProductStopReason.CITATION_VALIDATION_FAILED);
         }
-        ReadingTurnArtifacts artifacts = readingTurnArtifacts(state, envelope, null);
+        ReadingTurnProjection projection = artifactProjection(state, envelope, null);
+        ReadingArtifactContractValidation artifactValidation = artifactContractValidator.validate(
+                envelope,
+                projection,
+                List.of()
+        );
+        if (!artifactValidation.valid()) {
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.ANSWER_SCHEMA_INVALID,
+                    artifactValidation.reason()
+            );
+        }
+        ReadingTurnArtifacts artifacts = projection.artifacts();
         String answer = answerPresenter.render(envelope, artifacts, envelope.answer());
-        if (containsVisibleInternalLeak(answer, envelope.answerType())) {
+        if (containsVisibleInternalLeak(answer, envelope.answerType(), state)) {
             return failed(VISIBLE_INTERNAL_LEAK_MESSAGE,
                     progressEvents, ProductStopReason.ANSWER_SCHEMA_INVALID);
         }
         AnswerEnvelope presentedEnvelope = envelopeWithAnswer(envelope, answer);
+        ReadingResearchTrace researchTrace = researchTrace(
+                request,
+                state,
+                presentedEnvelope,
+                artifacts,
+                List.of(),
+                artifactValidation,
+                ProductStopReason.COMPLETED,
+                ProductResultStatus.COMPLETED
+        );
+        ReadingResearchTraceContractValidation traceValidation =
+                researchTraceContractValidator.validateForCompletion(
+                        researchTrace,
+                        presentedEnvelope,
+                        ProductResultStatus.COMPLETED
+                );
+        if (!traceValidation.valid()) {
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.ANSWER_SCHEMA_INVALID,
+                    traceValidation.reason()
+            );
+        }
+        artifacts = withTraceSummary(artifacts, researchTrace);
         return new ProductTurnResult(
                 answer,
                 presentedEnvelope,
                 List.of(),
                 progressEvents,
                 state.productStateItems,
+                artifacts,
+                projection.statePatch(),
+                researchTrace,
                 ProductStopReason.COMPLETED,
                 ProductResultStatus.COMPLETED
         );
     }
 
-    private ProductTurnResult finalResultOrProductStateFallback(String rawContent,
-                                                                List<ToolProgressEvent> progressEvents,
-                                                                ReadingTurnState state) {
-        ProductTurnResult result = finalResult(rawContent, progressEvents, state);
-        if (result.resultStatus() == ProductResultStatus.FAILED
-                && result.stopReason() == ProductStopReason.ANSWER_SCHEMA_INVALID
-                && canRecoverFromInvalidAnswer(result.finalAnswerMarkdown())) {
-            if (canFallbackToSourceQuoteEvidence(state)) {
-                return sourceQuoteEvidenceFallback(progressEvents, state, ProductStopReason.ANSWER_SCHEMA_INVALID);
-            }
-            if (canFallbackToLocationState(state)) {
-                return locationNavigationFallback(progressEvents, state, ProductStopReason.ANSWER_SCHEMA_INVALID);
-            }
-            if (canFallbackToPaperChoiceState(state)) {
-                return productStateNavigationFallback(progressEvents, state, ProductStopReason.ANSWER_SCHEMA_INVALID);
-            }
-            if (canFallbackToSessionState(state)) {
-                return sessionStateFallback(progressEvents, state, ProductStopReason.ANSWER_SCHEMA_INVALID);
-            }
-        }
-        if (result.resultStatus() == ProductResultStatus.FAILED
-                && result.stopReason() == ProductStopReason.CITATION_VALIDATION_FAILED
-                && "Source-quoted answer requires visible sourceQuoteRef markers.".equals(result.finalAnswerMarkdown())
-                && canFallbackToSourceQuoteEvidence(state)) {
-            return sourceQuoteEvidenceFallback(progressEvents, state, ProductStopReason.CITATION_VALIDATION_FAILED);
+    private ProductTurnResult finalResultOrPreciseIncomplete(ProductTurnRequest request,
+                                                             String rawContent,
+                                                             List<ToolProgressEvent> progressEvents,
+                                                             ReadingTurnState state) {
+        ProductTurnResult result = finalResult(request, rawContent, progressEvents, state);
+        if (result.resultStatus() == ProductResultStatus.FAILED) {
+            return preciseIncompleteResult(request, progressEvents, state, result.stopReason(), result.finalAnswerMarkdown());
         }
         return result;
     }
 
-    private boolean canRecoverFromInvalidAnswer(String message) {
-        return ANSWER_SCHEMA_INVALID_MESSAGE.equals(message)
-                || VISIBLE_INTERNAL_LEAK_MESSAGE.equals(message);
+    private ProductTurnResult deterministicSourceQuoteResult(ProductTurnRequest request,
+                                                             List<ToolProgressEvent> progressEvents,
+                                                             ReadingTurnState state) {
+        List<String> sourceQuoteRefs = state == null
+                ? List.of()
+                : state.sourceQuotePayloads.keySet().stream()
+                .filter(ref -> state.allowedSourceQuoteRefs.contains(ref))
+                .limit(5)
+                .toList();
+        if (sourceQuoteRefs.isEmpty()) {
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.ANSWER_SCHEMA_INVALID,
+                    "I found no validated quoted passage for this reading action."
+            );
+        }
+
+        AnswerEnvelope envelope = deterministicSourceQuoteEnvelope(sourceQuoteRefs, state);
+        CitationValidation validation = validateSourceQuoteAnswer(envelope, state);
+        if (!validation.isValid()) {
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.CITATION_VALIDATION_FAILED,
+                    validation.reason()
+            );
+        }
+        CitationRender render = renderSourceQuoteCitations(envelope, state);
+        ReadingTurnProjection projection = artifactProjection(state, envelope, render);
+        ReadingArtifactContractValidation artifactValidation = artifactContractValidator.validate(
+                envelope,
+                projection,
+                render.references()
+        );
+        if (!artifactValidation.valid()) {
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.CITATION_VALIDATION_FAILED,
+                    artifactValidation.reason()
+            );
+        }
+        ReadingTurnArtifacts artifacts = projection.artifacts();
+        String answer = answerPresenter.render(envelope, artifacts, render.markdown());
+        if (containsVisibleInternalLeak(answer, envelope.answerType(), state)) {
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.ANSWER_SCHEMA_INVALID,
+                    "A quoted passage was retrieved, but the visible answer still contained non-user-facing identifiers."
+            );
+        }
+        AnswerEnvelope presentedEnvelope = envelopeWithAnswer(envelope, answer);
+        ReadingResearchTrace researchTrace = researchTrace(
+                request,
+                state,
+                presentedEnvelope,
+                artifacts,
+                render.references(),
+                artifactValidation,
+                ProductStopReason.COMPLETED,
+                ProductResultStatus.COMPLETED
+        );
+        ReadingResearchTraceContractValidation traceValidation =
+                researchTraceContractValidator.validateForCompletion(
+                        researchTrace,
+                        presentedEnvelope,
+                        ProductResultStatus.COMPLETED
+                );
+        if (!traceValidation.valid()) {
+            return preciseIncompleteResult(
+                    request,
+                    progressEvents,
+                    state,
+                    ProductStopReason.CITATION_VALIDATION_FAILED,
+                    traceValidation.reason()
+            );
+        }
+        artifacts = withTraceSummary(artifacts, researchTrace);
+        return new ProductTurnResult(
+                answer,
+                presentedEnvelope,
+                render.references(),
+                progressEvents,
+                state.productStateItems,
+                artifacts,
+                projection.statePatch(),
+                researchTrace,
+                ProductStopReason.COMPLETED,
+                ProductResultStatus.COMPLETED
+        );
+    }
+
+    private AnswerEnvelope deterministicSourceQuoteEnvelope(List<String> sourceQuoteRefs,
+                                                            ReadingTurnState state) {
+        List<Map<String, Object>> claims = new ArrayList<>();
+        List<String> answerParts = new ArrayList<>();
+        int index = 1;
+        for (String sourceQuoteRef : sourceQuoteRefs) {
+            Map<String, Object> payload = state.sourceQuotePayloads.getOrDefault(sourceQuoteRef, Map.of());
+            String quote = snippet(stringValue(payload.get("content")), 220);
+            String claim = quote.isBlank()
+                    ? "The selected reading target contains a quoted passage."
+                    : "The selected reading target contains this quoted passage: \"" + quote + "\"";
+            claims.add(Map.of(
+                    "claim", claim,
+                    "sourceQuoteRefs", List.of(sourceQuoteRef)
+            ));
+            answerParts.add("Quoted passage " + index + " is available for the selected reading target "
+                    + "{{sourceQuoteRef:" + sourceQuoteRef + "}}.");
+            index += 1;
+        }
+        return new AnswerEnvelope(
+                AnswerType.EVIDENCE_ANSWER,
+                String.join(" ", answerParts),
+                claims,
+                List.of(),
+                List.of("This is a direct quote-level reading result; it does not prove broader claims outside the cited passage."),
+                List.of(),
+                List.of(),
+                "deterministic_source_quote_result"
+        );
     }
 
     private Map<String, Object> objectMap(Object value) {
@@ -878,171 +1196,174 @@ public class ProductReadingReActHarness {
         return result;
     }
 
-    private ReadingTurnArtifacts readingTurnArtifacts(ReadingTurnState state,
-                                                      AnswerEnvelope envelope,
-                                                      CitationRender citationRender) {
-        if (state == null) {
-            return ReadingTurnArtifacts.empty("");
-        }
-        Map<String, Object> searchScope = objectMap(state.sessionStatePayload.get("searchScope"));
-        List<ReadingTurnArtifacts.PaperShortlistItem> paperShortlist = paperShortlistArtifacts(state);
-        List<ReadingTurnArtifacts.ReadingPlanStep> readingPlan = readingPlanArtifacts(state);
-        List<ReadingTurnArtifacts.ClaimEvidenceRow> evidenceRows = claimEvidenceArtifacts(envelope, citationRender);
-        return new ReadingTurnArtifacts(
-                safeVisibleGoal(state.userGoal),
-                stringValue(searchScope.get("label")),
-                integerValue(searchScope.get("readablePaperCount")),
-                Boolean.TRUE.equals(searchScope.get("immutable")) || !searchScope.isEmpty(),
-                paperShortlist,
-                readingPlan,
-                evidenceRows,
-                uncertaintyNotes(state, paperShortlist, readingPlan, evidenceRows)
+    private ReadingTurnProjection artifactProjection(ReadingTurnState state,
+                                                     AnswerEnvelope envelope,
+                                                     CitationRender citationRender) {
+        return artifactProjector.project(
+                observationLedger(state),
+                envelope,
+                citationRender == null ? List.of() : citationRender.references(),
+                citationRender == null ? Map.of() : citationRender.numbersByRef()
         );
     }
 
-    private List<ReadingTurnArtifacts.PaperShortlistItem> paperShortlistArtifacts(ReadingTurnState state) {
-        List<ReadingTurnArtifacts.PaperShortlistItem> items = new ArrayList<>();
-        for (Map<String, Object> item : state.productStateItems) {
-            String title = stringValue(item.get("title"));
-            String filename = stringValue(item.get("originalFilename"));
-            if (title.isBlank() && filename.isBlank()) {
-                continue;
-            }
-            items.add(new ReadingTurnArtifacts.PaperShortlistItem(
-                    title,
-                    filename,
-                    stringList(item.get("authors")),
-                    integerValue(item.get("year")),
-                    stringValue(item.get("venue")),
-                    "metadata-only; no quoted passage has been read yet"
-            ));
-        }
-        return List.copyOf(items);
+    private ReadingResearchTrace researchTrace(ProductTurnRequest request,
+                                               ReadingTurnState state,
+                                               AnswerEnvelope envelope,
+                                               ReadingTurnArtifacts artifacts,
+                                               List<Map<String, Object>> references,
+                                               ReadingArtifactContractValidation validation,
+                                               ProductStopReason stopReason,
+                                               ProductResultStatus resultStatus) {
+        return researchTraceProjector.project(
+                questionId(request),
+                observationLedger(state),
+                envelope,
+                artifacts,
+                references,
+                validation,
+                stopReason,
+                resultStatus
+        );
     }
 
-    private List<ReadingTurnArtifacts.ReadingPlanStep> readingPlanArtifacts(ReadingTurnState state) {
-        List<ReadingTurnArtifacts.ReadingPlanStep> steps = new ArrayList<>();
+    private ReadingTurnArtifacts withTraceSummary(ReadingTurnArtifacts artifacts,
+                                                  ReadingResearchTrace researchTrace) {
+        ReadingTurnArtifacts safeArtifacts = artifacts == null ? ReadingTurnArtifacts.empty("") : artifacts;
+        return new ReadingTurnArtifacts(
+                safeArtifacts.artifactVersion(),
+                safeArtifacts.goalCard(),
+                safeArtifacts.intentFrame(),
+                safeArtifacts.paperShortlist(),
+                safeArtifacts.readingPlan(),
+                safeArtifacts.claimEvidencePanel(),
+                safeArtifacts.missingEvidence(),
+                safeArtifacts.uiActions(),
+                safeArtifacts.uncertaintyNotes(),
+                researchTraceSummaryProjector.summarize(researchTrace)
+        );
+    }
+
+    private String questionId(ProductTurnRequest request) {
+        if (request == null) {
+            return "";
+        }
+        String generationId = stringValue(request.generationId());
+        if (!generationId.isBlank()) {
+            return generationId;
+        }
+        return stringValue(request.conversationId());
+    }
+
+    private ReadingTurnObservationLedger observationLedger(ReadingTurnState state) {
+        if (state == null) {
+            return ReadingTurnObservationLedger.empty("");
+        }
+        return new ReadingTurnObservationLedger(
+                visibleGoal(state),
+                intentFrame(state),
+                state.sessionStatePayload,
+                state.productStateItems,
+                state.paperPayloadsByHandle,
+                state.locationPayloads,
+                state.sourceQuotePayloads,
+                state.retrievalStatusPayload
+        );
+    }
+
+    private String visibleGoal(ReadingTurnState state) {
+        if (state == null) {
+            return "";
+        }
+        return switch (stringValue(state.readingAction)) {
+            case LIST_LOCATIONS_ACTION -> "find readable locations in " + selectedPaperLabel(state);
+            case READ_LOCATION_ACTION -> readLocationGoal(state);
+            case TRACE_SOURCE_QUOTE_ACTION -> traceSourceQuoteGoal(state);
+            default -> state.userGoal;
+        };
+    }
+
+    private String readLocationGoal(ReadingTurnState state) {
+        String location = selectedLocationLabel(state);
+        String paper = selectedPaperLabel(state);
+        if (!location.isBlank() && !paper.isBlank() && !"the selected paper".equals(paper)) {
+            return "read " + location + " in " + paper;
+        }
+        if (!location.isBlank()) {
+            return "read " + location;
+        }
+        return "read the selected passage";
+    }
+
+    private String traceSourceQuoteGoal(ReadingTurnState state) {
+        Map<String, Object> selectedSourceQuote = objectMap(state.persistedReadingStatePatch.get("selectedSourceQuote"));
+        String marker = stringValue(selectedSourceQuote.get("citationMarker"));
+        return marker.isBlank() ? "explain the selected citation" : "explain citation " + marker;
+    }
+
+    private String selectedPaperLabel(ReadingTurnState state) {
+        if (state == null) {
+            return "the selected paper";
+        }
+        for (Map<String, Object> sourceQuote : state.sourceQuotePayloads.values()) {
+            String label = stringValue(sourceQuote.get("paperTitle"));
+            if (!label.isBlank()) {
+                return label;
+            }
+        }
         for (Map<String, Object> location : state.locationPayloads.values()) {
-            if (steps.size() >= MAX_LOCATION_FALLBACK_ITEMS) {
-                break;
-            }
-            String label = locationLabel(location);
-            if (label.isBlank()) {
-                continue;
-            }
-            steps.add(new ReadingTurnArtifacts.ReadingPlanStep(
+            String label = firstNonBlank(
                     stringValue(location.get("title")),
-                    label,
-                    snippet(stringValue(location.get("preview")), 180),
-                    "navigation-only; this location has not been read as quoted evidence yet"
-            ));
-        }
-        return List.copyOf(steps);
-    }
-
-    private List<ReadingTurnArtifacts.ClaimEvidenceRow> claimEvidenceArtifacts(AnswerEnvelope envelope,
-                                                                              CitationRender citationRender) {
-        if (citationRender == null || citationRender.references().isEmpty()) {
-            return List.of();
-        }
-        Map<String, String> claimsByRef = claimTextBySourceQuoteRef(envelope);
-        List<ReadingTurnArtifacts.ClaimEvidenceRow> rows = new ArrayList<>();
-        for (Map<String, Object> reference : citationRender.references()) {
-            String sourceQuoteRef = stringValue(reference.get("sourceQuoteRef"));
-            if (sourceQuoteRef.isBlank()) {
-                continue;
-            }
-            Integer number = citationRender.numbersByRef().get(sourceQuoteRef);
-            String marker = number == null ? "" : "[" + number + "]";
-            String quote = snippet(stringValue(reference.get("content")), 260);
-            String claim = firstNonBlank(
-                    cleanClaimText(claimsByRef.get(sourceQuoteRef)),
-                    quote.isBlank() ? "a relevant passage was found for the selected location" : quote
+                    stringValue(location.get("originalFilename"))
             );
-            rows.add(new ReadingTurnArtifacts.ClaimEvidenceRow(
-                    claim,
-                    quote,
-                    marker,
-                    stringValue(reference.get("paperTitle")),
-                    sourceQuoteLabel(reference)
-            ));
-        }
-        return List.copyOf(rows);
-    }
-
-    private Map<String, String> claimTextBySourceQuoteRef(AnswerEnvelope envelope) {
-        if (envelope == null) {
-            return Map.of();
-        }
-        Map<String, String> claimsByRef = new LinkedHashMap<>();
-        for (Map<String, Object> claim : envelope.evidenceBasedClaims()) {
-            String claimText = cleanClaimText(stringValue(claim.get("claim")));
-            for (String ref : stringList(claim.get("sourceQuoteRefs"))) {
-                if (!ref.isBlank() && !claimText.isBlank()) {
-                    claimsByRef.putIfAbsent(ref, claimText);
-                }
+            if (!label.isBlank()) {
+                return label;
             }
         }
-        return Map.copyOf(claimsByRef);
+        Map<String, Object> selectedPaper = objectMap(state.persistedReadingStatePatch.get("selectedPaper"));
+        String label = firstNonBlank(
+                stringValue(selectedPaper.get("title")),
+                stringValue(selectedPaper.get("originalFilename"))
+        );
+        return label.isBlank() ? "the selected paper" : label;
     }
 
-    private List<String> uncertaintyNotes(ReadingTurnState state,
-                                          List<ReadingTurnArtifacts.PaperShortlistItem> paperShortlist,
-                                          List<ReadingTurnArtifacts.ReadingPlanStep> readingPlan,
-                                          List<ReadingTurnArtifacts.ClaimEvidenceRow> evidenceRows) {
-        List<String> notes = new ArrayList<>();
-        if (!paperShortlist.isEmpty() && evidenceRows.isEmpty()) {
-            notes.add("The paper shortlist is metadata-only until a passage is read.");
+    private String selectedLocationLabel(ReadingTurnState state) {
+        if (state == null) {
+            return "";
         }
-        if (!readingPlan.isEmpty() && evidenceRows.isEmpty()) {
-            notes.add("The reading locations are navigation targets, not quote-backed claims yet.");
+        for (Map<String, Object> sourceQuote : state.sourceQuotePayloads.values()) {
+            String label = sourceQuoteLabel(sourceQuote);
+            if (!label.isBlank()) {
+                return label;
+            }
         }
-        if (evidenceRows.isEmpty()) {
-            notes.add("No quoted paper passage has been verified in this answer.");
-        } else {
-            notes.add("Visual PDF/page evidence may still be unavailable unless the citation panel shows it.");
+        for (Map<String, Object> location : state.locationPayloads.values()) {
+            String label = locationLabel(location);
+            if (!label.isBlank()) {
+                return label;
+            }
         }
-        if (state != null && state.sessionStatePayload.isEmpty() && paperShortlist.isEmpty() && readingPlan.isEmpty()) {
-            notes.add("The current scope count was not checked in this turn.");
-        }
-        return List.copyOf(notes);
+        Map<String, Object> selectedLocation = objectMap(state.persistedReadingStatePatch.get("selectedLocation"));
+        return firstNonBlank(stringValue(selectedLocation.get("label")), "the selected passage");
     }
 
-    private String cleanClaimText(String value) {
-        String text = stringValue(value);
-        if (text.startsWith("Source Quote reports:")) {
-            return text.substring("Source Quote reports:".length()).trim();
+    private ReadingIntentFrame intentFrame(ReadingTurnState state) {
+        if (state == null) {
+            return ReadingIntentFrame.empty("");
         }
-        if (text.startsWith("Checked passage reports:")) {
-            return text.substring("Checked passage reports:".length()).trim();
-        }
-        if ("A Source Quote was returned for the requested reading location.".equals(text)) {
-            return "a relevant passage was returned for the requested reading location";
-        }
-        return text;
-    }
-
-    private String safeVisibleGoal(String userGoal) {
-        String goal = stringValue(userGoal).replaceAll("\\s+", " ");
-        if (goal.isBlank() || containsVisibleInternalLeak(goal, AnswerType.NON_EVIDENCE)) {
-            return "make progress on this paper-reading task";
-        }
-        return snippet(goal, 180);
-    }
-
-    private Integer integerValue(Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        String text = stringValue(value);
-        if (text.isBlank()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(text);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
+        return ReadingIntentFrame.observed(
+                state.userGoal,
+                state.readingAction,
+                state.paperQueryTexts,
+                state.locationQueryTexts,
+                state.locationQueryPlans,
+                List.copyOf(state.locationTypes),
+                List.copyOf(state.locationIntents),
+                List.copyOf(state.sourceLanguages),
+                List.copyOf(state.retrievalLanguages),
+                List.copyOf(state.sectionRoles)
+        );
     }
 
     private void appendIdentityPaperChoices(ProductToolResult toolResult, ReadingTurnState state) {
@@ -1070,10 +1391,13 @@ public class ProductReadingReActHarness {
                 return;
             }
             String paperHandle = stringValue(row.get("paperHandle"));
+            String paperId = stringValue(row.get("paperId"));
             if (!PAPER_HANDLE_PATTERN.matcher(paperHandle).matches()
+                    || paperId.isBlank()
                     || !state.productStatePaperHandles.add(paperHandle)) {
                 continue;
             }
+            rememberPaperPayload(state, paperHandle, row);
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("kind", READING_PAPER_CHOICE_KIND);
             item.put("sourceTool", sourceTool);
@@ -1083,8 +1407,8 @@ public class ProductReadingReActHarness {
             copyStringListIfPresent(item, row, "authors");
             copyNumberIfPresent(item, row, "year");
             copyStringIfPresent(item, row, "venue");
+            copyStringListIfPresent(item, row, "matchReasons");
             if (identitySource) {
-                copyStringListIfPresent(item, row, "matchReasons");
                 if (!stringValue(identityStatus).isBlank()) {
                     item.put("identityStatus", stringValue(identityStatus));
                 }
@@ -1094,6 +1418,29 @@ public class ProductReadingReActHarness {
             }
             state.productStateItems.add(item);
         }
+    }
+
+    private void rememberPaperPayload(ReadingTurnState state,
+                                      String paperHandle,
+                                      Map<String, Object> rawPaper) {
+        if (state == null || paperHandle == null || paperHandle.isBlank() || rawPaper == null) {
+            return;
+        }
+        Map<String, Object> paper = new LinkedHashMap<>();
+        paper.put("paperHandle", paperHandle);
+        copyIfPresent(paper, rawPaper, "paperId");
+        copyIfPresent(paper, rawPaper, "title");
+        copyIfPresent(paper, rawPaper, "originalFilename");
+        copyIfPresent(paper, rawPaper, "authors");
+        copyIfPresent(paper, rawPaper, "year");
+        copyIfPresent(paper, rawPaper, "venue");
+        copyIfPresent(paper, rawPaper, "matchReasons");
+        copyIfPresent(paper, rawPaper, "paperRoles");
+        copyIfPresent(paper, rawPaper, "beginnerRoles");
+        copyIfPresent(paper, rawPaper, "readingRoles");
+        copyIfPresent(paper, rawPaper, "paperTypes");
+        copyIfPresent(paper, rawPaper, "catalogTopics");
+        state.paperPayloadsByHandle.putIfAbsent(paperHandle, paper);
     }
 
     private void copyStringIfPresent(Map<String, Object> target, Map<String, Object> source, String key) {
@@ -1120,16 +1467,13 @@ public class ProductReadingReActHarness {
     private CitationValidation validateSourceQuoteAnswer(AnswerEnvelope envelope, ReadingTurnState state) {
         Set<String> visibleRefs = sourceQuoteMarkers(envelope.answer());
         Set<String> claimRefs = claimSourceQuoteRefs(envelope);
-        if (visibleRefs.isEmpty()) {
-            return CitationValidation.invalid("Source-quoted answer requires visible sourceQuoteRef markers.");
-        }
         if (claimRefs.isEmpty()) {
             return CitationValidation.invalid("Source-quoted answer requires claim-level sourceQuoteRefs.");
         }
-        if (!visibleRefs.equals(claimRefs)) {
+        if (!visibleRefs.isEmpty() && !visibleRefs.equals(claimRefs)) {
             return CitationValidation.invalid("Visible sourceQuoteRef markers and claim-level sourceQuoteRefs must match.");
         }
-        if (!state.allowedSourceQuoteRefs.containsAll(visibleRefs)) {
+        if (!state.allowedSourceQuoteRefs.containsAll(claimRefs)) {
             return CitationValidation.invalid("Source-quoted answer contains unreturned sourceQuoteRef values.");
         }
         return CitationValidation.valid();
@@ -1144,6 +1488,18 @@ public class ProductReadingReActHarness {
             refs.addAll(stringList(claim.get("sourceQuoteRefs")));
         }
         return refs;
+    }
+
+    private boolean claimTextContainsVisibleInternalLeak(AnswerEnvelope envelope, ReadingTurnState state) {
+        if (envelope == null) {
+            return false;
+        }
+        for (Map<String, Object> claim : envelope.evidenceBasedClaims()) {
+            if (containsVisibleInternalLeak(stringValue(claim.get("claim")), AnswerType.NON_EVIDENCE, state)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean containsForbiddenClaimSupportKey(Map<String, Object> claim) {
@@ -1165,7 +1521,12 @@ public class ProductReadingReActHarness {
         return refs;
     }
 
-    private CitationRender renderSourceQuoteCitations(String answer, ReadingTurnState state) {
+    private CitationRender renderSourceQuoteCitations(AnswerEnvelope envelope, ReadingTurnState state) {
+        String answer = envelope == null ? "" : envelope.answer();
+        Set<String> visibleRefs = sourceQuoteMarkers(answer);
+        if (visibleRefs.isEmpty()) {
+            return renderClaimSourceQuoteCitations(answer, claimSourceQuoteRefs(envelope), state);
+        }
         Matcher matcher = SOURCE_QUOTE_MARKER_PATTERN.matcher(answer == null ? "" : answer);
         StringBuffer markdown = new StringBuffer();
         Map<String, Integer> numbersByRef = new LinkedHashMap<>();
@@ -1184,6 +1545,30 @@ public class ProductReadingReActHarness {
         return new CitationRender(markdown.toString(), references, Map.copyOf(numbersByRef));
     }
 
+    private CitationRender renderClaimSourceQuoteCitations(String answer,
+                                                           Set<String> sourceQuoteRefs,
+                                                           ReadingTurnState state) {
+        Map<String, Integer> numbersByRef = new LinkedHashMap<>();
+        List<Map<String, Object>> references = new ArrayList<>();
+        List<String> markers = new ArrayList<>();
+        for (String sourceQuoteRef : sourceQuoteRefs == null ? Set.<String>of() : sourceQuoteRefs) {
+            if (sourceQuoteRef == null || sourceQuoteRef.isBlank()) {
+                continue;
+            }
+            int number = numbersByRef.size() + 1;
+            numbersByRef.put(sourceQuoteRef, number);
+            references.add(reference(number, sourceQuoteRef, state.sourceQuotePayloads.get(sourceQuoteRef)));
+            markers.add("[" + number + "]");
+        }
+        String markdown = stringValue(answer);
+        if (!markers.isEmpty()) {
+            markdown = markdown.isBlank()
+                    ? String.join(" ", markers)
+                    : markdown + " " + String.join(" ", markers);
+        }
+        return new CitationRender(markdown, references, Map.copyOf(numbersByRef));
+    }
+
     private Map<String, Object> reference(Integer referenceNumber,
                                           String sourceQuoteRef,
                                           Map<String, Object> sourceQuotePayload) {
@@ -1191,6 +1576,8 @@ public class ProductReadingReActHarness {
         reference.put("referenceNumber", referenceNumber);
         reference.put("sourceQuoteRef", sourceQuoteRef);
         if (sourceQuotePayload != null) {
+            copyIfPresent(reference, sourceQuotePayload, "paperId");
+            copyIfPresent(reference, sourceQuotePayload, "paperVersion");
             copyIfPresent(reference, sourceQuotePayload, "paperHandle");
             copyIfPresent(reference, sourceQuotePayload, "paperTitle");
             copyIfPresent(reference, sourceQuotePayload, "locationRef");
@@ -1267,6 +1654,55 @@ public class ProductReadingReActHarness {
             }
         }
         return false;
+    }
+
+    private boolean containsVisibleInternalLeak(String text, AnswerType answerType, ReadingTurnState state) {
+        return containsVisibleInternalLeak(text, answerType)
+                || containsKnownInternalIdentity(text, answerType, state);
+    }
+
+    private boolean containsKnownInternalIdentity(String text, AnswerType answerType, ReadingTurnState state) {
+        String value = text == null ? "" : text;
+        if (answerType == AnswerType.EVIDENCE_ANSWER) {
+            value = SOURCE_QUOTE_MARKER_PATTERN.matcher(value).replaceAll("");
+        }
+        if (value.isBlank() || state == null) {
+            return false;
+        }
+        for (Map<String, Object> paper : state.paperPayloadsByHandle.values()) {
+            if (containsSensitiveValue(value, paper, "paperId", "paperVersion", "modelVersion")) {
+                return true;
+            }
+        }
+        for (Map<String, Object> location : state.locationPayloads.values()) {
+            if (containsSensitiveValue(value, location, "paperId", "paperVersion", "modelVersion")) {
+                return true;
+            }
+        }
+        for (Map<String, Object> sourceQuote : state.sourceQuotePayloads.values()) {
+            if (containsSensitiveValue(value, sourceQuote, "paperId", "paperVersion", "modelVersion")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsSensitiveValue(String visibleText, Map<String, Object> payload, String... keys) {
+        if (visibleText == null || visibleText.isBlank() || payload == null || payload.isEmpty() || keys == null) {
+            return false;
+        }
+        for (String key : keys) {
+            String token = stringValue(payload.get(key));
+            if (isSensitiveDynamicToken(token) && visibleText.contains(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isSensitiveDynamicToken(String token) {
+        String value = stringValue(token);
+        return value.length() >= 6;
     }
 
     private AnswerEnvelope envelopeWithAnswer(AnswerEnvelope envelope, String answer) {
@@ -1396,6 +1832,18 @@ public class ProductReadingReActHarness {
                 .toList();
     }
 
+    private List<String> upperStringList(Object value) {
+        if (!(value instanceof List<?> rawValues)) {
+            return List.of();
+        }
+        return rawValues.stream()
+                .map(this::stringValue)
+                .filter(item -> !item.isBlank())
+                .map(item -> item.toUpperCase(Locale.ROOT))
+                .distinct()
+                .toList();
+    }
+
     private ProductTurnResult failed(String message,
                                      List<ToolProgressEvent> progressEvents,
                                      ProductStopReason stopReason) {
@@ -1418,113 +1866,186 @@ public class ProductReadingReActHarness {
         );
     }
 
-    private ProductTurnResult maxReactRoundsReached(List<ToolProgressEvent> progressEvents, ReadingTurnState state) {
-        if (canFallbackToSourceQuoteEvidence(state)) {
-            return sourceQuoteEvidenceFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
-        }
-        if (canFallbackToLocationState(state)) {
-            return locationNavigationFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
-        }
-        if (canFallbackToPaperChoiceState(state)) {
-            return productStateNavigationFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
-        }
-        if (canFallbackToSessionState(state)) {
-            return sessionStateFallback(progressEvents, state, ProductStopReason.MAX_REACT_ROUNDS);
-        }
-        String message = "Reading ReAct round budget reached before final answer.";
-        return new ProductTurnResult(
-                message,
-                new AnswerEnvelope(
-                        AnswerType.CLARIFICATION_NEEDED,
-                        message,
-                        List.of(),
-                        List.of(),
-                        List.of(message),
-                        List.of(),
-                        List.of("react_round_budget"),
-                        ProductStopReason.MAX_REACT_ROUNDS.name()
-                ),
-                List.of(),
+    private ProductTurnResult maxReactRoundsReached(ProductTurnRequest request,
+                                                    List<ToolProgressEvent> progressEvents,
+                                                    ReadingTurnState state) {
+        String reason = hasPreciseObservationState(state)
+                ? "Reading ReAct round budget reached before a validated final answer."
+                : "Reading ReAct round budget reached before any reading observation was validated.";
+        return preciseIncompleteResult(
+                request,
                 progressEvents,
+                state,
                 ProductStopReason.MAX_REACT_ROUNDS,
-                ProductResultStatus.DEGRADED
+                reason
         );
     }
 
-    private ProductTurnResult productStateNavigationFallback(List<ToolProgressEvent> progressEvents,
-                                                             ReadingTurnState state,
-                                                             ProductStopReason originalStopReason) {
+    private boolean hasPreciseObservationState(ReadingTurnState state) {
+        return state != null && observationLedger(state).hasObservations();
+    }
+
+    private ProductTurnResult preciseIncompleteResult(List<ToolProgressEvent> progressEvents,
+                                                      ReadingTurnState state,
+                                                      ProductStopReason stopReason,
+                                                      String reason) {
+        return preciseIncompleteResult(null, progressEvents, state, stopReason, reason);
+    }
+
+    private ProductTurnResult preciseIncompleteResult(ProductTurnRequest request,
+                                                      List<ToolProgressEvent> progressEvents,
+                                                      ReadingTurnState state,
+                                                      ProductStopReason stopReason,
+                                                      String reason) {
         AnswerEnvelope draftEnvelope = new AnswerEnvelope(
-                AnswerType.PRODUCT_STATE,
-                "",
+                AnswerType.INSUFFICIENT_EVIDENCE,
+                safeVisibleIncompleteAnswer(stopReason, state, reason),
                 List.of(),
-                productStateClaims(state.productStateItems),
                 List.of(),
-                List.of("Recovered a safe navigation answer after " + originalStopReason.name()),
-                List.of(),
-                "paper_choice_navigation_fallback"
+                preciseIncompleteLimitations(state, stopReason, reason),
+                List.of("The structured cards below are observations, not paper-content claims."),
+                List.of("validated_final_answer"),
+                stopReason == null ? "precise_incomplete" : stopReason.name()
         );
-        String answer = answerPresenter.render(draftEnvelope, readingTurnArtifacts(state, draftEnvelope, null), "");
+        ReadingTurnProjection projection = artifactProjection(state, draftEnvelope, null);
+        ReadingTurnArtifacts artifacts = projection.artifacts();
+        ReadingArtifactContractValidation artifactValidation = artifactContractValidator.validate(
+                draftEnvelope,
+                projection,
+                List.of()
+        );
+        String answer = answerPresenter.render(draftEnvelope, artifacts, draftEnvelope.answer());
         AnswerEnvelope envelope = envelopeWithAnswer(draftEnvelope, answer);
+        ProductStopReason safeStopReason = stopReason == null ? ProductStopReason.ANSWER_SCHEMA_INVALID : stopReason;
+        ReadingResearchTrace researchTrace = researchTrace(
+                request,
+                state,
+                envelope,
+                artifacts,
+                List.of(),
+                artifactValidation,
+                safeStopReason,
+                ProductResultStatus.INCOMPLETE_PRECISE
+        );
+        artifacts = withTraceSummary(artifacts, researchTrace);
         return new ProductTurnResult(
                 answer,
                 envelope,
                 List.of(),
                 progressEvents,
-                state.productStateItems,
-                ProductStopReason.COMPLETED,
-                ProductResultStatus.COMPLETED
+                state == null ? List.of() : state.productStateItems,
+                artifacts,
+                projection.statePatch(),
+                researchTrace,
+                safeStopReason,
+                ProductResultStatus.INCOMPLETE_PRECISE
         );
     }
 
-    private ProductTurnResult sessionStateFallback(List<ToolProgressEvent> progressEvents,
-                                                   ReadingTurnState state,
-                                                   ProductStopReason originalStopReason) {
-        AnswerEnvelope draftEnvelope = new AnswerEnvelope(
-                AnswerType.PRODUCT_STATE,
-                "",
-                List.of(),
-                List.of(Map.of(
-                        "claim", "Reading session scope and count were returned by " + SESSION_TOOL_NAME + ".",
-                        "sourceTool", SESSION_TOOL_NAME
-                )),
-                List.of(),
-                List.of("Recovered a safe session-state answer after " + originalStopReason.name()),
-                List.of(),
-                "session_state_fallback"
-        );
-        String answer = answerPresenter.render(draftEnvelope, readingTurnArtifacts(state, draftEnvelope, null), "");
-        AnswerEnvelope envelope = envelopeWithAnswer(draftEnvelope, answer);
-        return new ProductTurnResult(
-                answer,
-                envelope,
-                List.of(),
-                progressEvents,
-                state.productStateItems,
-                ProductStopReason.COMPLETED,
-                ProductResultStatus.COMPLETED
-        );
+    private String toolValidationMessage(String reason) {
+        return switch (stringValue(reason)) {
+            case "hidden_paper_handle" -> "The paper target was not validated in the current reading context.";
+            case "hidden_location_ref" -> "The reading location was not validated in the current reading context.";
+            case "hidden_source_quote_ref" -> "The citation target was not validated in the current reading context.";
+            case "typed_location_query_plan_missing" -> "The location search needs a validated typed query plan before reading.";
+            case "semantic_location_evidence_missing" -> "The typed in-paper search found no matching passage, so this turn cannot switch to outline navigation as a substitute.";
+            default -> "The reading action did not satisfy the validated tool contract.";
+        };
     }
 
-    private boolean canFallbackToPaperChoiceState(ReadingTurnState state) {
-        return state != null
-                && !state.productStateItems.isEmpty()
-                && state.disclosedLocationRefs.isEmpty()
-                && state.sourceQuotePayloads.isEmpty();
+    private boolean isRecoverableToolValidation(String reason) {
+        return switch (stringValue(reason)) {
+            case "hidden_paper_handle", "hidden_location_ref", "hidden_source_quote_ref" -> true;
+            default -> false;
+        };
     }
 
-    private boolean canFallbackToSessionState(ReadingTurnState state) {
-        return state != null && !state.sessionStatePayload.isEmpty();
+    private Map<String, Object> toolValidationCorrectionMessage(String reason) {
+        String instruction = switch (stringValue(reason)) {
+            case "hidden_paper_handle" -> """
+                    The previous tool call used a paperHandle that was not disclosed by a current-turn tool result or explicit clicked paper anchor.
+                    Your next response must contain tool_calls only.
+                    For the current user request, call get_session_state, list_papers, search_paper_candidates, or find_papers_by_identity before using any paperHandle.
+                    Do not use persisted paper targets or older conversation handles as tool arguments.
+                    """;
+            case "hidden_location_ref" -> """
+                    The previous tool call used a locationRef that was not disclosed by a current-turn navigation tool result or explicit clicked location anchor.
+                    Your next response must contain tool_calls only.
+                    First call get_paper_outline, list_paper_locations, or find_reading_locations with authorized paperHandles, then read only the returned locationRefs.
+                    """;
+            case "hidden_source_quote_ref" -> """
+                    The previous tool call used a sourceQuoteRef that was not an explicit clicked Source Quote anchor or persisted selected Source Quote target for this turn.
+                    Your next response must contain tool_calls only.
+                    Do not use display citations or older sourceQuoteRefs as trace_source_quotes input.
+                    """;
+            default -> """
+                    The previous tool call did not satisfy the validated reading tool contract.
+                    Your next response must contain tool_calls only and use only arguments disclosed in this turn.
+                    """;
+        };
+        return message("user", instruction);
     }
 
-    private boolean canFallbackToLocationState(ReadingTurnState state) {
-        return state != null
-                && !state.locationPayloads.isEmpty()
-                && state.sourceQuotePayloads.isEmpty();
+    private String safeVisibleIncompleteAnswer(ProductStopReason stopReason, ReadingTurnState state, String reason) {
+        String value = stringValue(reason);
+        ProductStopReason safeStopReason = stopReason == null ? ProductStopReason.ANSWER_SCHEMA_INVALID : stopReason;
+        if (safeStopReason == ProductStopReason.ANSWER_SCHEMA_INVALID) {
+            if (!value.isBlank()
+                    && !isInternalValidationFailure(value)
+                    && !containsVisibleInternalLeak(value, AnswerType.NON_EVIDENCE)) {
+                return value;
+            }
+            if (hasPreciseObservationState(state)) {
+                return "The cards below are checkable observations, but no quote-backed claim has been validated yet.";
+            }
+            return "I could not produce a validated final reading answer from the current observations.";
+        }
+        if (safeStopReason == ProductStopReason.CITATION_VALIDATION_FAILED) {
+            if (!value.isBlank() && !containsVisibleInternalLeak(value, AnswerType.NON_EVIDENCE)) {
+                return value;
+            }
+            if (state != null && !state.sourceQuotePayloads.isEmpty()) {
+                return "A quote was retrieved, but it did not support a validated cited claim in this turn.";
+            }
+            return "I could not verify the citation evidence for this answer.";
+        }
+        if (safeStopReason == ProductStopReason.MAX_REACT_ROUNDS) {
+            return "I could not finish validating the answer within this turn.";
+        }
+        if (safeStopReason == ProductStopReason.TOOL_FAILED) {
+            return value.isBlank() ? "The reading action did not satisfy the validated tool contract." : value;
+        }
+        if (!value.isBlank() && !containsVisibleInternalLeak(value, AnswerType.NON_EVIDENCE)) {
+            return value;
+        }
+        return "I could not produce a validated final reading answer from the current observations.";
     }
 
-    private boolean canFallbackToSourceQuoteEvidence(ReadingTurnState state) {
-        return state != null && !fallbackSourceQuotes(state).isEmpty();
+    private boolean isInternalValidationFailure(String value) {
+        String text = stringValue(value);
+        return ANSWER_SCHEMA_INVALID_MESSAGE.equals(text)
+                || VISIBLE_INTERNAL_LEAK_MESSAGE.equals(text)
+                || "Answer envelope contains forbidden numbered citations.".equals(text);
+    }
+
+    private List<String> preciseIncompleteLimitations(ReadingTurnState state,
+                                                      ProductStopReason stopReason,
+                                                      String reason) {
+        List<String> limitations = new ArrayList<>();
+        limitations.add(safeVisibleIncompleteAnswer(stopReason, state, reason));
+        if (state != null && !state.productStateItems.isEmpty() && state.sourceQuotePayloads.isEmpty()) {
+            limitations.add("Only paper metadata was observed; no quoted paper passage was validated.");
+        }
+        if (state != null && !state.locationPayloads.isEmpty() && state.sourceQuotePayloads.isEmpty()) {
+            limitations.add("Only reading locations were observed; no location was validated as quote-backed evidence.");
+        }
+        if (state != null && !state.sourceQuotePayloads.isEmpty()) {
+            limitations.add("A quoted passage was retrieved, but no cited claim passed verification.");
+        }
+        if (limitations.isEmpty()) {
+            limitations.add("A validated reading answer is missing.");
+        }
+        return List.copyOf(limitations);
     }
 
     private boolean needsReadAfterSemanticLocationSearchBeforeFinal(ReadingTurnState state) {
@@ -1538,80 +2059,6 @@ public class ProductReadingReActHarness {
                 && state.sourceQuotePayloads.isEmpty();
     }
 
-    private ProductTurnResult locationNavigationFallback(List<ToolProgressEvent> progressEvents,
-                                                         ReadingTurnState state,
-                                                         ProductStopReason originalStopReason) {
-        AnswerEnvelope draftEnvelope = new AnswerEnvelope(
-                AnswerType.PRODUCT_STATE,
-                "",
-                List.of(),
-                locationStateClaims(state),
-                List.of("Location results are navigation only, not Source Quotes; call read_locations for paper-content claims."),
-                List.of("Recovered a safe navigation answer after " + originalStopReason.name()),
-                List.of(),
-                "location_navigation_fallback"
-        );
-        String answer = answerPresenter.render(draftEnvelope, readingTurnArtifacts(state, draftEnvelope, null), "");
-        AnswerEnvelope envelope = envelopeWithAnswer(draftEnvelope, answer);
-        return new ProductTurnResult(
-                answer,
-                envelope,
-                List.of(),
-                progressEvents,
-                state.productStateItems,
-                ProductStopReason.COMPLETED,
-                ProductResultStatus.COMPLETED
-        );
-    }
-
-    private ProductTurnResult sourceQuoteEvidenceFallback(List<ToolProgressEvent> progressEvents,
-                                                          ReadingTurnState state,
-                                                          ProductStopReason originalStopReason) {
-        List<Map<String, Object>> quotes = fallbackSourceQuotes(state);
-        String answerWithMarkers = sourceQuoteFallbackAnswer(quotes);
-        List<Map<String, Object>> claims = sourceQuoteFallbackClaims(quotes);
-        AnswerEnvelope draftEnvelope = new AnswerEnvelope(
-                AnswerType.EVIDENCE_ANSWER,
-                answerWithMarkers,
-                claims,
-                List.of(),
-                List.of("Recovered a conservative Source Quote answer after " + originalStopReason.name()),
-                List.of(),
-                List.of(),
-                "source_quote_evidence_fallback"
-        );
-        CitationRender render = renderSourceQuoteCitations(answerWithMarkers, state);
-        String answer = answerPresenter.render(draftEnvelope, readingTurnArtifacts(state, draftEnvelope, render), render.markdown());
-        AnswerEnvelope envelope = envelopeWithAnswer(draftEnvelope, answer);
-        return new ProductTurnResult(
-                answer,
-                envelope,
-                render.references(),
-                progressEvents,
-                state.productStateItems,
-                ProductStopReason.COMPLETED,
-                ProductResultStatus.COMPLETED
-        );
-    }
-
-    private List<Map<String, Object>> productStateClaims(List<Map<String, Object>> items) {
-        LinkedHashSet<String> sourceTools = new LinkedHashSet<>();
-        for (Map<String, Object> item : items == null ? List.<Map<String, Object>>of() : items) {
-            String sourceTool = stringValue(item.get("sourceTool"));
-            if (!sourceTool.isBlank()) {
-                sourceTools.add(sourceTool);
-            }
-        }
-        List<Map<String, Object>> claims = new ArrayList<>();
-        for (String sourceTool : sourceTools) {
-            claims.add(Map.of(
-                    "claim", "Paper choices were returned by " + sourceTool + ".",
-                    "sourceTool", sourceTool
-            ));
-        }
-        return List.copyOf(claims);
-    }
-
     private String locationLabel(Map<String, Object> location) {
         String label = firstNonBlank(
                 stringValue(location.get("label")),
@@ -1623,6 +2070,9 @@ public class ProductReadingReActHarness {
             return pageLabel.isBlank() ? "Location" : pageLabel;
         }
         if (pageLabel.isBlank()) {
+            return label;
+        }
+        if (normalizedLabel(label).equals(normalizedLabel(pageLabel))) {
             return label;
         }
         return label + ", " + pageLabel;
@@ -1640,96 +2090,25 @@ public class ProductReadingReActHarness {
         return "page " + page;
     }
 
-    private List<Map<String, Object>> locationStateClaims(ReadingTurnState state) {
-        List<Map<String, Object>> claims = new ArrayList<>();
-        for (String sourceTool : state.locationSourceTools) {
-            if (!sourceTool.isBlank()) {
-                claims.add(Map.of(
-                        "claim", "Reading locations were returned by " + sourceTool + ".",
-                        "sourceTool", sourceTool
-                ));
-            }
-        }
-        return List.copyOf(claims);
-    }
-
-    private List<Map<String, Object>> fallbackSourceQuotes(ReadingTurnState state) {
-        if (state == null || state.sourceQuotePayloads.isEmpty()) {
-            return List.of();
-        }
-        List<Map<String, Object>> withContent = new ArrayList<>();
-        List<Map<String, Object>> anyQuotes = new ArrayList<>();
-        for (Map.Entry<String, Map<String, Object>> entry : state.sourceQuotePayloads.entrySet()) {
-            Map<String, Object> quote = new LinkedHashMap<>(entry.getValue());
-            quote.putIfAbsent("sourceQuoteRef", entry.getKey());
-            if (SOURCE_QUOTE_REF_PATTERN.matcher(stringValue(quote.get("sourceQuoteRef"))).matches()) {
-                anyQuotes.add(quote);
-                if (!stringValue(quote.get("content")).isBlank()) {
-                    withContent.add(quote);
-                }
-            }
-        }
-        List<Map<String, Object>> preferred = withContent.isEmpty() ? anyQuotes : withContent;
-        return preferred.stream()
-                .limit(MAX_SOURCE_QUOTE_FALLBACK_ITEMS)
-                .<Map<String, Object>>map(item -> new LinkedHashMap<String, Object>(item))
-                .toList();
-    }
-
-    private String sourceQuoteFallbackAnswer(List<Map<String, Object>> quotes) {
-        StringBuilder builder = new StringBuilder("Recovered checked passages:");
-        int index = 1;
-        for (Map<String, Object> quote : quotes) {
-            String sourceQuoteRef = stringValue(quote.get("sourceQuoteRef"));
-            if (!SOURCE_QUOTE_REF_PATTERN.matcher(sourceQuoteRef).matches()) {
-                continue;
-            }
-            builder.append("\n").append(index++).append(". ");
-            String label = sourceQuoteLabel(quote);
-            if (!label.isBlank()) {
-                builder.append(label).append(": ");
-            }
-            String content = snippet(stringValue(quote.get("content")), 260);
-            builder.append(content.isBlank() ? "A checked passage was returned for this location." : content);
-            builder.append(" {{sourceQuoteRef:").append(sourceQuoteRef).append("}}");
-        }
-        return builder.toString();
-    }
-
-    private List<Map<String, Object>> sourceQuoteFallbackClaims(List<Map<String, Object>> quotes) {
-        List<Map<String, Object>> claims = new ArrayList<>();
-        for (Map<String, Object> quote : quotes) {
-            String sourceQuoteRef = stringValue(quote.get("sourceQuoteRef"));
-            if (!SOURCE_QUOTE_REF_PATTERN.matcher(sourceQuoteRef).matches()) {
-                continue;
-            }
-            String content = snippet(stringValue(quote.get("content")), 220);
-            String claim = content.isBlank()
-                    ? "A checked passage was returned for the requested reading location."
-                    : "Checked passage reports: " + content;
-            claims.add(Map.of(
-                    "claim", claim,
-                    "sourceQuoteRefs", List.of(sourceQuoteRef)
-            ));
-        }
-        return List.copyOf(claims);
-    }
-
     private String sourceQuoteLabel(Map<String, Object> quote) {
         String paperTitle = stringValue(quote.get("paperTitle"));
         String sectionTitle = stringValue(quote.get("sectionTitle"));
         String page = pageLabel(quote);
         List<String> parts = new ArrayList<>();
-        if (!paperTitle.isBlank()) {
-            parts.add(paperTitle);
-        }
-        if (!sectionTitle.isBlank()) {
+        if (!sectionTitle.isBlank() && !normalizedLabel(sectionTitle).equals(normalizedLabel(paperTitle))) {
             parts.add(sectionTitle);
         }
         if (!page.isBlank()) {
             parts.add(page);
         }
-        return String.join(", ", parts);
+        return parts.isEmpty() ? "the cited passage" : String.join(", ", parts);
+    }
+
+    private String normalizedLabel(String value) {
+        return stringValue(value)
+                .replaceAll("\\s+", " ")
+                .trim()
+                .toUpperCase(Locale.ROOT);
     }
 
     private String firstNonBlank(String... values) {
@@ -1877,7 +2256,11 @@ public class ProductReadingReActHarness {
         if (LIST_LOCATIONS_TOOL_NAME.equals(requiredToolName)) {
             anchorInstruction = "Use the explicit clicked paperHandle anchors as paperHandles.";
         } else if (LOCATION_TOOL_NAME.equals(requiredToolName)) {
-            anchorInstruction = "Use the explicit clicked paperHandle anchors and a caller-authored queryText for this turn's request.";
+            anchorInstruction = "Use the explicit clicked paperHandle anchors and a typed queryPlan for this turn's request. The queryPlan must include queryText, intent, sourceLanguage, retrievalLanguage, and sectionRoles.";
+        } else if (READ_LOCATIONS_TOOL_NAME.equals(requiredToolName)) {
+            anchorInstruction = "Use the explicit clicked locationRef anchors as locationRefs.";
+        } else if (TRACE_SOURCE_QUOTES_TOOL_NAME.equals(requiredToolName)) {
+            anchorInstruction = "Use the explicit clicked Source Quote anchors as sourceQuoteRefs.";
         } else {
             anchorInstruction = "Use a caller-authored queryText for this turn's request.";
         }
@@ -1917,7 +2300,7 @@ public class ProductReadingReActHarness {
         for (ProductToolResult toolResult : toolResults) {
             if (toolResult != null
                     && (READ_LOCATIONS_TOOL_NAME.equals(toolResult.toolName())
-                    || "trace_source_quotes".equals(toolResult.toolName()))) {
+                    || TRACE_SOURCE_QUOTES_TOOL_NAME.equals(toolResult.toolName()))) {
                 return true;
             }
         }
@@ -1928,61 +2311,6 @@ public class ProductReadingReActHarness {
         return toolCall == null || toolCall.arguments() == null ? Map.of() : toolCall.arguments();
     }
 
-    private Set<String> clickedSourceQuoteRefs(Map<String, Object> memory) {
-        if (memory == null || !(memory.get("readingTurnAnchors") instanceof Map<?, ?> anchors)) {
-            return Set.of();
-        }
-        Object rawRefs = anchors.get("clickedSourceQuoteRefs");
-        if (!(rawRefs instanceof List<?> list)) {
-            return Set.of();
-        }
-        LinkedHashSet<String> refs = new LinkedHashSet<>();
-        for (Object rawRef : list) {
-            String sourceQuoteRef = stringValue(rawRef);
-            if (SOURCE_QUOTE_REF_PATTERN.matcher(sourceQuoteRef).matches()) {
-                refs.add(sourceQuoteRef);
-            }
-            if (refs.size() >= MAX_CLICKED_SOURCE_QUOTE_REFS) {
-                break;
-            }
-        }
-        return refs;
-    }
-
-    private Set<String> clickedPaperHandles(Map<String, Object> memory) {
-        if (memory == null || !(memory.get("readingTurnAnchors") instanceof Map<?, ?> anchors)) {
-            return Set.of();
-        }
-        Object rawHandles = anchors.get("clickedPaperHandles");
-        if (!(rawHandles instanceof List<?> list)) {
-            return Set.of();
-        }
-        LinkedHashSet<String> handles = new LinkedHashSet<>();
-        for (Object rawHandle : list) {
-            String paperHandle = stringValue(rawHandle);
-            if (PAPER_HANDLE_PATTERN.matcher(paperHandle).matches()) {
-                handles.add(paperHandle);
-            }
-            if (handles.size() >= MAX_CLICKED_PAPER_HANDLES) {
-                break;
-            }
-        }
-        return handles;
-    }
-
-    private String readingTurnAction(Map<String, Object> memory) {
-        if (memory == null) {
-            return "";
-        }
-        String action = stringValue(memory.get("readingTurnAction")).toUpperCase(Locale.ROOT);
-        if (SEARCH_PAPERS_ACTION.equals(action)
-                || LIST_LOCATIONS_ACTION.equals(action)
-                || FIND_LOCATIONS_ACTION.equals(action)) {
-            return action;
-        }
-        return "";
-    }
-
     private String clickedSourceQuoteAnchorPrompt(Set<String> clickedSourceQuoteRefs) {
         if (clickedSourceQuoteRefs == null || clickedSourceQuoteRefs.isEmpty()) {
             return "[]";
@@ -1991,6 +2319,28 @@ public class ProductReadingReActHarness {
             return objectMapper.writeValueAsString(clickedSourceQuoteRefs);
         } catch (Exception exception) {
             return clickedSourceQuoteRefs.toString();
+        }
+    }
+
+    private String clickedLocationAnchorPrompt(Set<String> clickedLocationRefs) {
+        if (clickedLocationRefs == null || clickedLocationRefs.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return objectMapper.writeValueAsString(clickedLocationRefs);
+        } catch (Exception exception) {
+            return clickedLocationRefs.toString();
+        }
+    }
+
+    private String readingStatePatchPrompt(Map<String, Object> readingStatePatch) {
+        if (readingStatePatch == null || readingStatePatch.isEmpty()) {
+            return "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(readingStatePatch);
+        } catch (Exception exception) {
+            return readingStatePatch.toString();
         }
     }
 
@@ -2024,56 +2374,6 @@ public class ProductReadingReActHarness {
 
     private static String internalToken(String prefix, String suffix) {
         return prefix + suffix;
-    }
-
-    private static class ReadingTurnState {
-        private final Set<String> clickedSourceQuoteRefs;
-        private final Set<String> clickedPaperHandles;
-        private final String readingAction;
-        private final String userGoal;
-        private final Set<String> semanticPaperHandles = new LinkedHashSet<>();
-        private final Set<String> deterministicLocationPaperHandles = new LinkedHashSet<>();
-        private final Set<String> disclosedLocationRefs = new LinkedHashSet<>();
-        private final Set<String> allowedSourceQuoteRefs = new LinkedHashSet<>();
-        private final Map<String, Map<String, Object>> sourceQuotePayloads = new LinkedHashMap<>();
-        private final Map<String, Map<String, Object>> locationPayloads = new LinkedHashMap<>();
-        private final Map<String, Object> sessionStatePayload = new LinkedHashMap<>();
-        private final Set<String> locationSourceTools = new LinkedHashSet<>();
-        private final List<Map<String, Object>> productStateItems = new ArrayList<>();
-        private final Set<String> productStatePaperHandles = new LinkedHashSet<>();
-        private boolean searchPapersActionSatisfied;
-        private boolean listLocationsActionSatisfied;
-        private boolean findLocationsActionSatisfied;
-        private boolean semanticLocationSearchUsed;
-        private boolean paperChoiceToolUsed;
-        private boolean deterministicNavigationToolUsed;
-        private boolean readLocationsUsed;
-
-        private ReadingTurnState(Set<String> clickedSourceQuoteRefs,
-                                 Set<String> clickedPaperHandles,
-                                 String readingAction,
-                                 String userGoal) {
-            this.clickedSourceQuoteRefs = clickedSourceQuoteRefs == null
-                    ? Set.of()
-                    : new LinkedHashSet<>(clickedSourceQuoteRefs);
-            this.clickedPaperHandles = clickedPaperHandles == null
-                    ? Set.of()
-                    : new LinkedHashSet<>(clickedPaperHandles);
-            this.readingAction = readingAction == null ? "" : readingAction.trim().toUpperCase(Locale.ROOT);
-            this.userGoal = userGoal == null ? "" : userGoal.trim();
-            this.semanticPaperHandles.addAll(this.clickedPaperHandles);
-            this.deterministicLocationPaperHandles.addAll(this.clickedPaperHandles);
-        }
-    }
-
-    private record ToolCallValidation(boolean isAllowed, String reason) {
-        static ToolCallValidation allowed() {
-            return new ToolCallValidation(true, "");
-        }
-
-        static ToolCallValidation rejected(String reason) {
-            return new ToolCallValidation(false, reason);
-        }
     }
 
     private record CitationValidation(boolean isValid, String reason) {

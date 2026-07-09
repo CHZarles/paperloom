@@ -139,12 +139,13 @@ class ProductReadingLocationReadServiceTest {
         assertEquals(2, savedSourceQuotes.size());
         assertEquals(2, savedConversationQuotes.size());
         assertEquals("generation-1", savedConversationQuotes.get(0).getFirstSeenTurnId());
+        assertEquals("paper-a", first.sourceQuotes().get(0).get("paperId"));
+        assertEquals("model-v1", first.sourceQuotes().get(0).get("paperVersion"));
 
         String json = objectMapper.writeValueAsString(first.sourceQuotes());
         assertTrue(json.contains("Readable Paper"));
         assertTrue(json.contains("paper_handle_a"));
         assertTrue(json.contains("The reported score improves."));
-        assertFalse(json.contains("paperId"));
         assertFalse(json.contains("modelVersion"));
         assertFalse(json.contains("splitPolicyVersion"));
         assertFalse(json.contains("contentHash"));

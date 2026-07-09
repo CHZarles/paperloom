@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.nio.charset.StandardCharsets;
 
 @Component
@@ -60,6 +62,7 @@ public class MinerUOutputMapper {
                     formulas.add(toFormula(item, element, currentSectionTitle));
                 }
             }
+            order = appendMiddleCodeBodyElements(middleJson, elements, order);
 
             ParsedPaperMetadata metadata = new ParsedPaperMetadata(
                     originalFilename,
@@ -89,6 +92,112 @@ public class MinerUOutputMapper {
         } catch (Exception e) {
             throw new PaperParsingException("Failed to map MinerU output", e);
         }
+    }
+
+    private int appendMiddleCodeBodyElements(String middleJson,
+                                             List<ParsedPaperElement> elements,
+                                             int order) throws JsonProcessingException {
+        if (middleJson == null || middleJson.isBlank()) {
+            return order;
+        }
+        JsonNode root = objectMapper.readTree(middleJson);
+        JsonNode pdfInfo = root.path("pdf_info");
+        if (!pdfInfo.isArray()) {
+            return order;
+        }
+        Set<String> existingTextKeys = new LinkedHashSet<>();
+        for (ParsedPaperElement element : elements) {
+            if (element != null && element.text() != null && !element.text().isBlank()) {
+                existingTextKeys.add(textKey(element.text()));
+            }
+        }
+        for (int pageIndex = 0; pageIndex < pdfInfo.size(); pageIndex++) {
+            JsonNode page = pdfInfo.get(pageIndex);
+            List<JsonNode> blocks = middleBlocks(page);
+            for (int blockIndex = 0; blockIndex < blocks.size(); blockIndex++) {
+                JsonNode block = blocks.get(blockIndex);
+                if (!"code body".equals(normalizeKey(text(block, "type")))) {
+                    continue;
+                }
+                String blockText = middleBlockText(block);
+                String key = textKey(blockText);
+                if (key.isBlank() || existingTextKeys.contains(key)) {
+                    continue;
+                }
+                existingTextKeys.add(key);
+                order++;
+                int pageNumber = pageIndex + 1;
+                Map<String, Object> rawAttributes = toMap(block);
+                rawAttributes.put("type", "code_body");
+                rawAttributes.put("source", "mineru_middle_json");
+                rawAttributes.put("page_idx", pageIndex);
+                elements.add(new ParsedPaperElement(
+                        "middle-code-body-" + pageNumber + "-" + blockIndex,
+                        pageNumber,
+                        order,
+                        ParsedPaperElementType.LIST,
+                        blockText,
+                        null,
+                        null,
+                        boundingBox(block.path("bbox"), pageNumber),
+                        rawAttributes
+                ));
+            }
+        }
+        return order;
+    }
+
+    private List<JsonNode> middleBlocks(JsonNode page) {
+        List<JsonNode> blocks = new ArrayList<>();
+        appendBlocks(blocks, page.path("preproc_blocks"));
+        appendBlocks(blocks, page.path("para_blocks"));
+        return blocks;
+    }
+
+    private void appendBlocks(List<JsonNode> blocks, JsonNode blockGroups) {
+        if (!blockGroups.isArray()) {
+            return;
+        }
+        for (JsonNode group : blockGroups) {
+            JsonNode nestedBlocks = group.path("blocks");
+            if (nestedBlocks.isArray()) {
+                nestedBlocks.forEach(blocks::add);
+            } else if (group.isObject()) {
+                blocks.add(group);
+            }
+        }
+    }
+
+    private String middleBlockText(JsonNode block) {
+        List<String> lines = new ArrayList<>();
+        JsonNode rawLines = block.path("lines");
+        if (!rawLines.isArray()) {
+            return "";
+        }
+        for (JsonNode line : rawLines) {
+            List<String> spans = new ArrayList<>();
+            JsonNode rawSpans = line.path("spans");
+            if (!rawSpans.isArray()) {
+                continue;
+            }
+            for (JsonNode span : rawSpans) {
+                String content = firstNonBlank(text(span, "content"), text(span, "text"));
+                if (content != null) {
+                    spans.add(content);
+                }
+            }
+            String lineText = normalizeWhitespace(String.join(" ", spans));
+            if (!lineText.isBlank()) {
+                lines.add(lineText);
+            }
+        }
+        return String.join("\n", lines);
+    }
+
+    private String textKey(String text) {
+        return normalizeWhitespace(text)
+                .replaceAll("\\s+", " ")
+                .toLowerCase(java.util.Locale.ROOT);
     }
 
     private JsonNode parseContentList(String contentListJson) throws JsonProcessingException {

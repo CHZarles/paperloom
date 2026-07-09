@@ -21,6 +21,8 @@ class ProductReadingLaunchTraceCasesTest {
         Set<String> cardSources = new LinkedHashSet<>();
         boolean hasReadEvidenceCase = false;
         boolean hasTraceEvidenceCase = false;
+        boolean everyCaseRequiresResearchTrace = true;
+        boolean everyCaseRequiresVerifiedResearchTrace = true;
         for (ProductReadingLaunchTraceEvalRunner.ProductReadingLaunchTraceCase testCase : cases) {
             tools.addAll(testCase.requiredToolNames());
             cardSources.addAll(testCase.requiredProductStateSourceTools());
@@ -30,6 +32,8 @@ class ProductReadingLaunchTraceCasesTest {
             if (testCase.requiredToolNames().contains("trace_source_quotes") && Boolean.TRUE.equals(testCase.requiresReference())) {
                 hasTraceEvidenceCase = true;
             }
+            everyCaseRequiresResearchTrace &= testCase.researchTraceRequired();
+            everyCaseRequiresVerifiedResearchTrace &= testCase.verifiedResearchTraceRequired();
         }
 
         assertEquals(Set.of(
@@ -50,5 +54,7 @@ class ProductReadingLaunchTraceCasesTest {
         ), cardSources);
         assertTrue(hasReadEvidenceCase);
         assertTrue(hasTraceEvidenceCase);
+        assertTrue(everyCaseRequiresResearchTrace);
+        assertTrue(everyCaseRequiresVerifiedResearchTrace);
     }
 }

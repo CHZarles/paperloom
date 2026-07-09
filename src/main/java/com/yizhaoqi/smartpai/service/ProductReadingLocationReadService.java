@@ -287,6 +287,8 @@ public class ProductReadingLocationReadService {
     private Map<String, Object> sourceQuoteOutput(PaperSourceQuote quote, LocationReadAttempt attempt) {
         Map<String, Object> output = new LinkedHashMap<>();
         put(output, "sourceQuoteRef", quote.getSourceQuoteRef());
+        put(output, "paperId", quote.getPaperId());
+        put(output, "paperVersion", quote.getModelVersion());
         put(output, "locationRef", quote.getLocationRef());
         put(output, "paperHandle", attempt.paperHandle());
         put(output, "paperTitle", attempt.paperTitle());

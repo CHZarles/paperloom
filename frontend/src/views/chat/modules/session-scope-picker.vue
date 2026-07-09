@@ -99,7 +99,10 @@ function previewFromCurrentScope(
 ): Api.Chat.TitleMatchScopePreview | null {
   if (recipeType !== 'title_match' || currentScope?.scopeMode !== 'SOURCE_SET_SNAPSHOT') return null;
   return {
-    paperCount: Number(currentScope.sourcePaperCount || currentScope.paperIds?.length || 0),
+    paperCount:
+      typeof currentScope.sourcePaperCount === 'number'
+        ? currentScope.sourcePaperCount
+        : currentScope.paperIds?.length || 0,
     paperIds: [...(currentScope.paperIds || [])],
     papers: [],
     sourceLabel: currentScope.sourceLabel || '',
@@ -216,8 +219,8 @@ async function applyScope() {
       <section v-if="mode === 'AUTO_LIBRARY'" class="scope-picker-pane">
         <div class="scope-picker-state">
           <icon-lucide:library />
-          <strong>All searchable papers</strong>
-          <span>AUTO_LIBRARY</span>
+          <strong>All readable papers</strong>
+          <span>Current session default</span>
         </div>
       </section>
 

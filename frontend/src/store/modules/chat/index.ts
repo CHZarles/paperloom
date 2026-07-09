@@ -106,9 +106,18 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (snapshot.referenceMappings && Object.keys(snapshot.referenceMappings).length > 0) {
         assistant.referenceMappings = snapshot.referenceMappings;
       }
+      if (typeof snapshot.conversationRecordId === 'number') {
+        assistant.conversationRecordId = snapshot.conversationRecordId;
+      }
       if (snapshot.diagnostics) {
         assistant.diagnostics = snapshot.diagnostics;
         assistant.route = normalizeChatRoute(snapshot.diagnostics.route) || assistant.route;
+      }
+      if (snapshot.readingArtifacts) {
+        assistant.readingArtifacts = snapshot.readingArtifacts;
+      }
+      if (snapshot.readingStatePatch) {
+        assistant.readingStatePatch = snapshot.readingStatePatch;
       }
       return;
     }
@@ -127,8 +136,12 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       conversationId: snapshot.conversationId,
       generationId: snapshot.generationId,
       timestamp: snapshot.updatedAt,
+      conversationRecordId:
+        typeof snapshot.conversationRecordId === 'number' ? snapshot.conversationRecordId : undefined,
       referenceMappings: snapshot.referenceMappings,
       diagnostics: snapshot.diagnostics,
+      readingArtifacts: snapshot.readingArtifacts,
+      readingStatePatch: snapshot.readingStatePatch,
       route: normalizeChatRoute(snapshot.diagnostics?.route)
     });
   }

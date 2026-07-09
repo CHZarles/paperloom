@@ -94,7 +94,9 @@ public class ProductReadingLaunchTraceEvalRunner {
                     values(root.path("toolCalls"), "toolName"),
                     values(root.path("productStateItems"), "kind"),
                     values(root.path("productStateItems"), "sourceTool"),
-                    root.path("references").isArray() ? root.path("references").size() : 0
+                    root.path("references").isArray() ? root.path("references").size() : 0,
+                    hasCanonicalResearchTrace(root.path("researchTrace")),
+                    root.path("researchTrace").path("verificationPass").path("valid").asBoolean(false)
             );
         } catch (Exception ignored) {
             return null;
@@ -138,7 +140,13 @@ public class ProductReadingLaunchTraceEvalRunner {
         if (!trace.productStateSourceTools().containsAll(testCase.requiredProductStateSourceTools())) {
             return false;
         }
-        return !testCase.referenceRequired() || trace.referenceCount() > 0;
+        if (testCase.referenceRequired() && trace.referenceCount() <= 0) {
+            return false;
+        }
+        if (testCase.researchTraceRequired() && !trace.hasResearchTrace()) {
+            return false;
+        }
+        return !testCase.verifiedResearchTraceRequired() || trace.researchTraceVerified();
     }
 
     private List<String> validateCase(ProductReadingLaunchTraceCase testCase) {
@@ -152,7 +160,9 @@ public class ProductReadingLaunchTraceEvalRunner {
                 || !testCase.requiredProductStateKinds().isEmpty()
                 || !testCase.requiredProductStateSourceTools().isEmpty()
                 || testCase.referenceRequired()
-                || testCase.expectedResultStatusValue() != null;
+                || testCase.expectedResultStatusValue() != null
+                || testCase.researchTraceRequired()
+                || testCase.verifiedResearchTraceRequired();
         if (!hasRequirement) {
             failures.add("trace_case_has_no_requirements");
         }
@@ -187,11 +197,15 @@ public class ProductReadingLaunchTraceEvalRunner {
         diagnostics.put("requiredProductStateKinds", testCase.requiredProductStateKinds());
         diagnostics.put("requiredProductStateSourceTools", testCase.requiredProductStateSourceTools());
         diagnostics.put("requiresReference", testCase.referenceRequired());
+        diagnostics.put("requiresResearchTrace", testCase.researchTraceRequired());
+        diagnostics.put("requiresVerifiedResearchTrace", testCase.verifiedResearchTraceRequired());
         if (evaluation.trace() != null) {
             diagnostics.put("matchedTracePath", evaluation.trace().path().toString());
             diagnostics.put("matchedToolNames", List.copyOf(evaluation.trace().toolNames()));
             diagnostics.put("matchedProductStateSourceTools", List.copyOf(evaluation.trace().productStateSourceTools()));
             diagnostics.put("matchedReferenceCount", evaluation.trace().referenceCount());
+            diagnostics.put("matchedResearchTrace", evaluation.trace().hasResearchTrace());
+            diagnostics.put("matchedResearchTraceVerified", evaluation.trace().researchTraceVerified());
         }
         String markdown = evaluation.passed()
                 ? "Matched Product Reading trace for " + testCase.id()
@@ -223,7 +237,23 @@ public class ProductReadingLaunchTraceEvalRunner {
                 + ", productStateKinds=" + testCase.requiredProductStateKinds()
                 + ", productStateSourceTools=" + testCase.requiredProductStateSourceTools()
                 + ", requiresReference=" + testCase.referenceRequired()
-                + ", resultStatus=" + testCase.expectedResultStatusValue();
+                + ", resultStatus=" + testCase.expectedResultStatusValue()
+                + ", requiresResearchTrace=" + testCase.researchTraceRequired()
+                + ", requiresVerifiedResearchTrace=" + testCase.verifiedResearchTraceRequired();
+    }
+
+    private boolean hasCanonicalResearchTrace(JsonNode node) {
+        if (node == null || !node.isObject()) {
+            return false;
+        }
+        return "research-harness-artifacts/v1".equals(node.path("schemaVersion").asText(""))
+                && node.path("intentFrame").isObject()
+                && node.path("retrievalPlan").isObject()
+                && node.path("evidenceLedger").isObject()
+                && node.path("claimGraph").isObject()
+                && node.path("reasoningArtifacts").isArray()
+                && node.path("verificationPass").isObject()
+                && node.path("researchAnswer").isObject();
     }
 
     private Set<String> values(JsonNode array, String fieldName) {
@@ -247,7 +277,9 @@ public class ProductReadingLaunchTraceEvalRunner {
             Set<String> toolNames,
             Set<String> productStateKinds,
             Set<String> productStateSourceTools,
-            int referenceCount
+            int referenceCount,
+            boolean hasResearchTrace,
+            boolean researchTraceVerified
     ) {
     }
 
@@ -273,7 +305,9 @@ public class ProductReadingLaunchTraceEvalRunner {
             List<String> requiredProductStateKinds,
             List<String> requiredProductStateSourceTools,
             Boolean requiresReference,
-            String expectedResultStatus
+            String expectedResultStatus,
+            Boolean requiresResearchTrace,
+            Boolean requiresVerifiedResearchTrace
     ) {
         public ProductReadingLaunchTraceCase {
             id = id == null ? "" : id.trim();
@@ -286,6 +320,14 @@ public class ProductReadingLaunchTraceEvalRunner {
 
         boolean referenceRequired() {
             return Boolean.TRUE.equals(requiresReference);
+        }
+
+        boolean researchTraceRequired() {
+            return Boolean.TRUE.equals(requiresResearchTrace);
+        }
+
+        boolean verifiedResearchTraceRequired() {
+            return Boolean.TRUE.equals(requiresVerifiedResearchTrace);
         }
 
         String requiredAnswerTypeValue() {

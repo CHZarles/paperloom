@@ -3,10 +3,17 @@ package com.yizhaoqi.smartpai.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yizhaoqi.smartpai.exception.CustomException;
 import com.yizhaoqi.smartpai.model.Conversation;
+import com.yizhaoqi.smartpai.model.ConversationSourceQuote;
 import com.yizhaoqi.smartpai.model.ConversationSession;
+import com.yizhaoqi.smartpai.model.Paper;
+import com.yizhaoqi.smartpai.model.PaperSourceQuote;
 import com.yizhaoqi.smartpai.model.User;
+import com.yizhaoqi.smartpai.repository.ConversationSourceQuoteRepository;
 import com.yizhaoqi.smartpai.repository.ConversationRepository;
 import com.yizhaoqi.smartpai.repository.ConversationSessionRepository;
+import com.yizhaoqi.smartpai.repository.PaperRepository;
+import com.yizhaoqi.smartpai.repository.PaperReadingModelRepository;
+import com.yizhaoqi.smartpai.repository.PaperSourceQuoteRepository;
 import com.yizhaoqi.smartpai.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +25,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,7 +33,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +48,21 @@ class ConversationServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ConversationSourceQuoteRepository conversationSourceQuoteRepository;
+
+    @Mock
+    private PaperSourceQuoteRepository sourceQuoteRepository;
+
+    @Mock
+    private PaperRepository paperRepository;
+
+    @Mock
+    private ProductReadingSourceQuoteResolver sourceQuoteResolver;
+
+    @Mock
+    private ConversationScopeService conversationScopeService;
 
     @Mock
     private ConversationRepository conversationRepository;
@@ -136,6 +158,118 @@ class ConversationServiceTest {
         assertEquals("Agent papers", persistedScope.get("sourceLabel"));
         assertEquals(List.of("p1", "p2"), persistedScope.get("paperIds"));
         assertEquals(2, persistedScope.get("paperCount"));
+    }
+
+    @Test
+    void recordConversationPersistsReadingArtifactsAndStatePatch() throws Exception {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        User user = new User();
+        user.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        ConversationSession session = new ConversationSession();
+        session.setConversationId("conversation-1");
+        session.setTitle("Existing title");
+        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L))
+                .thenReturn(Optional.of(session));
+        ReadingTurnArtifacts artifacts = ReadingTurnArtifacts.empty("read agent evaluation papers");
+        ReadingStatePatch statePatch = new ReadingStatePatch(
+                new ReadingStatePatch.SelectedPaper(
+                        "paper-1",
+                        "paper_handle_abc",
+                        "Agentic Eval Benchmark",
+                        "agentic-eval.pdf"
+                ),
+                null,
+                null,
+                List.of()
+        );
+
+        conversationService.recordConversation(
+                1L,
+                "Question",
+                "Answer",
+                "conversation-1",
+                Map.of(),
+                Map.of(),
+                artifacts,
+                statePatch
+        );
+
+        ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
+        verify(conversationRepository).save(conversationCaptor.capture());
+        Conversation conversation = conversationCaptor.getValue();
+        assertTrue(conversation.getReadingArtifactsJson().contains("read agent evaluation papers"));
+        assertTrue(conversation.getReadingStatePatchJson().contains("paper_handle_abc"));
+
+        List<Map<String, Object>> messages = conversationService.toMessageHistory(List.of(conversation), false);
+        Map<String, Object> assistantMessage = messages.get(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> persistedPatch = (Map<String, Object>) assistantMessage.get("readingStatePatch");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> selectedPaper = (Map<String, Object>) persistedPatch.get("selectedPaper");
+        assertEquals("paper_handle_abc", selectedPaper.get("paperHandle"));
+        assertTrue(assistantMessage.containsKey("readingArtifacts"));
+        assertTrue(session.getConversationMemoryJson().contains("paper_handle_abc"));
+    }
+
+    @Test
+    void findLatestReadingStatePatchReturnsNewestPersistedPatch() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation older = new Conversation();
+        older.setReadingStatePatchJson("""
+                {
+                  "selectedPaper": {
+                    "paperHandle": "paper_handle_old",
+                    "title": "Old"
+                  }
+                }
+                """);
+        Conversation newer = new Conversation();
+        newer.setReadingStatePatchJson("""
+                {
+                  "selectedPaper": {
+                    "paperHandle": "paper_handle_new",
+                    "title": "New"
+                  }
+                }
+                """);
+        when(conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(1L, "conversation-1"))
+                .thenReturn(List.of(older, newer));
+
+        Optional<Map<String, Object>> patch =
+                conversationService.findLatestReadingStatePatch(1L, "conversation-1");
+
+        assertTrue(patch.isPresent());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> selectedPaper = (Map<String, Object>) patch.get().get("selectedPaper");
+        assertEquals("paper_handle_new", selectedPaper.get("paperHandle"));
+    }
+
+    @Test
+    void findLatestReadingStatePatchPrefersSessionMemory() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        ConversationSession session = new ConversationSession();
+        session.setConversationMemoryJson("""
+                {
+                  "readingStatePatch": {
+                    "selectedPaper": {
+                      "paperHandle": "paper_handle_session",
+                      "title": "Session Target"
+                    }
+                  }
+                }
+                """);
+        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L))
+                .thenReturn(Optional.of(session));
+
+        Optional<Map<String, Object>> patch =
+                conversationService.findLatestReadingStatePatch(1L, "conversation-1");
+
+        assertTrue(patch.isPresent());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> selectedPaper = (Map<String, Object>) patch.get().get("selectedPaper");
+        assertEquals("paper_handle_session", selectedPaper.get("paperHandle"));
+        verify(conversationRepository, never()).findByUserIdAndConversationIdOrderByTimestampAsc(anyLong(), anyString());
     }
 
     @Test
@@ -294,8 +428,23 @@ class ConversationServiceTest {
         assertEquals("AUTO_LIBRARY", result.get("scopeMode"));
         assertEquals(false, result.get("scopeLocked"));
         assertEquals("READY", result.get("scopeStatus"));
-        assertEquals("All searchable papers", result.get("sourceLabel"));
-        assertNull(result.get("sourcePaperCount"));
+        assertEquals("All readable papers", result.get("sourceLabel"));
+        assertEquals(0, result.get("sourcePaperCount"));
+    }
+
+    @Test
+    void createConversationSessionIncludesAutoLibraryReadablePaperCountWhenAvailable() {
+        User user = new User();
+        user.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(conversationScopeService.autoLibraryReadablePaperCount(1L)).thenReturn(30);
+        when(sessionRepository.save(any(ConversationSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Map<String, Object> result = conversationService.createConversationSession(1L);
+
+        assertEquals("AUTO_LIBRARY", result.get("scopeMode"));
+        assertEquals("All readable papers", result.get("sourceLabel"));
+        assertEquals(30, result.get("sourcePaperCount"));
     }
 
     @Test
@@ -313,6 +462,7 @@ class ConversationServiceTest {
         ReflectionTestUtils.setField(session, "createdAt", LocalDateTime.of(2026, 6, 28, 12, 0));
         ReflectionTestUtils.setField(session, "updatedAt", LocalDateTime.of(2026, 6, 28, 12, 5));
         when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(session));
+        when(conversationRepository.existsByUserIdAndConversationId(1L, "conversation-1")).thenReturn(true);
 
         List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
 
@@ -323,6 +473,81 @@ class ConversationServiceTest {
         assertEquals("READY", item.get("scopeStatus"));
         assertEquals("Custom reading set", item.get("sourceLabel"));
         assertEquals(2, item.get("sourcePaperCount"));
+    }
+
+    @Test
+    void getConversationSessionsHidesEmptySessions() {
+        ConversationSession empty = new ConversationSession();
+        ReflectionTestUtils.setField(empty, "id", 11L);
+        empty.setConversationId("empty-session");
+        empty.setTitle("新对话");
+        empty.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        ConversationSession used = new ConversationSession();
+        ReflectionTestUtils.setField(used, "id", 12L);
+        used.setConversationId("used-session");
+        used.setTitle("Reading session");
+        used.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(empty, used));
+        when(conversationRepository.existsByUserIdAndConversationId(1L, "empty-session")).thenReturn(false);
+        when(conversationRepository.existsByUserIdAndConversationId(1L, "used-session")).thenReturn(true);
+
+        List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
+
+        assertEquals(1, result.size());
+        assertEquals("used-session", result.get(0).get("conversationId"));
+    }
+
+    @Test
+    void getCurrentConversationSessionSkipsEmptyRedisSessionAndUsesNewestNonEmptyActiveSession() {
+        ConversationSession empty = new ConversationSession();
+        ReflectionTestUtils.setField(empty, "id", 11L);
+        empty.setConversationId("empty-session");
+        empty.setTitle("新对话");
+        empty.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        ConversationSession used = new ConversationSession();
+        ReflectionTestUtils.setField(used, "id", 12L);
+        used.setConversationId("used-session");
+        used.setTitle("Reading session");
+        used.setStatus(ConversationSession.SessionStatus.ACTIVE);
+
+        String redisKey = "user:1:current_conversation";
+        when(valueOperations.get(redisKey)).thenReturn("empty-session");
+        when(sessionRepository.findByConversationIdAndUserId("empty-session", 1L)).thenReturn(Optional.of(empty));
+        when(sessionRepository.findByUserIdAndStatusOrderByUpdatedAtDesc(
+                1L,
+                ConversationSession.SessionStatus.ACTIVE
+        )).thenReturn(List.of(empty, used));
+        when(conversationRepository.existsByUserIdAndConversationId(1L, "empty-session")).thenReturn(false);
+        when(conversationRepository.existsByUserIdAndConversationId(1L, "used-session")).thenReturn(true);
+
+        Optional<Map<String, Object>> result = conversationService.getCurrentConversationSession(1L);
+
+        assertTrue(result.isPresent());
+        assertEquals("used-session", result.get().get("conversationId"));
+        verify(redisTemplate).delete(redisKey);
+        verify(valueOperations).set(redisKey, "used-session", Duration.ofDays(7));
+    }
+
+    @Test
+    void getCurrentConversationSessionReturnsEmptyWhenOnlyActiveSessionsAreEmpty() {
+        ConversationSession empty = new ConversationSession();
+        ReflectionTestUtils.setField(empty, "id", 11L);
+        empty.setConversationId("empty-session");
+        empty.setTitle("新对话");
+        empty.setStatus(ConversationSession.SessionStatus.ACTIVE);
+
+        String redisKey = "user:1:current_conversation";
+        when(valueOperations.get(redisKey)).thenReturn(null);
+        when(sessionRepository.findByUserIdAndStatusOrderByUpdatedAtDesc(
+                1L,
+                ConversationSession.SessionStatus.ACTIVE
+        )).thenReturn(List.of(empty));
+        when(conversationRepository.existsByUserIdAndConversationId(1L, "empty-session")).thenReturn(false);
+
+        Optional<Map<String, Object>> result = conversationService.getCurrentConversationSession(1L);
+
+        assertTrue(result.isEmpty());
+        verify(valueOperations, never()).set(eq(redisKey), anyString(), any(Duration.class));
     }
 
     @Test
@@ -387,6 +612,138 @@ class ConversationServiceTest {
         assertEquals(false, detail.containsKey(LEGACY_EVAL_FIELD));
         assertEquals(false, detail.get("pageScreenshotAvailable"));
         assertEquals(false, detail.get("figureScreenshotAvailable"));
-        assertEquals(List.of(), detail.get("assetWarnings"));
+        assertEquals(List.of("pdf_page_visual_evidence_unavailable"), detail.get("assetWarnings"));
     }
+
+    @Test
+    void findReferenceDetailResolvesSourceQuoteThroughAuthoritativeTables() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setConversationId("conversation-1");
+        conversation.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "sourceQuoteRef": "source_quote_abc"
+                  }
+                }
+                """);
+        ConversationSourceQuote registryRow = new ConversationSourceQuote();
+        registryRow.setConversationId("conversation-1");
+        registryRow.setSourceQuoteRef("source_quote_abc");
+        PaperSourceQuote quote = new PaperSourceQuote();
+        quote.setSourceQuoteRef("source_quote_abc");
+        quote.setPaperId("paper-1");
+        quote.setModelVersion("model-v1");
+        quote.setLocationRef("page_ref_3");
+        quote.setLocationType("PAGE");
+        quote.setPageNumber(3);
+        quote.setPageEndNumber(3);
+        quote.setSectionTitle("Method");
+        quote.setContentKind("TEXT");
+        quote.setContent("The method uses a two-stage evaluator.");
+        Paper paper = new Paper();
+        paper.setPaperId("paper-1");
+        paper.setPaperTitle("Parsed Paper Title");
+        paper.setOriginalFilename("uploaded-paper.pdf");
+        when(conversationRepository.findByIdAndUserId(10L, 2L)).thenReturn(Optional.of(conversation));
+        when(sourceQuoteResolver.resolveRegisteredCurrentQuote(
+                "conversation-1",
+                "source_quote_abc"
+        )).thenReturn(new ProductReadingSourceQuoteResolver.Resolution(
+                ProductReadingSourceQuoteResolver.STATUS_OK,
+                Optional.of(quote),
+                Optional.of(paper)
+        ));
+
+        Optional<Map<String, Object>> detailOpt = conversationService.findReferenceDetail(2L, 10L, 1);
+
+        assertTrue(detailOpt.isPresent());
+        Map<String, Object> detail = detailOpt.get();
+        assertEquals(1, detail.get("referenceNumber"));
+        assertEquals("OK", detail.get("sourceQuoteResolutionStatus"));
+        assertEquals("source_quote_abc", detail.get("sourceQuoteRef"));
+        assertEquals("paper-1", detail.get("paperId"));
+        assertEquals("model-v1", detail.get("paperVersion"));
+        assertEquals("Parsed Paper Title", detail.get("paperTitle"));
+        assertEquals("uploaded-paper.pdf", detail.get("originalFilename"));
+        assertEquals("page_ref_3", detail.get("locationRef"));
+        assertEquals("PAGE", detail.get("locationType"));
+        assertEquals(3, detail.get("pageNumber"));
+        assertEquals("Method", detail.get("sectionTitle"));
+        assertEquals("TEXT", detail.get("contentKind"));
+        assertEquals("TEXT", detail.get("sourceKind"));
+        assertEquals("The method uses a two-stage evaluator.", detail.get("anchorText"));
+        assertEquals("The method uses a two-stage evaluator.", detail.get("matchedChunkText"));
+        assertEquals("The method uses a two-stage evaluator.", detail.get("evidenceSnippet"));
+        assertEquals("PDF_PENDING_ASSETS", detail.get("evidenceAssetLevel"));
+        assertEquals(false, detail.get("pdfEvidenceAvailable"));
+        assertEquals(List.of("pdf_page_visual_evidence_unavailable"), detail.get("assetWarnings"));
+    }
+
+    @Test
+    void findReferenceDetailFailsClosedWhenMappedSourceQuoteIsNotRegisteredForConversation() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setConversationId("conversation-1");
+        conversation.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "sourceQuoteRef": "source_quote_abc",
+                    "paperId": "stale-paper"
+                  }
+                }
+                """);
+        when(conversationRepository.findByIdAndUserId(10L, 2L)).thenReturn(Optional.of(conversation));
+        when(sourceQuoteResolver.resolveRegisteredCurrentQuote(
+                "conversation-1",
+                "source_quote_abc"
+        )).thenReturn(ProductReadingSourceQuoteResolver.Resolution.status(
+                ProductReadingSourceQuoteResolver.STATUS_NOT_IN_CONVERSATION
+        ));
+
+        Optional<Map<String, Object>> detailOpt = conversationService.findReferenceDetail(2L, 10L, 1);
+
+        assertTrue(detailOpt.isEmpty());
+        verify(sourceQuoteResolver).resolveRegisteredCurrentQuote("conversation-1", "source_quote_abc");
+    }
+
+    @Test
+    void findReferenceDetailFailsClosedWhenSourceQuoteIsFromOlderReadingModelVersion() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setConversationId("conversation-1");
+        conversation.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "sourceQuoteRef": "source_quote_abc"
+                  }
+                }
+                """);
+        ConversationSourceQuote registryRow = new ConversationSourceQuote();
+        registryRow.setConversationId("conversation-1");
+        registryRow.setSourceQuoteRef("source_quote_abc");
+        PaperSourceQuote quote = new PaperSourceQuote();
+        quote.setSourceQuoteRef("source_quote_abc");
+        quote.setPaperId("paper-1");
+        quote.setModelVersion("model-v1");
+        quote.setLocationRef("page_ref_3");
+        quote.setLocationType("PAGE");
+        quote.setContentKind("TEXT");
+        quote.setContent("Stale quote content.");
+        when(conversationRepository.findByIdAndUserId(10L, 2L)).thenReturn(Optional.of(conversation));
+        when(sourceQuoteResolver.resolveRegisteredCurrentQuote(
+                "conversation-1",
+                "source_quote_abc"
+        )).thenReturn(ProductReadingSourceQuoteResolver.Resolution.status(
+                ProductReadingSourceQuoteResolver.STATUS_UNAVAILABLE
+        ));
+
+        Optional<Map<String, Object>> detailOpt = conversationService.findReferenceDetail(2L, 10L, 1);
+
+        assertTrue(detailOpt.isEmpty());
+    }
+
 }

@@ -18,6 +18,29 @@ public class ProductReadingToolRegistry {
     private static final String LOCATION_TOOL_NAME = "find_reading_locations";
     private static final String READ_TOOL_NAME = "read_locations";
     private static final String TRACE_TOOL_NAME = "trace_source_quotes";
+    private static final List<String> LOCATION_QUERY_PLAN_INTENTS = List.of(
+            "METHOD",
+            "EXPERIMENT_SETUP",
+            "MAIN_CLAIM",
+            "LIMITATION",
+            "DATASET",
+            "BASELINE",
+            "ABLATION",
+            "METRIC",
+            "GENERAL"
+    );
+    private static final List<String> LOCATION_QUERY_PLAN_SECTION_ROLES = List.of(
+            "ABSTRACT",
+            "INTRODUCTION",
+            "BACKGROUND",
+            "METHOD",
+            "EXPERIMENT",
+            "RESULT",
+            "DISCUSSION",
+            "LIMITATION",
+            "CONCLUSION",
+            "APPENDIX"
+    );
 
     private final ProductReadingToolAdapter adapter;
     private final ReadingToolArgumentValidator validator;
@@ -161,8 +184,8 @@ public class ProductReadingToolRegistry {
         }
         return adapter.findReadingLocations(
                 validator.stringList(arguments.get("paperHandles")),
-                stringValue(arguments.get("queryText")),
-                validator.locationTypes(arguments.get("locationTypes")),
+                validator.locationQueryText(arguments),
+                validator.effectiveLocationTypes(arguments),
                 context
         );
     }
@@ -243,15 +266,28 @@ public class ProductReadingToolRegistry {
     private ToolDefinition findReadingLocationsTool() {
         return new ToolDefinition(
                 LOCATION_TOOL_NAME,
-                "Find candidate reading locations inside explicit READY paperHandles. Returns locationRef candidates only; previews and refs are not Source Quotes.",
+                "Find candidate reading locations inside explicit READY paperHandles. Requires queryPlan: a caller-authored typed retrieval plan with paper-language queryText, intent, languages, sectionRoles, and optional locationTypes. Returns locationRef candidates only; previews and refs are not Source Quotes.",
                 objectSchema(Map.of(
                         "paperHandles", arrayStringSchema("Opaque paper handles returned by PaperLoom tools or clicked paper rows."),
-                        "queryText", stringSchema("Caller-authored in-paper location search text."),
+                        "queryPlan", objectSchema(Map.of(
+                                "queryText", stringSchema("Caller-authored retrieval text in the paper's language."),
+                                "intent", enumStringSchema("Typed location intent declared by the caller, not inferred by Java routing.", LOCATION_QUERY_PLAN_INTENTS),
+                                "sourceLanguage", stringSchema("Required language of the user's original request."),
+                                "retrievalLanguage", stringSchema("Required language used for retrieval text."),
+                                "sectionRoles", arrayEnumSchema(
+                                        "Required expected paper section roles from the typed retrieval plan.",
+                                        LOCATION_QUERY_PLAN_SECTION_ROLES
+                                ),
+                                "locationTypes", arrayEnumSchema(
+                                        "Optional coarse reading-location type filter from the typed retrieval plan.",
+                                        List.of("PAGE", "SECTION", "TABLE", "FIGURE")
+                                )
+                        ), List.of("queryText", "intent", "sourceLanguage", "retrievalLanguage", "sectionRoles")),
                         "locationTypes", arrayEnumSchema(
-                                "Optional coarse reading-location type filter.",
+                                "Optional coarse reading-location type filter. Must match queryPlan.locationTypes when both are supplied.",
                                 List.of("PAGE", "SECTION", "TABLE", "FIGURE")
                         )
-                ), List.of("paperHandles", "queryText"))
+                ), List.of("paperHandles", "queryPlan"))
         );
     }
 

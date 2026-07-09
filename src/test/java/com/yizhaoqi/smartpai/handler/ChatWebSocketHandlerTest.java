@@ -156,6 +156,24 @@ class ChatWebSocketHandlerTest {
     }
 
     @Test
+    void structuredChatPayloadPreservesTraceSourceQuoteReadingAction() {
+        ChatHandler chatHandler = mock(ChatHandler.class);
+        ChatWebSocketHandler handler = handler(chatHandler);
+        WebSocketSession session = session();
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("""
+                        {"type":"chat","conversationId":"conversation-1","message":"解释这个引用","referenceFocus":{"sourceQuoteRef":"source_quote_abc","readingAction":"TRACE_SOURCE_QUOTE"}}
+                        """)
+        );
+
+        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
+        assertEquals("source_quote_abc", request.referenceFocus().sourceQuoteRef());
+        assertEquals("TRACE_SOURCE_QUOTE", request.referenceFocus().readingAction());
+    }
+
+    @Test
     void structuredChatPayloadIgnoresInvalidClickedPaperHandles() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);
