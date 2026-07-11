@@ -1,28 +1,23 @@
-# Harness Golden Data
+# Harness Golden Data V2
 
-This directory contains the runnable source-of-truth smoke dataset for the evidence-first Golden
-Case schema.
+Canonical entry point: `research/golden-data/manifest.yaml`.
 
-Canonical entry point:
+Authored data has three parts:
 
-```text
-research/golden-data/manifest.yaml
-```
+- `manifest.yaml`: paper-pack and case-file index.
+- `paper-packs/*.yaml`: paper identities, citation edges, and stable evidence anchors.
+- `cases/*.yaml`: message history plus observable outcome, paper, evidence, fact, and citation expectations.
 
-Planning and authoring aids:
+Runtime stages and tool counts are deliberately not golden expectations.
 
-```text
-research/golden-data/artifact-contracts.yaml
-research/golden-data/seed-60-selection.yaml
-research/golden-data/paper-packs/seed-60-paper-pack-manifest.yaml
-```
-
-Commands after implementation:
+Commands:
 
 ```bash
-mvn -q -Dtest=GoldenDatasetCommittedDataTest test
-mvn -q -Dtest=GoldenDatasetCliTest test
+python3 -m harness_py validate
+python3 -m harness_py audit
+python3 -m harness_py agent-run --out /tmp/paismart-golden-v2-live
 ```
 
-Generated compatibility JSONL is not canonical. Regenerate it from `manifest.yaml` with the golden
-dataset CLI when a downstream flat `RagBenchmarkCase` runner needs it.
+`validate` is deterministic scorer validation. `audit` verifies parser coverage. `agent-run` evaluates the real MiniMax-backed harness. Their failures are reported separately.
+
+The Seed-60 files are planning documents, not executable cases.
