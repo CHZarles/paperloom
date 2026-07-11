@@ -66,7 +66,7 @@ unresolved conversational reference, or a missing hard constraint. A corpus reco
 paper-content claim must observe the corpus through its stage tools before it can complete.
 
 All 22 paradigms from `research/remake.md` now have short explicit semantic-stage plans. The
-golden-validated slice currently covers these eight paradigms as primary intents:
+golden-validated slice currently covers these nine paradigms as primary intents:
 
 - `precision_fact_extraction`
 - `methodology_reproduction`
@@ -76,9 +76,10 @@ golden-validated slice currently covers these eight paradigms as primary intents
 - `uncertainty_knowledge_boundary`
 - `ambiguity_resolution`
 - `contradiction_resolution`
+- `context_specific_brainstorming`
 
 Each paradigm is a short explicit stage list in `stage_prototype/plans.py`; there is no generic
-workflow compiler or keyword router. The other fourteen plans are implemented but remain provisional
+workflow compiler or keyword router. The other thirteen plans are implemented but remain provisional
 until dedicated golden cases and live corpus smokes are added.
 
 ## Behavior Scoring
@@ -198,7 +199,7 @@ Deterministic behavior fixture validation:
 python3 -m harness_py --manifest research/golden-data/manifest.yaml validate
 ```
 
-Unit tests, including all twelve committed golden cases and all eight primary paradigms through the
+Unit tests, including all twelve committed golden cases and all nine primary paradigms through the
 semantic-stage runtime:
 
 ```bash

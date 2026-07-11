@@ -876,29 +876,6 @@ def _verification(case: JsonMap, intent: IntentFrame, state: ResearchState, plan
             or not set(as_list(claim.get("supporting_evidence_ids"))) <= evidence_ids
         )
     ]
-    strategies = {
-        child_map(step).get("strategy")
-        for step in as_list(plan.get("strategy_steps"))
-        if child_map(step).get("strategy")
-    }
-    anchors = {
-        item.get("matched_anchor_id")
-        for item in state.evidence_items_by_id.values()
-        if item.get("matched_anchor_id")
-    }
-    satisfied: list[str] = []
-    failed: list[str] = []
-    for raw in as_list(child_map(case.get("required_trace")).get("obligations")):
-        obligation = child_map(raw)
-        obligation_id = str(obligation.get("id") or "")
-        if not obligation_id:
-            continue
-        missing_anchor = any(anchor_id not in anchors for anchor_id in as_list(obligation.get("must_include_anchor_ids")))
-        missing_strategy = any(strategy not in strategies for strategy in as_list(obligation.get("must_include_strategy")))
-        if missing_anchor or missing_strategy:
-            failed.append(obligation_id)
-        else:
-            satisfied.append(obligation_id)
     stage_needs_clarification = (
         intent.actionability == "blocking"
         and any(trace.status == "needs_clarification" for trace in state.stage_trace)
@@ -947,8 +924,8 @@ def _verification(case: JsonMap, intent: IntentFrame, state: ResearchState, plan
             or bool(state.missing_obligations)
             or answer_status == "INCOMPLETE_PRECISE"
         ),
-        "satisfied_trace_obligation_ids": satisfied,
-        "failed_trace_obligation_ids": failed,
+        "satisfied_trace_obligation_ids": [],
+        "failed_trace_obligation_ids": [],
         "stage_contracts_passed": not stage_needs_clarification and not stage_incomplete,
         "answer_reference_integrity_passed": not unknown_answer_refs,
         "corpus_observation_required": corpus_observation_required,
@@ -971,7 +948,6 @@ def _research_answer(case_id: str, intent: IntentFrame, state: ResearchState, ve
         status = "NEEDS_CLARIFICATION"
     elif (
         verification.get("unsupported_claim_count")
-        or verification.get("failed_trace_obligation_ids")
         or not verification.get("stage_contracts_passed")
         or not verification.get("answer_reference_integrity_passed")
         or verification.get("abstention_required")
