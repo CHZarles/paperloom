@@ -17,6 +17,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(9, len(self.dataset.cases))
         self.assertEqual(5, len(self.dataset.paper_records_by_id))
         self.assertEqual(7, len(self.dataset.anchors_by_id))
+        self.assertEqual(5, len(self.dataset.reading_models_by_paper_id))
         for case in self.dataset.cases:
             self.assertEqual("harness-golden-case/v2", case["schema_version"])
             self.assertEqual("user", case["messages"][-1]["role"])

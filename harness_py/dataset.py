@@ -258,8 +258,12 @@ def _load_reading_models(root: Path, paper_records: dict[str, JsonMap], warnings
         if not path.is_absolute():
             path = root / path
         if not path.exists():
-            warnings.append(f"paper {paper_id} reading model missing: {path}")
-            continue
+            matches = list(root.glob(f"data/golden/*/reading-models/{paper_id}.reading-model.json"))
+            if len(matches) == 1:
+                path = matches[0]
+            else:
+                warnings.append(f"paper {paper_id} reading model missing: {path}")
+                continue
         with path.open("r", encoding="utf-8") as handle:
             model = json.load(handle)
         if model.get("paper_id") != paper_id:
