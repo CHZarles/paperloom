@@ -186,3 +186,78 @@ cases:
         - text: "The supported chain is GPT-3 to GPT-2 to Attention Is All You Need; no direct GPT-3-to-Transformer citation is asserted."
           evidence: [gpt3_uses_gpt2_architecture, gpt2_transformer_language_model]
       citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: bert_choice_followup_001
+    split: stress
+    paradigm: context_specific_brainstorming
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Help me choose one paper to understand bidirectional Transformer encoders."
+      - role: assistant
+        content: "Choose one: (1) Attention Is All You Need, (2) BERT, or (3) GPT-2."
+      - role: user
+        content: "The second."
+    expect:
+      outcome: answered
+      papers:
+        required: [bert_2018]
+      evidence:
+        required: [bert_transformer_encoder_background]
+      facts:
+        transformer_role: bidirectional Transformer encoder
+      citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: transformer_bert_confirmation_followup_001
+    split: stress
+    paradigm: deep_comparison
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Compare the original Transformer with BERT."
+      - role: assistant
+        content: "Should I compare architecture role, directionality, and training objective?"
+      - role: user
+        content: "Yes, that is my choice."
+    expect:
+      outcome: answered
+      papers:
+        required: [attention_is_all_you_need_2017, bert_2018]
+      evidence:
+        required:
+          - transformer_encoder_decoder_architecture
+          - bert_transformer_encoder_background
+          - bert_masked_lm_pretraining
+      claims:
+        - text: "The comparison covers architecture role, directionality, and training objective."
+          evidence:
+            - transformer_encoder_decoder_architecture
+            - bert_transformer_encoder_background
+            - bert_masked_lm_pretraining
+      citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: adam_constraint_refinement_followup_001
+    split: stress
+    paradigm: precision_fact_extraction
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Give me Adam beta2."
+      - role: assistant
+        content: "Do you mean Adam's recommended default or the value used by the Transformer paper?"
+      - role: user
+        content: "The Transformer value."
+    expect:
+      outcome: answered
+      papers:
+        required: [attention_is_all_you_need_2017]
+        forbidden: [adam_2014]
+      evidence:
+        required: [transformer_adam_training_params_span]
+        forbidden: [adam_default_beta2_span]
+      facts:
+        beta2: "0.98"
+      citations: required

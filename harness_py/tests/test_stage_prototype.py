@@ -34,6 +34,7 @@ GOLDEN_PARADIGMS = {
     "uncertainty_knowledge_boundary",
     "ambiguity_resolution",
     "contradiction_resolution",
+    "context_specific_brainstorming",
 }
 
 ALL_REMAKE_PARADIGMS = {
@@ -960,6 +961,20 @@ class ParadigmPlanTest(unittest.TestCase):
                         [stage["stage_name"] for stage in run["stage_trace"]],
                     )
 
+    def test_live_golden_runner_passes_prior_messages_to_turn_decision(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest.yaml")
+        case = next(case for case in dataset.cases if case["id"] == "bert_choice_followup_001")
+        model = _HistoryCaptureModel(dataset, case)
+
+        run = LiveResearchChatHarness(model).run_case(dataset, case)
+
+        context = model.turn_payloads[0]["conversation_context"]
+        self.assertEqual("The second.", model.turn_payloads[0]["user_message"])
+        self.assertEqual(2, len(context["recent_messages"]))
+        self.assertEqual("user", context["recent_messages"][0]["role"])
+        self.assertEqual("assistant", context["recent_messages"][1]["role"])
+        self.assertEqual("COMPLETED", run["status"])
+
     def test_all_twenty_two_plans_execute_through_the_generic_runtime(self) -> None:
         dataset = _synthetic_dataset()
         base_case = dataset.cases[0]
@@ -1636,6 +1651,8 @@ class _GoldenCaseStageModel(ChatModel):
             "retrieve_each_side",
         }:
             return self._evidence_stage(stage_name, tool_messages)
+        if stage_name == "select_and_ground_candidates":
+            return self._candidate_evidence_stage(tool_messages)
         if stage_name == "formulate_clarification":
             return ChatTurn(content=json.dumps({
                 "status": "needs_clarification",
@@ -1685,6 +1702,7 @@ class _GoldenCaseStageModel(ChatModel):
             "render_genealogy",
             "link_supported_hops",
             "present_conflict_resolution",
+            "recommend",
         }:
             return self._answer_stage(stage_name, messages)
         return _stage_result(state_values={stage_name: "completed"})
@@ -1745,6 +1763,40 @@ class _GoldenCaseStageModel(ChatModel):
                     accepted.append(str(child_map(item).get("evidence_id")))
         return _stage_result(accepted_evidence_ids=sorted(set(accepted)))
 
+    def _candidate_evidence_stage(self, tool_messages: list[dict]) -> ChatTurn:
+        if not tool_messages:
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="search_candidates",
+                name="search_paper_candidates",
+                arguments={"query_text": "", "limit": 100},
+            )])
+        if tool_messages[-1].get("name") == "search_paper_candidates":
+            anchor_id = self.required_anchor_ids[0]
+            anchor = child_map(self.dataset.anchors_by_id[anchor_id])
+            parser = child_map(anchor.get("parser_evidence"))
+            selector = child_map(anchor.get("selector"))
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="find_candidate_evidence",
+                name="find_reading_locations",
+                arguments={
+                    "query_text": str(parser.get("matched_text") or selector.get("exact_text") or anchor_id),
+                    "paper_ids": self._required_paper_ids(),
+                    "top_k": len(self._required_paper_ids()),
+                },
+            )])
+        if tool_messages[-1].get("name") == "find_reading_locations":
+            return _read_disclosed_locations(tool_messages, "read_candidate_evidence")
+        accepted = [
+            str(child_map(item).get("evidence_id"))
+            for message in tool_messages
+            for item in as_list(json.loads(message["content"]).get("items"))
+            if child_map(item).get("matched_anchor_id") in self.required_anchor_ids
+        ]
+        return _stage_result(
+            selected_paper_ids=self._required_paper_ids(),
+            accepted_evidence_ids=sorted(set(accepted)),
+        )
+
     def _answer_stage(self, stage_name: str, messages: list[dict]) -> ChatTurn:
         state = json.loads(messages[-1]["content"])["research_state"]
         evidence_by_anchor = {
@@ -1798,6 +1850,17 @@ class _GoldenCaseStageModel(ChatModel):
 
     def _required_paper_ids(self) -> list[str]:
         return [str(item) for item in as_list(child_map(case_expect(self.case).get("papers")).get("required"))]
+
+
+class _HistoryCaptureModel(_GoldenCaseStageModel):
+    def __init__(self, dataset: GoldenDataset, case: dict):
+        super().__init__(dataset, case)
+        self.turn_payloads: list[dict] = []
+
+    def complete_required_tool(self, messages, tools, required_tool_name, max_tokens):
+        if required_tool_name == "submit_turn_decision":
+            self.turn_payloads.append(json.loads(messages[-1]["content"]))
+        return self.complete(messages, tools, max_tokens)
 
 
 class _GenericParadigmStageModel(ChatModel):
