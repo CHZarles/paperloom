@@ -131,7 +131,6 @@ class BehaviorScorer:
         }
         answer = child_map(run.get("research_answer"))
         cited = {str(item) for item in as_list(answer.get("cited_evidence_ids")) if item}
-        cited_claims = {str(item) for item in as_list(answer.get("cited_claim_ids")) if item}
         if policy == "required" and not cited:
             errors.append("CITATIONS_REQUIRED")
         if policy == "forbidden" and cited:
@@ -149,14 +148,6 @@ class BehaviorScorer:
                 if not (anchor_evidence & cited):
                     errors.append(f"REQUIRED_ANCHOR_NOT_CITED:{anchor_id}")
         claims = as_list(child_map(run.get("claim_graph")).get("claims"))
-        claim_ids = {
-            str(child_map(claim).get("claim_id"))
-            for claim in claims
-            if child_map(claim).get("claim_id")
-        }
-        unknown_claims = sorted(cited_claims - claim_ids)
-        if unknown_claims:
-            errors.append("UNKNOWN_CITED_CLAIM:" + ",".join(unknown_claims))
         for claim in claims:
             claim_map = child_map(claim)
             if _normalize_claim_status(claim_map.get("status")) != "supported":

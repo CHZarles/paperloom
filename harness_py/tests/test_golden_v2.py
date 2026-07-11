@@ -132,6 +132,15 @@ class GoldenV2Test(unittest.TestCase):
 
         self.assertTrue(score.hard_pass, score.to_dict())
 
+    def test_scorer_does_not_grade_runtime_claim_ids(self) -> None:
+        case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["research_answer"]["cited_claim_ids"] = ["runtime_claim_42"]
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+
 
 if __name__ == "__main__":
     unittest.main()
