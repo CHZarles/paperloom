@@ -5,21 +5,19 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from .dataset import load_artifact_contracts, load_dataset
-from .agent_harness import ResearchAgentHarness
+from .dataset import load_dataset
 from .conversation import ConversationState
-from .harness import ContractDrivenHarness
+from .golden_fixture import GoldenFixtureHarness
 from .live_chat import LiveResearchChatHarness
 from .llm import MiniMaxChatModel
 from .product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
 from .provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
-from .scoring import StructuralTraceScorer, TraceScorer
+from .scoring import BehaviorScorer
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Python research harness prototype.")
     parser.add_argument("--manifest", default="research/golden-data/manifest.yaml")
-    parser.add_argument("--contracts", default="research/golden-data/artifact-contracts.yaml")
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("validate", help="Load the dataset and validate emitted traces in memory.")
     run_parser = subcommands.add_parser("run", help="Run all cases and write frontend-readable JSON artifacts.")
@@ -60,18 +58,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "validate":
         dataset = load_dataset(args.manifest)
-        contracts = load_artifact_contracts(args.contracts)
-        harness = ContractDrivenHarness()
+        harness = GoldenFixtureHarness()
         runs = [harness.run_case(dataset, case) for case in dataset.cases]
-        report = TraceScorer(contracts).score_dataset(dataset, runs)
+        report = BehaviorScorer().score_dataset(dataset, runs)
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0 if report["failed_count"] == 0 else 1
     if args.command == "run":
         dataset = load_dataset(args.manifest)
-        contracts = load_artifact_contracts(args.contracts)
-        harness = ContractDrivenHarness()
+        harness = GoldenFixtureHarness()
         runs = [harness.run_case(dataset, case) for case in dataset.cases]
-        report = TraceScorer(contracts).score_dataset(dataset, runs)
+        report = BehaviorScorer().score_dataset(dataset, runs)
         out = Path(args.out)
         out.mkdir(parents=True, exist_ok=True)
         for run in runs:
@@ -85,11 +81,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "agent-run":
         dataset = load_dataset(args.manifest)
         provider, model = _live_model(args.provider_source)
-        harness = ResearchAgentHarness(model, max_turns=args.max_turns, max_completion_tokens=args.max_tokens)
+        harness = LiveResearchChatHarness(model, max_turns=args.max_turns, max_completion_tokens=args.max_tokens)
         selected = set(args.case_id)
         cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
         runs = [harness.run_case(dataset, case) for case in cases]
-        report = StructuralTraceScorer().score_dataset(
+        report = BehaviorScorer().score_dataset(
             dataset if not selected else _dataset_with_cases(dataset, cases),
             runs,
         )
@@ -270,7 +266,8 @@ def _terminal_state_summary(state: ConversationState) -> dict:
         "selected_paper_ids": state.selected_paper_ids,
         "selected_evidence_ids": state.selected_evidence_ids,
         "message_count": len(state.message_history),
-        "unresolved_choice_count": len(state.unresolved_choices),
+        "active_task": state.active_task,
+        "pending_interaction": state.pending_interaction,
     }
 
 
@@ -306,13 +303,15 @@ def _write_child_artifacts(case_dir: Path, run: dict) -> None:
     for field in (
         "intent_frame",
         "retrieval_plan",
+        "stage_trace",
         "evidence_ledger",
         "claim_graph",
         "reasoning_artifacts",
         "verification_pass",
         "research_answer",
     ):
-        _write_json(case_dir / f"{field}.json", run[field])
+        value = run.get(field, []) if field == "stage_trace" else run[field]
+        _write_json(case_dir / f"{field}.json", value)
 
 
 def _write_json(path: Path, value: object) -> None:

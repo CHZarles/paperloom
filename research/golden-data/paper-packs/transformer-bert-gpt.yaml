@@ -1,202 +1,127 @@
+schema_version: harness-paper-pack/v2
 id: transformer_bert_gpt
-title: "Transformer / BERT / GPT Pack"
-purpose: "Test original-paper fact extraction, comparison, genealogy, contradiction arbitration, ambiguous attention references, and knowledge-boundary abstention."
-capability_tags:
-  - precision_fact_extraction
-  - methodology_reproduction
-  - deep_comparison
-  - association_influence_genealogy
-  - contradiction_resolution
-  - ambiguity_resolution
-  - uncertainty_knowledge_boundary
+
 papers:
-  - paper_id: attention_is_all_you_need_2017
+  - id: attention_is_all_you_need_2017
     role: target
-  - paper_id: adam_2014
+    title: "Attention Is All You Need"
+    authors: ["Ashish Vaswani", "Noam Shazeer"]
+    year: 2017
+    venue: NeurIPS
+    arxiv_id: "1706.03762"
+    version_label: "arXiv v7 (2023-08-02) / NeurIPS 2017"
+    source_url: "https://arxiv.org/pdf/1706.03762v7"
+  - id: adam_2014
     role: predecessor
-  - paper_id: bert_2018
+    title: "Adam: A Method for Stochastic Optimization"
+    authors: ["Diederik P. Kingma", "Jimmy Ba"]
+    year: 2014
+    venue: ICLR
+    arxiv_id: "1412.6980"
+    version_label: "arXiv v9 / ICLR 2015 camera-ready"
+    source_url: "https://arxiv.org/pdf/1412.6980v9"
+  - id: bert_2018
     role: successor
-  - paper_id: gpt2_2019
+    title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    authors: ["Jacob Devlin", "Ming-Wei Chang"]
+    year: 2018
+    venue: NAACL
+    arxiv_id: "1810.04805"
+    version_label: "arXiv v2 (2019-05-24) / NAACL 2019"
+    source_url: "https://arxiv.org/pdf/1810.04805v2"
+  - id: gpt2_2019
     role: successor
-  - paper_id: gpt3_2020
+    title: "Language Models are Unsupervised Multitask Learners"
+    authors: ["Alec Radford"]
+    year: 2019
+    venue: "OpenAI technical report"
+    version_label: "OpenAI technical report PDF (2019-02)"
+    source_url: "https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf"
+  - id: gpt3_2020
     role: hard_distractor
-paper_records:
-  - paper_id: attention_is_all_you_need_2017
-    identity:
-      title: "Attention Is All You Need"
-      authors:
-        - "Ashish Vaswani"
-        - "Noam Shazeer"
-      year: 2017
-      venue: "NeurIPS"
-      arxiv_id: "1706.03762"
-      version_label: "arXiv/camera-ready"
-    source_assets:
-      parser: "paperloom-reading-model"
-    ingest_expectations:
-      requires_pdf_visual_assets: true
-      requires_tables: true
-      requires_figures: true
-      requires_formulas: true
-    metadata_quality:
-      identity_status: "verified"
-  - paper_id: adam_2014
-    identity:
-      title: "Adam: A Method for Stochastic Optimization"
-      authors:
-        - "Diederik P. Kingma"
-        - "Jimmy Ba"
-      year: 2014
-      venue: "ICLR"
-      arxiv_id: "1412.6980"
-      version_label: "arXiv/camera-ready"
-    metadata_quality:
-      identity_status: "verified"
-  - paper_id: bert_2018
-    identity:
-      title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
-      authors:
-        - "Jacob Devlin"
-        - "Ming-Wei Chang"
-      year: 2018
-      venue: "NAACL"
-      arxiv_id: "1810.04805"
-      version_label: "arXiv/camera-ready"
-    metadata_quality:
-      identity_status: "verified"
-  - paper_id: gpt2_2019
-    identity:
-      title: "Language Models are Unsupervised Multitask Learners"
-      authors:
-        - "Alec Radford"
-      year: 2019
-      venue: "OpenAI technical report"
-      version_label: "technical report"
-    metadata_quality:
-      identity_status: "verified"
-  - paper_id: gpt3_2020
-    identity:
-      title: "Language Models are Few-Shot Learners"
-      authors:
-        - "Tom B. Brown"
-      year: 2020
-      venue: "NeurIPS"
-      arxiv_id: "2005.14165"
-      version_label: "arXiv/camera-ready"
-    metadata_quality:
-      identity_status: "verified"
+    title: "Language Models are Few-Shot Learners"
+    authors: ["Tom B. Brown"]
+    year: 2020
+    venue: NeurIPS
+    arxiv_id: "2005.14165"
+    version_label: "arXiv v4 (2020-07-22) / NeurIPS 2020"
+    source_url: "https://arxiv.org/pdf/2005.14165v4"
+
 citation_edges:
   - from_paper_id: bert_2018
     to_paper_id: attention_is_all_you_need_2017
-    edge_type: "uses_transformer_encoder"
+    edge_type: uses_transformer_encoder
     evidence_anchor_id: bert_transformer_encoder_background
   - from_paper_id: gpt3_2020
     to_paper_id: gpt2_2019
-    edge_type: "uses_gpt2_style_architecture"
+    edge_type: uses_gpt2_style_architecture
     evidence_anchor_id: gpt3_uses_gpt2_architecture
   - from_paper_id: gpt2_2019
     to_paper_id: attention_is_all_you_need_2017
-    edge_type: "uses_transformer_decoder_language_model"
+    edge_type: uses_transformer_decoder_language_model
     evidence_anchor_id: gpt2_transformer_language_model
-evidence_anchors:
-  - anchor_id: transformer_encoder_decoder_architecture
-    paper_id: attention_is_all_you_need_2017
-    role: supports
-    element:
-      type: abstract
-      page: 1
-      location_hint: "Transformer abstract"
-    selector:
-      regex: "encoder-decoder architecture"
-    normalized_facts:
-      architecture_role: "encoder-decoder architecture"
-  - anchor_id: transformer_adam_training_params_span
-    paper_id: attention_is_all_you_need_2017
-    role: supports
-    element:
-      type: paragraph
-      section: "Training"
-      page: 7
-      location_hint: "Optimizer hyperparameters"
-    selector:
-      exact_text: "We used the Adam optimizer with beta1 = 0.9, beta2 = 0.98 and epsilon = 10^-9."
-      regex: "Adam optimizer.*beta_?1\\s*=\\s*0\\.9.*beta_?2\\s*=\\s*0\\.98.*epsilon\\s*=\\s*(10\\^-9|1e-9)"
-    normalized_facts:
+
+anchors:
+  - id: transformer_encoder_decoder_architecture
+    paper: attention_is_all_you_need_2017
+    type: abstract
+    page: 1
+    quote: "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder."
+    facts:
+      architecture_role: encoder-decoder architecture
+  - id: transformer_adam_training_params_span
+    paper: attention_is_all_you_need_2017
+    type: paragraph
+    page: 7
+    section: "5.3 Optimizer"
+    quote: "We used the Adam optimizer"
+    facts:
       adam_beta1: "0.9"
       adam_beta2: "0.98"
       adam_epsilon: "1e-9"
-    asset_requirement:
-      text: "required"
-      pdf_page: "required"
-    failure_if_missing:
-      - "The answer may substitute default Adam values."
-  - anchor_id: adam_default_beta2_span
-    paper_id: adam_2014
+  - id: adam_default_beta2_span
+    paper: adam_2014
     role: qualifies
-    element:
-      type: paragraph
-      section: "Algorithm"
-      page: 2
-      location_hint: "Default Adam hyperparameters"
-    selector:
-      regex: "Good default settings.*beta_?1.*0\\.9.*beta_?2.*0\\.999"
-    normalized_facts:
+    type: algorithm
+    page: 2
+    section: Algorithm
+    quote: "Good default settings for the tested machine learning problems are"
+    facts:
+      adam_default_alpha: "0.001"
       adam_default_beta1: "0.9"
       adam_default_beta2: "0.999"
-    asset_requirement:
-      text: "required"
-    failure_if_missing:
-      - "The contradiction case cannot distinguish optimizer defaults from Transformer experiment settings."
-  - anchor_id: bert_transformer_encoder_background
-    paper_id: bert_2018
+      adam_default_epsilon: "1e-8"
+  - id: bert_transformer_encoder_background
+    paper: bert_2018
     role: background
-    element:
-      type: abstract
-      page: 1
-      location_hint: "BERT abstract"
-    selector:
-      regex: "bidirectional Transformer"
-    normalized_facts:
-      architecture_role: "bidirectional Transformer encoder"
-  - anchor_id: bert_masked_lm_pretraining
-    paper_id: bert_2018
-    role: supports
-    element:
-      type: paragraph
-      section: "Pre-training BERT"
-      page: 4
-      location_hint: "Masked LM objective"
-    selector:
-      regex: "Masked LM"
-    normalized_facts:
-      training_objective: "masked language modeling"
-  - anchor_id: gpt2_transformer_language_model
-    paper_id: gpt2_2019
-    role: supports
-    element:
-      type: paragraph
-      section: "Model"
-      page: 3
-      location_hint: "Transformer language model description"
-    selector:
-      regex: "Transformer.*language model"
-    normalized_facts:
-      architecture_role: "Transformer language model"
-      training_objective: "left-to-right language modeling"
-  - anchor_id: gpt3_uses_gpt2_architecture
-    paper_id: gpt3_2020
-    role: supports
-    element:
-      type: paragraph
-      section: "Approach"
-      page: 8
-      location_hint: "GPT-3 architecture follows GPT-2"
-    selector:
-      regex: "same model and architecture as GPT-2"
-    normalized_facts:
-      architecture_lineage: "GPT-3 uses the same model and architecture family as GPT-2"
-known_traps:
-  - "Default Adam beta2=0.999 is a distractor for Transformer training hyperparameters."
-  - "The phrase attention paper may mean several different papers."
-  - "BERT's Transformer encoder role must not be collapsed with the original encoder-decoder architecture."
-  - "GPT-3 architecture claims should be routed through the GPT-2 lineage anchor, not invented from memory."
+    type: paragraph
+    page: 3
+    section: "3 BERT"
+    quote: "multi-layer bidirectional Transformer encoder"
+    facts:
+      architecture_role: bidirectional Transformer encoder
+  - id: bert_masked_lm_pretraining
+    paper: bert_2018
+    type: paragraph
+    page: 4
+    section: "3.1 Pre-training BERT"
+    quote: "masked LM"
+    facts:
+      training_objective: masked language modeling
+  - id: gpt2_transformer_language_model
+    paper: gpt2_2019
+    type: paragraph
+    page: 4
+    section: "2.3. Model"
+    quote: "We use a Transformer (Vaswani et al., 2017) based architecture for our LMs"
+    facts:
+      architecture_role: Transformer language model
+      training_objective: left-to-right language modeling
+  - id: gpt3_uses_gpt2_architecture
+    paper: gpt3_2020
+    type: paragraph
+    page: 8
+    section: "2.1 Model and Architectures"
+    quote: "We use the same model and architecture as"
+    facts:
+      architecture_lineage: GPT-3 uses the same model and architecture family as GPT-2

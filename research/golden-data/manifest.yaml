@@ -1,22 +1,6 @@
-schema_version: harness-golden-data/v1
-dataset_id: harness_golden_seed_smoke
-title: "Harness Golden Seed Smoke"
-description: "Runnable smoke dataset for Golden Case loading, validation, projection, and trace scoring."
-created_at: "2026-07-08"
-owners:
-  - name: "PaperLoom"
-source_strategy_doc: "research/harness-golden-data-strategy.md"
-splits:
-  - id: seed
-    purpose: "Runtime smoke coverage"
-  - id: stress
-    purpose: "Boundary behavior smoke coverage"
+schema_version: harness-golden-data/v2
+dataset_id: harness_golden_seed
 paper_packs:
-  - id: transformer_bert_gpt
-    path: "paper-packs/transformer-bert-gpt.yaml"
+  - paper-packs/transformer-bert-gpt.yaml
 case_files:
-  - path: "cases/seed-smoke.yaml"
-scoring_profile: trace_obligation_v1
-compatibility_exports:
-  - format: rag_benchmark_case_jsonl
-    path: "../../eval/rag/generated/harness-golden-seed-smoke.jsonl"
+  - cases/core.yaml

@@ -1,0 +1,188 @@
+cases:
+  - schema_version: harness-golden-case/v2
+    id: transformer_adam_params_001
+    split: seed
+    paradigm: precision_fact_extraction
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Transformer original paper used Adam with what beta1, beta2, and epsilon?"
+    expect:
+      outcome: answered
+      papers:
+        required: [attention_is_all_you_need_2017]
+        forbidden: [bert_2018, gpt3_2020]
+      evidence:
+        required: [transformer_adam_training_params_span]
+        forbidden: [bert_transformer_encoder_background]
+      facts:
+        beta1: "0.9"
+        beta2: "0.98"
+        epsilon: "1e-9"
+      citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: attention_paper_ambiguous_001
+    split: stress
+    paradigm: ambiguity_resolution
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "attention paper"
+    expect:
+      outcome: needs_clarification
+      citations: forbidden
+
+  - schema_version: harness-golden-case/v2
+    id: gpt5_architecture_boundary_001
+    split: stress
+    paradigm: uncertainty_knowledge_boundary
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "What are the architecture details of GPT-5?"
+    expect:
+      outcome: abstained
+      citations: optional
+    review:
+      - "States that the available corpus does not verify GPT-5 architecture details."
+      - "Does not infer GPT-5 architecture from GPT-3."
+
+  - schema_version: harness-golden-case/v2
+    id: bert_transformer_role_001
+    split: seed
+    paradigm: precision_fact_extraction
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Does BERT use the Transformer as an encoder or decoder?"
+    expect:
+      outcome: answered
+      papers:
+        required: [bert_2018]
+      evidence:
+        required: [bert_transformer_encoder_background]
+      facts:
+        transformer_role: bidirectional Transformer encoder
+      citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: bert_vs_transformer_comparison_001
+    split: seed
+    paradigm: deep_comparison
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Compare the original Transformer and BERT on architecture role, directionality, and training objective."
+    expect:
+      outcome: answered
+      papers:
+        required: [attention_is_all_you_need_2017, bert_2018]
+        forbidden: [gpt2_2019]
+      evidence:
+        required:
+          - transformer_encoder_decoder_architecture
+          - bert_transformer_encoder_background
+          - bert_masked_lm_pretraining
+        forbidden: [gpt2_transformer_language_model]
+      claims:
+        - text: "The original Transformer is presented as an encoder-decoder architecture."
+          evidence: [transformer_encoder_decoder_architecture]
+        - text: "BERT uses a bidirectional Transformer encoder."
+          evidence: [bert_transformer_encoder_background]
+        - text: "BERT is pre-trained with a masked language modeling objective."
+          evidence: [bert_masked_lm_pretraining]
+      citations: required
+    review:
+      - "Compares all three requested axes rather than producing two unrelated summaries."
+
+  - schema_version: harness-golden-case/v2
+    id: transformer_to_bert_genealogy_001
+    split: seed
+    paradigm: association_influence_genealogy
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Show the direct technical lineage from Attention Is All You Need to BERT and explain the cited relationship."
+    expect:
+      outcome: answered
+      papers:
+        required: [bert_2018]
+      evidence:
+        required: [bert_transformer_encoder_background]
+      claims:
+        - text: "BERT's direct relationship to Attention Is All You Need is that it uses a bidirectional Transformer encoder."
+          evidence: [bert_transformer_encoder_background]
+      citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: adam_beta2_conflict_001
+    split: stress
+    paradigm: contradiction_resolution
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Some sources say Adam beta2 is 0.999, but the Transformer paper used 0.98. Resolve this conflict."
+    expect:
+      outcome: answered
+      papers:
+        required: [attention_is_all_you_need_2017, adam_2014]
+        forbidden: [bert_2018]
+      evidence:
+        required: [transformer_adam_training_params_span, adam_default_beta2_span]
+      claims:
+        - text: "The Adam paper gives beta2 = 0.999 as a recommended default."
+          evidence: [adam_default_beta2_span]
+        - text: "The Transformer paper used beta2 = 0.98 in its own training setup."
+          evidence: [transformer_adam_training_params_span]
+      citations: required
+    review:
+      - "Explains that a default recommendation and a paper-specific setting are not contradictory."
+
+  - schema_version: harness-golden-case/v2
+    id: transformer_optimizer_reproduction_001
+    split: seed
+    paradigm: methodology_reproduction
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Build the optimizer portion of a strict reproduction checklist for Attention Is All You Need: give the optimizer, beta1, beta2, and epsilon exactly as used in the paper, without substituting generic Adam defaults."
+    expect:
+      outcome: answered
+      papers:
+        required: [attention_is_all_you_need_2017]
+        forbidden: [adam_2014, bert_2018]
+      evidence:
+        required: [transformer_adam_training_params_span]
+        forbidden: [adam_default_beta2_span, bert_transformer_encoder_background]
+      facts:
+        optimizer: Adam
+        beta1: "0.9"
+        beta2: "0.98"
+        epsilon: "1e-9"
+      citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: gpt3_to_transformer_multihop_001
+    split: seed
+    paradigm: complex_multihop_reasoning
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "Using only the available papers, build the two-hop architecture chain from GPT-3 through GPT-2 to Attention Is All You Need. State what each hop establishes and do not invent a direct GPT-3-to-Transformer citation."
+    expect:
+      outcome: answered
+      papers:
+        required: [gpt3_2020, gpt2_2019]
+        forbidden: [bert_2018]
+      evidence:
+        required: [gpt3_uses_gpt2_architecture, gpt2_transformer_language_model]
+        forbidden: [bert_transformer_encoder_background]
+      claims:
+        - text: "GPT-3 uses the same model and architecture family as GPT-2."
+          evidence: [gpt3_uses_gpt2_architecture]
+        - text: "GPT-2 uses a Transformer-based architecture for its language models."
+          evidence: [gpt2_transformer_language_model]
+        - text: "The supported chain is GPT-3 to GPT-2 to Attention Is All You Need; no direct GPT-3-to-Transformer citation is asserted."
+          evidence: [gpt3_uses_gpt2_architecture, gpt2_transformer_language_model]
+      citations: required

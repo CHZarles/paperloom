@@ -1,8 +1,8 @@
 """Python prototype for the evidence-first research harness."""
 
-from .dataset import load_dataset
 from .agent_harness import ResearchAgentHarness
-from .harness import ContractDrivenHarness
-from .scoring import TraceScorer
+from .dataset import load_dataset
+from .golden_fixture import GoldenFixtureHarness
+from .scoring import BehaviorScorer
 
-__all__ = ["ContractDrivenHarness", "ResearchAgentHarness", "TraceScorer", "load_dataset"]
+__all__ = ["BehaviorScorer", "GoldenFixtureHarness", "ResearchAgentHarness", "load_dataset"]
