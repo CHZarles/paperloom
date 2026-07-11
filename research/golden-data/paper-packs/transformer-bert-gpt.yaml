@@ -1,5 +1,6 @@
 schema_version: harness-paper-pack/v2
 id: transformer_bert_gpt
+data_dir: transformer-bert-gpt
 
 papers:
   - id: attention_is_all_you_need_2017

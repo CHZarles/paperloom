@@ -85,6 +85,8 @@ def _validate_packs(packs: list[JsonMap]) -> None:
         if not pack_id or pack_id in pack_ids:
             raise ValueError(f"invalid or duplicate paper pack id: {pack_id!r}")
         pack_ids.add(pack_id)
+        if not str(pack.get("data_dir") or "").strip():
+            raise ValueError(f"paper pack {pack_id} is missing data_dir")
         local_papers = {
             str(child_map(paper).get("id"))
             for paper in as_list(pack.get("papers"))
@@ -178,7 +180,7 @@ def _validate_cases(cases: list[JsonMap], packs: list[JsonMap]) -> None:
 def _normalized_paper_records(root: Path, packs: list[JsonMap]) -> dict[str, JsonMap]:
     records: dict[str, JsonMap] = {}
     for pack in packs:
-        pack_id = str(pack["id"])
+        data_dir = str(pack["data_dir"])
         for raw_paper in as_list(pack.get("papers")):
             paper = child_map(raw_paper)
             paper_id = str(paper["id"])
@@ -196,7 +198,7 @@ def _normalized_paper_records(root: Path, packs: list[JsonMap]) -> dict[str, Jso
                     "source_url": paper.get("source_url"),
                     "reading_model_path": str(
                         Path("data/golden")
-                        / pack_id
+                        / data_dir
                         / "reading-models"
                         / f"{paper_id}.reading-model.json"
                     ),
@@ -258,12 +260,8 @@ def _load_reading_models(root: Path, paper_records: dict[str, JsonMap], warnings
         if not path.is_absolute():
             path = root / path
         if not path.exists():
-            matches = list(root.glob(f"data/golden/*/reading-models/{paper_id}.reading-model.json"))
-            if len(matches) == 1:
-                path = matches[0]
-            else:
-                warnings.append(f"paper {paper_id} reading model missing: {path}")
-                continue
+            warnings.append(f"paper {paper_id} reading model missing: {path}")
+            continue
         with path.open("r", encoding="utf-8") as handle:
             model = json.load(handle)
         if model.get("paper_id") != paper_id:

@@ -37,9 +37,9 @@ class BehaviorScorer:
     def score_case(self, dataset: GoldenDataset, case: JsonMap, run: JsonMap) -> CaseScore:
         dimensions = {
             "outcome": self._score_outcome(case, run),
-            "retrieval": self._score_retrieval(case, run),
+            "retrieval": self._score_retrieval(dataset, case, run),
             "content": self._score_content(case, run),
-            "grounding": self._score_grounding(case, run),
+            "grounding": self._score_grounding(dataset, case, run),
         }
         criteria = [str(item) for item in as_list(case.get("review"))]
         criteria.extend(
@@ -86,12 +86,11 @@ class BehaviorScorer:
             )
         return _dimension(errors)
 
-    def _score_retrieval(self, case: JsonMap, run: JsonMap) -> DimensionScore:
+    def _score_retrieval(self, dataset: GoldenDataset, case: JsonMap, run: JsonMap) -> DimensionScore:
         expectation = case_expect(case)
-        evidence = _accepted_evidence(run)
+        evidence, errors = _validated_evidence(dataset, run)
         paper_ids = {str(item.get("paper_id")) for item in evidence if item.get("paper_id")}
         anchor_ids = {str(item.get("matched_anchor_id")) for item in evidence if item.get("matched_anchor_id")}
-        errors: list[str] = []
         for paper_id in as_list(child_map(expectation.get("papers")).get("required")):
             if paper_id not in paper_ids:
                 errors.append(f"REQUIRED_PAPER_MISSING:{paper_id}")
@@ -105,27 +104,26 @@ class BehaviorScorer:
             if anchor_id in anchor_ids:
                 errors.append(f"FORBIDDEN_ANCHOR_ACCEPTED:{anchor_id}")
         configured = bool(child_map(expectation.get("papers")) or child_map(expectation.get("evidence")))
-        return _dimension(errors, configured)
+        return _dimension(errors, configured or bool(errors))
 
     def _score_content(self, case: JsonMap, run: JsonMap) -> DimensionScore:
         facts = child_map(case_expect(case).get("facts"))
         if not facts:
             return DimensionScore("not_applicable")
         actual = child_map(child_map(run.get("research_answer")).get("fields"))
-        actual_values = {_scalar_string(value) for value in _flatten_values(actual)}
         errors: list[str] = []
         for key, expected in facts.items():
             normalized = _scalar_string(expected)
             if key in actual and _scalar_string(actual.get(key)) != normalized:
                 errors.append(f"FACT_MISMATCH:{key}")
-            elif key not in actual and normalized not in actual_values:
+            elif key not in actual:
                 errors.append(f"FACT_MISSING:{key}")
         return _dimension(errors)
 
-    def _score_grounding(self, case: JsonMap, run: JsonMap) -> DimensionScore:
+    def _score_grounding(self, dataset: GoldenDataset, case: JsonMap, run: JsonMap) -> DimensionScore:
         expectation = case_expect(case)
         policy = str(expectation.get("citations") or "optional")
-        evidence = _accepted_evidence(run)
+        evidence, errors = _validated_evidence(dataset, run)
         evidence_by_id = {
             str(item.get("evidence_id")): item
             for item in evidence
@@ -134,7 +132,6 @@ class BehaviorScorer:
         answer = child_map(run.get("research_answer"))
         cited = {str(item) for item in as_list(answer.get("cited_evidence_ids")) if item}
         cited_claims = {str(item) for item in as_list(answer.get("cited_claim_ids")) if item}
-        errors: list[str] = []
         if policy == "required" and not cited:
             errors.append("CITATIONS_REQUIRED")
         if policy == "forbidden" and cited:
@@ -170,7 +167,7 @@ class BehaviorScorer:
             elif not support <= set(evidence_by_id):
                 errors.append(f"SUPPORTED_CLAIM_CITES_UNKNOWN_EVIDENCE:{claim_map.get('claim_id')}")
         configured = policy != "optional" or bool(cited) or bool(claims)
-        return _dimension(errors, configured)
+        return _dimension(errors, configured or bool(errors))
 
 
 def _dimension(errors: list[str], configured: bool = True) -> DimensionScore:
@@ -190,6 +187,30 @@ def _accepted_evidence(run: JsonMap) -> list[JsonMap]:
     ]
 
 
+def _validated_evidence(dataset: GoldenDataset, run: JsonMap) -> tuple[list[JsonMap], list[str]]:
+    evidence: list[JsonMap] = []
+    errors: list[str] = []
+    for item in _accepted_evidence(run):
+        anchor_id = str(item.get("matched_anchor_id") or "")
+        if not anchor_id:
+            evidence.append(item)
+            continue
+        anchor = dataset.anchors_by_id.get(anchor_id)
+        if anchor is None:
+            errors.append(f"UNKNOWN_MATCHED_ANCHOR:{anchor_id}")
+            continue
+        expected_paper_id = str(anchor.get("paper_id") or "")
+        actual_paper_id = str(item.get("paper_id") or "")
+        if actual_paper_id != expected_paper_id:
+            errors.append(
+                f"MATCHED_ANCHOR_PAPER_MISMATCH:{anchor_id}:"
+                f"expected={expected_paper_id}:actual={actual_paper_id}"
+            )
+            continue
+        evidence.append(item)
+    return evidence, errors
+
+
 def _actual_outcome(run: JsonMap) -> str:
     answer = child_map(run.get("research_answer"))
     explicit = str(answer.get("outcome") or "")
@@ -207,14 +228,6 @@ def _actual_outcome(run: JsonMap) -> str:
         )
         return "partial" if supported and _accepted_evidence(run) else "abstained"
     return "technical_failure"
-
-
-def _flatten_values(value: Any) -> list[Any]:
-    if isinstance(value, dict):
-        return [item for child in value.values() for item in _flatten_values(child)]
-    if isinstance(value, list):
-        return [item for child in value for item in _flatten_values(child)]
-    return [value]
 
 
 def _normalize_claim_status(value: Any) -> str:

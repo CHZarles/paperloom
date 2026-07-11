@@ -41,6 +41,24 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(0, report["failed_count"], report)
         self.assertTrue(all(score["hard_pass"] for score in report["scores"]))
 
+    def test_committed_reading_models_use_the_authored_pack_data_directory(self) -> None:
+        pack = self.dataset.paper_packs[0]
+        self.assertEqual("transformer-bert-gpt", pack["data_dir"])
+        expected_paths = {
+            paper_id: f"data/golden/transformer-bert-gpt/reading-models/{paper_id}.reading-model.json"
+            for paper_id in self.dataset.paper_records_by_id
+        }
+
+        self.assertEqual(
+            expected_paths,
+            {
+                paper_id: record["source_assets"]["reading_model_path"]
+                for paper_id, record in self.dataset.paper_records_by_id.items()
+            },
+        )
+        self.assertEqual(set(expected_paths), set(self.dataset.reading_models_by_paper_id))
+        self.assertEqual([], self.dataset.load_warnings)
+
     def test_scorer_rejects_a_missing_required_anchor(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
         run = GoldenFixtureHarness().run_case(self.dataset, case)
@@ -55,6 +73,31 @@ class GoldenV2Test(unittest.TestCase):
             score.dimensions["retrieval"].errors,
         )
 
+    def test_scorer_rejects_a_forged_anchor_paper_pairing(self) -> None:
+        source_case = next(
+            case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
+        case = deepcopy(source_case)
+        case["expect"]["papers"] = {}
+        case["expect"]["evidence"] = {}
+        case["expect"]["citations"] = "optional"
+        broken = deepcopy(run)
+        broken["evidence_ledger"]["items"][0]["paper_id"] = "bert_2018"
+        broken["research_answer"]["cited_evidence_ids"] = []
+        broken["research_answer"]["cited_claim_ids"] = []
+        broken["claim_graph"]["claims"] = []
+
+        score = BehaviorScorer().score_case(self.dataset, case, broken)
+
+        error = (
+            "MATCHED_ANCHOR_PAPER_MISMATCH:transformer_adam_training_params_span:"
+            "expected=attention_is_all_you_need_2017:actual=bert_2018"
+        )
+        self.assertFalse(score.hard_pass)
+        self.assertIn(error, score.dimensions["retrieval"].errors)
+        self.assertIn(error, score.dimensions["grounding"].errors)
+
     def test_scorer_rejects_a_wrong_structured_fact(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
         run = GoldenFixtureHarness().run_case(self.dataset, case)
@@ -65,6 +108,19 @@ class GoldenV2Test(unittest.TestCase):
 
         self.assertFalse(score.hard_pass)
         self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+
+    def test_scorer_rejects_a_missing_structured_fact_with_matching_nested_value(self) -> None:
+        case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        broken = deepcopy(run)
+        fields = broken["research_answer"]["fields"]
+        fields.pop("beta2")
+        fields["notes"] = "0.98"
+
+        score = BehaviorScorer().score_case(self.dataset, case, broken)
+
+        self.assertFalse(score.hard_pass)
+        self.assertIn("FACT_MISSING:beta2", score.dimensions["content"].errors)
 
     def test_scorer_does_not_grade_internal_paradigm_or_stage_order(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
