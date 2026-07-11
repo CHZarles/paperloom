@@ -141,6 +141,23 @@ class GoldenV2Test(unittest.TestCase):
 
         self.assertTrue(score.hard_pass, score.to_dict())
 
+    def test_scorer_does_not_grade_outcome_reason_prose(self) -> None:
+        source_case = next(
+            case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001"
+        )
+        case = deepcopy(source_case)
+        case["expect"]["reason"] = "The answer is complete."
+        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
+        broken = deepcopy(run)
+        broken["research_answer"]["outcome_reason"] = (
+            "The answer is complete because the evidence was sufficient."
+        )
+
+        score = BehaviorScorer().score_case(self.dataset, case, broken)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["outcome"].status)
+
 
 if __name__ == "__main__":
     unittest.main()

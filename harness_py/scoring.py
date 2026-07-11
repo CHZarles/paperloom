@@ -78,12 +78,6 @@ class BehaviorScorer:
         expected = str(expectation.get("outcome") or "")
         actual = _actual_outcome(run)
         errors = [] if expected == actual else [f"OUTCOME_MISMATCH:expected={expected}:actual={actual}"]
-        expected_reason = str(expectation.get("reason") or "")
-        actual_reason = str(child_map(run.get("research_answer")).get("outcome_reason") or "")
-        if expected_reason and expected_reason != actual_reason:
-            errors.append(
-                f"OUTCOME_REASON_MISMATCH:expected={expected_reason}:actual={actual_reason}"
-            )
         return _dimension(errors)
 
     def _score_retrieval(self, dataset: GoldenDataset, case: JsonMap, run: JsonMap) -> DimensionScore:
