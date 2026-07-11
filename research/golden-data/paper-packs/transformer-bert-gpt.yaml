@@ -106,7 +106,7 @@ anchors:
     type: paragraph
     page: 4
     section: "3.1 Pre-training BERT"
-    quote: "masked LM"
+    quote: "We refer to this procedure as a masked LM"
     facts:
       training_objective: masked language modeling
   - id: gpt2_transformer_language_model

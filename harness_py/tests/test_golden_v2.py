@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import json
 import unittest
 from copy import deepcopy
+from dataclasses import replace
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from harness_py.dataset import load_dataset
 from harness_py.golden_fixture import GoldenFixtureHarness
+from harness_py.models import GoldenDataset
 from harness_py.scoring import BehaviorScorer
 
 
@@ -84,6 +90,86 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(7, report["anchor_count"])
         self.assertEqual(0, report["failed_count"], report)
         self.assertTrue(all(item["status"] == "pass" for item in report["anchors"]))
+        self.assertTrue(all(len(item["matched_location_refs"]) == 1 for item in report["anchors"]), report)
+
+    def test_audit_reports_ambiguous_when_multiple_elements_match_the_same_anchor(self) -> None:
+        from harness_py.audit import audit_dataset
+
+        dataset = self._dataset_with_anchor_quote(
+            "bert_masked_lm_pretraining",
+            "masked LM",
+        )
+
+        report = audit_dataset(dataset)
+        anchor = self._anchor_report(report, "bert_masked_lm_pretraining")
+
+        self.assertEqual(1, report["failed_count"], report)
+        self.assertEqual("ambiguous", anchor["status"])
+        self.assertEqual(2, len(anchor["matched_location_refs"]))
+
+    def test_audit_reports_not_found_when_page_constrained_match_has_no_page(self) -> None:
+        from harness_py.audit import audit_dataset
+
+        dataset = self._dataset_with_reading_element(
+            "attention_is_all_you_need_2017",
+            "reading_element_260d1b8af78b454dbe0f610483436730",
+            pageNumber=None,
+        )
+
+        report = audit_dataset(dataset)
+        anchor = self._anchor_report(report, "transformer_adam_training_params_span")
+
+        self.assertEqual(1, report["failed_count"], report)
+        self.assertEqual("not_found", anchor["status"])
+        self.assertEqual([], anchor["matched_location_refs"])
+
+    def test_audit_reports_not_found_when_matching_element_has_no_location_ref(self) -> None:
+        from harness_py.audit import audit_dataset
+
+        dataset = self._dataset_with_reading_element(
+            "attention_is_all_you_need_2017",
+            "reading_element_260d1b8af78b454dbe0f610483436730",
+            locationRef=None,
+            readingElementId=None,
+            id=None,
+        )
+
+        report = audit_dataset(dataset)
+        anchor = self._anchor_report(report, "transformer_adam_training_params_span")
+
+        self.assertEqual(1, report["failed_count"], report)
+        self.assertEqual("not_found", anchor["status"])
+        self.assertEqual([], anchor["matched_location_refs"])
+        self.assertNotIn("None", anchor["matched_location_refs"])
+
+    def test_cli_audit_returns_nonzero_and_writes_report_when_failures_exist(self) -> None:
+        from harness_py.cli import main
+
+        report = {
+            "schema_version": "harness-anchor-audit/v1",
+            "dataset_id": "fixture",
+            "anchor_count": 1,
+            "passed_count": 0,
+            "failed_count": 1,
+            "anchors": [{
+                "anchor_id": "broken_anchor",
+                "paper_id": "paper_1",
+                "page": 1,
+                "status": "not_found",
+                "matched_location_refs": [],
+            }],
+        }
+
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "audit.json"
+            with patch("harness_py.cli.load_dataset", return_value=self.dataset), patch(
+                "harness_py.cli.audit_dataset",
+                return_value=report,
+            ), patch("builtins.print"):
+                code = main(["--manifest", "research/golden-data/manifest.yaml", "audit", "--out", str(output)])
+
+            self.assertEqual(1, code)
+            self.assertEqual(report, json.loads(output.read_text(encoding="utf-8")))
 
     def test_scorer_rejects_a_missing_required_anchor(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
@@ -183,6 +269,30 @@ class GoldenV2Test(unittest.TestCase):
 
         self.assertTrue(score.hard_pass, score.to_dict())
         self.assertEqual("pass", score.dimensions["outcome"].status)
+
+    def _anchor_report(self, report: dict, anchor_id: str) -> dict:
+        return next(item for item in report["anchors"] if item["anchor_id"] == anchor_id)
+
+    def _dataset_with_anchor_quote(self, anchor_id: str, quote: str) -> GoldenDataset:
+        anchors = deepcopy(self.dataset.anchors_by_id)
+        anchors[anchor_id]["selector"]["exact_text"] = quote
+        return replace(self.dataset, anchors_by_id=anchors)
+
+    def _dataset_with_reading_element(
+        self,
+        paper_id: str,
+        reading_element_id: str,
+        **updates,
+    ) -> GoldenDataset:
+        reading_models = deepcopy(self.dataset.reading_models_by_paper_id)
+        elements = reading_models[paper_id]["reading_elements"]
+        for item in elements:
+            if item.get("readingElementId") == reading_element_id:
+                item.update(updates)
+                break
+        else:
+            raise AssertionError(f"missing reading element {reading_element_id}")
+        return replace(self.dataset, reading_models_by_paper_id=reading_models)
 
 
 if __name__ == "__main__":
