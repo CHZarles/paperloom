@@ -76,6 +76,15 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(set(expected_paths), set(self.dataset.reading_models_by_paper_id))
         self.assertEqual([], self.dataset.load_warnings)
 
+    def test_all_authored_anchors_are_locatable_in_reading_models(self) -> None:
+        from harness_py.audit import audit_dataset
+
+        report = audit_dataset(self.dataset)
+
+        self.assertEqual(7, report["anchor_count"])
+        self.assertEqual(0, report["failed_count"], report)
+        self.assertTrue(all(item["status"] == "pass" for item in report["anchors"]))
+
     def test_scorer_rejects_a_missing_required_anchor(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
         run = GoldenFixtureHarness().run_case(self.dataset, case)

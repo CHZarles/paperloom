@@ -5,6 +5,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+from .audit import audit_dataset
 from .dataset import load_dataset
 from .conversation import ConversationState
 from .golden_fixture import GoldenFixtureHarness
@@ -20,6 +21,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", default="research/golden-data/manifest.yaml")
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("validate", help="Load the dataset and validate emitted traces in memory.")
+    audit_parser = subcommands.add_parser("audit", help="Verify authored anchors against parsed reading models.")
+    audit_parser.add_argument(
+        "--out",
+        default="data/golden/transformer-bert-gpt/generated-audit/anchor-verification.json",
+    )
     run_parser = subcommands.add_parser("run", help="Run all cases and write frontend-readable JSON artifacts.")
     run_parser.add_argument("--out", default="eval/rag/runs/python-harness-prototype")
     agent_parser = subcommands.add_parser("agent-run", help="Run the real tool-using agent harness with MiniMax.")
@@ -61,6 +67,13 @@ def main(argv: list[str] | None = None) -> int:
         harness = GoldenFixtureHarness()
         runs = [harness.run_case(dataset, case) for case in dataset.cases]
         report = BehaviorScorer().score_dataset(dataset, runs)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0 if report["failed_count"] == 0 else 1
+    if args.command == "audit":
+        report = audit_dataset(load_dataset(args.manifest))
+        target = Path(args.out)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(target, report)
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0 if report["failed_count"] == 0 else 1
     if args.command == "run":
