@@ -9,6 +9,7 @@ from copy import deepcopy
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -580,6 +581,33 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             self.assertTrue((first_case / "evidence_ledger.json").exists())
             self.assertTrue((first_case / "verification_pass.json").exists())
 
+    def test_agent_run_rejects_unknown_case_before_provider_or_output(self) -> None:
+        from harness_py.cli import main
+
+        class StubProvider:
+            def public_diagnostics(self):
+                return {}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "must_not_exist"
+            with patch(
+                "harness_py.cli._live_model",
+                return_value=(StubProvider(), object()),
+            ) as live_model, patch("builtins.print"):
+                code = main([
+                    "--manifest",
+                    "research/golden-data/manifest.yaml",
+                    "agent-run",
+                    "--case-id",
+                    "unknown_case_id",
+                    "--out",
+                    str(out),
+                ])
+
+            self.assertNotEqual(0, code)
+            live_model.assert_not_called()
+            self.assertFalse(out.exists())
+
     def test_chat_shell_keeps_terminal_session_state(self) -> None:
         from harness_py.cli import run_chat_shell
 
@@ -633,12 +661,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 "section": "Result",
                 "location_hint": "result paragraph",
             },
-            "parser_evidence": {
-                "verification_status": "verified",
-                "matched_text": "structured value forty two",
-                "page": 1,
-                "source_kind": "reading_element",
-            },
+            "selector": {"exact_text": "structured value forty two"},
         }
         case = {
             "schema_version": "harness-golden-case/v2",

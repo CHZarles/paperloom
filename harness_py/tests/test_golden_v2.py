@@ -92,6 +92,74 @@ class GoldenV2Test(unittest.TestCase):
         self.assertTrue(all(item["status"] == "pass" for item in report["anchors"]))
         self.assertTrue(all(len(item["matched_location_refs"]) == 1 for item in report["anchors"]), report)
 
+    def test_runtime_anchor_matcher_rejects_partial_overlap_unrelated_passage(self) -> None:
+        from harness_py.tools import ReadingDocument, _match_anchor
+
+        anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
+        document = ReadingDocument(
+            paper_id="attention_is_all_you_need_2017",
+            title="Attention Is All You Need",
+            paper_version="fixture",
+            location_ref="unrelated_page_7_passage",
+            element_type="paragraph",
+            page=7,
+            section="Unrelated discussion",
+            text="The Adam optimizer training parameters differ across experiments.",
+            source_kind="reading_element",
+        )
+
+        self.assertIsNone(_match_anchor(document, [anchor]))
+
+    def test_runtime_anchor_matcher_requires_exact_quote_on_the_authored_page(self) -> None:
+        from harness_py.tools import ReadingDocument, _match_anchor
+
+        anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
+        quote = anchor["selector"]["exact_text"]
+
+        def document(page, text):
+            return ReadingDocument(
+                paper_id="attention_is_all_you_need_2017",
+                title="Attention Is All You Need",
+                paper_version="fixture",
+                location_ref=f"page_{page}",
+                element_type="paragraph",
+                page=page,
+                section="5.3 Optimizer",
+                text=text,
+                source_kind="reading_element",
+            )
+
+        self.assertIsNone(_match_anchor(document(None, quote), [anchor]))
+        self.assertIsNone(_match_anchor(document(6, quote), [anchor]))
+        self.assertEqual(
+            "transformer_adam_training_params_span",
+            _match_anchor(document(7, f"Setup: {quote.upper()}."), [anchor]),
+        )
+
+    def test_committed_runtime_anchor_tags_are_exact_and_page_constrained(self) -> None:
+        from harness_py.tools import ReadingCorpusTools, _normalize
+
+        tagged: dict[str, list[str]] = {}
+        for document in ReadingCorpusTools(self.dataset).documents:
+            if not document.matched_anchor_id:
+                continue
+            anchor = self.dataset.anchors_by_id[document.matched_anchor_id]
+            anchor_page = anchor["element"]["page"]
+            normalized_quote = _normalize(anchor["selector"]["exact_text"])
+            normalized_text = _normalize(document.text)
+
+            self.assertIsNotNone(document.page, document.location_ref)
+            self.assertEqual(str(anchor_page), str(document.page), document.location_ref)
+            self.assertIn(
+                f" {normalized_quote} ",
+                f" {normalized_text} ",
+                document.location_ref,
+            )
+            tagged.setdefault(document.matched_anchor_id, []).append(document.location_ref)
+
+        self.assertEqual(set(self.dataset.anchors_by_id), set(tagged), tagged)
+        self.assertTrue(all(len(location_refs) == 1 for location_refs in tagged.values()), tagged)
+
     def test_audit_reports_ambiguous_when_multiple_elements_match_the_same_anchor(self) -> None:
         from harness_py.audit import audit_dataset
 

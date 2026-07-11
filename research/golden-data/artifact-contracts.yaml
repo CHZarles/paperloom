@@ -1,6 +1,7 @@
 schema_version: research-harness-artifacts/v1
-purpose: "Machine-readable V0 contracts for the auditable research harness trace."
+purpose: "Machine-readable contracts for the v2 semantic-stage runtime and behavior score report."
 artifact_order:
+  - HarnessRun
   - IntentFrame
   - RetrievalPlan
   - EvidenceLedger
@@ -8,6 +9,7 @@ artifact_order:
   - ReasoningArtifact
   - VerificationPass
   - ResearchAnswer
+  - ScoreReport
 shared_enums:
   answer_type:
     - exact_fact
@@ -18,16 +20,30 @@ shared_enums:
     - critical_assessment
     - meta_review
     - contradiction_resolution
+    - contradiction_arbitration
     - uncertainty_boundary
     - ambiguity_resolution
+    - ambiguity_clarification
     - constraint_filter
     - figure_table_formula_interpretation
     - multi_hop_chain
+    - data_provenance
+    - counterfactual_analysis
+    - system_design
+    - formal_derivation
+    - research_profile
+    - generalization_audit
+    - systematic_review
+    - boundary_counterexample
+    - evidence_forecast
+    - conversation
+    - unknown
   ambiguity_status:
     - unambiguous
     - ambiguous
     - needs_user_choice
     - unanswerable_from_available_evidence
+    - unknown
   evidence_type:
     - paragraph
     - table
@@ -45,7 +61,11 @@ shared_enums:
     - underdetermined
     - ambiguous
   retrieval_strategy:
+    - paper_candidate_search
     - paper_identity_resolution
+    - reading_location_search
+    - source_quote_reading
+    - semantic_stage_execution
     - semantic_search
     - lexical_search
     - metadata_filter
@@ -59,6 +79,26 @@ shared_enums:
     - negative_evidence_search
     - version_comparison
 artifacts:
+  - id: HarnessRun
+    purpose: "Top-level executable boundary for a research question or Golden Case."
+    required_fields:
+      - schema_version
+      - run_id
+      - question_id
+      - case_id
+      - harness_id
+      - status
+      - intent_frame
+      - retrieval_plan
+      - evidence_ledger
+      - claim_graph
+      - reasoning_artifacts
+      - verification_pass
+      - research_answer
+    invariants:
+      - "A run is the unit consumed by product UI panes and by eval scoring."
+      - "All child artifact ids must be internally consistent within the run."
+      - "ScoreReport is a separate eval output and is never required in product mode."
   - id: IntentFrame
     purpose: "Typed interpretation of the user question before retrieval."
     required_fields:
@@ -78,7 +118,7 @@ artifacts:
       - "raw_question must preserve the user wording."
       - "answer_type must be one of shared_enums.answer_type."
       - "ambiguity_status must explain whether the harness may proceed or must clarify/abstain."
-      - "required_capabilities must be visible to eval scoring."
+      - "primary_paradigm and required_capabilities are runtime diagnostics, not golden score inputs."
   - id: RetrievalPlan
     purpose: "Explicit strategy plan selected from the IntentFrame."
     required_fields:
@@ -91,9 +131,8 @@ artifacts:
       - hard_negative_policy
       - stop_conditions
     invariants:
-      - "Each strategy step must name a retrieval_strategy."
-      - "The plan must distinguish target papers from hard distractors when known."
-      - "The plan must expose negative-evidence or version-comparison searches when the answer type requires them."
+      - "Each strategy step must name its semantic or tool strategy."
+      - "The plan remains inspectable for diagnostics but is not graded by BehaviorScorer."
   - id: EvidenceLedger
     purpose: "Immutable source-grounded record of accepted, rejected, and missing evidence."
     required_fields:
@@ -152,6 +191,7 @@ artifacts:
       - source_claim_ids
       - payload
     allowed_types:
+      - exact_fact_card
       - comparison_table
       - timeline
       - citation_graph
@@ -161,6 +201,17 @@ artifacts:
       - uncertainty_boundary_report
       - definition_evolution_trace
       - multi_hop_chain
+      - critical_assessment_report
+      - provenance_record
+      - counterfactual_analysis
+      - system_architecture
+      - formal_derivation
+      - research_trajectory
+      - generalization_audit
+      - systematic_review
+      - boundary_counterexample_report
+      - evidence_forecast
+      - structured_evidence_interpretation
     invariants:
       - "Payload shape must match type."
       - "Cells, nodes, edges, or checklist items must point back to claim ids or evidence ids."
@@ -177,8 +228,6 @@ artifacts:
       - ambiguity_resolution
       - constraint_check_results
       - abstention_required
-      - satisfied_trace_obligation_ids
-      - failed_trace_obligation_ids
     invariants:
       - "Unsupported confidence is a verification failure."
       - "Abstention must name missing evidence, not merely say the system cannot answer."
@@ -192,11 +241,37 @@ artifacts:
       - answer_type
       - summary
       - sections
+      - fields
       - cited_claim_ids
       - cited_evidence_ids
       - reasoning_artifact_ids
       - verification_id
     invariants:
       - "The answer must not introduce substantive claims absent from ClaimGraph."
-      - "Every required answer field from a Golden Case must cite supporting evidence unless the expected result is clarification or abstention."
-      - "status must distinguish answered, needs_clarification, abstained, contradiction_report, and partial_with_limits."
+      - "Golden expectations are compared only after the run by BehaviorScorer."
+      - "status must distinguish COMPLETED, NEEDS_CLARIFICATION, INCOMPLETE_PRECISE, and FAILED_TECHNICAL."
+  - id: ScoreReport
+    purpose: "Eval-only deterministic behavior scoring result for HarnessRun outputs against v2 GoldenCase expectations."
+    required_fields:
+      - schema_version
+      - dataset_id
+      - case_count
+      - passed_count
+      - failed_count
+      - scores
+    case_score_required_fields:
+      - case_id
+      - hard_pass
+      - dimensions
+      - review
+    dimensions:
+      - outcome
+      - retrieval
+      - content
+      - grounding
+    invariants:
+      - "ScoreReport must never be required for ordinary product answering."
+      - "hard_pass is the conjunction of outcome, retrieval, content, and grounding hard checks."
+      - "BehaviorScorer must not grade intent labels, paradigms, stage order, tool counts, runtime claim ids, or exact answer prose."
+      - "Optional review criteria remain separate with status not_run or not_required."
+      - "Scoring is deterministic and has no LLM judge."

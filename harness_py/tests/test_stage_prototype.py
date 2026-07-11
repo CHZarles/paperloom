@@ -1740,9 +1740,8 @@ class _GoldenCaseStageModel(ChatModel):
                 ))
             for index, anchor_id in enumerate(self.required_anchor_ids):
                 anchor = child_map(self.dataset.anchors_by_id[anchor_id])
-                parser = child_map(anchor.get("parser_evidence"))
                 selector = child_map(anchor.get("selector"))
-                query = str(parser.get("matched_text") or selector.get("exact_text") or anchor_id)
+                query = str(selector.get("exact_text") or anchor_id)
                 calls.append(ToolCall(
                     id=f"search_{index}",
                     name="find_reading_locations",
@@ -1773,13 +1772,12 @@ class _GoldenCaseStageModel(ChatModel):
         if tool_messages[-1].get("name") == "search_paper_candidates":
             anchor_id = self.required_anchor_ids[0]
             anchor = child_map(self.dataset.anchors_by_id[anchor_id])
-            parser = child_map(anchor.get("parser_evidence"))
             selector = child_map(anchor.get("selector"))
             return ChatTurn(content="", tool_calls=[ToolCall(
                 id="find_candidate_evidence",
                 name="find_reading_locations",
                 arguments={
-                    "query_text": str(parser.get("matched_text") or selector.get("exact_text") or anchor_id),
+                    "query_text": str(selector.get("exact_text") or anchor_id),
                     "paper_ids": self._required_paper_ids(),
                     "top_k": len(self._required_paper_ids()),
                 },
@@ -2200,11 +2198,7 @@ def _synthetic_dataset() -> GoldenDataset:
         "anchor_id": "synthetic_anchor",
         "paper_id": "synthetic_paper",
         "element": {"type": "paragraph", "page": 1, "section": "Result"},
-        "parser_evidence": {
-            "verification_status": "verified",
-            "matched_text": "structured value forty two",
-            "page": 1,
-        },
+        "selector": {"exact_text": "structured value forty two"},
     }
     case = {
         "schema_version": "harness-golden-case/v2",

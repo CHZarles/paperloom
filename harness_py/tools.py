@@ -9,6 +9,22 @@ from typing import Any
 from .models import GoldenDataset, JsonMap, as_list, child_map
 
 
+SEARCH_ELEMENT_TYPES = (
+    "paragraph",
+    "heading",
+    "table",
+    "list",
+    "image",
+    "footnote",
+    "chart",
+    "formula",
+    "aside",
+)
+SEARCH_RESULT_LIMIT = 10
+SEARCH_SNIPPET_CHARS = 500
+PAPER_RESULT_LIMIT = 100
+
+
 @dataclass(frozen=True)
 class ToolResult:
     name: str
@@ -32,7 +48,19 @@ class ReadingDocument:
         raw = f"{self.paper_id}:{self.location_ref}:{self.element_type}:{self.page}"
         return "ev_" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
-    def to_evidence_item(self, strategy: str, score: float = 1.0) -> JsonMap:
+    def to_location_candidate(self) -> JsonMap:
+        return {
+            "paper_id": self.paper_id,
+            "title": self.title,
+            "paper_version": self.paper_version,
+            "location_ref": self.location_ref,
+            "section": self.section or "unsectioned",
+            "page": self.page if self.page is not None else "unknown",
+            "element_type": self.element_type,
+            "preview": self.text[:SEARCH_SNIPPET_CHARS],
+        }
+
+    def to_evidence_item(self) -> JsonMap:
         return {
             "evidence_id": self.evidence_id(),
             "matched_anchor_id": self.matched_anchor_id,
@@ -42,12 +70,14 @@ class ReadingDocument:
             "section": self.section or "unsectioned",
             "page": self.page if self.page is not None else "unknown",
             "location": self.location_ref,
+            "location_ref": self.location_ref,
             "element_type": self.element_type,
-            "span_text": self.text[:1200],
+            "span_text": self.text,
             "bbox_or_cell_ref": None,
-            "retrieval_strategy": strategy,
-            "relevance_score": round(float(score), 4),
-            "evidence_quality": "verified" if self.matched_anchor_id else "candidate",
+            "source_kind": self.source_kind,
+            "retrieval_strategy": "source_quote_reading",
+            "relevance_score": 1.0,
+            "evidence_quality": "verified" if self.matched_anchor_id else "read",
             "supports_claim_ids": [],
             "refutes_claim_ids": [],
         }
@@ -57,186 +87,302 @@ class ReadingDocument:
 class ReadingCorpusTools:
     dataset: GoldenDataset
     observations_by_evidence_id: dict[str, JsonMap] = field(default_factory=dict)
+    authorized_paper_ids: set[str] = field(default_factory=set)
+    disclosed_location_refs: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         self.documents = _build_documents(self.dataset)
         self.documents_by_location = {doc.location_ref: doc for doc in self.documents}
-        self.documents_by_evidence_id = {doc.evidence_id(): doc for doc in self.documents}
 
     def definitions(self) -> list[JsonMap]:
-        return [
+        definitions = [
             _tool_schema(
-                "list_papers",
-                "List paper cards in the current corpus. Use before choosing a paper.",
+                "search_paper_candidates",
+                (
+                    "Search or browse candidate papers in the fixed corpus using title, abstract, "
+                    "author, venue, year, and metadata. Results are non-citeable paper cards, not "
+                    "paper-content evidence or recommendations. Use an empty query_text with a "
+                    "large limit to inspect the complete fixed corpus in one call."
+                ),
                 {
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string"},
-                        "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+                        "query_text": {"type": "string"},
+                        "paper_ids": {"type": "array", "items": {"type": "string"}},
+                        "authors": {"type": "array", "items": {"type": "string"}},
+                        "venues": {"type": "array", "items": {"type": "string"}},
+                        "year_from": {"type": "integer"},
+                        "year_to": {"type": "integer"},
+                        "offset": {"type": "integer", "minimum": 0},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": PAPER_RESULT_LIMIT},
                     },
+                    "additionalProperties": False,
                 },
             ),
             _tool_schema(
                 "find_papers_by_identity",
-                "Resolve paper identity by title words, paper id, arXiv id, author, or year.",
+                (
+                    "Resolve a specific paper from structured identity hints. Do not use this tool "
+                    "for topical discovery, recommendations, or generic research questions."
+                ),
                 {
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string"},
                         "paper_id": {"type": "string"},
+                        "title": {"type": "string"},
+                        "filename": {"type": "string"},
+                        "doi": {"type": "string"},
+                        "arxiv_id": {"type": "string"},
+                        "authors": {"type": "array", "items": {"type": "string"}},
                         "year": {"type": "integer"},
-                        "limit": {"type": "integer", "minimum": 1, "maximum": 20},
                     },
+                    "additionalProperties": False,
                 },
             ),
             _tool_schema(
-                "search_reading_locations",
-                "Search reading-model locations for source evidence. Returns evidence ids to cite.",
+                "find_reading_locations",
+                (
+                    "Find relevant locations inside previously disclosed candidate papers. Returns "
+                    "non-citeable navigation previews and location refs. Use read_locations before "
+                    "making paper-content claims."
+                ),
                 {
                     "type": "object",
-                    "required": ["query"],
+                    "required": ["paper_ids"],
                     "properties": {
-                        "query": {"type": "string"},
+                        "query_text": {"type": "string"},
                         "paper_ids": {"type": "array", "items": {"type": "string"}},
-                        "element_types": {"type": "array", "items": {"type": "string"}},
-                        "top_k": {"type": "integer", "minimum": 1, "maximum": 20},
+                        "section_query": {"type": "string"},
+                        "element_types": {
+                            "type": "array",
+                            "items": {"type": "string", "enum": list(SEARCH_ELEMENT_TYPES)},
+                        },
+                        "page_from": {"type": "integer", "minimum": 1},
+                        "page_to": {"type": "integer", "minimum": 1},
+                        "top_k": {"type": "integer", "minimum": 1, "maximum": SEARCH_RESULT_LIMIT},
                     },
+                    "additionalProperties": False,
                 },
             ),
             _tool_schema(
                 "read_locations",
-                "Read exact source text for evidence ids or location refs returned by search.",
+                (
+                    "Read exact paper content from location refs returned by find_reading_locations. "
+                    "This is the only tool that creates citeable paper-content evidence."
+                ),
                 {
                     "type": "object",
+                    "required": ["location_refs"],
                     "properties": {
-                        "evidence_ids": {"type": "array", "items": {"type": "string"}},
                         "location_refs": {"type": "array", "items": {"type": "string"}},
                     },
-                },
-            ),
-            _tool_schema(
-                "get_citation_edges",
-                "List citation or lineage edges in the current paper pack.",
-                {
-                    "type": "object",
-                    "properties": {
-                        "paper_id": {"type": "string"},
-                    },
+                    "additionalProperties": False,
                 },
             ),
         ]
+        if self.dataset.citation_edges:
+            definitions.append(_tool_schema(
+                "get_citation_edges",
+                (
+                    "Traverse citation or lineage edges from a previously disclosed paper. Graph "
+                    "edges are navigation metadata and do not support paper-content claims."
+                ),
+                {
+                    "type": "object",
+                    "required": ["paper_id"],
+                    "properties": {
+                        "paper_id": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                },
+            ))
+        return definitions
 
     def call(self, name: str, arguments: JsonMap) -> ToolResult:
-        if name == "list_papers":
-            return ToolResult(name, self.list_papers(arguments))
+        if name == "search_paper_candidates":
+            return ToolResult(name, self.search_paper_candidates(arguments))
         if name == "find_papers_by_identity":
             return ToolResult(name, self.find_papers_by_identity(arguments))
-        if name == "search_reading_locations":
-            return ToolResult(name, self.search_reading_locations(arguments))
+        if name == "find_reading_locations":
+            return ToolResult(name, self.find_reading_locations(arguments))
         if name == "read_locations":
             return ToolResult(name, self.read_locations(arguments))
         if name == "get_citation_edges":
             return ToolResult(name, self.get_citation_edges(arguments))
         return ToolResult(name, {"error": f"unknown tool: {name}"})
 
-    def list_papers(self, arguments: JsonMap) -> JsonMap:
-        query = str(arguments.get("query") or "")
-        limit = int(arguments.get("limit") or 10)
+    def search_paper_candidates(self, arguments: JsonMap) -> JsonMap:
+        query = str(arguments.get("query_text") or "").strip()
         query_tokens = set(_tokens(query))
-        cards: list[JsonMap] = []
+        allowed_ids = {str(value) for value in as_list(arguments.get("paper_ids")) if value}
+        authors = {_normalize(str(value)) for value in as_list(arguments.get("authors")) if value}
+        venues = {_normalize(str(value)) for value in as_list(arguments.get("venues")) if value}
+        year_from = _optional_int(arguments.get("year_from"))
+        year_to = _optional_int(arguments.get("year_to"))
+        offset = max(0, int(arguments.get("offset") or 0))
+        limit = max(1, min(int(arguments.get("limit") or 20), PAPER_RESULT_LIMIT))
+        matches: list[tuple[float, str, JsonMap]] = []
         for paper_id, record in self.dataset.paper_records_by_id.items():
             identity = child_map(record.get("identity"))
-            haystack = " ".join([
-                str(identity.get("title", "")),
-                " ".join(str(author) for author in as_list(identity.get("authors"))),
-                str(identity.get("year", "")),
-                str(identity.get("arxiv_id", "")),
-                paper_id,
-            ])
-            if query_tokens and not (query_tokens & set(_tokens(haystack))):
+            if allowed_ids and paper_id not in allowed_ids:
                 continue
-            cards.append(_paper_card(paper_id, record))
-        return {"papers": cards[: max(1, min(limit, 20))], "total": len(cards)}
+            if authors and not _matches_any_author(authors, as_list(identity.get("authors"))):
+                continue
+            if venues and _normalize(str(identity.get("venue") or "")) not in venues:
+                continue
+            year = _optional_int(identity.get("year"))
+            if year_from is not None and (year is None or year < year_from):
+                continue
+            if year_to is not None and (year is None or year > year_to):
+                continue
+            score = _paper_relevance(query_tokens, query, paper_id, record)
+            if query_tokens and score <= 0:
+                continue
+            matches.append((score, paper_id, record))
+        matches.sort(key=lambda item: (-item[0], -(_optional_int(child_map(item[2].get("identity")).get("year")) or 0), item[1]))
+        page = matches[offset:offset + limit]
+        cards = [_paper_card(paper_id, record) for _, paper_id, record in page]
+        self.authorized_paper_ids.update(str(card["paper_id"]) for card in cards)
+        returned_through = offset + len(cards)
+        return {
+            "query_text": query,
+            "candidates": cards,
+            "matched_count": len(matches),
+            "returned_count": len(cards),
+            "coverage": "complete" if returned_through >= len(matches) else "truncated",
+            "next_offset": returned_through if returned_through < len(matches) else None,
+        }
 
     def find_papers_by_identity(self, arguments: JsonMap) -> JsonMap:
-        query = str(arguments.get("query") or arguments.get("paper_id") or "")
-        year = arguments.get("year")
-        limit = int(arguments.get("limit") or 10)
-        query_tokens = set(_tokens(query))
+        hints = {
+            key: value for key, value in arguments.items()
+            if key in {"paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year"}
+            and value not in (None, "", [])
+        }
+        if not hints:
+            return {"status": "not_found", "matches": [], "reason": "identity_hints_required"}
         matches: list[JsonMap] = []
         for paper_id, record in self.dataset.paper_records_by_id.items():
-            identity = child_map(record.get("identity"))
-            if year and str(identity.get("year")) != str(year):
-                continue
-            haystack = " ".join([
-                paper_id,
-                str(identity.get("title", "")),
-                str(identity.get("arxiv_id", "")),
-                " ".join(str(author) for author in as_list(identity.get("authors"))),
-            ])
-            score = _score_tokens(query_tokens, set(_tokens(haystack)))
-            if query and score <= 0 and query.lower() not in haystack.lower():
-                continue
-            card = _paper_card(paper_id, record)
-            card["match_score"] = score
-            matches.append(card)
-        matches.sort(key=lambda card: card.get("match_score", 0), reverse=True)
-        return {"matches": matches[: max(1, min(limit, 20))], "total": len(matches)}
+            if _matches_identity_hints(paper_id, record, hints):
+                matches.append(_paper_card(paper_id, record))
+        status = "not_found"
+        if len(matches) == 1:
+            status = "resolved"
+            self.authorized_paper_ids.add(str(matches[0]["paper_id"]))
+        elif len(matches) > 1:
+            status = "ambiguous"
+        return {"status": status, "matches": matches}
 
-    def search_reading_locations(self, arguments: JsonMap) -> JsonMap:
-        query = str(arguments.get("query") or "")
-        top_k = max(1, min(int(arguments.get("top_k") or 8), 20))
-        paper_ids = set(str(value) for value in as_list(arguments.get("paper_ids")) if value)
+    def find_reading_locations(self, arguments: JsonMap) -> JsonMap:
+        query = str(arguments.get("query_text") or "").strip()
+        section_query = str(arguments.get("section_query") or "").strip()
+        top_k = max(1, min(int(arguments.get("top_k") or 8), SEARCH_RESULT_LIMIT))
+        paper_id_list = [str(value) for value in as_list(arguments.get("paper_ids")) if value]
+        if not paper_id_list:
+            return {"error": "paper_ids_required", "locations": []}
+        unauthorized = [paper_id for paper_id in paper_id_list if paper_id not in self.authorized_paper_ids]
+        if unauthorized:
+            return {
+                "error": "paper_not_authorized_for_reading",
+                "unauthorized_paper_ids": unauthorized,
+                "locations": [],
+            }
+        paper_ids = set(paper_id_list)
         element_types = set(str(value) for value in as_list(arguments.get("element_types")) if value)
+        unsupported_types = sorted(element_types - set(SEARCH_ELEMENT_TYPES))
+        if unsupported_types:
+            return {
+                "error": "unsupported_element_types",
+                "unsupported_element_types": unsupported_types,
+                "locations": [],
+            }
+        page_from = _optional_int(arguments.get("page_from"))
+        page_to = _optional_int(arguments.get("page_to"))
+        if page_from is not None and page_to is not None and page_from > page_to:
+            return {"error": "invalid_page_range", "locations": []}
         query_tokens = set(_tokens(query))
+        section_tokens = set(_tokens(section_query))
         scored: list[tuple[float, ReadingDocument]] = []
         for document in self.documents:
-            if paper_ids and document.paper_id not in paper_ids:
+            if document.paper_id not in paper_ids:
                 continue
             if element_types and document.element_type not in element_types:
                 continue
-            score = _score_tokens(query_tokens, set(_tokens(document.text)))
-            if query.lower() and query.lower() in document.text.lower():
+            page = _optional_int(document.page)
+            if page_from is not None and (page is None or page < page_from):
+                continue
+            if page_to is not None and (page is None or page > page_to):
+                continue
+            document_tokens = set(_tokens(" ".join([document.section, document.text])))
+            if section_tokens and not section_tokens <= set(_tokens(document.section)):
+                continue
+            score = _score_tokens(query_tokens, document_tokens) if query_tokens else 1.0
+            if query and _normalize(query) in _normalize(document.text):
                 score += 2.0
             if score > 0:
                 scored.append((score, document))
         scored.sort(key=lambda item: item[0], reverse=True)
-        results = []
-        for score, document in scored[:top_k]:
-            item = document.to_evidence_item("lexical_search", score)
-            self.observations_by_evidence_id[item["evidence_id"]] = item
-            results.append(item)
-        return {"query": query, "results": results, "total_candidates": len(scored)}
+        selected = _diverse_documents(scored, paper_id_list, top_k)
+        locations = [document.to_location_candidate() for document in selected]
+        self.disclosed_location_refs.update(str(item["location_ref"]) for item in locations)
+        return {
+            "query_text": query,
+            "locations": locations,
+            "matched_count": len(scored),
+            "returned_count": len(locations),
+            "coverage": "complete" if len(locations) >= len(scored) else "truncated",
+        }
 
     def read_locations(self, arguments: JsonMap) -> JsonMap:
-        docs: list[ReadingDocument] = []
-        for evidence_id in as_list(arguments.get("evidence_ids")):
-            document = self.documents_by_evidence_id.get(str(evidence_id))
-            if document:
-                docs.append(document)
-        for location_ref in as_list(arguments.get("location_refs")):
-            document = self.documents_by_location.get(str(location_ref))
-            if document:
-                docs.append(document)
+        location_refs = [str(value) for value in as_list(arguments.get("location_refs")) if value]
+        if not location_refs:
+            return {"error": "location_refs_required", "items": []}
+        unauthorized = [ref for ref in location_refs if ref not in self.disclosed_location_refs]
+        if unauthorized:
+            return {
+                "error": "location_not_disclosed_for_reading",
+                "unauthorized_location_refs": unauthorized,
+                "items": [],
+            }
+        docs = [self.documents_by_location[ref] for ref in location_refs if ref in self.documents_by_location]
         items = []
         seen: set[str] = set()
         for document in docs:
             if document.evidence_id() in seen:
                 continue
             seen.add(document.evidence_id())
-            item = document.to_evidence_item("read_locations", 1.0)
+            item = document.to_evidence_item()
             self.observations_by_evidence_id[item["evidence_id"]] = item
             items.append(item)
-        return {"items": items}
+        missing = [ref for ref in location_refs if ref not in self.documents_by_location]
+        return {"items": items, "missing_location_refs": missing}
 
     def get_citation_edges(self, arguments: JsonMap) -> JsonMap:
         paper_id = str(arguments.get("paper_id") or "")
+        if not self.dataset.citation_edges:
+            return {"error": "citation_graph_unavailable", "edges": []}
+        if paper_id not in self.authorized_paper_ids:
+            return {"error": "paper_not_authorized_for_graph_traversal", "edges": []}
         edges = [
-            edge
+            dict(edge)
             for edge in self.dataset.citation_edges
-            if not paper_id or edge.get("from_paper_id") == paper_id or edge.get("to_paper_id") == paper_id
+            if edge.get("from_paper_id") == paper_id or edge.get("to_paper_id") == paper_id
         ]
-        return {"edges": edges}
+        connected_ids = {
+            str(value)
+            for edge in edges
+            for value in (edge.get("from_paper_id"), edge.get("to_paper_id"))
+            if value in self.dataset.paper_records_by_id
+        }
+        self.authorized_paper_ids.update(connected_ids)
+        return {
+            "edges": edges,
+            "papers": [
+                _paper_card(candidate_id, self.dataset.paper_records_by_id[candidate_id])
+                for candidate_id in sorted(connected_ids)
+            ],
+            "coverage": "complete",
+        }
 
 
 def _build_documents(dataset: GoldenDataset) -> list[ReadingDocument]:
@@ -326,33 +472,153 @@ def _anchors_by_paper(dataset: GoldenDataset) -> dict[str, list[JsonMap]]:
 
 def _match_anchor(document: ReadingDocument, anchors: list[JsonMap]) -> str | None:
     document_text = _normalize(document.text)
-    document_tokens = set(_tokens(document.text))
     for anchor in anchors:
-        parser = child_map(anchor.get("parser_evidence"))
         element = child_map(anchor.get("element"))
-        page = parser.get("page") or element.get("page")
-        if page is not None and document.page is not None and str(page) != str(document.page):
+        page = element.get("page")
+        if not _page_matches(page, document.page):
             continue
-        matched_text = parser.get("matched_text") or child_map(anchor.get("selector")).get("exact_text")
-        if matched_text and _normalize(str(matched_text)) in document_text:
+        exact_text = child_map(anchor.get("selector")).get("exact_text")
+        normalized_quote = _normalize(str(exact_text or ""))
+        if _contains_normalized_phrase(document_text, normalized_quote):
             return str(anchor.get("anchor_id"))
-        if matched_text:
-            anchor_tokens = set(_tokens(str(matched_text)))
-            if anchor_tokens and _score_tokens(anchor_tokens, document_tokens) >= 0.25:
-                return str(anchor.get("anchor_id"))
     return None
+
+
+def _page_matches(anchor_page: Any, document_page: Any) -> bool:
+    if anchor_page is None:
+        return True
+    parsed_anchor_page = _optional_int(anchor_page)
+    parsed_document_page = _optional_int(document_page)
+    return parsed_anchor_page is not None and parsed_document_page == parsed_anchor_page
+
+
+def _contains_normalized_phrase(normalized_text: str, normalized_quote: str) -> bool:
+    if not normalized_text or not normalized_quote:
+        return False
+    return f" {normalized_quote} " in f" {normalized_text} "
 
 
 def _paper_card(paper_id: str, record: JsonMap) -> JsonMap:
     identity = child_map(record.get("identity"))
+    abstract = str(record.get("abstract") or "").strip()
+    product = child_map(record.get("product_db"))
     return {
         "paper_id": paper_id,
         "title": identity.get("title"),
         "authors": as_list(identity.get("authors")),
         "year": identity.get("year"),
         "venue": identity.get("venue"),
+        "doi": identity.get("doi"),
         "arxiv_id": identity.get("arxiv_id"),
+        "filename": product.get("original_filename"),
+        "preview": abstract[:SEARCH_SNIPPET_CHARS],
     }
+
+
+def _paper_relevance(query_tokens: set[str], query: str, paper_id: str, record: JsonMap) -> float:
+    if not query_tokens:
+        return 1.0
+    identity = child_map(record.get("identity"))
+    title = str(identity.get("title") or "")
+    abstract = str(record.get("abstract") or "")
+    metadata = " ".join([
+        paper_id,
+        " ".join(str(author) for author in as_list(identity.get("authors"))),
+        str(identity.get("venue") or ""),
+        str(identity.get("year") or ""),
+        str(identity.get("doi") or ""),
+        str(identity.get("arxiv_id") or ""),
+        str(child_map(record.get("product_db")).get("original_filename") or ""),
+    ])
+    score = (
+        3.0 * _score_tokens(query_tokens, set(_tokens(title)))
+        + _score_tokens(query_tokens, set(_tokens(abstract)))
+        + _score_tokens(query_tokens, set(_tokens(metadata)))
+    )
+    if _normalize(query) and _normalize(query) in _normalize(" ".join([title, abstract, metadata])):
+        score += 2.0
+    return score
+
+
+def _matches_identity_hints(paper_id: str, record: JsonMap, hints: JsonMap) -> bool:
+    identity = child_map(record.get("identity"))
+    product = child_map(record.get("product_db"))
+    if hints.get("paper_id") and str(hints["paper_id"]) != paper_id:
+        return False
+    if hints.get("title") and _normalize(str(hints["title"])) not in _normalize(str(identity.get("title") or "")):
+        return False
+    if hints.get("filename") and _normalize(str(hints["filename"])) not in _normalize(str(product.get("original_filename") or "")):
+        return False
+    if hints.get("doi") and _normalize_identifier(hints["doi"]) != _normalize_identifier(identity.get("doi")):
+        return False
+    if hints.get("arxiv_id") and _normalize_identifier(hints["arxiv_id"]) != _normalize_identifier(identity.get("arxiv_id")):
+        return False
+    if hints.get("year") is not None and _optional_int(hints["year"]) != _optional_int(identity.get("year")):
+        return False
+    requested_authors = {
+        _normalize(str(value)) for value in as_list(hints.get("authors")) if str(value).strip()
+    }
+    if requested_authors and not _matches_all_authors(requested_authors, as_list(identity.get("authors"))):
+        return False
+    return True
+
+
+def _matches_any_author(requested: set[str], actual: list[Any]) -> bool:
+    actual_names = [_normalize(str(value)) for value in actual]
+    return any(
+        requested_name in actual_name or actual_name in requested_name
+        for requested_name in requested
+        for actual_name in actual_names
+        if requested_name and actual_name
+    )
+
+
+def _matches_all_authors(requested: set[str], actual: list[Any]) -> bool:
+    actual_names = [_normalize(str(value)) for value in actual]
+    return all(
+        any(
+            requested_name in actual_name or actual_name in requested_name
+            for actual_name in actual_names
+            if actual_name
+        )
+        for requested_name in requested
+    )
+
+
+def _diverse_documents(
+    scored: list[tuple[float, ReadingDocument]],
+    paper_id_order: list[str],
+    top_k: int,
+) -> list[ReadingDocument]:
+    by_paper: dict[str, list[ReadingDocument]] = {paper_id: [] for paper_id in paper_id_order}
+    for _, document in scored:
+        by_paper.setdefault(document.paper_id, []).append(document)
+    selected: list[ReadingDocument] = []
+    depth = 0
+    while len(selected) < top_k:
+        added = False
+        for paper_id in paper_id_order:
+            documents = by_paper.get(paper_id, [])
+            if depth < len(documents):
+                selected.append(documents[depth])
+                added = True
+                if len(selected) >= top_k:
+                    break
+        if not added:
+            break
+        depth += 1
+    return selected
+
+
+def _optional_int(value: Any) -> int | None:
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_identifier(value: Any) -> str:
+    return str(value or "").strip().lower()
 
 
 def _tool_schema(name: str, description: str, parameters: JsonMap) -> JsonMap:

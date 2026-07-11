@@ -29,6 +29,15 @@ class ChatModel:
     def complete(self, messages: list[JsonMap], tools: list[JsonMap], max_tokens: int) -> ChatTurn:
         raise NotImplementedError
 
+    def complete_required_tool(
+        self,
+        messages: list[JsonMap],
+        tools: list[JsonMap],
+        required_tool_name: str,
+        max_tokens: int,
+    ) -> ChatTurn:
+        return self.complete(messages, tools, max_tokens)
+
 
 class MiniMaxChatModel(ChatModel):
     def __init__(
@@ -46,6 +55,31 @@ class MiniMaxChatModel(ChatModel):
         self.max_attempts = max_attempts
 
     def complete(self, messages: list[JsonMap], tools: list[JsonMap], max_tokens: int) -> ChatTurn:
+        return self._complete(messages, tools, max_tokens)
+
+    def complete_required_tool(
+        self,
+        messages: list[JsonMap],
+        tools: list[JsonMap],
+        required_tool_name: str,
+        max_tokens: int,
+    ) -> ChatTurn:
+        tool_names = {
+            str((tool.get("function") or {}).get("name") or "")
+            for tool in tools
+        }
+        if not required_tool_name or required_tool_name not in tool_names:
+            raise ValueError("required tool must be present in the available tools")
+        thinking_type = "disabled" if required_tool_name == "submit_stage_result" else None
+        return self._complete(messages, tools, max_tokens, thinking_type=thinking_type)
+
+    def _complete(
+        self,
+        messages: list[JsonMap],
+        tools: list[JsonMap],
+        max_tokens: int,
+        thinking_type: str | None = None,
+    ) -> ChatTurn:
         payload: JsonMap = {
             "model": self.provider.model,
             "messages": messages,
@@ -55,10 +89,11 @@ class MiniMaxChatModel(ChatModel):
             "max_tokens": max_tokens,
         }
         if self.provider.model.lower() == "minimax-m3":
-            payload["thinking"] = {"type": "disabled"}
+            payload["thinking"] = {
+                "type": thinking_type or ("adaptive" if tools else "disabled")
+            }
         if tools:
             payload["tools"] = tools
-            payload["tool_choice"] = "auto"
 
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         request = urllib.request.Request(

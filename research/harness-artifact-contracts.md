@@ -2,13 +2,20 @@
 
 Canonical machine-readable contract: `research/golden-data/artifact-contracts.yaml`.
 
-This document names the V0 trace artifacts that the research harness must emit. The answer is only
-the final artifact; eval and frontend inspection should primarily judge the trace before it.
+This document names the runtime artifacts emitted by the v2 semantic-stage harness. The artifacts
+remain inspectable for product diagnostics and frontend panes, but golden evaluation scores only
+observable behavior through `BehaviorScorer`.
+
+The trace is also the release gate. A completed Product Reading turn may be shown only when the
+canonical `VerificationPass` is valid and the `ResearchAnswer` is linked back to the claim graph,
+evidence ledger, and reasoning artifact. If that gate fails, the product must emit a precise
+incomplete result rather than lower the evidence standard.
 
 ## Artifact Flow
 
 ```text
-Question
+UserQuestion / GoldenCase messages
+-> HarnessRun
 -> IntentFrame
 -> RetrievalPlan
 -> EvidenceLedger
@@ -16,9 +23,18 @@ Question
 -> ReasoningArtifact
 -> VerificationPass
 -> ResearchAnswer
+
+GoldenCase expectations + HarnessRun
+-> ScoreReport (eval mode only)
 ```
 
 ## Contracts
+
+### HarnessRun
+
+Top-level executable boundary for a research question or Golden Case. Product mode may persist its
+child artifacts for optional frontend review panes. Eval mode writes a separate deterministic
+`ScoreReport`.
 
 ### IntentFrame
 
@@ -30,7 +46,7 @@ required capabilities.
 
 Explicit plan for how the harness will search. It must show target entities, retrieval strategies,
 expected evidence types, hard-negative policy, recall targets, and stop conditions. Retrieval plans
-are part of the visible product, not hidden implementation detail.
+are runtime diagnostics and do not affect golden `hard_pass`.
 
 ### EvidenceLedger
 
@@ -52,9 +68,17 @@ multi-hop chain.
 ### VerificationPass
 
 Pre-answer audit. It checks attempted capabilities, evidence status, unsupported claims,
-contradictions, ambiguity handling, constraints, abstention requirements, and trace obligations.
+contradictions, ambiguity handling, constraints, abstention requirements, stage completion, answer
+references, and required corpus observation.
 
 ### ResearchAnswer
 
 The final answer presented to the user. It must cite claim ids, evidence ids, reasoning artifact ids,
 and the verification id. It must not add unsupported substantive claims.
+
+### ScoreReport
+
+Eval-only deterministic scoring result. Each case reports independent `outcome`, `retrieval`,
+`content`, and `grounding` dimensions plus a separate review status. It does not grade intent labels,
+paradigms, stage order, tool counts, runtime claim ids, or exact answer prose, and it does not use an
+LLM judge.

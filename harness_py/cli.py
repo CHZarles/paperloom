@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -93,10 +94,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if report["failed_count"] == 0 else 1
     if args.command == "agent-run":
         dataset = load_dataset(args.manifest)
+        selected = set(args.case_id)
+        cases_by_id = {str(case.get("id")): case for case in dataset.cases}
+        unknown_case_ids = sorted(selected - set(cases_by_id))
+        if unknown_case_ids:
+            print(json.dumps({
+                "error": "unknown_case_id",
+                "case_ids": unknown_case_ids,
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
         provider, model = _live_model(args.provider_source)
         harness = LiveResearchChatHarness(model, max_turns=args.max_turns, max_completion_tokens=args.max_tokens)
-        selected = set(args.case_id)
-        cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
         runs = [harness.run_case(dataset, case) for case in cases]
         report = BehaviorScorer().score_dataset(
             dataset if not selected else _dataset_with_cases(dataset, cases),
