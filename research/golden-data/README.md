@@ -9,6 +9,9 @@ Authored data has three parts:
 - `cases/*.yaml`: message history plus observable outcome, paper, evidence, fact, and citation expectations.
 
 Runtime stages and tool counts are deliberately not golden expectations.
+Every authored anchor requires a positive parseable `page`; audit and runtime matching use that same
+page constraint. Golden execution uses opaque conversation ids and keeps case, expectation,
+paradigm, and authored anchor labels out of model-facing messages and tool payloads.
 
 Commands:
 

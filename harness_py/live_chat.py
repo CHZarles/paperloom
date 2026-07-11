@@ -136,9 +136,10 @@ def _decision_only_run(
     case_id = str(case["id"])
     clarify = decision.route == "clarify"
     status = "NEEDS_CLARIFICATION" if clarify else "COMPLETED"
+    outcome = "needs_clarification" if clarify else "answered"
     pending = pending_interaction or {}
     markdown = decision.direct_reply or _clarification_markdown(pending)
-    answer_type = "clarification" if clarify else "conversation"
+    answer_type = "ambiguity_clarification" if clarify else "conversation"
     intent = decision.to_intent_frame() if clarify else None
     intent_frame = {
         "intent_id": stable_id("intent", case_id),
@@ -152,7 +153,7 @@ def _decision_only_run(
         "dataset_mentions": [],
         "constraints": intent.constraints if intent else {},
         "answer_type": answer_type,
-        "ambiguity_status": "blocking" if clarify else "unambiguous",
+        "ambiguity_status": "needs_user_choice" if clarify else "unambiguous",
         "actionability": "blocking" if clarify else "none",
         "requires_corpus_observation": False,
         "required_evidence_types": [],
@@ -162,6 +163,7 @@ def _decision_only_run(
         "answer_id": stable_id("answer", case_id),
         "question_id": case_id,
         "status": status,
+        "outcome": outcome,
         "answer_type": answer_type,
         "summary": markdown[:400],
         "markdown": markdown,
@@ -257,7 +259,9 @@ def _turn_failure_run(case: JsonMap, message: str, diagnostics: JsonMap) -> Json
     run["status"] = "FAILED_TECHNICAL"
     run["result_status"] = "FAILED_TECHNICAL"
     run["research_answer"]["status"] = "FAILED_TECHNICAL"
+    run["research_answer"]["outcome"] = None
     run["final_answer"]["status"] = "FAILED_TECHNICAL"
+    run["final_answer"]["outcome"] = None
     run["diagnostics"]["finish_reason"] = "turn_decision_failed"
     run["diagnostics"]["error"] = message
     return run

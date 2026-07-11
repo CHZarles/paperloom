@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .models import GoldenDataset, JsonMap, as_list, child_map
+from .pages import parse_positive_page
 
 
 SEARCH_ELEMENT_TYPES = (
@@ -23,12 +24,25 @@ SEARCH_ELEMENT_TYPES = (
 SEARCH_RESULT_LIMIT = 10
 SEARCH_SNIPPET_CHARS = 500
 PAPER_RESULT_LIMIT = 100
+MODEL_REDACTED_FIELDS = {"matched_anchor_id", "evidence_anchor_id"}
 
 
 @dataclass(frozen=True)
 class ToolResult:
     name: str
     payload: JsonMap
+
+
+def model_facing_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: model_facing_payload(item)
+            for key, item in value.items()
+            if key not in MODEL_REDACTED_FIELDS
+        }
+    if isinstance(value, list):
+        return [model_facing_payload(item) for item in value]
+    return value
 
 
 @dataclass
@@ -485,10 +499,8 @@ def _match_anchor(document: ReadingDocument, anchors: list[JsonMap]) -> str | No
 
 
 def _page_matches(anchor_page: Any, document_page: Any) -> bool:
-    if anchor_page is None:
-        return True
-    parsed_anchor_page = _optional_int(anchor_page)
-    parsed_document_page = _optional_int(document_page)
+    parsed_anchor_page = parse_positive_page(anchor_page)
+    parsed_document_page = parse_positive_page(document_page)
     return parsed_anchor_page is not None and parsed_document_page == parsed_anchor_page
 
 

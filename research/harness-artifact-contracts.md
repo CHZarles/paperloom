@@ -74,7 +74,10 @@ references, and required corpus observation.
 ### ResearchAnswer
 
 The final answer presented to the user. It must cite claim ids, evidence ids, reasoning artifact ids,
-and the verification id. It must not add unsupported substantive claims.
+and the verification id. Its `outcome` is one of `answered`, `needs_clarification`, `abstained`, or
+`partial`, independent of execution `status`; completed uncertainty reports and completed limited
+answers therefore remain `COMPLETED`. Technical failures do not declare a research outcome. The
+answer must not add unsupported substantive claims.
 
 ### ScoreReport
 

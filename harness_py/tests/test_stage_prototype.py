@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import unittest
+from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 
 import yaml
 
+from harness_py.contracts import ArtifactContractValidator
 from harness_py.dataset import load_artifact_contracts, load_dataset
-from harness_py.golden_case import case_expect, case_messages, case_question
 from harness_py.live_chat import LiveResearchChatHarness
 from harness_py.llm import ChatModel, ChatTurn, ToolCall
 from harness_py.models import GoldenDataset, as_list, child_map
@@ -127,6 +128,18 @@ class ParadigmPlanTest(unittest.TestCase):
     def test_answer_status_aliases_normalize_to_completed(self) -> None:
         self.assertEqual("COMPLETED", _normalize_answer_status("ANSWERABLE"))
         self.assertEqual("COMPLETED", _normalize_answer_status("DRAFT_COMPLETE"))
+
+    def test_runtime_research_outcome_enum_matches_golden_v2(self) -> None:
+        from harness_py.stage_prototype.models import ResearchOutcome
+
+        expected = {"answered", "needs_clarification", "abstained", "partial"}
+        contracts = load_artifact_contracts("research/golden-data/artifact-contracts.yaml")
+
+        self.assertEqual(expected, {outcome.value for outcome in ResearchOutcome})
+        self.assertEqual(
+            expected,
+            set(child_map(contracts.get("shared_enums")).get("research_outcome") or []),
+        )
 
     def test_supported_claim_without_accepted_evidence_becomes_underdetermined(self) -> None:
         claim = normalize_claim(
@@ -525,6 +538,7 @@ class ParadigmPlanTest(unittest.TestCase):
 
         self.assertEqual("completed", execution.result.status)
         self.assertEqual("COMPLETED", execution.result.answer["status"])
+        self.assertEqual("abstained", execution.result.answer["outcome"])
 
     def test_nonterminal_stage_failure_does_not_abstain_after_later_recovery(self) -> None:
         dataset = _synthetic_dataset()
@@ -931,49 +945,164 @@ class ParadigmPlanTest(unittest.TestCase):
         self.assertGreaterEqual(diagnostics["model_latency_ms"], 0)
         self.assertGreaterEqual(diagnostics["duration_ms"], diagnostics["model_latency_ms"])
 
-    def test_all_committed_golden_cases_run_through_semantic_stage_plans(self) -> None:
-        dataset = load_dataset("research/golden-data/manifest.yaml")
-        dataset = replace(
-            dataset,
-            reading_models_by_paper_id={
-                paper_id: json.loads(
-                    Path(
-                        "data/golden/transformer-bert-gpt/reading-models",
-                        f"{paper_id}.reading-model.json",
-                    ).read_text(encoding="utf-8")
-                )
-                for paper_id in dataset.paper_records_by_id
-            },
+    def test_message_driven_scenario_scores_a_completed_abstention(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(
+            dataset.cases[0],
+            "Can this corpus verify GPT-5 architecture details?",
+            outcome="abstained",
+            papers={},
+            evidence={},
+            facts={},
+            citations="optional",
         )
-        scorer = BehaviorScorer()
 
-        for case in dataset.cases:
-            with self.subTest(case_id=case["id"]):
-                run = LiveResearchChatHarness(_GoldenCaseStageModel(dataset, case)).run_case(dataset, case)
-                score = scorer.score_case(dataset, case, run)
+        run = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(dataset, case)
+        score = BehaviorScorer().score_case(dataset, case, run)
 
-                self.assertTrue(score.hard_pass, score.to_dict())
-                paradigm = run["intent_frame"]["primary_paradigm"]
-                self.assertEqual(case.get("paradigm"), paradigm)
-                if case_expect(case).get("outcome") != "needs_clarification":
-                    self.assertEqual(
-                        [stage.name for stage in PARADIGM_DEFINITIONS[paradigm].stages],
-                        [stage["stage_name"] for stage in run["stage_trace"]],
-                    )
+        self.assertEqual("COMPLETED", run["research_answer"]["status"])
+        self.assertEqual("abstained", run["research_answer"]["outcome"])
+        self.assertTrue(score.hard_pass, score.to_dict())
 
-    def test_live_golden_runner_passes_prior_messages_to_turn_decision(self) -> None:
-        dataset = load_dataset("research/golden-data/manifest.yaml")
-        case = next(case for case in dataset.cases if case["id"] == "bert_choice_followup_001")
-        model = _HistoryCaptureModel(dataset, case)
+    def test_message_driven_scenario_scores_a_completed_partial_answer(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(
+            dataset.cases[0],
+            "Give the synthetic value and identify the missing second value.",
+            outcome="partial",
+        )
+
+        run = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(dataset, case)
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertEqual("COMPLETED", run["research_answer"]["status"])
+        self.assertEqual("partial", run["research_answer"]["outcome"])
+        self.assertEqual("42", run["research_answer"]["fields"]["answer"])
+        self.assertTrue(score.hard_pass, score.to_dict())
+
+    def test_message_driven_scenario_exposes_a_grounding_failure(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(
+            dataset.cases[0],
+            "Give the synthetic value but omit the citation.",
+            outcome="answered",
+        )
+
+        run = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(dataset, case)
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertEqual("pass", score.dimensions["retrieval"].status)
+        self.assertEqual("fail", score.dimensions["grounding"].status)
+        self.assertIn("CITATIONS_REQUIRED", score.dimensions["grounding"].errors)
+        self.assertFalse(score.hard_pass)
+
+    def test_live_golden_messages_are_blind_to_authored_oracle_labels(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(
+            dataset.cases[0],
+            "What is the synthetic answer?",
+            outcome="answered",
+        )
+        case["id"] = "oracle_case_identity_should_be_hidden"
+        case["paradigm"] = "authored_paradigm_should_be_hidden"
+        case["expect"]["oracle_marker"] = "expect_payload_should_be_hidden"
+        model = _MessageDrivenScenarioModel(capture=True)
 
         run = LiveResearchChatHarness(model).run_case(dataset, case)
 
+        captured = json.dumps(model.captured_requests, ensure_ascii=False, sort_keys=True)
         context = model.turn_payloads[0]["conversation_context"]
-        self.assertEqual("The second.", model.turn_payloads[0]["user_message"])
-        self.assertEqual(2, len(context["recent_messages"]))
-        self.assertEqual("user", context["recent_messages"][0]["role"])
-        self.assertEqual("assistant", context["recent_messages"][1]["role"])
-        self.assertEqual("COMPLETED", run["status"])
+        self.assertNotEqual(case["id"], context["conversation_id"])
+        self.assertNotIn(case["id"], captured)
+        self.assertNotIn(case["paradigm"], captured)
+        self.assertNotIn("expect_payload_should_be_hidden", captured)
+        self.assertNotIn('"expect"', captured)
+        self.assertNotIn("synthetic_anchor", captured)
+        self.assertNotIn("matched_anchor_id", captured)
+        self.assertNotIn("evidence_anchor_id", captured)
+        self.assertEqual("answered", run["research_answer"]["outcome"])
+
+    def test_model_facing_citation_tool_payload_redacts_authored_anchor_ids(self) -> None:
+        dataset = _synthetic_dataset()
+        dataset = replace(dataset, citation_edges=[{
+            "from_paper_id": "synthetic_paper",
+            "to_paper_id": "synthetic_paper",
+            "relationship": "extends",
+            "evidence_anchor_id": "synthetic_anchor",
+        }])
+        model = _CitationPayloadCaptureModel()
+        state = _selected_state()
+        state.authorized_paper_ids = ["synthetic_paper"]
+
+        StageRunner(model, ReadingCorpusTools(dataset)).run(
+            StageSpec(
+                name="trace_relationship",
+                instruction="Inspect the citation relationship.",
+                allowed_tools=("get_citation_edges",),
+            ),
+            TurnFrame("turn_1", "How are the papers related?", ["synthetic_paper"]),
+            IntentFrame(
+                primary_paradigm="association_influence_genealogy",
+                normalized_goal="Inspect the citation relationship.",
+                answer_shape="citation_genealogy",
+                paper_references=[],
+                requested_aspects=[],
+                constraints={},
+                ambiguity={"status": "unambiguous"},
+                confidence=1.0,
+            ),
+            state,
+            dataset,
+        )
+
+        captured = json.dumps(model.captured_messages, sort_keys=True)
+        payload = json.loads(model.captured_messages[0]["content"])
+        self.assertEqual("extends", payload["edges"][0]["relationship"])
+        self.assertNotIn("synthetic_anchor", captured)
+        self.assertNotIn("evidence_anchor_id", captured)
+
+    def test_artifact_contract_validates_all_runtime_routes(self) -> None:
+        dataset = _synthetic_dataset()
+        validator = ArtifactContractValidator(
+            load_artifact_contracts("research/golden-data/artifact-contracts.yaml")
+        )
+        scenarios = {
+            "direct": ("Hello there.", "COMPLETED", "answered"),
+            "clarification": (
+                "Which attention paper do I mean?",
+                "NEEDS_CLARIFICATION",
+                "needs_clarification",
+            ),
+            "research": (
+                "Give the synthetic value and identify the missing second value.",
+                "COMPLETED",
+                "partial",
+            ),
+            "technical": ("Trigger a technical turn failure.", "FAILED_TECHNICAL", None),
+        }
+
+        for route, (question, expected_status, expected_outcome) in scenarios.items():
+            with self.subTest(route=route):
+                case = _scenario_case(dataset.cases[0], question, outcome=expected_outcome or "answered")
+                run = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(dataset, case)
+                validation = validator.validate_run(run)
+
+                self.assertEqual(expected_status, run["research_answer"]["status"])
+                self.assertEqual(expected_outcome, run["research_answer"].get("outcome"))
+                self.assertEqual([], validation.errors, validation)
+                self.assertEqual([], validation.warnings, validation)
+
+        clarification_case = _scenario_case(
+            dataset.cases[0],
+            "Which attention paper do I mean?",
+            outcome="needs_clarification",
+        )
+        clarification = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(
+            dataset,
+            clarification_case,
+        )
+        self.assertEqual("ambiguity_clarification", clarification["research_answer"]["answer_type"])
+        self.assertEqual("needs_user_choice", clarification["intent_frame"]["ambiguity_status"])
 
     def test_all_twenty_two_plans_execute_through_the_generic_runtime(self) -> None:
         dataset = _synthetic_dataset()
@@ -1382,7 +1511,6 @@ class _ExactFactHarnessModel(ChatModel):
             evidence_id = next(
                 item["evidence_id"]
                 for item in state["evidence"]
-                if item.get("matched_anchor_id") == "synthetic_anchor"
             )
             return _stage_result(
                 claims=[{
@@ -1432,6 +1560,7 @@ class _RequiredStageResultModel(ChatModel):
                 "claims": [],
                 "answer": {
                     "status": "COMPLETED",
+                    "outcome": "answered",
                     "answer_type": "constraint_filter",
                     "summary": "Synthetic Paper is recommended.",
                     "cited_claim_ids": [],
@@ -1533,26 +1662,172 @@ class _ConversationAuthorizedComparisonModel(ChatModel):
         raise AssertionError(f"unexpected stage: {stage_name}")
 
 
-class _GoldenCaseStageModel(ChatModel):
-    def __init__(self, dataset: GoldenDataset, case: dict):
-        self.dataset = dataset
-        self.case = case
-        self.required_anchor_ids = [
-            str(item)
-            for item in as_list(child_map(case_expect(case).get("evidence")).get("required"))
-        ]
+class _CitationPayloadCaptureModel(ChatModel):
+    def __init__(self) -> None:
+        self.captured_messages: list[dict] = []
 
     def complete(self, messages, tools, max_tokens):
+        tool_messages = [message for message in messages if message.get("role") == "tool"]
+        if not tool_messages:
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="citation_edge_call",
+                name="get_citation_edges",
+                arguments={"paper_id": "synthetic_paper"},
+            )])
+        self.captured_messages.extend(deepcopy(tool_messages))
+        return _stage_result(state_values={"relationship_seen": True})
+
+
+class _MessageDrivenScenarioModel(ChatModel):
+    def __init__(self, capture: bool = False):
+        self.capture = capture
+        self.captured_requests: list[dict] = []
+        self.turn_payloads: list[dict] = []
+
+    def complete(self, messages, tools, max_tokens):
+        self._capture(messages, tools)
+        return self._respond(messages)
+
+    def complete_required_tool(self, messages, tools, required_tool_name, max_tokens):
+        self._capture(messages, tools)
+        return self._respond(messages, required_tool_name)
+
+    def _capture(self, messages: list[dict], tools: list[dict]) -> None:
+        if self.capture:
+            self.captured_requests.append({
+                "messages": deepcopy(messages),
+                "tools": deepcopy(tools),
+            })
+        if "TURN_DECISION" in str(messages[0].get("content") or ""):
+            self.turn_payloads.append(json.loads(messages[-1]["content"]))
+
+    def _respond(self, messages: list[dict], required_tool_name: str = "") -> ChatTurn:
         system = str(messages[0].get("content") or "")
         if "TURN_DECISION" in system:
-            expectation = case_expect(self.case)
-            outcome = str(expectation.get("outcome"))
-            paradigm = str(self.case.get("paradigm"))
-            definition = PARADIGM_DEFINITIONS[paradigm]
-            if outcome == "needs_clarification":
-                arguments = {
+            return self._turn_decision(json.loads(messages[-1]["content"]))
+
+        stage_name = _stage_name(system)
+        tool_messages = [message for message in messages if message.get("role") == "tool"]
+        request = _stage_request(messages)
+        question = str(request.get("question") or "").lower()
+
+        if stage_name == "search_available_support":
+            if not tool_messages:
+                return ChatTurn(content="", tool_calls=[ToolCall(
+                    id="find_gpt5",
+                    name="find_papers_by_identity",
+                    arguments={"title": "GPT-5"},
+                )])
+            return _stage_result(
+                state_values={"support_found": False},
+                missing_obligations=[{"reason": "target_not_present_in_corpus"}],
+            )
+        if stage_name == "report_known_and_unknown":
+            return _stage_result(
+                claims=[{
+                    "claim_id": "boundary_claim",
+                    "text": "The corpus does not contain evidence for the requested GPT-5 details.",
+                    "status": "underdetermined",
+                    "supporting_evidence_ids": [],
+                }],
+                answer={
+                    "status": "COMPLETED",
+                    "outcome": "abstained",
+                    "answer_type": "uncertainty_boundary",
+                    "summary": "The corpus cannot verify the requested GPT-5 details.",
+                    "cited_claim_ids": ["boundary_claim"],
+                    "cited_evidence_ids": [],
+                },
+            )
+        if stage_name == "resolve_target_paper":
+            if not tool_messages:
+                return ChatTurn(content="", tool_calls=[ToolCall(
+                    id="find_synthetic_paper",
+                    name="search_paper_candidates",
+                    arguments={"query_text": "synthetic", "limit": 3},
+                )])
+            candidates = json.loads(tool_messages[-1]["content"]).get("candidates", [])
+            return _stage_result(selected_paper_ids=[item["paper_id"] for item in candidates[:1]])
+        if stage_name == "locate_exact_evidence":
+            if required_tool_name == "find_reading_locations" or not tool_messages:
+                return ChatTurn(content="", tool_calls=[ToolCall(
+                    id="find_synthetic_value",
+                    name="find_reading_locations",
+                    arguments={
+                        "query_text": "structured value forty two",
+                        "paper_ids": ["synthetic_paper"],
+                        "top_k": 2,
+                    },
+                )])
+            if required_tool_name == "read_locations" or not any(
+                message.get("name") == "read_locations" for message in tool_messages
+            ):
+                return _read_disclosed_locations(tool_messages, "read_synthetic_value")
+            return _stage_result(
+                selected_paper_ids=["synthetic_paper"],
+                accepted_evidence_ids=sorted(set(_evidence_ids(tool_messages))),
+            )
+        if stage_name == "extract_exact_facts":
+            evidence_id = request["research_state"]["evidence"][0]["evidence_id"]
+            omit_citation = "omit the citation" in question
+            outcome = "partial" if "missing second value" in question else "answered"
+            return _stage_result(
+                claims=[{
+                    "claim_id": "synthetic_value_claim",
+                    "text": "The synthetic value is 42.",
+                    "status": "supported",
+                    "supporting_evidence_ids": [evidence_id],
+                }],
+                missing_obligations=(
+                    [{"reason": "second_value_not_present"}] if outcome == "partial" else []
+                ),
+                answer={
+                    "status": "COMPLETED",
+                    "outcome": outcome,
+                    "answer_type": "exact_fact",
+                    "summary": "The synthetic value is 42.",
+                    "fields": {"answer": "42"},
+                    "cited_claim_ids": ["synthetic_value_claim"],
+                    "cited_evidence_ids": [] if omit_citation else [evidence_id],
+                },
+            )
+        return _stage_result(state_values={stage_name: "completed"})
+
+    def _turn_decision(self, payload: dict) -> ChatTurn:
+        question = str(payload.get("user_message") or "")
+        lower = question.lower()
+        if "technical turn failure" in lower:
+            return ChatTurn(content="turn decision unavailable")
+        if lower.startswith("hello"):
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="submit_direct_turn",
+                name="submit_turn_decision",
+                arguments={
+                    "route": "direct",
+                    "effective_goal": question,
+                    "task": {"verb": "converse", "object": "greeting"},
+                    "constraints": {},
+                    "primary_paradigm": "",
+                    "answer_shape": "conversation",
+                    "assumption": "",
+                    "blocking_reason": None,
+                    "direct_reply": "Hello.",
+                    "pending_interaction": None,
+                    "paper_references": [],
+                    "requested_aspects": [],
+                    "required_evidence_types": [],
+                    "required_capabilities": [],
+                    "requires_corpus_observation": False,
+                    "confidence": 1.0,
+                },
+            )])
+        if "which attention paper" in lower:
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="submit_clarification_turn",
+                name="submit_turn_decision",
+                arguments={
                     "route": "clarify",
-                    "effective_goal": case_question(self.case),
+                    "effective_goal": question,
                     "task": {"verb": "clarify", "object": "paper_identity"},
                     "constraints": {},
                     "primary_paradigm": "ambiguity_resolution",
@@ -1561,9 +1836,9 @@ class _GoldenCaseStageModel(ChatModel):
                     "blocking_reason": "ambiguous_paper_identity",
                     "direct_reply": "",
                     "pending_interaction": {
-                        "interaction_id": f"choice_{self.case['id']}",
+                        "interaction_id": "attention_paper_choice",
                         "kind": "free_text",
-                        "question": "Which paper do you mean?",
+                        "question": "Which attention paper do you mean?",
                         "options": [],
                     },
                     "paper_references": [],
@@ -1572,293 +1847,34 @@ class _GoldenCaseStageModel(ChatModel):
                     "required_capabilities": [],
                     "requires_corpus_observation": False,
                     "confidence": 1.0,
-                }
-            else:
-                arguments = {
-                    "route": "research",
-                    "effective_goal": " ".join(
-                        str(message.get("content") or "")
-                        for message in case_messages(self.case)
-                        if message.get("role") == "user"
-                    ),
-                    "task": {"verb": "research", "object": "papers"},
-                    "constraints": {},
-                    "primary_paradigm": paradigm,
-                    "answer_shape": definition.default_answer_shape,
-                    "assumption": "",
-                    "blocking_reason": None,
-                    "direct_reply": "",
-                    "pending_interaction": None,
-                    "paper_references": [],
-                    "requested_aspects": [],
-                    "required_evidence_types": [],
-                    "required_capabilities": [paradigm],
-                    "requires_corpus_observation": True,
-                    "confidence": 1.0,
-                }
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id=f"turn_{self.case['id']}",
-                name="submit_turn_decision",
-                arguments=arguments,
+                },
             )])
-        return self._complete_research_turn(messages, tools, max_tokens)
-
-    def _complete_research_turn(self, messages, tools, max_tokens):
-        system = str(messages[0].get("content") or "")
-        if "INTENT_RECOGNITION" in system:
-            return ChatTurn(content=json.dumps(self._intent_payload()))
-        stage_name = _stage_name(system)
-        tool_messages = [message for message in messages if message.get("role") == "tool"]
-
-        if stage_name in {
-            "resolve_target_paper",
-            "resolve_method_source",
-            "resolve_comparison_targets",
-            "resolve_lineage_nodes",
-            "resolve_hop_entities",
-            "resolve_conflict_sources",
-        }:
-            if not tool_messages:
-                return ChatTurn(content="", tool_calls=[
-                    ToolCall(
-                        id=f"resolve_{paper_id}",
-                        name="find_papers_by_identity",
-                        arguments={"paper_id": paper_id},
-                    )
-                    for paper_id in self._required_paper_ids()
-                ])
-            return _stage_result(selected_paper_ids=self._required_paper_ids())
-        if stage_name == "search_available_support":
-            if not tool_messages:
-                return ChatTurn(content="", tool_calls=[ToolCall(
-                    id="find_missing_target",
-                    name="find_papers_by_identity",
-                    arguments={"title": "GPT-5"},
-                )])
-            return _stage_result(
-                state_values={"support_found": False},
-                missing_obligations=[{
-                    "stage": stage_name,
-                    "reason": "No verified GPT-5 architecture paper is present in the corpus.",
-                }],
-            )
-        if stage_name in {
-            "locate_exact_evidence",
-            "retrieve_procedure_and_parameters",
-            "retrieve_evidence_per_axis",
-            "trace_relationship_edges",
-            "retrieve_evidence_per_hop",
-            "retrieve_each_side",
-        }:
-            return self._evidence_stage(stage_name, tool_messages)
-        if stage_name == "select_and_ground_candidates":
-            return self._candidate_evidence_stage(tool_messages)
-        if stage_name == "formulate_clarification":
-            return ChatTurn(content=json.dumps({
-                "status": "needs_clarification",
-                "decision_summary": "The phrase names multiple plausible paper families.",
-                "state_values": {
-                    "options": ["Attention Is All You Need", "earlier neural attention papers"],
-                },
-                "answer": {
-                    "status": "NEEDS_CLARIFICATION",
-                    "answer_type": "ambiguity_clarification",
-                    "summary": "Which attention paper do you mean: Attention Is All You Need or an earlier neural attention paper?",
-                    "fields": {
-                        "options": ["Attention Is All You Need", "earlier neural attention papers"],
-                    },
-                    "sections": [],
-                    "cited_claim_ids": [],
-                    "cited_evidence_ids": [],
-                },
-            }))
-        if stage_name == "report_known_and_unknown":
-            return _stage_result(
-                status="incomplete_precise",
-                claims=[{
-                    "claim_id": "claim_1",
-                    "text": "The available corpus does not verify GPT-5 architecture details.",
-                    "status": "underdetermined",
-                    "supporting_evidence_ids": [],
-                }],
-                answer={
-                    "status": "INCOMPLETE_PRECISE",
-                    "answer_type": "uncertainty_boundary",
-                    "summary": "The available corpus does not support GPT-5 architecture details.",
-                    "sections": [
-                        {"id": "what_is_known", "text": "The corpus contains earlier GPT work."},
-                        {"id": "what_is_not_supported", "text": "GPT-5 architecture details are not verified."},
-                        {"id": "missing_evidence", "text": "No verified GPT-5 architecture paper is present."},
-                    ],
-                    "fields": {},
-                    "cited_claim_ids": ["claim_1"],
-                    "cited_evidence_ids": [],
-                },
-            )
-        if stage_name in {
-            "extract_exact_facts",
-            "build_reproduction_checklist",
-            "synthesize_comparison",
-            "render_genealogy",
-            "link_supported_hops",
-            "present_conflict_resolution",
-            "recommend",
-        }:
-            return self._answer_stage(stage_name, messages)
-        return _stage_result(state_values={stage_name: "completed"})
-
-    def _intent_payload(self) -> dict:
-        paradigm = str(self.case.get("paradigm"))
-        ambiguity_status = "ambiguous" if paradigm == "ambiguity_resolution" else "unambiguous"
-        ambiguity = {"status": ambiguity_status}
-        if paradigm == "ambiguity_resolution":
-            ambiguity.update({
-                "candidates": ["Attention Is All You Need", "earlier neural attention papers"],
-                "clarification_question": "Which attention paper do you mean?",
-            })
-        return {
+        uncertainty = "gpt-5" in lower
+        paradigm = "uncertainty_knowledge_boundary" if uncertainty else "precision_fact_extraction"
+        answer_shape = "uncertainty_boundary" if uncertainty else "exact_fact"
+        arguments = {
+            "route": "research",
+            "effective_goal": question,
+            "task": {"verb": "verify" if uncertainty else "extract", "object": "paper_evidence"},
+            "constraints": {},
             "primary_paradigm": paradigm,
-            "normalized_goal": case_question(self.case),
-            "answer_shape": PARADIGM_DEFINITIONS[paradigm].default_answer_shape,
+            "answer_shape": answer_shape,
+            "assumption": "",
+            "blocking_reason": None,
+            "direct_reply": "",
+            "pending_interaction": None,
             "paper_references": [],
             "requested_aspects": [],
-            "constraints": {},
-            "ambiguity": ambiguity,
+            "required_evidence_types": ["paragraph"],
+            "required_capabilities": ["source_reading"],
+            "requires_corpus_observation": True,
             "confidence": 1.0,
-            "required_evidence_types": [],
-            "required_capabilities": [paradigm],
         }
-
-    def _evidence_stage(self, stage_name: str, tool_messages: list[dict]) -> ChatTurn:
-        if not tool_messages:
-            calls = []
-            if stage_name in {"trace_relationship_edges", "retrieve_evidence_per_hop"}:
-                calls.append(ToolCall(
-                    id="citation_edges",
-                    name="get_citation_edges",
-                    arguments={"paper_id": self._required_paper_ids()[0]},
-                ))
-            for index, anchor_id in enumerate(self.required_anchor_ids):
-                anchor = child_map(self.dataset.anchors_by_id[anchor_id])
-                selector = child_map(anchor.get("selector"))
-                query = str(selector.get("exact_text") or anchor_id)
-                calls.append(ToolCall(
-                    id=f"search_{index}",
-                    name="find_reading_locations",
-                    arguments={
-                        "query_text": query,
-                        "paper_ids": [str(anchor.get("paper_id"))],
-                        "top_k": 5,
-                    },
-                ))
-            return ChatTurn(content="", tool_calls=calls)
-        if not any(message.get("name") == "read_locations" for message in tool_messages):
-            return _read_disclosed_locations(tool_messages, f"read_{stage_name}")
-        accepted = []
-        for message in tool_messages:
-            payload = json.loads(message["content"])
-            for item in as_list(payload.get("items")):
-                if child_map(item).get("matched_anchor_id") in self.required_anchor_ids:
-                    accepted.append(str(child_map(item).get("evidence_id")))
-        return _stage_result(accepted_evidence_ids=sorted(set(accepted)))
-
-    def _candidate_evidence_stage(self, tool_messages: list[dict]) -> ChatTurn:
-        if not tool_messages:
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id="search_candidates",
-                name="search_paper_candidates",
-                arguments={"query_text": "", "limit": 100},
-            )])
-        if tool_messages[-1].get("name") == "search_paper_candidates":
-            anchor_id = self.required_anchor_ids[0]
-            anchor = child_map(self.dataset.anchors_by_id[anchor_id])
-            selector = child_map(anchor.get("selector"))
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id="find_candidate_evidence",
-                name="find_reading_locations",
-                arguments={
-                    "query_text": str(selector.get("exact_text") or anchor_id),
-                    "paper_ids": self._required_paper_ids(),
-                    "top_k": len(self._required_paper_ids()),
-                },
-            )])
-        if tool_messages[-1].get("name") == "find_reading_locations":
-            return _read_disclosed_locations(tool_messages, "read_candidate_evidence")
-        accepted = [
-            str(child_map(item).get("evidence_id"))
-            for message in tool_messages
-            for item in as_list(json.loads(message["content"]).get("items"))
-            if child_map(item).get("matched_anchor_id") in self.required_anchor_ids
-        ]
-        return _stage_result(
-            selected_paper_ids=self._required_paper_ids(),
-            accepted_evidence_ids=sorted(set(accepted)),
-        )
-
-    def _answer_stage(self, stage_name: str, messages: list[dict]) -> ChatTurn:
-        state = json.loads(messages[-1]["content"])["research_state"]
-        evidence_by_anchor = {
-            item.get("matched_anchor_id"): item.get("evidence_id")
-            for item in as_list(state.get("evidence"))
-            if item.get("matched_anchor_id")
-        }
-        claims = []
-        cited_evidence = []
-        expectation = case_expect(self.case)
-        for index, raw_claim in enumerate(as_list(expectation.get("claims")), start=1):
-            claim = child_map(raw_claim)
-            support = [
-                evidence_by_anchor[anchor_id]
-                for anchor_id in as_list(claim.get("evidence"))
-                if anchor_id in evidence_by_anchor
-            ]
-            claims.append({
-                "claim_id": f"claim_{index}",
-                "text": claim.get("text"),
-                "status": "supported",
-                "supporting_evidence_ids": support,
-                "refuting_evidence_ids": [],
-            })
-            cited_evidence.extend(support)
-        fields = dict(child_map(expectation.get("facts")))
-        if not claims and fields:
-            support = list(evidence_by_anchor.values())
-            for index, (key, value) in enumerate(fields.items(), start=1):
-                claims.append({
-                    "claim_id": f"claim_{index}",
-                    "text": f"{key}: {value}",
-                    "status": "supported",
-                    "supporting_evidence_ids": support,
-                    "refuting_evidence_ids": [],
-                })
-            cited_evidence.extend(support)
-        answer_type = PARADIGM_DEFINITIONS[str(self.case.get("paradigm"))].default_answer_shape
-        return _stage_result(
-            claims=claims,
-            answer={
-                "status": "COMPLETED",
-                "answer_type": answer_type,
-                "summary": " ".join(str(claim.get("text") or "") for claim in as_list(expectation.get("claims"))),
-                "fields": fields,
-                "sections": [],
-                "cited_claim_ids": [str(claim.get("claim_id")) for claim in claims],
-                "cited_evidence_ids": sorted(set(cited_evidence)),
-            },
-        )
-
-    def _required_paper_ids(self) -> list[str]:
-        return [str(item) for item in as_list(child_map(case_expect(self.case).get("papers")).get("required"))]
-
-
-class _HistoryCaptureModel(_GoldenCaseStageModel):
-    def __init__(self, dataset: GoldenDataset, case: dict):
-        super().__init__(dataset, case)
-        self.turn_payloads: list[dict] = []
-
-    def complete_required_tool(self, messages, tools, required_tool_name, max_tokens):
-        if required_tool_name == "submit_turn_decision":
-            self.turn_payloads.append(json.loads(messages[-1]["content"]))
-        return self.complete(messages, tools, max_tokens)
+        return ChatTurn(content="", tool_calls=[ToolCall(
+            id="submit_message_driven_turn",
+            name="submit_turn_decision",
+            arguments=arguments,
+        )])
 
 
 class _GenericParadigmStageModel(ChatModel):
@@ -1988,6 +2004,7 @@ class _GenericParadigmStageModel(ChatModel):
                 "claims": [],
                 "answer": {
                     "status": "NEEDS_CLARIFICATION",
+                    "outcome": "needs_clarification",
                     "answer_type": self.answer_shape,
                     "summary": "Choose an interpretation.",
                     "fields": {"answer": "42"},
@@ -1998,7 +2015,6 @@ class _GenericParadigmStageModel(ChatModel):
         evidence_id = next(
             item["evidence_id"]
             for item in request["research_state"]["evidence"]
-            if item.get("matched_anchor_id") == "synthetic_anchor"
         )
         return ChatTurn(content=json.dumps({
             "status": "completed",
@@ -2011,6 +2027,7 @@ class _GenericParadigmStageModel(ChatModel):
             }],
             "answer": {
                 "status": "COMPLETED",
+                "outcome": "answered",
                 "answer_type": self.answer_shape,
                 "summary": "The synthetic answer is 42.",
                 "fields": {"answer": "42"},
@@ -2116,6 +2133,7 @@ class _SoftMissingAnswerModel(ChatModel):
             "missing_obligations": [{"reason": "preference_not_specified"}],
             "answer": {
                 "status": "INCOMPLETE_PRECISE",
+                "outcome": "abstained",
                 "answer_type": "constraint_filter",
                 "summary": "Using a broad coverage assumption.",
                 "markdown": "Using a broad coverage assumption.",
@@ -2135,7 +2153,8 @@ class _CompletedBoundaryAnswerModel(ChatModel):
                 "supporting_evidence_ids": [],
             }],
             answer={
-                "status": "INCOMPLETE_PRECISE",
+                "status": "COMPLETED",
+                "outcome": "abstained",
                 "answer_type": "uncertainty_boundary",
                 "summary": "The conclusion remains uncertain.",
                 "markdown": "The conclusion remains uncertain.",
@@ -2146,16 +2165,38 @@ class _CompletedBoundaryAnswerModel(ChatModel):
 
 
 def _stage_result(**values) -> ChatTurn:
-    return ChatTurn(content=json.dumps({
+    payload = {
         "status": "completed",
         "decision_summary": "Stage completed.",
         **values,
-    }))
+    }
+    answer = child_map(payload.get("answer"))
+    if answer and "outcome" not in answer:
+        answer_status = str(answer.get("status") or "COMPLETED").upper()
+        answer["outcome"] = {
+            "NEEDS_CLARIFICATION": "needs_clarification",
+            "INCOMPLETE_PRECISE": "abstained",
+        }.get(answer_status, "answered")
+        payload["answer"] = answer
+    return ChatTurn(content=json.dumps(payload))
 
 
 def _stage_name(system: str) -> str:
     marker = "SEMANTIC_STAGE:"
     return system.split(marker, 1)[1].splitlines()[0].strip()
+
+
+def _stage_request(messages: list[dict]) -> dict:
+    for message in messages:
+        if message.get("role") != "user":
+            continue
+        try:
+            payload = json.loads(message.get("content") or "")
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and "research_state" in payload:
+            return payload
+    raise AssertionError("stage request payload missing")
 
 
 def _read_disclosed_locations(tool_messages: list[dict], call_id: str) -> ChatTurn:
@@ -2187,6 +2228,14 @@ def _selected_state(turn_id: str = "turn_1") -> ResearchState:
     state = ResearchState.new(turn_id)
     state.selected_paper_ids = ["synthetic_paper"]
     return state
+
+
+def _scenario_case(base_case: dict, question: str, **expect_updates) -> dict:
+    case = deepcopy(base_case)
+    case["id"] = "scenario_case"
+    case["messages"] = [{"role": "user", "content": question}]
+    case["expect"].update(expect_updates)
+    return case
 
 
 def _synthetic_dataset() -> GoldenDataset:

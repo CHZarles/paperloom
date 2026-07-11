@@ -7,7 +7,7 @@ from time import perf_counter
 
 from ..llm import ChatModel
 from ..models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map, stable_id
-from ..tools import ReadingCorpusTools, json_tool_content
+from ..tools import ReadingCorpusTools, model_facing_payload
 from .intent import IntentRecognitionError, IntentRecognizer, _parse_json_object
 from .models import (
     IntentFrame,
@@ -17,6 +17,8 @@ from .models import (
     StageTrace,
     TurnFrame,
     normalize_claim,
+    normalize_research_outcome,
+    research_outcome_error,
     unique_strings,
 )
 from .plans import ParadigmDefinition, get_paradigm
@@ -208,7 +210,11 @@ class StageRunner:
                         "role": "tool",
                         "tool_call_id": call.id,
                         "name": call.name,
-                        "content": json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                        "content": json.dumps(
+                            model_facing_payload(payload),
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        ),
                     })
                 continue
 
@@ -390,7 +396,8 @@ class StageRunner:
             "of ending mid-sentence or mid-table. Omit answer.sections and answer.fields unless the "
             "question or required answer fields genuinely need them. StageResult.status is authoritative: "
             "a complete answer that reports uncertainty still uses completed / COMPLETED; use "
-            "incomplete_precise only when this stage could not deliver its required answer. "
+            "incomplete_precise only when this stage could not deliver its required answer. Set "
+            "answer.outcome independently to answered, needs_clarification, abstained, or partial. "
             if stage.produces_answer else ""
         )
         evidence_size_guidance = (
@@ -938,11 +945,15 @@ def _research_answer(case_id: str, intent: IntentFrame, state: ResearchState, ve
     cited_claim_ids = [
         str(item) for item in as_list(raw.get("cited_claim_ids"))
         if str(item) in state.claims_by_id
-    ] or list(state.claims_by_id)
+    ]
+    if "cited_claim_ids" not in raw:
+        cited_claim_ids = list(state.claims_by_id)
     cited_evidence_ids = [
         str(item) for item in as_list(raw.get("cited_evidence_ids"))
         if str(item) in state.evidence_items_by_id
-    ] or list(state.evidence_items_by_id)
+    ]
+    if "cited_evidence_ids" not in raw:
+        cited_evidence_ids = list(state.evidence_items_by_id)
     status = _normalize_answer_status(raw.get("status") or "COMPLETED")
     if child_map(verification.get("ambiguity_resolution")).get("requires_user_choice"):
         status = "NEEDS_CLARIFICATION"
@@ -950,9 +961,11 @@ def _research_answer(case_id: str, intent: IntentFrame, state: ResearchState, ve
         verification.get("unsupported_claim_count")
         or not verification.get("stage_contracts_passed")
         or not verification.get("answer_reference_integrity_passed")
-        or verification.get("abstention_required")
     ):
         status = "INCOMPLETE_PRECISE"
+    outcome = normalize_research_outcome(raw.get("outcome"))
+    if research_outcome_error(status, outcome):
+        outcome = None
     summary = str(raw.get("summary") or "")
     if not summary:
         if status == "NEEDS_CLARIFICATION":
@@ -965,6 +978,7 @@ def _research_answer(case_id: str, intent: IntentFrame, state: ResearchState, ve
         "answer_id": stable_id("answer", case_id),
         "question_id": case_id,
         "status": status,
+        "outcome": outcome,
         "answer_type": str(raw.get("answer_type") or intent.answer_shape),
         "summary": summary,
         "sections": as_list(raw.get("sections")),
@@ -1194,11 +1208,18 @@ def _stage_result_submission_tool(stage: StageSpec) -> JsonMap:
             "state_values": {"type": "object"},
             "answer": {
                 "type": "object",
-                "required": ["status", "answer_type", "summary", "cited_claim_ids", "cited_evidence_ids"],
+                "required": [
+                    "status", "outcome", "answer_type", "summary",
+                    "cited_claim_ids", "cited_evidence_ids",
+                ],
                 "properties": {
                     "status": {
                         "type": "string",
                         "enum": ["COMPLETED", "NEEDS_CLARIFICATION", "INCOMPLETE_PRECISE"],
+                    },
+                    "outcome": {
+                        "type": "string",
+                        "enum": ["answered", "needs_clarification", "abstained", "partial"],
                     },
                     "answer_type": {"type": "string"},
                     "summary": {"type": "string", "maxLength": 300},
@@ -1285,6 +1306,19 @@ def _stage_submission_error(stage: StageSpec, payload: JsonMap) -> str:
         missing.append("answer")
     if missing:
         return "missing required fields: " + ", ".join(missing)
+    if stage.produces_answer:
+        answer = child_map(payload.get("answer"))
+        stage_status = {
+            "completed": "COMPLETED",
+            "needs_clarification": "NEEDS_CLARIFICATION",
+            "incomplete_precise": "INCOMPLETE_PRECISE",
+        }.get(str(payload.get("status") or "").lower(), "")
+        answer_status = _normalize_answer_status(answer.get("status"))
+        if stage_status and answer_status != stage_status:
+            return f"answer.status={answer_status} is inconsistent with stage status={stage_status}"
+        outcome_error = research_outcome_error(answer_status, answer.get("outcome"))
+        if outcome_error:
+            return outcome_error
     return ""
 
 
@@ -1452,7 +1486,7 @@ def _stage_output_contract(stage: StageSpec) -> str:
             "claims:[{claim_id,text,claim_type?,status,supporting_evidence_ids,"
             "refuting_evidence_ids?,depends_on_claim_ids?}], state_values:{}, "
             "missing_obligations:[{}], answer:{status:COMPLETED|NEEDS_CLARIFICATION|INCOMPLETE_PRECISE,"
-            "answer_type,summary,markdown?,fields?:{},"
+            "outcome:answered|needs_clarification|abstained|partial,answer_type,summary,markdown?,fields?:{},"
             "sections?:[],cited_claim_ids:[string],cited_evidence_ids:[string]}, memory_update:{}}. "
             "Answer fields must use direct scalar/list/object values; do not wrap a value in "
             "{type,value,notation}."
@@ -1552,6 +1586,7 @@ def _technical_failure_run(
         "answer_id": stable_id("answer", case_id),
         "question_id": case_id,
         "status": "FAILED_TECHNICAL",
+        "outcome": None,
         "answer_type": "unknown",
         "summary": reason,
         "sections": [],

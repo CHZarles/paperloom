@@ -16,6 +16,7 @@ from .models import (
     as_list,
     child_map,
 )
+from .pages import parse_positive_page
 
 
 REMOVED_CASE_FIELDS = {
@@ -109,6 +110,8 @@ def _validate_packs(packs: list[JsonMap]) -> None:
                 raise ValueError(f"anchor {anchor_id} references unknown paper {paper_id}")
             if not str(anchor.get("quote") or "").strip():
                 raise ValueError(f"anchor {anchor_id} is missing quote")
+            if parse_positive_page(anchor.get("page")) is None:
+                raise ValueError(f"anchor {anchor_id} requires a positive parseable page")
             anchor_ids.add(anchor_id)
             local_anchor_ids.add(anchor_id)
         for raw_edge in as_list(pack.get("citation_edges")):
@@ -219,7 +222,7 @@ def _normalized_anchors(packs: list[JsonMap]) -> dict[str, JsonMap]:
                 "role": anchor.get("role", "supports"),
                 "element": {
                     "type": anchor.get("type", "paragraph"),
-                    "page": anchor.get("page"),
+                    "page": parse_positive_page(anchor.get("page")),
                     "section": anchor.get("section"),
                 },
                 "selector": {"exact_text": anchor.get("quote")},

@@ -8,6 +8,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+import yaml
+
 from harness_py.dataset import load_dataset
 from harness_py.golden_fixture import GoldenFixtureHarness
 from harness_py.models import GoldenDataset
@@ -38,6 +40,17 @@ class GoldenV2Test(unittest.TestCase):
                 "compatibility_projection",
             ):
                 self.assertNotIn(removed, case)
+
+    def test_loader_rejects_a_v1_manifest(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "manifest.yaml"
+            manifest.write_text(
+                "schema_version: harness-golden-data/v1\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "unsupported manifest schema"):
+                load_dataset(manifest)
 
     def test_committed_dataset_has_three_history_snapshots(self) -> None:
         history_cases = [case for case in self.dataset.cases if len(case["messages"]) > 1]
@@ -136,6 +149,37 @@ class GoldenV2Test(unittest.TestCase):
             _match_anchor(document(7, f"Setup: {quote.upper()}."), [anchor]),
         )
 
+    def test_loader_rejects_an_anchor_without_a_positive_parseable_page(self) -> None:
+        manifest = deepcopy(self.dataset.manifest)
+        pack = deepcopy(self.dataset.paper_packs[0])
+        cases = {"cases": deepcopy(self.dataset.cases)}
+        manifest["paper_packs"] = ["paper-pack.yaml"]
+        manifest["case_files"] = ["cases.yaml"]
+
+        for invalid_page in (None, "", "page seven", 0, -1, 7.5, True):
+            with self.subTest(page=invalid_page), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                broken_pack = deepcopy(pack)
+                if invalid_page is None:
+                    broken_pack["anchors"][0].pop("page", None)
+                else:
+                    broken_pack["anchors"][0]["page"] = invalid_page
+                (root / "manifest.yaml").write_text(
+                    yaml.safe_dump(manifest, sort_keys=False),
+                    encoding="utf-8",
+                )
+                (root / "paper-pack.yaml").write_text(
+                    yaml.safe_dump(broken_pack, sort_keys=False),
+                    encoding="utf-8",
+                )
+                (root / "cases.yaml").write_text(
+                    yaml.safe_dump(cases, sort_keys=False),
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(ValueError, "positive parseable page"):
+                    load_dataset(root / "manifest.yaml", repo_root=Path.cwd())
+
     def test_committed_runtime_anchor_tags_are_exact_and_page_constrained(self) -> None:
         from harness_py.tools import ReadingCorpusTools, _normalize
 
@@ -188,6 +232,18 @@ class GoldenV2Test(unittest.TestCase):
         anchor = self._anchor_report(report, "transformer_adam_training_params_span")
 
         self.assertEqual(1, report["failed_count"], report)
+        self.assertEqual("not_found", anchor["status"])
+        self.assertEqual([], anchor["matched_location_refs"])
+
+    def test_audit_rejects_an_anchor_with_an_invalid_authored_page(self) -> None:
+        from harness_py.audit import audit_dataset
+
+        anchors = deepcopy(self.dataset.anchors_by_id)
+        anchors["transformer_adam_training_params_span"]["element"]["page"] = "page seven"
+
+        report = audit_dataset(replace(self.dataset, anchors_by_id=anchors))
+        anchor = self._anchor_report(report, "transformer_adam_training_params_span")
+
         self.assertEqual("not_found", anchor["status"])
         self.assertEqual([], anchor["matched_location_refs"])
 
@@ -252,6 +308,33 @@ class GoldenV2Test(unittest.TestCase):
             "REQUIRED_ANCHOR_MISSING:transformer_adam_training_params_span",
             score.dimensions["retrieval"].errors,
         )
+        self.assertIn(
+            "REQUIRED_PAPER_MISSING:attention_is_all_you_need_2017",
+            score.dimensions["retrieval"].errors,
+        )
+
+    def test_scorer_rejects_forbidden_papers_anchors_and_citations(self) -> None:
+        source_case = next(
+            case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001"
+        )
+        case = deepcopy(source_case)
+        case["expect"]["papers"]["forbidden"] = ["attention_is_all_you_need_2017"]
+        case["expect"]["evidence"]["forbidden"] = ["transformer_adam_training_params_span"]
+        case["expect"]["citations"] = "forbidden"
+        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertIn(
+            "FORBIDDEN_PAPER_ACCEPTED:attention_is_all_you_need_2017",
+            score.dimensions["retrieval"].errors,
+        )
+        self.assertIn(
+            "FORBIDDEN_ANCHOR_ACCEPTED:transformer_adam_training_params_span",
+            score.dimensions["retrieval"].errors,
+        )
+        self.assertIn("CITATIONS_FORBIDDEN", score.dimensions["grounding"].errors)
 
     def test_scorer_rejects_a_forged_anchor_paper_pairing(self) -> None:
         source_case = next(
@@ -337,6 +420,53 @@ class GoldenV2Test(unittest.TestCase):
 
         self.assertTrue(score.hard_pass, score.to_dict())
         self.assertEqual("pass", score.dimensions["outcome"].status)
+
+    def test_scorer_requires_an_explicit_runtime_outcome(self) -> None:
+        case = next(
+            case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        del run["research_answer"]["outcome"]
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertIn(
+            "OUTCOME_MISMATCH:expected=answered:actual=missing",
+            score.dimensions["outcome"].errors,
+        )
+
+    def test_scorer_never_treats_a_technical_failure_as_a_research_outcome(self) -> None:
+        case = next(
+            case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["status"] = "FAILED_TECHNICAL"
+        run["research_answer"]["status"] = "FAILED_TECHNICAL"
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertIn(
+            "OUTCOME_MISMATCH:expected=answered:actual=technical_failure",
+            score.dimensions["outcome"].errors,
+        )
+
+    def test_scorer_rejects_an_outcome_inconsistent_with_execution_status(self) -> None:
+        case = next(
+            case for case in self.dataset.cases if case["id"] == "attention_paper_ambiguous_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["status"] = "COMPLETED"
+        run["research_answer"]["status"] = "COMPLETED"
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertIn(
+            "OUTCOME_MISMATCH:expected=needs_clarification:actual=invalid",
+            score.dimensions["outcome"].errors,
+        )
 
     def _anchor_report(self, report: dict, anchor_id: str) -> dict:
         return next(item for item in report["anchors"] if item["anchor_id"] == anchor_id)

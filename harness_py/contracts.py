@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .models import JsonMap, as_list, child_map
+from .stage_prototype.models import research_outcome_error
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,7 @@ class ArtifactContractValidator:
 
         self._validate_evidence_items(child_map(run.get("evidence_ledger")), errors, warnings)
         self._validate_claim_nodes(child_map(run.get("claim_graph")), errors, warnings)
+        self._validate_answer_outcome(child_map(run.get("research_answer")), errors)
         self._validate_enums(run, warnings)
         return ContractValidation(errors=errors, warnings=warnings)
 
@@ -65,8 +67,19 @@ class ArtifactContractValidator:
             errors.append(f"{artifact_id}{suffix} must be an object")
             return
         for field_name in as_list(contract.get("required_fields")):
+            if (
+                artifact_id == "ResearchAnswer"
+                and field_name == "outcome"
+                and value.get("status") == "FAILED_TECHNICAL"
+            ):
+                continue
             if not _has_field(value, str(field_name)):
                 errors.append(f"{artifact_id}{suffix}.{field_name} missing")
+
+    def _validate_answer_outcome(self, answer: JsonMap, errors: list[str]) -> None:
+        error = research_outcome_error(answer.get("status"), answer.get("outcome"))
+        if error:
+            errors.append(f"ResearchAnswer.outcome invalid: {error}")
 
     def _validate_evidence_items(self, ledger: JsonMap, errors: list[str], warnings: list[str]) -> None:
         contract = self.artifacts.get("EvidenceLedger", {})

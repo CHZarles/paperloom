@@ -44,6 +44,11 @@ shared_enums:
     - needs_user_choice
     - unanswerable_from_available_evidence
     - unknown
+  research_outcome:
+    - answered
+    - needs_clarification
+    - abstained
+    - partial
   evidence_type:
     - paragraph
     - table
@@ -238,6 +243,7 @@ artifacts:
       - answer_id
       - question_id
       - status
+      - outcome
       - answer_type
       - summary
       - sections
@@ -250,6 +256,7 @@ artifacts:
       - "The answer must not introduce substantive claims absent from ClaimGraph."
       - "Golden expectations are compared only after the run by BehaviorScorer."
       - "status must distinguish COMPLETED, NEEDS_CLARIFICATION, INCOMPLETE_PRECISE, and FAILED_TECHNICAL."
+      - "outcome is independent from execution status and must use shared_enums.research_outcome except on FAILED_TECHNICAL."
   - id: ScoreReport
     purpose: "Eval-only deterministic behavior scoring result for HarnessRun outputs against v2 GoldenCase expectations."
     required_fields:

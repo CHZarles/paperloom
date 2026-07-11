@@ -6,6 +6,7 @@ from typing import Any
 
 from .golden_case import case_expect
 from .models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
+from .stage_prototype.models import normalize_research_outcome, research_outcome_error
 
 
 @dataclass(frozen=True)
@@ -198,21 +199,15 @@ def _validated_evidence(dataset: GoldenDataset, run: JsonMap) -> tuple[list[Json
 
 def _actual_outcome(run: JsonMap) -> str:
     answer = child_map(run.get("research_answer"))
-    explicit = str(answer.get("outcome") or "")
-    if explicit in {"answered", "needs_clarification", "abstained", "partial"}:
-        return explicit
     status = str(answer.get("status") or run.get("status") or "").upper()
-    if status == "COMPLETED":
-        return "answered"
-    if status == "NEEDS_CLARIFICATION":
-        return "needs_clarification"
-    if status == "INCOMPLETE_PRECISE":
-        supported = any(
-            _normalize_claim_status(child_map(claim).get("status")) == "supported"
-            for claim in as_list(child_map(run.get("claim_graph")).get("claims"))
-        )
-        return "partial" if supported and _accepted_evidence(run) else "abstained"
-    return "technical_failure"
+    if status == "FAILED_TECHNICAL":
+        return "technical_failure"
+    explicit = normalize_research_outcome(answer.get("outcome"))
+    if explicit and research_outcome_error(status, explicit):
+        return "invalid"
+    if explicit:
+        return explicit
+    return "missing"
 
 
 def _normalize_claim_status(value: Any) -> str:

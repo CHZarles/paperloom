@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import replace
 
 from .conversation import ConversationState
@@ -61,9 +63,20 @@ def conversation_state_for_case(dataset: GoldenDataset, case: JsonMap) -> Conver
             })
     return replace(
         ConversationState.new(
-            f"golden_{case.get('id')}",
+            _opaque_conversation_id(case),
             scope_paper_ids=paper_ids_for_case(dataset, case),
         ),
         turn_index=turn_index,
         message_history=history,
     )
+
+
+def _opaque_conversation_id(case: JsonMap) -> str:
+    snapshot = {
+        "paper_pack": case.get("paper_pack"),
+        "messages": case_messages(case),
+    }
+    digest = hashlib.sha1(
+        json.dumps(snapshot, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:16]
+    return f"conversation_{digest}"

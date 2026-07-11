@@ -1,12 +1,41 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from typing import Any
 
 from ..models import JsonMap, as_list, child_map
 
 
 MAX_PROMPT_EVIDENCE_ITEMS = 12
+
+
+class ResearchOutcome(str, Enum):
+    ANSWERED = "answered"
+    NEEDS_CLARIFICATION = "needs_clarification"
+    ABSTAINED = "abstained"
+    PARTIAL = "partial"
+
+
+def normalize_research_outcome(value: object) -> str | None:
+    normalized = str(value or "").strip().lower()
+    return normalized if normalized in {outcome.value for outcome in ResearchOutcome} else None
+
+
+def research_outcome_error(status: object, outcome: object) -> str:
+    normalized_status = str(status or "").strip().upper()
+    normalized_outcome = normalize_research_outcome(outcome)
+    if normalized_status == "FAILED_TECHNICAL":
+        return "" if normalized_outcome is None else "technical failures cannot declare a research outcome"
+    if normalized_outcome is None:
+        return "answer.outcome must be one of answered, needs_clarification, abstained, partial"
+    if normalized_status == "NEEDS_CLARIFICATION" and normalized_outcome != "needs_clarification":
+        return "NEEDS_CLARIFICATION requires outcome=needs_clarification"
+    if normalized_status == "COMPLETED" and normalized_outcome == "needs_clarification":
+        return "COMPLETED cannot declare outcome=needs_clarification"
+    if normalized_status == "INCOMPLETE_PRECISE" and normalized_outcome not in {"abstained", "partial"}:
+        return "INCOMPLETE_PRECISE requires outcome=abstained or partial"
+    return ""
 
 
 @dataclass(frozen=True)
@@ -115,7 +144,7 @@ class TurnDecision:
             "non_blocking" if self.assumption else "none"
         )
         ambiguity = {
-            "status": "blocking" if self.route == "clarify" else "unambiguous",
+            "status": "needs_user_choice" if self.route == "clarify" else "unambiguous",
         }
         if self.blocking_reason:
             ambiguity["reason"] = self.blocking_reason
@@ -301,7 +330,6 @@ def _evidence_card(item: JsonMap) -> JsonMap:
         "section": item.get("section"),
         "page": item.get("page"),
         "element_type": item.get("element_type"),
-        "matched_anchor_id": item.get("matched_anchor_id"),
         "span_text": str(item.get("span_text") or "")[:700],
     }
 

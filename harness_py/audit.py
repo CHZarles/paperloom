@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from .models import GoldenDataset, JsonMap, as_list, child_map
+from .pages import parse_positive_page
 
 
 def audit_dataset(dataset: GoldenDataset) -> JsonMap:
@@ -63,29 +64,9 @@ def _matches_anchor(normalized_quote: str, anchor_page: object, document: JsonMa
 
 
 def _page_matches(anchor_page: object, document_page: object) -> bool:
-    if anchor_page is None:
-        return True
-    parsed_anchor_page = _parse_page(anchor_page)
-    parsed_document_page = _parse_page(document_page)
+    parsed_anchor_page = parse_positive_page(anchor_page)
+    parsed_document_page = parse_positive_page(document_page)
     return parsed_anchor_page is not None and parsed_document_page == parsed_anchor_page
-
-
-def _parse_page(value: object) -> int | None:
-    if value is None or isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        return int(value) if value.is_integer() else None
-    if isinstance(value, str):
-        stripped = value.strip()
-        if not stripped:
-            return None
-        try:
-            return int(stripped)
-        except ValueError:
-            return None
-    return None
 
 
 def _location_ref(item: JsonMap) -> str:
