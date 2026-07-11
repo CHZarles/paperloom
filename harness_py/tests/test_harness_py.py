@@ -35,7 +35,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         report = BehaviorScorer().score_dataset(dataset, runs)
 
-        self.assertEqual(9, report["case_count"])
+        self.assertEqual(12, report["case_count"])
         self.assertEqual(0, report["failed_count"], report)
         self.assertTrue(all("intent_frame" in run for run in runs))
         self.assertTrue(all("evidence_ledger" in run for run in runs))
