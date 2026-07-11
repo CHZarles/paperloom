@@ -91,7 +91,7 @@ class ReadingDocument:
             "source_kind": self.source_kind,
             "retrieval_strategy": "source_quote_reading",
             "relevance_score": 1.0,
-            "evidence_quality": "verified" if self.matched_anchor_id else "read",
+            "evidence_quality": "verified",
             "supports_claim_ids": [],
             "refutes_claim_ids": [],
         }

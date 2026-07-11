@@ -34,7 +34,8 @@ GoldenCase expectations + HarnessRun
 
 Top-level executable boundary for a research question or Golden Case. Product mode may persist its
 child artifacts for optional frontend review panes. Eval mode writes a separate deterministic
-`ScoreReport`.
+`ScoreReport`. `status`, `ResearchAnswer.status`, and `result_status` when present use the closed
+execution-status enum and must agree.
 
 ### IntentFrame
 
@@ -52,7 +53,8 @@ are runtime diagnostics and do not affect golden `hard_pass`.
 
 Immutable ledger of accepted, rejected, and missing evidence. Every evidence item must carry paper
 identity, paper version, section/page/location, element type, source span or cell reference,
-retrieval strategy, quality labels, and claim links.
+retrieval strategy, quality labels, and claim links. Source-read quality is determined by the read
+operation, never by whether a passage matches an authored Golden anchor.
 
 ### ClaimGraph
 

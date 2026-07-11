@@ -8,6 +8,14 @@ from ..models import JsonMap, as_list, child_map
 
 
 MAX_PROMPT_EVIDENCE_ITEMS = 12
+_RESULT_STATUS_ABSENT = object()
+
+
+class ExecutionStatus(str, Enum):
+    COMPLETED = "COMPLETED"
+    NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
+    INCOMPLETE_PRECISE = "INCOMPLETE_PRECISE"
+    FAILED_TECHNICAL = "FAILED_TECHNICAL"
 
 
 class ResearchOutcome(str, Enum):
@@ -17,16 +25,50 @@ class ResearchOutcome(str, Enum):
     PARTIAL = "partial"
 
 
+def normalize_execution_status(value: object) -> str | None:
+    allowed = {status.value for status in ExecutionStatus}
+    return value if isinstance(value, str) and value in allowed else None
+
+
+def execution_status_error(
+    run_status: object,
+    answer_status: object,
+    result_status: object = _RESULT_STATUS_ABSENT,
+) -> str:
+    values = [("run.status", run_status), ("research_answer.status", answer_status)]
+    if result_status is not _RESULT_STATUS_ABSENT:
+        values.append(("result_status", result_status))
+    normalized: list[str] = []
+    for label, value in values:
+        status = normalize_execution_status(value)
+        if status is None:
+            allowed = ", ".join(item.value for item in ExecutionStatus)
+            return f"{label} must be one of {allowed}"
+        normalized.append(status)
+    if len(set(normalized)) != 1:
+        return "execution statuses disagree"
+    return ""
+
+
 def normalize_research_outcome(value: object) -> str | None:
-    normalized = str(value or "").strip().lower()
-    return normalized if normalized in {outcome.value for outcome in ResearchOutcome} else None
+    allowed = {outcome.value for outcome in ResearchOutcome}
+    return value if isinstance(value, str) and value in allowed else None
 
 
-def research_outcome_error(status: object, outcome: object) -> str:
-    normalized_status = str(status or "").strip().upper()
+def research_outcome_error(
+    status: object,
+    outcome: object,
+    *,
+    outcome_present: bool = True,
+) -> str:
+    normalized_status = normalize_execution_status(status)
+    if normalized_status == ExecutionStatus.FAILED_TECHNICAL.value:
+        if not outcome_present or outcome is None:
+            return ""
+        return "technical failures cannot declare a research outcome"
+    if not outcome_present or outcome is None:
+        return "answer.outcome must be present for non-technical execution"
     normalized_outcome = normalize_research_outcome(outcome)
-    if normalized_status == "FAILED_TECHNICAL":
-        return "" if normalized_outcome is None else "technical failures cannot declare a research outcome"
     if normalized_outcome is None:
         return "answer.outcome must be one of answered, needs_clarification, abstained, partial"
     if normalized_status == "NEEDS_CLARIFICATION" and normalized_outcome != "needs_clarification":

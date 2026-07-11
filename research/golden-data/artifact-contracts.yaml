@@ -11,6 +11,11 @@ artifact_order:
   - ResearchAnswer
   - ScoreReport
 shared_enums:
+  execution_status:
+    - COMPLETED
+    - NEEDS_CLARIFICATION
+    - INCOMPLETE_PRECISE
+    - FAILED_TECHNICAL
   answer_type:
     - exact_fact
     - definition_trace
@@ -103,6 +108,7 @@ artifacts:
     invariants:
       - "A run is the unit consumed by product UI panes and by eval scoring."
       - "All child artifact ids must be internally consistent within the run."
+      - "status, ResearchAnswer.status, and result_status when present must use shared_enums.execution_status and agree."
       - "ScoreReport is a separate eval output and is never required in product mode."
   - id: IntentFrame
     purpose: "Typed interpretation of the user question before retrieval."

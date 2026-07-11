@@ -6,7 +6,12 @@ from typing import Any
 
 from .golden_case import case_expect
 from .models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
-from .stage_prototype.models import normalize_research_outcome, research_outcome_error
+from .stage_prototype.models import (
+    ExecutionStatus,
+    execution_status_error,
+    normalize_research_outcome,
+    research_outcome_error,
+)
 
 
 @dataclass(frozen=True)
@@ -199,15 +204,28 @@ def _validated_evidence(dataset: GoldenDataset, run: JsonMap) -> tuple[list[Json
 
 def _actual_outcome(run: JsonMap) -> str:
     answer = child_map(run.get("research_answer"))
-    status = str(answer.get("status") or run.get("status") or "").upper()
-    if status == "FAILED_TECHNICAL":
+    status_values = [run.get("status"), answer.get("status")]
+    if "result_status" in run:
+        status_values.append(run.get("result_status"))
+    if ExecutionStatus.FAILED_TECHNICAL.value in status_values:
         return "technical_failure"
+    result_status = (
+        {"result_status": run.get("result_status")}
+        if "result_status" in run else
+        {}
+    )
+    if execution_status_error(run.get("status"), answer.get("status"), **result_status):
+        return "invalid"
+    if "outcome" not in answer or answer.get("outcome") is None:
+        return "missing"
     explicit = normalize_research_outcome(answer.get("outcome"))
-    if explicit and research_outcome_error(status, explicit):
+    if explicit is None:
+        return "invalid"
+    if research_outcome_error(answer.get("status"), answer.get("outcome")):
         return "invalid"
     if explicit:
         return explicit
-    return "missing"
+    return "invalid"
 
 
 def _normalize_claim_status(value: Any) -> str:

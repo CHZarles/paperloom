@@ -889,6 +889,7 @@ class _ActionFirstRecommendationModel(ChatModel):
                 }],
                 answer={
                     "status": "COMPLETED",
+                    "outcome": "answered",
                     "answer_type": "constraint_filter",
                     "summary": "Synthetic Paper is the available representative recommendation.",
                     "markdown": "Synthetic Paper is the available representative recommendation.",

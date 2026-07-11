@@ -963,8 +963,13 @@ def _research_answer(case_id: str, intent: IntentFrame, state: ResearchState, ve
         or not verification.get("answer_reference_integrity_passed")
     ):
         status = "INCOMPLETE_PRECISE"
-    outcome = normalize_research_outcome(raw.get("outcome"))
-    if research_outcome_error(status, outcome):
+    raw_outcome = raw.get("outcome")
+    outcome = normalize_research_outcome(raw_outcome)
+    if research_outcome_error(
+        status,
+        raw_outcome,
+        outcome_present="outcome" in raw,
+    ):
         outcome = None
     summary = str(raw.get("summary") or "")
     if not summary:
@@ -1316,7 +1321,11 @@ def _stage_submission_error(stage: StageSpec, payload: JsonMap) -> str:
         answer_status = _normalize_answer_status(answer.get("status"))
         if stage_status and answer_status != stage_status:
             return f"answer.status={answer_status} is inconsistent with stage status={stage_status}"
-        outcome_error = research_outcome_error(answer_status, answer.get("outcome"))
+        outcome_error = research_outcome_error(
+            answer_status,
+            answer.get("outcome"),
+            outcome_present="outcome" in answer,
+        )
         if outcome_error:
             return outcome_error
     return ""

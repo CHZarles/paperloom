@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .models import JsonMap, as_list, child_map
-from .stage_prototype.models import research_outcome_error
+from .stage_prototype.models import execution_status_error, research_outcome_error
 
 
 @dataclass(frozen=True)
@@ -54,6 +54,7 @@ class ArtifactContractValidator:
 
         self._validate_evidence_items(child_map(run.get("evidence_ledger")), errors, warnings)
         self._validate_claim_nodes(child_map(run.get("claim_graph")), errors, warnings)
+        self._validate_execution_statuses(run, errors)
         self._validate_answer_outcome(child_map(run.get("research_answer")), errors)
         self._validate_enums(run, warnings)
         return ContractValidation(errors=errors, warnings=warnings)
@@ -77,9 +78,24 @@ class ArtifactContractValidator:
                 errors.append(f"{artifact_id}{suffix}.{field_name} missing")
 
     def _validate_answer_outcome(self, answer: JsonMap, errors: list[str]) -> None:
-        error = research_outcome_error(answer.get("status"), answer.get("outcome"))
+        error = research_outcome_error(
+            answer.get("status"),
+            answer.get("outcome"),
+            outcome_present="outcome" in answer,
+        )
         if error:
             errors.append(f"ResearchAnswer.outcome invalid: {error}")
+
+    def _validate_execution_statuses(self, run: JsonMap, errors: list[str]) -> None:
+        answer = child_map(run.get("research_answer"))
+        result_status = (
+            {"result_status": run.get("result_status")}
+            if "result_status" in run else
+            {}
+        )
+        error = execution_status_error(run.get("status"), answer.get("status"), **result_status)
+        if error:
+            errors.append(f"HarnessRun execution status invalid: {error}")
 
     def _validate_evidence_items(self, ledger: JsonMap, errors: list[str], warnings: list[str]) -> None:
         contract = self.artifacts.get("EvidenceLedger", {})

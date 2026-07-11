@@ -23,7 +23,7 @@ from harness_py.stage_prototype.runtime import (
     _initial_research_state,
     _normalize_answer_status,
 )
-from harness_py.tools import ReadingCorpusTools
+from harness_py.tools import ReadingCorpusTools, model_facing_payload
 
 
 GOLDEN_PARADIGMS = {
@@ -130,15 +130,26 @@ class ParadigmPlanTest(unittest.TestCase):
         self.assertEqual("COMPLETED", _normalize_answer_status("DRAFT_COMPLETE"))
 
     def test_runtime_research_outcome_enum_matches_golden_v2(self) -> None:
-        from harness_py.stage_prototype.models import ResearchOutcome
+        from harness_py.stage_prototype.models import ExecutionStatus, ResearchOutcome
 
         expected = {"answered", "needs_clarification", "abstained", "partial"}
+        expected_statuses = {
+            "COMPLETED",
+            "NEEDS_CLARIFICATION",
+            "INCOMPLETE_PRECISE",
+            "FAILED_TECHNICAL",
+        }
         contracts = load_artifact_contracts("research/golden-data/artifact-contracts.yaml")
 
         self.assertEqual(expected, {outcome.value for outcome in ResearchOutcome})
         self.assertEqual(
             expected,
             set(child_map(contracts.get("shared_enums")).get("research_outcome") or []),
+        )
+        self.assertEqual(expected_statuses, {status.value for status in ExecutionStatus})
+        self.assertEqual(
+            expected_statuses,
+            set(child_map(contracts.get("shared_enums")).get("execution_status") or []),
         )
 
     def test_supported_claim_without_accepted_evidence_becomes_underdetermined(self) -> None:
@@ -1061,6 +1072,24 @@ class ParadigmPlanTest(unittest.TestCase):
         self.assertNotIn("synthetic_anchor", captured)
         self.assertNotIn("evidence_anchor_id", captured)
 
+    def test_model_facing_read_payload_is_identical_with_or_without_authored_anchors(self) -> None:
+        dataset = _synthetic_dataset()
+        without_anchors = replace(dataset, anchors_by_id={})
+
+        def read_payload(source: GoldenDataset) -> tuple[dict, dict]:
+            tools = ReadingCorpusTools(source)
+            tools.authorized_paper_ids.add("synthetic_paper")
+            tools.disclosed_location_refs.add("loc_1")
+            internal = tools.read_locations({"location_refs": ["loc_1"]})
+            return internal, model_facing_payload(internal)
+
+        anchored_internal, anchored_model = read_payload(dataset)
+        plain_internal, plain_model = read_payload(without_anchors)
+
+        self.assertEqual("synthetic_anchor", anchored_internal["items"][0]["matched_anchor_id"])
+        self.assertIsNone(plain_internal["items"][0]["matched_anchor_id"])
+        self.assertEqual(plain_model, anchored_model)
+
     def test_artifact_contract_validates_all_runtime_routes(self) -> None:
         dataset = _synthetic_dataset()
         validator = ArtifactContractValidator(
@@ -1103,6 +1132,101 @@ class ParadigmPlanTest(unittest.TestCase):
         )
         self.assertEqual("ambiguity_clarification", clarification["research_answer"]["answer_type"])
         self.assertEqual("needs_user_choice", clarification["intent_frame"]["ambiguity_status"])
+
+    def test_each_authoritative_status_field_independently_forces_technical_failure(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(dataset.cases[0], "What is the synthetic answer?", outcome="answered")
+        validator = ArtifactContractValidator(
+            load_artifact_contracts("research/golden-data/artifact-contracts.yaml")
+        )
+
+        for field in ("status", "result_status", "research_answer.status"):
+            with self.subTest(field=field):
+                run = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(dataset, case)
+                if field == "research_answer.status":
+                    run["research_answer"]["status"] = "FAILED_TECHNICAL"
+                else:
+                    run[field] = "FAILED_TECHNICAL"
+
+                score = BehaviorScorer().score_case(dataset, case, run)
+                validation = validator.validate_run(run)
+
+                self.assertIn(
+                    "OUTCOME_MISMATCH:expected=answered:actual=technical_failure",
+                    score.dimensions["outcome"].errors,
+                )
+                self.assertTrue(validation.errors, validation)
+
+    def test_missing_unknown_and_conflicting_execution_statuses_are_invalid(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(dataset.cases[0], "What is the synthetic answer?", outcome="answered")
+        validator = ArtifactContractValidator(
+            load_artifact_contracts("research/golden-data/artifact-contracts.yaml")
+        )
+
+        mutations = {
+            "missing_run": lambda run: run.pop("status"),
+            "missing_answer": lambda run: run["research_answer"].pop("status"),
+            "null_result": lambda run: run.__setitem__("result_status", None),
+            "unknown_run": lambda run: run.__setitem__("status", "BOGUS"),
+            "unknown_result": lambda run: run.__setitem__("result_status", "BOGUS"),
+            "unknown_answer": lambda run: run["research_answer"].__setitem__("status", "BOGUS"),
+            "conflict": lambda run: run.__setitem__("result_status", "NEEDS_CLARIFICATION"),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(mutation=name):
+                run = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(dataset, case)
+                mutate(run)
+
+                score = BehaviorScorer().score_case(dataset, case, run)
+                validation = validator.validate_run(run)
+
+                self.assertIn(
+                    "OUTCOME_MISMATCH:expected=answered:actual=invalid",
+                    score.dimensions["outcome"].errors,
+                )
+                self.assertTrue(validation.errors, validation)
+
+    def test_non_null_invalid_outcome_on_technical_failure_is_rejected(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(
+            dataset.cases[0],
+            "Trigger a technical turn failure.",
+            outcome="answered",
+        )
+        validator = ArtifactContractValidator(
+            load_artifact_contracts("research/golden-data/artifact-contracts.yaml")
+        )
+        run = LiveResearchChatHarness(_MessageDrivenScenarioModel()).run_case(dataset, case)
+
+        self.assertEqual([], validator.validate_run(run).errors)
+        run["research_answer"]["outcome"] = "not_a_research_outcome"
+        score = BehaviorScorer().score_case(dataset, case, run)
+        validation = validator.validate_run(run)
+
+        self.assertIn(
+            "OUTCOME_MISMATCH:expected=answered:actual=technical_failure",
+            score.dimensions["outcome"].errors,
+        )
+        self.assertTrue(
+            any("outcome" in error for error in validation.errors),
+            validation,
+        )
+
+    def test_model_omitting_outcome_cannot_silently_pass(self) -> None:
+        dataset = _synthetic_dataset()
+        case = _scenario_case(dataset.cases[0], "What is the synthetic answer?", outcome="answered")
+        model = _OmittedOutcomeScenarioModel()
+
+        run = LiveResearchChatHarness(model).run_case(dataset, case)
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertEqual(1, model.answer_attempts)
+        self.assertFalse(score.hard_pass)
+        self.assertIn(
+            "OUTCOME_MISMATCH:expected=answered:actual=missing",
+            score.dimensions["outcome"].errors,
+        )
 
     def test_all_twenty_two_plans_execute_through_the_generic_runtime(self) -> None:
         dataset = _synthetic_dataset()
@@ -1521,6 +1645,7 @@ class _ExactFactHarnessModel(ChatModel):
                 }],
                 answer={
                     "status": "ANSWERABLE",
+                    "outcome": "answered",
                     "answer_type": "exact_fact",
                     "summary": "The synthetic answer is 42.",
                     "fields": {answer_field: {"type": "integer", "value": "42"}},
@@ -1653,6 +1778,7 @@ class _ConversationAuthorizedComparisonModel(ChatModel):
                 }],
                 answer={
                     "status": "COMPLETED",
+                    "outcome": "answered",
                     "answer_type": "comparison_matrix",
                     "summary": "The selected paper reports 42.",
                     "cited_claim_ids": ["follow_up_claim"],
@@ -1877,6 +2003,36 @@ class _MessageDrivenScenarioModel(ChatModel):
         )])
 
 
+class _OmittedOutcomeScenarioModel(_MessageDrivenScenarioModel):
+    def __init__(self) -> None:
+        super().__init__()
+        self.answer_attempts = 0
+
+    def _respond(self, messages: list[dict], required_tool_name: str = "") -> ChatTurn:
+        system = str(messages[0].get("content") or "")
+        if "SEMANTIC_STAGE:extract_exact_facts" not in system:
+            return super()._respond(messages, required_tool_name)
+        self.answer_attempts += 1
+        request = _stage_request(messages)
+        evidence_id = request["research_state"]["evidence"][0]["evidence_id"]
+        return _stage_result(
+            claims=[{
+                "claim_id": "outcome_omitted_claim",
+                "text": "The synthetic value is 42.",
+                "status": "supported",
+                "supporting_evidence_ids": [evidence_id],
+            }],
+            answer={
+                "status": "COMPLETED",
+                "answer_type": "exact_fact",
+                "summary": "The synthetic value is 42.",
+                "fields": {"answer": "42"},
+                "cited_claim_ids": ["outcome_omitted_claim"],
+                "cited_evidence_ids": [evidence_id],
+            },
+        )
+
+
 class _GenericParadigmStageModel(ChatModel):
     def __init__(self, paradigm_id: str, answer_shape: str):
         self.paradigm_id = paradigm_id
@@ -2079,6 +2235,7 @@ class _UnsupportedClaimThenRepairModel(ChatModel):
             }],
             answer={
                 "status": "COMPLETED",
+                "outcome": "answered",
                 "answer_type": "constraint_filter",
                 "summary": "Synthetic Paper is a candidate.",
                 "cited_claim_ids": ["recommendation_claim"],
@@ -2165,20 +2322,11 @@ class _CompletedBoundaryAnswerModel(ChatModel):
 
 
 def _stage_result(**values) -> ChatTurn:
-    payload = {
+    return ChatTurn(content=json.dumps({
         "status": "completed",
         "decision_summary": "Stage completed.",
         **values,
-    }
-    answer = child_map(payload.get("answer"))
-    if answer and "outcome" not in answer:
-        answer_status = str(answer.get("status") or "COMPLETED").upper()
-        answer["outcome"] = {
-            "NEEDS_CLARIFICATION": "needs_clarification",
-            "INCOMPLETE_PRECISE": "abstained",
-        }.get(answer_status, "answered")
-        payload["answer"] = answer
-    return ChatTurn(content=json.dumps(payload))
+    }))
 
 
 def _stage_name(system: str) -> str:
