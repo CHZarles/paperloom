@@ -6,7 +6,9 @@ from typing import Any
 
 from agents import (
     Agent,
+    Model,
     ModelResponse,
+    ModelSettings,
     RunConfig,
     RunHooks,
     Runner,
@@ -60,21 +62,34 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
 
     def __init__(
         self,
-        provider: ProviderConfig,
+        provider: ProviderConfig | None = None,
         *,
         max_completion_tokens: int = 3000,
+        model: Model | None = None,
+        model_settings: ModelSettings | None = None,
     ) -> None:
-        self.model = MiniMaxAgentsModel(provider)
+        if model is None and provider is None:
+            raise ValueError("provider or model is required")
+        self.model = model or MiniMaxAgentsModel(provider)  # type: ignore[arg-type]
         self.max_completion_tokens = max_completion_tokens
+        self.model_settings = model_settings
 
     def run_turn(self, turn: TurnExecutionInput) -> TurnExecutionResult:
         context = ResearchRunContext(turn)
         tools = build_agent_tools(context)
+        settings = self.model_settings
+        if settings is None and isinstance(self.model, MiniMaxAgentsModel):
+            settings = self.model.research_settings(self.max_completion_tokens)
+        settings = settings or ModelSettings(
+            max_tokens=self.max_completion_tokens,
+            tool_choice="required",
+            parallel_tool_calls=True,
+        )
         agent = Agent[ResearchRunContext](
             name="PaiSmart Research Harness",
             instructions=research_agent_instructions(context.skills),
             model=self.model,
-            model_settings=self.model.research_settings(self.max_completion_tokens),
+            model_settings=settings,
             tools=tools,
             tool_use_behavior=tools_to_final_output,
             reset_tool_choice=False,
