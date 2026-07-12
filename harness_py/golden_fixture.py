@@ -15,11 +15,6 @@ class GoldenFixtureHarness:
             _fixture_evidence(dataset, str(anchor_id))
             for anchor_id in as_list(child_map(expectation.get("evidence")).get("required"))
         ]
-        evidence_by_anchor = {
-            str(item["matched_anchor_id"]): str(item["evidence_id"])
-            for item in evidence
-        }
-        claims = _fixture_claims(expectation, evidence_by_anchor)
         outcome = str(expectation.get("outcome"))
         status = {
             "answered": "COMPLETED",
@@ -39,15 +34,11 @@ class GoldenFixtureHarness:
             "outcome_reason": str(expectation.get("reason") or ""),
             "answer_type": "golden_fixture",
             "summary": case_question(case),
-            "sections": [],
             "markdown": case_question(case),
             "fields": dict(child_map(expectation.get("facts"))),
-            "cited_claim_ids": [str(claim["claim_id"]) for claim in claims],
             "cited_evidence_ids": cited,
-            "reasoning_artifact_ids": [stable_id("reasoning", case_id)],
-            "verification_id": stable_id("verification", case_id),
         }
-        return _fixture_run(case_id, status, evidence, claims, answer)
+        return _fixture_run(case_id, status, evidence, answer)
 
 
 def _fixture_evidence(dataset: GoldenDataset, anchor_id: str) -> JsonMap:
@@ -74,42 +65,13 @@ def _fixture_evidence(dataset: GoldenDataset, anchor_id: str) -> JsonMap:
     }
 
 
-def _fixture_claims(expectation: JsonMap, evidence_by_anchor: dict[str, str]) -> list[JsonMap]:
-    claims: list[JsonMap] = []
-    authored = [child_map(item) for item in as_list(expectation.get("claims"))]
-    for index, claim in enumerate(authored, start=1):
-        support = [
-            evidence_by_anchor[str(anchor_id)]
-            for anchor_id in as_list(claim.get("evidence"))
-            if str(anchor_id) in evidence_by_anchor
-        ]
-        claims.append(_fixture_claim(index, str(claim.get("text") or ""), support))
-    if not claims:
-        all_evidence = list(evidence_by_anchor.values())
-        for index, (key, value) in enumerate(child_map(expectation.get("facts")).items(), start=1):
-            claims.append(_fixture_claim(index, f"{key}: {value}", all_evidence))
-    return claims
-
-
-def _fixture_claim(index: int, text: str, support: list[str]) -> JsonMap:
-    return {
-        "claim_id": f"claim_{index}",
-        "text": text,
-        "status": "supported" if support else "underdetermined",
-        "supporting_evidence_ids": support,
-        "refuting_evidence_ids": [],
-    }
-
-
 def _fixture_run(
     case_id: str,
     status: str,
     evidence: list[JsonMap],
-    claims: list[JsonMap],
     answer: JsonMap,
 ) -> JsonMap:
     now = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
-    verification_id = stable_id("verification", case_id)
     return {
         "schema_version": RUN_TRACE_SCHEMA_VERSION,
         "run_id": stable_id("run", case_id),
@@ -120,17 +82,9 @@ def _fixture_run(
         "completed_at": now,
         "status": status,
         "result_status": status,
-        "intent_frame": {
-            "intent_id": stable_id("intent", case_id),
-            "question_id": case_id,
-            "primary_paradigm": "golden_fixture",
-        },
-        "retrieval_plan": {
-            "plan_id": stable_id("plan", case_id),
-            "question_id": case_id,
-            "strategy_steps": [],
-        },
-        "stage_trace": [],
+        "skills_used": [],
+        "react_trace": [],
+        "paper_candidates": [],
         "evidence_ledger": {
             "ledger_id": stable_id("ledger", case_id),
             "question_id": case_id,
@@ -138,19 +92,15 @@ def _fixture_run(
             "rejected_items": [],
             "missing_evidence": [],
         },
-        "claim_graph": {
-            "graph_id": stable_id("claim_graph", case_id),
-            "question_id": case_id,
-            "claims": claims,
-            "edges": [],
-        },
-        "reasoning_artifacts": [{"reasoning_id": stable_id("reasoning", case_id)}],
-        "verification_pass": {
-            "verification_id": verification_id,
-            "question_id": case_id,
-            "unsupported_claim_count": 0,
-            "missing_required_evidence": [],
+        "citation_validation": {
+            "passed": True,
+            "cited_evidence_ids": list(answer["cited_evidence_ids"]),
+            "corpus_tools_used": False,
         },
         "research_answer": answer,
         "final_answer": answer,
+        "diagnostics": {
+            "finish_reason": "golden_fixture",
+            "tool_call_count": 0,
+        },
     }

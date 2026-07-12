@@ -2,88 +2,48 @@
 
 Canonical machine-readable contract: `research/golden-data/artifact-contracts.yaml`.
 
-This document names the runtime artifacts emitted by the v2 semantic-stage harness. The artifacts
-remain inspectable for product diagnostics and frontend panes, but golden evaluation scores only
-observable behavior through `BehaviorScorer`.
-
-The trace is also the release gate. A completed Product Reading turn may be shown only when the
-canonical `VerificationPass` is valid and the `ResearchAnswer` is linked back to the claim graph,
-evidence ledger, and reasoning artifact. If that gate fails, the product must emit a precise
-incomplete result rather than lower the evidence standard.
-
-## Artifact Flow
+The skill-guided ReAct harness persists only artifacts that actually exist during execution:
 
 ```text
-UserQuestion / GoldenCase messages
--> HarnessRun
--> IntentFrame
--> RetrievalPlan
--> EvidenceLedger
--> ClaimGraph
--> ReasoningArtifact
--> VerificationPass
--> ResearchAnswer
-
-GoldenCase expectations + HarnessRun
--> ScoreReport (eval mode only)
+HarnessRun
+|- ResearchAnswer
+|- EvidenceLedger
+|- PaperCandidates
+|- SkillsUsed
+|- ReActTrace
+|- CitationValidation
+`- Diagnostics
 ```
 
-## Contracts
+## HarnessRun
 
-### HarnessRun
+One conversation turn. It carries execution status, timestamps, the natural answer, evidence,
+optional inspection data, and the state update required by the next turn.
 
-Top-level executable boundary for a research question or Golden Case. Product mode may persist its
-child artifacts for optional frontend review panes. Eval mode writes a separate deterministic
-`ScoreReport`. `status`, `ResearchAnswer.status`, and `result_status` when present use the closed
-execution-status enum and must agree.
+## ResearchAnswer
 
-### IntentFrame
+The model-authored user-facing response accepted through `submit_research_answer`. Its outcome is
+`answered`, `needs_clarification`, `partial`, or `abstained`. Technical failure is an execution
+status and does not pretend to be a research outcome.
 
-Typed interpretation of the user request. It records the raw and normalized question, entities,
-paper and method mentions, constraints, answer type, ambiguity status, required evidence types, and
-required capabilities.
+## EvidenceLedger
 
-### RetrievalPlan
+The passages actually read during the turn plus persisted passages cited again by a follow-up.
+Candidate cards and location previews are not evidence. Every cited id must resolve to a citeable
+ledger item.
 
-Explicit plan for how the harness will search. It must show target entities, retrieval strategies,
-expected evidence types, hard-negative policy, recall targets, and stop conditions. Retrieval plans
-are runtime diagnostics and do not affect golden `hard_pass`.
+## ReActTrace
 
-### EvidenceLedger
+The actual skill and corpus tool calls. It exists for debugging, evaluation, and an optional
+frontend pane. It is not a predeclared plan and is not exposed as private chain-of-thought.
 
-Immutable ledger of accepted, rejected, and missing evidence. Every evidence item must carry paper
-identity, paper version, section/page/location, element type, source span or cell reference,
-retrieval strategy, quality labels, and claim links. Source-read quality is determined by the read
-operation, never by whether a passage matches an authored Golden anchor.
+## CitationValidation
 
-### ClaimGraph
+The deterministic result of checking citation existence, citeability, and the minimum citation
+requirement after corpus use. It is a reference-integrity check, not a semantic truth certificate.
 
-Atomic claims with support/refutation edges. Final answers are allowed to use only claims that are
-present here, and every supported claim must link to evidence.
+## ScoreReport
 
-### ReasoningArtifact
-
-The structured synthesis product for the question shape: comparison table, timeline, citation graph,
-reproduction checklist, conflict matrix, constraint table, uncertainty report, definition trace, or
-multi-hop chain.
-
-### VerificationPass
-
-Pre-answer audit. It checks attempted capabilities, evidence status, unsupported claims,
-contradictions, ambiguity handling, constraints, abstention requirements, stage completion, answer
-references, and required corpus observation.
-
-### ResearchAnswer
-
-The final answer presented to the user. It must cite claim ids, evidence ids, reasoning artifact ids,
-and the verification id. Its `outcome` is one of `answered`, `needs_clarification`, `abstained`, or
-`partial`, independent of execution `status`; completed uncertainty reports and completed limited
-answers therefore remain `COMPLETED`. Technical failures do not declare a research outcome. The
-answer must not add unsupported substantive claims.
-
-### ScoreReport
-
-Eval-only deterministic scoring result. Each case reports independent `outcome`, `retrieval`,
-`content`, and `grounding` dimensions plus a separate review status. It does not grade intent labels,
-paradigms, stage order, tool counts, runtime claim ids, or exact answer prose, and it does not use an
-LLM judge.
+Eval-only deterministic scoring for outcome, retrieval, structured content, and grounding. Skill
+selection, tool sequence, tool count, and exact prose are deliberately excluded. The calibrated
+LLM judge remains a separate offline quality signal.

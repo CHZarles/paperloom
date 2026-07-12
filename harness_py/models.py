@@ -8,9 +8,9 @@ from typing import Any
 GOLDEN_SCHEMA_VERSION = "harness-golden-data/v2"
 GOLDEN_CASE_SCHEMA_VERSION = "harness-golden-case/v2"
 PAPER_PACK_SCHEMA_VERSION = "harness-paper-pack/v2"
-RUN_TRACE_SCHEMA_VERSION = "harness-run-trace/v1"
+RUN_TRACE_SCHEMA_VERSION = "harness-run-trace/v2"
 SCORE_REPORT_SCHEMA_VERSION = "harness-score-report/v2"
-ARTIFACT_CONTRACT_SCHEMA_VERSION = "research-harness-artifacts/v1"
+ARTIFACT_CONTRACT_SCHEMA_VERSION = "research-harness-artifacts/v2"
 
 
 JsonMap = dict[str, Any]

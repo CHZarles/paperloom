@@ -34,7 +34,6 @@ def main(argv: list[str] | None = None) -> int:
     agent_parser.add_argument("--out", default="eval/rag/runs/python-minimax-agent")
     agent_parser.add_argument("--case-id", action="append", default=[])
     agent_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    agent_parser.add_argument("--max-turns", type=int, default=8)
     agent_parser.add_argument("--max-tokens", type=int, default=3000)
     chat_parser = subcommands.add_parser("chat", help="Chat with current product DB papers.")
     chat_parser.add_argument("--question", required=True)
@@ -47,7 +46,6 @@ def main(argv: list[str] | None = None) -> int:
     chat_parser.add_argument("--conversation-id", default="live_conversation")
     chat_parser.add_argument("--print-state", action="store_true")
     chat_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    chat_parser.add_argument("--max-turns", type=int, default=8)
     chat_parser.add_argument("--max-tokens", type=int, default=3000)
     chat_parser.add_argument("--print-run", action="store_true")
     shell_parser = subcommands.add_parser("chat-shell", help="Open an interactive terminal chat with product DB papers.")
@@ -60,7 +58,6 @@ def main(argv: list[str] | None = None) -> int:
     shell_parser.add_argument("--conversation-id", default="live_conversation")
     shell_parser.add_argument("--print-run", action="store_true")
     shell_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    shell_parser.add_argument("--max-turns", type=int, default=8)
     shell_parser.add_argument("--max-tokens", type=int, default=3000)
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
@@ -114,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
         provider, model = _live_model(args.provider_source)
-        harness = LiveResearchChatHarness(model, max_turns=args.max_turns, max_completion_tokens=args.max_tokens)
+        harness = LiveResearchChatHarness(model, max_completion_tokens=args.max_tokens)
         runs = [harness.run_case(dataset, case) for case in cases]
         report = BehaviorScorer().score_dataset(
             dataset if not selected else _dataset_with_cases(dataset, cases),
@@ -141,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
         )
         provider, model = _live_model(args.provider_source)
-        harness = LiveResearchChatHarness(model, max_turns=args.max_turns, max_completion_tokens=args.max_tokens)
+        harness = LiveResearchChatHarness(model, max_completion_tokens=args.max_tokens)
         state = _chat_state(args, dataset)
         run, state = harness.run_turn(dataset, state, args.question)
         out_value = None
@@ -188,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
         )
         provider, model = _live_model(args.provider_source)
-        harness = LiveResearchChatHarness(model, max_turns=args.max_turns, max_completion_tokens=args.max_tokens)
+        harness = LiveResearchChatHarness(model, max_completion_tokens=args.max_tokens)
         state = _chat_state(args, dataset)
         state_path = args.state_out or args.state
         print(json.dumps({
@@ -259,7 +256,10 @@ def run_chat_shell(
         if stripped in {"/exit", "/quit"}:
             break
         if stripped == "/help":
-            output_func("Commands: /state, /save, /exit. Any other input is sent as a research turn.")
+            output_func(
+                "Commands: /state, /history, /new, /clear, /save, /exit. "
+                "Any other input is sent as a research turn."
+            )
             continue
         if stripped == "/state":
             output_func(json.dumps(_terminal_state_summary(state), indent=2, sort_keys=True, ensure_ascii=False))
@@ -267,6 +267,14 @@ def run_chat_shell(
         if stripped == "/save":
             _save_state_if_requested(state, state_path)
             output_func(f"Saved state: {state_path}" if state_path else "No --state path configured.")
+            continue
+        if stripped in {"/new", "/clear"}:
+            state = state.reset()
+            _save_state_if_requested(state, state_path)
+            output_func("Started a fresh conversation context.")
+            continue
+        if stripped == "/history":
+            output_func(json.dumps(state.message_history, indent=2, ensure_ascii=False))
             continue
 
         run, state = harness.run_turn(dataset, state, stripped)
@@ -282,19 +290,11 @@ def run_chat_shell(
 
 def _print_terminal_answer(output_func, run: dict, case_dir: Path | None) -> None:
     answer = run.get("research_answer") or {}
-    diagnostics = run.get("diagnostics") or {}
     output_func("")
-    output_func(f"assistant [{answer.get('status', 'UNKNOWN')}]")
+    output_func("assistant")
     text = answer.get("markdown") or answer.get("summary") or ""
     if text:
         output_func(str(text))
-    cited = [str(item) for item in answer.get("cited_evidence_ids") or [] if item]
-    if cited:
-        output_func("evidence: " + ", ".join(cited[:8]) + (" ..." if len(cited) > 8 else ""))
-    output_func(
-        "trace: "
-        + f"tools={diagnostics.get('tool_call_count', 0)}, finish={diagnostics.get('finish_reason', 'unknown')}"
-    )
     if case_dir:
         output_func(f"artifacts: {case_dir}")
     output_func("")
@@ -324,8 +324,7 @@ def _terminal_state_summary(state: ConversationState) -> dict:
         "selected_paper_ids": state.selected_paper_ids,
         "selected_evidence_ids": state.selected_evidence_ids,
         "message_count": len(state.message_history),
-        "active_task": state.active_task,
-        "pending_interaction": state.pending_interaction,
+        "tool_trace_count": len(state.tool_traces),
     }
 
 
@@ -365,16 +364,14 @@ def _dataset_with_cases(dataset, cases):
 
 def _write_child_artifacts(case_dir: Path, run: dict) -> None:
     for field in (
-        "intent_frame",
-        "retrieval_plan",
-        "stage_trace",
         "evidence_ledger",
-        "claim_graph",
-        "reasoning_artifacts",
-        "verification_pass",
+        "citation_validation",
         "research_answer",
+        "skills_used",
+        "react_trace",
+        "paper_candidates",
     ):
-        value = run.get(field, []) if field == "stage_trace" else run[field]
+        value = run.get(field, []) if field in {"skills_used", "react_trace", "paper_candidates"} else run[field]
         _write_json(case_dir / f"{field}.json", value)
 
 

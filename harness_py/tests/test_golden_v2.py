@@ -348,8 +348,6 @@ class GoldenV2Test(unittest.TestCase):
         broken = deepcopy(run)
         broken["evidence_ledger"]["items"][0]["paper_id"] = "bert_2018"
         broken["research_answer"]["cited_evidence_ids"] = []
-        broken["research_answer"]["cited_claim_ids"] = []
-        broken["claim_graph"]["claims"] = []
 
         score = BehaviorScorer().score_case(self.dataset, case, broken)
 
@@ -385,20 +383,11 @@ class GoldenV2Test(unittest.TestCase):
         self.assertFalse(score.hard_pass)
         self.assertIn("FACT_MISSING:beta2", score.dimensions["content"].errors)
 
-    def test_scorer_does_not_grade_internal_paradigm_or_stage_order(self) -> None:
+    def test_scorer_does_not_grade_skill_selection_or_tool_order(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
         run = GoldenFixtureHarness().run_case(self.dataset, case)
-        run["intent_frame"]["primary_paradigm"] = "deep_comparison"
-        run["stage_trace"] = list(reversed(run.get("stage_trace", [])))
-
-        score = BehaviorScorer().score_case(self.dataset, case, run)
-
-        self.assertTrue(score.hard_pass, score.to_dict())
-
-    def test_scorer_does_not_grade_runtime_claim_ids(self) -> None:
-        case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
-        run = GoldenFixtureHarness().run_case(self.dataset, case)
-        run["research_answer"]["cited_claim_ids"] = ["runtime_claim_42"]
+        run["skills_used"] = ["deep_comparison"]
+        run["react_trace"] = list(reversed(run.get("react_trace", [])))
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 

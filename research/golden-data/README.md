@@ -23,3 +23,7 @@ python3 -m harness_py agent-run --out /tmp/paismart-golden-v2-live
 ```
 
 `validate` is deterministic scorer validation. `audit` verifies parser coverage. `agent-run` evaluates the real MiniMax-backed harness. Their failures are reported separately.
+
+The live runtime is one skill-guided ReAct loop. Golden cases do not require a matching skill,
+fixed tool sequence, or structured `IntentFrame`/`RetrievalPlan`/`ClaimGraph` artifacts. Natural
+answer quality and semantic grounding are handled by the separately calibrated LLM judge.

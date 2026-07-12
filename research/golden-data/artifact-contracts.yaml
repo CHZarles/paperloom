@@ -1,13 +1,8 @@
-schema_version: research-harness-artifacts/v1
-purpose: "Machine-readable contracts for the v2 semantic-stage runtime and behavior score report."
+schema_version: research-harness-artifacts/v2
+purpose: "Contracts for the skill-guided ReAct run, its inspectable evidence, and its final answer."
 artifact_order:
   - HarnessRun
-  - IntentFrame
-  - RetrievalPlan
   - EvidenceLedger
-  - ClaimGraph
-  - ReasoningArtifact
-  - VerificationPass
   - ResearchAnswer
   - ScoreReport
 shared_enums:
@@ -16,81 +11,14 @@ shared_enums:
     - NEEDS_CLARIFICATION
     - INCOMPLETE_PRECISE
     - FAILED_TECHNICAL
-  answer_type:
-    - exact_fact
-    - definition_trace
-    - comparison_matrix
-    - reproduction_protocol
-    - citation_genealogy
-    - critical_assessment
-    - meta_review
-    - contradiction_resolution
-    - contradiction_arbitration
-    - uncertainty_boundary
-    - ambiguity_resolution
-    - ambiguity_clarification
-    - constraint_filter
-    - figure_table_formula_interpretation
-    - multi_hop_chain
-    - data_provenance
-    - counterfactual_analysis
-    - system_design
-    - formal_derivation
-    - research_profile
-    - generalization_audit
-    - systematic_review
-    - boundary_counterexample
-    - evidence_forecast
-    - conversation
-    - unknown
-  ambiguity_status:
-    - unambiguous
-    - ambiguous
-    - needs_user_choice
-    - unanswerable_from_available_evidence
-    - unknown
   research_outcome:
     - answered
     - needs_clarification
     - abstained
     - partial
-  evidence_type:
-    - paragraph
-    - table
-    - table_cell
-    - figure
-    - figure_caption
-    - formula
-    - algorithm
-    - appendix
-    - metadata
-    - citation_edge
-  claim_status:
-    - supported
-    - contradicted
-    - underdetermined
-    - ambiguous
-  retrieval_strategy:
-    - paper_candidate_search
-    - paper_identity_resolution
-    - reading_location_search
-    - source_quote_reading
-    - semantic_stage_execution
-    - semantic_search
-    - lexical_search
-    - metadata_filter
-    - citation_graph_traversal
-    - table_search
-    - figure_caption_search
-    - formula_search
-    - algorithm_search
-    - appendix_search
-    - author_institution_search
-    - negative_evidence_search
-    - version_comparison
 artifacts:
   - id: HarnessRun
-    purpose: "Top-level executable boundary for a research question or Golden Case."
+    purpose: "One conversation turn executed by the skill-guided ReAct harness."
     required_fields:
       - schema_version
       - run_id
@@ -98,54 +26,18 @@ artifacts:
       - case_id
       - harness_id
       - status
-      - intent_frame
-      - retrieval_plan
+      - skills_used
+      - react_trace
       - evidence_ledger
-      - claim_graph
-      - reasoning_artifacts
-      - verification_pass
+      - citation_validation
       - research_answer
+      - diagnostics
     invariants:
-      - "A run is the unit consumed by product UI panes and by eval scoring."
-      - "All child artifact ids must be internally consistent within the run."
-      - "status, ResearchAnswer.status, and result_status when present must use shared_enums.execution_status and agree."
-      - "ScoreReport is a separate eval output and is never required in product mode."
-  - id: IntentFrame
-    purpose: "Typed interpretation of the user question before retrieval."
-    required_fields:
-      - question_id
-      - raw_question
-      - normalized_question
-      - entities
-      - paper_mentions
-      - method_mentions
-      - dataset_mentions
-      - constraints
-      - answer_type
-      - ambiguity_status
-      - required_evidence_types
-      - required_capabilities
-    invariants:
-      - "raw_question must preserve the user wording."
-      - "answer_type must be one of shared_enums.answer_type."
-      - "ambiguity_status must explain whether the harness may proceed or must clarify/abstain."
-      - "primary_paradigm and required_capabilities are runtime diagnostics, not golden score inputs."
-  - id: RetrievalPlan
-    purpose: "Explicit strategy plan selected from the IntentFrame."
-    required_fields:
-      - plan_id
-      - question_id
-      - target_entities
-      - strategy_steps
-      - expected_evidence_types
-      - required_recall_targets
-      - hard_negative_policy
-      - stop_conditions
-    invariants:
-      - "Each strategy step must name its semantic or tool strategy."
-      - "The plan remains inspectable for diagnostics but is not graded by BehaviorScorer."
+      - "status, result_status when present, and ResearchAnswer.status agree."
+      - "skills_used and react_trace are optional inspection data, not execution stages or golden expectations."
+      - "A research turn is finished only through submit_research_answer."
   - id: EvidenceLedger
-    purpose: "Immutable source-grounded record of accepted, rejected, and missing evidence."
+    purpose: "Passages actually read during this turn or restored from persisted conversation evidence."
     required_fields:
       - ledger_id
       - question_id
@@ -162,89 +54,13 @@ artifacts:
       - location
       - element_type
       - span_text
-      - bbox_or_cell_ref
       - retrieval_strategy
-      - relevance_score
       - evidence_quality
-      - supports_claim_ids
-      - refutes_claim_ids
     invariants:
-      - "Evidence items are append-only within one trace."
-      - "Every accepted evidence item must identify a paper and inspectable location."
-      - "Rejected items should be preserved when rejection affects ambiguity, contradiction, or hard-negative scoring."
-  - id: ClaimGraph
-    purpose: "Atomic claims and their support/refutation links."
-    required_fields:
-      - graph_id
-      - question_id
-      - claims
-      - edges
-    claim_required_fields:
-      - claim_id
-      - text
-      - claim_type
-      - supporting_evidence_ids
-      - refuting_evidence_ids
-      - status
-      - confidence
-      - depends_on_claim_ids
-    invariants:
-      - "Every substantive final-answer sentence must map to at least one claim."
-      - "A supported claim must have at least one supporting evidence id."
-      - "An underdetermined claim must include missing evidence or uncertainty rationale in VerificationPass."
-  - id: ReasoningArtifact
-    purpose: "Question-specific structured synthesis product shown directly in the frontend."
-    required_fields:
-      - artifact_id
-      - question_id
-      - type
-      - title
-      - source_claim_ids
-      - payload
-    allowed_types:
-      - exact_fact_card
-      - comparison_table
-      - timeline
-      - citation_graph
-      - reproduction_checklist
-      - conflict_matrix
-      - constraint_filter_table
-      - uncertainty_boundary_report
-      - definition_evolution_trace
-      - multi_hop_chain
-      - critical_assessment_report
-      - provenance_record
-      - counterfactual_analysis
-      - system_architecture
-      - formal_derivation
-      - research_trajectory
-      - generalization_audit
-      - systematic_review
-      - boundary_counterexample_report
-      - evidence_forecast
-      - structured_evidence_interpretation
-    invariants:
-      - "Payload shape must match type."
-      - "Cells, nodes, edges, or checklist items must point back to claim ids or evidence ids."
-  - id: VerificationPass
-    purpose: "Pre-answer validation report proving whether the harness may answer, clarify, or abstain."
-    required_fields:
-      - verification_id
-      - question_id
-      - required_capabilities_attempted
-      - required_evidence_status
-      - unsupported_claim_count
-      - contradicted_claim_count
-      - missing_required_evidence
-      - ambiguity_resolution
-      - constraint_check_results
-      - abstention_required
-    invariants:
-      - "Unsupported confidence is a verification failure."
-      - "Abstention must name missing evidence, not merely say the system cannot answer."
-      - "Contradictions must be surfaced when answer_type is contradiction_resolution."
+      - "Candidate papers and location previews are navigation data, not citeable evidence."
+      - "Every cited evidence id resolves to a citeable item in this ledger or persisted conversation evidence."
   - id: ResearchAnswer
-    purpose: "Final user-facing answer grounded in the prior artifacts."
+    purpose: "Natural user-facing answer submitted by the model and accepted by the citation gate."
     required_fields:
       - answer_id
       - question_id
@@ -252,19 +68,14 @@ artifacts:
       - outcome
       - answer_type
       - summary
-      - sections
+      - markdown
       - fields
-      - cited_claim_ids
       - cited_evidence_ids
-      - reasoning_artifact_ids
-      - verification_id
     invariants:
-      - "The answer must not introduce substantive claims absent from ClaimGraph."
-      - "Golden expectations are compared only after the run by BehaviorScorer."
-      - "status must distinguish COMPLETED, NEEDS_CLARIFICATION, INCOMPLETE_PRECISE, and FAILED_TECHNICAL."
-      - "outcome is independent from execution status and must use shared_enums.research_outcome except on FAILED_TECHNICAL."
+      - "User-visible prose does not expose tool names, skill ids, schema labels, or internal statuses."
+      - "A corpus-grounded answered or partial result contains at least one valid citation."
   - id: ScoreReport
-    purpose: "Eval-only deterministic behavior scoring result for HarnessRun outputs against v2 GoldenCase expectations."
+    purpose: "Eval-only deterministic behavior scoring against golden expectations."
     required_fields:
       - schema_version
       - dataset_id
@@ -272,19 +83,12 @@ artifacts:
       - passed_count
       - failed_count
       - scores
-    case_score_required_fields:
-      - case_id
-      - hard_pass
-      - dimensions
-      - review
     dimensions:
       - outcome
       - retrieval
       - content
       - grounding
     invariants:
-      - "ScoreReport must never be required for ordinary product answering."
-      - "hard_pass is the conjunction of outcome, retrieval, content, and grounding hard checks."
-      - "BehaviorScorer must not grade intent labels, paradigms, stage order, tool counts, runtime claim ids, or exact answer prose."
-      - "Optional review criteria remain separate with status not_run or not_required."
-      - "Scoring is deterministic and has no LLM judge."
+      - "Scoring does not grade skill selection, tool order, tool count, or exact prose."
+      - "Structured fields are checked when present; semantic correctness of prose is an LLM-judge concern."
+      - "LLM-as-judge remains a separate offline evaluation step."

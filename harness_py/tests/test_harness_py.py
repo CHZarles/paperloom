@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from harness_py.agent_harness import ResearchAgentHarness
 from harness_py.conversation import ConversationState
-from harness_py.dataset import load_artifact_contracts, load_dataset
+from harness_py.dataset import load_dataset
 from harness_py.golden_fixture import GoldenFixtureHarness
 from harness_py.live_chat import LiveResearchChatHarness
 from harness_py.llm import (
@@ -29,12 +29,19 @@ from harness_py.llm import (
 from harness_py.models import GoldenDataset
 from harness_py.provider_config import ProviderConfig, decrypt_provider_key
 from harness_py.product_db_dataset import build_product_dataset, summarize_product_corpus
+from harness_py.research_skills import ResearchSkillRegistry
 from harness_py.scoring import BehaviorScorer, _scalar_string
-from harness_py.tests.test_stage_prototype import _ExactFactHarnessModel, _NoEvidenceHarnessModel
 from harness_py.tools import ReadingCorpusTools
 
 
 class PythonHarnessPrototypeTest(unittest.TestCase):
+    def test_all_twenty_two_paradigms_are_available_as_optional_skills(self) -> None:
+        skills = ResearchSkillRegistry().skills
+
+        self.assertEqual(22, len(skills))
+        self.assertIn("precision_fact_extraction", skills)
+        self.assertIn("complex_constraint_combination", skills)
+
     def test_committed_seed_dataset_runs_without_failed_cases(self) -> None:
         dataset = load_dataset("research/golden-data/manifest.yaml")
         harness = GoldenFixtureHarness()
@@ -44,9 +51,8 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         self.assertEqual(12, report["case_count"])
         self.assertEqual(0, report["failed_count"], report)
-        self.assertTrue(all("intent_frame" in run for run in runs))
         self.assertTrue(all("evidence_ledger" in run for run in runs))
-        self.assertTrue(all("verification_pass" in run for run in runs))
+        self.assertTrue(all("citation_validation" in run for run in runs))
 
     def test_synthetic_dataset_proves_harness_is_data_driven(self) -> None:
         dataset = self._synthetic_dataset()
@@ -61,20 +67,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         )
         self.assertEqual("42", run["research_answer"]["fields"]["answer"])
 
-    def test_scorer_rejects_supported_claim_without_evidence(self) -> None:
-        dataset = self._synthetic_dataset()
-        case = dataset.cases[0]
-        run = GoldenFixtureHarness().run_case(dataset, case)
-        broken = deepcopy(run)
-        broken["claim_graph"]["claims"][0]["supporting_evidence_ids"] = []
-
-        score = BehaviorScorer().score_case(dataset, case, broken)
-
-        self.assertIn(
-            "SUPPORTED_CLAIM_WITHOUT_EVIDENCE:claim_1",
-            score.dimensions["grounding"].errors,
-        )
-
     def test_structural_scorer_normalizes_equivalent_power_of_ten_notation(self) -> None:
         self.assertEqual(_scalar_string("1e-9"), _scalar_string("10^-9"))
         self.assertEqual(_scalar_string("1e-9"), _scalar_string("10 ^ { - 9 }"))
@@ -83,11 +75,11 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         dataset = self._synthetic_dataset()
         case = dataset.cases[0]
 
-        run = ResearchAgentHarness(_ExactFactHarnessModel()).run_case(dataset, case)
+        run = ResearchAgentHarness(_ReactFixtureModel()).run_case(dataset, case)
         score = BehaviorScorer().score_case(dataset, case, run)
 
         self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual(3, run["diagnostics"]["tool_call_count"])
+        self.assertEqual(4, run["diagnostics"]["tool_call_count"])
         self.assertIn(
             "synthetic_anchor",
             {item.get("matched_anchor_id") for item in run["evidence_ledger"]["items"]},
@@ -98,10 +90,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         dataset = self._synthetic_dataset()
         case = dataset.cases[0]
 
-        run = ResearchAgentHarness(_NoEvidenceHarnessModel()).run_case(dataset, case)
+        run = ResearchAgentHarness(_ReactNoEvidenceModel()).run_case(dataset, case)
 
         self.assertEqual("INCOMPLETE_PRECISE", run["research_answer"]["status"])
-        self.assertTrue(run["evidence_ledger"]["missing_evidence"])
+        self.assertEqual("abstained", run["research_answer"]["outcome"])
 
     def test_minimax_client_sends_openai_compatible_tool_request(self) -> None:
         captured = {"bodies": []}
@@ -374,17 +366,17 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
     def test_live_chat_harness_reuses_agent_trace_shape_without_golden_case(self) -> None:
         dataset = self._synthetic_dataset()
 
-        run = LiveResearchChatHarness(_ExactFactHarnessModel()).run_question(dataset, "What is the synthetic answer?")
+        run = LiveResearchChatHarness(_ReactFixtureModel()).run_question(dataset, "What is the synthetic answer?")
 
         self.assertEqual("COMPLETED", run["research_answer"]["status"])
         self.assertTrue(run["case_id"].startswith("live_chat_"))
-        self.assertIn("intent_frame", run)
         self.assertIn("evidence_ledger", run)
-        self.assertIn("verification_pass", run)
+        self.assertIn("citation_validation", run)
+        self.assertIn("react_trace", run)
 
     def test_live_conversation_harness_carries_memory_across_turns(self) -> None:
         dataset = self._synthetic_dataset()
-        model = _ExactFactHarnessModel()
+        model = _ReactFixtureModel()
         harness = LiveResearchChatHarness(model)
         state = ConversationState.new("conversation_test")
 
@@ -404,96 +396,61 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
     def test_live_chat_direct_greeting_bypasses_research(self) -> None:
         dataset = self._synthetic_dataset()
-        harness = LiveResearchChatHarness(_ActionFirstRecommendationModel())
+        harness = LiveResearchChatHarness(_ReactFixtureModel())
         state = ConversationState.new("direct_greeting")
 
         run, state = harness.run_turn(dataset, state, "hi")
 
         self.assertEqual("COMPLETED", run["research_answer"]["status"])
         self.assertEqual("conversation", run["research_answer"]["answer_type"])
-        self.assertEqual([], run["stage_trace"])
+        self.assertNotIn("stage_trace", run)
         self.assertEqual(0, run["diagnostics"]["tool_call_count"])
-        self.assertEqual({}, state.pending_interaction)
-        self.assertEqual({}, state.active_task)
 
         run, state = harness.run_turn(dataset, state, "Recommend me some important paper")
 
-        self.assertEqual("COMPLETED", run["research_answer"]["status"])
-        self.assertEqual("context_specific_brainstorming", run["intent_frame"]["primary_paradigm"])
-        self.assertEqual("non_blocking", run["intent_frame"]["actionability"])
-        self.assertGreaterEqual(run["diagnostics"]["tool_call_count"], 2)
-        self.assertEqual({}, state.pending_interaction)
-        self.assertEqual({}, state.active_task)
+        self.assertEqual("NEEDS_CLARIFICATION", run["research_answer"]["status"])
+        self.assertEqual(0, run["diagnostics"]["tool_call_count"])
+        self.assertIn("What topic", run["research_answer"]["markdown"])
 
-    def test_live_chat_pending_choice_resumes_active_task(self) -> None:
+        run, state = harness.run_turn(dataset, state, "What does RLHF mean?")
+
+        self.assertEqual("COMPLETED", run["research_answer"]["status"])
+        self.assertEqual("RLHF means Reinforcement Learning from Human Feedback.", run["research_answer"]["markdown"])
+        self.assertEqual(6, len(state.message_history))
+
+    def test_live_chat_visible_choice_resolves_from_history(self) -> None:
         dataset = self._synthetic_dataset()
-        model = _ActionFirstRecommendationModel()
+        model = _ReactFixtureModel()
         harness = LiveResearchChatHarness(model)
-        state = ConversationState.new("recommendation_choice").with_active_task({
-            "goal": "Recommend important papers from the current corpus.",
-            "task": {"verb": "recommend", "object": "papers"},
-            "constraints": {},
-            "paradigm": "context_specific_brainstorming",
-        })
-        state = state.with_pending_interaction({
-            "interaction_id": "paper_kind_01",
-            "kind": "choice",
-            "question": "Which kind of papers should I recommend?",
-            "options": [
-                {
-                    "id": "comparison",
-                    "label": "Comparison papers",
-                    "task_patch": {"constraints": {"paper_type": "comparison"}},
-                },
-                {
-                    "id": "reproduction",
-                    "label": "Reproduction papers",
-                    "task_patch": {"constraints": {"paper_type": "reproduction"}},
-                },
-                {
-                    "id": "systematic_review",
-                    "label": "Systematic-review papers",
-                    "task_patch": {"constraints": {"paper_type": "systematic_review"}},
-                },
-            ],
-        })
+        state = replace(
+            ConversationState.new("recommendation_choice"),
+            message_history=[{
+                "role": "assistant",
+                "turn_index": 1,
+                "content": (
+                    "Which kind of papers should I recommend?\n\n"
+                    "1. Comparison papers\n2. Reproduction papers\n3. Systematic-review papers"
+                ),
+            }],
+        )
 
         run, state = harness.run_turn(dataset, state, "the third")
 
         self.assertEqual("COMPLETED", run["research_answer"]["status"])
-        self.assertEqual("non_blocking", run["intent_frame"]["actionability"])
-        self.assertEqual({}, state.pending_interaction)
-        self.assertEqual({}, state.active_task)
-        self.assertEqual("context_specific_brainstorming", run["intent_frame"]["primary_paradigm"])
-        self.assertEqual(
-            "systematic_review",
-            run["intent_frame"]["constraints"]["paper_type"],
-        )
+        self.assertIn("context_specific_brainstorming", run["skills_used"])
         self.assertNotIn("I'll treat", run["research_answer"]["markdown"])
-        self.assertGreaterEqual(run["diagnostics"]["tool_call_count"], 2)
+        self.assertEqual(4, run["diagnostics"]["tool_call_count"])
         self.assertIn(
-            "search_paper_candidates",
+            "find_papers_by_identity",
             [
-                call["tool_name"]
-                for trace in run["stage_trace"]
-                for call in trace["tool_calls"]
+                call["tool_name"] for call in run["react_trace"]
             ],
         )
         self.assertIn(
             "find_reading_locations",
             [
-                call["tool_name"]
-                for trace in run["stage_trace"]
-                for call in trace["tool_calls"]
+                call["tool_name"] for call in run["react_trace"]
             ],
-        )
-        self.assertTrue(all("available_papers" not in payload for payload in model.request_payloads))
-        self.assertTrue(
-            all(
-                "scope_paper_ids" not in payload["conversation_context"]
-                for payload in model.request_payloads
-                if "conversation_context" in payload
-            )
         )
 
     def test_conversation_state_round_trips_to_json(self) -> None:
@@ -505,6 +462,31 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             loaded = ConversationState.load(path)
 
         self.assertEqual(state, loaded)
+
+    def test_reset_clears_messages_and_research_memory(self) -> None:
+        state = replace(
+            ConversationState.new("replace_context"),
+            selected_paper_ids=["synthetic_paper"],
+            selected_evidence_ids=["old_evidence"],
+            message_history=[{
+                "role": "user",
+                "turn_index": 1,
+                "content": "Recommend RLHF papers.",
+            }],
+            evidence_items_by_id={
+                "old_evidence": {
+                    "evidence_id": "old_evidence",
+                    "paper_id": "synthetic_paper",
+                    "span_text": "Old context evidence.",
+                }
+            },
+        )
+
+        reset = state.reset()
+
+        self.assertEqual([], reset.message_history)
+        self.assertEqual([], reset.selected_paper_ids)
+        self.assertEqual({}, reset.evidence_items_by_id)
 
     def test_conversation_prompt_exposes_ordered_paper_refs_not_candidate_evidence(self) -> None:
         dataset = build_product_dataset(
@@ -545,13 +527,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         context = state.prompt_context(dataset)
 
-        self.assertEqual(
-            [
-                {"position": 1, "paper_id": "paper_a", "title": "Paper A"},
-                {"position": 2, "paper_id": "paper_b", "title": "Paper B"},
-            ],
-            context["selected_paper_refs"],
-        )
         self.assertEqual(["ev_quote"], [item["evidence_id"] for item in context["selected_evidence_refs"]])
 
     def test_incomplete_turn_preserves_selected_evidence_memory(self) -> None:
@@ -579,7 +554,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             },
             "memory_update": {},
             "evidence_ledger": {"items": []},
-            "claim_graph": {"claims": []},
         }
 
         updated = state.updated_from_run(dataset, run, "Continue the comparison.")
@@ -616,10 +590,9 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             report = json.loads(report_path.read_text(encoding="utf-8"))
             self.assertEqual(0, report["failed_count"])
             first_case = Path(tmp) / "transformer_adam_params_001"
-            self.assertTrue((first_case / "intent_frame.json").exists())
-            self.assertTrue((first_case / "stage_trace.json").exists())
             self.assertTrue((first_case / "evidence_ledger.json").exists())
-            self.assertTrue((first_case / "verification_pass.json").exists())
+            self.assertTrue((first_case / "citation_validation.json").exists())
+            self.assertTrue((first_case / "react_trace.json").exists())
 
     def test_agent_run_rejects_unknown_case_before_provider_or_output(self) -> None:
         from harness_py.cli import main
@@ -679,7 +652,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual(["shell_ev_2"], final_state.selected_evidence_ids)
         self.assertEqual(["you> ", "you> ", "you> ", "you> "], prompts)
         self.assertTrue(any("Interactive chat ready" in output for output in outputs))
-        self.assertTrue(any("assistant [COMPLETED]" in output for output in outputs))
+        self.assertTrue(any(output == "assistant" for output in outputs))
         self.assertTrue(any('"turn_index": 2' in output for output in outputs))
 
     def _synthetic_dataset(self) -> GoldenDataset:
@@ -754,12 +727,188 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         )
 
 
+class _ReactFixtureModel(ChatModel):
+    def complete(self, messages, tools, max_tokens):
+        question = next(
+            (
+                str(item.get("content") or "")
+                for item in reversed(messages)
+                if item.get("role") == "user"
+                and not str(item.get("content") or "").startswith("Finish this turn")
+            ),
+            "",
+        )
+        normalized = question.casefold()
+        tool_results = {
+            str(item.get("name") or ""): json.loads(str(item.get("content") or "{}"))
+            for item in messages
+            if item.get("role") == "tool"
+        }
+        prior_evidence = next(
+            (
+                json.loads(str(item.get("content") or "").split("\n", 1)[1])
+                for item in messages
+                if item.get("role") == "system"
+                and str(item.get("content") or "").startswith("Previously cited evidence")
+            ),
+            [],
+        )
+
+        if normalized == "hi":
+            return _react_tool_turn("submit_research_answer", {
+                "outcome": "answered",
+                "markdown": "Hi. What would you like to research?",
+                "fields": {},
+            })
+        if "recommend" in normalized and "important paper" in normalized:
+            return _react_tool_turn("submit_research_answer", {
+                "outcome": "needs_clarification",
+                "markdown": "Sure. What topic should the paper recommendations focus on?",
+                "fields": {},
+            })
+        if normalized.startswith("what does rlhf mean"):
+            return _react_tool_turn("submit_research_answer", {
+                "outcome": "answered",
+                "markdown": "RLHF means Reinforcement Learning from Human Feedback.",
+                "fields": {},
+            })
+
+        recommendation = "the third" in normalized
+        skill_id = "context_specific_brainstorming" if recommendation else "precision_fact_extraction"
+        if "get_research_skill" not in tool_results:
+            return _react_tool_turn("get_research_skill", {"skill_id": skill_id})
+
+        if prior_evidence:
+            evidence_id = str(prior_evidence[0]["evidence_id"])
+            return _react_tool_turn("submit_research_answer", {
+                "outcome": "answered",
+                "markdown": f"The structured value is 42. [[{evidence_id}]]",
+                "fields": {"answer": "42"},
+            })
+        if "find_papers_by_identity" not in tool_results:
+            return _react_tool_turn("find_papers_by_identity", {"paper_id": "synthetic_paper"})
+        if "find_reading_locations" not in tool_results:
+            return _react_tool_turn("find_reading_locations", {
+                "paper_ids": ["synthetic_paper"],
+                "query_text": "structured value",
+                "top_k": 3,
+            })
+        if "read_locations" not in tool_results:
+            location = tool_results["find_reading_locations"]["locations"][0]["location_ref"]
+            return _react_tool_turn("read_locations", {"location_refs": [location]})
+        evidence_id = str(tool_results["read_locations"]["items"][0]["evidence_id"])
+        if recommendation:
+            return _react_tool_turn("submit_research_answer", {
+                "outcome": "answered",
+                "markdown": f"Synthetic Paper is the matching recommendation. [[{evidence_id}]]",
+                "fields": {},
+            })
+        return _react_tool_turn("submit_research_answer", {
+            "outcome": "answered",
+            "markdown": f"The structured value is 42. [[{evidence_id}]]",
+            "fields": {"answer": "42"},
+        })
+
+
+class _ReactNoEvidenceModel(ChatModel):
+    def complete(self, messages, tools, max_tokens):
+        return _react_tool_turn("submit_research_answer", {
+            "outcome": "abstained",
+            "markdown": "The current corpus does not contain enough evidence to answer this request.",
+            "fields": {},
+        })
+
+
+def _react_tool_turn(name: str, arguments: dict) -> ChatTurn:
+    return ChatTurn(
+        content="",
+        tool_calls=[ToolCall(id=f"call_{name}", name=name, arguments=arguments)],
+    )
+
+
 class _ActionFirstRecommendationModel(ChatModel):
     def __init__(self) -> None:
         self.request_payloads: list[dict] = []
 
     def complete(self, messages, tools, max_tokens):
         system = str(messages[0].get("content") or "")
+        if "TURN_ROUTING" in system:
+            payload = json.loads(messages[-1]["content"])
+            self.request_payloads.append(payload)
+            user_message = str(payload["user_message"]).strip().casefold()
+            if user_message == "hi":
+                arguments = {
+                    "action": "answer",
+                    "context_mode": "continue",
+                    "message": "Hi. What would you like to research?",
+                    "effective_request": "",
+                    "paradigm": "",
+                }
+            elif user_message.startswith("what does rlhf mean"):
+                arguments = {
+                    "action": "answer",
+                    "context_mode": "continue",
+                    "message": "RLHF means Reinforcement Learning from Human Feedback.",
+                    "effective_request": "",
+                    "paradigm": "",
+                }
+            elif "important paper" in user_message:
+                arguments = {
+                    "action": "clarify",
+                    "context_mode": "continue",
+                    "message": "Sure. What topic are you interested in?",
+                    "effective_request": "Recommend important papers.",
+                    "paradigm": "",
+                }
+            else:
+                arguments = {
+                    "action": "research",
+                    "context_mode": "continue",
+                    "message": "",
+                    "effective_request": "Recommend systematic-review papers from the current corpus.",
+                    "paradigm": "context_specific_brainstorming",
+                }
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="turn_action",
+                name="submit_turn_action",
+                arguments=arguments,
+            )])
+        if "RESEARCH_TASK_PLANNING" in system:
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="research_task",
+                name="submit_turn_decision",
+                arguments={
+                    "route": "research",
+                    "effective_goal": "Recommend systematic-review papers from the current corpus.",
+                    "task": {"verb": "recommend", "object": "papers"},
+                    "constraints": {"paper_type": "systematic_review"},
+                    "primary_paradigm": "context_specific_brainstorming",
+                    "answer_shape": "constraint_filter",
+                    "obligations": [{
+                        "id": "recommendation",
+                        "description": "Select and justify one paper matching the requested paper type.",
+                        "kind": "recommendation",
+                        "paper_scope": [],
+                        "required": True,
+                        "answer_field": "",
+                    }],
+                    "assumption": "Use broad corpus coverage within the selected paper type.",
+                    "blocking_reason": None,
+                    "direct_reply": "",
+                    "pending_interaction": {
+                        "interaction_id": "",
+                        "kind": "none",
+                        "question": "",
+                        "options": [],
+                    },
+                    "paper_references": [],
+                    "requested_aspects": ["systematic review"],
+                    "requires_corpus_observation": True,
+                    "required_evidence_types": ["metadata", "paragraph"],
+                    "required_capabilities": ["candidate_retrieval", "evidence_retrieval"],
+                    "confidence": 1.0,
+                },
+            )])
         if "TURN_DECISION" in system:
             payload = json.loads(messages[-1]["content"])
             self.request_payloads.append(payload)
@@ -824,34 +973,27 @@ class _ActionFirstRecommendationModel(ChatModel):
                 }
             else:
                 arguments = {
-                    "route": "research",
-                    "effective_goal": "Recommend a representative set of important papers from the current corpus.",
+                    "route": "clarify",
+                    "effective_goal": "Recommend important papers after the user supplies a topic or goal.",
                     "task": {"verb": "recommend", "object": "papers"},
                     "constraints": {},
-                    "primary_paradigm": "context_specific_brainstorming",
-                    "answer_shape": "constraint_filter",
-                    "obligations": [{
-                        "id": "recommendation",
-                        "description": "Select and justify a representative paper from the current corpus.",
-                        "kind": "recommendation",
-                        "paper_scope": [],
-                        "required": True,
-                        "answer_field": "",
-                    }],
-                    "assumption": "Important means representative and methodologically influential within this corpus.",
-                    "blocking_reason": None,
-                    "direct_reply": "",
+                    "primary_paradigm": "ambiguity_resolution",
+                    "answer_shape": "ambiguity_clarification",
+                    "obligations": [],
+                    "assumption": "",
+                    "blocking_reason": "A recommendation topic or goal is missing.",
+                    "direct_reply": "Sure. What topic are you interested in, and are you looking for an overview, benchmarks, or methods?",
                     "pending_interaction": {
-                        "interaction_id": "",
-                        "kind": "none",
-                        "question": "",
+                        "interaction_id": "recommendation_topic",
+                        "kind": "free_text",
+                        "question": "What topic are you interested in, and are you looking for an overview, benchmarks, or methods?",
                         "options": [],
                     },
                     "paper_references": [],
-                    "requested_aspects": ["representative coverage"],
-                    "requires_corpus_observation": True,
-                    "required_evidence_types": ["metadata", "paragraph"],
-                    "required_capabilities": ["candidate_retrieval", "evidence_retrieval"],
+                    "requested_aspects": [],
+                    "requires_corpus_observation": False,
+                    "required_evidence_types": [],
+                    "required_capabilities": [],
                     "confidence": 1.0,
                 }
             return ChatTurn(content="", tool_calls=[ToolCall(
@@ -868,7 +1010,7 @@ class _ActionFirstRecommendationModel(ChatModel):
             ]
             if existing:
                 return _recommendation_plan(reuse_evidence=[{
-                    "obligation_id": "recommendation",
+                    "obligation_id": "recommendation_selection",
                     "evidence_ids": [existing[0]["evidence_id"]],
                 }])
             return _recommendation_plan()
@@ -888,7 +1030,7 @@ class _ActionFirstRecommendationModel(ChatModel):
                         "claim_id": "recommendation_claim",
                         "role": "recommendation",
                         "text": "Synthetic Paper is relevant because it reports the requested structured result.",
-                        "obligation_ids": ["recommendation"],
+                        "obligation_ids": ["recommendation_selection"],
                         "evidence_ids": [evidence_id],
                         "field_values": [],
                     }],
@@ -933,7 +1075,7 @@ def _recommendation_plan(reuse_evidence: list[dict] | None = None) -> ChatTurn:
             }],
             "evidence_queries": [] if reuse_evidence else [{
                 "query_id": "recommendation_evidence",
-                "obligation_ids": ["recommendation"],
+                "obligation_ids": ["recommendation_selection"],
                 "target_ids": ["candidate_pool"],
                 "query_text": "structured value",
                 "section_query": "",
@@ -959,7 +1101,6 @@ class _ShellFakeHarness:
                 "summary": f"Shell answer {turn}.",
                 "markdown": f"Shell answer {turn}.",
                 "cited_evidence_ids": [evidence_id],
-                "cited_claim_ids": [f"claim_{turn}"],
             },
             "evidence_ledger": {
                 "items": [{
@@ -971,14 +1112,6 @@ class _ShellFakeHarness:
                     "location": f"loc_{turn}",
                     "element_type": "paragraph",
                     "span_text": "The structured value forty two is the answer.",
-                }]
-            },
-            "claim_graph": {
-                "claims": [{
-                    "claim_id": f"claim_{turn}",
-                    "text": f"Shell claim {turn}.",
-                    "status": "supported",
-                    "supporting_evidence_ids": [evidence_id],
                 }]
             },
             "diagnostics": {

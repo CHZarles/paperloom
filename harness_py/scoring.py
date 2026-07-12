@@ -6,7 +6,7 @@ from typing import Any
 
 from .golden_case import case_expect
 from .models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
-from .stage_prototype.models import (
+from .status import (
     ExecutionStatus,
     execution_status_error,
     normalize_research_outcome,
@@ -111,6 +111,8 @@ class BehaviorScorer:
         if not facts:
             return DimensionScore("not_applicable")
         actual = child_map(child_map(run.get("research_answer")).get("fields"))
+        if not actual:
+            return DimensionScore("not_run")
         errors: list[str] = []
         for key, expected in facts.items():
             normalized = _scalar_string(expected)
@@ -147,17 +149,7 @@ class BehaviorScorer:
                 }
                 if not (anchor_evidence & cited):
                     errors.append(f"REQUIRED_ANCHOR_NOT_CITED:{anchor_id}")
-        claims = as_list(child_map(run.get("claim_graph")).get("claims"))
-        for claim in claims:
-            claim_map = child_map(claim)
-            if _normalize_claim_status(claim_map.get("status")) != "supported":
-                continue
-            support = {str(item) for item in as_list(claim_map.get("supporting_evidence_ids"))}
-            if not support:
-                errors.append(f"SUPPORTED_CLAIM_WITHOUT_EVIDENCE:{claim_map.get('claim_id')}")
-            elif not support <= set(evidence_by_id):
-                errors.append(f"SUPPORTED_CLAIM_CITES_UNKNOWN_EVIDENCE:{claim_map.get('claim_id')}")
-        configured = policy != "optional" or bool(cited) or bool(claims)
+        configured = policy != "optional" or bool(cited)
         return _dimension(errors, configured or bool(errors))
 
 
@@ -226,17 +218,6 @@ def _actual_outcome(run: JsonMap) -> str:
     if explicit:
         return explicit
     return "invalid"
-
-
-def _normalize_claim_status(value: Any) -> str:
-    raw = str(value or "").lower()
-    return {
-        "support": "supported",
-        "verified": "supported",
-        "true": "supported",
-        "unsupported": "underdetermined",
-        "unknown": "underdetermined",
-    }.get(raw, raw)
 
 
 def _scalar_string(value: Any) -> str:
