@@ -5,18 +5,24 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Callable
 
-from .agent_harness import ResearchAgentHarness
 from .conversation import ConversationState
+from .errors import HarnessCancelled
 from .golden_case import case_question, conversation_state_for_case
 from .llm import ChatModel
+from .memory import ResearchMemory
 from .models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stable_id
+from .runtime import HarnessRuntime, LegacyHarnessRuntime, TurnExecutionInput, new_run_id
 
 
 class LiveResearchChatHarness:
     """Conversation wrapper around the same skill-guided ReAct agent used by golden cases."""
 
-    def __init__(self, model: ChatModel, max_completion_tokens: int = 3000):
-        self.agent = ResearchAgentHarness(model, max_completion_tokens=max_completion_tokens)
+    def __init__(self, runtime_or_model: HarnessRuntime | ChatModel, max_completion_tokens: int = 3000):
+        self.runtime: HarnessRuntime = (
+            LegacyHarnessRuntime(runtime_or_model, max_completion_tokens=max_completion_tokens)
+            if isinstance(runtime_or_model, ChatModel)
+            else runtime_or_model
+        )
 
     def run_question(self, dataset: GoldenDataset, question: str) -> JsonMap:
         run, _ = self.run_turn(dataset, ConversationState.new("transient_live_chat"), question)
@@ -41,19 +47,27 @@ class LiveResearchChatHarness:
             raise ValueError("user_message is required")
         scoped = _dataset_for_scope(dataset, state.effective_scope_paper_ids(dataset))
         case_id = _live_case_id(scoped, state, user_message)
+        run_id = new_run_id()
         try:
-            run = self.agent.run_turn(
-                scoped,
+            result = self.runtime.run_turn(TurnExecutionInput(
+                dataset=scoped,
                 case_id=case_id,
+                run_id=run_id,
                 question=user_message,
                 conversation_messages=state.model_messages(),
-                prior_evidence=state.evidence_items_by_id,
-                selected_paper_ids=state.selected_paper_ids,
+                research_memory=ResearchMemory(
+                    selected_paper_ids=list(state.selected_paper_ids),
+                    selected_evidence_ids=list(state.selected_evidence_ids),
+                    evidence_items_by_id=dict(state.evidence_items_by_id),
+                ),
                 progress_listener=progress_listener,
                 should_cancel=should_cancel,
-            )
+            ))
+            run = result.run
+        except HarnessCancelled:
+            raise
         except Exception as error:
-            run = _technical_failure_run(case_id, user_message, str(error))
+            run = _technical_failure_run(run_id, case_id, user_message, str(error))
         return run, state.updated_from_run(scoped, run, user_message)
 
 
@@ -72,7 +86,7 @@ def _live_case_id(dataset: GoldenDataset, state: ConversationState, question: st
     return f"live_chat_{digest}"
 
 
-def _technical_failure_run(case_id: str, question: str, message: str) -> JsonMap:
+def _technical_failure_run(run_id: str, case_id: str, question: str, message: str) -> JsonMap:
     answer = {
         "answer_id": stable_id("answer", case_id),
         "question_id": case_id,
@@ -87,7 +101,7 @@ def _technical_failure_run(case_id: str, question: str, message: str) -> JsonMap
     now = _now()
     return {
         "schema_version": RUN_TRACE_SCHEMA_VERSION,
-        "run_id": stable_id("run", case_id),
+        "run_id": run_id,
         "question_id": case_id,
         "case_id": case_id,
         "harness_id": "python_skill_guided_react_harness_v1",

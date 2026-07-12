@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from time import perf_counter
 from typing import Callable
 
+from .errors import HarnessCancelled
 from .golden_case import case_history, case_question, paper_ids_for_case
 from .llm import ChatModel, ChatTurn, ToolCall
 from .models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map, stable_id
@@ -482,7 +483,7 @@ def _emit_progress(listener: Callable[[JsonMap], None] | None, event: JsonMap) -
 
 def _raise_if_cancelled(should_cancel: Callable[[], bool] | None) -> None:
     if should_cancel and should_cancel():
-        raise RuntimeError("research job cancelled")
+        raise HarnessCancelled("research job cancelled")
 
 
 def _progress_input(tool_name: str, arguments: JsonMap) -> JsonMap:
