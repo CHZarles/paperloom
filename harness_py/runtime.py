@@ -11,6 +11,7 @@ from .models import GoldenDataset, JsonMap
 if TYPE_CHECKING:
     from .eval_recorder import EvalRecorder
     from .llm import ChatModel
+    from .provider_config import ProviderConfig
 
 
 ProgressListener = Callable[[JsonMap], None]
@@ -63,3 +64,26 @@ class LegacyHarnessRuntime:
         )
         run["run_id"] = turn.run_id
         return TurnExecutionResult(run=run)
+
+
+def build_harness_runtime(
+    provider: ProviderConfig,
+    runtime_name: str,
+    *,
+    max_completion_tokens: int = 3000,
+) -> HarnessRuntime:
+    if runtime_name == "legacy":
+        from .llm import MiniMaxChatModel
+
+        return LegacyHarnessRuntime(
+            MiniMaxChatModel(provider, temperature=0.0, top_p=1.0),
+            max_completion_tokens=max_completion_tokens,
+        )
+    if runtime_name == "agents_sdk":
+        from .agents_runtime import AgentsSdkHarnessRuntime
+
+        return AgentsSdkHarnessRuntime(
+            provider,
+            max_completion_tokens=max_completion_tokens,
+        )
+    raise ValueError(f"unknown harness runtime: {runtime_name}")

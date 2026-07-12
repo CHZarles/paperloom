@@ -8,10 +8,10 @@ from typing import Any
 
 from .conversation import ConversationState
 from .live_chat import LiveResearchChatHarness
-from .llm import MiniMaxChatModel
 from .models import JsonMap, as_list, child_map
 from .product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
 from .provider_config import EnvProviderConfigStore
+from .runtime import build_harness_runtime
 
 
 class ResearchHarnessService:
@@ -22,11 +22,16 @@ class ResearchHarnessService:
         *,
         max_completion_tokens: int = 3000,
         corpus_limit: int = 1000,
+        runtime_name: str = "",
     ):
         self.provider = EnvProviderConfigStore().load_active_provider("llm")
+        self.runtime_name = runtime_name or os.getenv("RESEARCH_HARNESS_RUNTIME", "agents_sdk")
         self.harness = LiveResearchChatHarness(
-            MiniMaxChatModel(self.provider, temperature=0.0, top_p=1.0),
-            max_completion_tokens=max_completion_tokens,
+            build_harness_runtime(
+                self.provider,
+                self.runtime_name,
+                max_completion_tokens=max_completion_tokens,
+            ),
         )
         self.corpus_store = DockerMySqlProductCorpusStore()
         self.corpus_limit = max(1, corpus_limit)
@@ -74,10 +79,12 @@ def serve(
     internal_token: str = "",
     max_completion_tokens: int = 3000,
     corpus_limit: int = 1000,
+    runtime_name: str = "",
 ) -> None:
     service = ResearchHarnessService(
         max_completion_tokens=max_completion_tokens,
         corpus_limit=corpus_limit,
+        runtime_name=runtime_name,
     )
     token = internal_token or os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
 
@@ -90,7 +97,7 @@ def serve(
                 return
             self._json(200, {
                 "status": "ok",
-                "harness": "python_skill_guided_react_harness_v1",
+                "harness": service.runtime_name,
                 "provider": service.provider.public_diagnostics(),
                 "transport": "ndjson-stream",
             })
@@ -137,20 +144,25 @@ def serve(
 
             generation_id = str(payload.get("request_id") or "").strip()
             sequence = 0
+            disconnected = False
 
             def emit(event: JsonMap) -> None:
-                nonlocal sequence
+                nonlocal disconnected, sequence
                 sequence += 1
-                self._ndjson({
-                    "generationId": generation_id,
-                    "sequence": sequence,
-                    "timestamp": int(time.time() * 1000),
-                    **event,
-                })
+                try:
+                    self._ndjson({
+                        "generationId": generation_id,
+                        "sequence": sequence,
+                        "timestamp": int(time.time() * 1000),
+                        **event,
+                    })
+                except (BrokenPipeError, ConnectionResetError):
+                    disconnected = True
+                    raise
 
             try:
                 emit({"type": "job_started"})
-                response = service.run_job(payload, emit, lambda: False)
+                response = service.run_job(payload, emit, lambda: disconnected)
                 emit({"type": "answer_completed"})
                 self._ndjson({"type": "result", "payload": response})
             except (BrokenPipeError, ConnectionResetError):
@@ -189,6 +201,7 @@ def serve(
         "host": host,
         "port": port,
         "provider": service.provider.public_diagnostics(),
+        "runtime": service.runtime_name,
         "transport": "ndjson-stream",
     }, indent=2, sort_keys=True))
     server.serve_forever()

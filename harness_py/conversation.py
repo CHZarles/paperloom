@@ -158,15 +158,7 @@ class ConversationState:
                 },
             ],
             evidence_items_by_id={**self.evidence_items_by_id, **ledger_items},
-            tool_traces=[
-                *self.tool_traces,
-                {
-                    "turn_index": self.turn_index + 1,
-                    "run_id": run_id,
-                    "skills_used": as_list(run.get("skills_used")),
-                    "tool_calls": as_list(run.get("react_trace")),
-                },
-            ],
+            tool_traces=self.tool_traces,
             last_run_id=run_id,
             last_answer_summary=str(answer.get("summary") or ""),
         )

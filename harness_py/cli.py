@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -15,6 +16,7 @@ from .live_chat import LiveResearchChatHarness
 from .llm import MiniMaxChatModel
 from .product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
 from .provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
+from .runtime import build_harness_runtime
 from .scoring import BehaviorScorer
 from .service import serve
 
@@ -35,6 +37,8 @@ def main(argv: list[str] | None = None) -> int:
     agent_parser.add_argument("--out", default="eval/rag/runs/python-minimax-agent")
     agent_parser.add_argument("--case-id", action="append", default=[])
     agent_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    agent_parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
+    agent_parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
     agent_parser.add_argument("--max-tokens", type=int, default=3000)
     chat_parser = subcommands.add_parser("chat", help="Chat with current product DB papers.")
     chat_parser.add_argument("--question", required=True)
@@ -47,6 +51,8 @@ def main(argv: list[str] | None = None) -> int:
     chat_parser.add_argument("--conversation-id", default="live_conversation")
     chat_parser.add_argument("--print-state", action="store_true")
     chat_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    chat_parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
+    chat_parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
     chat_parser.add_argument("--max-tokens", type=int, default=3000)
     chat_parser.add_argument("--print-run", action="store_true")
     shell_parser = subcommands.add_parser("chat-shell", help="Open an interactive terminal chat with product DB papers.")
@@ -59,6 +65,8 @@ def main(argv: list[str] | None = None) -> int:
     shell_parser.add_argument("--conversation-id", default="live_conversation")
     shell_parser.add_argument("--print-run", action="store_true")
     shell_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    shell_parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
+    shell_parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
     shell_parser.add_argument("--max-tokens", type=int, default=3000)
     serve_parser = subcommands.add_parser("serve", help="Run the internal HTTP research harness service.")
     serve_parser.add_argument("--host", default="127.0.0.1")
@@ -66,6 +74,11 @@ def main(argv: list[str] | None = None) -> int:
     serve_parser.add_argument("--internal-token", default="")
     serve_parser.add_argument("--max-tokens", type=int, default=3000)
     serve_parser.add_argument("--corpus-limit", type=int, default=1000)
+    serve_parser.add_argument(
+        "--runtime",
+        choices=["agents_sdk", "legacy"],
+        default=os.getenv("RESEARCH_HARNESS_RUNTIME", "agents_sdk"),
+    )
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
         help="Compare one LLM judge with fixed human-labelled harness runs.",
@@ -117,8 +130,12 @@ def main(argv: list[str] | None = None) -> int:
             }, indent=2, sort_keys=True), file=sys.stderr)
             return 2
         cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
-        provider, model = _live_model(args.provider_source)
-        harness = LiveResearchChatHarness(model, max_completion_tokens=args.max_tokens)
+        provider, harness = _live_harness(
+            args.provider_source,
+            args.runtime,
+            args.max_tokens,
+            args.eval_dump,
+        )
         runs = [harness.run_case(dataset, case) for case in cases]
         report = BehaviorScorer().score_dataset(
             dataset if not selected else _dataset_with_cases(dataset, cases),
@@ -144,8 +161,12 @@ def main(argv: list[str] | None = None) -> int:
             query=args.paper_query,
             limit=args.limit,
         )
-        provider, model = _live_model(args.provider_source)
-        harness = LiveResearchChatHarness(model, max_completion_tokens=args.max_tokens)
+        provider, harness = _live_harness(
+            args.provider_source,
+            args.runtime,
+            args.max_tokens,
+            args.eval_dump,
+        )
         state = _chat_state(args, dataset)
         run, state = harness.run_turn(dataset, state, args.question)
         out_value = None
@@ -191,8 +212,12 @@ def main(argv: list[str] | None = None) -> int:
             query=args.paper_query,
             limit=args.limit,
         )
-        provider, model = _live_model(args.provider_source)
-        harness = LiveResearchChatHarness(model, max_completion_tokens=args.max_tokens)
+        provider, harness = _live_harness(
+            args.provider_source,
+            args.runtime,
+            args.max_tokens,
+            args.eval_dump,
+        )
         state = _chat_state(args, dataset)
         state_path = args.state_out or args.state
         print(json.dumps({
@@ -217,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
             internal_token=args.internal_token,
             max_completion_tokens=args.max_tokens,
             corpus_limit=args.corpus_limit,
+            runtime_name=args.runtime,
         )
         return 0
     if args.command == "judge-calibrate":
@@ -344,7 +370,24 @@ def _terminal_state_summary(state: ConversationState) -> dict:
     }
 
 
+def _live_harness(
+    provider_source: str,
+    runtime_name: str,
+    max_completion_tokens: int,
+    eval_dump: str,
+):
+    store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
+    provider = store.load_active_provider("llm")
+    runtime = build_harness_runtime(
+        provider,
+        runtime_name,
+        max_completion_tokens=max_completion_tokens,
+    )
+    return provider, LiveResearchChatHarness(runtime, eval_dump_dir=eval_dump or None)
+
+
 def _live_model(provider_source: str):
+    """Legacy helper retained for callers that still construct the hand-written runtime."""
     store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
     provider = store.load_active_provider("llm")
     return provider, MiniMaxChatModel(provider, temperature=0.0, top_p=1.0)

@@ -110,6 +110,20 @@ class LiveResearchChatHarness:
                     "message": str(error),
                 })
             raise
+        except (BrokenPipeError, ConnectionResetError) as error:
+            if recorder:
+                recorder.append(
+                    kind="run.error",
+                    operation_id="run",
+                    payload={"error_type": type(error).__name__, "message": str(error)},
+                )
+                recorder.finish({
+                    "run_id": run_id,
+                    "status": "CANCELLED",
+                    "error_type": type(error).__name__,
+                    "message": str(error),
+                })
+            raise
         except Exception as error:
             if recorder:
                 recorder.append(
