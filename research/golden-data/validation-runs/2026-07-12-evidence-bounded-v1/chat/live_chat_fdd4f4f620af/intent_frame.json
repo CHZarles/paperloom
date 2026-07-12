@@ -1,0 +1,85 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "constraint_filter",
+  "constraints": {
+    "coverage_assumption": "The active deep_comparison task on the active_task (how paper 2 builds on paper 1) is paused; the user has shifted to a new actionable request: choose which of the two selected surveys to read first for designing an agent evaluation harness. The harness is assumed to target general LLM-based agent evaluation unless the user later specifies a multi-turn conversational-only scope.",
+    "ground": "selected evidence",
+    "papers": [
+      "8b9e2f64d565137ca85ae75029e77fff",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+    ],
+    "task": {
+      "object": "which survey to read first",
+      "verb": "recommend"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "8b9e2f64d565137ca85ae75029e77fff",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+    "recommended reading order for designing an agent evaluation harness",
+    "justification grounded in scope and frameworks"
+  ],
+  "intent_id": "intent_live_chat_fdd4f4f620af",
+  "method_mentions": [],
+  "normalized_question": "Recommend which of the two selected surveys on LLM-based agent evaluation the user should read first when designing an agent evaluation harness, grounded in the selected evidence.",
+  "obligations": [
+    {
+      "answer_field": "paper1_relevance_to_harness_design",
+      "description": "Identify what aspects of paper 1 (8b9e2f64d565137ca85ae75029e77fff) are directly relevant to designing an agent evaluation harness.",
+      "id": "paper1_scope_for_harness",
+      "kind": "fact",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "paper2_relevance_to_harness_design",
+      "description": "Identify what aspects of paper 2 (726cfbbd5683cdfabbf4c24e2bf8f0b2) are directly relevant to designing an agent evaluation harness.",
+      "id": "paper2_scope_for_harness",
+      "kind": "fact",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "harness_focus_assumption",
+      "description": "Clarify that the recommendation assumes the user's agent evaluation harness targets general/multi-application agents rather than only multi-turn conversational agents; both choices should be presented as contingent on that scope.",
+      "id": "harness_focus_assumption",
+      "kind": "analysis_step",
+      "paper_scope": [],
+      "required": false
+    },
+    {
+      "answer_field": "first_read_recommendation",
+      "description": "Provide a reason grounded in evidence for why one paper is recommended first over the other, addressing coverage breadth, taxonomy/methodology depth, and applicability to harness architecture decisions.",
+      "id": "recommendation_justification",
+      "kind": "recommendation",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "8b9e2f64d565137ca85ae75029e77fff",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+  ],
+  "primary_paradigm": "context_specific_brainstorming",
+  "question_id": "live_chat_fdd4f4f620af",
+  "raw_question": "Which one should I read first if I am designing an agent evaluation harness?",
+  "required_capabilities": [
+    "paper-grounded recommendation",
+    "cross-paper comparison"
+  ],
+  "required_evidence_types": [
+    "scope and coverage statements",
+    "frameworks/tools discussed",
+    "taxonomies and methodology sections"
+  ],
+  "requires_corpus_observation": true
+}

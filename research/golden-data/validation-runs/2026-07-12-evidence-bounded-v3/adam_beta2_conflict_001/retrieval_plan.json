@@ -1,0 +1,176 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "optimizer_configuration_table",
+    "experimental_setup_section"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "adam_beta2",
+      "description": "What value of β2 does the Adam paper (Kingma & Ba, 2014) report as its default or recommended setting?",
+      "id": "adam_beta2_default",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "adam_2014"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_beta2",
+      "description": "What value of β2 does the Transformer paper (Vaswani et al., 2017) report using for Adam in its optimizer configuration?",
+      "id": "transformer_beta2_used",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "scope_distinction",
+      "description": "What scope/context in each paper does the β2 value appear in (e.g., paper-wide default vs. specific model/optimizer-table entry), and does that distinction explain the apparent conflict?",
+      "id": "context_scope_distinction",
+      "kind": "conflict_resolution",
+      "paper_scope": [
+        "adam_2014",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "contradiction_resolution",
+  "plan_id": "plan_live_chat_7a5bb0785774",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph",
+            "table"
+          ],
+          "obligation_ids": [
+            "adam_beta2_default"
+          ],
+          "query_id": "adam_beta2_default_q",
+          "query_text": "β2 = 0.999 default good default settings algorithm 1",
+          "section_query": "Algorithm 1 and default settings",
+          "target_ids": [
+            "adam_2014_target"
+          ],
+          "top_k": 3
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "adam_beta2_default",
+            "context_scope_distinction"
+          ],
+          "query_id": "adam_beta2_scope_q",
+          "query_text": "section 3.1 algorithm parameters epsilon exponential decay rates logistic regression",
+          "section_query": "Section 3 algorithm and experimental setup",
+          "target_ids": [
+            "adam_2014_target"
+          ],
+          "top_k": 3
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "table"
+          ],
+          "obligation_ids": [
+            "transformer_beta2_used",
+            "context_scope_distinction"
+          ],
+          "query_id": "transformer_beta2_used_q",
+          "query_text": "Adam optimizer β1 β2 0.9 0.98 training settings section 5",
+          "section_query": "Training section optimizer settings",
+          "target_ids": [
+            "attention_is_all_you_need_2017_target"
+          ],
+          "top_k": 3
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "1412.6980",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "adam_beta2_default",
+            "context_scope_distinction"
+          ],
+          "discovery_query": "",
+          "paper_id": "adam_2014",
+          "target_id": "adam_2014_target",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "arxiv_id": "1706.03762",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "transformer_beta2_used",
+            "context_scope_distinction"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "attention_is_all_you_need_2017_target",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_7a5bb0785774",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "define_conflict_sides",
+      "stage_name": "define_conflict_sides",
+      "step_id": "stage_1_define_conflict_sides",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "define_conflict_sides"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_both_sources",
+      "stage_name": "collect_both_sources",
+      "step_id": "stage_2_collect_both_sources",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_both_sources"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "distinguish_scope",
+      "stage_name": "distinguish_scope",
+      "step_id": "stage_3_distinguish_scope",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "distinguish_scope"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_resolution",
+      "stage_name": "verify_resolution",
+      "step_id": "stage_4_verify_resolution",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_resolution"
+    }
+  ],
+  "target_entities": [
+    "adam_2014",
+    "attention_is_all_you_need_2017"
+  ]
+}

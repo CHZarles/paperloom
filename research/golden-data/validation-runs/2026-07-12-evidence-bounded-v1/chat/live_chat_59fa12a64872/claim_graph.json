@@ -1,0 +1,157 @@
+{
+  "claims": [
+    {
+      "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope_value",
+      "claim_type": "architecture",
+      "obligation_ids": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_675fca9661b26bfa"
+      ],
+      "text": "scope: multi-turn conversational LLM-based agents",
+      "verification_reason": "Evidence directly states the paper surveys evaluation methods for LLM-based multi-turn conversational agents.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "8b9e2f64d565137ca85ae75029e77fff_scope_value",
+      "claim_type": "architecture",
+      "obligation_ids": [
+        "8b9e2f64d565137ca85ae75029e77fff_scope"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_ddb084a0ece5ad74"
+      ],
+      "text": "scope: evaluation of LLM-based agents broadly",
+      "verification_reason": "Evidence describes a comprehensive survey of evaluation methods for LLM-based agents across multiple perspectives (capabilities, benchmarks, frameworks), which is broader than conversational only.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_value",
+      "claim_type": "objective",
+      "obligation_ids": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_3e731d621272672c"
+      ],
+      "text": "taxonomy: two interrelated taxonomies — \"what to evaluate\" (task completion, response quality, user experience, memory and context retention, planning and tool integration) and \"how to evaluate\" (annotation-based, automated metrics, hybrid human+quantitative, self-judging LLM methods)",
+      "verification_reason": "Evidence directly lists both taxonomies with their exact components: what to evaluate (task completion, response quality, user experience, memory and context retention, planning and tool integration) and how to evaluate (annotation-based, automated metrics, hybrid, self-judging LLM).",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks_value",
+      "claim_type": "comparison",
+      "obligation_ids": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_675fca9661b26bfa"
+      ],
+      "text": "benchmarks: reviews existing datasets and methodologies for LLM-based multi-turn conversational agents; 276 papers offering targeted evaluation insights",
+      "verification_reason": "Evidence supports the review of existing methodologies/datasets and the 276 figure, but the passage does not explicitly enumerate \"task-oriented and open-domain dialogue\" as scope of the benchmark review; the broader scope is just \"LLM-based multi-turn conversational agents.\" Narrowing removes the unsupported sub-classification.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "8b9e2f64d565137ca85ae75029e77fff_benchmarks_value",
+      "claim_type": "comparison",
+      "obligation_ids": [
+        "8b9e2f64d565137ca85ae75029e77fff_benchmarks"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_ddb084a0ece5ad74"
+      ],
+      "text": "benchmarks: application-specific benchmarks for web, software engineering, scientific, and conversational agents, plus generalist agent benchmarks",
+      "verification_reason": "Evidence explicitly lists web, SWE, and generalist benchmarks, and the five perspectives. However, \"scientific\" and \"conversational\" agents are not explicitly mentioned in this abstract passage; only web and SWE are given as examples. The \"SWE-bench Verified as de facto SWE agent benchmark\" qualifier is not stated in this passage.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks_value",
+      "claim_type": "comparison",
+      "obligation_ids": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_3e731d621272672c"
+      ],
+      "text": "frameworks: organizes evaluation methodologies into annotation-based, automated metrics, hybrid human+quantitative, and self-judging LLM methods, including traditional metrics like BLEU and ROUGE alongside interactive multi-turn techniques",
+      "verification_reason": "Evidence directly states the taxonomy categories (annotation-based, automated metrics, hybrid, self-judging LLM) and that the framework captures BLEU/ROUGE plus advanced techniques reflecting multi-turn dialogues.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "8b9e2f64d565137ca85ae75029e77fff_frameworks_value",
+      "claim_type": "comparison",
+      "obligation_ids": [
+        "8b9e2f64d565137ca85ae75029e77fff_frameworks"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_ddb084a0ece5ad74"
+      ],
+      "text": "frameworks: evaluation frameworks and tools for agent developers",
+      "verification_reason": "Evidence explicitly lists \"Evaluation frameworks and tools for agent developers\" as one of the five perspectives. However, the additional qualifiers \"integrate with the development environment and support evaluation throughout the development cycle\" are not supported by this passage.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology_value",
+      "claim_type": "directionality",
+      "obligation_ids": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_675fca9661b26bfa"
+      ],
+      "text": "methodology: PRISMA-inspired systematic review from 2017 to 2025; initial Google Scholar search of 479 papers plus 1,081 venue papers, yielding 351 papers for qualitative synthesis and 276 with targeted evaluation insights",
+      "verification_reason": "Evidence directly states the date range (2017–2025), PRISMA inspiration, 479 initial Google Scholar papers, 1,081 venue papers, 351 qualitative synthesis papers, and 276 with targeted evaluation insights.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "8b9e2f64d565137ca85ae75029e77fff_methodology_value",
+      "claim_type": "directionality",
+      "obligation_ids": [
+        "8b9e2f64d565137ca85ae75029e77fff_methodology"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_394a88565bab8e83"
+      ],
+      "text": "methodology: rigorous multi-stage literature review with three phases — systematic search, structured selection, and expert validation",
+      "verification_reason": "Evidence explicitly states three primary phases: systematic search, structured selection, and expert validation. However, the specific qualifier \"consulting benchmark creators and dominant agent architecture researchers\" is not stated in this passage.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective_value",
+      "claim_type": "comparison",
+      "obligation_ids": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_985210f77a60dcf4"
+      ],
+      "text": "end-to-end vs component perspective: end-to-end first — prioritizes holistic end-to-end experience at the dialogue level, then drills into granular metrics (task completion, response quality, user experience, memory/context retention, planning/tool integration)",
+      "verification_reason": "Evidence directly states \"prioritize evaluating the end-to-end experience in the first place\" before delving into granular metrics, and the passage names these dimensions including Task Completion, etc.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_59fa12a64872",
+  "question_id": "live_chat_59fa12a64872"
+}

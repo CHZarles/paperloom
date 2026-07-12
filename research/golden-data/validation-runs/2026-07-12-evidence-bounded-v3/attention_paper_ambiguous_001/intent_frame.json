@@ -1,0 +1,18 @@
+{
+  "actionability": "none",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "conversation",
+  "constraints": {},
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_731cd947eef1",
+  "method_mentions": [],
+  "normalized_question": "attention paper",
+  "paper_mentions": [],
+  "primary_paradigm": "direct_conversation",
+  "question_id": "live_chat_731cd947eef1",
+  "raw_question": "attention paper",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

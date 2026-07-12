@@ -1,0 +1,69 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_dff237804eea",
+    "payload": {
+      "answer_fields": {},
+      "claim_verdicts": [],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_general_agent",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_multimodal_agent",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_trajectory_process",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_realworld_task",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_cost_safety_efficiency",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_social_cognition",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_writing_generative",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "bench_meta_self_reasoning",
+          "status": "missing"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "corpus_observation_identity_2",
+        "corpus_observation_identity_3",
+        "corpus_observation_identity_4"
+      ]
+    },
+    "question_id": "live_chat_dff237804eea",
+    "source_claim_ids": [],
+    "title": "用户从\"推荐和量化有关的\"经过澄清后，现在改为\"推荐一些和benchmark有关的\"。在 30 篇 LLM agent / evaluation 语料中，几乎所有论文都是 benchmark / evaluation 类，需按代表性维度（agent 通用能力、多模态、轨迹/过程评估、现实任务、成本/安全、社会认知、写作类）从语料中挑选最相关、覆盖最广的 benchmark 论文作为推荐清单，并给出每篇匹配的理由。",
+    "type": "recommendation"
+  }
+]

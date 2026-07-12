@@ -1,0 +1,46 @@
+{
+  "answer_id": "answer_live_chat_ed5dd7cd3d93",
+  "answer_type": "definition_trace",
+  "cited_claim_ids": [
+    "bert_architecture_definition",
+    "bert_mlm_objective_definition",
+    "bert_bidirectional_definition_change",
+    "bert_bidirectional_difference_change",
+    "bert_nsp_objective_definition",
+    "bert_input_representation_definition"
+  ],
+  "cited_evidence_ids": [
+    "ev_3540835408466c6e",
+    "ev_2c75c5a0daa399bd",
+    "ev_50abc0b358bb77ad",
+    "ev_668e1f7f3b701941",
+    "ev_0f82af3db4559191",
+    "ev_41ea8c580142eb9e",
+    "ev_f189c6c5f4214d2e",
+    "ev_b5cb6101ea792641",
+    "ev_944a542df0f94975",
+    "ev_25cc15ee8198fe84",
+    "ev_9c9a9e4f55a8193d",
+    "ev_7397a8bf5eccf48d",
+    "ev_1b3b81719ea2e13f",
+    "ev_3c0f7b9f503c8082",
+    "ev_cd77b6b180d64515"
+  ],
+  "fields": {
+    "architecture": "multi-layer bidirectional Transformer encoder; BERT_BASE (L=12, H=768, A=12, 110M params), BERT_LARGE (L=24, H=1024, A=16, 340M params)",
+    "bidirectionality_definition": "deep bidirectional: jointly conditions on both left and right context in all layers; contrasts with unidirectional LMs (Radford et al., 2018) and shallow concatenation of LTR+RTL LMs (Peters et al., 2018a)",
+    "input_representation": "sum of token + segment + position embeddings; WordPiece 30k vocab; [CLS] as aggregate; [SEP] and learned A/B segment embeddings for sentence pairs",
+    "mlm_objective": "mask 15% of WordPiece tokens; chosen tokens replaced with [MASK] 80% / random token 10% / unchanged 10%; predict original token via cross entropy loss; fuses left and right context unlike left-to-right LM",
+    "nsp_objective": "binary next-sentence prediction: 50% B is the actual next sentence (IsNext), 50% B is random (NotNext); included with MLM to capture sentence-pair relationships needed for QA and NLI"
+  },
+  "markdown": "1. BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M). [1][2]\n2. BERT's masked language modeling pre-training objective masks 15% of all WordPiece tokens in each sequence at random; the training data generator chooses 15% of token positions at random for prediction, and when the i-th token is chosen it is replaced with (1) the [MASK] token 80% of the time, (2) a random token 10% of the time, and (3) the unchanged i-th token 10% of the time, with T_i used to predict the original token via cross entropy loss; unlike left-to-right language modeling, this enables the representation to fuse both left and right context to pre-train a deep bidirectional Transformer. [3][4][5][6]\n3. BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers, in contrast to Radford et al. (2018) which uses unidirectional language models for pre-training and to Peters et al. (2018a) which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs. [7][8]\n4. BERT motivates deep bidirectionality by noting that a deep bidirectional model is intuitively strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and right-to-left model, since standard conditional language models can only be trained left-to-right or right-to-left (because bidirectional conditioning would allow each word to indirectly 'see itself'); the ELMo-style concatenation is twice as expensive, non-intuitive for QA where the RTL model would not be able to condition the answer on the question, and strictly less powerful since it cannot use both left and right context at every layer. [9][10]\n5. BERT's Next Sentence Prediction (NSP) pre-training objective trains a model to understand sentence relationships by predicting whether sentence B is the actual next sentence that follows A (labeled IsNext) or a random sentence from the corpus (labeled NotNext), with each chosen 50% of the time; it is included alongside MLM because many downstream tasks such as Question Answering and Natural Language Inference depend on understanding the relationship between two sentences, which is not directly captured by language modeling, and the final hidden state C of the special [CLS] token is used for this prediction. [11][5][12]\n6. BERT's input representation is constructed by summing the corresponding token, segment, and position embeddings; it uses WordPiece embeddings with a 30,000 token vocabulary, prepends a special [CLS] classification token to every sequence (whose final hidden state C ∈ ℝ^H serves as the aggregate sequence representation for classification), packs sentence pairs into a single sequence separated by a special [SEP] token, and adds a learned segment embedding to every token indicating whether it belongs to sentence A or sentence B. [13][14][15]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[4] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[5] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1\n[6] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, A.1 Illustration of the Pre-training Tasks, p. 12\n[7] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[8] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 2\n[9] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[10] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.1 Effect of Pre-training Tasks, p. 8\n[11] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[12] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.1 Effect of Pre-training Tasks, p. 8\n[13] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 4\n[14] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 4\n[15] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 5",
+  "outcome": "answered",
+  "question_id": "live_chat_ed5dd7cd3d93",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_ed5dd7cd3d93"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M).",
+  "verification_id": "verification_live_chat_ed5dd7cd3d93"
+}

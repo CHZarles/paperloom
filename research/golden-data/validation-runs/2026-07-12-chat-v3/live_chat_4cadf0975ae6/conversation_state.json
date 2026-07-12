@@ -1,0 +1,60 @@
+{
+  "active_task": {},
+  "claims_by_id": {},
+  "conversation_id": "live_conversation",
+  "evidence_items_by_id": {},
+  "last_answer_summary": "Hi! I have access to a 30-paper corpus on LLM agents and evaluation. What would you like to explore — a specific paper, a comparison, a recommendation, or something else?",
+  "last_run_id": "run_live_chat_4cadf0975ae6",
+  "memory_notes": [],
+  "message_history": [
+    {
+      "content": "hi",
+      "role": "user",
+      "turn_index": 1
+    },
+    {
+      "cited_evidence_ids": [],
+      "role": "assistant",
+      "run_id": "run_live_chat_4cadf0975ae6",
+      "status": "COMPLETED",
+      "summary": "Hi! I have access to a 30-paper corpus on LLM agents and evaluation. What would you like to explore — a specific paper, a comparison, a recommendation, or something else?",
+      "turn_index": 1
+    }
+  ],
+  "pending_interaction": {},
+  "scope_paper_ids": [
+    "04d0a73eef7b1e83869ee2ce1d83beb1",
+    "0a69c4fad229fd7a5d619e23df594ecf",
+    "2ed909035dbfe4059c1a409cbc24feea",
+    "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+    "3d47869e74a9e6ccb1ecddd25eef9d33",
+    "5768178b603533c617487221e26d9c00",
+    "5e4b4f2d92647fe8b8847e38bae2f876",
+    "67b51f2a490d4092f0a2494c6349e7ee",
+    "681813811bdc97ab4a25084e59b94182",
+    "6b404d4d1a4a32194a5ddb32354d379d",
+    "6cce095e719b9980b7373dc031eeb9fe",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+    "72dde7f40dd84746da23ec8cdb9d5050",
+    "8b9e2f64d565137ca85ae75029e77fff",
+    "915dba7e6811ea85b2edbb705ae900c0",
+    "9d394df7133e93d0441d9c7db310e058",
+    "a96e1a7c10024c45b186dde5a3ce0122",
+    "ae3678cdcd0e4704d9f6526cd76e3b98",
+    "b387b0244b8c6c0f32a7041a04c47adf",
+    "bf00436579e72429679264b76a660d3f",
+    "c270139b1a43dd2675126d74038fa3c5",
+    "c37bf09fd44806fd2d5b4f46e1e29c01",
+    "c754a224706f987c2cc61bb2b63cab99",
+    "cfaf846432ab040959794cf58e79d8a6",
+    "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+    "e9b61256490c3f82d41ee47d96f900d1",
+    "f28d417b1505e7b90edee2953d4d408c",
+    "f66a3a3cca316754ec460037e78d73a2",
+    "f7c075b5c7854d28fe3aecfbebaf3940",
+    "fcc5f75cc2acef290643a9e846d45349"
+  ],
+  "selected_evidence_ids": [],
+  "selected_paper_ids": [],
+  "turn_index": 1
+}

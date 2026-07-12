@@ -1,0 +1,207 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "Citation/reference statements",
+    "Architecture descriptions"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "",
+      "description": "Does the GPT-3 paper (gpt3_2020) cite GPT-2 (gpt2_2019) as an architectural predecessor, and what architecture-related content is attributed?",
+      "id": "hop1_gpt3_to_gpt2_citation",
+      "kind": "hop",
+      "paper_scope": [
+        "gpt3_2020",
+        "gpt2_2019"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "",
+      "description": "Does the GPT-2 paper (gpt2_2019) cite Attention Is All You Need (attention_is_all_you_need_2017) as the origin of the Transformer architecture used in GPT-2?",
+      "id": "hop2_gpt2_to_transformer_citation",
+      "kind": "hop",
+      "paper_scope": [
+        "gpt2_2019",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "complex_multihop_reasoning",
+  "plan_id": "plan_live_chat_257cfe464634",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "hop1_gpt3_to_gpt2_citation"
+          ],
+          "query_id": "q1_gpt3_refs_gpt2",
+          "query_text": "Radford et al. 2019 GPT-2 unsupervised multitask learners",
+          "section_query": null,
+          "target_ids": [
+            "gpt3_target"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "hop1_gpt3_to_gpt2_citation"
+          ],
+          "query_id": "q2_gpt3_arch_from_gpt2",
+          "query_text": "model architecture closely follows GPT-2 transformer decoder",
+          "section_query": null,
+          "target_ids": [
+            "gpt3_target"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "hop1_gpt3_to_gpt2_citation"
+          ],
+          "query_id": "q3_gpt2_architecture",
+          "query_text": "transformer decoder layers residual self-attention model architecture",
+          "section_query": null,
+          "target_ids": [
+            "gpt2_target"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "hop2_gpt2_to_transformer_citation"
+          ],
+          "query_id": "q4_gpt2_cites_aiayn",
+          "query_text": "Vaswani et al. 2017 Attention Is All You Need transformer",
+          "section_query": null,
+          "target_ids": [
+            "gpt2_target"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "hop2_gpt2_to_transformer_citation"
+          ],
+          "query_id": "q5_aiayn_components",
+          "query_text": "multi-head scaled dot-product self-attention positional encoding encoder decoder",
+          "section_query": null,
+          "target_ids": [
+            "aiayn_target"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "hop1_gpt3_to_gpt2_citation"
+          ],
+          "query_id": "q6_gpt3_no_direct_aiayn",
+          "query_text": "Vaswani et al. 2017 attention transformer citation",
+          "section_query": null,
+          "target_ids": [
+            "gpt3_target"
+          ],
+          "top_k": 3
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "2005.14165",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "hop1_gpt3_to_gpt2_citation"
+          ],
+          "discovery_query": "",
+          "paper_id": "gpt3_2020",
+          "target_id": "gpt3_target",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "hop1_gpt3_to_gpt2_citation",
+            "hop2_gpt2_to_transformer_citation"
+          ],
+          "discovery_query": "",
+          "paper_id": "gpt2_2019",
+          "target_id": "gpt2_target",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "arxiv_id": "1706.03762",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "hop2_gpt2_to_transformer_citation"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "aiayn_target",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_257cfe464634",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "decompose_hops",
+      "stage_name": "decompose_hops",
+      "step_id": "stage_1_decompose_hops",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "decompose_hops"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_hop_evidence",
+      "stage_name": "collect_hop_evidence",
+      "step_id": "stage_2_collect_hop_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_hop_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "compose_chain",
+      "stage_name": "compose_chain",
+      "step_id": "stage_3_compose_chain",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "compose_chain"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_each_hop",
+      "stage_name": "verify_each_hop",
+      "step_id": "stage_4_verify_each_hop",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_each_hop"
+    }
+  ],
+  "target_entities": [
+    "",
+    "",
+    ""
+  ]
+}

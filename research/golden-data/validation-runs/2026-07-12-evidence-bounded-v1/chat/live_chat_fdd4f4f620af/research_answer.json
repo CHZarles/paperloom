@@ -1,0 +1,42 @@
+{
+  "answer_id": "answer_live_chat_fdd4f4f620af",
+  "answer_type": "constraint_filter",
+  "cited_claim_ids": [
+    "paper1_scope_for_harness",
+    "paper2_scope_for_harness",
+    "recommendation_justification"
+  ],
+  "cited_evidence_ids": [
+    "ev_ddb084a0ece5ad74",
+    "ev_ceb02e5ea599218f",
+    "ev_0fcd65f08e2c1e3f",
+    "ev_e0b3c0e1ded59f14",
+    "ev_bb8279e8aac9d4fe",
+    "ev_2554a9d0f0eb1b8c",
+    "ev_be9ffa7f121ef2a8",
+    "ev_7151c41101c67b08",
+    "ev_dd37d6968725a026",
+    "ev_675fca9661b26bfa",
+    "ev_3e731d621272672c",
+    "ev_985210f77a60dcf4",
+    "ev_aead9018f3eb7236",
+    "ev_0e5c7bd8b91122fa",
+    "ev_28a5184ea0d65277",
+    "ev_7591e3f0e1cb9369",
+    "ev_cf8f947b23acb5ce"
+  ],
+  "fields": {
+    "paper1_relevance_to_harness_design": "core agent capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational), generalist agent platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness), and developer evaluation frameworks that integrate with the development cycle",
+    "paper2_relevance_to_harness_design": "two taxonomies: what to evaluate (task completion, response quality, user experience, memory/context, planning/tool integration) and how to evaluate (annotation-based, automated metrics, hybrid human-plus-quantitative, LLM self-judging), plus multi-step tool selection reasoning (MetaTool/ToolE, MTU-Bench) and end-to-end multi-turn interaction evaluation"
+  },
+  "markdown": "1. Paper 1 (A Survey on Evaluation of LLM-based Agents) is directly relevant to designing an agent evaluation harness through its coverage of core agentic capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational agents), generalist agent evaluation platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness including pass^k), and evaluation frameworks for agent developers that integrate with the development environment and support evaluation across the development cycle. [1][2][3][4][5][6][7][8][9]\n2. Paper 2 (Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey) is directly relevant to designing an agent evaluation harness in the conversational setting through its two taxonomies: a 'what to evaluate' taxonomy covering task completion, response quality, user experience, memory/context retention, and planning/tool integration, and a 'how to evaluate' taxonomy covering annotation-based evaluation, automated metrics, hybrid human-plus-quantitative strategies, and LLM self-judging, along with multi-step tool selection and reasoning evaluation (e.g., MetaTool/ToolE, MTU-Bench) and end-to-end multi-turn interaction evaluation. [10][11][12][13][14][15][16][17]\n3. Read paper 1 (A Survey on Evaluation of LLM-based Agents) first when designing an agent evaluation harness for general/multi-application agents. It offers broader coverage spanning core agentic capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational agents), generalist agent evaluation platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness via pass^k), and developer evaluation frameworks that integrate with the development environment and support evaluation across the development cycle, whereas paper 2 is narrower in scope (multi-turn conversational settings); paper 2's deeper taxonomy for multi-turn dialogue can then be consulted afterward for conversational-agent components. [1][2][3][10][11][5][7][8][9][14]\n\nSources\n[1] A Survey on Evaluation of LLM-based Agents, Abstract, p. 1\n[2] A Survey on Evaluation of LLM-based Agents, 1 Introduction, p. 1\n[3] A Survey on Evaluation of LLM-based Agents, 4 Generalist Agent Evaluation, p. 5\n[4] A Survey on Evaluation of LLM-based Agents, 8 Conclusion, p. 9\n[5] A Survey on Evaluation of LLM-based Agents, 6 Frameworks for Agent Evaluation, p. 7\n[6] A Survey on Evaluation of LLM-based Agents, 6 Frameworks for Agent Evaluation, p. 8\n[7] A Survey on Evaluation of LLM-based Agents, 5 Core Benchmark Dimensions, p. 6\n[8] A Survey on Evaluation of LLM-based Agents, 5 Core Benchmark Dimensions, p. 6\n[9] A Survey on Evaluation of LLM-based Agents, 5 Core Benchmark Dimensions, p. 6\n[10] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 1.2 The Scope of This Survey, p. 3\n[11] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, p. 1\n[12] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.1 Evaluating the End-to-end Experience of LLM-based Agents For Multi-Turn Conversation, p. 6\n[13] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.2 Evaluating The Action and Tool-use Components of LLM-based Agents for Multi-turn Conversation, p. 8\n[14] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 3.1 Evaluation Data, p. 15\n[15] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 1.4 Comparisons with Other Existing Surveys, p. 5\n[16] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.1 Evaluating the End-to-end Experience of LLM-based Agents For Multi-Turn Conversation, p. 7\n[17] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 4.1 Trends and Status-quo, p. 22",
+  "outcome": "answered",
+  "question_id": "live_chat_fdd4f4f620af",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_fdd4f4f620af"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Paper 1 (A Survey on Evaluation of LLM-based Agents) is directly relevant to designing an agent evaluation harness through its coverage of core agentic capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational agents), generalis",
+  "verification_id": "verification_live_chat_fdd4f4f620af"
+}

@@ -1,0 +1,22 @@
+{
+  "claims": [
+    {
+      "claim_id": "adam_beta2_transformer",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "adam_beta2_transformer"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "Adam beta2 = 0.98",
+      "verification_reason": "The evidence passage from 'Attention Is All You Need' explicitly states β₂ = 0.98 for the Adam optimizer, directly supporting the claim with exact wording.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_50ba2e59aacf",
+  "question_id": "live_chat_50ba2e59aacf"
+}

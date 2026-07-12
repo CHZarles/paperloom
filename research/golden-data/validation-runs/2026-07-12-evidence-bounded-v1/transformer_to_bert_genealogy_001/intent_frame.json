@@ -1,0 +1,51 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "citation_genealogy",
+  "constraints": {
+    "coverage_assumption": "Direct lineage means BERT's explicit citation of Vaswani et al. 2017 and the architectural components BERT inherits from it; not inference through intermediate papers.",
+    "focus": "direct citation lineage only",
+    "papers": "attention_is_all_you_need_2017, bert_2018",
+    "task": {
+      "object": "technical lineage and cited relationship",
+      "verb": "trace"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "direct citation of Transformer by BERT",
+    "architectural components inherited (encoder, self-attention, etc.)",
+    "BERT's exact framing of the relationship",
+    "differences between full Transformer and BERT's encoder-only use"
+  ],
+  "intent_id": "intent_live_chat_bfd4ff883d07",
+  "method_mentions": [],
+  "normalized_question": "Trace and explain the direct technical lineage from \"Attention Is All You Need\" (2017) to \"BERT\" (2018), identifying the specific cited relationship and the technical elements (transformer architecture, self-attention, encoder reuse, pre-training objectives) that BERT inherits from the Transformer paper.",
+  "obligations": [
+    {
+      "answer_field": "lineage_technical_content",
+      "description": "What is the technical meaning of BERT's citation of the Transformer paper? Identify which architectural components (multi-head self-attention, positional encoding, encoder stack, residual connections, layer norm, feed-forward sublayers) BERT reuses, and how BERT's architecture differs (bidirectional encoder-only vs. original encoder-decoder).",
+      "id": "edge_attn_to_bert_technical_meaning",
+      "kind": "relation",
+      "paper_scope": [
+        "bert_2018",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "association_influence_genealogy",
+  "question_id": "live_chat_bfd4ff883d07",
+  "raw_question": "Show the direct technical lineage from Attention Is All You Need to BERT and explain the cited relationship.",
+  "required_capabilities": [
+    "citation_extraction",
+    "architecture_comparison"
+  ],
+  "required_evidence_types": [
+    "citation_context",
+    "architecture_specification",
+    "architectural_comparison"
+  ],
+  "requires_corpus_observation": true
+}

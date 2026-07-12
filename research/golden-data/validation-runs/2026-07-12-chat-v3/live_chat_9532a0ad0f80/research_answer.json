@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_9532a0ad0f80",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "你说的\"量化\"具体指哪一类？",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_9532a0ad0f80",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "你说的\"量化\"具体指哪一类？",
+  "verification_id": "verification_live_chat_9532a0ad0f80"
+}

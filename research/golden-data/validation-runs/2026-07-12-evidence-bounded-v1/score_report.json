@@ -1,0 +1,253 @@
+{
+  "case_count": 8,
+  "dataset_id": "harness_golden_seed",
+  "failed_count": 4,
+  "passed_count": 4,
+  "schema_version": "harness-score-report/v2",
+  "scores": [
+    {
+      "case_id": "transformer_adam_params_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "transformer_to_bert_genealogy_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "BERT's direct relationship to Attention Is All You Need is that it uses a bidirectional Transformer encoder."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "adam_beta2_conflict_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:adam_default_beta2_span"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:adam_default_beta2_span"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Explains that a default recommendation and a paper-specific setting are not contradictory.",
+          "The Adam paper gives beta2 = 0.999 as a recommended default.",
+          "The Transformer paper used beta2 = 0.98 in its own training setup."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "transformer_optimizer_reproduction_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "gpt3_to_transformer_multihop_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "CITATIONS_REQUIRED",
+            "REQUIRED_ANCHOR_NOT_CITED:gpt3_uses_gpt2_architecture",
+            "REQUIRED_ANCHOR_NOT_CITED:gpt2_transformer_language_model"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [
+            "OUTCOME_MISMATCH:expected=answered:actual=technical_failure"
+          ],
+          "status": "fail"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_PAPER_MISSING:gpt3_2020",
+            "REQUIRED_PAPER_MISSING:gpt2_2019",
+            "REQUIRED_ANCHOR_MISSING:gpt3_uses_gpt2_architecture",
+            "REQUIRED_ANCHOR_MISSING:gpt2_transformer_language_model"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "GPT-3 uses the same model and architecture family as GPT-2.",
+          "GPT-2 uses a Transformer-based architecture for its language models.",
+          "The supported chain is GPT-3 to GPT-2 to Attention Is All You Need; no direct GPT-3-to-Transformer citation is asserted."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "bert_choice_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [
+            "FACT_MISSING:transformer_role"
+          ],
+          "status": "fail"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "transformer_bert_confirmation_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:transformer_encoder_decoder_architecture",
+            "REQUIRED_ANCHOR_NOT_CITED:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [
+            "OUTCOME_MISMATCH:expected=answered:actual=partial"
+          ],
+          "status": "fail"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "The comparison covers architecture role, directionality, and training objective."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "adam_constraint_refinement_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    }
+  ]
+}

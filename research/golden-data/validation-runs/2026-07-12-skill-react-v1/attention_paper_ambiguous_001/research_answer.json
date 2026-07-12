@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_live_chat_731cd947eef1",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Your request \"attention paper\" doesn't specify which aspect of attention you're interested in. Could you clarify one of the following so I can search the corpus effectively?\n\n- **Mechanism flavor**: self-attention, multi-head, sparse, linear, cross-attention, etc.\n- **Application domain**: NLP, vision, multimodal, speech, graphs, etc.\n- **Goal**: read the foundational Transformer paper, survey the area, reproduce a specific method, or find a recent advance.\n\nOnce you pick a topic, I'll search the corpus and recommend a matching paper.",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_731cd947eef1",
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "Your request \"attention paper\" doesn't specify which aspect of attention you're interested in. Could you clarify one of the following so I can search the corpus effectively?\n\n- **Mechanism flavor**: self-attention, multi-head, sparse, linear, cross-attention, etc.\n- **Application domain**: NLP, vision, multimodal, speech, graphs, etc.\n- **Goal**: read the foundational Transformer paper, survey the"
+}

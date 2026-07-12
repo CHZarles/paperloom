@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_944e3d2902d1",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Got it — RLHF. Which flavor would be most useful for you?",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_944e3d2902d1",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "Got it — RLHF. Which flavor would be most useful for you?",
+  "verification_id": "verification_live_chat_944e3d2902d1"
+}

@@ -1,0 +1,657 @@
+[
+  {
+    "arguments": {
+      "limit": 30,
+      "query_text": "alignment safety interpretability"
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "alignment safety interpretability",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_019f56c713df7652ba16904a",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 30,
+      "query_text": "alignment"
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "alignment",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_019f56c71aa47b829d9af006",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 30,
+      "query_text": "interpretability"
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "interpretability",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_019f56c71aa47b829d9af019",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 30,
+      "query_text": "safety"
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "safety",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_019f56c71aa47b829d9af027",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 100,
+      "query_text": ""
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2407.18961.pdf",
+          "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+          "preview": "",
+          "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2408.06327.pdf",
+          "paper_id": "0a69c4fad229fd7a5d619e23df594ecf",
+          "preview": "",
+          "title": "VisualAgentBench: Towards Large Multimodal Models as Visual Foundation Agents",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2310.01557.pdf",
+          "paper_id": "2ed909035dbfe4059c1a409cbc24feea",
+          "preview": "",
+          "title": "SMARTPLAY : A BENCHMARK FOR LLMS AS INTELLI-GENT AGENTS",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2505.02847.pdf",
+          "paper_id": "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+          "preview": "",
+          "title": "Sentient Agent as a Judge: Evaluating Higher-Order Social Cognition in Large Language Models",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2401.13178.pdf",
+          "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+          "preview": "",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2406.05761.pdf",
+          "paper_id": "5768178b603533c617487221e26d9c00",
+          "preview": "",
+          "title": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2504.08942.pdf",
+          "paper_id": "5e4b4f2d92647fe8b8847e38bae2f876",
+          "preview": "",
+          "title": "AGENTREWARDBENCH: Evaluating Automatic Evaluations of Web Agent Trajectories",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2412.08972.pdf",
+          "paper_id": "67b51f2a490d4092f0a2494c6349e7ee",
+          "preview": "",
+          "title": "RULEARENA: A Benchmark for Rule-Guided Reasoning with LLMs in Real-World Scenarios",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2503.19711.pdf",
+          "paper_id": "681813811bdc97ab4a25084e59b94182",
+          "preview": "",
+          "title": "Writing as a testbed for open ended agents",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2402.08995.pdf",
+          "paper_id": "6b404d4d1a4a32194a5ddb32354d379d",
+          "preview": "",
+          "title": "AgentLens: Visual Analysis for Agent Behaviors in LLM-based Autonomous Systems",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2412.13549.pdf",
+          "paper_id": "6cce095e719b9980b7373dc031eeb9fe",
+          "preview": "",
+          "title": "EscapeBench: Towards Advancing Creative Intelligence of Language Model Agents",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2503.22458.pdf",
+          "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+          "preview": "",
+          "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2409.18486.pdf",
+          "paper_id": "72dde7f40dd84746da23ec8cdb9d5050",
+          "preview": "",
+          "title": "Evaluation of OpenAI o1: Opportunities and Challenges of AGI",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2503.16416.pdf",
+          "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+          "preview": "",
+          "title": "A Survey on Evaluation of LLM-based Agents",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2410.22584.pdf",
+          "paper_id": "915dba7e6811ea85b2edbb705ae900c0",
+          "preview": "",
+          "title": "BENCHAGENTS: Multi-Agent Systems for Structured Benchmark Creation",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2311.08562.pdf",
+          "paper_id": "9d394df7133e93d0441d9c7db310e058",
+          "preview": "",
+          "title": "MAg<sup>�</sup>IC: Investigation of Large Language Model Powered Multi-Agent in Cognition, Adaptability, Rationality and Collaboration",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2406.00936.pdf",
+          "paper_id": "a96e1a7c10024c45b186dde5a3ce0122",
+          "preview": "",
+          "title": "A Survey of Useful LLM Evaluation",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2503.14499.pdf",
+          "paper_id": "ae3678cdcd0e4704d9f6526cd76e3b98",
+          "preview": "",
+          "title": "Measuring AI Ability to Complete Long Software Tasks",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2405.14744.pdf",
+          "paper_id": "b387b0244b8c6c0f32a7041a04c47adf",
+          "preview": "",
+          "title": "EXPLORING PROSOCIAL IRRATIONALITY FOR LLM AGENTS: A SOCIAL COGNITION VIEW",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2308.03688.pdf",
+          "paper_id": "bf00436579e72429679264b76a660d3f",
+          "preview": "",
+          "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2409.14195.pdf",
+          "paper_id": "c270139b1a43dd2675126d74038fa3c5",
+          "preview": "",
+          "title": "The Imperative of Conversation Analysis in the Era of LLMs: A Survey of Tasks, Techniques, and Trends",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2412.14161.pdf",
+          "paper_id": "c37bf09fd44806fd2d5b4f46e1e29c01",
+          "preview": "",
+          "title": "TheAgentCompany: Benchmarking LLM Agents on Consequential Real World Tasks",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2408.15769.pdf",
+          "paper_id": "c754a224706f987c2cc61bb2b63cab99",
+          "preview": "",
+          "title": "A Survey on Evaluation of Multimodal Large Language Models",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2503.05244.pdf",
+          "paper_id": "cfaf846432ab040959794cf58e79d8a6",
+          "preview": "",
+          "title": "WritingBench: A Comprehensive Benchmark for Generative Writing",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2404.18930.pdf",
+          "paper_id": "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+          "preview": "",
+          "title": "Hallucination of Multimodal Large Language Models: A Survey",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2412.03904.pdf",
+          "paper_id": "e9b61256490c3f82d41ee47d96f900d1",
+          "preview": "",
+          "title": "MISR: MEASURING INSTRUMENTAL SELF-REASONING IN FRONTIER MODELS",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2312.11671.pdf",
+          "paper_id": "f28d417b1505e7b90edee2953d4d408c",
+          "preview": "",
+          "title": "Evaluating Language-Model Agents on Realistic Autonomous Tasks",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2311.12983.pdf",
+          "paper_id": "f66a3a3cca316754ec460037e78d73a2",
+          "preview": "",
+          "title": "GAIA:",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2411.08794.pdf",
+          "paper_id": "f7c075b5c7854d28fe3aecfbebaf3940",
+          "preview": "",
+          "title": "LLM-Based World Models Can Make Decisions Solely, But Rigorous Evaluations are Needed",
+          "venue": null,
+          "year": null
+        },
+        {
+          "arxiv_id": null,
+          "authors": [],
+          "doi": null,
+          "filename": "2407.01502.pdf",
+          "paper_id": "fcc5f75cc2acef290643a9e846d45349",
+          "preview": "",
+          "title": "AI Agents That Matter",
+          "venue": null,
+          "year": null
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 30,
+      "next_offset": null,
+      "query_text": "",
+      "returned_count": 30
+    },
+    "tool_call_id": "call_019f56c720dd756181cd0132",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 100,
+      "offset": 30,
+      "query_text": ""
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 30,
+      "next_offset": null,
+      "query_text": "",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_019f56c72e5e7e3082d26c8a",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "markdown": "I searched the corpus for papers on alignment, safety, and interpretability. The corpus contains 30 papers total, and **none of them have alignment, safety, or interpretability as their primary topic** — the collection is focused on LLM agents, evaluation benchmarks, and surveys of LLM-based agents.\n\nThe closest tangential papers that touch on safety/alignment-adjacent themes are:\n\n1. **MISR: Measuring Instrumental Self-Reasoning in Frontier Models** — probes whether frontier models engage in instrumental self-reasoning (a behavior relevant to alignment concerns).\n2. **Hallucination of Multimodal Large Language Models: A Survey** — addresses reliability/failure modes, which overlaps with safety.\n3. **Sentient Agent as a Judge: Evaluating Higher-Order Social Cognition in Large Language Models** — evaluates higher-order social cognition, touching on safety-relevant behaviors.\n4. **AI Agents That Matter** — discusses evaluation practices for deployed agents, including considerations relevant to safe deployment.\n\nIf you'd like, I can read into any of these to confirm how substantively they cover safety/alignment content, or pivot to recommending papers in a related area that the corpus does cover well (e.g., LLM agent benchmarks, agent evaluation).",
+      "outcome": "partial"
+    },
+    "result": {
+      "accepted": false,
+      "error": "a corpus-grounded answer must cite evidence using [[evidence_id]]"
+    },
+    "tool_call_id": "call_019f56c7481c717291bbaf2a",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "e9b61256490c3f82d41ee47d96f900d1",
+        "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+        "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+        "fcc5f75cc2acef290643a9e846d45349"
+      ],
+      "section_query": "abstract introduction safety alignment",
+      "top_k": 8
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_1f83202438f94d57918b72afd4b59b2e",
+          "page": 1,
+          "paper_id": "e9b61256490c3f82d41ee47d96f900d1",
+          "paper_version": "rm_1783570164827_6689c80e86a649b09429d552153df8cd",
+          "preview": "We propose a suite of tasks to evaluate the instrumental self-reasoning ability of large language model (LLM) agents. Instrumental self-reasoning ability could improve adaptability and enable self-modification, but it could also pose significant risks, such as enabling deceptive alignment. Prior work has only evaluated self-reasoning in non-agentic settings or in limited domains. In this paper, we propose evaluations for instrumental self-reasoning ability in agentic tasks in a wide range of sce",
+          "section": "ABSTRACT",
+          "title": "MISR: MEASURING INSTRUMENTAL SELF-REASONING IN FRONTIER MODELS"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e30d021ca8be45e6bae3a6d3efe1db96",
+          "page": 2,
+          "paper_id": "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+          "paper_version": "rm_1783588321021_e3553f5bd74b48e09e0106bf6d8be7ab",
+          "preview": "Recently, the emergence of large language models (LLMs) [49, 123, 129, 153, 213] has dominated a wide range of tasks in natural language processing (NLP), achieving unprecedented progress in language understanding [60, 68], generation [207, 227] and reasoning [33, 88, 131, 168, 189]. Leveraging the capabilities of robust LLMs, multimodal large language models (MLLMs) [36, 111, 184, 225], sometimes referred to as large vision-language models (LVLMs), are attracting increasing attention. MLLMs sho",
+          "section": "1 INTRODUCTION",
+          "title": "Hallucination of Multimodal Large Language Models: A Survey"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_022740fabc0046b6ba8e4dc71bce92ac",
+          "page": 1,
+          "paper_id": "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+          "paper_version": "rm_1783570027571_e4f3fc42a6c8476a89b06a166da09c92",
+          "preview": "Assessing how well a large language model (LLM) understands human, rather than merely text, remains an open challenge. To bridge the gap, we introduce Sentient Agent as a Judge (SAGE), an automated evaluation framework that measures an LLM�s higher-order social cognition. SAGE instantiates a Sentient Agent that simulates humanlike emotional changes and inner thoughts during interaction, providing a more realistic evaluation of the tested model in multi-turn conversations. At every turn, the agen",
+          "section": "Abstract",
+          "title": "Sentient Agent as a Judge: Evaluating Higher-Order Social Cognition in Large Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_18f4b4345ca64d75836127a9ee8005dc",
+          "page": 1,
+          "paper_id": "fcc5f75cc2acef290643a9e846d45349",
+          "paper_version": "rm_1783588364720_2448c0c49f094f2a880b20498603345d",
+          "preview": "AI agents are an exciting new research direction, and agent development is driven by benchmarks. Our analysis of current agent benchmarks and evaluation practices reveals several shortcomings that hinder their usefulness in real-world applications. First, there is a narrow focus on accuracy without attention to other metrics. As a result, SOTA agents are needlessly complex and costly, and the community has reached mistaken conclusions about the sources of accuracy gains. Our focus on cost in add",
+          "section": "Abstract",
+          "title": "AI Agents That Matter"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c4be44a5080844b8bedcf654912206f5",
+          "page": 1,
+          "paper_id": "e9b61256490c3f82d41ee47d96f900d1",
+          "paper_version": "rm_1783570164827_6689c80e86a649b09429d552153df8cd",
+          "preview": "Recent advancements have lead to increasingly powerful AI agents build on top of large language models (LLMs). These models increasingly capable of performing complex tasks, engaging in multi-turn dialogues, and exhibiting improved reasoning behavior (Wei et al., 2022; Yao et al., 2024). In this paper we focus on a specific type of reasoning: self-reasoning.",
+          "section": "1 INTRODUCTION",
+          "title": "MISR: MEASURING INSTRUMENTAL SELF-REASONING IN FRONTIER MODELS"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_db86128865e44522bf41c36a8f386497",
+          "page": 2,
+          "paper_id": "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+          "paper_version": "rm_1783588321021_e3553f5bd74b48e09e0106bf6d8be7ab",
+          "preview": "The problem of hallucination originates from LLMs themselves. In the NLP community, the hallucination problem is empirically categorized into two types [65]: 1) factuality hallucination emphasizes the discrepancy between generated content and verifiable real-world facts, typically manifesting as factual inconsistency or fabrication; 2) faithfulness hallucination refers to the divergence of generated content from user instructions or the context provided by the input, as well as self-consistency ",
+          "section": "1 INTRODUCTION",
+          "title": "Hallucination of Multimodal Large Language Models: A Survey"
+        },
+        {
+          "element_type": "aside",
+          "location_ref": "reading_element_0611abe7d64a4ebab049b3760468612a",
+          "page": 1,
+          "paper_id": "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+          "paper_version": "rm_1783570027571_e4f3fc42a6c8476a89b06a166da09c92",
+          "preview": "arXiv:2505.02847v3 [cs.CL] 21 May 2025",
+          "section": "Abstract",
+          "title": "Sentient Agent as a Judge: Evaluating Higher-Order Social Cognition in Large Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_5bc5f3ab68e2410fbaf235c2732512b7",
+          "page": 1,
+          "paper_id": "fcc5f75cc2acef290643a9e846d45349",
+          "paper_version": "rm_1783588364720_2448c0c49f094f2a880b20498603345d",
+          "preview": "Compound AI systems, or AI agents, are becoming an important research direction. Zaharia et al. [63] argue that �compound AI systems will likely be the best way to maximize AI results in the future, and might be one of the most impactful trends in AI in 2024.� Over a dozen agent benchmarks have been released, spanning domains such as web interaction [66], programming [21] and tool use [39]. Many benchmarks developed for LLM evaluation have also been used for agent evaluation.",
+          "section": "1 Introduction",
+          "title": "AI Agents That Matter"
+        }
+      ],
+      "matched_count": 1809,
+      "query_text": "",
+      "returned_count": 8
+    },
+    "tool_call_id": "call_019f56c7545f74918d64a9aa",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_1f83202438f94d57918b72afd4b59b2e",
+        "reading_element_c4be44a5080844b8bedcf654912206f5",
+        "reading_element_18f4b4345ca64d75836127a9ee8005dc",
+        "reading_element_022740fabc0046b6ba8e4dc71bce92ac",
+        "reading_element_db86128865e44522bf41c36a8f386497"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_2ec124096097a0d7",
+          "evidence_quality": "verified",
+          "location": "reading_element_1f83202438f94d57918b72afd4b59b2e",
+          "location_ref": "reading_element_1f83202438f94d57918b72afd4b59b2e",
+          "page": 1,
+          "paper_id": "e9b61256490c3f82d41ee47d96f900d1",
+          "paper_version": "rm_1783570164827_6689c80e86a649b09429d552153df8cd",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "ABSTRACT",
+          "source_kind": "reading_element",
+          "span_text": "We propose a suite of tasks to evaluate the instrumental self-reasoning ability of large language model (LLM) agents. Instrumental self-reasoning ability could improve adaptability and enable self-modification, but it could also pose significant risks, such as enabling deceptive alignment. Prior work has only evaluated self-reasoning in non-agentic settings or in limited domains. In this paper, we propose evaluations for instrumental self-reasoning ability in agentic tasks in a wide range of scenarios, including self-modification, knowledge seeking, and opaque self-reasoning. We evaluate agents built using state-of-the-art LLMs, including commercial and open source systems. We find that instrumental selfreasoning ability emerges only in the most capable frontier models and that it is highly context-dependent. No model passes the the most difficult versions of our evaluations, hence our evaluation can be used to measure increases in instrumental self-reasoning ability in future models. We open-source our evaluations at https://github.com/kaifronsdal/Self-Reasoning-Evals.",
+          "supports_claim_ids": [],
+          "title": "MISR: MEASURING INSTRUMENTAL SELF-REASONING IN FRONTIER MODELS"
+        },
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_71c82218978105ba",
+          "evidence_quality": "verified",
+          "location": "reading_element_c4be44a5080844b8bedcf654912206f5",
+          "location_ref": "reading_element_c4be44a5080844b8bedcf654912206f5",
+          "page": 1,
+          "paper_id": "e9b61256490c3f82d41ee47d96f900d1",
+          "paper_version": "rm_1783570164827_6689c80e86a649b09429d552153df8cd",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 INTRODUCTION",
+          "source_kind": "reading_element",
+          "span_text": "Recent advancements have lead to increasingly powerful AI agents build on top of large language models (LLMs). These models increasingly capable of performing complex tasks, engaging in multi-turn dialogues, and exhibiting improved reasoning behavior (Wei et al., 2022; Yao et al., 2024). In this paper we focus on a specific type of reasoning: self-reasoning.",
+          "supports_claim_ids": [],
+          "title": "MISR: MEASURING INSTRUMENTAL SELF-REASONING IN FRONTIER MODELS"
+        },
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_bba274eb77713145",
+          "evidence_quality": "verified",
+          "location": "reading_element_18f4b4345ca64d75836127a9ee8005dc",
+          "location_ref": "reading_element_18f4b4345ca64d75836127a9ee8005dc",
+          "page": 1,
+          "paper_id": "fcc5f75cc2acef290643a9e846d45349",
+          "paper_version": "rm_1783588364720_2448c0c49f094f2a880b20498603345d",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "Abstract",
+          "source_kind": "reading_element",
+          "span_text": "AI agents are an exciting new research direction, and agent development is driven by benchmarks. Our analysis of current agent benchmarks and evaluation practices reveals several shortcomings that hinder their usefulness in real-world applications. First, there is a narrow focus on accuracy without attention to other metrics. As a result, SOTA agents are needlessly complex and costly, and the community has reached mistaken conclusions about the sources of accuracy gains. Our focus on cost in addition to accuracy motivates the new goal of jointly optimizing the two metrics. We design and implement one such optimization, showing its potential to greatly reduce cost while maintaining accuracy. Second, the benchmarking needs of model and downstream developers have been conflated, making it hard to identify which agent would be best suited for a particular application. Third, many agent benchmarks have inadequate holdout sets, and sometimes none at all. This has led to agents that are fragile because they take shortcuts and overfit to the benchmark in various ways. We prescribe a principled framework for avoiding overfitting. Finally, there is a lack of standardization in evaluation practices, leading to a pervasive lack of reproducibility. We hope that the steps we introduce for addressing these shortcomings will spur the development of agents that are useful in the real world and not just accurate on benchmarks.",
+          "supports_claim_ids": [],
+          "title": "AI Agents That Matter"
+        },
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_608ac47168a46864",
+          "evidence_quality": "verified",
+          "location": "reading_element_022740fabc0046b6ba8e4dc71bce92ac",
+          "location_ref": "reading_element_022740fabc0046b6ba8e4dc71bce92ac",
+          "page": 1,
+          "paper_id": "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+          "paper_version": "rm_1783570027571_e4f3fc42a6c8476a89b06a166da09c92",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "Abstract",
+          "source_kind": "reading_element",
+          "span_text": "Assessing how well a large language model (LLM) understands human, rather than merely text, remains an open challenge. To bridge the gap, we introduce Sentient Agent as a Judge (SAGE), an automated evaluation framework that measures an LLM�s higher-order social cognition. SAGE instantiates a Sentient Agent that simulates humanlike emotional changes and inner thoughts during interaction, providing a more realistic evaluation of the tested model in multi-turn conversations. At every turn, the agent reasons about (i) how its emotion changes, (ii) how it feels, and (iii) how it should reply, yielding a numerical emotion trajectory and interpretable inner thoughts. Experiments on 100 supportive-dialogue scenarios show that the final Sentient emotion score correlates strongly with Barrett�Lennard Relationship Inventory (BLRI) ratings and utterance-level empathy metrics, validating psychological fidelity. We also build a public Sentient Leaderboard covering 18 commercial and open-source models that uncovers substantial gaps (up to 4�) between frontier systems (GPT-4o-Latest, Gemini2.5-Pro) and earlier baselines, gaps not reflected in conventional leaderboards (e.g., Arena). SAGE thus provides a principled, scalable and interpretable tool for tracking progress toward genuinely empathetic and socially adept language agents.",
+          "supports_claim_ids": [],
+          "title": "Sentient Agent as a Judge: Evaluating Higher-Order Social Cognition in Large Language Models"
+        },
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_bb9a54a577e00118",
+          "evidence_quality": "verified",
+          "location": "reading_element_db86128865e44522bf41c36a8f386497",
+          "location_ref": "reading_element_db86128865e44522bf41c36a8f386497",
+          "page": 2,
+          "paper_id": "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+          "paper_version": "rm_1783588321021_e3553f5bd74b48e09e0106bf6d8be7ab",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 INTRODUCTION",
+          "source_kind": "reading_element",
+          "span_text": "The problem of hallucination originates from LLMs themselves. In the NLP community, the hallucination problem is empirically categorized into two types [65]: 1) factuality hallucination emphasizes the discrepancy between generated content and verifiable real-world facts, typically manifesting as factual inconsistency or fabrication; 2) faithfulness hallucination refers to the divergence of generated content from user instructions or the context provided by the input, as well as self-consistency within generated content. In contrast to pure LLMs, research eforts of hallucination in MLLMs mainly focus on the discrepancy between generated text response and provided visual content [103, 112, 224], i.e., cross-modal inconsistency. This diference suggests that studies in LLMs cannot be seemingly transferred to MLLMs. Therefore, there is a growing need to comprehensively survey recent advancements in MLLMs� hallucination phenomena to inspire new ideas and foster the field�s development.",
+          "supports_claim_ids": [],
+          "title": "Hallucination of Multimodal Large Language Models: A Survey"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_019f56c75f487f808a187369",
+    "tool_name": "read_locations"
+  }
+]

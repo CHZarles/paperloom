@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_731cd947eef1",
+  "answer_type": "conversation",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "clarify TurnDecision requires pending_interaction",
+  "outcome": null,
+  "question_id": "live_chat_731cd947eef1",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "FAILED_TECHNICAL",
+  "summary": "clarify TurnDecision requires pending_interaction",
+  "verification_id": "verification_live_chat_731cd947eef1"
+}

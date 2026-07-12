@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_live_chat_7a5bb0785774",
+  "answer_type": "contradiction_resolution",
+  "cited_evidence_ids": [
+    "ev_25fa64ee50482ccf",
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {},
+  "markdown": "Both numbers are correct — they refer to different scopes, not a genuine contradiction.\n\n## The two claims, side by side\n\n**Adam's recommended default (β₂ = 0.999)** — Kingma & Ba's Algorithm 1 caption states:\n\n> \"Good default settings for the tested machine learning problems are α = 0.001, β₁ = 0.9, **β₂ = 0.999** and ε = 10⁻⁸.\" [1]\n\nNote the qualifier: these are defaults \"for the tested machine learning problems\" (logistic regression, multilayer MLP on MNIST, and a convolutional network). The value is an empirically chosen default on those small-scale benchmarks, not a universal prescription.\n\n**Transformer's chosen value (β₂ = 0.98)** — Vaswani et al. (§5.3 Optimizer) state:\n\n> \"We used the Adam optimizer [20] with β₁ = 0.9, **β₂ = 0.98** and ε = 10⁻⁹.\" [2]\n\nThis is the authors' configuration for training the Transformer base/big models on WMT 2014 machine translation.\n\n## Resolution\n\nThere is no actual conflict — the scope differs:\n\n| | β₂ | ε | Scope |\n|---|---|---|---|\n| Adam paper | 0.999 | 10⁻⁸ | Recommendation for the small-scale problems tested in Adam |\n| Transformer paper | 0.98 | 10⁻⁹ | Empirical choice for Transformer training |\n\nThe Transformer paper explicitly cites Adam [2], so its authors knowingly depart from Kingma & Ba's default. Smaller β₂ values shorten the effective window of the second-moment moving average, which can matter when gradients are sparse or noisy in ways the original Adam benchmarks did not exercise. (The Transformer passage does not itself justify the choice — only states it.)\n\n**Bottom line:** 0.999 is the Adam default; 0.98 is a task-specific override used by the Transformer authors. Both are true within their respective scopes.\n\nSources\n[1] Adam: A Method for Stochastic Optimization, unsectioned, p. 2\n[2] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "live_chat_7a5bb0785774",
+  "status": "COMPLETED",
+  "summary": "Both numbers are correct — they refer to different scopes, not a genuine contradiction.\n\n## The two claims, side by side\n\n**Adam's recommended default (β₂ = 0.999)** — Kingma & Ba's Algorithm 1 caption states:\n\n> \"Good default settings for the tested machine learning problems are α = 0.001, β₁ = 0.9, **β₂ = 0.999** and ε = 10⁻⁸.\" [1]\n\nNote the qualifier: these are defaults \"for the tested machine "
+}

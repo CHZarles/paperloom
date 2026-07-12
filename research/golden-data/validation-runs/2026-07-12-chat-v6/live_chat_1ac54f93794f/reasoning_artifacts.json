@@ -1,0 +1,55 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_1ac54f93794f",
+    "payload": {
+      "answer_fields": {},
+      "claim_verdicts": [],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_51db3f4ad51f669d",
+            "ev_4ab954dcf11e3508",
+            "ev_e887f4d6063e46cd",
+            "ev_13b4237d615a7f07",
+            "ev_21fcfc55c13fcbd0",
+            "ev_78b500c1a02d785b",
+            "ev_745f629cb47c270e",
+            "ev_c4bbb6fc69d180cb",
+            "ev_73d2d255bf90c564",
+            "ev_07ea72629ae0e3e9",
+            "ev_4533df25ca5d3b9d",
+            "ev_ae39d787c9d38610",
+            "ev_2cdeeb3e67f74249",
+            "ev_d96f868806c223fd",
+            "ev_3d3e2509a4735529"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "recommendation_selection",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_candidate_1",
+        "ev_51db3f4ad51f669d",
+        "ev_78b500c1a02d785b",
+        "ev_4533df25ca5d3b9d",
+        "ev_4ab954dcf11e3508",
+        "ev_745f629cb47c270e",
+        "ev_ae39d787c9d38610",
+        "ev_e887f4d6063e46cd",
+        "ev_c4bbb6fc69d180cb",
+        "ev_2cdeeb3e67f74249",
+        "ev_13b4237d615a7f07",
+        "ev_73d2d255bf90c564",
+        "ev_d96f868806c223fd",
+        "ev_21fcfc55c13fcbd0",
+        "ev_07ea72629ae0e3e9",
+        "ev_3d3e2509a4735529"
+      ]
+    },
+    "question_id": "live_chat_1ac54f93794f",
+    "source_claim_ids": [],
+    "title": "Recommend up to 3-5 papers on efficient inference for LLMs, with each recommendation grounded in the user's specific selection constraints and an explicit reason it fits.",
+    "type": "recommendation"
+  }
+]

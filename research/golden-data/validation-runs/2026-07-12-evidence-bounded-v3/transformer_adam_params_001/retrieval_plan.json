@@ -1,0 +1,132 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "optimizer settings"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "beta1",
+      "description": "What value of beta1 was used with the Adam optimizer in the Transformer paper?",
+      "id": "adam_beta1",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "beta2",
+      "description": "What value of beta2 was used with the Adam optimizer in the Transformer paper?",
+      "id": "adam_beta2",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "epsilon",
+      "description": "What value of epsilon was used with the Adam optimizer in the Transformer paper?",
+      "id": "adam_epsilon",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "precision_fact_extraction",
+  "plan_id": "plan_live_chat_e14469c7ef18",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph",
+            "table",
+            "footnote"
+          ],
+          "obligation_ids": [
+            "adam_beta1",
+            "adam_beta2",
+            "adam_epsilon"
+          ],
+          "query_id": "Q1",
+          "query_text": "Adam optimizer β1 β2 ε training settings",
+          "section_query": "optimizer settings training",
+          "target_ids": [
+            "T1"
+          ],
+          "top_k": 3
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "1706.03762",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "adam_beta1",
+            "adam_beta2",
+            "adam_epsilon"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "T1",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_e14469c7ef18",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "define_fact_slots",
+      "stage_name": "define_fact_slots",
+      "step_id": "stage_1_define_fact_slots",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "define_fact_slots"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_exact_evidence",
+      "stage_name": "collect_exact_evidence",
+      "step_id": "stage_2_collect_exact_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_exact_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "extract_atomic_facts",
+      "stage_name": "extract_atomic_facts",
+      "step_id": "stage_3_extract_atomic_facts",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "extract_atomic_facts"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_exact_values",
+      "stage_name": "verify_exact_values",
+      "step_id": "stage_4_verify_exact_values",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_exact_values"
+    }
+  ],
+  "target_entities": [
+    "attention_is_all_you_need_2017"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "exact_fact",
+  "constraints": {
+    "coverage_assumption": "User refers to \"Attention Is All You Need\" (Vaswani et al., 2017) as the Transformer original paper; in-corpus reference is paper_id attention_is_all_you_need_2017.",
+    "hyperparameters": "beta1, beta2, epsilon",
+    "paper_id": "attention_is_all_you_need_2017",
+    "task": {
+      "object": "Adam optimizer hyperparameters",
+      "verb": "extract"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "beta1",
+    "beta2",
+    "epsilon"
+  ],
+  "intent_id": "intent_live_chat_e14469c7ef18",
+  "method_mentions": [],
+  "normalized_question": "Extract the exact Adam optimizer hyperparameters (beta1, beta2, epsilon) used in the original Transformer paper \"Attention Is All You Need\" (2017).",
+  "obligations": [
+    {
+      "answer_field": "beta1",
+      "description": "What value of beta1 did the original Transformer paper use for Adam optimizer?",
+      "id": "transformer_adam_beta1",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "beta2",
+      "description": "What value of beta2 did the original Transformer paper use for Adam optimizer?",
+      "id": "transformer_adam_beta2",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "epsilon",
+      "description": "What value of epsilon did the original Transformer paper use for Adam optimizer?",
+      "id": "transformer_adam_epsilon",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "precision_fact_extraction",
+  "question_id": "live_chat_e14469c7ef18",
+  "raw_question": "Transformer original paper used Adam with what beta1, beta2, and epsilon?",
+  "required_capabilities": [
+    "paper_grounded_fact_extraction"
+  ],
+  "required_evidence_types": [
+    "exact text from paper specifying optimizer hyperparameters"
+  ],
+  "requires_corpus_observation": true
+}

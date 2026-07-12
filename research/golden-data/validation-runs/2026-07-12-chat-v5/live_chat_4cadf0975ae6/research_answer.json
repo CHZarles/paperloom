@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_4cadf0975ae6",
+  "answer_type": "conversation",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Hi! How can I help you with your paper research today? If you have a specific topic, method, or paper in mind, feel free to share it.",
+  "outcome": "answered",
+  "question_id": "live_chat_4cadf0975ae6",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Hi! How can I help you with your paper research today? If you have a specific topic, method, or paper in mind, feel free to share it.",
+  "verification_id": "verification_live_chat_4cadf0975ae6"
+}

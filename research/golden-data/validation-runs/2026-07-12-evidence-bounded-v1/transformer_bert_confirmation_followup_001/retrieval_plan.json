@@ -1,0 +1,236 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "architectural description",
+    "attention masking scheme",
+    "training/pre-training objective"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "attention_is_all_you_need_2017_architecture_role",
+      "description": "Determine attention is all you need 2017 architecture role for attention_is_all_you_need_2017 from source evidence.",
+      "id": "attention_is_all_you_need_2017_architecture_role",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_2018_architecture_role",
+      "description": "Determine bert 2018 architecture role for bert_2018 from source evidence.",
+      "id": "bert_2018_architecture_role",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "attention_is_all_you_need_2017_directionality",
+      "description": "Determine attention is all you need 2017 directionality for attention_is_all_you_need_2017 from source evidence.",
+      "id": "attention_is_all_you_need_2017_directionality",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_2018_directionality",
+      "description": "Determine bert 2018 directionality for bert_2018 from source evidence.",
+      "id": "bert_2018_directionality",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "attention_is_all_you_need_2017_training_objective",
+      "description": "Determine attention is all you need 2017 training objective for attention_is_all_you_need_2017 from source evidence.",
+      "id": "attention_is_all_you_need_2017_training_objective",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_2018_training_objective",
+      "description": "Determine bert 2018 training objective for bert_2018 from source evidence.",
+      "id": "bert_2018_training_objective",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "deep_comparison",
+  "plan_id": "plan_live_chat_3c0b4f837eae",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "attention_is_all_you_need_2017_architecture_role"
+          ],
+          "query_id": "Q_T_2017_arch",
+          "query_text": "encoder-decoder stacks multi-head self-attention positional feed-forward",
+          "section_query": null,
+          "target_ids": [
+            "T_Transformer_2017"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "attention_is_all_you_need_2017_directionality"
+          ],
+          "query_id": "Q_T_2017_dir",
+          "query_text": "masked attention future positions look-ahead mask encoder self-attention",
+          "section_query": null,
+          "target_ids": [
+            "T_Transformer_2017"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "attention_is_all_you_need_2017_training_objective"
+          ],
+          "query_id": "Q_T_2017_obj",
+          "query_text": "cross-entropy label smoothed training objective maximum likelihood",
+          "section_query": null,
+          "target_ids": [
+            "T_Transformer_2017"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_2018_architecture_role"
+          ],
+          "query_id": "Q_BERT_arch",
+          "query_text": "multi-layer bidirectional Transformer encoder self-attention segment position embeddings",
+          "section_query": null,
+          "target_ids": [
+            "T_BERT_2018"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_2018_directionality"
+          ],
+          "query_id": "Q_BERT_dir",
+          "query_text": "bidirectional context masked language model left right information",
+          "section_query": null,
+          "target_ids": [
+            "T_BERT_2018"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_2018_training_objective"
+          ],
+          "query_id": "Q_BERT_obj",
+          "query_text": "masked language model next sentence prediction pre-training objective",
+          "section_query": null,
+          "target_ids": [
+            "T_BERT_2018"
+          ],
+          "top_k": 5
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "attention_is_all_you_need_2017_architecture_role",
+            "attention_is_all_you_need_2017_directionality",
+            "attention_is_all_you_need_2017_training_objective"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "T_Transformer_2017",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "bert_2018_architecture_role",
+            "bert_2018_directionality",
+            "bert_2018_training_objective"
+          ],
+          "discovery_query": "",
+          "paper_id": "bert_2018",
+          "target_id": "T_BERT_2018",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_3c0b4f837eae",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "define_comparison_cells",
+      "stage_name": "define_comparison_cells",
+      "step_id": "stage_1_define_comparison_cells",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "define_comparison_cells"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_cell_evidence",
+      "stage_name": "collect_cell_evidence",
+      "step_id": "stage_2_collect_cell_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_cell_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "align_target_claims",
+      "stage_name": "align_target_claims",
+      "step_id": "stage_3_align_target_claims",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "align_target_claims"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_comparison",
+      "stage_name": "verify_comparison",
+      "step_id": "stage_4_verify_comparison",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_comparison"
+    }
+  ],
+  "target_entities": [
+    ""
+  ]
+}

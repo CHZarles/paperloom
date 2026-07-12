@@ -1,0 +1,76 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "contradiction_arbitration",
+  "constraints": {
+    "coverage_assumption": "The user is asking about Kingma & Ba 2014 \"Adam\" and Vaswani et al. 2017 \"Attention Is All You Need\", both present in the corpus. I assume both papers are in the fixed inventory and will ground the answer in them; any motivation for why the Transformer authors chose 0.98 will only be reported if the paper itself states it.",
+    "do_not_speculate_beyond_inventory": true,
+    "ground_in_corpus": true,
+    "task": {
+      "object": "contradiction between Adam beta2=0.999 (common default) and Transformer paper beta2=0.98",
+      "verb": "resolve"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "adam_2014",
+    "attention_is_all_you_need_2017",
+    "adam default beta2 value and supporting context",
+    "transformer paper beta2 value and supporting context",
+    "explicit explanation in the Transformer paper if any for its beta2 choice",
+    "how the two values can both be true (context distinction)"
+  ],
+  "intent_id": "intent_live_chat_7a5bb0785774",
+  "method_mentions": [],
+  "normalized_question": "Resolve the conflict between the commonly cited Adam beta2=0.999 default and the claim that the Transformer paper used beta2=0.98, by retrieving the beta2 values actually reported in the Adam paper and in the Transformer paper, plus any explicit acknowledgement of deviation, and explaining how both can be true.",
+  "obligations": [
+    {
+      "answer_field": "adam_beta2",
+      "description": "What beta2 value is reported as the default in the Adam paper?",
+      "id": "adam_beta2_default",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "adam_2014"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_beta2",
+      "description": "What beta2 value is reported for the Adam optimizer in the Transformer (Attention Is All You Need) paper?",
+      "id": "transformer_beta2_value",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "conflict_resolution",
+      "description": "Distinguish the contexts: Adam paper's recommended default vs. Transformer paper's task-specific chosen value; identify whether the conflict is a contradiction or a scope/methodology difference.",
+      "id": "conflict_distinction",
+      "kind": "conflict_resolution",
+      "paper_scope": [
+        "adam_2014",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "adam_2014",
+    "attention_is_all_you_need_2017"
+  ],
+  "primary_paradigm": "contradiction_resolution",
+  "question_id": "live_chat_7a5bb0785774",
+  "raw_question": "Some sources say Adam beta2 is 0.999, but the Transformer paper used 0.98. Resolve this conflict.",
+  "required_capabilities": [
+    "paper_section_lookup",
+    "table_value_extraction",
+    "contradiction_resolution"
+  ],
+  "required_evidence_types": [
+    "exact quotes with section/table locations",
+    "hyperparameter table entries"
+  ],
+  "requires_corpus_observation": true
+}

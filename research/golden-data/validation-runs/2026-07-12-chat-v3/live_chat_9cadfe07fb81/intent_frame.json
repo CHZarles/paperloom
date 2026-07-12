@@ -1,0 +1,26 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "corpus_size": "30",
+    "coverage_assumption": "结合\"量化\"+\"压缩部署\"两个词，用户最可能指 model quantization（模型量化压缩部署，例如 INT4/INT8、GPTQ、AWQ、KV cache、推理部署等）。该主题在 30 篇 LLM agent/evaluation 语料中无对应论文，需要澄清。",
+    "domain": "LLM agents / evaluation",
+    "task": {
+      "object": "papers",
+      "verb": "recommend"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_9cadfe07fb81",
+  "method_mentions": [],
+  "normalized_question": "用户在 30 篇 LLM agent/evaluation 语料中请求与\"量化\"相关的推荐，但\"量化\"一词在中文语境下含义模糊：可能指 model quantization（模型权重量化压缩部署）、quantitative evaluation（定量评估）、或 quantitative finance（量化投资）。需先澄清含义再决定是否能给出匹配的语料内推荐。",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_9cadfe07fb81",
+  "raw_question": "量化压缩部署",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

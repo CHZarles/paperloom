@@ -1,0 +1,1230 @@
+{
+  "case_id": "live_chat_dff237804eea",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_dff237804eea",
+    "question_id": "live_chat_dff237804eea"
+  },
+  "completed_at": "2026-07-12T05:53:02Z",
+  "diagnostics": {
+    "completed_stage_count": 4,
+    "completion_tokens": 3668,
+    "duration_ms": 30271,
+    "finish_reason": "evidence_bounded_answer_rendered",
+    "model_call_count": 4,
+    "model_latency_ms": 30084,
+    "paradigm": "context_specific_brainstorming",
+    "prompt_tokens": 23078,
+    "stage_count": 4,
+    "tool_call_count": 7,
+    "total_tokens": 26746
+  },
+  "evidence_ledger": {
+    "coverage": [
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_general_agent",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_multimodal_agent",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_trajectory_process",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_realworld_task",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_cost_safety_efficiency",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_social_cognition",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_writing_generative",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_meta_self_reasoning",
+        "status": "missing"
+      }
+    ],
+    "items": [
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_bf00436579e72429679264b76a660d3f",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "bf00436579e72429679264b76a660d3f",
+        "paper_version": "rm_1783588271463_fc461fb120194903a16e1cb32705de5f",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "AGENTBENCH: EVALUATING LLMS AS AGENTS",
+        "supports_claim_ids": [],
+        "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS",
+        "venue": null,
+        "year": null
+      },
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_04d0a73eef7b1e83869ee2ce1d83beb1",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+        "paper_version": "rm_1783588502969_096a129d9ab04cdf91626768ac10d066",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains",
+        "supports_claim_ids": [],
+        "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains",
+        "venue": null,
+        "year": null
+      },
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_3d47869e74a9e6ccb1ecddd25eef9d33",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+        "paper_version": "rm_1783588501498_cc9e92da1a6d4ae8b52e0a503d12ffd5",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+        "supports_claim_ids": [],
+        "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+        "venue": null,
+        "year": null
+      },
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_5768178b603533c617487221e26d9c00",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "5768178b603533c617487221e26d9c00",
+        "paper_version": "rm_1783588776967_9a2ac45b50fd4cbeb0e9d1778b0e89e9",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models",
+        "supports_claim_ids": [],
+        "title": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models",
+        "venue": null,
+        "year": null
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_1",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"bf00436579e72429679264b76a660d3f\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"AGENTBENCH: EVALUATING LLMS AS AGENTS\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_2",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"04d0a73eef7b1e83869ee2ce1d83beb1\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_3",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"3d47869e74a9e6ccb1ecddd25eef9d33\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_4",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"5768178b603533c617487221e26d9c00\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_dff237804eea",
+    "missing_evidence": [
+      {
+        "description": "为\"通用 LLM agent 能力 benchmark\"维度挑选最匹配的语料论文并说明理由（覆盖多任务、多环境、agent-as-agent 评估）。",
+        "obligation_id": "bench_general_agent",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "为\"多模态 visual / multimodal agent benchmark\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_multimodal_agent",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "为\"轨迹/过程/可视化评估\"维度挑选最匹配的语料论文并说明理由（trajectory evaluation、可视化分析、过程 reward）。",
+        "obligation_id": "bench_trajectory_process",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "为\"真实世界 / 软件工程 / 自主任务\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_realworld_task",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "为\"成本 / 效率 / 安全 / 规则\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_cost_safety_efficiency",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "为\"社会认知 / 多 agent 协作 / prosocial\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_social_cognition",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "为\"写作 / 开放式生成 / 创造性\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_writing_generative",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "为\"自推理 / 元认知 / AGI 评估\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_meta_self_reasoning",
+        "reason": "no verified claim satisfied this required obligation"
+      }
+    ],
+    "question_id": "live_chat_dff237804eea",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_dff237804eea",
+    "answer_type": "constraint_filter",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "No requested claim was verified from the available corpus evidence.\n\nUnresolved from the available corpus evidence:\n- recommend_general_agent_benchmark\n- recommend_multimodal_agent_benchmark\n- recommend_trajectory_process_benchmark\n- recommend_realworld_task_benchmark\n- recommend_cost_safety_benchmark\n- recommend_social_cognition_benchmark\n- recommend_writing_creative_benchmark\n- recommend_metacognition_agi_benchmark",
+    "outcome": "abstained",
+    "question_id": "live_chat_dff237804eea",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_dff237804eea"
+    ],
+    "sections": [],
+    "status": "INCOMPLETE_PRECISE",
+    "summary": "No requested claim was verified from the available corpus evidence.",
+    "verification_id": "verification_live_chat_dff237804eea"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "actionability": "non_blocking",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "constraint_filter",
+    "constraints": {
+      "corpus_size": 30,
+      "coverage_assumption": "用户放弃了\"量化\"线索，转而希望我推荐语料中和 benchmark 相关的论文。由于语料本身就是 LLM agent / evaluation benchmark 主题，需要按主题维度（通用 agent / 多模态 / 轨迹 / 真实任务 / 成本安全 / 社会认知 / 写作 / 元认知）来挑出代表性论文，给出覆盖广、可直接读的推荐清单。",
+      "domain": "LLM agents / evaluation",
+      "selection_dimension": "benchmark coverage breadth (agent capability / multimodal / trajectory / real-world / cost-safety / social cognition / writing)",
+      "task": {
+        "object": "papers",
+        "topic": "LLM agent / evaluation benchmarks",
+        "verb": "recommend"
+      }
+    },
+    "dataset_mentions": [],
+    "entities": [
+      "bf00436579e72429679264b76a660d3f",
+      "04d0a73eef7b1e83869ee2ce1d83beb1",
+      "3d47869e74a9e6ccb1ecddd25eef9d33",
+      "5768178b603533c617487221e26d9c00",
+      "0a69c4fad229fd7a5d619e23df594ecf",
+      "6b404d4d1a4a32194a5ddb32354d379d",
+      "5e4b4f2d92647fe8b8847e38bae2f876"
+    ],
+    "intent_id": "intent_live_chat_dff237804eea",
+    "method_mentions": [],
+    "normalized_question": "用户从\"推荐和量化有关的\"经过澄清后，现在改为\"推荐一些和benchmark有关的\"。在 30 篇 LLM agent / evaluation 语料中，几乎所有论文都是 benchmark / evaluation 类，需按代表性维度（agent 通用能力、多模态、轨迹/过程评估、现实任务、成本/安全、社会认知、写作类）从语料中挑选最相关、覆盖最广的 benchmark 论文作为推荐清单，并给出每篇匹配的理由。",
+    "obligations": [
+      {
+        "answer_field": "recommend_general_agent_benchmark",
+        "description": "为\"通用 LLM agent 能力 benchmark\"维度挑选最匹配的语料论文并说明理由（覆盖多任务、多环境、agent-as-agent 评估）。",
+        "id": "bench_general_agent",
+        "kind": "recommendation",
+        "paper_scope": [
+          "bf00436579e72429679264b76a660d3f",
+          "04d0a73eef7b1e83869ee2ce1d83beb1",
+          "3d47869e74a9e6ccb1ecddd25eef9d33",
+          "5768178b603533c617487221e26d9c00"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_multimodal_agent_benchmark",
+        "description": "为\"多模态 visual / multimodal agent benchmark\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_multimodal_agent",
+        "kind": "recommendation",
+        "paper_scope": [
+          "0a69c4fad229fd7a5d619e23df594ecf",
+          "c754a224706f987c2cc61bb2b63cab99"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_trajectory_process_benchmark",
+        "description": "为\"轨迹/过程/可视化评估\"维度挑选最匹配的语料论文并说明理由（trajectory evaluation、可视化分析、过程 reward）。",
+        "id": "bench_trajectory_process",
+        "kind": "recommendation",
+        "paper_scope": [
+          "6b404d4d1a4a32194a5ddb32354d379d",
+          "5e4b4f2d92647fe8b8847e38bae2f876",
+          "3d47869e74a9e6ccb1ecddd25eef9d33"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_realworld_task_benchmark",
+        "description": "为\"真实世界 / 软件工程 / 自主任务\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_realworld_task",
+        "kind": "recommendation",
+        "paper_scope": [
+          "c37bf09fd44806fd2d5b4f46e1e29c01",
+          "ae3678cdcd0e4704d9f6526cd76e3b98",
+          "f66a3a3cca316754ec460037e78d73a2",
+          "f28d417b1505e7b90edee2953d4d408c"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_cost_safety_benchmark",
+        "description": "为\"成本 / 效率 / 安全 / 规则\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_cost_safety_efficiency",
+        "kind": "recommendation",
+        "paper_scope": [
+          "fcc5f75cc2acef290643a9e846d45349",
+          "67b51f2a490d4092f0a2494c6349e7ee"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_social_cognition_benchmark",
+        "description": "为\"社会认知 / 多 agent 协作 / prosocial\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_social_cognition",
+        "kind": "recommendation",
+        "paper_scope": [
+          "b387b0244b8c6c0f32a7041a04c47adf",
+          "9d394df7133e93d0441d9c7db310e058",
+          "343ca44c6fbd3f63ca1045a1fe7ddbcf"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_writing_creative_benchmark",
+        "description": "为\"写作 / 开放式生成 / 创造性\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_writing_generative",
+        "kind": "recommendation",
+        "paper_scope": [
+          "cfaf846432ab040959794cf58e79d8a6",
+          "681813811bdc97ab4a25084e59b94182",
+          "6cce095e719b9980b7373dc031eeb9fe",
+          "2ed909035dbfe4059c1a409cbc24feea"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_metacognition_agi_benchmark",
+        "description": "为\"自推理 / 元认知 / AGI 评估\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_meta_self_reasoning",
+        "kind": "recommendation",
+        "paper_scope": [
+          "e9b61256490c3f82d41ee47d96f900d1",
+          "72dde7f40dd84746da23ec8cdb9d5050",
+          "f7c075b5c7854d28fe3aecfbebaf3940"
+        ],
+        "required": true
+      }
+    ],
+    "paper_mentions": [
+      "bf00436579e72429679264b76a660d3f",
+      "04d0a73eef7b1e83869ee2ce1d83beb1",
+      "3d47869e74a9e6ccb1ecddd25eef9d33",
+      "5768178b603533c617487221e26d9c00",
+      "0a69c4fad229fd7a5d619e23df594ecf",
+      "6b404d4d1a4a32194a5ddb32354d379d",
+      "5e4b4f2d92647fe8b8847e38bae2f876"
+    ],
+    "primary_paradigm": "context_specific_brainstorming",
+    "question_id": "live_chat_dff237804eea",
+    "raw_question": "那你推荐一些和benchmark有关的吧",
+    "required_capabilities": [],
+    "required_evidence_types": [],
+    "requires_corpus_observation": true
+  },
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": [
+      "bf00436579e72429679264b76a660d3f",
+      "04d0a73eef7b1e83869ee2ce1d83beb1",
+      "3d47869e74a9e6ccb1ecddd25eef9d33",
+      "5768178b603533c617487221e26d9c00"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bf00436579e72429679264b76a660d3f",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "bf00436579e72429679264b76a660d3f",
+      "paper_version": "rm_1783588271463_fc461fb120194903a16e1cb32705de5f",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "AGENTBENCH: EVALUATING LLMS AS AGENTS",
+      "supports_claim_ids": [],
+      "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS",
+      "venue": null,
+      "year": null
+    },
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_04d0a73eef7b1e83869ee2ce1d83beb1",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+      "paper_version": "rm_1783588502969_096a129d9ab04cdf91626768ac10d066",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains",
+      "supports_claim_ids": [],
+      "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains",
+      "venue": null,
+      "year": null
+    },
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_3d47869e74a9e6ccb1ecddd25eef9d33",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+      "paper_version": "rm_1783588501498_cc9e92da1a6d4ae8b52e0a503d12ffd5",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+      "supports_claim_ids": [],
+      "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+      "venue": null,
+      "year": null
+    },
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_5768178b603533c617487221e26d9c00",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "5768178b603533c617487221e26d9c00",
+      "paper_version": "rm_1783588776967_9a2ac45b50fd4cbeb0e9d1778b0e89e9",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models",
+      "supports_claim_ids": [],
+      "title": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models",
+      "venue": null,
+      "year": null
+    }
+  ],
+  "question_id": "live_chat_dff237804eea",
+  "reasoning_artifacts": [
+    {
+      "artifact_id": "reasoning_live_chat_dff237804eea",
+      "payload": {
+        "answer_fields": {},
+        "claim_verdicts": [],
+        "obligation_coverage": [
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_general_agent",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_multimodal_agent",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_trajectory_process",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_realworld_task",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_cost_safety_efficiency",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_social_cognition",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_writing_generative",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "bench_meta_self_reasoning",
+            "status": "missing"
+          }
+        ],
+        "source_evidence_ids": [
+          "corpus_observation_identity_1",
+          "corpus_observation_identity_2",
+          "corpus_observation_identity_3",
+          "corpus_observation_identity_4"
+        ]
+      },
+      "question_id": "live_chat_dff237804eea",
+      "source_claim_ids": [],
+      "title": "用户从\"推荐和量化有关的\"经过澄清后，现在改为\"推荐一些和benchmark有关的\"。在 30 篇 LLM agent / evaluation 语料中，几乎所有论文都是 benchmark / evaluation 类，需按代表性维度（agent 通用能力、多模态、轨迹/过程评估、现实任务、成本/安全、社会认知、写作类）从语料中挑选最相关、覆盖最广的 benchmark 论文作为推荐清单，并给出每篇匹配的理由。",
+      "type": "recommendation"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_dff237804eea",
+    "answer_type": "constraint_filter",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "No requested claim was verified from the available corpus evidence.\n\nUnresolved from the available corpus evidence:\n- recommend_general_agent_benchmark\n- recommend_multimodal_agent_benchmark\n- recommend_trajectory_process_benchmark\n- recommend_realworld_task_benchmark\n- recommend_cost_safety_benchmark\n- recommend_social_cognition_benchmark\n- recommend_writing_creative_benchmark\n- recommend_metacognition_agi_benchmark",
+    "outcome": "abstained",
+    "question_id": "live_chat_dff237804eea",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_dff237804eea"
+    ],
+    "sections": [],
+    "status": "INCOMPLETE_PRECISE",
+    "summary": "No requested claim was verified from the available corpus evidence.",
+    "verification_id": "verification_live_chat_dff237804eea"
+  },
+  "result_status": "INCOMPLETE_PRECISE",
+  "retrieval_plan": {
+    "actionability": "non_blocking",
+    "expected_evidence_types": [],
+    "hard_negative_policy": [],
+    "obligations": [
+      {
+        "answer_field": "recommend_general_agent_benchmark",
+        "description": "为\"通用 LLM agent 能力 benchmark\"维度挑选最匹配的语料论文并说明理由（覆盖多任务、多环境、agent-as-agent 评估）。",
+        "id": "bench_general_agent",
+        "kind": "recommendation",
+        "paper_scope": [
+          "bf00436579e72429679264b76a660d3f",
+          "04d0a73eef7b1e83869ee2ce1d83beb1",
+          "3d47869e74a9e6ccb1ecddd25eef9d33",
+          "5768178b603533c617487221e26d9c00"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_multimodal_agent_benchmark",
+        "description": "为\"多模态 visual / multimodal agent benchmark\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_multimodal_agent",
+        "kind": "recommendation",
+        "paper_scope": [
+          "0a69c4fad229fd7a5d619e23df594ecf",
+          "c754a224706f987c2cc61bb2b63cab99"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_trajectory_process_benchmark",
+        "description": "为\"轨迹/过程/可视化评估\"维度挑选最匹配的语料论文并说明理由（trajectory evaluation、可视化分析、过程 reward）。",
+        "id": "bench_trajectory_process",
+        "kind": "recommendation",
+        "paper_scope": [
+          "6b404d4d1a4a32194a5ddb32354d379d",
+          "5e4b4f2d92647fe8b8847e38bae2f876",
+          "3d47869e74a9e6ccb1ecddd25eef9d33"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_realworld_task_benchmark",
+        "description": "为\"真实世界 / 软件工程 / 自主任务\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_realworld_task",
+        "kind": "recommendation",
+        "paper_scope": [
+          "c37bf09fd44806fd2d5b4f46e1e29c01",
+          "ae3678cdcd0e4704d9f6526cd76e3b98",
+          "f66a3a3cca316754ec460037e78d73a2",
+          "f28d417b1505e7b90edee2953d4d408c"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_cost_safety_benchmark",
+        "description": "为\"成本 / 效率 / 安全 / 规则\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_cost_safety_efficiency",
+        "kind": "recommendation",
+        "paper_scope": [
+          "fcc5f75cc2acef290643a9e846d45349",
+          "67b51f2a490d4092f0a2494c6349e7ee"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_social_cognition_benchmark",
+        "description": "为\"社会认知 / 多 agent 协作 / prosocial\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_social_cognition",
+        "kind": "recommendation",
+        "paper_scope": [
+          "b387b0244b8c6c0f32a7041a04c47adf",
+          "9d394df7133e93d0441d9c7db310e058",
+          "343ca44c6fbd3f63ca1045a1fe7ddbcf"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_writing_creative_benchmark",
+        "description": "为\"写作 / 开放式生成 / 创造性\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_writing_generative",
+        "kind": "recommendation",
+        "paper_scope": [
+          "cfaf846432ab040959794cf58e79d8a6",
+          "681813811bdc97ab4a25084e59b94182",
+          "6cce095e719b9980b7373dc031eeb9fe",
+          "2ed909035dbfe4059c1a409cbc24feea"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "recommend_metacognition_agi_benchmark",
+        "description": "为\"自推理 / 元认知 / AGI 评估\"维度挑选最匹配的语料论文并说明理由。",
+        "id": "bench_meta_self_reasoning",
+        "kind": "recommendation",
+        "paper_scope": [
+          "e9b61256490c3f82d41ee47d96f900d1",
+          "72dde7f40dd84746da23ec8cdb9d5050",
+          "f7c075b5c7854d28fe3aecfbebaf3940"
+        ],
+        "required": true
+      }
+    ],
+    "paradigm": "context_specific_brainstorming",
+    "plan_id": "plan_live_chat_dff237804eea",
+    "query_rounds": [
+      {
+        "evidence_queries": [],
+        "paper_targets": [
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bench_general_agent"
+            ],
+            "discovery_query": "",
+            "paper_id": "bf00436579e72429679264b76a660d3f",
+            "target_id": "T1_agentbench",
+            "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bench_general_agent"
+            ],
+            "discovery_query": "",
+            "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+            "target_id": "T2_mmau",
+            "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bench_general_agent",
+              "bench_trajectory_process"
+            ],
+            "discovery_query": "",
+            "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+            "target_id": "T3_agentboard",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bench_general_agent"
+            ],
+            "discovery_query": "",
+            "paper_id": "5768178b603533c617487221e26d9c00",
+            "target_id": "T4_biggen",
+            "title": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models"
+          },
+          {
+            "arxiv_id": null,
+            "browse_all": false,
+            "coverage_obligation_ids": [],
+            "discovery_query": null,
+            "paper_id": null,
+            "target_id": "",
+            "title": null
+          }
+        ],
+        "reuse_evidence": [],
+        "round": "initial"
+      },
+      {
+        "evidence_queries": [],
+        "paper_targets": [
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bench_general_agent"
+            ],
+            "discovery_query": "",
+            "paper_id": "bf00436579e72429679264b76a660d3f",
+            "target_id": "T_agentbench",
+            "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bench_general_agent"
+            ],
+            "discovery_query": "",
+            "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+            "target_id": "T_mmau",
+            "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bench_general_agent",
+              "bench_trajectory_process"
+            ],
+            "discovery_query": "",
+            "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+            "target_id": "T_agentboard",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+          },
+          {
+            "arxiv_id": null,
+            "browse_all": false,
+            "coverage_obligation_ids": [],
+            "discovery_query": null,
+            "paper_id": null,
+            "target_id": "T_biggen",
+            "title": null
+          }
+        ],
+        "reuse_evidence": [],
+        "round": "retry"
+      }
+    ],
+    "question_id": "live_chat_dff237804eea",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "all_required_obligations_verified",
+      "precise_evidence_gap"
+    ],
+    "strategy_steps": [
+      {
+        "allowed_tools": [],
+        "semantic_goal": "resolve_selection_constraints",
+        "stage_name": "resolve_selection_constraints",
+        "step_id": "stage_1_resolve_selection_constraints",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "resolve_selection_constraints"
+      },
+      {
+        "allowed_tools": [
+          "search_paper_candidates",
+          "find_papers_by_identity",
+          "find_reading_locations",
+          "read_locations",
+          "get_citation_edges"
+        ],
+        "semantic_goal": "collect_candidate_evidence",
+        "stage_name": "collect_candidate_evidence",
+        "step_id": "stage_2_collect_candidate_evidence",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "collect_candidate_evidence"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "select_bounded_options",
+        "stage_name": "select_bounded_options",
+        "step_id": "stage_3_select_bounded_options",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "select_bounded_options"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "verify_recommendations",
+        "stage_name": "verify_recommendations",
+        "step_id": "stage_4_verify_recommendations",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "verify_recommendations"
+      }
+    ],
+    "target_entities": [
+      "bf00436579e72429679264b76a660d3f",
+      "04d0a73eef7b1e83869ee2ce1d83beb1",
+      "3d47869e74a9e6ccb1ecddd25eef9d33",
+      "5768178b603533c617487221e26d9c00",
+      "0a69c4fad229fd7a5d619e23df594ecf",
+      "6b404d4d1a4a32194a5ddb32354d379d",
+      "5e4b4f2d92647fe8b8847e38bae2f876"
+    ]
+  },
+  "run_id": "run_live_chat_dff237804eea",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [
+    {
+      "claim_ids": [],
+      "decision_summary": "Executed 2 bounded retrieval round(s) with 7 corpus tool call(s).",
+      "evidence_ids": [],
+      "obligation_ids": [
+        "bench_general_agent",
+        "bench_multimodal_agent",
+        "bench_trajectory_process",
+        "bench_realworld_task",
+        "bench_cost_safety_efficiency",
+        "bench_social_cognition",
+        "bench_writing_generative",
+        "bench_meta_self_reasoning"
+      ],
+      "semantic_goal": "collect_candidate_evidence",
+      "stage_name": "collect_evidence",
+      "status": "completed",
+      "tool_calls": [
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "bf00436579e72429679264b76a660d3f"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2308.03688.pdf",
+                "paper_id": "bf00436579e72429679264b76a660d3f",
+                "preview": "",
+                "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_1",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2407.18961.pdf",
+                "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+                "preview": "",
+                "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_2",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2401.13178.pdf",
+                "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+                "preview": "",
+                "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_3",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "5768178b603533c617487221e26d9c00"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2406.05761.pdf",
+                "paper_id": "5768178b603533c617487221e26d9c00",
+                "preview": "",
+                "title": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_4",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "bf00436579e72429679264b76a660d3f"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2308.03688.pdf",
+                "paper_id": "bf00436579e72429679264b76a660d3f",
+                "preview": "",
+                "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_1",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2407.18961.pdf",
+                "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+                "preview": "",
+                "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_2",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2401.13178.pdf",
+                "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+                "preview": "",
+                "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_3",
+          "tool_name": "find_papers_by_identity"
+        }
+      ]
+    },
+    {
+      "claim_ids": [],
+      "decision_summary": "Constructed 0 evidence-linked atomic claim(s).",
+      "evidence_ids": [],
+      "obligation_ids": [],
+      "semantic_goal": "select_bounded_options",
+      "stage_name": "construct_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [],
+      "decision_summary": "No candidate claims were available for verification.",
+      "evidence_ids": [],
+      "obligation_ids": [],
+      "semantic_goal": "verify_recommendations",
+      "stage_name": "verify_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [],
+      "decision_summary": "Rendered only verified claims.",
+      "evidence_ids": [],
+      "obligation_ids": [],
+      "semantic_goal": "render_verified_claims",
+      "stage_name": "render_answer",
+      "status": "completed",
+      "tool_calls": []
+    }
+  ],
+  "started_at": "2026-07-12T05:52:49Z",
+  "status": "INCOMPLETE_PRECISE",
+  "verification_pass": {
+    "abstention_required": true,
+    "ambiguity_resolution": {
+      "requires_user_choice": false,
+      "status": "unambiguous"
+    },
+    "answer_reference_integrity_passed": true,
+    "claim_verdicts": [],
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "corpus_observation_passed": true,
+    "corpus_observation_required": true,
+    "failed_trace_obligation_ids": [
+      "bench_general_agent",
+      "bench_multimodal_agent",
+      "bench_trajectory_process",
+      "bench_realworld_task",
+      "bench_cost_safety_efficiency",
+      "bench_social_cognition",
+      "bench_writing_generative",
+      "bench_meta_self_reasoning"
+    ],
+    "missing_required_evidence": [
+      {
+        "description": "为\"通用 LLM agent 能力 benchmark\"维度挑选最匹配的语料论文并说明理由（覆盖多任务、多环境、agent-as-agent 评估）。",
+        "obligation_id": "bench_general_agent"
+      },
+      {
+        "description": "为\"多模态 visual / multimodal agent benchmark\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_multimodal_agent"
+      },
+      {
+        "description": "为\"轨迹/过程/可视化评估\"维度挑选最匹配的语料论文并说明理由（trajectory evaluation、可视化分析、过程 reward）。",
+        "obligation_id": "bench_trajectory_process"
+      },
+      {
+        "description": "为\"真实世界 / 软件工程 / 自主任务\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_realworld_task"
+      },
+      {
+        "description": "为\"成本 / 效率 / 安全 / 规则\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_cost_safety_efficiency"
+      },
+      {
+        "description": "为\"社会认知 / 多 agent 协作 / prosocial\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_social_cognition"
+      },
+      {
+        "description": "为\"写作 / 开放式生成 / 创造性\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_writing_generative"
+      },
+      {
+        "description": "为\"自推理 / 元认知 / AGI 评估\"维度挑选最匹配的语料论文并说明理由。",
+        "obligation_id": "bench_meta_self_reasoning"
+      }
+    ],
+    "question_id": "live_chat_dff237804eea",
+    "required_capabilities_attempted": [],
+    "required_evidence_status": [
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_general_agent",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_multimodal_agent",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_trajectory_process",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_realworld_task",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_cost_safety_efficiency",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_social_cognition",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_writing_generative",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "bench_meta_self_reasoning",
+        "status": "missing"
+      }
+    ],
+    "rewritten_claim_count": 0,
+    "satisfied_trace_obligation_ids": [],
+    "stage_contracts_passed": true,
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_dff237804eea"
+  }
+}

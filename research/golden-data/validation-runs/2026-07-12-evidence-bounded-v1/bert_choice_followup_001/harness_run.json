@@ -1,0 +1,2289 @@
+{
+  "case_id": "bert_choice_followup_001",
+  "claim_graph": {
+    "claims": [
+      {
+        "claim_id": "bert_architecture_definition",
+        "claim_type": "definition",
+        "obligation_ids": [
+          "bert_architecture"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_3540835408466c6e",
+          "ev_2c75c5a0daa399bd"
+        ],
+        "text": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M).",
+        "verification_reason": "Both passages directly support the architecture description and the two model size specifications exactly as stated.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "bert_mlm_objective_definition",
+        "claim_type": "definition",
+        "obligation_ids": [
+          "bert_mlm_objective"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_50abc0b358bb77ad",
+          "ev_668e1f7f3b701941",
+          "ev_0f82af3db4559191",
+          "ev_41ea8c580142eb9e"
+        ],
+        "text": "BERT's masked language modeling pre-training objective masks 15% of all WordPiece tokens in each sequence at random; the training data generator chooses 15% of token positions at random for prediction, and when the i-th token is chosen it is replaced with (1) the [MASK] token 80% of the time, (2) a random token 10% of the time, and (3) the unchanged i-th token 10% of the time, with T_i used to predict the original token via cross entropy loss; unlike left-to-right language modeling, this enables the representation to fuse both left and right context to pre-train a deep bidirectional Transformer.",
+        "verification_reason": "The passages support the MLM objective details, but ev_668e1f7f3b701941 says \"we mask 15% of all WordPiece tokens\" without stating it \"randomly masks 15%\" twice; rewording to avoid duplication. The replacement ratios, cross entropy loss, and left/right context fusion are all directly supported.",
+        "verification_verdict": "rewrite"
+      },
+      {
+        "claim_id": "bert_bidirectional_definition_change",
+        "claim_type": "definition",
+        "obligation_ids": [
+          "bert_bidirectional_definition"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_f189c6c5f4214d2e",
+          "ev_b5cb6101ea792641"
+        ],
+        "text": "BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers, in contrast to Radford et al. (2018) which uses unidirectional language models for pre-training and to Peters et al. (2018a) which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs.",
+        "verification_reason": "Both the abstract and introduction passages directly support this exact characterization, including the specific contrast with Radford et al. and Peters et al.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "bert_bidirectional_difference_change",
+        "claim_type": "change",
+        "obligation_ids": [
+          "bert_bidirectional_definition"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_944a542df0f94975",
+          "ev_25cc15ee8198fe84"
+        ],
+        "text": "BERT motivates deep bidirectionality by noting that a deep bidirectional model is intuitively strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and right-to-left model, since standard conditional language models can only be trained left-to-right or right-to-left (because bidirectional conditioning would allow each word to indirectly 'see itself'); the ELMo-style concatenation is twice as expensive, non-intuitive for QA where the RTL model would not be able to condition the answer on the question, and strictly less powerful since it cannot use both left and right context at every layer.",
+        "verification_reason": "Both passages directly support the content; rewording \"RTL model cannot condition the answer on the question\" to match exact source wording \"RTL model would not be able to condition the answer on the question\". The passage uses \"Intuitively, it is reasonable to believe\" for the strict-power claim, not stating it as proven; narrowing to avoid implying the claim is mathematically proven.",
+        "verification_verdict": "rewrite"
+      },
+      {
+        "claim_id": "bert_nsp_objective_definition",
+        "claim_type": "definition",
+        "obligation_ids": [
+          "bert_nsp_objective"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_9c9a9e4f55a8193d",
+          "ev_0f82af3db4559191",
+          "ev_7397a8bf5eccf48d"
+        ],
+        "text": "BERT's Next Sentence Prediction (NSP) pre-training objective trains a model to understand sentence relationships by predicting whether sentence B is the actual next sentence that follows A (labeled IsNext) or a random sentence from the corpus (labeled NotNext), with each chosen 50% of the time; it is included alongside MLM because many downstream tasks such as Question Answering and Natural Language Inference depend on understanding the relationship between two sentences, which is not directly captured by language modeling, and the final hidden state C of the special [CLS] token is used for this prediction.",
+        "verification_reason": "All key elements are supported: the 50/50 IsNext/NotNext labeling, rationale about QA and NLI, and the use of C for prediction are explicitly stated in the passages.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "bert_input_representation_definition",
+        "claim_type": "definition",
+        "obligation_ids": [
+          "bert_input_representation"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_1b3b81719ea2e13f",
+          "ev_3c0f7b9f503c8082",
+          "ev_cd77b6b180d64515"
+        ],
+        "text": "BERT's input representation is constructed by summing the corresponding token, segment, and position embeddings; it uses WordPiece embeddings with a 30,000 token vocabulary, prepends a special [CLS] classification token to every sequence (whose final hidden state C ∈ ℝ^H serves as the aggregate sequence representation for classification), packs sentence pairs into a single sequence separated by a special [SEP] token, and adds a learned segment embedding to every token indicating whether it belongs to sentence A or sentence B.",
+        "verification_reason": "All three passages directly support the exact details of the input representation including the embedding sum, WordPiece 30k vocab, [CLS]/[SEP] tokens, learned A/B segment embeddings, and C ∈ ℝ^H aggregate representation.",
+        "verification_verdict": "keep"
+      }
+    ],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_ed5dd7cd3d93",
+    "question_id": "live_chat_ed5dd7cd3d93"
+  },
+  "completed_at": "2026-07-12T04:54:15Z",
+  "diagnostics": {
+    "completed_stage_count": 4,
+    "completion_tokens": 5730,
+    "duration_ms": 52115,
+    "finish_reason": "evidence_bounded_answer_rendered",
+    "model_call_count": 4,
+    "model_latency_ms": 52042,
+    "paradigm": "concept_tracing_definition",
+    "prompt_tokens": 17723,
+    "stage_count": 4,
+    "tool_call_count": 7,
+    "total_tokens": 23453
+  },
+  "evidence_ledger": {
+    "coverage": [
+      {
+        "evidence_ids": [
+          "ev_3540835408466c6e",
+          "ev_2c75c5a0daa399bd",
+          "ev_bad51166022c1540",
+          "ev_cea32c153f3fd20d"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_architecture",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_50abc0b358bb77ad",
+          "ev_41ea8c580142eb9e",
+          "ev_0f82af3db4559191",
+          "ev_668e1f7f3b701941"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_mlm_objective",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_b5cb6101ea792641",
+          "ev_944a542df0f94975",
+          "ev_25cc15ee8198fe84",
+          "ev_f189c6c5f4214d2e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_bidirectional_definition",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_0f82af3db4559191",
+          "ev_9c9a9e4f55a8193d",
+          "ev_2d62ae583962ca9c",
+          "ev_7397a8bf5eccf48d"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_nsp_objective",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_1b3b81719ea2e13f",
+          "ev_3c0f7b9f503c8082",
+          "ev_cd77b6b180d64515",
+          "ev_d956b476c1e0a2ca"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_input_representation",
+        "status": "covered"
+      }
+    ],
+    "items": [
+      {
+        "authors": [
+          "Jacob Devlin",
+          "Ming-Wei Chang"
+        ],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_bert_2018",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+        "venue": "NAACL",
+        "year": 2018
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_1",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"bert_2018\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_3540835408466c6e",
+        "evidence_quality": "verified",
+        "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+        "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+        "matched_anchor_id": "bert_transformer_encoder_background",
+        "page": 3,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3 BERT",
+        "source_kind": "reading_element",
+        "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_50abc0b358bb77ad",
+        "evidence_quality": "verified",
+        "location": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+        "location_ref": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "Although this allows us to obtain a bidirectional pre-trained model, a downside is that we are creating a mismatch between pre-training and fine-tuning, since the [MASK] token does not appear during fine-tuning. To mitigate this, we do not always replace “masked” words with the actual [MASK] token. The training data generator chooses 15% of the token positions at random for prediction. If the i-th token is chosen, we replace the i-th token with (1) the [MASK] token 80% of the time (2) a random token 10% of the time (3) the unchanged i-th token 10% of the time. Then, $T _ { i }$ will be used to predict the original token with cross entropy loss. We compare variations of this procedure in Appendix C.2.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_b5cb6101ea792641",
+        "evidence_quality": "verified",
+        "location": "reading_element_a4af756e2cc640849125cb36cb7579d8",
+        "location_ref": "reading_element_a4af756e2cc640849125cb36cb7579d8",
+        "matched_anchor_id": null,
+        "page": 2,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1 Introduction",
+        "source_kind": "reading_element",
+        "span_text": "• We demonstrate the importance of bidirectional pre-training for language representations. Unlike Radford et al. (2018), which uses unidirectional language models for pre-training, BERT uses masked language models to enable pretrained deep bidirectional representations. This is also in contrast to Peters et al. (2018a), which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_9c9a9e4f55a8193d",
+        "evidence_quality": "verified",
+        "location": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+        "location_ref": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "Task #2: Next Sentence Prediction (NSP) Many important downstream tasks such as Question Answering (QA) and Natural Language Inference (NLI) are based on understanding the relationship between two sentences, which is not directly captured by language modeling. In order to train a model that understands sentence relationships, we pre-train for a binarized next sentence prediction task that can be trivially generated from any monolingual corpus. Specifically, when choosing the sentences A and B for each pretraining example, 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext). As we show in Figure 1, C is used for next sentence prediction (NSP).<sup>5</sup> Despite its simplicity, we demonstrate in Section 5.1 that pre-training towards this task is very beneficial to both QA and NLI. 6",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_1b3b81719ea2e13f",
+        "evidence_quality": "verified",
+        "location": "reading_element_ac4be5b312634726a3fa1d901b98fa90",
+        "location_ref": "reading_element_ac4be5b312634726a3fa1d901b98fa90",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3 BERT",
+        "source_kind": "reading_element",
+        "span_text": "We use WordPiece embeddings (Wu et al., 2016) with a 30,000 token vocabulary. The first token of every sequence is always a special classification token ([CLS]). The final hidden state corresponding to this token is used as the aggregate sequence representation for classification tasks. Sentence pairs are packed together into a single sequence. We differentiate the sentences in two ways. First, we separate them with a special token ([SEP]). Second, we add a learned embedding to every token indicating whether it belongs to sentence A or sentence B. As shown in Figure 1, we denote input embedding as E, the final hidden vector of the special [CLS] token as $C \\in \\mathbb { R } ^ { H }$ and the final hidden vector for the $i ^ { \\mathrm { t h } }$ input token as $T _ { i } \\in \\mathbb { R } ^ { H }$",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_2c75c5a0daa399bd",
+        "evidence_quality": "verified",
+        "location": "reading_element_d563522355f14815be4d996c15c3115e",
+        "location_ref": "reading_element_d563522355f14815be4d996c15c3115e",
+        "matched_anchor_id": null,
+        "page": 3,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3 BERT",
+        "source_kind": "reading_element",
+        "span_text": "In this work, we denote the number of layers (i.e., Transformer blocks) as L, the hidden size as H, and the number of self-attention heads as A.<sup>3</sup> We primarily report results on two model sizes: BERT<sub>BASE</sub> (L=12, H=768, A=12, Total Parameters=110M) and BERT<sub>LARGE</sub> (L=24, H=1024, A=16, Total Parameters=340M).",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_41ea8c580142eb9e",
+        "evidence_quality": "verified",
+        "location": "reading_element_738064a62a1b4d8ebbd9eb1326b92589",
+        "location_ref": "reading_element_738064a62a1b4d8ebbd9eb1326b92589",
+        "matched_anchor_id": null,
+        "page": 12,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "A.1 Illustration of the Pre-training Tasks",
+        "source_kind": "reading_element",
+        "span_text": "The advantage of this procedure is that the Transformer encoder does not know which words it will be asked to predict or which have been replaced by random words, so it is forced to keep a distributional contextual representation of every input token. Additionally, because random replacement only occurs for 1.5% of all tokens (i.e., 10% of 15%), this does not seem to harm the model’s language understanding capability. In Section C.2, we evaluate the impact this procedure.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_944a542df0f94975",
+        "evidence_quality": "verified",
+        "location": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+        "location_ref": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "Task #1: Masked LM Intuitively, it is reasonable to believe that a deep bidirectional model is strictly more powerful than either a left-to-right model or the shallow concatenation of a left-toright and a right-to-left model. Unfortunately, standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly “see itself”, and the model could trivially predict the target word in a multi-layered context.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_0f82af3db4559191",
+        "evidence_quality": "verified",
+        "location": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+        "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1 Introduction",
+        "source_kind": "reading_element",
+        "span_text": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-toright language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer. In addition to the masked language model, we also use a “next sentence prediction” task that jointly pretrains text-pair representations. The contributions of our paper are as follows:",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_3c0f7b9f503c8082",
+        "evidence_quality": "verified",
+        "location": "reading_element_67b20862dc884a8686595b5ad82b711b",
+        "location_ref": "reading_element_67b20862dc884a8686595b5ad82b711b",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3 BERT",
+        "source_kind": "reading_element",
+        "span_text": "For a given token, its input representation is constructed by summing the corresponding token, segment, and position embeddings. A visualization of this construction can be seen in Figure 2.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_bad51166022c1540",
+        "evidence_quality": "verified",
+        "location": "reading_element_67e26db9f0d2483781f3b55ba14ce19f",
+        "location_ref": "reading_element_67e26db9f0d2483781f3b55ba14ce19f",
+        "matched_anchor_id": null,
+        "page": 8,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.2 Effect of Model Size",
+        "source_kind": "reading_element",
+        "span_text": "Results on selected GLUE tasks are shown in Table 6. In this table, we report the average Dev Set accuracy from 5 random restarts of fine-tuning. We can see that larger models lead to a strict accuracy improvement across all four datasets, even for MRPC which only has 3,600 labeled training examples, and is substantially different from the pre-training tasks. It is also perhaps surprising that we are able to achieve such significant improvements on top of models which are already quite large relative to the existing literature. For example, the largest Transformer explored in Vaswani et al. (2017) is (L=6, H=1024, A=16) with 100M parameters for the encoder, and the largest Transformer we have found in the literature is (L=64, H=512, A=2) with 235M parameters (Al-Rfou et al., 2018). By contrast, $\\mathbf { B E R T _ { B A S E } }$ contains 110M parameters and $\\mathbf { B E R T _ { L A R G E } }$ contains 340M parameters.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_25cc15ee8198fe84",
+        "evidence_quality": "verified",
+        "location": "reading_element_fa0e9a825e75465fa894b6b808cfce5a",
+        "location_ref": "reading_element_fa0e9a825e75465fa894b6b808cfce5a",
+        "matched_anchor_id": null,
+        "page": 8,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.1 Effect of Pre-training Tasks",
+        "source_kind": "reading_element",
+        "span_text": "We recognize that it would also be possible to train separate LTR and RTL models and represent each token as the concatenation of the two models, as ELMo does. However: (a) this is twice as expensive as a single bidirectional model; (b) this is non-intuitive for tasks like QA, since the RTL model would not be able to condition the answer on the question; (c) this it is strictly less powerful than a deep bidirectional model, since it can use both left and right context at every layer.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "table",
+        "evidence_id": "ev_2d62ae583962ca9c",
+        "evidence_quality": "verified",
+        "location": "table_ref_011523fe1b0a4bd1a6777b722cb6ee97",
+        "location_ref": "table_ref_011523fe1b0a4bd1a6777b722cb6ee97",
+        "matched_anchor_id": null,
+        "page": 8,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5 Ablation Studies",
+        "source_kind": "reading_element",
+        "span_text": "Table 5: Ablation over the pre-training tasks using the $\\mathbf { B E R T _ { B A S E } }$ architecture. “No NSP” is trained without the next sentence prediction task. “LTR & No NSP” is trained as a left-to-right LM without the next sentence prediction, like OpenAI GPT. “+ BiLSTM” adds a randomly initialized BiLSTM on top of the $\\mathrm { \\Sigma ^ { 6 } L T R } + \\mathrm { N o }$ NSP” model during fine-tuning.\nTasks | MNLI-m (Acc) (Acc) | QNLI MRPC (Acc) | Dev Set | SST-2 | SQuAD (F1) | BERTBASE | 84.4 | 88.4 | 86.7 | 92.7 | 88.5 | No NSP | 83.9 | 84.9 | 86.5 | 92.6 | 87.9 | LTR & No NSP | 82.1 | 84.3 | 77.5 | 92.1 | 77.8 | + BiLSTM | 82.1 | 84.1 | 75.7 | 91.6 | 84.9",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "image",
+        "evidence_id": "ev_cd77b6b180d64515",
+        "evidence_quality": "verified",
+        "location": "figure_ref_00636f681b2e490f87c7a8c87bd78ed5",
+        "location_ref": "figure_ref_00636f681b2e490f87c7a8c87bd78ed5",
+        "matched_anchor_id": null,
+        "page": 5,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "Figure 2: BERT input representation. The input embeddings are the sum of the token embeddings, the segmentation embeddings and the position embeddings.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "table",
+        "evidence_id": "ev_cea32c153f3fd20d",
+        "evidence_quality": "verified",
+        "location": "table_ref_04c06d23fc6d479fbd002d1278c649b8",
+        "location_ref": "table_ref_04c06d23fc6d479fbd002d1278c649b8",
+        "matched_anchor_id": null,
+        "page": 9,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.3 Feature-based Approach with BERT",
+        "source_kind": "reading_element",
+        "span_text": "Table 6: Ablation over BERT model size. #L = the number of layers; #H = hidden size; #A = number of attention heads. “LM (ppl)” is the masked LM perplexity of held-out training data.\nHyperparams | Dev Set Accuracy | #L | #H #A LM (ppl) | MNLI-m MRPC | SST-2 | 3 | 768 | 12 5.84 77.9 | 79.8 88.4 | 6 | 768 | 5.24 80.6 | 82.2 90.7 | 6 | 768 | 4.68 81.9 | 84.8 91.3 | 12 | 768 12 | 3.99 84.4 | 86.7 92.9 | 12 | 1024 16 | 3.54 85.7 | 86.9 93.3 | 24 | 1024 16 | 3.23 86.6 | 87.8 93.7",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_668e1f7f3b701941",
+        "evidence_quality": "verified",
+        "location": "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+        "location_ref": "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+        "matched_anchor_id": "bert_masked_lm_pretraining",
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "In order to train a deep bidirectional representation, we simply mask some percentage of the input tokens at random, and then predict those masked tokens. We refer to this procedure as a “masked LM” (MLM), although it is often referred to as a Cloze task in the literature (Taylor, 1953). In this case, the final hidden vectors corresponding to the mask tokens are fed into an output softmax over the vocabulary, as in a standard LM. In all of our experiments, we mask 15% of all WordPiece tokens in each sequence at random. In contrast to denoising auto-encoders (Vincent et al., 2008), we only predict the masked words rather than reconstructing the entire input.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_f189c6c5f4214d2e",
+        "evidence_quality": "verified",
+        "location": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+        "location_ref": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "Abstract",
+        "source_kind": "reading_element",
+        "span_text": "We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models (Peters et al., 2018a; Radford et al., 2018), BERT is designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-art models for a wide range of tasks, such as question answering and language inference, without substantial taskspecific architecture modifications.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_7397a8bf5eccf48d",
+        "evidence_quality": "verified",
+        "location": "reading_element_58e0f803695148aa91f8f13e8f80417d",
+        "location_ref": "reading_element_58e0f803695148aa91f8f13e8f80417d",
+        "matched_anchor_id": null,
+        "page": 8,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.1 Effect of Pre-training Tasks",
+        "source_kind": "reading_element",
+        "span_text": "No NSP: A bidirectional model which is trained using the “masked LM” (MLM) but without the “next sentence prediction” (NSP) task.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_d956b476c1e0a2ca",
+        "evidence_quality": "verified",
+        "location": "reading_element_e82beb1bdc3547649c6ac8273d64e7a3",
+        "location_ref": "reading_element_e82beb1bdc3547649c6ac8273d64e7a3",
+        "matched_anchor_id": null,
+        "page": 14,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "A.5 Illustrations of Fine-tuning on Different Tasks",
+        "source_kind": "reading_element",
+        "span_text": "The illustration of fine-tuning BERT on different tasks can be seen in Figure 4. Our task-specific models are formed by incorporating BERT with one additional output layer, so a minimal number of parameters need to be learned from scratch. Among the tasks, (a) and (b) are sequence-level tasks while (c) and (d) are token-level tasks. In the figure, E represents the input embedding, T<sub>i</sub> represents the contextual representation of token i, [CLS] is the special symbol for classification output, and [SEP] is the special symbol to separate non-consecutive token sequences.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_ed5dd7cd3d93",
+    "missing_evidence": [],
+    "question_id": "live_chat_ed5dd7cd3d93",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_ed5dd7cd3d93",
+    "answer_type": "definition_trace",
+    "cited_claim_ids": [
+      "bert_architecture_definition",
+      "bert_mlm_objective_definition",
+      "bert_bidirectional_definition_change",
+      "bert_bidirectional_difference_change",
+      "bert_nsp_objective_definition",
+      "bert_input_representation_definition"
+    ],
+    "cited_evidence_ids": [
+      "ev_3540835408466c6e",
+      "ev_2c75c5a0daa399bd",
+      "ev_50abc0b358bb77ad",
+      "ev_668e1f7f3b701941",
+      "ev_0f82af3db4559191",
+      "ev_41ea8c580142eb9e",
+      "ev_f189c6c5f4214d2e",
+      "ev_b5cb6101ea792641",
+      "ev_944a542df0f94975",
+      "ev_25cc15ee8198fe84",
+      "ev_9c9a9e4f55a8193d",
+      "ev_7397a8bf5eccf48d",
+      "ev_1b3b81719ea2e13f",
+      "ev_3c0f7b9f503c8082",
+      "ev_cd77b6b180d64515"
+    ],
+    "fields": {
+      "architecture": "multi-layer bidirectional Transformer encoder; BERT_BASE (L=12, H=768, A=12, 110M params), BERT_LARGE (L=24, H=1024, A=16, 340M params)",
+      "bidirectionality_definition": "deep bidirectional: jointly conditions on both left and right context in all layers; contrasts with unidirectional LMs (Radford et al., 2018) and shallow concatenation of LTR+RTL LMs (Peters et al., 2018a)",
+      "input_representation": "sum of token + segment + position embeddings; WordPiece 30k vocab; [CLS] as aggregate; [SEP] and learned A/B segment embeddings for sentence pairs",
+      "mlm_objective": "mask 15% of WordPiece tokens; chosen tokens replaced with [MASK] 80% / random token 10% / unchanged 10%; predict original token via cross entropy loss; fuses left and right context unlike left-to-right LM",
+      "nsp_objective": "binary next-sentence prediction: 50% B is the actual next sentence (IsNext), 50% B is random (NotNext); included with MLM to capture sentence-pair relationships needed for QA and NLI"
+    },
+    "markdown": "1. BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M). [1][2]\n2. BERT's masked language modeling pre-training objective masks 15% of all WordPiece tokens in each sequence at random; the training data generator chooses 15% of token positions at random for prediction, and when the i-th token is chosen it is replaced with (1) the [MASK] token 80% of the time, (2) a random token 10% of the time, and (3) the unchanged i-th token 10% of the time, with T_i used to predict the original token via cross entropy loss; unlike left-to-right language modeling, this enables the representation to fuse both left and right context to pre-train a deep bidirectional Transformer. [3][4][5][6]\n3. BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers, in contrast to Radford et al. (2018) which uses unidirectional language models for pre-training and to Peters et al. (2018a) which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs. [7][8]\n4. BERT motivates deep bidirectionality by noting that a deep bidirectional model is intuitively strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and right-to-left model, since standard conditional language models can only be trained left-to-right or right-to-left (because bidirectional conditioning would allow each word to indirectly 'see itself'); the ELMo-style concatenation is twice as expensive, non-intuitive for QA where the RTL model would not be able to condition the answer on the question, and strictly less powerful since it cannot use both left and right context at every layer. [9][10]\n5. BERT's Next Sentence Prediction (NSP) pre-training objective trains a model to understand sentence relationships by predicting whether sentence B is the actual next sentence that follows A (labeled IsNext) or a random sentence from the corpus (labeled NotNext), with each chosen 50% of the time; it is included alongside MLM because many downstream tasks such as Question Answering and Natural Language Inference depend on understanding the relationship between two sentences, which is not directly captured by language modeling, and the final hidden state C of the special [CLS] token is used for this prediction. [11][5][12]\n6. BERT's input representation is constructed by summing the corresponding token, segment, and position embeddings; it uses WordPiece embeddings with a 30,000 token vocabulary, prepends a special [CLS] classification token to every sequence (whose final hidden state C ∈ ℝ^H serves as the aggregate sequence representation for classification), packs sentence pairs into a single sequence separated by a special [SEP] token, and adds a learned segment embedding to every token indicating whether it belongs to sentence A or sentence B. [13][14][15]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[4] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[5] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1\n[6] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, A.1 Illustration of the Pre-training Tasks, p. 12\n[7] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[8] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 2\n[9] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[10] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.1 Effect of Pre-training Tasks, p. 8\n[11] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[12] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.1 Effect of Pre-training Tasks, p. 8\n[13] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 4\n[14] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 4\n[15] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 5",
+    "outcome": "answered",
+    "question_id": "live_chat_ed5dd7cd3d93",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_ed5dd7cd3d93"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M).",
+    "verification_id": "verification_live_chat_ed5dd7cd3d93"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "actionability": "non_blocking",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "definition_trace",
+    "constraints": {
+      "coverage_assumption": "The user is resolving the prior assistant's choice menu by selecting option (2) BERT, and wants an explanation of how BERT enables bidirectional Transformer encoders.",
+      "paper_focus": "bert_2018",
+      "task": {
+        "object": "bidirectional Transformer encoders in BERT",
+        "verb": "explain"
+      }
+    },
+    "dataset_mentions": [],
+    "entities": [
+      "bert_2018",
+      "Transformer encoder architecture used",
+      "Masked language modeling (MLM) objective",
+      "Definition of deep bidirectionality vs unidirectional",
+      "Next Sentence Prediction (NSP)",
+      "Input representation"
+    ],
+    "intent_id": "intent_live_chat_ed5dd7cd3d93",
+    "method_mentions": [],
+    "normalized_question": "Explain how the BERT paper (paper_id bert_2018) introduces and enables bidirectional Transformer encoders, including the masked language modeling pre-training objective that conditions on both left and right context, the Transformer encoder architecture used, and how this bidirectionality differs from unidirectional (left-to-right) language model pre-training.",
+    "obligations": [
+      {
+        "answer_field": "architecture",
+        "description": "What architecture does BERT use (multi-layer Transformer encoder, number of layers, hidden size, attention heads), and how does this support bidirectionality at every layer?",
+        "id": "bert_architecture",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "mlm_objective",
+        "description": "What is the masked language modeling (MLM) pre-training objective in BERT, including the masking procedure (which tokens, replacement choices, masking rate) and how it differs from standard left-to-right language modeling?",
+        "id": "bert_mlm_objective",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "bidirectionality_definition",
+        "description": "How does BERT define and motivate 'deep bidirectional' versus shallow bidirectional and unidirectional (left-to-right) representations?",
+        "id": "bert_bidirectional_definition",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "nsp_objective",
+        "description": "What is the Next Sentence Prediction (NSP) pre-training objective and why is it included alongside MLM?",
+        "id": "bert_nsp_objective",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "input_representation",
+        "description": "What is BERT's input representation (token embeddings, segment embeddings, position embeddings) and how does it enable sentence-pair tasks?",
+        "id": "bert_input_representation",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      }
+    ],
+    "paper_mentions": [
+      "bert_2018"
+    ],
+    "primary_paradigm": "concept_tracing_definition",
+    "question_id": "live_chat_ed5dd7cd3d93",
+    "raw_question": "The second.",
+    "required_capabilities": [
+      "paper_grounded_fact_extraction"
+    ],
+    "required_evidence_types": [
+      "architecture_parameters",
+      "pretraining_objective",
+      "input_representation"
+    ],
+    "requires_corpus_observation": true
+  },
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_3540835408466c6e",
+      "ev_2c75c5a0daa399bd",
+      "ev_50abc0b358bb77ad",
+      "ev_668e1f7f3b701941",
+      "ev_0f82af3db4559191",
+      "ev_41ea8c580142eb9e",
+      "ev_f189c6c5f4214d2e",
+      "ev_b5cb6101ea792641",
+      "ev_944a542df0f94975",
+      "ev_25cc15ee8198fe84",
+      "ev_9c9a9e4f55a8193d",
+      "ev_7397a8bf5eccf48d",
+      "ev_1b3b81719ea2e13f",
+      "ev_3c0f7b9f503c8082",
+      "ev_cd77b6b180d64515"
+    ],
+    "selected_paper_ids": [
+      "bert_2018"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "supports_claim_ids": [],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    }
+  ],
+  "question_id": "bert_choice_followup_001",
+  "reasoning_artifacts": [
+    {
+      "artifact_id": "reasoning_live_chat_ed5dd7cd3d93",
+      "payload": {
+        "answer_fields": {
+          "architecture": "multi-layer bidirectional Transformer encoder; BERT_BASE (L=12, H=768, A=12, 110M params), BERT_LARGE (L=24, H=1024, A=16, 340M params)",
+          "bidirectionality_definition": "deep bidirectional: jointly conditions on both left and right context in all layers; contrasts with unidirectional LMs (Radford et al., 2018) and shallow concatenation of LTR+RTL LMs (Peters et al., 2018a)",
+          "input_representation": "sum of token + segment + position embeddings; WordPiece 30k vocab; [CLS] as aggregate; [SEP] and learned A/B segment embeddings for sentence pairs",
+          "mlm_objective": "mask 15% of WordPiece tokens; chosen tokens replaced with [MASK] 80% / random token 10% / unchanged 10%; predict original token via cross entropy loss; fuses left and right context unlike left-to-right LM",
+          "nsp_objective": "binary next-sentence prediction: 50% B is the actual next sentence (IsNext), 50% B is random (NotNext); included with MLM to capture sentence-pair relationships needed for QA and NLI"
+        },
+        "claim_verdicts": [
+          {
+            "claim_id": "bert_architecture_definition",
+            "evidence_ids": [
+              "ev_3540835408466c6e",
+              "ev_2c75c5a0daa399bd"
+            ],
+            "field_values": {
+              "architecture": "multi-layer bidirectional Transformer encoder; BERT_BASE (L=12, H=768, A=12, 110M params), BERT_LARGE (L=24, H=1024, A=16, 340M params)"
+            },
+            "reason": "Both passages directly support the architecture description and the two model size specifications exactly as stated.",
+            "verdict": "keep",
+            "verified_text": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M)."
+          },
+          {
+            "claim_id": "bert_mlm_objective_definition",
+            "evidence_ids": [
+              "ev_50abc0b358bb77ad",
+              "ev_668e1f7f3b701941",
+              "ev_0f82af3db4559191",
+              "ev_41ea8c580142eb9e"
+            ],
+            "field_values": {
+              "mlm_objective": "mask 15% of WordPiece tokens; chosen tokens replaced with [MASK] 80% / random token 10% / unchanged 10%; predict original token via cross entropy loss; fuses left and right context unlike left-to-right LM"
+            },
+            "reason": "The passages support the MLM objective details, but ev_668e1f7f3b701941 says \"we mask 15% of all WordPiece tokens\" without stating it \"randomly masks 15%\" twice; rewording to avoid duplication. The replacement ratios, cross entropy loss, and left/right context fusion are all directly supported.",
+            "verdict": "rewrite",
+            "verified_text": "BERT's masked language modeling pre-training objective masks 15% of all WordPiece tokens in each sequence at random; the training data generator chooses 15% of token positions at random for prediction, and when the i-th token is chosen it is replaced with (1) the [MASK] token 80% of the time, (2) a random token 10% of the time, and (3) the unchanged i-th token 10% of the time, with T_i used to predict the original token via cross entropy loss; unlike left-to-right language modeling, this enables the representation to fuse both left and right context to pre-train a deep bidirectional Transformer."
+          },
+          {
+            "claim_id": "bert_bidirectional_definition_change",
+            "evidence_ids": [
+              "ev_f189c6c5f4214d2e",
+              "ev_b5cb6101ea792641"
+            ],
+            "field_values": {
+              "bidirectionality_definition": "deep bidirectional: jointly conditions on both left and right context in all layers; contrasts with unidirectional LMs (Radford et al., 2018) and shallow concatenation of LTR+RTL LMs (Peters et al., 2018a)"
+            },
+            "reason": "Both the abstract and introduction passages directly support this exact characterization, including the specific contrast with Radford et al. and Peters et al.",
+            "verdict": "keep",
+            "verified_text": "BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers, in contrast to Radford et al. (2018) which uses unidirectional language models for pre-training and to Peters et al. (2018a) which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs."
+          },
+          {
+            "claim_id": "bert_bidirectional_difference_change",
+            "evidence_ids": [
+              "ev_944a542df0f94975",
+              "ev_25cc15ee8198fe84"
+            ],
+            "field_values": {},
+            "reason": "Both passages directly support the content; rewording \"RTL model cannot condition the answer on the question\" to match exact source wording \"RTL model would not be able to condition the answer on the question\". The passage uses \"Intuitively, it is reasonable to believe\" for the strict-power claim, not stating it as proven; narrowing to avoid implying the claim is mathematically proven.",
+            "verdict": "rewrite",
+            "verified_text": "BERT motivates deep bidirectionality by noting that a deep bidirectional model is intuitively strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and right-to-left model, since standard conditional language models can only be trained left-to-right or right-to-left (because bidirectional conditioning would allow each word to indirectly 'see itself'); the ELMo-style concatenation is twice as expensive, non-intuitive for QA where the RTL model would not be able to condition the answer on the question, and strictly less powerful since it cannot use both left and right context at every layer."
+          },
+          {
+            "claim_id": "bert_nsp_objective_definition",
+            "evidence_ids": [
+              "ev_9c9a9e4f55a8193d",
+              "ev_0f82af3db4559191",
+              "ev_7397a8bf5eccf48d"
+            ],
+            "field_values": {
+              "nsp_objective": "binary next-sentence prediction: 50% B is the actual next sentence (IsNext), 50% B is random (NotNext); included with MLM to capture sentence-pair relationships needed for QA and NLI"
+            },
+            "reason": "All key elements are supported: the 50/50 IsNext/NotNext labeling, rationale about QA and NLI, and the use of C for prediction are explicitly stated in the passages.",
+            "verdict": "keep",
+            "verified_text": "BERT's Next Sentence Prediction (NSP) pre-training objective trains a model to understand sentence relationships by predicting whether sentence B is the actual next sentence that follows A (labeled IsNext) or a random sentence from the corpus (labeled NotNext), with each chosen 50% of the time; it is included alongside MLM because many downstream tasks such as Question Answering and Natural Language Inference depend on understanding the relationship between two sentences, which is not directly captured by language modeling, and the final hidden state C of the special [CLS] token is used for this prediction."
+          },
+          {
+            "claim_id": "bert_input_representation_definition",
+            "evidence_ids": [
+              "ev_1b3b81719ea2e13f",
+              "ev_3c0f7b9f503c8082",
+              "ev_cd77b6b180d64515"
+            ],
+            "field_values": {
+              "input_representation": "sum of token + segment + position embeddings; WordPiece 30k vocab; [CLS] as aggregate; [SEP] and learned A/B segment embeddings for sentence pairs"
+            },
+            "reason": "All three passages directly support the exact details of the input representation including the embedding sum, WordPiece 30k vocab, [CLS]/[SEP] tokens, learned A/B segment embeddings, and C ∈ ℝ^H aggregate representation.",
+            "verdict": "keep",
+            "verified_text": "BERT's input representation is constructed by summing the corresponding token, segment, and position embeddings; it uses WordPiece embeddings with a 30,000 token vocabulary, prepends a special [CLS] classification token to every sequence (whose final hidden state C ∈ ℝ^H serves as the aggregate sequence representation for classification), packs sentence pairs into a single sequence separated by a special [SEP] token, and adds a learned segment embedding to every token indicating whether it belongs to sentence A or sentence B."
+          }
+        ],
+        "obligation_coverage": [
+          {
+            "evidence_ids": [
+              "ev_3540835408466c6e",
+              "ev_2c75c5a0daa399bd",
+              "ev_bad51166022c1540",
+              "ev_cea32c153f3fd20d"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "bert_architecture",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_50abc0b358bb77ad",
+              "ev_41ea8c580142eb9e",
+              "ev_0f82af3db4559191",
+              "ev_668e1f7f3b701941"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "bert_mlm_objective",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_b5cb6101ea792641",
+              "ev_944a542df0f94975",
+              "ev_25cc15ee8198fe84",
+              "ev_f189c6c5f4214d2e"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "bert_bidirectional_definition",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_0f82af3db4559191",
+              "ev_9c9a9e4f55a8193d",
+              "ev_2d62ae583962ca9c",
+              "ev_7397a8bf5eccf48d"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "bert_nsp_objective",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_1b3b81719ea2e13f",
+              "ev_3c0f7b9f503c8082",
+              "ev_cd77b6b180d64515",
+              "ev_d956b476c1e0a2ca"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "bert_input_representation",
+            "status": "covered"
+          }
+        ],
+        "source_evidence_ids": [
+          "corpus_observation_identity_1",
+          "ev_3540835408466c6e",
+          "ev_50abc0b358bb77ad",
+          "ev_b5cb6101ea792641",
+          "ev_9c9a9e4f55a8193d",
+          "ev_1b3b81719ea2e13f",
+          "ev_2c75c5a0daa399bd",
+          "ev_41ea8c580142eb9e",
+          "ev_944a542df0f94975",
+          "ev_0f82af3db4559191",
+          "ev_3c0f7b9f503c8082",
+          "ev_bad51166022c1540",
+          "ev_25cc15ee8198fe84",
+          "ev_2d62ae583962ca9c",
+          "ev_cd77b6b180d64515",
+          "ev_cea32c153f3fd20d",
+          "ev_668e1f7f3b701941",
+          "ev_f189c6c5f4214d2e",
+          "ev_7397a8bf5eccf48d",
+          "ev_d956b476c1e0a2ca"
+        ]
+      },
+      "question_id": "live_chat_ed5dd7cd3d93",
+      "source_claim_ids": [
+        "bert_architecture_definition",
+        "bert_mlm_objective_definition",
+        "bert_bidirectional_definition_change",
+        "bert_bidirectional_difference_change",
+        "bert_nsp_objective_definition",
+        "bert_input_representation_definition"
+      ],
+      "title": "Explain how the BERT paper (paper_id bert_2018) introduces and enables bidirectional Transformer encoders, including the masked language modeling pre-training objective that conditions on both left and right context, the Transformer encoder architecture used, and how this bidirectionality differs from unidirectional (left-to-right) language model pre-training.",
+      "type": "timeline"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_ed5dd7cd3d93",
+    "answer_type": "definition_trace",
+    "cited_claim_ids": [
+      "bert_architecture_definition",
+      "bert_mlm_objective_definition",
+      "bert_bidirectional_definition_change",
+      "bert_bidirectional_difference_change",
+      "bert_nsp_objective_definition",
+      "bert_input_representation_definition"
+    ],
+    "cited_evidence_ids": [
+      "ev_3540835408466c6e",
+      "ev_2c75c5a0daa399bd",
+      "ev_50abc0b358bb77ad",
+      "ev_668e1f7f3b701941",
+      "ev_0f82af3db4559191",
+      "ev_41ea8c580142eb9e",
+      "ev_f189c6c5f4214d2e",
+      "ev_b5cb6101ea792641",
+      "ev_944a542df0f94975",
+      "ev_25cc15ee8198fe84",
+      "ev_9c9a9e4f55a8193d",
+      "ev_7397a8bf5eccf48d",
+      "ev_1b3b81719ea2e13f",
+      "ev_3c0f7b9f503c8082",
+      "ev_cd77b6b180d64515"
+    ],
+    "fields": {
+      "architecture": "multi-layer bidirectional Transformer encoder; BERT_BASE (L=12, H=768, A=12, 110M params), BERT_LARGE (L=24, H=1024, A=16, 340M params)",
+      "bidirectionality_definition": "deep bidirectional: jointly conditions on both left and right context in all layers; contrasts with unidirectional LMs (Radford et al., 2018) and shallow concatenation of LTR+RTL LMs (Peters et al., 2018a)",
+      "input_representation": "sum of token + segment + position embeddings; WordPiece 30k vocab; [CLS] as aggregate; [SEP] and learned A/B segment embeddings for sentence pairs",
+      "mlm_objective": "mask 15% of WordPiece tokens; chosen tokens replaced with [MASK] 80% / random token 10% / unchanged 10%; predict original token via cross entropy loss; fuses left and right context unlike left-to-right LM",
+      "nsp_objective": "binary next-sentence prediction: 50% B is the actual next sentence (IsNext), 50% B is random (NotNext); included with MLM to capture sentence-pair relationships needed for QA and NLI"
+    },
+    "markdown": "1. BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M). [1][2]\n2. BERT's masked language modeling pre-training objective masks 15% of all WordPiece tokens in each sequence at random; the training data generator chooses 15% of token positions at random for prediction, and when the i-th token is chosen it is replaced with (1) the [MASK] token 80% of the time, (2) a random token 10% of the time, and (3) the unchanged i-th token 10% of the time, with T_i used to predict the original token via cross entropy loss; unlike left-to-right language modeling, this enables the representation to fuse both left and right context to pre-train a deep bidirectional Transformer. [3][4][5][6]\n3. BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers, in contrast to Radford et al. (2018) which uses unidirectional language models for pre-training and to Peters et al. (2018a) which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs. [7][8]\n4. BERT motivates deep bidirectionality by noting that a deep bidirectional model is intuitively strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and right-to-left model, since standard conditional language models can only be trained left-to-right or right-to-left (because bidirectional conditioning would allow each word to indirectly 'see itself'); the ELMo-style concatenation is twice as expensive, non-intuitive for QA where the RTL model would not be able to condition the answer on the question, and strictly less powerful since it cannot use both left and right context at every layer. [9][10]\n5. BERT's Next Sentence Prediction (NSP) pre-training objective trains a model to understand sentence relationships by predicting whether sentence B is the actual next sentence that follows A (labeled IsNext) or a random sentence from the corpus (labeled NotNext), with each chosen 50% of the time; it is included alongside MLM because many downstream tasks such as Question Answering and Natural Language Inference depend on understanding the relationship between two sentences, which is not directly captured by language modeling, and the final hidden state C of the special [CLS] token is used for this prediction. [11][5][12]\n6. BERT's input representation is constructed by summing the corresponding token, segment, and position embeddings; it uses WordPiece embeddings with a 30,000 token vocabulary, prepends a special [CLS] classification token to every sequence (whose final hidden state C ∈ ℝ^H serves as the aggregate sequence representation for classification), packs sentence pairs into a single sequence separated by a special [SEP] token, and adds a learned segment embedding to every token indicating whether it belongs to sentence A or sentence B. [13][14][15]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[4] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[5] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1\n[6] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, A.1 Illustration of the Pre-training Tasks, p. 12\n[7] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[8] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 2\n[9] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[10] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.1 Effect of Pre-training Tasks, p. 8\n[11] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[12] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.1 Effect of Pre-training Tasks, p. 8\n[13] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 4\n[14] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 4\n[15] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 5",
+    "outcome": "answered",
+    "question_id": "live_chat_ed5dd7cd3d93",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_ed5dd7cd3d93"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M).",
+    "verification_id": "verification_live_chat_ed5dd7cd3d93"
+  },
+  "result_status": "COMPLETED",
+  "retrieval_plan": {
+    "actionability": "non_blocking",
+    "expected_evidence_types": [
+      "architecture_parameters",
+      "pretraining_objective",
+      "input_representation"
+    ],
+    "hard_negative_policy": [],
+    "obligations": [
+      {
+        "answer_field": "architecture",
+        "description": "What architecture does BERT use (multi-layer Transformer encoder, number of layers, hidden size, attention heads), and how does this support bidirectionality at every layer?",
+        "id": "bert_architecture",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "mlm_objective",
+        "description": "What is the masked language modeling (MLM) pre-training objective in BERT, including the masking procedure (which tokens, replacement choices, masking rate) and how it differs from standard left-to-right language modeling?",
+        "id": "bert_mlm_objective",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "bidirectionality_definition",
+        "description": "How does BERT define and motivate 'deep bidirectional' versus shallow bidirectional and unidirectional (left-to-right) representations?",
+        "id": "bert_bidirectional_definition",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "nsp_objective",
+        "description": "What is the Next Sentence Prediction (NSP) pre-training objective and why is it included alongside MLM?",
+        "id": "bert_nsp_objective",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "input_representation",
+        "description": "What is BERT's input representation (token embeddings, segment embeddings, position embeddings) and how does it enable sentence-pair tasks?",
+        "id": "bert_input_representation",
+        "kind": "fact",
+        "paper_scope": [
+          "bert_2018"
+        ],
+        "required": true
+      }
+    ],
+    "paradigm": "concept_tracing_definition",
+    "plan_id": "plan_live_chat_ed5dd7cd3d93",
+    "query_rounds": [
+      {
+        "evidence_queries": [
+          {
+            "element_types": [],
+            "obligation_ids": [
+              "bert_architecture"
+            ],
+            "query_id": "q_arch",
+            "query_text": "BERT_BASE L=12 H=768 A=12 Transformer encoder multi-layer bidirectional",
+            "section_query": null,
+            "target_ids": [
+              "bert_paper"
+            ],
+            "top_k": 4
+          },
+          {
+            "element_types": [],
+            "obligation_ids": [
+              "bert_mlm_objective"
+            ],
+            "query_id": "q_mlm",
+            "query_text": "masked language model 15% [MASK] random replacement token prediction",
+            "section_query": null,
+            "target_ids": [
+              "bert_paper"
+            ],
+            "top_k": 4
+          },
+          {
+            "element_types": [],
+            "obligation_ids": [
+              "bert_bidirectional_definition"
+            ],
+            "query_id": "q_bidir",
+            "query_text": "deep bidirectional left-to-right unidirectional shallow concatenation left context right context",
+            "section_query": null,
+            "target_ids": [
+              "bert_paper"
+            ],
+            "top_k": 4
+          },
+          {
+            "element_types": [],
+            "obligation_ids": [
+              "bert_nsp_objective"
+            ],
+            "query_id": "q_nsp",
+            "query_text": "Next Sentence Prediction NSP IsNext NotNext sentence pair binary classification",
+            "section_query": null,
+            "target_ids": [
+              "bert_paper"
+            ],
+            "top_k": 4
+          },
+          {
+            "element_types": [],
+            "obligation_ids": [
+              "bert_input_representation"
+            ],
+            "query_id": "q_input",
+            "query_text": "token segment position embeddings [CLS] [SEP] input representation WordPiece",
+            "section_query": null,
+            "target_ids": [
+              "bert_paper"
+            ],
+            "top_k": 4
+          }
+        ],
+        "paper_targets": [
+          {
+            "arxiv_id": "1810.04805",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "bert_architecture",
+              "bert_mlm_objective",
+              "bert_bidirectional_definition",
+              "bert_nsp_objective",
+              "bert_input_representation"
+            ],
+            "discovery_query": "",
+            "paper_id": "bert_2018",
+            "target_id": "bert_paper",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          }
+        ],
+        "reuse_evidence": [],
+        "round": "initial"
+      }
+    ],
+    "question_id": "live_chat_ed5dd7cd3d93",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "all_required_obligations_verified",
+      "precise_evidence_gap"
+    ],
+    "strategy_steps": [
+      {
+        "allowed_tools": [],
+        "semantic_goal": "define_trace_points",
+        "stage_name": "define_trace_points",
+        "step_id": "stage_1_define_trace_points",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "define_trace_points"
+      },
+      {
+        "allowed_tools": [
+          "search_paper_candidates",
+          "find_papers_by_identity",
+          "find_reading_locations",
+          "read_locations",
+          "get_citation_edges"
+        ],
+        "semantic_goal": "collect_definition_evidence",
+        "stage_name": "collect_definition_evidence",
+        "step_id": "stage_2_collect_definition_evidence",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "collect_definition_evidence"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "trace_changes",
+        "stage_name": "trace_changes",
+        "step_id": "stage_3_trace_changes",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "trace_changes"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "verify_trace",
+        "stage_name": "verify_trace",
+        "step_id": "stage_4_verify_trace",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "verify_trace"
+      }
+    ],
+    "target_entities": [
+      "bert_2018"
+    ]
+  },
+  "run_id": "run_live_chat_ed5dd7cd3d93",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [
+    {
+      "claim_ids": [],
+      "decision_summary": "Executed 1 bounded retrieval round(s) with 7 corpus tool call(s).",
+      "evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_2c75c5a0daa399bd",
+        "ev_bad51166022c1540",
+        "ev_cea32c153f3fd20d",
+        "ev_50abc0b358bb77ad",
+        "ev_41ea8c580142eb9e",
+        "ev_0f82af3db4559191",
+        "ev_668e1f7f3b701941",
+        "ev_b5cb6101ea792641",
+        "ev_944a542df0f94975",
+        "ev_25cc15ee8198fe84",
+        "ev_f189c6c5f4214d2e",
+        "ev_9c9a9e4f55a8193d",
+        "ev_2d62ae583962ca9c",
+        "ev_7397a8bf5eccf48d",
+        "ev_1b3b81719ea2e13f",
+        "ev_3c0f7b9f503c8082",
+        "ev_cd77b6b180d64515",
+        "ev_d956b476c1e0a2ca"
+      ],
+      "obligation_ids": [
+        "bert_architecture",
+        "bert_mlm_objective",
+        "bert_bidirectional_definition",
+        "bert_nsp_objective",
+        "bert_input_representation"
+      ],
+      "semantic_goal": "collect_definition_evidence",
+      "stage_name": "collect_evidence",
+      "status": "completed",
+      "tool_calls": [
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "bert_2018"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": "1810.04805",
+                "authors": [
+                  "Jacob Devlin",
+                  "Ming-Wei Chang"
+                ],
+                "doi": null,
+                "filename": null,
+                "paper_id": "bert_2018",
+                "preview": "",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+                "venue": "NAACL",
+                "year": 2018
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_1",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_ids": [
+              "bert_2018"
+            ],
+            "query_text": "BERT_BASE L=12 H=768 A=12 Transformer encoder multi-layer bidirectional",
+            "top_k": 4
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+                "page": 3,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotat",
+                "section": "3 BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_d563522355f14815be4d996c15c3115e",
+                "page": 3,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "In this work, we denote the number of layers (i.e., Transformer blocks) as L, the hidden size as H, and the number of self-attention heads as A.<sup>3</sup> We primarily report results on two model sizes: BERT<sub>BASE</sub> (L=12, H=768, A=12, Total Parameters=110M) and BERT<sub>LARGE</sub> (L=24, H=1024, A=16, Total Parameters=340M).",
+                "section": "3 BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_67e26db9f0d2483781f3b55ba14ce19f",
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Results on selected GLUE tasks are shown in Table 6. In this table, we report the average Dev Set accuracy from 5 random restarts of fine-tuning. We can see that larger models lead to a strict accuracy improvement across all four datasets, even for MRPC which only has 3,600 labeled training examples, and is substantially different from the pre-training tasks. It is also perhaps surprising that we are able to achieve such significant improvements on top of models which are already quite large rel",
+                "section": "5.2 Effect of Model Size",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "table",
+                "location_ref": "table_ref_04c06d23fc6d479fbd002d1278c649b8",
+                "page": 9,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Table 6: Ablation over BERT model size. #L = the number of layers; #H = hidden size; #A = number of attention heads. “LM (ppl)” is the masked LM perplexity of held-out training data.\nHyperparams | Dev Set Accuracy | #L | #H #A LM (ppl) | MNLI-m MRPC | SST-2 | 3 | 768 | 12 5.84 77.9 | 79.8 88.4 | 6 | 768 | 5.24 80.6 | 82.2 90.7 | 6 | 768 | 4.68 81.9 | 84.8 91.3 | 12 | 768 12 | 3.99 84.4 | 86.7 92.9 | 12 | 1024 16 | 3.54 85.7 | 86.9 93.3 | 24 | 1024 16 | 3.23 86.6 | 87.8 93.7",
+                "section": "5.3 Feature-based Approach with BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              }
+            ],
+            "matched_count": 134,
+            "query_text": "BERT_BASE L=12 H=768 A=12 Transformer encoder multi-layer bidirectional",
+            "returned_count": 4
+          },
+          "tool_call_id": "location_initial_1",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_ids": [
+              "bert_2018"
+            ],
+            "query_text": "masked language model 15% [MASK] random replacement token prediction",
+            "top_k": 4
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Although this allows us to obtain a bidirectional pre-trained model, a downside is that we are creating a mismatch between pre-training and fine-tuning, since the [MASK] token does not appear during fine-tuning. To mitigate this, we do not always replace “masked” words with the actual [MASK] token. The training data generator chooses 15% of the token positions at random for prediction. If the i-th token is chosen, we replace the i-th token with (1) the [MASK] token 80% of the time (2) a random t",
+                "section": "3.1 Pre-training BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_738064a62a1b4d8ebbd9eb1326b92589",
+                "page": 12,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "The advantage of this procedure is that the Transformer encoder does not know which words it will be asked to predict or which have been replaced by random words, so it is forced to keep a distributional contextual representation of every input token. Additionally, because random replacement only occurs for 1.5% of all tokens (i.e., 10% of 15%), this does not seem to harm the model’s language understanding capability. In Section C.2, we evaluate the impact this procedure.",
+                "section": "A.1 Illustration of the Pre-training Tasks",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+                "page": 1,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike",
+                "section": "1 Introduction",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "In order to train a deep bidirectional representation, we simply mask some percentage of the input tokens at random, and then predict those masked tokens. We refer to this procedure as a “masked LM” (MLM), although it is often referred to as a Cloze task in the literature (Taylor, 1953). In this case, the final hidden vectors corresponding to the mask tokens are fed into an output softmax over the vocabulary, as in a standard LM. In all of our experiments, we mask 15% of all WordPiece tokens in ",
+                "section": "3.1 Pre-training BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              }
+            ],
+            "matched_count": 111,
+            "query_text": "masked language model 15% [MASK] random replacement token prediction",
+            "returned_count": 4
+          },
+          "tool_call_id": "location_initial_2",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_ids": [
+              "bert_2018"
+            ],
+            "query_text": "deep bidirectional left-to-right unidirectional shallow concatenation left context right context",
+            "top_k": 4
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_a4af756e2cc640849125cb36cb7579d8",
+                "page": 2,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "• We demonstrate the importance of bidirectional pre-training for language representations. Unlike Radford et al. (2018), which uses unidirectional language models for pre-training, BERT uses masked language models to enable pretrained deep bidirectional representations. This is also in contrast to Peters et al. (2018a), which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs.",
+                "section": "1 Introduction",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Task #1: Masked LM Intuitively, it is reasonable to believe that a deep bidirectional model is strictly more powerful than either a left-to-right model or the shallow concatenation of a left-toright and a right-to-left model. Unfortunately, standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly “see itself”, and the model could trivially predict the target word in a multi-layered context.",
+                "section": "3.1 Pre-training BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_fa0e9a825e75465fa894b6b808cfce5a",
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "We recognize that it would also be possible to train separate LTR and RTL models and represent each token as the concatenation of the two models, as ELMo does. However: (a) this is twice as expensive as a single bidirectional model; (b) this is non-intuitive for tasks like QA, since the RTL model would not be able to condition the answer on the question; (c) this it is strictly less powerful than a deep bidirectional model, since it can use both left and right context at every layer.",
+                "section": "5.1 Effect of Pre-training Tasks",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+                "page": 1,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models (Peters et al., 2018a; Radford et al., 2018), BERT is designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-a",
+                "section": "Abstract",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              }
+            ],
+            "matched_count": 101,
+            "query_text": "deep bidirectional left-to-right unidirectional shallow concatenation left context right context",
+            "returned_count": 4
+          },
+          "tool_call_id": "location_initial_3",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_ids": [
+              "bert_2018"
+            ],
+            "query_text": "Next Sentence Prediction NSP IsNext NotNext sentence pair binary classification",
+            "top_k": 4
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Task #2: Next Sentence Prediction (NSP) Many important downstream tasks such as Question Answering (QA) and Natural Language Inference (NLI) are based on understanding the relationship between two sentences, which is not directly captured by language modeling. In order to train a model that understands sentence relationships, we pre-train for a binarized next sentence prediction task that can be trivially generated from any monolingual corpus. Specifically, when choosing the sentences A and B fo",
+                "section": "3.1 Pre-training BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+                "page": 1,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike",
+                "section": "1 Introduction",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "table",
+                "location_ref": "table_ref_011523fe1b0a4bd1a6777b722cb6ee97",
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Table 5: Ablation over the pre-training tasks using the $\\mathbf { B E R T _ { B A S E } }$ architecture. “No NSP” is trained without the next sentence prediction task. “LTR & No NSP” is trained as a left-to-right LM without the next sentence prediction, like OpenAI GPT. “+ BiLSTM” adds a randomly initialized BiLSTM on top of the $\\mathrm { \\Sigma ^ { 6 } L T R } + \\mathrm { N o }$ NSP” model during fine-tuning.\nTasks | MNLI-m (Acc) (Acc) | QNLI MRPC (Acc) | Dev Set | SST-2 | SQuAD (F1) | BERTBA",
+                "section": "5 Ablation Studies",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_58e0f803695148aa91f8f13e8f80417d",
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "No NSP: A bidirectional model which is trained using the “masked LM” (MLM) but without the “next sentence prediction” (NSP) task.",
+                "section": "5.1 Effect of Pre-training Tasks",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              }
+            ],
+            "matched_count": 50,
+            "query_text": "Next Sentence Prediction NSP IsNext NotNext sentence pair binary classification",
+            "returned_count": 4
+          },
+          "tool_call_id": "location_initial_4",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_ids": [
+              "bert_2018"
+            ],
+            "query_text": "token segment position embeddings [CLS] [SEP] input representation WordPiece",
+            "top_k": 4
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_ac4be5b312634726a3fa1d901b98fa90",
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "We use WordPiece embeddings (Wu et al., 2016) with a 30,000 token vocabulary. The first token of every sequence is always a special classification token ([CLS]). The final hidden state corresponding to this token is used as the aggregate sequence representation for classification tasks. Sentence pairs are packed together into a single sequence. We differentiate the sentences in two ways. First, we separate them with a special token ([SEP]). Second, we add a learned embedding to every token indic",
+                "section": "3 BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_67b20862dc884a8686595b5ad82b711b",
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "For a given token, its input representation is constructed by summing the corresponding token, segment, and position embeddings. A visualization of this construction can be seen in Figure 2.",
+                "section": "3 BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "image",
+                "location_ref": "figure_ref_00636f681b2e490f87c7a8c87bd78ed5",
+                "page": 5,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "Figure 2: BERT input representation. The input embeddings are the sum of the token embeddings, the segmentation embeddings and the position embeddings.",
+                "section": "3.1 Pre-training BERT",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_e82beb1bdc3547649c6ac8273d64e7a3",
+                "page": 14,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "preview": "The illustration of fine-tuning BERT on different tasks can be seen in Figure 4. Our task-specific models are formed by incorporating BERT with one additional output layer, so a minimal number of parameters need to be learned from scratch. Among the tasks, (a) and (b) are sequence-level tasks while (c) and (d) are token-level tasks. In the figure, E represents the input embedding, T<sub>i</sub> represents the contextual representation of token i, [CLS] is the special symbol for classification ou",
+                "section": "A.5 Illustrations of Fine-tuning on Different Tasks",
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              }
+            ],
+            "matched_count": 47,
+            "query_text": "token segment position embeddings [CLS] [SEP] input representation WordPiece",
+            "returned_count": 4
+          },
+          "tool_call_id": "location_initial_5",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "location_refs": [
+              "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+              "reading_element_f6e32313b401438fa46be4a39c1540fc",
+              "reading_element_a4af756e2cc640849125cb36cb7579d8",
+              "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+              "reading_element_ac4be5b312634726a3fa1d901b98fa90",
+              "reading_element_d563522355f14815be4d996c15c3115e",
+              "reading_element_738064a62a1b4d8ebbd9eb1326b92589",
+              "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+              "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+              "reading_element_67b20862dc884a8686595b5ad82b711b",
+              "reading_element_67e26db9f0d2483781f3b55ba14ce19f",
+              "reading_element_fa0e9a825e75465fa894b6b808cfce5a",
+              "table_ref_011523fe1b0a4bd1a6777b722cb6ee97",
+              "figure_ref_00636f681b2e490f87c7a8c87bd78ed5",
+              "table_ref_04c06d23fc6d479fbd002d1278c649b8",
+              "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+              "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+              "reading_element_58e0f803695148aa91f8f13e8f80417d",
+              "reading_element_e82beb1bdc3547649c6ac8273d64e7a3"
+            ]
+          },
+          "result": {
+            "items": [
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_3540835408466c6e",
+                "evidence_quality": "verified",
+                "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+                "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+                "matched_anchor_id": "bert_transformer_encoder_background",
+                "page": 3,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3 BERT",
+                "source_kind": "reading_element",
+                "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_50abc0b358bb77ad",
+                "evidence_quality": "verified",
+                "location": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+                "location_ref": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+                "matched_anchor_id": null,
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3.1 Pre-training BERT",
+                "source_kind": "reading_element",
+                "span_text": "Although this allows us to obtain a bidirectional pre-trained model, a downside is that we are creating a mismatch between pre-training and fine-tuning, since the [MASK] token does not appear during fine-tuning. To mitigate this, we do not always replace “masked” words with the actual [MASK] token. The training data generator chooses 15% of the token positions at random for prediction. If the i-th token is chosen, we replace the i-th token with (1) the [MASK] token 80% of the time (2) a random token 10% of the time (3) the unchanged i-th token 10% of the time. Then, $T _ { i }$ will be used to predict the original token with cross entropy loss. We compare variations of this procedure in Appendix C.2.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_b5cb6101ea792641",
+                "evidence_quality": "verified",
+                "location": "reading_element_a4af756e2cc640849125cb36cb7579d8",
+                "location_ref": "reading_element_a4af756e2cc640849125cb36cb7579d8",
+                "matched_anchor_id": null,
+                "page": 2,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "1 Introduction",
+                "source_kind": "reading_element",
+                "span_text": "• We demonstrate the importance of bidirectional pre-training for language representations. Unlike Radford et al. (2018), which uses unidirectional language models for pre-training, BERT uses masked language models to enable pretrained deep bidirectional representations. This is also in contrast to Peters et al. (2018a), which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_9c9a9e4f55a8193d",
+                "evidence_quality": "verified",
+                "location": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+                "location_ref": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+                "matched_anchor_id": null,
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3.1 Pre-training BERT",
+                "source_kind": "reading_element",
+                "span_text": "Task #2: Next Sentence Prediction (NSP) Many important downstream tasks such as Question Answering (QA) and Natural Language Inference (NLI) are based on understanding the relationship between two sentences, which is not directly captured by language modeling. In order to train a model that understands sentence relationships, we pre-train for a binarized next sentence prediction task that can be trivially generated from any monolingual corpus. Specifically, when choosing the sentences A and B for each pretraining example, 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext). As we show in Figure 1, C is used for next sentence prediction (NSP).<sup>5</sup> Despite its simplicity, we demonstrate in Section 5.1 that pre-training towards this task is very beneficial to both QA and NLI. 6",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_1b3b81719ea2e13f",
+                "evidence_quality": "verified",
+                "location": "reading_element_ac4be5b312634726a3fa1d901b98fa90",
+                "location_ref": "reading_element_ac4be5b312634726a3fa1d901b98fa90",
+                "matched_anchor_id": null,
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3 BERT",
+                "source_kind": "reading_element",
+                "span_text": "We use WordPiece embeddings (Wu et al., 2016) with a 30,000 token vocabulary. The first token of every sequence is always a special classification token ([CLS]). The final hidden state corresponding to this token is used as the aggregate sequence representation for classification tasks. Sentence pairs are packed together into a single sequence. We differentiate the sentences in two ways. First, we separate them with a special token ([SEP]). Second, we add a learned embedding to every token indicating whether it belongs to sentence A or sentence B. As shown in Figure 1, we denote input embedding as E, the final hidden vector of the special [CLS] token as $C \\in \\mathbb { R } ^ { H }$ and the final hidden vector for the $i ^ { \\mathrm { t h } }$ input token as $T _ { i } \\in \\mathbb { R } ^ { H }$",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_2c75c5a0daa399bd",
+                "evidence_quality": "verified",
+                "location": "reading_element_d563522355f14815be4d996c15c3115e",
+                "location_ref": "reading_element_d563522355f14815be4d996c15c3115e",
+                "matched_anchor_id": null,
+                "page": 3,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3 BERT",
+                "source_kind": "reading_element",
+                "span_text": "In this work, we denote the number of layers (i.e., Transformer blocks) as L, the hidden size as H, and the number of self-attention heads as A.<sup>3</sup> We primarily report results on two model sizes: BERT<sub>BASE</sub> (L=12, H=768, A=12, Total Parameters=110M) and BERT<sub>LARGE</sub> (L=24, H=1024, A=16, Total Parameters=340M).",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_41ea8c580142eb9e",
+                "evidence_quality": "verified",
+                "location": "reading_element_738064a62a1b4d8ebbd9eb1326b92589",
+                "location_ref": "reading_element_738064a62a1b4d8ebbd9eb1326b92589",
+                "matched_anchor_id": null,
+                "page": 12,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "A.1 Illustration of the Pre-training Tasks",
+                "source_kind": "reading_element",
+                "span_text": "The advantage of this procedure is that the Transformer encoder does not know which words it will be asked to predict or which have been replaced by random words, so it is forced to keep a distributional contextual representation of every input token. Additionally, because random replacement only occurs for 1.5% of all tokens (i.e., 10% of 15%), this does not seem to harm the model’s language understanding capability. In Section C.2, we evaluate the impact this procedure.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_944a542df0f94975",
+                "evidence_quality": "verified",
+                "location": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+                "location_ref": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+                "matched_anchor_id": null,
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3.1 Pre-training BERT",
+                "source_kind": "reading_element",
+                "span_text": "Task #1: Masked LM Intuitively, it is reasonable to believe that a deep bidirectional model is strictly more powerful than either a left-to-right model or the shallow concatenation of a left-toright and a right-to-left model. Unfortunately, standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly “see itself”, and the model could trivially predict the target word in a multi-layered context.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_0f82af3db4559191",
+                "evidence_quality": "verified",
+                "location": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+                "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+                "matched_anchor_id": null,
+                "page": 1,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "1 Introduction",
+                "source_kind": "reading_element",
+                "span_text": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-toright language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer. In addition to the masked language model, we also use a “next sentence prediction” task that jointly pretrains text-pair representations. The contributions of our paper are as follows:",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_3c0f7b9f503c8082",
+                "evidence_quality": "verified",
+                "location": "reading_element_67b20862dc884a8686595b5ad82b711b",
+                "location_ref": "reading_element_67b20862dc884a8686595b5ad82b711b",
+                "matched_anchor_id": null,
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3 BERT",
+                "source_kind": "reading_element",
+                "span_text": "For a given token, its input representation is constructed by summing the corresponding token, segment, and position embeddings. A visualization of this construction can be seen in Figure 2.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_bad51166022c1540",
+                "evidence_quality": "verified",
+                "location": "reading_element_67e26db9f0d2483781f3b55ba14ce19f",
+                "location_ref": "reading_element_67e26db9f0d2483781f3b55ba14ce19f",
+                "matched_anchor_id": null,
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.2 Effect of Model Size",
+                "source_kind": "reading_element",
+                "span_text": "Results on selected GLUE tasks are shown in Table 6. In this table, we report the average Dev Set accuracy from 5 random restarts of fine-tuning. We can see that larger models lead to a strict accuracy improvement across all four datasets, even for MRPC which only has 3,600 labeled training examples, and is substantially different from the pre-training tasks. It is also perhaps surprising that we are able to achieve such significant improvements on top of models which are already quite large relative to the existing literature. For example, the largest Transformer explored in Vaswani et al. (2017) is (L=6, H=1024, A=16) with 100M parameters for the encoder, and the largest Transformer we have found in the literature is (L=64, H=512, A=2) with 235M parameters (Al-Rfou et al., 2018). By contrast, $\\mathbf { B E R T _ { B A S E } }$ contains 110M parameters and $\\mathbf { B E R T _ { L A R G E } }$ contains 340M parameters.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_25cc15ee8198fe84",
+                "evidence_quality": "verified",
+                "location": "reading_element_fa0e9a825e75465fa894b6b808cfce5a",
+                "location_ref": "reading_element_fa0e9a825e75465fa894b6b808cfce5a",
+                "matched_anchor_id": null,
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.1 Effect of Pre-training Tasks",
+                "source_kind": "reading_element",
+                "span_text": "We recognize that it would also be possible to train separate LTR and RTL models and represent each token as the concatenation of the two models, as ELMo does. However: (a) this is twice as expensive as a single bidirectional model; (b) this is non-intuitive for tasks like QA, since the RTL model would not be able to condition the answer on the question; (c) this it is strictly less powerful than a deep bidirectional model, since it can use both left and right context at every layer.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "table",
+                "evidence_id": "ev_2d62ae583962ca9c",
+                "evidence_quality": "verified",
+                "location": "table_ref_011523fe1b0a4bd1a6777b722cb6ee97",
+                "location_ref": "table_ref_011523fe1b0a4bd1a6777b722cb6ee97",
+                "matched_anchor_id": null,
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5 Ablation Studies",
+                "source_kind": "reading_element",
+                "span_text": "Table 5: Ablation over the pre-training tasks using the $\\mathbf { B E R T _ { B A S E } }$ architecture. “No NSP” is trained without the next sentence prediction task. “LTR & No NSP” is trained as a left-to-right LM without the next sentence prediction, like OpenAI GPT. “+ BiLSTM” adds a randomly initialized BiLSTM on top of the $\\mathrm { \\Sigma ^ { 6 } L T R } + \\mathrm { N o }$ NSP” model during fine-tuning.\nTasks | MNLI-m (Acc) (Acc) | QNLI MRPC (Acc) | Dev Set | SST-2 | SQuAD (F1) | BERTBASE | 84.4 | 88.4 | 86.7 | 92.7 | 88.5 | No NSP | 83.9 | 84.9 | 86.5 | 92.6 | 87.9 | LTR & No NSP | 82.1 | 84.3 | 77.5 | 92.1 | 77.8 | + BiLSTM | 82.1 | 84.1 | 75.7 | 91.6 | 84.9",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "image",
+                "evidence_id": "ev_cd77b6b180d64515",
+                "evidence_quality": "verified",
+                "location": "figure_ref_00636f681b2e490f87c7a8c87bd78ed5",
+                "location_ref": "figure_ref_00636f681b2e490f87c7a8c87bd78ed5",
+                "matched_anchor_id": null,
+                "page": 5,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3.1 Pre-training BERT",
+                "source_kind": "reading_element",
+                "span_text": "Figure 2: BERT input representation. The input embeddings are the sum of the token embeddings, the segmentation embeddings and the position embeddings.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "table",
+                "evidence_id": "ev_cea32c153f3fd20d",
+                "evidence_quality": "verified",
+                "location": "table_ref_04c06d23fc6d479fbd002d1278c649b8",
+                "location_ref": "table_ref_04c06d23fc6d479fbd002d1278c649b8",
+                "matched_anchor_id": null,
+                "page": 9,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.3 Feature-based Approach with BERT",
+                "source_kind": "reading_element",
+                "span_text": "Table 6: Ablation over BERT model size. #L = the number of layers; #H = hidden size; #A = number of attention heads. “LM (ppl)” is the masked LM perplexity of held-out training data.\nHyperparams | Dev Set Accuracy | #L | #H #A LM (ppl) | MNLI-m MRPC | SST-2 | 3 | 768 | 12 5.84 77.9 | 79.8 88.4 | 6 | 768 | 5.24 80.6 | 82.2 90.7 | 6 | 768 | 4.68 81.9 | 84.8 91.3 | 12 | 768 12 | 3.99 84.4 | 86.7 92.9 | 12 | 1024 16 | 3.54 85.7 | 86.9 93.3 | 24 | 1024 16 | 3.23 86.6 | 87.8 93.7",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_668e1f7f3b701941",
+                "evidence_quality": "verified",
+                "location": "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+                "location_ref": "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+                "matched_anchor_id": "bert_masked_lm_pretraining",
+                "page": 4,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "3.1 Pre-training BERT",
+                "source_kind": "reading_element",
+                "span_text": "In order to train a deep bidirectional representation, we simply mask some percentage of the input tokens at random, and then predict those masked tokens. We refer to this procedure as a “masked LM” (MLM), although it is often referred to as a Cloze task in the literature (Taylor, 1953). In this case, the final hidden vectors corresponding to the mask tokens are fed into an output softmax over the vocabulary, as in a standard LM. In all of our experiments, we mask 15% of all WordPiece tokens in each sequence at random. In contrast to denoising auto-encoders (Vincent et al., 2008), we only predict the masked words rather than reconstructing the entire input.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_f189c6c5f4214d2e",
+                "evidence_quality": "verified",
+                "location": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+                "location_ref": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+                "matched_anchor_id": null,
+                "page": 1,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "Abstract",
+                "source_kind": "reading_element",
+                "span_text": "We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models (Peters et al., 2018a; Radford et al., 2018), BERT is designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-art models for a wide range of tasks, such as question answering and language inference, without substantial taskspecific architecture modifications.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_7397a8bf5eccf48d",
+                "evidence_quality": "verified",
+                "location": "reading_element_58e0f803695148aa91f8f13e8f80417d",
+                "location_ref": "reading_element_58e0f803695148aa91f8f13e8f80417d",
+                "matched_anchor_id": null,
+                "page": 8,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.1 Effect of Pre-training Tasks",
+                "source_kind": "reading_element",
+                "span_text": "No NSP: A bidirectional model which is trained using the “masked LM” (MLM) but without the “next sentence prediction” (NSP) task.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_d956b476c1e0a2ca",
+                "evidence_quality": "verified",
+                "location": "reading_element_e82beb1bdc3547649c6ac8273d64e7a3",
+                "location_ref": "reading_element_e82beb1bdc3547649c6ac8273d64e7a3",
+                "matched_anchor_id": null,
+                "page": 14,
+                "paper_id": "bert_2018",
+                "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "A.5 Illustrations of Fine-tuning on Different Tasks",
+                "source_kind": "reading_element",
+                "span_text": "The illustration of fine-tuning BERT on different tasks can be seen in Figure 4. Our task-specific models are formed by incorporating BERT with one additional output layer, so a minimal number of parameters need to be learned from scratch. Among the tasks, (a) and (b) are sequence-level tasks while (c) and (d) are token-level tasks. In the figure, E represents the input embedding, T<sub>i</sub> represents the contextual representation of token i, [CLS] is the special symbol for classification output, and [SEP] is the special symbol to separate non-consecutive token sequences.",
+                "supports_claim_ids": [],
+                "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+              }
+            ],
+            "missing_location_refs": []
+          },
+          "tool_call_id": "read_initial",
+          "tool_name": "read_locations"
+        }
+      ]
+    },
+    {
+      "claim_ids": [
+        "bert_architecture_definition",
+        "bert_mlm_objective_definition",
+        "bert_bidirectional_definition_change",
+        "bert_bidirectional_difference_change",
+        "bert_nsp_objective_definition",
+        "bert_input_representation_definition"
+      ],
+      "decision_summary": "Constructed 6 evidence-linked atomic claim(s).",
+      "evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_2c75c5a0daa399bd",
+        "ev_50abc0b358bb77ad",
+        "ev_668e1f7f3b701941",
+        "ev_0f82af3db4559191",
+        "ev_41ea8c580142eb9e",
+        "ev_f189c6c5f4214d2e",
+        "ev_b5cb6101ea792641",
+        "ev_944a542df0f94975",
+        "ev_25cc15ee8198fe84",
+        "ev_9c9a9e4f55a8193d",
+        "ev_7397a8bf5eccf48d",
+        "ev_1b3b81719ea2e13f",
+        "ev_3c0f7b9f503c8082",
+        "ev_cd77b6b180d64515"
+      ],
+      "obligation_ids": [
+        "bert_architecture",
+        "bert_mlm_objective",
+        "bert_bidirectional_definition",
+        "bert_nsp_objective",
+        "bert_input_representation"
+      ],
+      "semantic_goal": "trace_changes",
+      "stage_name": "construct_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "bert_architecture_definition",
+        "bert_mlm_objective_definition",
+        "bert_bidirectional_definition_change",
+        "bert_bidirectional_difference_change",
+        "bert_nsp_objective_definition",
+        "bert_input_representation_definition"
+      ],
+      "decision_summary": "Verified 6 atomic claim(s): 4 kept, 2 rewritten, 0 dropped.",
+      "evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_2c75c5a0daa399bd",
+        "ev_50abc0b358bb77ad",
+        "ev_668e1f7f3b701941",
+        "ev_0f82af3db4559191",
+        "ev_41ea8c580142eb9e",
+        "ev_f189c6c5f4214d2e",
+        "ev_b5cb6101ea792641",
+        "ev_944a542df0f94975",
+        "ev_25cc15ee8198fe84",
+        "ev_9c9a9e4f55a8193d",
+        "ev_7397a8bf5eccf48d",
+        "ev_1b3b81719ea2e13f",
+        "ev_3c0f7b9f503c8082",
+        "ev_cd77b6b180d64515"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "verify_trace",
+      "stage_name": "verify_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "bert_architecture_definition",
+        "bert_mlm_objective_definition",
+        "bert_bidirectional_definition_change",
+        "bert_bidirectional_difference_change",
+        "bert_nsp_objective_definition",
+        "bert_input_representation_definition"
+      ],
+      "decision_summary": "Rendered only verified claims.",
+      "evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_2c75c5a0daa399bd",
+        "ev_50abc0b358bb77ad",
+        "ev_668e1f7f3b701941",
+        "ev_0f82af3db4559191",
+        "ev_41ea8c580142eb9e",
+        "ev_f189c6c5f4214d2e",
+        "ev_b5cb6101ea792641",
+        "ev_944a542df0f94975",
+        "ev_25cc15ee8198fe84",
+        "ev_9c9a9e4f55a8193d",
+        "ev_7397a8bf5eccf48d",
+        "ev_1b3b81719ea2e13f",
+        "ev_3c0f7b9f503c8082",
+        "ev_cd77b6b180d64515"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "render_verified_claims",
+      "stage_name": "render_answer",
+      "status": "completed",
+      "tool_calls": []
+    }
+  ],
+  "started_at": "2026-07-12T04:53:38Z",
+  "status": "COMPLETED",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "requires_user_choice": false,
+      "status": "unambiguous"
+    },
+    "answer_reference_integrity_passed": true,
+    "claim_verdicts": [
+      {
+        "claim_id": "bert_architecture_definition",
+        "evidence_ids": [
+          "ev_3540835408466c6e",
+          "ev_2c75c5a0daa399bd"
+        ],
+        "field_values": {
+          "architecture": "multi-layer bidirectional Transformer encoder; BERT_BASE (L=12, H=768, A=12, 110M params), BERT_LARGE (L=24, H=1024, A=16, 340M params)"
+        },
+        "reason": "Both passages directly support the architecture description and the two model size specifications exactly as stated.",
+        "verdict": "keep",
+        "verified_text": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M)."
+      },
+      {
+        "claim_id": "bert_mlm_objective_definition",
+        "evidence_ids": [
+          "ev_50abc0b358bb77ad",
+          "ev_668e1f7f3b701941",
+          "ev_0f82af3db4559191",
+          "ev_41ea8c580142eb9e"
+        ],
+        "field_values": {
+          "mlm_objective": "mask 15% of WordPiece tokens; chosen tokens replaced with [MASK] 80% / random token 10% / unchanged 10%; predict original token via cross entropy loss; fuses left and right context unlike left-to-right LM"
+        },
+        "reason": "The passages support the MLM objective details, but ev_668e1f7f3b701941 says \"we mask 15% of all WordPiece tokens\" without stating it \"randomly masks 15%\" twice; rewording to avoid duplication. The replacement ratios, cross entropy loss, and left/right context fusion are all directly supported.",
+        "verdict": "rewrite",
+        "verified_text": "BERT's masked language modeling pre-training objective masks 15% of all WordPiece tokens in each sequence at random; the training data generator chooses 15% of token positions at random for prediction, and when the i-th token is chosen it is replaced with (1) the [MASK] token 80% of the time, (2) a random token 10% of the time, and (3) the unchanged i-th token 10% of the time, with T_i used to predict the original token via cross entropy loss; unlike left-to-right language modeling, this enables the representation to fuse both left and right context to pre-train a deep bidirectional Transformer."
+      },
+      {
+        "claim_id": "bert_bidirectional_definition_change",
+        "evidence_ids": [
+          "ev_f189c6c5f4214d2e",
+          "ev_b5cb6101ea792641"
+        ],
+        "field_values": {
+          "bidirectionality_definition": "deep bidirectional: jointly conditions on both left and right context in all layers; contrasts with unidirectional LMs (Radford et al., 2018) and shallow concatenation of LTR+RTL LMs (Peters et al., 2018a)"
+        },
+        "reason": "Both the abstract and introduction passages directly support this exact characterization, including the specific contrast with Radford et al. and Peters et al.",
+        "verdict": "keep",
+        "verified_text": "BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers, in contrast to Radford et al. (2018) which uses unidirectional language models for pre-training and to Peters et al. (2018a) which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs."
+      },
+      {
+        "claim_id": "bert_bidirectional_difference_change",
+        "evidence_ids": [
+          "ev_944a542df0f94975",
+          "ev_25cc15ee8198fe84"
+        ],
+        "field_values": {},
+        "reason": "Both passages directly support the content; rewording \"RTL model cannot condition the answer on the question\" to match exact source wording \"RTL model would not be able to condition the answer on the question\". The passage uses \"Intuitively, it is reasonable to believe\" for the strict-power claim, not stating it as proven; narrowing to avoid implying the claim is mathematically proven.",
+        "verdict": "rewrite",
+        "verified_text": "BERT motivates deep bidirectionality by noting that a deep bidirectional model is intuitively strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and right-to-left model, since standard conditional language models can only be trained left-to-right or right-to-left (because bidirectional conditioning would allow each word to indirectly 'see itself'); the ELMo-style concatenation is twice as expensive, non-intuitive for QA where the RTL model would not be able to condition the answer on the question, and strictly less powerful since it cannot use both left and right context at every layer."
+      },
+      {
+        "claim_id": "bert_nsp_objective_definition",
+        "evidence_ids": [
+          "ev_9c9a9e4f55a8193d",
+          "ev_0f82af3db4559191",
+          "ev_7397a8bf5eccf48d"
+        ],
+        "field_values": {
+          "nsp_objective": "binary next-sentence prediction: 50% B is the actual next sentence (IsNext), 50% B is random (NotNext); included with MLM to capture sentence-pair relationships needed for QA and NLI"
+        },
+        "reason": "All key elements are supported: the 50/50 IsNext/NotNext labeling, rationale about QA and NLI, and the use of C for prediction are explicitly stated in the passages.",
+        "verdict": "keep",
+        "verified_text": "BERT's Next Sentence Prediction (NSP) pre-training objective trains a model to understand sentence relationships by predicting whether sentence B is the actual next sentence that follows A (labeled IsNext) or a random sentence from the corpus (labeled NotNext), with each chosen 50% of the time; it is included alongside MLM because many downstream tasks such as Question Answering and Natural Language Inference depend on understanding the relationship between two sentences, which is not directly captured by language modeling, and the final hidden state C of the special [CLS] token is used for this prediction."
+      },
+      {
+        "claim_id": "bert_input_representation_definition",
+        "evidence_ids": [
+          "ev_1b3b81719ea2e13f",
+          "ev_3c0f7b9f503c8082",
+          "ev_cd77b6b180d64515"
+        ],
+        "field_values": {
+          "input_representation": "sum of token + segment + position embeddings; WordPiece 30k vocab; [CLS] as aggregate; [SEP] and learned A/B segment embeddings for sentence pairs"
+        },
+        "reason": "All three passages directly support the exact details of the input representation including the embedding sum, WordPiece 30k vocab, [CLS]/[SEP] tokens, learned A/B segment embeddings, and C ∈ ℝ^H aggregate representation.",
+        "verdict": "keep",
+        "verified_text": "BERT's input representation is constructed by summing the corresponding token, segment, and position embeddings; it uses WordPiece embeddings with a 30,000 token vocabulary, prepends a special [CLS] classification token to every sequence (whose final hidden state C ∈ ℝ^H serves as the aggregate sequence representation for classification), packs sentence pairs into a single sequence separated by a special [SEP] token, and adds a learned segment embedding to every token indicating whether it belongs to sentence A or sentence B."
+      }
+    ],
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "corpus_observation_passed": true,
+    "corpus_observation_required": true,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_ed5dd7cd3d93",
+    "required_capabilities_attempted": [
+      "paper_grounded_fact_extraction"
+    ],
+    "required_evidence_status": [
+      {
+        "evidence_ids": [
+          "ev_3540835408466c6e",
+          "ev_2c75c5a0daa399bd",
+          "ev_bad51166022c1540",
+          "ev_cea32c153f3fd20d"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_architecture",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_50abc0b358bb77ad",
+          "ev_41ea8c580142eb9e",
+          "ev_0f82af3db4559191",
+          "ev_668e1f7f3b701941"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_mlm_objective",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_b5cb6101ea792641",
+          "ev_944a542df0f94975",
+          "ev_25cc15ee8198fe84",
+          "ev_f189c6c5f4214d2e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_bidirectional_definition",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_0f82af3db4559191",
+          "ev_9c9a9e4f55a8193d",
+          "ev_2d62ae583962ca9c",
+          "ev_7397a8bf5eccf48d"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_nsp_objective",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_1b3b81719ea2e13f",
+          "ev_3c0f7b9f503c8082",
+          "ev_cd77b6b180d64515",
+          "ev_d956b476c1e0a2ca"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "bert_input_representation",
+        "status": "covered"
+      }
+    ],
+    "rewritten_claim_count": 2,
+    "satisfied_trace_obligation_ids": [
+      "bert_architecture",
+      "bert_mlm_objective",
+      "bert_bidirectional_definition",
+      "bert_nsp_objective",
+      "bert_input_representation"
+    ],
+    "stage_contracts_passed": true,
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_ed5dd7cd3d93"
+  }
+}

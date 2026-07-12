@@ -1,0 +1,67 @@
+{
+  "claims": [
+    {
+      "claim_id": "opt_name_claim",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "opt_name"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "Attention Is All You Need uses the Adam optimizer.",
+      "verification_reason": "The passage explicitly states \"We used the Adam optimizer\".",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "opt_beta1_claim",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "opt_beta1"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "Attention Is All You Need sets β₁ to 0.9 for the Adam optimizer.",
+      "verification_reason": "The passage explicitly states β₁ = 0.9 in the context of the Adam optimizer.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "opt_beta2_claim",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "opt_beta2"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "Attention Is All You Need sets β₂ to 0.98 for the Adam optimizer.",
+      "verification_reason": "The passage explicitly states β₂ = 0.98 in the context of the Adam optimizer.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "opt_epsilon_claim",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "opt_epsilon"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "Attention Is All You Need sets ε to 10⁻⁹ for the Adam optimizer.",
+      "verification_reason": "The passage explicitly states ε = 10⁻⁹ in the context of the Adam optimizer.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_3032d4455f59",
+  "question_id": "live_chat_3032d4455f59"
+}

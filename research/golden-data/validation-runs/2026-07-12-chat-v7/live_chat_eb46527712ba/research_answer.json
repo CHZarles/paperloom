@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_live_chat_eb46527712ba",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_6dfff5634dc0ba61",
+    "ev_9d06f6bd435aeff8",
+    "ev_efe27877126d32bd",
+    "ev_9a863b2752f4daa0"
+  ],
+  "fields": {},
+  "markdown": "# Papers Mentioning GPT in the Corpus\n\n**No paper in the corpus is dedicated to GPT itself.** The corpus focuses on LLM agents and benchmarks, and GPT models appear only as **evaluated systems, evaluation tools, or baselines**.\n\n## GPT as an Evaluated Model\n\n1. **MISR: Measuring Instrumental Self-Reasoning in Frontier Models** — evaluates GPT-4o and GPT-4o mini alongside Claude, Gemma 2 27b, and Deepseek 67b to test instrumental self-reasoning ability in agentic tasks [1].\n\n2. **Sentient Agent as a Judge (SAGE): Evaluating Higher-Order Social Cognition in Large Language Models** — ranks GPT-4o-Latest, GPT-4.5-Preview, GPT-4.1, and o4-mini on a \"Sentient Leaderboard\" measuring higher-order social cognition in supportive-dialogue scenarios [2].\n\n3. **WritingBench: A Comprehensive Benchmark for Generative Writing** — evaluates 17 LLMs including GPT-4o and o1-Preview across 6 writing domains; reports that \"models trained with framework-filtered data outperform GPT-4o in writing\" [3].\n\n## GPT as an Evaluation Tool / Reference Baseline\n\n4. **The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models** — uses GPT-4 as a reference evaluator and studies \"a bag of tricks to elevate open-source evaluator LMs to perform evaluations as effectively as GPT-4\" [4].\n\n## What the Corpus Does Not Contain\n\n- No paper on GPT's architecture, training, or pre-training methodology\n- No paper describing GPT-1/2/3/4's development history\n- No paper benchmarking GPT against non-GPT models across general capabilities\n\nWould you like me to (a) summarize how GPT-4o performs in any of these specific benchmarks, (b) recommend papers on a different topic, or (c) go deeper into one of the GPT-evaluation studies above?\n\nSources\n[1] MISR: MEASURING INSTRUMENTAL SELF-REASONING IN FRONTIER MODELS, 5 RESULTS, p. 6\n[2] Sentient Agent as a Judge: Evaluating Higher-Order Social Cognition in Large Language Models, Sentient Agent as a Judge: Evaluating Higher-Order Social Cognition in Large Language Models, p. 1\n[3] WritingBench: A Comprehensive Benchmark for Generative Writing, 4.2 Comparison between LLMs, p. 8\n[4] The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models, 1 Introduction, p. 2",
+  "outcome": "partial",
+  "question_id": "live_chat_eb46527712ba",
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "# Papers Mentioning GPT in the Corpus\n\n**No paper in the corpus is dedicated to GPT itself.** The corpus focuses on LLM agents and benchmarks, and GPT models appear only as **evaluated systems, evaluation tools, or baselines**.\n\n## GPT as an Evaluated Model\n\n1. **MISR: Measuring Instrumental Self-Reasoning in Frontier Models** — evaluates GPT-4o and GPT-4o mini alongside Claude, Gemma 2 27b, and D"
+}

@@ -1,0 +1,51 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [
+    {
+      "claim_id": "adam_beta2_transformer",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "beta2": "0.98"
+      },
+      "reason": "The evidence passage from 'Attention Is All You Need' explicitly states β₂ = 0.98 for the Adam optimizer, directly supporting the claim with exact wording.",
+      "verdict": "keep",
+      "verified_text": "Adam beta2 = 0.98"
+    }
+  ],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_50ba2e59aacf",
+  "required_capabilities_attempted": [
+    "paper_content_reading"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_966d657560db7e6c",
+        "ev_748440c3a76e13a4"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "adam_beta2_transformer",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [
+    "adam_beta2_transformer"
+  ],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_50ba2e59aacf"
+}

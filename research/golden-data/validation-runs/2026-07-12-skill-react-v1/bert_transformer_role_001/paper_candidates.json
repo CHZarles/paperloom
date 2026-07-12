@@ -1,0 +1,19 @@
+[
+  {
+    "arxiv_id": "1810.04805",
+    "authors": [
+      "Jacob Devlin",
+      "Ming-Wei Chang"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_bert_2018",
+    "filename": null,
+    "paper_id": "bert_2018",
+    "preview": "",
+    "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+    "venue": "NAACL",
+    "year": 2018
+  }
+]

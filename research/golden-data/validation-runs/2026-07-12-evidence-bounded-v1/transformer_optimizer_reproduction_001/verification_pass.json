@@ -1,0 +1,144 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [
+    {
+      "claim_id": "c_opt_name",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "optimizer": "Adam"
+      },
+      "reason": "Evidence directly states \"We used the Adam optimizer\" in the Optimizer section.",
+      "verdict": "keep",
+      "verified_text": "The optimizer used in Attention Is All You Need is the Adam optimizer."
+    },
+    {
+      "claim_id": "c_opt_beta1",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "beta1": "0.9"
+      },
+      "reason": "Evidence states \"β1 = 0.9\" directly.",
+      "verdict": "keep",
+      "verified_text": "The exact beta1 value specified for the optimizer is 0.9."
+    },
+    {
+      "claim_id": "c_opt_beta2",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "beta2": "0.98"
+      },
+      "reason": "Evidence states \"β2 = 0.98\" directly.",
+      "verdict": "keep",
+      "verified_text": "The exact beta2 value specified for the optimizer is 0.98."
+    },
+    {
+      "claim_id": "c_opt_epsilon",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "epsilon": "10^{-9}"
+      },
+      "reason": "Evidence states \"ε = 10^{-9}\" directly.",
+      "verdict": "keep",
+      "verified_text": "The exact epsilon value specified for the optimizer is 10^{-9}."
+    },
+    {
+      "claim_id": "c_opt_lr_schedule",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20"
+      ],
+      "field_values": {
+        "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number"
+      },
+      "reason": "Both passages together directly support: \"increasing the learning rate linearly for the first warmup_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup_steps = 4000.\"",
+      "verdict": "keep",
+      "verified_text": "The learning rate is increased linearly for the first warmup_steps training steps and decreased thereafter proportionally to the inverse square root of the step number, with warmup_steps = 4000."
+    }
+  ],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_3032d4455f59",
+  "required_capabilities_attempted": [
+    "read_paper"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_9f0ad4e5c9243e9e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_name",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_9f0ad4e5c9243e9e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_beta1",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_9f0ad4e5c9243e9e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_beta2",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_9f0ad4e5c9243e9e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_epsilon",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_9f0ad4e5c9243e9e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_learning_rate_warmup",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [
+    "opt_name",
+    "opt_beta1",
+    "opt_beta2",
+    "opt_epsilon",
+    "opt_learning_rate_warmup"
+  ],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_3032d4455f59"
+}

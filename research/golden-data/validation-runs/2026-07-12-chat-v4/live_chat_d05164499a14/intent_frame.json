@@ -1,0 +1,51 @@
+{
+  "actionability": "none",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "constraint_filter",
+  "constraints": {
+    "criteria": "foundational/high-influence within corpus themes on LLM agents and LLM evaluation",
+    "no_invented_papers": true,
+    "scope": "corpus",
+    "task": {
+      "object": "papers",
+      "verb": "recommend"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_d05164499a14",
+  "method_mentions": [],
+  "normalized_question": "Recommend foundational papers from the 30-paper LLM-agents-and-evaluation corpus, grouped by theme (surveys, agent benchmarks, methodology/frameworks, social-cognition/reasoning evaluations), grounded in corpus titles and themes.",
+  "obligations": [
+    {
+      "answer_field": "survey_picks",
+      "description": "Identify the most foundational evaluation/survey papers that anchor the corpus (LLM evaluation, agent evaluation, multimodal evaluation, hallucination, conversation analysis) and briefly state why each is a foundational pick.",
+      "id": "select_canonical_surveys",
+      "kind": "recommendation",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "a96e1a7c10024c45b186dde5a3ce0122",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+        "c754a224706f987c2cc61bb2b63cab99",
+        "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+        "c270139b1a43dd2675126d74038fa3c5"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "",
+      "description": "Identify foundational",
+      "id": "select_agent_benchmarks",
+      "kind": "claim",
+      "paper_scope": [],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "context_specific_brainstorming",
+  "question_id": "live_chat_d05164499a14",
+  "raw_question": "hi",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": true
+}

@@ -1,0 +1,23 @@
+{
+  "claims": [
+    {
+      "claim_id": "survey_picks_foundational_surveys",
+      "claim_type": "recommendation",
+      "obligation_ids": [
+        "select_canonical_surveys"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_e6721d3dea5b7f0a",
+        "ev_9188eb801bcb62a7"
+      ],
+      "text": "A foundational survey pick for the corpus is \"A Survey of Useful LLM Evaluation,\" which proposes a two-stage framework progressing from core ability (reasoning, societal impact, domain knowledge) to agent (embodied action, planning, tool learning), anchoring LLM evaluation methodology across the core-to-agent spectrum. It is paired with \"A Survey on Evaluation of LLM-based Agents,\" which is foundational for the agent evaluation theme and catalogues early agent benchmarks such as ToolAlpaca, APIBench, ToolBench, and the Berkeley Function Calling Leaderboard v1 (BFCL), establishing baseline metrics like pass rates and structural accuracy for one-step tool use.",
+      "verification_reason": "",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_d05164499a14",
+  "question_id": "live_chat_d05164499a14"
+}

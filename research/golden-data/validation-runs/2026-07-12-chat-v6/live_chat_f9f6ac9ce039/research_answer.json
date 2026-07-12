@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_f9f6ac9ce039",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Sure. What topic should the paper recommendations focus on?",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_f9f6ac9ce039",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "Sure. What topic should the paper recommendations focus on?",
+  "verification_id": "verification_live_chat_f9f6ac9ce039"
+}

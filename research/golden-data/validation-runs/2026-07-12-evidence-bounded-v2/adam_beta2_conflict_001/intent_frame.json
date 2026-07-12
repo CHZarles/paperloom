@@ -1,0 +1,72 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "contradiction_arbitration",
+  "constraints": {
+    "coverage_assumption": "The user's \"Transformer paper\" refers to \"Attention Is All You Need\" (Vaswani et al., 2017), which is in the corpus.",
+    "task": {
+      "object": "conflict",
+      "verb": "resolve"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "adam_2014",
+    "attention_is_all_you_need_2017",
+    "Adam paper's stated default beta2",
+    "Attention Is All You Need's reported beta2 in optimizer settings",
+    "Meaning of beta2 in Adam",
+    "Whether the two values constitute a contradiction or just different scopes"
+  ],
+  "intent_id": "intent_live_chat_7a5bb0785774",
+  "method_mentions": [],
+  "normalized_question": "Resolve the conflict about Adam's beta2 hyperparameter by retrieving and comparing the exact beta2 values from primary sources (the Adam paper and the Transformer paper \"Attention Is All You Need\"), and explaining how both values coexist for different optimizer/model settings.",
+  "obligations": [
+    {
+      "answer_field": "adam_default_beta2",
+      "description": "What beta2 value does the Adam paper (Kingma & Ba, 2014) specify as its default, and is any conditional default mentioned?",
+      "id": "adam_paper_beta2",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "adam_2014"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_beta2",
+      "description": "What beta2 value does \"Attention Is All You Need\" (Vaswani et al., 2017) report for Adam in its optimizer settings?",
+      "id": "transformer_paper_beta2",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "resolution",
+      "description": "Are these two statements (Adam default β2=0.999; Transformer used β2=0.98) talking about the same kind of thing (default algorithm constant vs. chosen training hyperparameter for a specific model/task), or do they actually contradict each other?",
+      "id": "conflict_resolution_scope",
+      "kind": "conflict_resolution",
+      "paper_scope": [
+        "adam_2014",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "adam_2014",
+    "attention_is_all_you_need_2017"
+  ],
+  "primary_paradigm": "contradiction_resolution",
+  "question_id": "live_chat_7a5bb0785774",
+  "raw_question": "Some sources say Adam beta2 is 0.999, but the Transformer paper used 0.98. Resolve this conflict.",
+  "required_capabilities": [
+    "paper_evidence_extraction"
+  ],
+  "required_evidence_types": [
+    "exact_quote_or_paraphrase_from_paper",
+    "section_location_for_value"
+  ],
+  "requires_corpus_observation": true
+}

@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_live_chat_3032d4455f59",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e",
+    "ev_8a3081bac08c3a20"
+  ],
+  "fields": {},
+  "markdown": "Table of optimizer hyperparameters quoted verbatim from §5.3 of *Attention Is All You Need*: Adam; β₁ = 0.9; β₂ = 0.98; ε = 1e-9, with the warning that β₂ and ε intentionally differ from generic Adam defaults, plus verbatim source citation [1] and adjacent schedule parameters warmup_steps = 4000 with warmup-linear then inverse-square-root decay [2]. Reproducer guardrails note that library Adam defaults must not be used.\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "live_chat_3032d4455f59",
+  "status": "COMPLETED",
+  "summary": "Table of optimizer hyperparameters quoted verbatim from §5.3 of *Attention Is All You Need*: Adam; β₁ = 0.9; β₂ = 0.98; ε = 1e-9, with the warning that β₂ and ε intentionally differ from generic Adam defaults, plus verbatim source citation [1] and adjacent schedule parameters warmup_steps = 4000 with warmup-linear then inverse-square-root decay [2]. Reproducer guardrails note that library Adam def"
+}

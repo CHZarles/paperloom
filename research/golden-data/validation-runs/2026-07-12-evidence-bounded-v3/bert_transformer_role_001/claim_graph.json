@@ -1,0 +1,54 @@
+{
+  "claims": [
+    {
+      "claim_id": "c1_bert_transformer_role",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "bert_transformer_role_claim"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_f189c6c5f4214d2e",
+        "ev_0f82af3db4559191"
+      ],
+      "text": "BERT stands for Bidirectional Encoder Representations from Transformers, uses a masked language model (MLM) pre-training objective that randomly masks tokens and predicts the original vocabulary id from context, and unlike left-to-right LM pre-training, the MLM objective enables the representation to fuse the left and right context, which allows pretraining of a deep bidirectional Transformer.",
+      "verification_reason": "The cited passages support BERT's name, the MLM objective, fusing left/right context, and pretraining a deep bidirectional Transformer, but do not explicitly describe BERT as a 'Transformer encoder based on Vaswani et al. (2017)' (that phrasing comes from the Section 3 passage, not these two). Narrowed to what is directly supported.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "c2_bert_architecture_components",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "bert_architecture_components"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_3540835408466c6e"
+      ],
+      "text": "BERT's architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017), and because the use of Transformers has become common and the implementation is almost identical to the original, BERT omits an exhaustive background description of the model architecture and refers readers to Vaswani et al. (2017).",
+      "verification_reason": "The cited passage directly states the encoder role, the Vaswani et al. (2017) basis, the 'almost identical' implementation, and the omission of an exhaustive background description with referral to Vaswani et al. (2017). All qualifiers preserved.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "c3_transformer_encoder_vs_decoder",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "transformer_encoder_vs_decoder_definition"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_7f19acb3f716bc64",
+        "ev_71ef1901f3139ae8"
+      ],
+      "text": "In the original Transformer paper, the encoder is composed of a stack of N = 6 identical layers, each with two sub-layers: a multi-head self-attention mechanism and a simple, positionwise fully connected feed-forward network, with a residual connection around each of the two sub-layers followed by layer normalization; the decoder is also composed of a stack of N = 6 identical layers that, in addition to the two sub-layers in each encoder layer, inserts a third sub-layer which performs multi-head attention over the output of the encoder stack, and modifies the self-attention sub-layer to prevent positions from attending to subsequent positions (a masked self-attention), so that predictions for position i can depend only on the known outputs at positions less than i.",
+      "verification_reason": "Both Vaswani et al. (2017) passages directly support every clause of the claim with matching wording, including N=6, the two encoder sub-layers, residual + layer norm, the decoder's third sub-layer over encoder output, masking, and the position-i dependency constraint.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_e65d6f637327",
+  "question_id": "live_chat_e65d6f637327"
+}

@@ -1,0 +1,191 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "citation text",
+    "architecture description"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "",
+      "description": "Does GPT-3 (gpt3_2020) cite GPT-2 (gpt2_2019) as the prior architecture it extends, and what text in GPT-3 supports that?",
+      "id": "hop1_citation_evidence",
+      "kind": "hop",
+      "paper_scope": [
+        "gpt3_2020",
+        "gpt2_2019"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "",
+      "description": "Does GPT-2 (gpt2_2019) cite \"Attention Is All You Need\" (attention_is_all_you_need_2017) as the source of its Transformer architecture, and what text supports that?",
+      "id": "hop2_citation_evidence",
+      "kind": "hop",
+      "paper_scope": [
+        "gpt2_2019",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "complex_multihop_reasoning",
+  "plan_id": "plan_live_chat_257cfe464634",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "hop1_citation_evidence"
+          ],
+          "query_id": "Q1",
+          "query_text": "GPT-2 predecessor 1.5B parameters Transformer decoder same model architecture",
+          "section_query": "Approach / Model",
+          "target_ids": [
+            "T1"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "footnote"
+          ],
+          "obligation_ids": [
+            "hop1_citation_evidence"
+          ],
+          "query_id": "Q2",
+          "query_text": "Radford et al. 2019 Language Models Unsupervised Multitask Learners",
+          "section_query": "References / Citations",
+          "target_ids": [
+            "T1"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "hop2_citation_evidence"
+          ],
+          "query_id": "Q3",
+          "query_text": "Transformer decoder-only architecture multi-layer self-attention",
+          "section_query": "Approach / Model",
+          "target_ids": [
+            "T2"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "footnote"
+          ],
+          "obligation_ids": [
+            "hop2_citation_evidence"
+          ],
+          "query_id": "Q4",
+          "query_text": "Vaswani et al. 2017 Attention Is All You Need citation",
+          "section_query": "References / Introduction",
+          "target_ids": [
+            "T2"
+          ],
+          "top_k": 5
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "hop1_citation_evidence"
+          ],
+          "discovery_query": "",
+          "paper_id": "gpt3_2020",
+          "target_id": "T1",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "hop1_citation_evidence",
+            "hop2_citation_evidence"
+          ],
+          "discovery_query": "",
+          "paper_id": "gpt2_2019",
+          "target_id": "T2",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "hop2_citation_evidence"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "T3",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_257cfe464634",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "decompose_hops",
+      "stage_name": "decompose_hops",
+      "step_id": "stage_1_decompose_hops",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "decompose_hops"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_hop_evidence",
+      "stage_name": "collect_hop_evidence",
+      "step_id": "stage_2_collect_hop_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_hop_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "compose_chain",
+      "stage_name": "compose_chain",
+      "step_id": "stage_3_compose_chain",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "compose_chain"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_each_hop",
+      "stage_name": "verify_each_hop",
+      "step_id": "stage_4_verify_each_hop",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_each_hop"
+    }
+  ],
+  "target_entities": [
+    "gpt3_2020",
+    "gpt2_2019",
+    "attention_is_all_you_need_2017"
+  ]
+}

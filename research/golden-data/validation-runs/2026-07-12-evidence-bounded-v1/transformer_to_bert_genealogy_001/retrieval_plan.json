@@ -1,0 +1,157 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "citation_context",
+    "architecture_specification",
+    "architectural_comparison"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "lineage_technical_content",
+      "description": "What is the technical meaning of BERT's citation of the Transformer paper? Identify which architectural components (multi-head self-attention, positional encoding, encoder stack, residual connections, layer norm, feed-forward sublayers) BERT reuses, and how BERT's architecture differs (bidirectional encoder-only vs. original encoder-decoder).",
+      "id": "edge_attn_to_bert_technical_meaning",
+      "kind": "relation",
+      "paper_scope": [
+        "bert_2018",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "association_influence_genealogy",
+  "plan_id": "plan_live_chat_bfd4ff883d07",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "edge_attn_to_bert_technical_meaning"
+          ],
+          "query_id": "q_bert_citation_context",
+          "query_text": "Vaswani et al. transformer encoder representation",
+          "section_query": null,
+          "target_ids": [
+            "t_bert_2018"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "edge_attn_to_bert_technical_meaning"
+          ],
+          "query_id": "q_bert_architecture_spec",
+          "query_text": "multi-head self-attention positional encoding feed-forward layer norm",
+          "section_query": null,
+          "target_ids": [
+            "t_bert_2018"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "edge_attn_to_bert_technical_meaning"
+          ],
+          "query_id": "q_bert_encoder_only_diff",
+          "query_text": "bidirectional encoder only unlike decoder",
+          "section_query": null,
+          "target_ids": [
+            "t_bert_2018"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "edge_attn_to_bert_technical_meaning"
+          ],
+          "query_id": "q_attn_encoder_stack",
+          "query_text": "encoder layer multi-head attention residual layer normalization",
+          "section_query": null,
+          "target_ids": [
+            "t_attn_2017"
+          ],
+          "top_k": 5
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "edge_attn_to_bert_technical_meaning"
+          ],
+          "discovery_query": "",
+          "paper_id": "bert_2018",
+          "target_id": "t_bert_2018",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "edge_attn_to_bert_technical_meaning"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "t_attn_2017",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_bfd4ff883d07",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "resolve_nodes",
+      "stage_name": "resolve_nodes",
+      "step_id": "stage_1_resolve_nodes",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "resolve_nodes"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_edge_evidence",
+      "stage_name": "collect_edge_evidence",
+      "step_id": "stage_2_collect_edge_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_edge_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "state_relationships",
+      "stage_name": "state_relationships",
+      "step_id": "stage_3_state_relationships",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "state_relationships"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_edges",
+      "stage_name": "verify_edges",
+      "step_id": "stage_4_verify_edges",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_edges"
+    }
+  ],
+  "target_entities": [
+    ""
+  ]
+}

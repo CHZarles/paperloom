@@ -1,0 +1,77 @@
+{
+  "case_id": "gpt3_to_transformer_multihop_001",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "question_id": "live_chat_257cfe464634"
+  },
+  "completed_at": "2026-07-12T04:53:27Z",
+  "diagnostics": {
+    "completion_tokens": 3064,
+    "duration_ms": 24687,
+    "error": "claim constructor did not submit one claim set; tool_calls=[]",
+    "finish_reason": "evidence_bounded_runtime_failed",
+    "model_call_count": 3,
+    "model_latency_ms": 24571,
+    "prompt_tokens": 11530,
+    "total_tokens": 14594
+  },
+  "evidence_ledger": {
+    "items": [],
+    "missing_evidence": [],
+    "question_id": "live_chat_257cfe464634",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_257cfe464634",
+    "answer_type": "unknown",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "claim constructor did not submit one claim set; tool_calls=[]",
+    "outcome": null,
+    "question_id": "live_chat_257cfe464634",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "FAILED_TECHNICAL",
+    "summary": "claim constructor did not submit one claim set; tool_calls=[]",
+    "verification_id": "verification_live_chat_257cfe464634"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "primary_paradigm": "unknown",
+    "question_id": "live_chat_257cfe464634"
+  },
+  "memory_update": {},
+  "question_id": "gpt3_to_transformer_multihop_001",
+  "reasoning_artifacts": [],
+  "research_answer": {
+    "answer_id": "answer_live_chat_257cfe464634",
+    "answer_type": "unknown",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "claim constructor did not submit one claim set; tool_calls=[]",
+    "outcome": null,
+    "question_id": "live_chat_257cfe464634",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "FAILED_TECHNICAL",
+    "summary": "claim constructor did not submit one claim set; tool_calls=[]",
+    "verification_id": "verification_live_chat_257cfe464634"
+  },
+  "result_status": "FAILED_TECHNICAL",
+  "retrieval_plan": {
+    "question_id": "live_chat_257cfe464634",
+    "strategy_steps": []
+  },
+  "run_id": "run_live_chat_257cfe464634",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [],
+  "started_at": "2026-07-12T04:53:17Z",
+  "status": "FAILED_TECHNICAL",
+  "verification_pass": {
+    "question_id": "live_chat_257cfe464634",
+    "unsupported_claim_count": 0
+  }
+}

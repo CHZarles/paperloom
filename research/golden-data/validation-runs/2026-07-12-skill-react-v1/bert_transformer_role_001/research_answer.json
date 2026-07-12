@@ -1,0 +1,13 @@
+{
+  "answer_id": "answer_live_chat_e65d6f637327",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_3540835408466c6e"
+  ],
+  "fields": {},
+  "markdown": "**Encoder.** BERT uses the Transformer in encoder form, not as a decoder.\n\nThe paper states this directly in its Model Architecture section: \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.\" [1]\n\nThis is also reflected in the model's name — **B**idirectional **E**ncoder **R**epresentations from **T**ransformers — and in the paper's contrast with OpenAI GPT, which uses a left-to-right (decoder-style, causally masked) Transformer, whereas \"the BERT Transformer uses bidirectional self-attention.\" [1]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3",
+  "outcome": "answered",
+  "question_id": "live_chat_e65d6f637327",
+  "status": "COMPLETED",
+  "summary": "**Encoder.** BERT uses the Transformer in encoder form, not as a decoder.\n\nThe paper states this directly in its Model Architecture section: \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.\" [1]\n\nThis is also reflected in the model's name — **B**idirection"
+}

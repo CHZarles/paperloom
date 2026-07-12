@@ -1,0 +1,45 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_ba3e24ed58fa",
+    "payload": {
+      "answer_fields": {},
+      "claim_verdicts": [],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "select_canonical_surveys",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "select_agent_benchmarks",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "select_agent_methodology",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "select_social_cognition",
+          "status": "missing"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "corpus_observation_identity_2",
+        "corpus_observation_identity_3",
+        "corpus_observation_identity_4"
+      ]
+    },
+    "question_id": "live_chat_ba3e24ed58fa",
+    "source_claim_ids": [],
+    "title": "Recommend important papers from the 30-paper corpus, grounded in their titles and themes (LLM agents, evaluation, benchmarks, multimodal agents).",
+    "type": "recommendation"
+  }
+]

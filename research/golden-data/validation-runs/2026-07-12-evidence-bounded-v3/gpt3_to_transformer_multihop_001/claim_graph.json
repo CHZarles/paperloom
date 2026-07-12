@@ -1,0 +1,37 @@
+{
+  "claims": [
+    {
+      "claim_id": "hop1_gpt3_extends_gpt2",
+      "claim_type": "hop",
+      "obligation_ids": [
+        "hop1_citation_evidence"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_38e0df75f5c1dc48"
+      ],
+      "text": "Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded sparse attention patterns.",
+      "verification_reason": "The GPT-3 paper passage explicitly states it uses the same model and architecture as GPT-2, lists the same three components (modified initialization, pre-normalization, reversible tokenization), and identifies the only exception as alternating dense and locally banded sparse attention patterns. All qualifiers match.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "hop2_gpt2_cites_transformer",
+      "claim_type": "hop",
+      "obligation_ids": [
+        "hop2_citation_evidence"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_df9905f582fb729a"
+      ],
+      "text": "Hop 2 establishes that GPT-2 cites \"Attention Is All You Need\" as the source of its Transformer architecture: the GPT-2 paper references self-attention architectures like the Transformer (Vaswani et al., 2017) as providing significant improvements in the expressiveness of models computing conditional probabilities.",
+      "verification_reason": "The GPT-2 paper passage explicitly references the Transformer (Vaswani et al., 2017) in the context of \"significant improvements in the expressiveness of models that can compute these conditional probabilities,\" matching all qualifiers in the claim.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_257cfe464634",
+  "question_id": "live_chat_257cfe464634"
+}

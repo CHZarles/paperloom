@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_3fbaade565e7",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "RLHF stands for Reinforcement Learning from Human Feedback. The idea is to take a base language model, collect human preferences over its outputs (e.g., \"response A is better than response B\"), train a reward model on those preferences, and then fine-tune the language model with reinforcement learning so it scores higher on that reward model. It's the technique behind the alignment step in models like ChatGPT, and it ties to InstructGPT, PPO-based fine-tuning, and later variants such as DPO and RLAIF.\\n\\nSo which type of RLHF papers would help you most?",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_3fbaade565e7",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "RLHF stands for Reinforcement Learning from Human Feedback. The idea is to take a base language model, collect human preferences over its outputs (e.g., \"response A is better than response B\"), train a reward model on those preferences, and then fine-tune the language model with reinforcement learning so it scores higher on that reward model. It's the technique behind the alignment step in models ",
+  "verification_id": "verification_live_chat_3fbaade565e7"
+}

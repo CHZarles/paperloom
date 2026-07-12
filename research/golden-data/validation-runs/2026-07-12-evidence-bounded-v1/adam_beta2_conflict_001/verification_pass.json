@@ -1,0 +1,115 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [
+    {
+      "claim_id": "adam_default_beta2_side",
+      "evidence_ids": [
+        "ev_7fb5018fdf115c7e",
+        "ev_66f4291f24561cb7",
+        "ev_20fa048924256386",
+        "ev_c590d1286e633af2",
+        "ev_8afa5ace7b3304a7"
+      ],
+      "field_values": {
+        "adam_beta2": "not stated as 0.999 in the cited Adam passages"
+      },
+      "reason": "All cited Adam passages define β1, β2 ∈ [0,1) as decay-rate hyperparameters but never specify β2 = 0.999 as a default value. The claim is fully supported.",
+      "verdict": "keep",
+      "verified_text": "The Adam paper introduces β1, β2 ∈ [0,1) as the hyperparameters controlling the exponential decay rates of the first- and second-moment moving averages, but the cited passages do not state a recommended default value of β2 = 0.999; that commonly cited default is not asserted by the retrieved Adam passages."
+    },
+    {
+      "claim_id": "transformer_beta2_side",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20"
+      ],
+      "field_values": {
+        "transformer_beta2": "0.98"
+      },
+      "reason": "ev_c478868f3b1b547e contains the exact quoted text from Section 5.3 Optimizer specifying β1 = 0.9, β2 = 0.98, ε = 10^{-9}. The claim matches the evidence verbatim.",
+      "verdict": "keep",
+      "verified_text": "The Transformer paper (\"Attention Is All You Need\"), in Section 5.3 Optimizer, explicitly states: \"We used the Adam optimizer with β1 = 0.9, β2 = 0.98 and ε = 10^{-9}.\""
+    },
+    {
+      "claim_id": "conflict_resolution",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20"
+      ],
+      "field_values": {
+        "conflict_resolution": "scope/methodology difference: Adam passages define β2 without naming a 0.999 default, while the Transformer paper specifies β2 = 0.98 as its own chosen value; the cited evidence does not establish a contradiction nor an explicit acknowledgement of deviation between the two papers."
+      },
+      "reason": "The cited Transformer passage shows β2 = 0.98 as the paper's own chosen value. Combined with the Adam passages (from claim 1's evidence) which do not assert β2 = 0.999 as a default, the resolution correctly identifies that the \"conflict\" arises from an external default attribution rather than from any contradiction or explicit deviation statement within the cited papers themselves.",
+      "verdict": "keep",
+      "verified_text": "The retrieved Adam paper passages do not assert β2 = 0.999 as a default; they only define β1, β2 as decay-rate hyperparameters in [0,1). The Transformer paper explicitly chose β2 = 0.98 as a task-specific setting for its Adam optimizer. The \"conflict\" is therefore not a contradiction within the cited papers: the widely cited β2 = 0.999 default is not grounded in the retrieved Adam passages, and the Transformer paper's β2 = 0.98 is a deliberate, paper-specific choice rather than a deviation from an Adam-stated default. No retrieved passage from either paper contains an explicit acknowledgement of deviation from the other."
+    }
+  ],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_7a5bb0785774",
+  "required_capabilities_attempted": [
+    "paper_section_lookup",
+    "table_value_extraction",
+    "contradiction_resolution"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_7fb5018fdf115c7e",
+        "ev_c590d1286e633af2",
+        "ev_8afa5ace7b3304a7",
+        "ev_17d63af74d7e141f",
+        "ev_66f4291f24561cb7",
+        "ev_20fa048924256386",
+        "ev_3a607f3021111b24",
+        "ev_26064bdbbd10b06f"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "adam_beta2_default",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_9f0ad4e5c9243e9e",
+        "ev_c478868f3b1b547e",
+        "ev_bc5eb354fc05156e",
+        "ev_94df0aac2887d34a",
+        "ev_de4048def54fa203",
+        "ev_8a3081bac08c3a20",
+        "ev_2d5a073c20b48c32"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "transformer_beta2_value",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_9f0ad4e5c9243e9e",
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_2d5a073c20b48c32"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "conflict_distinction",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [
+    "adam_beta2_default",
+    "transformer_beta2_value",
+    "conflict_distinction"
+  ],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_7a5bb0785774"
+}

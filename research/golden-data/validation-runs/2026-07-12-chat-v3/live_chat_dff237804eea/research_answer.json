@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_live_chat_dff237804eea",
+  "answer_type": "constraint_filter",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "No requested claim was verified from the available corpus evidence.\n\nUnresolved from the available corpus evidence:\n- recommend_general_agent_benchmark\n- recommend_multimodal_agent_benchmark\n- recommend_trajectory_process_benchmark\n- recommend_realworld_task_benchmark\n- recommend_cost_safety_benchmark\n- recommend_social_cognition_benchmark\n- recommend_writing_creative_benchmark\n- recommend_metacognition_agi_benchmark",
+  "outcome": "abstained",
+  "question_id": "live_chat_dff237804eea",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_dff237804eea"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "No requested claim was verified from the available corpus evidence.",
+  "verification_id": "verification_live_chat_dff237804eea"
+}

@@ -1,0 +1,27 @@
+{
+  "answer_id": "answer_live_chat_e14469c7ef18",
+  "answer_type": "exact_fact",
+  "cited_claim_ids": [
+    "transformer_adam_beta1_value",
+    "transformer_adam_beta2_value",
+    "transformer_adam_epsilon_value"
+  ],
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {
+    "beta1": "0.9",
+    "beta2": "0.98",
+    "epsilon": "10^-9"
+  },
+  "markdown": "- **beta1:** 0.9 [1]\n- **beta2:** 0.98 [1]\n- **epsilon:** 10^-9 [1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "live_chat_e14469c7ef18",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_e14469c7ef18"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "The original Transformer paper used Adam with β1 = 0.9.",
+  "verification_id": "verification_live_chat_e14469c7ef18"
+}

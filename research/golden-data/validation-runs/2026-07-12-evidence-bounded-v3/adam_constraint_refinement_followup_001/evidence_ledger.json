@@ -1,0 +1,122 @@
+{
+  "coverage": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_966d657560db7e6c",
+        "ev_748440c3a76e13a4"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "adam_beta2_transformer",
+      "status": "covered"
+    }
+  ],
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "citeable": false,
+      "element_type": "corpus_search",
+      "evidence_id": "corpus_observation_identity_1",
+      "evidence_quality": "corpus_observation",
+      "location": "find_papers_by_identity",
+      "location_ref": "find_papers_by_identity",
+      "page": "metadata",
+      "paper_id": null,
+      "paper_version": "current_scope",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "find_papers_by_identity",
+      "section": "corpus_index",
+      "source_kind": "corpus_search",
+      "span_text": "{\"query\": {\"paper_id\": \"attention_is_all_you_need_2017\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Attention Is All You Need\"]}",
+      "supports_claim_ids": [],
+      "title": "Corpus candidate search"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_c478868f3b1b547e",
+      "evidence_quality": "verified",
+      "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "matched_anchor_id": "transformer_adam_training_params_span",
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.3 Optimizer",
+      "source_kind": "reading_element",
+      "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_966d657560db7e6c",
+      "evidence_quality": "verified",
+      "location": "reading_element_76f347883f164bdeaaf7d5bff1c752c4",
+      "location_ref": "reading_element_76f347883f164bdeaaf7d5bff1c752c4",
+      "matched_anchor_id": null,
+      "page": 5,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.3 Position-wise Feed-Forward Networks",
+      "source_kind": "reading_element",
+      "span_text": "While the linear transformations are the same across different positions, they use different parameters from layer to layer. Another way of describing this is as two convolutions with kernel size 1. The dimensionality of input and output is $d _ { \\mathrm { m o d e l } } = 5 1 2$ , and the inner-layer has dimensionality $d _ { f f } = 2 0 4 8$",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "table",
+      "evidence_id": "ev_748440c3a76e13a4",
+      "evidence_quality": "verified",
+      "location": "table_ref_03215748f2fd47338270f362561c9665",
+      "location_ref": "table_ref_03215748f2fd47338270f362561c9665",
+      "matched_anchor_id": null,
+      "page": 6,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.4 Embeddings and Softmax",
+      "source_kind": "reading_element",
+      "span_text": "Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations for different layer types. n is the sequence length, d is the representation dimension, k is the kernel size of convolutions and r the size of the neighborhood in restricted self-attention.\nLayer Type | Complexity per Layer | Sequential Operations | Maximum Path Length | Self-Attention | $\\overline { { O ( n ^ { 2 } \\cdot d ) } }$ | O(1) | 0(1) | Recurrent | $O ( n \\cdot d ^ { 2 } )$ | O(n) | $O ( n )$ | Convolutional | $O ( k \\cdot n \\cdot \\dot { d } ^ { 2 } )$ | O(1) | $O ( l o g _ { k } ( n ) )$ | Self-Attention (restricted) | ${ \\dot { O ( r \\cdot n \\cdot d ) } }$ | O(1) | $O ( n / r )$",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_50ba2e59aacf",
+  "missing_evidence": [],
+  "question_id": "live_chat_50ba2e59aacf",
+  "rejected_items": []
+}

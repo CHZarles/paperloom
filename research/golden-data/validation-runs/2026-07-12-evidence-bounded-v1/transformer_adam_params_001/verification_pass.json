@@ -1,0 +1,97 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [
+    {
+      "claim_id": "transformer_adam_beta1_value",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "beta1": "0.9"
+      },
+      "reason": "The evidence passage directly states β1 = 0.9 for Adam in the original Transformer paper.",
+      "verdict": "keep",
+      "verified_text": "The original Transformer paper used Adam with β1 = 0.9."
+    },
+    {
+      "claim_id": "transformer_adam_beta2_value",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "beta2": "0.98"
+      },
+      "reason": "The evidence passage directly states β2 = 0.98 for Adam in the original Transformer paper.",
+      "verdict": "keep",
+      "verified_text": "The original Transformer paper used Adam with β2 = 0.98."
+    },
+    {
+      "claim_id": "transformer_adam_epsilon_value",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "epsilon": "10^-9"
+      },
+      "reason": "The evidence passage directly states ε = 10^-9 for Adam in the original Transformer paper.",
+      "verdict": "keep",
+      "verified_text": "The original Transformer paper used Adam with ε = 10^-9."
+    }
+  ],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_e14469c7ef18",
+  "required_capabilities_attempted": [
+    "paper_grounded_fact_extraction"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_bc5eb354fc05156e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "transformer_adam_beta1",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_bc5eb354fc05156e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "transformer_adam_beta2",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_bc5eb354fc05156e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "transformer_adam_epsilon",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [
+    "transformer_adam_beta1",
+    "transformer_adam_beta2",
+    "transformer_adam_epsilon"
+  ],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_e14469c7ef18"
+}

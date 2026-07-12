@@ -1,0 +1,98 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "comparison_matrix",
+  "constraints": {
+    "axes": "[\"architecture_role\", \"directionality\", \"training_objective\"]",
+    "coverage_assumption": "User confirmed the three proposed comparison axes (architecture role, directionality, training objective) for a Transformer vs BERT comparison.",
+    "papers": "[\"attention_is_all_you_need_2017\", \"bert_2018\"]",
+    "task": {
+      "object": "original Transformer vs BERT across architecture role, directionality, and training objective",
+      "verb": "compare"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "architecture_role",
+    "directionality",
+    "training_objective"
+  ],
+  "intent_id": "intent_live_chat_3c0b4f837eae",
+  "method_mentions": [],
+  "normalized_question": "Compare the original Transformer (\"Attention Is All You Need\", 2017) with BERT (2018) along three axes: architecture role, directionality (attention masking/contextualization), and training objective. The user has confirmed these three comparison axes.",
+  "obligations": [
+    {
+      "answer_field": "attention_is_all_you_need_2017_architecture_role",
+      "description": "Determine attention is all you need 2017 architecture role for attention_is_all_you_need_2017 from source evidence.",
+      "id": "attention_is_all_you_need_2017_architecture_role",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_2018_architecture_role",
+      "description": "Determine bert 2018 architecture role for bert_2018 from source evidence.",
+      "id": "bert_2018_architecture_role",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "attention_is_all_you_need_2017_directionality",
+      "description": "Determine attention is all you need 2017 directionality for attention_is_all_you_need_2017 from source evidence.",
+      "id": "attention_is_all_you_need_2017_directionality",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_2018_directionality",
+      "description": "Determine bert 2018 directionality for bert_2018 from source evidence.",
+      "id": "bert_2018_directionality",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "attention_is_all_you_need_2017_training_objective",
+      "description": "Determine attention is all you need 2017 training objective for attention_is_all_you_need_2017 from source evidence.",
+      "id": "attention_is_all_you_need_2017_training_objective",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_2018_training_objective",
+      "description": "Determine bert 2018 training objective for bert_2018 from source evidence.",
+      "id": "bert_2018_training_objective",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "deep_comparison",
+  "question_id": "live_chat_3c0b4f837eae",
+  "raw_question": "Yes, that is my choice.",
+  "required_capabilities": [
+    "paper_comparison"
+  ],
+  "required_evidence_types": [
+    "architectural description",
+    "attention masking scheme",
+    "training/pre-training objective"
+  ],
+  "requires_corpus_observation": true
+}

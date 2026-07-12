@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_257cfe464634",
+  "answer_type": "unknown",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "claim constructor did not submit one claim set; tool_calls=[]",
+  "outcome": null,
+  "question_id": "live_chat_257cfe464634",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "FAILED_TECHNICAL",
+  "summary": "claim constructor did not submit one claim set; tool_calls=[]",
+  "verification_id": "verification_live_chat_257cfe464634"
+}

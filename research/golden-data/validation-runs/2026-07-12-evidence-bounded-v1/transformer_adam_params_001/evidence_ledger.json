@@ -1,0 +1,142 @@
+{
+  "coverage": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_bc5eb354fc05156e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "transformer_adam_beta1",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_bc5eb354fc05156e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "transformer_adam_beta2",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_bc5eb354fc05156e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "transformer_adam_epsilon",
+      "status": "covered"
+    }
+  ],
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "citeable": false,
+      "element_type": "corpus_search",
+      "evidence_id": "corpus_observation_identity_1",
+      "evidence_quality": "corpus_observation",
+      "location": "find_papers_by_identity",
+      "location_ref": "find_papers_by_identity",
+      "page": "metadata",
+      "paper_id": null,
+      "paper_version": "current_scope",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "find_papers_by_identity",
+      "section": "corpus_index",
+      "source_kind": "corpus_search",
+      "span_text": "{\"query\": {\"paper_id\": \"attention_is_all_you_need_2017\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Attention Is All You Need\"]}",
+      "supports_claim_ids": [],
+      "title": "Corpus candidate search"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_c478868f3b1b547e",
+      "evidence_quality": "verified",
+      "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "matched_anchor_id": "transformer_adam_training_params_span",
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.3 Optimizer",
+      "source_kind": "reading_element",
+      "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_9f0ad4e5c9243e9e",
+      "evidence_quality": "verified",
+      "location": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+      "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+      "matched_anchor_id": null,
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.2 Hardware and Schedule",
+      "source_kind": "reading_element",
+      "span_text": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "table",
+      "evidence_id": "ev_bc5eb354fc05156e",
+      "evidence_quality": "verified",
+      "location": "table_ref_7d6ea770a84340eabc9b43eb07246608",
+      "location_ref": "table_ref_7d6ea770a84340eabc9b43eb07246608",
+      "matched_anchor_id": null,
+      "page": 8,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.4 Regularization",
+      "source_kind": "reading_element",
+      "span_text": "Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost.\nModel | BLEU | Training Cost (FLOPs) | EN-DE | EN-FR | EN-DE | EN-FR | ByteNet [18] | 23.75 | | | | Deep-Att + PosUnk [39] | | 39.2 | | $1 . 0 \\cdot 1 0 ^ { 2 0 }$ | GNMT + RL [38] | 24.6 | 39.92 | $2 . 3 \\cdot 1 0 ^ { 1 9 }$ | $1 . 4 \\cdot 1 0 ^ { 2 0 }$ | ConvS2S [9] | 25.16 | 40.46 | $9 . 6 \\cdot 1 0 ^ { 1 8 }$ | $1 . 5 \\cdot 1 0 ^ { 2 0 }$ | MoE [32] | 26.03 | 40.56 | $2 . 0 \\cdot 1 0 ^ { 1 9 }$ | $1 . 2 \\cdot 1 0 ^ { 2 0 }$ | Deep-Att + PosUnk Ensemble [39] | | 40.4 | | $\\overline { { 8 . 0 \\cdot 1 0 ^ { 2 0 } } }$ | $\\mathrm { G N M T } + \\mathrm { R I }$ Ensemble [38] | 26.30 | 41.16 | $1 . 8 \\cdot 1 0 ^ { 2 0 }$ | $1 . 1 \\cdot 1 0 ^ { 2 1 }$ | ConvS2S Ensemble [9] | 26.36 | 41.29 | $7 . 7 \\cdot 1 0 ^ { 1 9 }$ | $1 . 2 \\cdot 1 0 ^ { 2 1 }$ | Transformer (base model) | 27.3 | 38.1 | $\\mathbf { 3 . 3 \\cdot 1 0 ^ { 1 8 } }$ | | Transformer (big) | 28.4 | 41.8 | $2 . 3 \\cdot 1 0 ^ { 1 9 }$ |",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_e14469c7ef18",
+  "missing_evidence": [],
+  "question_id": "live_chat_e14469c7ef18",
+  "rejected_items": []
+}

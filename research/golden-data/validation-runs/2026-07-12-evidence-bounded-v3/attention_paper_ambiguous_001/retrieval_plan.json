@@ -1,0 +1,14 @@
+{
+  "actionability": "none",
+  "expected_evidence_types": [],
+  "hard_negative_policy": [],
+  "paradigm": "direct_conversation",
+  "plan_id": "plan_live_chat_731cd947eef1",
+  "question_id": "live_chat_731cd947eef1",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "direct_reply"
+  ],
+  "strategy_steps": [],
+  "target_entities": []
+}

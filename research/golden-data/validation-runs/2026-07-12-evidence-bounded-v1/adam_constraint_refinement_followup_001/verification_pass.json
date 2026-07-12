@@ -1,0 +1,51 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [
+    {
+      "claim_id": "c_adam_beta2_transformer",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "field_values": {
+        "beta2": "0.98"
+      },
+      "reason": "The evidence passage directly states Adam optimizer with β1 = 0.9, β2 = 0.98, exactly matching the claim.",
+      "verdict": "keep",
+      "verified_text": "In \"Attention Is All You Need\", the Adam optimizer is used with β2 = 0.98."
+    }
+  ],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_50ba2e59aacf",
+  "required_capabilities_attempted": [
+    "precision_fact_extraction"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_27940da4f69cadba",
+        "ev_1490018fc1286791"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "adam_beta2_transformer",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [
+    "adam_beta2_transformer"
+  ],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_50ba2e59aacf"
+}

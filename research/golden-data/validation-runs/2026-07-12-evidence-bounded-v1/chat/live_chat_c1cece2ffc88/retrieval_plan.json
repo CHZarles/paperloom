@@ -1,0 +1,467 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "comparison_axis_evidence"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_scope",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff scope for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_scope",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 scope for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_taxonomy_of_evaluation",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff taxonomy of evaluation for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_taxonomy_of_evaluation",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_of_evaluation",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 taxonomy of evaluation for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_of_evaluation",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_benchmark_categories",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff benchmark categories for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_benchmark_categories",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmark_categories",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 benchmark categories for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmark_categories",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_evaluation_perspective_end_to_end_vs_component",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff evaluation perspective end to end vs component for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_evaluation_perspective_end_to_end_vs_component",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_evaluation_perspective_end_to_end_vs_component",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 evaluation perspective end to end vs component for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_evaluation_perspective_end_to_end_vs_component",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_frameworks",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff frameworks for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_frameworks",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 frameworks for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_methodology",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff methodology for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_methodology",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 methodology for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_trends",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff trends for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_trends",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 trends for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "deep_comparison",
+  "plan_id": "plan_live_chat_c1cece2ffc88",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "8b9e2f64d565137ca85ae75029e77fff_scope"
+          ],
+          "query_id": "p1_scope_intro",
+          "query_text": "scope five perspectives core capabilities application-specific generalist dimensions frameworks",
+          "section_query": "Introduction",
+          "target_ids": [
+            "paper1_8b9e2f64"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "8b9e2f64d565137ca85ae75029e77fff_taxonomy_of_evaluation"
+          ],
+          "query_id": "p1_taxonomy_core_dimensions",
+          "query_text": "core dimensions agent benchmarks taxonomy fidelity robustness generalization safety",
+          "section_query": null,
+          "target_ids": [
+            "paper1_8b9e2f64"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "8b9e2f64d565137ca85ae75029e77fff_benchmark_categories"
+          ],
+          "query_id": "p1_benchmark_categories",
+          "query_text": "web agents software engineering scientific conversational generalist benchmarks categories",
+          "section_query": null,
+          "target_ids": [
+            "paper1_8b9e2f64"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "8b9e2f64d565137ca85ae75029e77fff_evaluation_perspective_end_to_end_vs_component"
+          ],
+          "query_id": "p1_endtoend_vs_component",
+          "query_text": "end-to-end task success versus component evaluation planning tool use memory subskills",
+          "section_query": null,
+          "target_ids": [
+            "paper1_8b9e2f64"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "8b9e2f64d565137ca85ae75029e77fff_frameworks"
+          ],
+          "query_id": "p1_frameworks",
+          "query_text": "evaluation frameworks developer tools AgentEval Harbor Exgentic integration",
+          "section_query": null,
+          "target_ids": [
+            "paper1_8b9e2f64"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "8b9e2f64d565137ca85ae75029e77fff_methodology",
+            "8b9e2f64d565137ca85ae75029e77fff_trends"
+          ],
+          "query_id": "p1_methodology_trends",
+          "query_text": "inclusion exclusion criteria literature review methodology trends limitations generalist",
+          "section_query": null,
+          "target_ids": [
+            "paper1_8b9e2f64"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope"
+          ],
+          "query_id": "p2_scope_intro",
+          "query_text": "multi-turn conversation agent evaluation survey scope objectives",
+          "section_query": "Introduction",
+          "target_ids": [
+            "paper2_726cfbbd"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_of_evaluation"
+          ],
+          "query_id": "p2_taxonomy_dimensions",
+          "query_text": "taxonomy dimensions end-to-end experience action tool use memory planning",
+          "section_query": null,
+          "target_ids": [
+            "paper2_726cfbbd"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmark_categories"
+          ],
+          "query_id": "p2_benchmark_categories",
+          "query_text": "benchmark categories dialogue modeling tool integration task-oriented open-domain",
+          "section_query": null,
+          "target_ids": [
+            "paper2_726cfbbd"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_evaluation_perspective_end_to_end_vs_component"
+          ],
+          "query_id": "p2_endtoend_vs_component",
+          "query_text": "end-to-end dialogue level versus component action planning tool selection",
+          "section_query": null,
+          "target_ids": [
+            "paper2_726cfbbd"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology"
+          ],
+          "query_id": "p2_frameworks_methodology",
+          "query_text": "evaluation frameworks methodology inclusion criteria selection search",
+          "section_query": null,
+          "target_ids": [
+            "paper2_726cfbbd"
+          ],
+          "top_k": null
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends"
+          ],
+          "query_id": "p2_trends_limitations",
+          "query_text": "trends status-quo holistic benchmarks human judgment BERTScore future directions limitations",
+          "section_query": null,
+          "target_ids": [
+            "paper2_726cfbbd"
+          ],
+          "top_k": null
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "8b9e2f64d565137ca85ae75029e77fff_scope",
+            "8b9e2f64d565137ca85ae75029e77fff_taxonomy_of_evaluation",
+            "8b9e2f64d565137ca85ae75029e77fff_benchmark_categories",
+            "8b9e2f64d565137ca85ae75029e77fff_evaluation_perspective_end_to_end_vs_component",
+            "8b9e2f64d565137ca85ae75029e77fff_frameworks",
+            "8b9e2f64d565137ca85ae75029e77fff_methodology",
+            "8b9e2f64d565137ca85ae75029e77fff_trends"
+          ],
+          "discovery_query": "",
+          "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+          "target_id": "paper1_8b9e2f64",
+          "title": "A Survey on Evaluation of LLM-based Agents"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope",
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_of_evaluation",
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmark_categories",
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_evaluation_perspective_end_to_end_vs_component",
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology",
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends"
+          ],
+          "discovery_query": "",
+          "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+          "target_id": "paper2_726cfbbd",
+          "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+        }
+      ],
+      "reuse_evidence": [
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_ceb02e5ea599218f"
+          ],
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_scope"
+        },
+        {
+          "evidence_ids": [
+            "ev_23dcc76307d339ca",
+            "ev_c8451279c5aff7c2",
+            "ev_0fcd65f08e2c1e3f"
+          ],
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_benchmark_categories"
+        },
+        {
+          "evidence_ids": [
+            "ev_8eb726c4c50ad455"
+          ],
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_methodology"
+        },
+        {
+          "evidence_ids": [
+            "ev_2f58e77634814fd0"
+          ],
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope"
+        },
+        {
+          "evidence_ids": [
+            "ev_985210f77a60dcf4"
+          ],
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_evaluation_perspective_end_to_end_vs_component"
+        }
+      ],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_c1cece2ffc88",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "define_comparison_cells",
+      "stage_name": "define_comparison_cells",
+      "step_id": "stage_1_define_comparison_cells",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "define_comparison_cells"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_cell_evidence",
+      "stage_name": "collect_cell_evidence",
+      "step_id": "stage_2_collect_cell_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_cell_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "align_target_claims",
+      "stage_name": "align_target_claims",
+      "step_id": "stage_3_align_target_claims",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "align_target_claims"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_comparison",
+      "stage_name": "verify_comparison",
+      "step_id": "stage_4_verify_comparison",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_comparison"
+    }
+  ],
+  "target_entities": [
+    "8b9e2f64d565137ca85ae75029e77fff",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+  ]
+}

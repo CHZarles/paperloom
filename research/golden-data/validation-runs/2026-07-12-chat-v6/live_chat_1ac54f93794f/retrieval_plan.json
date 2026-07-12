@@ -1,0 +1,137 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "paper_metadata",
+    "method_summary",
+    "fit_rationale"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "recommendations",
+      "description": "Select up to 3-5 distinct papers that directly address the requested topic and explain from source evidence why each fits. Do not substitute adjacent topics when the corpus lacks an exact match.",
+      "id": "recommendation_selection",
+      "kind": "recommendation",
+      "paper_scope": [],
+      "required": true
+    }
+  ],
+  "paradigm": "context_specific_brainstorming",
+  "plan_id": "plan_live_chat_1ac54f93794f",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph",
+            "heading"
+          ],
+          "obligation_ids": [
+            "recommendation_selection"
+          ],
+          "query_id": "q_kvcache_quant_spec",
+          "query_text": "KV cache memory bandwidth quantization speculative decoding",
+          "section_query": null,
+          "target_ids": [
+            "discovery_efficient_inference"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "heading"
+          ],
+          "obligation_ids": [
+            "recommendation_selection"
+          ],
+          "query_id": "q_pruning_distill",
+          "query_text": "pruning weight distillation compression latency throughput",
+          "section_query": null,
+          "target_ids": [
+            "discovery_efficient_inference"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "heading"
+          ],
+          "obligation_ids": [
+            "recommendation_selection"
+          ],
+          "query_id": "q_attention_longctx",
+          "query_text": "efficient attention flash decoding long context inference",
+          "section_query": null,
+          "target_ids": [
+            "discovery_efficient_inference"
+          ],
+          "top_k": 5
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": true,
+          "coverage_obligation_ids": [
+            "recommendation_selection"
+          ],
+          "discovery_query": "efficient inference LLM KV cache quantization speculative decoding pruning",
+          "paper_id": "",
+          "target_id": "discovery_efficient_inference",
+          "title": ""
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "round_1"
+    }
+  ],
+  "question_id": "live_chat_1ac54f93794f",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "resolve_selection_constraints",
+      "stage_name": "resolve_selection_constraints",
+      "step_id": "stage_1_resolve_selection_constraints",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "resolve_selection_constraints"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_candidate_evidence",
+      "stage_name": "collect_candidate_evidence",
+      "step_id": "stage_2_collect_candidate_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_candidate_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "select_bounded_options",
+      "stage_name": "select_bounded_options",
+      "step_id": "stage_3_select_bounded_options",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "select_bounded_options"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_recommendations",
+      "stage_name": "verify_recommendations",
+      "step_id": "stage_4_verify_recommendations",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_recommendations"
+    }
+  ],
+  "target_entities": []
+}

@@ -1,0 +1,38 @@
+{
+  "claims": [
+    {
+      "claim_id": "adam_default_beta2_claim",
+      "claim_type": "source_a",
+      "obligation_ids": [
+        "adam_paper_beta2"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_25fa64ee50482ccf",
+        "ev_a03e82b6e3626bae"
+      ],
+      "text": "The Adam paper (Kingma & Ba, 2014) specifies, as good default settings for the tested machine learning problems in Algorithm 1, β1 = 0.9, β2 = 0.999, and ε = 10⁻⁸, with β2 = 0.999 repeated in Algorithm 2 (AdaMax).",
+      "verification_reason": "Algorithms 1 and 2 directly state the default β2 = 0.999 alongside β1 = 0.9 and ε = 10⁻⁸ for Algorithm 1. The claim's added clause asserting no separate conditional default for β2 is an absence claim not directly supported by the supplied passages, so it is removed.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "transformer_beta2_claim",
+      "claim_type": "source_b",
+      "obligation_ids": [
+        "transformer_paper_beta2"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "\"Attention Is All You Need\" (Vaswani et al., 2017), Section 5.3 Optimizer, reports using the Adam optimizer with β1 = 0.9, β2 = 0.98 and ε = 10⁻⁹ for training the Transformer models.",
+      "verification_reason": "Section 5.3 directly quotes the exact parameter values (β1 = 0.9, β2 = 0.98, ε = 10⁻⁹) used with Adam. Every qualifier in the claim is supported by the passage.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_7a5bb0785774",
+  "question_id": "live_chat_7a5bb0785774"
+}

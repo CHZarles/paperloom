@@ -1,0 +1,21 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "context_mode": "continue",
+    "open_request": "user wants paper recommendations on an LLM-related topic"
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_5453a23f57a1",
+  "method_mentions": [],
+  "normalized_question": "user wants paper recommendations on an LLM-related topic",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_5453a23f57a1",
+  "raw_question": "llm related",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

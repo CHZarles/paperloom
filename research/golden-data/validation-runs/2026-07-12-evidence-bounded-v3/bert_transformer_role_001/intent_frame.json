@@ -1,0 +1,70 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "exact_fact",
+  "constraints": {
+    "coverage_assumption": "BERT uses only the Transformer encoder stack (not the decoder) and is therefore bidirectional, per the 2018 BERT paper.",
+    "task": {
+      "object": "architectural role of Transformer in BERT",
+      "verb": "extract"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "bert_2018",
+    "attention_is_all_you_need_2017",
+    "encoder vs decoder usage",
+    "bidirectional vs masked attention",
+    "components borrowed from Transformer"
+  ],
+  "intent_id": "intent_live_chat_e65d6f637327",
+  "method_mentions": [],
+  "normalized_question": "Determine whether BERT uses the Transformer as an encoder or decoder, grounded in the BERT 2018 paper and corroborated by the Attention Is All You Need 2017 paper in the corpus.",
+  "obligations": [
+    {
+      "answer_field": "bert_transformer_role",
+      "description": "What does the BERT paper state about how it uses the Transformer (encoder vs decoder)? Quote the relevant sentence(s).",
+      "id": "bert_transformer_role_claim",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_architecture_components",
+      "description": "What architectural components of BERT are sourced from Transformer (e.g., multi-head self-attention, position-wise feed-forward, sinusoidal position embeddings, residual connections, layer norm)?",
+      "id": "bert_architecture_components",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_encoder_decoder_definition",
+      "description": "How does the original Transformer paper define the encoder stack and the decoder stack (what distinguishes them: bidirectional self-attention vs masked self-attention plus cross-attention)?",
+      "id": "transformer_encoder_vs_decoder_definition",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "bert_2018",
+    "attention_is_all_you_need_2017"
+  ],
+  "primary_paradigm": "precision_fact_extraction",
+  "question_id": "live_chat_e65d6f637327",
+  "raw_question": "Does BERT use the Transformer as an encoder or decoder?",
+  "required_capabilities": [
+    "paper_evidence_extraction"
+  ],
+  "required_evidence_types": [
+    "direct quote from paper on Transformer usage",
+    "evidence of bidirectional (non-masked) self-attention"
+  ],
+  "requires_corpus_observation": true
+}

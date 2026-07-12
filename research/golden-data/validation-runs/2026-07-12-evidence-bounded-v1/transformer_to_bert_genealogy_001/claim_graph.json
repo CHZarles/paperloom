@@ -1,0 +1,29 @@
+{
+  "claims": [
+    {
+      "claim_id": "edge_attn_to_bert_technical_meaning",
+      "claim_type": "relationship",
+      "obligation_ids": [
+        "edge_attn_to_bert_technical_meaning"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_f189c6c5f4214d2e",
+        "ev_80e066e1a3177125",
+        "ev_bdb5cc5caf5772fe",
+        "ev_7f19acb3f716bc64",
+        "ev_71ef1901f3139ae8",
+        "ev_2c75c5a0daa399bd",
+        "ev_1d621919718ca361"
+      ],
+      "text": "BERT describes its architecture as a multi-layer bidirectional Transformer encoder \"based on the original implementation\" in Vaswani et al. (2017) and \"almost identical to the original,\" omitting an exhaustive background description and referring readers to Vaswani et al. (2017). The Transformer encoder it reuses is composed of N identical layers each containing a multi-head self-attention sub-layer and a positionwise fully connected feed-forward sub-layer, with residual connections around each sub-layer followed by layer normalization; the multi-head attention consists of scaled dot-product attention run in parallel over multiple heads. Differing from the original encoder-decoder Transformer, BERT is a bidirectional Transformer encoder that uses unconstrained self-attention so every token can attend to both left and right context in all layers (whereas the original Transformer decoder uses masked self-attention preventing positions from attending to subsequent positions). BERT adopts the parameterization conventions (number of layers L, hidden size H, number of self-attention heads A) with BERT_BASE (L=12, H=768, A=12, 110M parameters) and BERT_LARGE (L=24, H=1024, A=16, 340M parameters). On top of this reused encoder, BERT introduces new pre-training objectives: a masked language model (MLM) that randomly masks tokens and predicts the original vocabulary id from context, enabling bidirectional pre-training, and a \"next sentence prediction\" task that jointly pretrains text-pair representations. For downstream use, BERT uses the self-attention mechanism to unify text-pair encoding and bidirectional cross-attention in a single Transformer stack by encoding concatenated text pairs with self-attention.",
+      "verification_reason": "The revised claim removes the unsupported \"encoder-only ... drops the decoder\" language, which is an inference not directly stated by BERT (BERT only calls itself a \"bidirectional Transformer encoder\"). The remaining technical lineage is grounded in the cited passages.",
+      "verification_verdict": "rewrite"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_bfd4ff883d07",
+  "question_id": "live_chat_bfd4ff883d07"
+}

@@ -1,0 +1,25 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "corpus_size": 30,
+    "coverage_assumption": "用户最可能想要 LLM 评估指标相关的论文（quantitative evaluation），但不能排除模型量化（与本语料不匹配）。",
+    "task": {
+      "object": "papers",
+      "verb": "recommend"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_9532a0ad0f80",
+  "method_mentions": [],
+  "normalized_question": "理解用户\"量化\"一词的含义（quantization 量化 vs 量化投资/量化分析），并在 30 篇 LLM agent/evaluation 语料中给出与该含义匹配的论文推荐。",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_9532a0ad0f80",
+  "raw_question": "推荐一些和量化有关的",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

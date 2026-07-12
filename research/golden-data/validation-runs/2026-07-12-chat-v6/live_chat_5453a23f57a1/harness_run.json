@@ -1,0 +1,122 @@
+{
+  "case_id": "live_chat_5453a23f57a1",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_5453a23f57a1",
+    "question_id": "live_chat_5453a23f57a1"
+  },
+  "completed_at": "2026-07-12T08:27:45Z",
+  "diagnostics": {
+    "completed_stage_count": 0,
+    "completion_tokens": 120,
+    "duration_ms": 2617,
+    "finish_reason": "turn_router_clarification",
+    "last_model_content_preview": "",
+    "model_call_count": 1,
+    "model_latency_ms": 2617,
+    "paradigm": "ambiguity_resolution",
+    "prompt_tokens": 1856,
+    "stage_count": 0,
+    "tool_call_count": 0,
+    "total_tokens": 1976
+  },
+  "evidence_ledger": {
+    "items": [],
+    "ledger_id": "ledger_live_chat_5453a23f57a1",
+    "missing_evidence": [],
+    "question_id": "live_chat_5453a23f57a1",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_5453a23f57a1",
+    "answer_type": "ambiguity_clarification",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Sure. What topic should the paper recommendations focus on? LLM is broad — e.g., pretraining, instruction tuning/RLHF, efficient inference, agents, evaluation, or specific architectures.",
+    "outcome": "needs_clarification",
+    "question_id": "live_chat_5453a23f57a1",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "Sure. What topic should the paper recommendations focus on? LLM is broad — e.g., pretraining, instruction tuning/RLHF, efficient inference, agents, evaluation, or specific architectures.",
+    "verification_id": "verification_live_chat_5453a23f57a1"
+  },
+  "harness_id": "python_single_decision_turn_harness_v1",
+  "intent_frame": {
+    "actionability": "blocking",
+    "ambiguity_status": "needs_user_choice",
+    "answer_type": "ambiguity_clarification",
+    "constraints": {
+      "context_mode": "continue",
+      "open_request": "user wants paper recommendations on an LLM-related topic"
+    },
+    "dataset_mentions": [],
+    "entities": [],
+    "intent_id": "intent_live_chat_5453a23f57a1",
+    "method_mentions": [],
+    "normalized_question": "user wants paper recommendations on an LLM-related topic",
+    "paper_mentions": [],
+    "primary_paradigm": "ambiguity_resolution",
+    "question_id": "live_chat_5453a23f57a1",
+    "raw_question": "llm related",
+    "required_capabilities": [],
+    "required_evidence_types": [],
+    "requires_corpus_observation": false
+  },
+  "memory_update": {},
+  "question_id": "live_chat_5453a23f57a1",
+  "reasoning_artifacts": [],
+  "research_answer": {
+    "answer_id": "answer_live_chat_5453a23f57a1",
+    "answer_type": "ambiguity_clarification",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Sure. What topic should the paper recommendations focus on? LLM is broad — e.g., pretraining, instruction tuning/RLHF, efficient inference, agents, evaluation, or specific architectures.",
+    "outcome": "needs_clarification",
+    "question_id": "live_chat_5453a23f57a1",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "Sure. What topic should the paper recommendations focus on? LLM is broad — e.g., pretraining, instruction tuning/RLHF, efficient inference, agents, evaluation, or specific architectures.",
+    "verification_id": "verification_live_chat_5453a23f57a1"
+  },
+  "result_status": "NEEDS_CLARIFICATION",
+  "retrieval_plan": {
+    "actionability": "blocking",
+    "expected_evidence_types": [],
+    "hard_negative_policy": [],
+    "paradigm": "ambiguity_resolution",
+    "plan_id": "plan_live_chat_5453a23f57a1",
+    "question_id": "live_chat_5453a23f57a1",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "request_user_input"
+    ],
+    "strategy_steps": [],
+    "target_entities": []
+  },
+  "run_id": "run_live_chat_5453a23f57a1",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [],
+  "started_at": "2026-07-12T08:27:45Z",
+  "status": "NEEDS_CLARIFICATION",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "status": "pending_user_input"
+    },
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_5453a23f57a1",
+    "required_capabilities_attempted": [],
+    "required_evidence_status": [],
+    "satisfied_trace_obligation_ids": [],
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_5453a23f57a1"
+  }
+}

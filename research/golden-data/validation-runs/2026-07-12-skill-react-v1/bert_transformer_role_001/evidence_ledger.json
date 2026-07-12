@@ -1,0 +1,29 @@
+{
+  "coverage": [],
+  "items": [
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_3540835408466c6e",
+      "evidence_quality": "verified",
+      "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+      "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+      "matched_anchor_id": "bert_transformer_encoder_background",
+      "page": 3,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3 BERT",
+      "source_kind": "reading_element",
+      "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+      "supports_claim_ids": [],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_e65d6f637327",
+  "missing_evidence": [],
+  "question_id": "live_chat_e65d6f637327",
+  "rejected_items": []
+}

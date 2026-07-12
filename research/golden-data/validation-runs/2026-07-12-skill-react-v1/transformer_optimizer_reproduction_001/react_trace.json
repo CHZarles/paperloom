@@ -1,0 +1,184 @@
+[
+  {
+    "arguments": {
+      "title": "Attention Is All You Need"
+    },
+    "result": {
+      "matches": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        }
+      ],
+      "status": "resolved"
+    },
+    "tool_call_id": "call_iNBoxPIjQPUVYmBO9NjxqHX7",
+    "tool_name": "find_papers_by_identity"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph",
+        "table",
+        "heading"
+      ],
+      "paper_ids": [
+        "attention_is_all_you_need_2017"
+      ],
+      "query_text": "optimizer Adam beta1 beta2 epsilon training"
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+          "page": 8,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Label Smoothing During training, we employed label smoothing of value $\\epsilon _ { l s } = 0 . 1 [ 3 6 ]$ . This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.",
+          "section": "5.4 Regularization",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+          "page": 1,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being mor",
+          "section": "Abstract",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bcfadf2c36da428ebfa75b2aab138bf8",
+          "page": 2,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Recurrent models typically factor computation along the symbol positions of the input and output sequences. Aligning the positions to steps in computation time, they generate a sequence of hidden states $h _ { t } ,$ as a function of the previous hidden state $h _ { t - 1 }$ and the input for position t. This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer sequence lengths, as memory constraints limit batching across examples. Rec",
+          "section": "1 Introduction",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e28a6bf2492d4c928402a1b4a6eb4cf8",
+          "page": 6,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We also experimented with using learned positional embeddings [9] instead, and found that the two versions produced nearly identical results (see Table 3 row (E)). We chose the sinusoidal version because it may allow the model to extrapolate to sequence lengths longer than the ones encountered during training.",
+          "section": "3.5 Positional Encoding",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_8db8cc210b2841f3b0892efd3970691f",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "5 Training",
+          "section": "unsectioned",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9750d0727ec04aad805b3c373834c96f",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "This section describes the training regime for our models.",
+          "section": "5 Training",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "matched_count": 26,
+      "query_text": "optimizer Adam beta1 beta2 epsilon training",
+      "returned_count": 8
+    },
+    "tool_call_id": "call_hKOGbnvIgMmKTqfDPN0poVRV",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_260d1b8af78b454dbe0f610483436730",
+        "reading_element_d8210ddc051f4101861b92a420d170bd"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_c478868f3b1b547e",
+          "evidence_quality": "verified",
+          "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.3 Optimizer",
+          "source_kind": "reading_element",
+          "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "supports_claim_ids": [],
+          "title": "Attention Is All You Need"
+        },
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_8a3081bac08c3a20",
+          "evidence_quality": "verified",
+          "location": "reading_element_d8210ddc051f4101861b92a420d170bd",
+          "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.3 Optimizer",
+          "source_kind": "reading_element",
+          "span_text": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+          "supports_claim_ids": [],
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_e9eOS8vZQHqHrL3pFx5IobLz",
+    "tool_name": "read_locations"
+  }
+]

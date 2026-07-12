@@ -1,0 +1,120 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_3032d4455f59",
+    "payload": {
+      "answer_fields": {
+        "beta1": "0.9",
+        "beta2": "0.98",
+        "epsilon": "1e-9",
+        "optimizer": "Adam"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "opt_name_claim",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "optimizer": "Adam"
+          },
+          "reason": "The passage explicitly states \"We used the Adam optimizer\".",
+          "verdict": "keep",
+          "verified_text": "Attention Is All You Need uses the Adam optimizer."
+        },
+        {
+          "claim_id": "opt_beta1_claim",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "beta1": "0.9"
+          },
+          "reason": "The passage explicitly states β₁ = 0.9 in the context of the Adam optimizer.",
+          "verdict": "keep",
+          "verified_text": "Attention Is All You Need sets β₁ to 0.9 for the Adam optimizer."
+        },
+        {
+          "claim_id": "opt_beta2_claim",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "beta2": "0.98"
+          },
+          "reason": "The passage explicitly states β₂ = 0.98 in the context of the Adam optimizer.",
+          "verdict": "keep",
+          "verified_text": "Attention Is All You Need sets β₂ to 0.98 for the Adam optimizer."
+        },
+        {
+          "claim_id": "opt_epsilon_claim",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "epsilon": "1e-9"
+          },
+          "reason": "The passage explicitly states ε = 10⁻⁹ in the context of the Adam optimizer.",
+          "verdict": "keep",
+          "verified_text": "Attention Is All You Need sets ε to 10⁻⁹ for the Adam optimizer."
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_943af035f9927560",
+            "ev_d6c41f300ee2bab1"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_name",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_943af035f9927560",
+            "ev_d6c41f300ee2bab1"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_beta1",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_943af035f9927560",
+            "ev_d6c41f300ee2bab1"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_beta2",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_943af035f9927560",
+            "ev_d6c41f300ee2bab1"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_epsilon",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "ev_c478868f3b1b547e",
+        "ev_943af035f9927560",
+        "ev_d6c41f300ee2bab1"
+      ]
+    },
+    "question_id": "live_chat_3032d4455f59",
+    "source_claim_ids": [
+      "opt_name_claim",
+      "opt_beta1_claim",
+      "opt_beta2_claim",
+      "opt_epsilon_claim"
+    ],
+    "title": "Build the optimizer portion of a strict reproduction checklist for \"Attention Is All You Need\": extract the exact optimizer name, beta1, beta2, and epsilon values as reported in the paper, without substituting generic Adam defaults.",
+    "type": "exact_fact"
+  }
+]

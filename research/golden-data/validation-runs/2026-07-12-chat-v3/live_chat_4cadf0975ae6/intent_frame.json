@@ -1,0 +1,18 @@
+{
+  "actionability": "none",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "conversation",
+  "constraints": {},
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_4cadf0975ae6",
+  "method_mentions": [],
+  "normalized_question": "Acknowledge the greeting and invite the user to state a research task about the available 30-paper corpus.",
+  "paper_mentions": [],
+  "primary_paradigm": "direct_conversation",
+  "question_id": "live_chat_4cadf0975ae6",
+  "raw_question": "hi",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

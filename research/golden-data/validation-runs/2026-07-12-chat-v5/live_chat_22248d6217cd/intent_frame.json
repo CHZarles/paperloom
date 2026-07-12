@@ -1,0 +1,60 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "coverage_assumption": "The user is signaling a preference toward the methods side (PPO-based fine-tuning papers) within the existing RLHF recommendation task. Treat this as a partial answer to the still-open flavor question and resolve it into a single choice so the recommendation can proceed.",
+    "subtopic_preference": "PPO-based fine-tuning",
+    "task": {
+      "object": [
+        "papers",
+        "papers",
+        "method_papers",
+        "method_papers",
+        "papers",
+        "overview_papers",
+        "benchmark_papers",
+        "papers",
+        "method_papers",
+        "overview_papers",
+        "benchmark_papers",
+        "method_papers",
+        "overview_papers",
+        "benchmark_papers",
+        "overview_papers",
+        "benchmark_papers"
+      ],
+      "verb": [
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend",
+        "recommend"
+      ]
+    },
+    "topic": "RLHF"
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_22248d6217cd",
+  "method_mentions": [],
+  "normalized_question": "Confirm the user's preference between PPO-based fine-tuning papers (foundational methods) versus other RLHF flavors (overview, benchmarks) so the RLHF paper recommendation can proceed.",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_22248d6217cd",
+  "raw_question": "PPO=based fine-tuning",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

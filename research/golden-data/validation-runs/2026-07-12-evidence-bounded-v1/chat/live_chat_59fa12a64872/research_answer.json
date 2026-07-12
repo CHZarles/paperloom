@@ -1,0 +1,45 @@
+{
+  "answer_id": "answer_live_chat_59fa12a64872",
+  "answer_type": "comparison_matrix",
+  "cited_claim_ids": [
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope_value",
+    "8b9e2f64d565137ca85ae75029e77fff_scope_value",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_value",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks_value",
+    "8b9e2f64d565137ca85ae75029e77fff_benchmarks_value",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks_value",
+    "8b9e2f64d565137ca85ae75029e77fff_frameworks_value",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology_value",
+    "8b9e2f64d565137ca85ae75029e77fff_methodology_value",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective_value"
+  ],
+  "cited_evidence_ids": [
+    "ev_675fca9661b26bfa",
+    "ev_ddb084a0ece5ad74",
+    "ev_3e731d621272672c",
+    "ev_394a88565bab8e83",
+    "ev_985210f77a60dcf4"
+  ],
+  "fields": {
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks": "reviews existing methodologies and datasets for LLM-based multi-turn conversational agents; 276 papers offering targeted evaluation insights",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective": "end-to-end first — prioritizes holistic end-to-end experience at the dialogue level, then drills into granular metrics (task completion, response quality, user experience, memory/context retention, planning/tool integration)",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks": "annotation-based, automated metrics, hybrid human+quantitative, and self-judging LLM methods; includes BLEU/ROUGE plus advanced multi-turn techniques",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology": "PRISMA-inspired systematic review (2017–2025); 479 Google Scholar papers + 1,081 venue papers; 351 qualitative-synthesis papers; 276 with targeted evaluation insights",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope": "multi-turn conversational LLM-based agents",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy": "two interrelated taxonomies — what to evaluate (task completion, response quality, user experience, memory and context retention, planning and tool integration) and how to evaluate (annotation-based, automated metrics, hybrid, self-judging LLM methods)",
+    "8b9e2f64d565137ca85ae75029e77fff_benchmarks": "application-specific benchmarks such as web and SWE agents; evaluation of generalist agents",
+    "8b9e2f64d565137ca85ae75029e77fff_frameworks": "evaluation frameworks and tools for agent developers",
+    "8b9e2f64d565137ca85ae75029e77fff_methodology": "rigorous multi-stage literature review with three phases — systematic search, structured selection, and expert validation",
+    "8b9e2f64d565137ca85ae75029e77fff_scope": "evaluation of LLM-based agents broadly"
+  },
+  "markdown": "| Dimension | Evidence-backed comparison |\n|---|---|\n| Architecture | scope: multi-turn conversational LLM-based agents [1]<br>scope: evaluation of LLM-based agents broadly [2] |\n| Objective | taxonomy: two interrelated taxonomies — \"what to evaluate\" (task completion, response quality, user experience, memory and context retention, planning and tool integration) and \"how to evaluate\" (annotation-based, automated metrics, hybrid human+quantitative, self-judging LLM methods) [3] |\n| Comparison | benchmarks: reviews existing datasets and methodologies for LLM-based multi-turn conversational agents; 276 papers offering targeted evaluation insights [1]<br>benchmarks: application-specific benchmarks for web, software engineering, scientific, and conversational agents, plus generalist agent benchmarks [2]<br>frameworks: organizes evaluation methodologies into annotation-based, automated metrics, hybrid human+quantitative, and self-judging LLM methods, including traditional metrics like BLEU and ROUGE alongside interactive multi-turn techniques [3]<br>frameworks: evaluation frameworks and tools for agent developers [2]<br>end-to-end vs component perspective: end-to-end first — prioritizes holistic end-to-end experience at the dialogue level, then drills into granular metrics (task completion, response quality, user experience, memory/context retention, planning/tool integration) [5] |\n| Directionality | methodology: PRISMA-inspired systematic review from 2017 to 2025; initial Google Scholar search of 479 papers plus 1,081 venue papers, yielding 351 papers for qualitative synthesis and 276 with targeted evaluation insights [1]<br>methodology: rigorous multi-stage literature review with three phases — systematic search, structured selection, and expert validation [4] |\n\nUnresolved from the available corpus evidence:\n- 8b9e2f64d565137ca85ae75029e77fff_taxonomy\n- 8b9e2f64d565137ca85ae75029e77fff_end_to_end_vs_component_perspective\n- 726cfbbd5683cdfabbf4c24e2bf8f0b2_trends\n- 8b9e2f64d565137ca85ae75029e77fff_trends\n\nSources\n[1] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 1.2 The Scope of This Survey, p. 3\n[2] A Survey on Evaluation of LLM-based Agents, Abstract, p. 1\n[3] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, p. 1\n[4] A Survey on Evaluation of LLM-based Agents, A Literature Review Methodology, p. 20\n[5] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.1 Evaluating the End-to-end Experience of LLM-based Agents For Multi-Turn Conversation, p. 6",
+  "outcome": "partial",
+  "question_id": "live_chat_59fa12a64872",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_59fa12a64872"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "scope: multi-turn conversational LLM-based agents",
+  "verification_id": "verification_live_chat_59fa12a64872"
+}

@@ -1,0 +1,237 @@
+[
+  {
+    "claim_ids": [],
+    "decision_summary": "Executed 1 bounded retrieval round(s) with 3 corpus tool call(s).",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e",
+      "ev_943af035f9927560",
+      "ev_d6c41f300ee2bab1"
+    ],
+    "obligation_ids": [
+      "opt_name",
+      "opt_beta1",
+      "opt_beta2",
+      "opt_epsilon"
+    ],
+    "semantic_goal": "collect_exact_evidence",
+    "stage_name": "collect_evidence",
+    "status": "completed",
+    "tool_calls": [
+      {
+        "allowed": true,
+        "arguments": {
+          "paper_id": "attention_is_all_you_need_2017"
+        },
+        "result": {
+          "matches": [
+            {
+              "arxiv_id": "1706.03762",
+              "authors": [
+                "Ashish Vaswani",
+                "Noam Shazeer"
+              ],
+              "doi": null,
+              "filename": null,
+              "paper_id": "attention_is_all_you_need_2017",
+              "preview": "",
+              "title": "Attention Is All You Need",
+              "venue": "NeurIPS",
+              "year": 2017
+            }
+          ],
+          "status": "resolved"
+        },
+        "tool_call_id": "identity_1",
+        "tool_name": "find_papers_by_identity"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "paper_ids": [
+            "attention_is_all_you_need_2017"
+          ],
+          "query_text": "Adam optimizer beta1 beta2 epsilon training settings",
+          "section_query": "Training Settings",
+          "top_k": 3
+        },
+        "result": {
+          "coverage": "truncated",
+          "locations": [
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "section": "5.3 Optimizer",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_9750d0727ec04aad805b3c373834c96f",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "This section describes the training regime for our models.",
+              "section": "5 Training",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million sentence pairs. Sentences were encoded using byte-pair encoding [3], which has a shared sourcetarget vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT 2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece vocabulary [38]. Sentence pairs were batched together by approximate sequence length. Each training batch contained a se",
+              "section": "5.1 Training Data and Batching",
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "matched_count": 26,
+          "query_text": "Adam optimizer beta1 beta2 epsilon training settings",
+          "returned_count": 3
+        },
+        "tool_call_id": "location_initial_1",
+        "tool_name": "find_reading_locations"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "location_refs": [
+            "reading_element_260d1b8af78b454dbe0f610483436730",
+            "reading_element_9750d0727ec04aad805b3c373834c96f",
+            "reading_element_545bea3e9d5c42c598ad0d6539ca6016"
+          ]
+        },
+        "result": {
+          "items": [
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_c478868f3b1b547e",
+              "evidence_quality": "verified",
+              "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "matched_anchor_id": "transformer_adam_training_params_span",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.3 Optimizer",
+              "source_kind": "reading_element",
+              "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_943af035f9927560",
+              "evidence_quality": "verified",
+              "location": "reading_element_9750d0727ec04aad805b3c373834c96f",
+              "location_ref": "reading_element_9750d0727ec04aad805b3c373834c96f",
+              "matched_anchor_id": null,
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5 Training",
+              "source_kind": "reading_element",
+              "span_text": "This section describes the training regime for our models.",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_d6c41f300ee2bab1",
+              "evidence_quality": "verified",
+              "location": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+              "location_ref": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+              "matched_anchor_id": null,
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.1 Training Data and Batching",
+              "source_kind": "reading_element",
+              "span_text": "We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million sentence pairs. Sentences were encoded using byte-pair encoding [3], which has a shared sourcetarget vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT 2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece vocabulary [38]. Sentence pairs were batched together by approximate sequence length. Each training batch contained a set of sentence pairs containing approximately 25000 source tokens and 25000 target tokens.",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "missing_location_refs": []
+        },
+        "tool_call_id": "read_initial",
+        "tool_name": "read_locations"
+      }
+    ]
+  },
+  {
+    "claim_ids": [
+      "opt_name_claim",
+      "opt_beta1_claim",
+      "opt_beta2_claim",
+      "opt_epsilon_claim"
+    ],
+    "decision_summary": "Constructed 4 evidence-linked atomic claim(s).",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [
+      "opt_name",
+      "opt_beta1",
+      "opt_beta2",
+      "opt_epsilon"
+    ],
+    "semantic_goal": "extract_atomic_facts",
+    "stage_name": "construct_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "opt_name_claim",
+      "opt_beta1_claim",
+      "opt_beta2_claim",
+      "opt_epsilon_claim"
+    ],
+    "decision_summary": "Verified 4 atomic claim(s): 4 kept, 0 rewritten, 0 dropped.",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "verify_exact_values",
+    "stage_name": "verify_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "opt_name_claim",
+      "opt_beta1_claim",
+      "opt_beta2_claim",
+      "opt_epsilon_claim"
+    ],
+    "decision_summary": "Rendered only verified claims.",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "render_verified_claims",
+    "stage_name": "render_answer",
+    "status": "completed",
+    "tool_calls": []
+  }
+]

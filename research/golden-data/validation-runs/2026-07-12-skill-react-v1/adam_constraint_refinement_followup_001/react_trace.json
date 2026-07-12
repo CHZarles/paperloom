@@ -1,0 +1,92 @@
+[
+  {
+    "arguments": {
+      "title": "Attention Is All You Need"
+    },
+    "result": {
+      "matches": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        }
+      ],
+      "status": "resolved"
+    },
+    "tool_call_id": "call_6Cm3l5kJMZMThCpI2CE8z9sd",
+    "tool_name": "find_papers_by_identity"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph"
+      ],
+      "paper_ids": [
+        "attention_is_all_you_need_2017"
+      ],
+      "query_text": "Adam beta"
+    },
+    "result": {
+      "coverage": "complete",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "matched_count": 1,
+      "query_text": "Adam beta",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_VNd1BRRJFRXn4CobNGXE4GRv",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_260d1b8af78b454dbe0f610483436730"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_c478868f3b1b547e",
+          "evidence_quality": "verified",
+          "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.3 Optimizer",
+          "source_kind": "reading_element",
+          "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "supports_claim_ids": [],
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_vSpoRohGrFC5yThKBVMlI9Zn",
+    "tool_name": "read_locations"
+  }
+]

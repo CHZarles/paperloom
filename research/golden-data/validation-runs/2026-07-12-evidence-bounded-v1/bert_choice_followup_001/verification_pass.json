@@ -1,0 +1,168 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [
+    {
+      "claim_id": "bert_architecture_definition",
+      "evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_2c75c5a0daa399bd"
+      ],
+      "field_values": {
+        "architecture": "multi-layer bidirectional Transformer encoder; BERT_BASE (L=12, H=768, A=12, 110M params), BERT_LARGE (L=24, H=1024, A=16, 340M params)"
+      },
+      "reason": "Both passages directly support the architecture description and the two model size specifications exactly as stated.",
+      "verdict": "keep",
+      "verified_text": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017); BERT primarily reports results on BERT_BASE (L=12, H=768, A=12, Total Parameters=110M) and BERT_LARGE (L=24, H=1024, A=16, Total Parameters=340M)."
+    },
+    {
+      "claim_id": "bert_mlm_objective_definition",
+      "evidence_ids": [
+        "ev_50abc0b358bb77ad",
+        "ev_668e1f7f3b701941",
+        "ev_0f82af3db4559191",
+        "ev_41ea8c580142eb9e"
+      ],
+      "field_values": {
+        "mlm_objective": "mask 15% of WordPiece tokens; chosen tokens replaced with [MASK] 80% / random token 10% / unchanged 10%; predict original token via cross entropy loss; fuses left and right context unlike left-to-right LM"
+      },
+      "reason": "The passages support the MLM objective details, but ev_668e1f7f3b701941 says \"we mask 15% of all WordPiece tokens\" without stating it \"randomly masks 15%\" twice; rewording to avoid duplication. The replacement ratios, cross entropy loss, and left/right context fusion are all directly supported.",
+      "verdict": "rewrite",
+      "verified_text": "BERT's masked language modeling pre-training objective masks 15% of all WordPiece tokens in each sequence at random; the training data generator chooses 15% of token positions at random for prediction, and when the i-th token is chosen it is replaced with (1) the [MASK] token 80% of the time, (2) a random token 10% of the time, and (3) the unchanged i-th token 10% of the time, with T_i used to predict the original token via cross entropy loss; unlike left-to-right language modeling, this enables the representation to fuse both left and right context to pre-train a deep bidirectional Transformer."
+    },
+    {
+      "claim_id": "bert_bidirectional_definition_change",
+      "evidence_ids": [
+        "ev_f189c6c5f4214d2e",
+        "ev_b5cb6101ea792641"
+      ],
+      "field_values": {
+        "bidirectionality_definition": "deep bidirectional: jointly conditions on both left and right context in all layers; contrasts with unidirectional LMs (Radford et al., 2018) and shallow concatenation of LTR+RTL LMs (Peters et al., 2018a)"
+      },
+      "reason": "Both the abstract and introduction passages directly support this exact characterization, including the specific contrast with Radford et al. and Peters et al.",
+      "verdict": "keep",
+      "verified_text": "BERT is designed to pre-train deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers, in contrast to Radford et al. (2018) which uses unidirectional language models for pre-training and to Peters et al. (2018a) which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs."
+    },
+    {
+      "claim_id": "bert_bidirectional_difference_change",
+      "evidence_ids": [
+        "ev_944a542df0f94975",
+        "ev_25cc15ee8198fe84"
+      ],
+      "field_values": {},
+      "reason": "Both passages directly support the content; rewording \"RTL model cannot condition the answer on the question\" to match exact source wording \"RTL model would not be able to condition the answer on the question\". The passage uses \"Intuitively, it is reasonable to believe\" for the strict-power claim, not stating it as proven; narrowing to avoid implying the claim is mathematically proven.",
+      "verdict": "rewrite",
+      "verified_text": "BERT motivates deep bidirectionality by noting that a deep bidirectional model is intuitively strictly more powerful than either a left-to-right model or the shallow concatenation of a left-to-right and right-to-left model, since standard conditional language models can only be trained left-to-right or right-to-left (because bidirectional conditioning would allow each word to indirectly 'see itself'); the ELMo-style concatenation is twice as expensive, non-intuitive for QA where the RTL model would not be able to condition the answer on the question, and strictly less powerful since it cannot use both left and right context at every layer."
+    },
+    {
+      "claim_id": "bert_nsp_objective_definition",
+      "evidence_ids": [
+        "ev_9c9a9e4f55a8193d",
+        "ev_0f82af3db4559191",
+        "ev_7397a8bf5eccf48d"
+      ],
+      "field_values": {
+        "nsp_objective": "binary next-sentence prediction: 50% B is the actual next sentence (IsNext), 50% B is random (NotNext); included with MLM to capture sentence-pair relationships needed for QA and NLI"
+      },
+      "reason": "All key elements are supported: the 50/50 IsNext/NotNext labeling, rationale about QA and NLI, and the use of C for prediction are explicitly stated in the passages.",
+      "verdict": "keep",
+      "verified_text": "BERT's Next Sentence Prediction (NSP) pre-training objective trains a model to understand sentence relationships by predicting whether sentence B is the actual next sentence that follows A (labeled IsNext) or a random sentence from the corpus (labeled NotNext), with each chosen 50% of the time; it is included alongside MLM because many downstream tasks such as Question Answering and Natural Language Inference depend on understanding the relationship between two sentences, which is not directly captured by language modeling, and the final hidden state C of the special [CLS] token is used for this prediction."
+    },
+    {
+      "claim_id": "bert_input_representation_definition",
+      "evidence_ids": [
+        "ev_1b3b81719ea2e13f",
+        "ev_3c0f7b9f503c8082",
+        "ev_cd77b6b180d64515"
+      ],
+      "field_values": {
+        "input_representation": "sum of token + segment + position embeddings; WordPiece 30k vocab; [CLS] as aggregate; [SEP] and learned A/B segment embeddings for sentence pairs"
+      },
+      "reason": "All three passages directly support the exact details of the input representation including the embedding sum, WordPiece 30k vocab, [CLS]/[SEP] tokens, learned A/B segment embeddings, and C ∈ ℝ^H aggregate representation.",
+      "verdict": "keep",
+      "verified_text": "BERT's input representation is constructed by summing the corresponding token, segment, and position embeddings; it uses WordPiece embeddings with a 30,000 token vocabulary, prepends a special [CLS] classification token to every sequence (whose final hidden state C ∈ ℝ^H serves as the aggregate sequence representation for classification), packs sentence pairs into a single sequence separated by a special [SEP] token, and adds a learned segment embedding to every token indicating whether it belongs to sentence A or sentence B."
+    }
+  ],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_ed5dd7cd3d93",
+  "required_capabilities_attempted": [
+    "paper_grounded_fact_extraction"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_2c75c5a0daa399bd",
+        "ev_bad51166022c1540",
+        "ev_cea32c153f3fd20d"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "bert_architecture",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_50abc0b358bb77ad",
+        "ev_41ea8c580142eb9e",
+        "ev_0f82af3db4559191",
+        "ev_668e1f7f3b701941"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "bert_mlm_objective",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_b5cb6101ea792641",
+        "ev_944a542df0f94975",
+        "ev_25cc15ee8198fe84",
+        "ev_f189c6c5f4214d2e"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "bert_bidirectional_definition",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_0f82af3db4559191",
+        "ev_9c9a9e4f55a8193d",
+        "ev_2d62ae583962ca9c",
+        "ev_7397a8bf5eccf48d"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "bert_nsp_objective",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_1b3b81719ea2e13f",
+        "ev_3c0f7b9f503c8082",
+        "ev_cd77b6b180d64515",
+        "ev_d956b476c1e0a2ca"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "bert_input_representation",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 2,
+  "satisfied_trace_obligation_ids": [
+    "bert_architecture",
+    "bert_mlm_objective",
+    "bert_bidirectional_definition",
+    "bert_nsp_objective",
+    "bert_input_representation"
+  ],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_ed5dd7cd3d93"
+}

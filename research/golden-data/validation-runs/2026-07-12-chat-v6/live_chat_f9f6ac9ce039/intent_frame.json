@@ -1,0 +1,21 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "context_mode": "continue",
+    "open_request": "recommend some paper"
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_f9f6ac9ce039",
+  "method_mentions": [],
+  "normalized_question": "recommend some paper",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_f9f6ac9ce039",
+  "raw_question": "recommend some paper",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

@@ -1,0 +1,107 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "hyperparameter configuration"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "beta2",
+      "description": "What is the Adam beta2 value used in the Transformer paper (\"Attention Is All You Need\", 2017)?",
+      "id": "adam_beta2_transformer",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "precision_fact_extraction",
+  "plan_id": "plan_live_chat_50ba2e59aacf",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph",
+            "table"
+          ],
+          "obligation_ids": [
+            "adam_beta2_transformer"
+          ],
+          "query_id": "q_transformer_adam_beta2",
+          "query_text": "Adam optimizer β2 0.98",
+          "section_query": null,
+          "target_ids": [
+            "t_transformer"
+          ],
+          "top_k": 3
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "1706.03762",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "adam_beta2_transformer"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "t_transformer",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_50ba2e59aacf",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "define_fact_slots",
+      "stage_name": "define_fact_slots",
+      "step_id": "stage_1_define_fact_slots",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "define_fact_slots"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_exact_evidence",
+      "stage_name": "collect_exact_evidence",
+      "step_id": "stage_2_collect_exact_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_exact_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "extract_atomic_facts",
+      "stage_name": "extract_atomic_facts",
+      "step_id": "stage_3_extract_atomic_facts",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "extract_atomic_facts"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_exact_values",
+      "stage_name": "verify_exact_values",
+      "step_id": "stage_4_verify_exact_values",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_exact_values"
+    }
+  ],
+  "target_entities": [
+    ""
+  ]
+}

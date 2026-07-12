@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_5fb505103ff1",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Sure! To recommend papers that actually help you, could you tell me a bit more about what you're interested in? For example, a topic or method (e.g., diffusion models, RLHF, retrieval-augmented generation), and whether you want an overview, key benchmarks, or foundational papers.",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_5fb505103ff1",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "Sure! To recommend papers that actually help you, could you tell me a bit more about what you're interested in? For example, a topic or method (e.g., diffusion models, RLHF, retrieval-augmented generation), and whether you want an overview, key benchmarks, or foundational papers.",
+  "verification_id": "verification_live_chat_5fb505103ff1"
+}

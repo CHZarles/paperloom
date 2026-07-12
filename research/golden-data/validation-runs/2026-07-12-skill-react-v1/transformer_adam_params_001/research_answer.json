@@ -1,0 +1,13 @@
+{
+  "answer_id": "answer_live_chat_e14469c7ef18",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {},
+  "markdown": "The original Transformer paper (\"Attention Is All You Need\", Vaswani et al., 2017) used the Adam optimizer with the following hyperparameters in §5.3 Optimizer:\n\n- **β₁ = 0.9**\n- **β₂ = 0.98**\n- **ε = 10⁻⁹**\n\nNotably, β₂ was set higher than the default 0.999 typically used in Adam.[1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "live_chat_e14469c7ef18",
+  "status": "COMPLETED",
+  "summary": "The original Transformer paper (\"Attention Is All You Need\", Vaswani et al., 2017) used the Adam optimizer with the following hyperparameters in §5.3 Optimizer:\n\n- **β₁ = 0.9**\n- **β₂ = 0.98**\n- **ε = 10⁻⁹**\n\nNotably, β₂ was set higher than the default 0.999 typically used in Adam.[1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7"
+}

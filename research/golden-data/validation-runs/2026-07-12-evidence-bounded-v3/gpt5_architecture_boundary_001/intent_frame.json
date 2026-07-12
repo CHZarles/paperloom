@@ -1,0 +1,25 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "corpus_inventory_only": true,
+    "coverage_assumption": "Assume the user means the GPT-5 model released by OpenAI, which is not represented in the supplied corpus of 5 papers (Attention Is All You Need, Adam, BERT, GPT-2, GPT-3).",
+    "task": {
+      "object": "paper_and_task_for_GPT-5_architecture_query",
+      "verb": "identify"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_93043cbabba4",
+  "method_mentions": [],
+  "normalized_question": "Identify whether the user is asking about the GPT-5 model and, if so, what specific action they want performed, since GPT-5 is not in the available corpus.",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_93043cbabba4",
+  "raw_question": "What are the architecture details of GPT-5?",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

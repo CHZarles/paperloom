@@ -1,0 +1,14 @@
+{
+  "actionability": "blocking",
+  "expected_evidence_types": [],
+  "hard_negative_policy": [],
+  "paradigm": "ambiguity_resolution",
+  "plan_id": "plan_live_chat_944e3d2902d1",
+  "question_id": "live_chat_944e3d2902d1",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "request_user_input"
+  ],
+  "strategy_steps": [],
+  "target_entities": []
+}

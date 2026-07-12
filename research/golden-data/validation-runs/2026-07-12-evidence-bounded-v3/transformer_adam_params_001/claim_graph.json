@@ -1,0 +1,52 @@
+{
+  "claims": [
+    {
+      "claim_id": "adam_beta1_fact",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "adam_beta1"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "In \"Attention Is All You Need\" (Section 5.3 Optimizer), the Adam optimizer was used with β1 = 0.9.",
+      "verification_reason": "The passage explicitly states \"β1 = 0.9\" in Section 5.3 Optimizer.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "adam_beta2_fact",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "adam_beta2"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "In \"Attention Is All You Need\" (Section 5.3 Optimizer), the Adam optimizer was used with β2 = 0.98.",
+      "verification_reason": "The passage explicitly states \"β2 = 0.98\" in Section 5.3 Optimizer.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "adam_epsilon_fact",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "adam_epsilon"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "In \"Attention Is All You Need\" (Section 5.3 Optimizer), the Adam optimizer was used with ε = 10^{-9}.",
+      "verification_reason": "The passage explicitly states \"ε = 10^{-9}\" in Section 5.3 Optimizer.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_e14469c7ef18",
+  "question_id": "live_chat_e14469c7ef18"
+}

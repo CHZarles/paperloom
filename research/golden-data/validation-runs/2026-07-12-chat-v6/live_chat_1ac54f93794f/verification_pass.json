@@ -1,0 +1,56 @@
+{
+  "abstention_required": true,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [
+    "recommendation_selection"
+  ],
+  "missing_required_evidence": [
+    {
+      "description": "Select up to 3-5 distinct papers that directly address the requested topic and explain from source evidence why each fits. Do not substitute adjacent topics when the corpus lacks an exact match.",
+      "obligation_id": "recommendation_selection"
+    }
+  ],
+  "question_id": "live_chat_1ac54f93794f",
+  "required_capabilities_attempted": [
+    "paper_recommendation",
+    "constraint_matching"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_51db3f4ad51f669d",
+        "ev_4ab954dcf11e3508",
+        "ev_e887f4d6063e46cd",
+        "ev_13b4237d615a7f07",
+        "ev_21fcfc55c13fcbd0",
+        "ev_78b500c1a02d785b",
+        "ev_745f629cb47c270e",
+        "ev_c4bbb6fc69d180cb",
+        "ev_73d2d255bf90c564",
+        "ev_07ea72629ae0e3e9",
+        "ev_4533df25ca5d3b9d",
+        "ev_ae39d787c9d38610",
+        "ev_2cdeeb3e67f74249",
+        "ev_d96f868806c223fd",
+        "ev_3d3e2509a4735529"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "recommendation_selection",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_1ac54f93794f"
+}

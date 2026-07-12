@@ -1,0 +1,1149 @@
+{
+  "case_id": "transformer_optimizer_reproduction_001",
+  "claim_graph": {
+    "claims": [
+      {
+        "claim_id": "c_opt_name",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_name"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "The optimizer used in Attention Is All You Need is the Adam optimizer.",
+        "verification_reason": "Evidence directly states \"We used the Adam optimizer\" in the Optimizer section.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "c_opt_beta1",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_beta1"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "The exact beta1 value specified for the optimizer is 0.9.",
+        "verification_reason": "Evidence states \"β1 = 0.9\" directly.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "c_opt_beta2",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_beta2"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "The exact beta2 value specified for the optimizer is 0.98.",
+        "verification_reason": "Evidence states \"β2 = 0.98\" directly.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "c_opt_epsilon",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_epsilon"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "The exact epsilon value specified for the optimizer is 10^{-9}.",
+        "verification_reason": "Evidence states \"ε = 10^{-9}\" directly.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "c_opt_lr_schedule",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_learning_rate_warmup"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20"
+        ],
+        "text": "The learning rate is increased linearly for the first warmup_steps training steps and decreased thereafter proportionally to the inverse square root of the step number, with warmup_steps = 4000.",
+        "verification_reason": "Both passages together directly support: \"increasing the learning rate linearly for the first warmup_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup_steps = 4000.\"",
+        "verification_verdict": "keep"
+      }
+    ],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_3032d4455f59",
+    "question_id": "live_chat_3032d4455f59"
+  },
+  "completed_at": "2026-07-12T04:53:05Z",
+  "diagnostics": {
+    "completed_stage_count": 4,
+    "completion_tokens": 3124,
+    "duration_ms": 41328,
+    "finish_reason": "evidence_bounded_answer_rendered",
+    "model_call_count": 4,
+    "model_latency_ms": 41282,
+    "paradigm": "precision_fact_extraction",
+    "prompt_tokens": 10340,
+    "stage_count": 4,
+    "tool_call_count": 3,
+    "total_tokens": 13464
+  },
+  "evidence_ledger": {
+    "coverage": [
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_name",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta1",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta2",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_epsilon",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_learning_rate_warmup",
+        "status": "covered"
+      }
+    ],
+    "items": [
+      {
+        "authors": [
+          "Ashish Vaswani",
+          "Noam Shazeer"
+        ],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "Attention Is All You Need",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need",
+        "venue": "NeurIPS",
+        "year": 2017
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_1",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"attention_is_all_you_need_2017\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Attention Is All You Need\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_c478868f3b1b547e",
+        "evidence_quality": "verified",
+        "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "matched_anchor_id": "transformer_adam_training_params_span",
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.3 Optimizer",
+        "source_kind": "reading_element",
+        "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_8a3081bac08c3a20",
+        "evidence_quality": "verified",
+        "location": "reading_element_d8210ddc051f4101861b92a420d170bd",
+        "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+        "matched_anchor_id": null,
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.3 Optimizer",
+        "source_kind": "reading_element",
+        "span_text": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_9f0ad4e5c9243e9e",
+        "evidence_quality": "verified",
+        "location": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+        "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+        "matched_anchor_id": null,
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.2 Hardware and Schedule",
+        "source_kind": "reading_element",
+        "span_text": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_3032d4455f59",
+    "missing_evidence": [],
+    "question_id": "live_chat_3032d4455f59",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_3032d4455f59",
+    "answer_type": "exact_fact",
+    "cited_claim_ids": [
+      "c_opt_name",
+      "c_opt_beta1",
+      "c_opt_beta2",
+      "c_opt_epsilon",
+      "c_opt_lr_schedule"
+    ],
+    "cited_evidence_ids": [
+      "ev_c478868f3b1b547e",
+      "ev_8a3081bac08c3a20"
+    ],
+    "fields": {
+      "beta1": "0.9",
+      "beta2": "0.98",
+      "epsilon": "10^{-9}",
+      "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number",
+      "optimizer": "Adam"
+    },
+    "markdown": "- **optimizer:** Adam [1]\n- **beta1:** 0.9 [1]\n- **beta2:** 0.98 [1]\n- **epsilon:** 10^{-9} [1]\n- **lr_schedule:** linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number [1][2]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] Attention Is All You Need, 5.3 Optimizer, p. 7",
+    "outcome": "answered",
+    "question_id": "live_chat_3032d4455f59",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_3032d4455f59"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "The optimizer used in Attention Is All You Need is the Adam optimizer.",
+    "verification_id": "verification_live_chat_3032d4455f59"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "actionability": "non_blocking",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "exact_fact",
+    "constraints": {
+      "coverage_assumption": "The user wants only the optimizer block (name + betas + epsilon, plus the immediately tied learning-rate/warmup schedule that the paper specifies together with the optimizer) extracted verbatim from Attention Is All You Need, without consulting other corpus papers for defaults.",
+      "exact_from_paper": "true",
+      "no_generic_substitution": "true",
+      "task": {
+        "object": "optimizer hyperparameters",
+        "verb": "extract"
+      }
+    },
+    "dataset_mentions": [],
+    "entities": [
+      "attention_is_all_you_need_2017",
+      "optimizer name",
+      "beta1",
+      "beta2",
+      "epsilon",
+      "associated learning rate schedule / warmup"
+    ],
+    "intent_id": "intent_live_chat_3032d4455f59",
+    "method_mentions": [],
+    "normalized_question": "Extract the exact optimizer name and its hyperparameters (beta1, beta2, epsilon) as used in the Attention Is All You Need paper, for inclusion in a strict reproduction checklist (optimizer portion only). Do not substitute generic Adam defaults; quote values verbatim from the paper.",
+    "obligations": [
+      {
+        "answer_field": "optimizer",
+        "description": "What optimizer name is stated in Attention Is All You Need for model training?",
+        "id": "opt_name",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta1",
+        "description": "What is the exact beta1 value specified for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta1",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta2",
+        "description": "What is the exact beta2 value specified for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta2",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "epsilon",
+        "description": "What is the exact epsilon value specified for the optimizer in Attention Is All You Need?",
+        "id": "opt_epsilon",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "lr_schedule",
+        "description": "What learning rate schedule and warmup steps are paired with the optimizer in Attention Is All You Need (needed to reproduce the optimizer portion faithfully)?",
+        "id": "opt_learning_rate_warmup",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      }
+    ],
+    "paper_mentions": [
+      "attention_is_all_you_need_2017"
+    ],
+    "primary_paradigm": "precision_fact_extraction",
+    "question_id": "live_chat_3032d4455f59",
+    "raw_question": "Build the optimizer portion of a strict reproduction checklist for Attention Is All You Need: give the optimizer, beta1, beta2, and epsilon exactly as used in the paper, without substituting generic Adam defaults.",
+    "required_capabilities": [
+      "read_paper"
+    ],
+    "required_evidence_types": [
+      "exact_text_quote",
+      "section_location"
+    ],
+    "requires_corpus_observation": true
+  },
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_c478868f3b1b547e",
+      "ev_8a3081bac08c3a20"
+    ],
+    "selected_paper_ids": [
+      "attention_is_all_you_need_2017"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    }
+  ],
+  "question_id": "transformer_optimizer_reproduction_001",
+  "reasoning_artifacts": [
+    {
+      "artifact_id": "reasoning_live_chat_3032d4455f59",
+      "payload": {
+        "answer_fields": {
+          "beta1": "0.9",
+          "beta2": "0.98",
+          "epsilon": "10^{-9}",
+          "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number",
+          "optimizer": "Adam"
+        },
+        "claim_verdicts": [
+          {
+            "claim_id": "c_opt_name",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "optimizer": "Adam"
+            },
+            "reason": "Evidence directly states \"We used the Adam optimizer\" in the Optimizer section.",
+            "verdict": "keep",
+            "verified_text": "The optimizer used in Attention Is All You Need is the Adam optimizer."
+          },
+          {
+            "claim_id": "c_opt_beta1",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "beta1": "0.9"
+            },
+            "reason": "Evidence states \"β1 = 0.9\" directly.",
+            "verdict": "keep",
+            "verified_text": "The exact beta1 value specified for the optimizer is 0.9."
+          },
+          {
+            "claim_id": "c_opt_beta2",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "beta2": "0.98"
+            },
+            "reason": "Evidence states \"β2 = 0.98\" directly.",
+            "verdict": "keep",
+            "verified_text": "The exact beta2 value specified for the optimizer is 0.98."
+          },
+          {
+            "claim_id": "c_opt_epsilon",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "epsilon": "10^{-9}"
+            },
+            "reason": "Evidence states \"ε = 10^{-9}\" directly.",
+            "verdict": "keep",
+            "verified_text": "The exact epsilon value specified for the optimizer is 10^{-9}."
+          },
+          {
+            "claim_id": "c_opt_lr_schedule",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_8a3081bac08c3a20"
+            ],
+            "field_values": {
+              "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number"
+            },
+            "reason": "Both passages together directly support: \"increasing the learning rate linearly for the first warmup_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup_steps = 4000.\"",
+            "verdict": "keep",
+            "verified_text": "The learning rate is increased linearly for the first warmup_steps training steps and decreased thereafter proportionally to the inverse square root of the step number, with warmup_steps = 4000."
+          }
+        ],
+        "obligation_coverage": [
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_8a3081bac08c3a20",
+              "ev_9f0ad4e5c9243e9e"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_name",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_8a3081bac08c3a20",
+              "ev_9f0ad4e5c9243e9e"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_beta1",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_8a3081bac08c3a20",
+              "ev_9f0ad4e5c9243e9e"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_beta2",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_8a3081bac08c3a20",
+              "ev_9f0ad4e5c9243e9e"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_epsilon",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_8a3081bac08c3a20",
+              "ev_9f0ad4e5c9243e9e"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_learning_rate_warmup",
+            "status": "covered"
+          }
+        ],
+        "source_evidence_ids": [
+          "corpus_observation_identity_1",
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ]
+      },
+      "question_id": "live_chat_3032d4455f59",
+      "source_claim_ids": [
+        "c_opt_name",
+        "c_opt_beta1",
+        "c_opt_beta2",
+        "c_opt_epsilon",
+        "c_opt_lr_schedule"
+      ],
+      "title": "Extract the exact optimizer name and its hyperparameters (beta1, beta2, epsilon) as used in the Attention Is All You Need paper, for inclusion in a strict reproduction checklist (optimizer portion only). Do not substitute generic Adam defaults; quote values verbatim from the paper.",
+      "type": "exact_fact"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_3032d4455f59",
+    "answer_type": "exact_fact",
+    "cited_claim_ids": [
+      "c_opt_name",
+      "c_opt_beta1",
+      "c_opt_beta2",
+      "c_opt_epsilon",
+      "c_opt_lr_schedule"
+    ],
+    "cited_evidence_ids": [
+      "ev_c478868f3b1b547e",
+      "ev_8a3081bac08c3a20"
+    ],
+    "fields": {
+      "beta1": "0.9",
+      "beta2": "0.98",
+      "epsilon": "10^{-9}",
+      "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number",
+      "optimizer": "Adam"
+    },
+    "markdown": "- **optimizer:** Adam [1]\n- **beta1:** 0.9 [1]\n- **beta2:** 0.98 [1]\n- **epsilon:** 10^{-9} [1]\n- **lr_schedule:** linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number [1][2]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] Attention Is All You Need, 5.3 Optimizer, p. 7",
+    "outcome": "answered",
+    "question_id": "live_chat_3032d4455f59",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_3032d4455f59"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "The optimizer used in Attention Is All You Need is the Adam optimizer.",
+    "verification_id": "verification_live_chat_3032d4455f59"
+  },
+  "result_status": "COMPLETED",
+  "retrieval_plan": {
+    "actionability": "non_blocking",
+    "expected_evidence_types": [
+      "exact_text_quote",
+      "section_location"
+    ],
+    "hard_negative_policy": [],
+    "obligations": [
+      {
+        "answer_field": "optimizer",
+        "description": "What optimizer name is stated in Attention Is All You Need for model training?",
+        "id": "opt_name",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta1",
+        "description": "What is the exact beta1 value specified for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta1",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta2",
+        "description": "What is the exact beta2 value specified for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta2",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "epsilon",
+        "description": "What is the exact epsilon value specified for the optimizer in Attention Is All You Need?",
+        "id": "opt_epsilon",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "lr_schedule",
+        "description": "What learning rate schedule and warmup steps are paired with the optimizer in Attention Is All You Need (needed to reproduce the optimizer portion faithfully)?",
+        "id": "opt_learning_rate_warmup",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      }
+    ],
+    "paradigm": "precision_fact_extraction",
+    "plan_id": "plan_live_chat_3032d4455f59",
+    "query_rounds": [
+      {
+        "evidence_queries": [
+          {
+            "element_types": [
+              "paragraph",
+              "table"
+            ],
+            "obligation_ids": [
+              "opt_name",
+              "opt_beta1",
+              "opt_beta2",
+              "opt_epsilon",
+              "opt_learning_rate_warmup"
+            ],
+            "query_id": "q_optimizer_block",
+            "query_text": "optimizer Adam beta1 beta2 epsilon warmup learning rate schedule training",
+            "section_query": "Training",
+            "target_ids": [
+              "t_attn"
+            ],
+            "top_k": 3
+          }
+        ],
+        "paper_targets": [
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "opt_name",
+              "opt_beta1",
+              "opt_beta2",
+              "opt_epsilon",
+              "opt_learning_rate_warmup"
+            ],
+            "discovery_query": "",
+            "paper_id": "attention_is_all_you_need_2017",
+            "target_id": "t_attn",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "reuse_evidence": [],
+        "round": "initial"
+      }
+    ],
+    "question_id": "live_chat_3032d4455f59",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "all_required_obligations_verified",
+      "precise_evidence_gap"
+    ],
+    "strategy_steps": [
+      {
+        "allowed_tools": [],
+        "semantic_goal": "define_fact_slots",
+        "stage_name": "define_fact_slots",
+        "step_id": "stage_1_define_fact_slots",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "define_fact_slots"
+      },
+      {
+        "allowed_tools": [
+          "search_paper_candidates",
+          "find_papers_by_identity",
+          "find_reading_locations",
+          "read_locations",
+          "get_citation_edges"
+        ],
+        "semantic_goal": "collect_exact_evidence",
+        "stage_name": "collect_exact_evidence",
+        "step_id": "stage_2_collect_exact_evidence",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "collect_exact_evidence"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "extract_atomic_facts",
+        "stage_name": "extract_atomic_facts",
+        "step_id": "stage_3_extract_atomic_facts",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "extract_atomic_facts"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "verify_exact_values",
+        "stage_name": "verify_exact_values",
+        "step_id": "stage_4_verify_exact_values",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "verify_exact_values"
+      }
+    ],
+    "target_entities": [
+      "attention_is_all_you_need_2017"
+    ]
+  },
+  "run_id": "run_live_chat_3032d4455f59",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [
+    {
+      "claim_ids": [],
+      "decision_summary": "Executed 1 bounded retrieval round(s) with 3 corpus tool call(s).",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_9f0ad4e5c9243e9e"
+      ],
+      "obligation_ids": [
+        "opt_name",
+        "opt_beta1",
+        "opt_beta2",
+        "opt_epsilon",
+        "opt_learning_rate_warmup"
+      ],
+      "semantic_goal": "collect_exact_evidence",
+      "stage_name": "collect_evidence",
+      "status": "completed",
+      "tool_calls": [
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "attention_is_all_you_need_2017"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": "1706.03762",
+                "authors": [
+                  "Ashish Vaswani",
+                  "Noam Shazeer"
+                ],
+                "doi": null,
+                "filename": null,
+                "paper_id": "attention_is_all_you_need_2017",
+                "preview": "",
+                "title": "Attention Is All You Need",
+                "venue": "NeurIPS",
+                "year": 2017
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_1",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "element_types": [
+              "paragraph",
+              "table"
+            ],
+            "paper_ids": [
+              "attention_is_all_you_need_2017"
+            ],
+            "query_text": "optimizer Adam beta1 beta2 epsilon warmup learning rate schedule training",
+            "section_query": "Training",
+            "top_k": 3
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+                "section": "5.3 Optimizer",
+                "title": "Attention Is All You Need"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "preview": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+                "section": "5.3 Optimizer",
+                "title": "Attention Is All You Need"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "preview": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+                "section": "5.2 Hardware and Schedule",
+                "title": "Attention Is All You Need"
+              }
+            ],
+            "matched_count": 25,
+            "query_text": "optimizer Adam beta1 beta2 epsilon warmup learning rate schedule training",
+            "returned_count": 3
+          },
+          "tool_call_id": "location_initial_1",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "location_refs": [
+              "reading_element_260d1b8af78b454dbe0f610483436730",
+              "reading_element_d8210ddc051f4101861b92a420d170bd",
+              "reading_element_eea1133e346142a3be3c9b4d052dc0fc"
+            ]
+          },
+          "result": {
+            "items": [
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_c478868f3b1b547e",
+                "evidence_quality": "verified",
+                "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+                "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+                "matched_anchor_id": "transformer_adam_training_params_span",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.3 Optimizer",
+                "source_kind": "reading_element",
+                "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+                "supports_claim_ids": [],
+                "title": "Attention Is All You Need"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_8a3081bac08c3a20",
+                "evidence_quality": "verified",
+                "location": "reading_element_d8210ddc051f4101861b92a420d170bd",
+                "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+                "matched_anchor_id": null,
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.3 Optimizer",
+                "source_kind": "reading_element",
+                "span_text": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+                "supports_claim_ids": [],
+                "title": "Attention Is All You Need"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_9f0ad4e5c9243e9e",
+                "evidence_quality": "verified",
+                "location": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+                "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+                "matched_anchor_id": null,
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.2 Hardware and Schedule",
+                "source_kind": "reading_element",
+                "span_text": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+                "supports_claim_ids": [],
+                "title": "Attention Is All You Need"
+              }
+            ],
+            "missing_location_refs": []
+          },
+          "tool_call_id": "read_initial",
+          "tool_name": "read_locations"
+        }
+      ]
+    },
+    {
+      "claim_ids": [
+        "c_opt_name",
+        "c_opt_beta1",
+        "c_opt_beta2",
+        "c_opt_epsilon",
+        "c_opt_lr_schedule"
+      ],
+      "decision_summary": "Constructed 5 evidence-linked atomic claim(s).",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20"
+      ],
+      "obligation_ids": [
+        "opt_name",
+        "opt_beta1",
+        "opt_beta2",
+        "opt_epsilon",
+        "opt_learning_rate_warmup"
+      ],
+      "semantic_goal": "extract_atomic_facts",
+      "stage_name": "construct_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "c_opt_name",
+        "c_opt_beta1",
+        "c_opt_beta2",
+        "c_opt_epsilon",
+        "c_opt_lr_schedule"
+      ],
+      "decision_summary": "Verified 5 atomic claim(s): 5 kept, 0 rewritten, 0 dropped.",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "verify_exact_values",
+      "stage_name": "verify_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "c_opt_name",
+        "c_opt_beta1",
+        "c_opt_beta2",
+        "c_opt_epsilon",
+        "c_opt_lr_schedule"
+      ],
+      "decision_summary": "Rendered only verified claims.",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "render_verified_claims",
+      "stage_name": "render_answer",
+      "status": "completed",
+      "tool_calls": []
+    }
+  ],
+  "started_at": "2026-07-12T04:52:44Z",
+  "status": "COMPLETED",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "requires_user_choice": false,
+      "status": "unambiguous"
+    },
+    "answer_reference_integrity_passed": true,
+    "claim_verdicts": [
+      {
+        "claim_id": "c_opt_name",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "optimizer": "Adam"
+        },
+        "reason": "Evidence directly states \"We used the Adam optimizer\" in the Optimizer section.",
+        "verdict": "keep",
+        "verified_text": "The optimizer used in Attention Is All You Need is the Adam optimizer."
+      },
+      {
+        "claim_id": "c_opt_beta1",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "beta1": "0.9"
+        },
+        "reason": "Evidence states \"β1 = 0.9\" directly.",
+        "verdict": "keep",
+        "verified_text": "The exact beta1 value specified for the optimizer is 0.9."
+      },
+      {
+        "claim_id": "c_opt_beta2",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "beta2": "0.98"
+        },
+        "reason": "Evidence states \"β2 = 0.98\" directly.",
+        "verdict": "keep",
+        "verified_text": "The exact beta2 value specified for the optimizer is 0.98."
+      },
+      {
+        "claim_id": "c_opt_epsilon",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "epsilon": "10^{-9}"
+        },
+        "reason": "Evidence states \"ε = 10^{-9}\" directly.",
+        "verdict": "keep",
+        "verified_text": "The exact epsilon value specified for the optimizer is 10^{-9}."
+      },
+      {
+        "claim_id": "c_opt_lr_schedule",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20"
+        ],
+        "field_values": {
+          "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number"
+        },
+        "reason": "Both passages together directly support: \"increasing the learning rate linearly for the first warmup_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup_steps = 4000.\"",
+        "verdict": "keep",
+        "verified_text": "The learning rate is increased linearly for the first warmup_steps training steps and decreased thereafter proportionally to the inverse square root of the step number, with warmup_steps = 4000."
+      }
+    ],
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "corpus_observation_passed": true,
+    "corpus_observation_required": true,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_3032d4455f59",
+    "required_capabilities_attempted": [
+      "read_paper"
+    ],
+    "required_evidence_status": [
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_name",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta1",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta2",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_epsilon",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_8a3081bac08c3a20",
+          "ev_9f0ad4e5c9243e9e"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_learning_rate_warmup",
+        "status": "covered"
+      }
+    ],
+    "rewritten_claim_count": 0,
+    "satisfied_trace_obligation_ids": [
+      "opt_name",
+      "opt_beta1",
+      "opt_beta2",
+      "opt_epsilon",
+      "opt_learning_rate_warmup"
+    ],
+    "stage_contracts_passed": true,
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_3032d4455f59"
+  }
+}

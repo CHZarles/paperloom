@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_4cadf0975ae6",
+  "answer_type": "conversation",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Hi! How can I help you today? You can ask me to recommend papers, compare methods, reproduce a technique, trace definitions or citations, analyze datasets, or run a systematic review on a topic.",
+  "outcome": "answered",
+  "question_id": "live_chat_4cadf0975ae6",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Hi! How can I help you today? You can ask me to recommend papers, compare methods, reproduce a technique, trace definitions or citations, analyze datasets, or run a systematic review on a topic.",
+  "verification_id": "verification_live_chat_4cadf0975ae6"
+}

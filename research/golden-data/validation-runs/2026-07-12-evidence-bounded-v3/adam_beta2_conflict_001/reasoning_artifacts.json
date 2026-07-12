@@ -1,0 +1,107 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_7a5bb0785774",
+    "payload": {
+      "answer_fields": {
+        "adam_beta2": "0.999",
+        "scope_distinction": "Adam: paper-wide recommended default for tested problems vs. Transformer: Adam setting used in its experiments; distinguishes a general default from an experimental setting.",
+        "transformer_beta2": "0.98"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "adam_beta2_source",
+          "evidence_ids": [
+            "ev_25fa64ee50482ccf"
+          ],
+          "field_values": {
+            "adam_beta2": "0.999"
+          },
+          "reason": "The passage directly states \"Good default settings for the tested machine learning problems are α = 0.001, β1 = 0.9, β2 = 0.999 and ε = 10^(−8)\" as part of Algorithm 1, supporting every qualifier.",
+          "verdict": "keep",
+          "verified_text": "The Adam paper (Kingma & Ba, 2014) specifies good default settings for the tested machine learning problems as β1 = 0.9, β2 = 0.999 and ε = 10^(−8), presented as paper-wide recommended defaults accompanying Algorithm 1."
+        },
+        {
+          "claim_id": "transformer_beta2_source",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "transformer_beta2": "0.98"
+          },
+          "reason": "The passage directly states \"We used the Adam optimizer [20] with β1 = 0.9, β2 = 0.98 and ε = 10^(−9)\" in section 5.3 Optimizer, supporting the exact wording.",
+          "verdict": "keep",
+          "verified_text": "The Transformer paper (Vaswani et al., 2017) reports using the Adam optimizer with β1 = 0.9, β2 = 0.98 and ε = 10^(−9) in its optimizer-configuration description."
+        },
+        {
+          "claim_id": "scope_resolution",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "scope_distinction": "Adam: paper-wide recommended default for tested problems vs. Transformer: Adam setting used in its experiments; distinguishes a general default from an experimental setting."
+          },
+          "reason": "The Adam passage directly supports \"paper-wide recommended default for the tested machine learning problems.\" The Transformer passage supports that β2=0.98 is what \"We used,\" indicating an experimental setting. Rewritten to avoid adding \"chosen for training the Transformer model\" framing not literally in the passage.",
+          "verdict": "rewrite",
+          "verified_text": "The Adam paper's β2 = 0.999 is described as a paper-wide recommended default for the tested machine learning problems, whereas the Transformer paper reports β2 = 0.98 as the Adam setting it used in its experiments. Since one value is a general suggested default and the other is an experimental setting, they are not in direct conflict."
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_25fa64ee50482ccf",
+            "ev_7fb5018fdf115c7e",
+            "ev_a03e82b6e3626bae",
+            "ev_774ba07085a0ea44",
+            "ev_c590d1286e633af2"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "adam_beta2_default",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_bc5eb354fc05156e",
+            "ev_de4048def54fa203"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "transformer_beta2_used",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_7fb5018fdf115c7e",
+            "ev_774ba07085a0ea44",
+            "ev_c590d1286e633af2",
+            "ev_c478868f3b1b547e",
+            "ev_bc5eb354fc05156e",
+            "ev_de4048def54fa203"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "context_scope_distinction",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "corpus_observation_identity_2",
+        "ev_25fa64ee50482ccf",
+        "ev_7fb5018fdf115c7e",
+        "ev_c478868f3b1b547e",
+        "ev_774ba07085a0ea44",
+        "ev_bc5eb354fc05156e",
+        "ev_a03e82b6e3626bae",
+        "ev_c590d1286e633af2",
+        "ev_de4048def54fa203"
+      ]
+    },
+    "question_id": "live_chat_7a5bb0785774",
+    "source_claim_ids": [
+      "adam_beta2_source",
+      "transformer_beta2_source",
+      "scope_resolution"
+    ],
+    "title": "Resolve the apparent conflict about Adam's β2 by retrieving what the Adam paper specifies versus what the Transformer paper actually uses, and explain why both sources appear to disagree.",
+    "type": "contradiction"
+  }
+]

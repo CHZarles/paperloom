@@ -1,0 +1,122 @@
+{
+  "case_id": "live_chat_4cadf0975ae6",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_4cadf0975ae6",
+    "question_id": "live_chat_4cadf0975ae6"
+  },
+  "completed_at": "2026-07-12T08:27:22Z",
+  "diagnostics": {
+    "completed_stage_count": 0,
+    "completion_tokens": 113,
+    "duration_ms": 2628,
+    "finish_reason": "turn_router_answer",
+    "last_model_content_preview": "",
+    "model_call_count": 1,
+    "model_latency_ms": 2628,
+    "paradigm": "direct_conversation",
+    "prompt_tokens": 1621,
+    "stage_count": 0,
+    "tool_call_count": 0,
+    "total_tokens": 1734
+  },
+  "evidence_ledger": {
+    "items": [],
+    "ledger_id": "ledger_live_chat_4cadf0975ae6",
+    "missing_evidence": [],
+    "question_id": "live_chat_4cadf0975ae6",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_4cadf0975ae6",
+    "answer_type": "conversation",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Hi! How can I help you today? You can ask me to recommend papers, compare methods, reproduce a technique, trace definitions or citations, analyze datasets, or run a systematic review on a topic.",
+    "outcome": "answered",
+    "question_id": "live_chat_4cadf0975ae6",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "Hi! How can I help you today? You can ask me to recommend papers, compare methods, reproduce a technique, trace definitions or citations, analyze datasets, or run a systematic review on a topic.",
+    "verification_id": "verification_live_chat_4cadf0975ae6"
+  },
+  "harness_id": "python_single_decision_turn_harness_v1",
+  "intent_frame": {
+    "actionability": "none",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "conversation",
+    "constraints": {
+      "context_mode": "clear",
+      "open_request": "User greeting"
+    },
+    "dataset_mentions": [],
+    "entities": [],
+    "intent_id": "intent_live_chat_4cadf0975ae6",
+    "method_mentions": [],
+    "normalized_question": "User greeting",
+    "paper_mentions": [],
+    "primary_paradigm": "direct_conversation",
+    "question_id": "live_chat_4cadf0975ae6",
+    "raw_question": "hi",
+    "required_capabilities": [],
+    "required_evidence_types": [],
+    "requires_corpus_observation": false
+  },
+  "memory_update": {},
+  "question_id": "live_chat_4cadf0975ae6",
+  "reasoning_artifacts": [],
+  "research_answer": {
+    "answer_id": "answer_live_chat_4cadf0975ae6",
+    "answer_type": "conversation",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Hi! How can I help you today? You can ask me to recommend papers, compare methods, reproduce a technique, trace definitions or citations, analyze datasets, or run a systematic review on a topic.",
+    "outcome": "answered",
+    "question_id": "live_chat_4cadf0975ae6",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "Hi! How can I help you today? You can ask me to recommend papers, compare methods, reproduce a technique, trace definitions or citations, analyze datasets, or run a systematic review on a topic.",
+    "verification_id": "verification_live_chat_4cadf0975ae6"
+  },
+  "result_status": "COMPLETED",
+  "retrieval_plan": {
+    "actionability": "none",
+    "expected_evidence_types": [],
+    "hard_negative_policy": [],
+    "paradigm": "direct_conversation",
+    "plan_id": "plan_live_chat_4cadf0975ae6",
+    "question_id": "live_chat_4cadf0975ae6",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "direct_reply"
+    ],
+    "strategy_steps": [],
+    "target_entities": []
+  },
+  "run_id": "run_live_chat_4cadf0975ae6",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [],
+  "started_at": "2026-07-12T08:27:22Z",
+  "status": "COMPLETED",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "status": "not_required"
+    },
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_4cadf0975ae6",
+    "required_capabilities_attempted": [],
+    "required_evidence_status": [],
+    "satisfied_trace_obligation_ids": [],
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_4cadf0975ae6"
+  }
+}

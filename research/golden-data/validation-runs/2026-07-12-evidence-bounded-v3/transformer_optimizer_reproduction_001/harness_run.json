@@ -1,0 +1,1035 @@
+{
+  "case_id": "transformer_optimizer_reproduction_001",
+  "claim_graph": {
+    "claims": [
+      {
+        "claim_id": "opt_name_claim",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_name"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "Attention Is All You Need uses the Adam optimizer.",
+        "verification_reason": "The passage explicitly states \"We used the Adam optimizer\".",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "opt_beta1_claim",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_beta1"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "Attention Is All You Need sets β₁ to 0.9 for the Adam optimizer.",
+        "verification_reason": "The passage explicitly states β₁ = 0.9 in the context of the Adam optimizer.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "opt_beta2_claim",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_beta2"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "Attention Is All You Need sets β₂ to 0.98 for the Adam optimizer.",
+        "verification_reason": "The passage explicitly states β₂ = 0.98 in the context of the Adam optimizer.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "opt_epsilon_claim",
+        "claim_type": "fact",
+        "obligation_ids": [
+          "opt_epsilon"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "text": "Attention Is All You Need sets ε to 10⁻⁹ for the Adam optimizer.",
+        "verification_reason": "The passage explicitly states ε = 10⁻⁹ in the context of the Adam optimizer.",
+        "verification_verdict": "keep"
+      }
+    ],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_3032d4455f59",
+    "question_id": "live_chat_3032d4455f59"
+  },
+  "completed_at": "2026-07-12T05:46:35Z",
+  "diagnostics": {
+    "completed_stage_count": 4,
+    "completion_tokens": 2618,
+    "duration_ms": 34232,
+    "finish_reason": "evidence_bounded_answer_rendered",
+    "model_call_count": 4,
+    "model_latency_ms": 34187,
+    "paradigm": "precision_fact_extraction",
+    "prompt_tokens": 11591,
+    "stage_count": 4,
+    "tool_call_count": 3,
+    "total_tokens": 14209
+  },
+  "evidence_ledger": {
+    "coverage": [
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_name",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta1",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta2",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_epsilon",
+        "status": "covered"
+      }
+    ],
+    "items": [
+      {
+        "authors": [
+          "Ashish Vaswani",
+          "Noam Shazeer"
+        ],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "Attention Is All You Need",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need",
+        "venue": "NeurIPS",
+        "year": 2017
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_1",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"attention_is_all_you_need_2017\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Attention Is All You Need\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_c478868f3b1b547e",
+        "evidence_quality": "verified",
+        "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "matched_anchor_id": "transformer_adam_training_params_span",
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.3 Optimizer",
+        "source_kind": "reading_element",
+        "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_943af035f9927560",
+        "evidence_quality": "verified",
+        "location": "reading_element_9750d0727ec04aad805b3c373834c96f",
+        "location_ref": "reading_element_9750d0727ec04aad805b3c373834c96f",
+        "matched_anchor_id": null,
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5 Training",
+        "source_kind": "reading_element",
+        "span_text": "This section describes the training regime for our models.",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_d6c41f300ee2bab1",
+        "evidence_quality": "verified",
+        "location": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+        "location_ref": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+        "matched_anchor_id": null,
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.1 Training Data and Batching",
+        "source_kind": "reading_element",
+        "span_text": "We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million sentence pairs. Sentences were encoded using byte-pair encoding [3], which has a shared sourcetarget vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT 2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece vocabulary [38]. Sentence pairs were batched together by approximate sequence length. Each training batch contained a set of sentence pairs containing approximately 25000 source tokens and 25000 target tokens.",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_3032d4455f59",
+    "missing_evidence": [],
+    "question_id": "live_chat_3032d4455f59",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_3032d4455f59",
+    "answer_type": "exact_fact",
+    "cited_claim_ids": [
+      "opt_name_claim",
+      "opt_beta1_claim",
+      "opt_beta2_claim",
+      "opt_epsilon_claim"
+    ],
+    "cited_evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "fields": {
+      "beta1": "0.9",
+      "beta2": "0.98",
+      "epsilon": "1e-9",
+      "optimizer": "Adam"
+    },
+    "markdown": "- **optimizer:** Adam [1]\n- **beta1:** 0.9 [1]\n- **beta2:** 0.98 [1]\n- **epsilon:** 1e-9 [1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7",
+    "outcome": "answered",
+    "question_id": "live_chat_3032d4455f59",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_3032d4455f59"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "Attention Is All You Need uses the Adam optimizer.",
+    "verification_id": "verification_live_chat_3032d4455f59"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "actionability": "non_blocking",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "exact_fact",
+    "constraints": {
+      "coverage_assumption": "User wants optimizer hyperparameters strictly as stated in \"Attention Is All You Need\" (2017), not from the Adam paper's generic defaults.",
+      "do_not_substitute_defaults": "true",
+      "reproduction_strictness": "exact values as stated in paper",
+      "target_paper": "Attention Is All You Need (2017)",
+      "task": {
+        "object": "optimizer configuration (optimizer name, beta1, beta2, epsilon)",
+        "verb": "extract"
+      }
+    },
+    "dataset_mentions": [],
+    "entities": [
+      "attention_is_all_you_need_2017",
+      "optimizer name",
+      "beta1",
+      "beta2",
+      "epsilon"
+    ],
+    "intent_id": "intent_live_chat_3032d4455f59",
+    "method_mentions": [],
+    "normalized_question": "Build the optimizer portion of a strict reproduction checklist for \"Attention Is All You Need\": extract the exact optimizer name, beta1, beta2, and epsilon values as reported in the paper, without substituting generic Adam defaults.",
+    "obligations": [
+      {
+        "answer_field": "optimizer",
+        "description": "What optimizer name is used in Attention Is All You Need (e.g., Adam, Adam with warmup)?",
+        "id": "opt_name",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta1",
+        "description": "What is the beta1 value used for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta1",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta2",
+        "description": "What is the beta2 value used for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta2",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "epsilon",
+        "description": "What is the epsilon value used for the optimizer in Attention Is All You Need?",
+        "id": "opt_epsilon",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      }
+    ],
+    "paper_mentions": [
+      "attention_is_all_you_need_2017"
+    ],
+    "primary_paradigm": "precision_fact_extraction",
+    "question_id": "live_chat_3032d4455f59",
+    "raw_question": "Build the optimizer portion of a strict reproduction checklist for Attention Is All You Need: give the optimizer, beta1, beta2, and epsilon exactly as used in the paper, without substituting generic Adam defaults.",
+    "required_capabilities": [
+      "precision_fact_extraction"
+    ],
+    "required_evidence_types": [
+      "optimizer hyperparameter statement from paper text"
+    ],
+    "requires_corpus_observation": true
+  },
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "selected_paper_ids": [
+      "attention_is_all_you_need_2017"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    }
+  ],
+  "question_id": "transformer_optimizer_reproduction_001",
+  "reasoning_artifacts": [
+    {
+      "artifact_id": "reasoning_live_chat_3032d4455f59",
+      "payload": {
+        "answer_fields": {
+          "beta1": "0.9",
+          "beta2": "0.98",
+          "epsilon": "1e-9",
+          "optimizer": "Adam"
+        },
+        "claim_verdicts": [
+          {
+            "claim_id": "opt_name_claim",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "optimizer": "Adam"
+            },
+            "reason": "The passage explicitly states \"We used the Adam optimizer\".",
+            "verdict": "keep",
+            "verified_text": "Attention Is All You Need uses the Adam optimizer."
+          },
+          {
+            "claim_id": "opt_beta1_claim",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "beta1": "0.9"
+            },
+            "reason": "The passage explicitly states β₁ = 0.9 in the context of the Adam optimizer.",
+            "verdict": "keep",
+            "verified_text": "Attention Is All You Need sets β₁ to 0.9 for the Adam optimizer."
+          },
+          {
+            "claim_id": "opt_beta2_claim",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "beta2": "0.98"
+            },
+            "reason": "The passage explicitly states β₂ = 0.98 in the context of the Adam optimizer.",
+            "verdict": "keep",
+            "verified_text": "Attention Is All You Need sets β₂ to 0.98 for the Adam optimizer."
+          },
+          {
+            "claim_id": "opt_epsilon_claim",
+            "evidence_ids": [
+              "ev_c478868f3b1b547e"
+            ],
+            "field_values": {
+              "epsilon": "1e-9"
+            },
+            "reason": "The passage explicitly states ε = 10⁻⁹ in the context of the Adam optimizer.",
+            "verdict": "keep",
+            "verified_text": "Attention Is All You Need sets ε to 10⁻⁹ for the Adam optimizer."
+          }
+        ],
+        "obligation_coverage": [
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_943af035f9927560",
+              "ev_d6c41f300ee2bab1"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_name",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_943af035f9927560",
+              "ev_d6c41f300ee2bab1"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_beta1",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_943af035f9927560",
+              "ev_d6c41f300ee2bab1"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_beta2",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_c478868f3b1b547e",
+              "ev_943af035f9927560",
+              "ev_d6c41f300ee2bab1"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "opt_epsilon",
+            "status": "covered"
+          }
+        ],
+        "source_evidence_ids": [
+          "corpus_observation_identity_1",
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ]
+      },
+      "question_id": "live_chat_3032d4455f59",
+      "source_claim_ids": [
+        "opt_name_claim",
+        "opt_beta1_claim",
+        "opt_beta2_claim",
+        "opt_epsilon_claim"
+      ],
+      "title": "Build the optimizer portion of a strict reproduction checklist for \"Attention Is All You Need\": extract the exact optimizer name, beta1, beta2, and epsilon values as reported in the paper, without substituting generic Adam defaults.",
+      "type": "exact_fact"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_3032d4455f59",
+    "answer_type": "exact_fact",
+    "cited_claim_ids": [
+      "opt_name_claim",
+      "opt_beta1_claim",
+      "opt_beta2_claim",
+      "opt_epsilon_claim"
+    ],
+    "cited_evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "fields": {
+      "beta1": "0.9",
+      "beta2": "0.98",
+      "epsilon": "1e-9",
+      "optimizer": "Adam"
+    },
+    "markdown": "- **optimizer:** Adam [1]\n- **beta1:** 0.9 [1]\n- **beta2:** 0.98 [1]\n- **epsilon:** 1e-9 [1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7",
+    "outcome": "answered",
+    "question_id": "live_chat_3032d4455f59",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_3032d4455f59"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "Attention Is All You Need uses the Adam optimizer.",
+    "verification_id": "verification_live_chat_3032d4455f59"
+  },
+  "result_status": "COMPLETED",
+  "retrieval_plan": {
+    "actionability": "non_blocking",
+    "expected_evidence_types": [
+      "optimizer hyperparameter statement from paper text"
+    ],
+    "hard_negative_policy": [],
+    "obligations": [
+      {
+        "answer_field": "optimizer",
+        "description": "What optimizer name is used in Attention Is All You Need (e.g., Adam, Adam with warmup)?",
+        "id": "opt_name",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta1",
+        "description": "What is the beta1 value used for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta1",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "beta2",
+        "description": "What is the beta2 value used for the optimizer in Attention Is All You Need?",
+        "id": "opt_beta2",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "epsilon",
+        "description": "What is the epsilon value used for the optimizer in Attention Is All You Need?",
+        "id": "opt_epsilon",
+        "kind": "fact",
+        "paper_scope": [
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      }
+    ],
+    "paradigm": "precision_fact_extraction",
+    "plan_id": "plan_live_chat_3032d4455f59",
+    "query_rounds": [
+      {
+        "evidence_queries": [
+          {
+            "element_types": [
+              "paragraph",
+              "list"
+            ],
+            "obligation_ids": [
+              "opt_name",
+              "opt_beta1",
+              "opt_beta2",
+              "opt_epsilon"
+            ],
+            "query_id": "q1",
+            "query_text": "Adam optimizer beta1 beta2 epsilon training settings",
+            "section_query": "Training Settings",
+            "target_ids": [
+              "t1"
+            ],
+            "top_k": 3
+          }
+        ],
+        "paper_targets": [
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "opt_name",
+              "opt_beta1",
+              "opt_beta2",
+              "opt_epsilon"
+            ],
+            "discovery_query": "",
+            "paper_id": "attention_is_all_you_need_2017",
+            "target_id": "t1",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "reuse_evidence": [],
+        "round": "initial"
+      }
+    ],
+    "question_id": "live_chat_3032d4455f59",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "all_required_obligations_verified",
+      "precise_evidence_gap"
+    ],
+    "strategy_steps": [
+      {
+        "allowed_tools": [],
+        "semantic_goal": "define_fact_slots",
+        "stage_name": "define_fact_slots",
+        "step_id": "stage_1_define_fact_slots",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "define_fact_slots"
+      },
+      {
+        "allowed_tools": [
+          "search_paper_candidates",
+          "find_papers_by_identity",
+          "find_reading_locations",
+          "read_locations",
+          "get_citation_edges"
+        ],
+        "semantic_goal": "collect_exact_evidence",
+        "stage_name": "collect_exact_evidence",
+        "step_id": "stage_2_collect_exact_evidence",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "collect_exact_evidence"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "extract_atomic_facts",
+        "stage_name": "extract_atomic_facts",
+        "step_id": "stage_3_extract_atomic_facts",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "extract_atomic_facts"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "verify_exact_values",
+        "stage_name": "verify_exact_values",
+        "step_id": "stage_4_verify_exact_values",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "verify_exact_values"
+      }
+    ],
+    "target_entities": [
+      "attention_is_all_you_need_2017"
+    ]
+  },
+  "run_id": "run_live_chat_3032d4455f59",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [
+    {
+      "claim_ids": [],
+      "decision_summary": "Executed 1 bounded retrieval round(s) with 3 corpus tool call(s).",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_943af035f9927560",
+        "ev_d6c41f300ee2bab1"
+      ],
+      "obligation_ids": [
+        "opt_name",
+        "opt_beta1",
+        "opt_beta2",
+        "opt_epsilon"
+      ],
+      "semantic_goal": "collect_exact_evidence",
+      "stage_name": "collect_evidence",
+      "status": "completed",
+      "tool_calls": [
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "attention_is_all_you_need_2017"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": "1706.03762",
+                "authors": [
+                  "Ashish Vaswani",
+                  "Noam Shazeer"
+                ],
+                "doi": null,
+                "filename": null,
+                "paper_id": "attention_is_all_you_need_2017",
+                "preview": "",
+                "title": "Attention Is All You Need",
+                "venue": "NeurIPS",
+                "year": 2017
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_1",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "element_types": [
+              "paragraph",
+              "list"
+            ],
+            "paper_ids": [
+              "attention_is_all_you_need_2017"
+            ],
+            "query_text": "Adam optimizer beta1 beta2 epsilon training settings",
+            "section_query": "Training Settings",
+            "top_k": 3
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+                "section": "5.3 Optimizer",
+                "title": "Attention Is All You Need"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_9750d0727ec04aad805b3c373834c96f",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "preview": "This section describes the training regime for our models.",
+                "section": "5 Training",
+                "title": "Attention Is All You Need"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "preview": "We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million sentence pairs. Sentences were encoded using byte-pair encoding [3], which has a shared sourcetarget vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT 2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece vocabulary [38]. Sentence pairs were batched together by approximate sequence length. Each training batch contained a se",
+                "section": "5.1 Training Data and Batching",
+                "title": "Attention Is All You Need"
+              }
+            ],
+            "matched_count": 26,
+            "query_text": "Adam optimizer beta1 beta2 epsilon training settings",
+            "returned_count": 3
+          },
+          "tool_call_id": "location_initial_1",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "location_refs": [
+              "reading_element_260d1b8af78b454dbe0f610483436730",
+              "reading_element_9750d0727ec04aad805b3c373834c96f",
+              "reading_element_545bea3e9d5c42c598ad0d6539ca6016"
+            ]
+          },
+          "result": {
+            "items": [
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_c478868f3b1b547e",
+                "evidence_quality": "verified",
+                "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+                "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+                "matched_anchor_id": "transformer_adam_training_params_span",
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.3 Optimizer",
+                "source_kind": "reading_element",
+                "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+                "supports_claim_ids": [],
+                "title": "Attention Is All You Need"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_943af035f9927560",
+                "evidence_quality": "verified",
+                "location": "reading_element_9750d0727ec04aad805b3c373834c96f",
+                "location_ref": "reading_element_9750d0727ec04aad805b3c373834c96f",
+                "matched_anchor_id": null,
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5 Training",
+                "source_kind": "reading_element",
+                "span_text": "This section describes the training regime for our models.",
+                "supports_claim_ids": [],
+                "title": "Attention Is All You Need"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_d6c41f300ee2bab1",
+                "evidence_quality": "verified",
+                "location": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+                "location_ref": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+                "matched_anchor_id": null,
+                "page": 7,
+                "paper_id": "attention_is_all_you_need_2017",
+                "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5.1 Training Data and Batching",
+                "source_kind": "reading_element",
+                "span_text": "We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million sentence pairs. Sentences were encoded using byte-pair encoding [3], which has a shared sourcetarget vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT 2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece vocabulary [38]. Sentence pairs were batched together by approximate sequence length. Each training batch contained a set of sentence pairs containing approximately 25000 source tokens and 25000 target tokens.",
+                "supports_claim_ids": [],
+                "title": "Attention Is All You Need"
+              }
+            ],
+            "missing_location_refs": []
+          },
+          "tool_call_id": "read_initial",
+          "tool_name": "read_locations"
+        }
+      ]
+    },
+    {
+      "claim_ids": [
+        "opt_name_claim",
+        "opt_beta1_claim",
+        "opt_beta2_claim",
+        "opt_epsilon_claim"
+      ],
+      "decision_summary": "Constructed 4 evidence-linked atomic claim(s).",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "obligation_ids": [
+        "opt_name",
+        "opt_beta1",
+        "opt_beta2",
+        "opt_epsilon"
+      ],
+      "semantic_goal": "extract_atomic_facts",
+      "stage_name": "construct_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "opt_name_claim",
+        "opt_beta1_claim",
+        "opt_beta2_claim",
+        "opt_epsilon_claim"
+      ],
+      "decision_summary": "Verified 4 atomic claim(s): 4 kept, 0 rewritten, 0 dropped.",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "verify_exact_values",
+      "stage_name": "verify_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "opt_name_claim",
+        "opt_beta1_claim",
+        "opt_beta2_claim",
+        "opt_epsilon_claim"
+      ],
+      "decision_summary": "Rendered only verified claims.",
+      "evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "render_verified_claims",
+      "stage_name": "render_answer",
+      "status": "completed",
+      "tool_calls": []
+    }
+  ],
+  "started_at": "2026-07-12T05:46:27Z",
+  "status": "COMPLETED",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "requires_user_choice": false,
+      "status": "unambiguous"
+    },
+    "answer_reference_integrity_passed": true,
+    "claim_verdicts": [
+      {
+        "claim_id": "opt_name_claim",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "optimizer": "Adam"
+        },
+        "reason": "The passage explicitly states \"We used the Adam optimizer\".",
+        "verdict": "keep",
+        "verified_text": "Attention Is All You Need uses the Adam optimizer."
+      },
+      {
+        "claim_id": "opt_beta1_claim",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "beta1": "0.9"
+        },
+        "reason": "The passage explicitly states β₁ = 0.9 in the context of the Adam optimizer.",
+        "verdict": "keep",
+        "verified_text": "Attention Is All You Need sets β₁ to 0.9 for the Adam optimizer."
+      },
+      {
+        "claim_id": "opt_beta2_claim",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "beta2": "0.98"
+        },
+        "reason": "The passage explicitly states β₂ = 0.98 in the context of the Adam optimizer.",
+        "verdict": "keep",
+        "verified_text": "Attention Is All You Need sets β₂ to 0.98 for the Adam optimizer."
+      },
+      {
+        "claim_id": "opt_epsilon_claim",
+        "evidence_ids": [
+          "ev_c478868f3b1b547e"
+        ],
+        "field_values": {
+          "epsilon": "1e-9"
+        },
+        "reason": "The passage explicitly states ε = 10⁻⁹ in the context of the Adam optimizer.",
+        "verdict": "keep",
+        "verified_text": "Attention Is All You Need sets ε to 10⁻⁹ for the Adam optimizer."
+      }
+    ],
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "corpus_observation_passed": true,
+    "corpus_observation_required": true,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_3032d4455f59",
+    "required_capabilities_attempted": [
+      "precision_fact_extraction"
+    ],
+    "required_evidence_status": [
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_name",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta1",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_beta2",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_c478868f3b1b547e",
+          "ev_943af035f9927560",
+          "ev_d6c41f300ee2bab1"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "opt_epsilon",
+        "status": "covered"
+      }
+    ],
+    "rewritten_claim_count": 0,
+    "satisfied_trace_obligation_ids": [
+      "opt_name",
+      "opt_beta1",
+      "opt_beta2",
+      "opt_epsilon"
+    ],
+    "stage_contracts_passed": true,
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_3032d4455f59"
+  }
+}

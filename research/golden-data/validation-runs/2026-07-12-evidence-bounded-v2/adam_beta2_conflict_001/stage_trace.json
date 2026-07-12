@@ -1,0 +1,749 @@
+[
+  {
+    "claim_ids": [],
+    "decision_summary": "Executed 1 bounded retrieval round(s) with 7 corpus tool call(s).",
+    "evidence_ids": [
+      "ev_25fa64ee50482ccf",
+      "ev_2690549efd6d369e",
+      "ev_a03e82b6e3626bae",
+      "ev_1eef0325a0ee2c33",
+      "ev_5de0c3d04b154124",
+      "ev_c478868f3b1b547e",
+      "ev_bc5eb354fc05156e",
+      "ev_bbbed9faebc2ab0a",
+      "ev_de4048def54fa203",
+      "ev_d0cb7163a03dc4f4",
+      "ev_8a3081bac08c3a20",
+      "ev_2d5a073c20b48c32",
+      "ev_9f0ad4e5c9243e9e",
+      "ev_774ba07085a0ea44",
+      "ev_c590d1286e633af2",
+      "ev_7fb5018fdf115c7e"
+    ],
+    "obligation_ids": [
+      "adam_paper_beta2",
+      "transformer_paper_beta2",
+      "conflict_resolution_scope"
+    ],
+    "semantic_goal": "collect_both_sources",
+    "stage_name": "collect_evidence",
+    "status": "completed",
+    "tool_calls": [
+      {
+        "allowed": true,
+        "arguments": {
+          "paper_id": "adam_2014"
+        },
+        "result": {
+          "matches": [
+            {
+              "arxiv_id": "1412.6980",
+              "authors": [
+                "Diederik P. Kingma",
+                "Jimmy Ba"
+              ],
+              "doi": null,
+              "filename": null,
+              "paper_id": "adam_2014",
+              "preview": "",
+              "title": "Adam: A Method for Stochastic Optimization",
+              "venue": "ICLR",
+              "year": 2014
+            }
+          ],
+          "status": "resolved"
+        },
+        "tool_call_id": "identity_1",
+        "tool_name": "find_papers_by_identity"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "paper_id": "attention_is_all_you_need_2017"
+        },
+        "result": {
+          "matches": [
+            {
+              "arxiv_id": "1706.03762",
+              "authors": [
+                "Ashish Vaswani",
+                "Noam Shazeer"
+              ],
+              "doi": null,
+              "filename": null,
+              "paper_id": "attention_is_all_you_need_2017",
+              "preview": "",
+              "title": "Attention Is All You Need",
+              "venue": "NeurIPS",
+              "year": 2017
+            }
+          ],
+          "status": "resolved"
+        },
+        "tool_call_id": "identity_2",
+        "tool_name": "find_papers_by_identity"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "element_types": [
+            "paragraph",
+            "list",
+            "table"
+          ],
+          "paper_ids": [
+            "adam_2014"
+          ],
+          "query_text": "β2 = 0.999, β1 = 0.9, ε = 10^-8 default hyperparameters",
+          "top_k": 5
+        },
+        "result": {
+          "coverage": "truncated",
+          "locations": [
+            {
+              "element_type": "list",
+              "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+              "page": 2,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ {",
+              "section": "unsectioned",
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_04766f7eea5b4abfacd467c62c9b32d3",
+              "page": 13,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "To simplify the notation, we define $\\begin{array} { r } { \\gamma \\triangleq \\frac { \\beta _ { 1 } ^ { 2 } } { \\sqrt { \\beta _ { 2 } } } } \\end{array}$ . Intuitively, our following theorem holds when the learning rate $\\alpha _ { t }$ is decaying at a rate of $t ^ { - \\frac { 1 } { 2 } }$ and first moment running average coefficient $\\beta _ { 1 , t }$ decay exponentially with $\\lambda ,$ that is typically close to $1 , \\mathrm { e . g . 1 - 1 0 ^ { - 8 } }$",
+              "section": "10.1 CONVERGENCE PROOF",
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "element_type": "list",
+              "location_ref": "reading_element_9e1ba316a8824707b022fa58eaabac67",
+              "page": 9,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "Algorithm 2: AdaMax, a variant of Adam based on the infinity norm. See section 7.1 for details.\nGood default settings for the tested machine learning problems are \\alpha \\ : = \\ : 0 . 0 0 2 , \\beta _ { 1 } \\ : = \\ : 0 . 9 and\n\\beta _ { 2 } = 0 . 9 9 9 . With \\beta _ { 1 } ^ { \\overline { { t } } } we denote \\beta _ { 1 } to the power t. Here, ( \\alpha / ( 1 - \\beta _ { 1 } ^ { t } ) ) is the learning rate with the\nbias-correction term for the first moment. All operations on vectors are element-w",
+              "section": "unsectioned",
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_f7d3804d49174105a8d52bd3257b439b",
+              "page": 4,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "where $\\begin{array} { r } { \\theta ^ { * } = \\arg \\operatorname* { m i n } _ { \\theta \\in \\mathcal { X } } \\sum _ { t = 1 } ^ { T } f _ { t } ( \\theta ) } \\end{array}$ . We show Adam has $O ( \\sqrt { T } )$ regret bound and a proof is given in the appendix. Our result is comparable to the best known bound for this general convex online learning problem. We also use some definitions simplify our notation, where $g _ { t } \\triangleq \\nabla f _ { t } ( \\theta _ { t } )$ and $g _ { t , i }$ as the",
+              "section": "4 CONVERGENCE ANALYSIS",
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_8040bd5ae6e043a1826a0ed601e140c4",
+              "page": 8,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "We also empirically evaluate the effect of the bias correction terms explained in sections 2 and 3. Discussed in section 5, removal of the bias correction terms results in a version of RMSProp (Tieleman & Hinton, 2012) with momentum. We vary the $\\beta _ { 1 }$ and $\\beta _ { 2 }$ when training a variational autoencoder (VAE) with the same architecture as in (Kingma & Welling, 2013) with a single hidden layer with 500 hidden units with softplus nonlinearities and a 50-dimensional spherical Gauss",
+              "section": "6.4 EXPERIMENT: BIAS-CORRECTION TERM",
+              "title": "Adam: A Method for Stochastic Optimization"
+            }
+          ],
+          "matched_count": 172,
+          "query_text": "β2 = 0.999, β1 = 0.9, ε = 10^-8 default hyperparameters",
+          "returned_count": 5
+        },
+        "tool_call_id": "location_initial_1",
+        "tool_name": "find_reading_locations"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "element_types": [
+            "paragraph",
+            "formula"
+          ],
+          "paper_ids": [
+            "adam_2014"
+          ],
+          "query_text": "exponential decay rate second moment estimates beta2",
+          "top_k": 3
+        },
+        "result": {
+          "coverage": "truncated",
+          "locations": [
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_17652a55c6f74c4e981ce26e75def07d",
+              "page": 3,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "As explained in section 2, Adam utilizes initialization bias correction terms. We will here derive the term for the second moment estimate; the derivation for the first moment estimate is completely analogous. Let $g$ be the gradient of the stochastic objective $f ,$ and we wish to estimate its second raw moment (uncentered variance) using an exponential moving average of the squared gradient, with decay rate $\\beta _ { 2 }$ . Let $g _ { 1 } , . . . , g _ { T }$ be the gradients at subsequent ti",
+              "section": "3 INITIALIZATION BIAS CORRECTION",
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_9278b129eb6f45cb816e320688d87e6d",
+              "page": 3,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "where $\\zeta = 0$ if the true second moment $\\mathbb { E } [ g _ { i } ^ { 2 } ]$ is stationary; otherwise $\\zeta$ can be kept small since the exponential decay rate $\\beta _ { 1 }$ can (and should) be chosen such that the exponential moving average assigns small weights to gradients too far in the past. What is left is the term $( 1 - \\beta _ { 2 } ^ { t } )$ which is caused by initializing the running average with zeros. In algorithm 1 we therefore divide by this term to correct the initializa",
+              "section": "3 INITIALIZATION BIAS CORRECTION",
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_2e9b73bec67244d1bd0e65d0210cf109",
+              "page": 2,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "preview": "The algorithm updates exponential moving averages of the gradient $( m _ { t } )$ and the squared gradient $( v _ { t } )$ where the hyper-parameters $\\beta _ { 1 } , \\beta _ { 2 } \\in [ 0 , 1 )$ control the exponential decay rates of these moving averages. The moving averages themselves are estimates of the $1 ^ { \\mathrm { s t } }$ moment (the mean) and the $2 ^ { \\mathrm { n d } }$ raw moment (the uncentered variance) of the gradient. However, these moving averages are initialized as (vectors",
+              "section": "2 ALGORITHM",
+              "title": "Adam: A Method for Stochastic Optimization"
+            }
+          ],
+          "matched_count": 22,
+          "query_text": "exponential decay rate second moment estimates beta2",
+          "returned_count": 3
+        },
+        "tool_call_id": "location_initial_2",
+        "tool_name": "find_reading_locations"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "element_types": [
+            "paragraph",
+            "list",
+            "table"
+          ],
+          "paper_ids": [
+            "attention_is_all_you_need_2017"
+          ],
+          "query_text": "Adam optimizer β2 = 0.98 β1 = 0.9",
+          "top_k": 5
+        },
+        "result": {
+          "coverage": "truncated",
+          "locations": [
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "section": "5.3 Optimizer",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "table",
+              "location_ref": "table_ref_7d6ea770a84340eabc9b43eb07246608",
+              "page": 8,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost.\nModel | BLEU | Training Cost (FLOPs) | EN-DE | EN-FR | EN-DE | EN-FR | ByteNet [18] | 23.75 | | | | Deep-Att + PosUnk [39] | | 39.2 | | $1 . 0 \\cdot 1 0 ^ { 2 0 }$ | GNMT + RL [38] | 24.6 | 39.92 | $2 . 3 \\cdot 1 0 ^ { 1 9 }$ | $1 . 4 \\cdot 1 0 ^ { 2 0 }$ | ConvS2S [9] | 25.16 | 40.46 | $9 . 6 \\cdot 1 0 ^ ",
+              "section": "5.4 Regularization",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "table",
+              "location_ref": "table_ref_bf2cdba7358444b48e9facbc784b9668",
+              "page": 9,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.\n| $N$ $d _ { \\mathrm { m o d e l } }$ | $d _ { \\mathrm { f f } }$ | h | $d _ { k }$ | $d _ { v }$ | $P _ { d r o p }$ | $\\epsilon _ { l s }$ | train steps | PPL (dev) | BLEU (d",
+              "section": "6.2 Model Variations",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "table",
+              "location_ref": "table-97",
+              "page": 8,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "Caption: Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost.\nModel BLEU Training Cost (FLOPs) EN-DE EN-FR EN-DE EN-FR ByteNet [18] 23.75 Deep-Att + PosUnk [39] 39.2 $1 . 0 \\cdot 1 0 ^ { 2 0 }$ GNMT + RL [38] 24.6 39.92 $2 . 3 \\cdot 1 0 ^ { 1 9 }$ $1 . 4 \\cdot 1 0 ^ { 2 0 }$ ConvS2S [9] 25.16 40.46 $9 . 6 \\cdot 1 0 ^ { 1 8 }$ $1 . 5 \\cdot 1 0 ^ { 2 0 }$ MoE ",
+              "section": "5.4 Regularization",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "table",
+              "location_ref": "table-110",
+              "page": 9,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "Caption: Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.\n$N$ $d _ { \\mathrm { m o d e l } }$ $d _ { \\mathrm { f f } }$ h $d _ { k }$ $d _ { v }$ $P _ { d r o p }$ $\\epsilon _ { l s }$ train steps PPL (dev) BLEU (dev) params ",
+              "section": "6.2 Model Variations",
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "matched_count": 91,
+          "query_text": "Adam optimizer β2 = 0.98 β1 = 0.9",
+          "returned_count": 5
+        },
+        "tool_call_id": "location_initial_3",
+        "tool_name": "find_reading_locations"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "element_types": [
+            "paragraph"
+          ],
+          "paper_ids": [
+            "attention_is_all_you_need_2017"
+          ],
+          "query_text": "training settings warmup steps optimizer base model",
+          "top_k": 3
+        },
+        "result": {
+          "coverage": "truncated",
+          "locations": [
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+              "section": "5.3 Optimizer",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_bcfadf2c36da428ebfa75b2aab138bf8",
+              "page": 2,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "Recurrent models typically factor computation along the symbol positions of the input and output sequences. Aligning the positions to steps in computation time, they generate a sequence of hidden states $h _ { t } ,$ as a function of the previous hidden state $h _ { t - 1 }$ and the input for position t. This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer sequence lengths, as memory constraints limit batching across examples. Rec",
+              "section": "1 Introduction",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+              "section": "5.2 Hardware and Schedule",
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "matched_count": 58,
+          "query_text": "training settings warmup steps optimizer base model",
+          "returned_count": 3
+        },
+        "tool_call_id": "location_initial_4",
+        "tool_name": "find_reading_locations"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "location_refs": [
+            "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+            "reading_element_17652a55c6f74c4e981ce26e75def07d",
+            "reading_element_260d1b8af78b454dbe0f610483436730",
+            "reading_element_d8210ddc051f4101861b92a420d170bd",
+            "reading_element_04766f7eea5b4abfacd467c62c9b32d3",
+            "reading_element_9278b129eb6f45cb816e320688d87e6d",
+            "table_ref_7d6ea770a84340eabc9b43eb07246608",
+            "reading_element_bcfadf2c36da428ebfa75b2aab138bf8",
+            "reading_element_9e1ba316a8824707b022fa58eaabac67",
+            "reading_element_2e9b73bec67244d1bd0e65d0210cf109",
+            "table_ref_bf2cdba7358444b48e9facbc784b9668",
+            "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+            "reading_element_f7d3804d49174105a8d52bd3257b439b",
+            "table-97",
+            "reading_element_8040bd5ae6e043a1826a0ed601e140c4",
+            "table-110"
+          ]
+        },
+        "result": {
+          "items": [
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "list",
+              "evidence_id": "ev_25fa64ee50482ccf",
+              "evidence_quality": "verified",
+              "location": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+              "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+              "matched_anchor_id": "adam_default_beta2_span",
+              "page": 2,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "unsectioned",
+              "source_kind": "reading_element",
+              "span_text": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ { 1 } ^ { t } and \\beta _ { 2 } ^ { t }\nwe denote \\beta _ { 1 } and \\beta _ { 2 } to the power t .\nRequire: \\alpha \\mathrm { : } Stepsize\nRequire: \\beta _ { 1 } , \\bar { \\beta _ { 2 } } \\overset { - } { \\in } [ 0 , 1 ) : Exponential decay rates for the moment estimates\nRequire: f ( \\theta ) { \\mathrm { : } } Stochastic objective function with parameters θ\nRequire: \\theta _ { 0 } \\colon Initial parameter vector\nm _ { 0 } \\gets 0 (Initialize 1 ^ { \\mathrm { s t } } moment vector)\nv _ { 0 } 0 (Initialize 2 ^ { \\mathrm { n d } } moment vector)\nt \\gets 0 (Initialize timestep)\nwhile \\theta _ { t } not converged do\nt \\gets t + 1\ng _ { t } \\gets \\nabla _ { \\theta } f _ { t } ( \\theta _ { t - 1 } ) (Get gradients w.r.t. stochastic objective at timestep t)\nm _ { t } \\gets \\beta _ { 1 } \\cdot m _ { t - 1 } \\dot { + } \\left( 1 \\bar { - } \\beta _ { 1 } \\right) \\cdot g _ { t } (Update biased first moment estimate)\nv _ { t } \\beta _ { 2 } \\cdot v _ { t - 1 } + ( 1 - \\beta _ { 2 } ) \\cdot g _ { t } ^ { 2 } (Update biased second raw moment estimate)\n\\widehat { m } _ { t } \\gets m _ { t } / ( 1 - \\beta _ { 1 } ^ { t } ) (Compute bias-corrected first moment estimate)\n\\widehat { v } _ { t } \\gets v _ { t } / ( 1 - \\beta _ { 2 } ^ { t } ) (Compute bias-corrected second raw moment estimate)\n\\theta _ { t } \\theta _ { t - 1 } - \\alpha \\cdot \\widehat { m } _ { t } / ( \\sqrt { v _ { t } } + \\epsilon ) (Update parameters)\nend while\nreturn { \\underline { { \\theta _ { t } } } } (Resulting parameters)",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_774ba07085a0ea44",
+              "evidence_quality": "verified",
+              "location": "reading_element_17652a55c6f74c4e981ce26e75def07d",
+              "location_ref": "reading_element_17652a55c6f74c4e981ce26e75def07d",
+              "matched_anchor_id": null,
+              "page": 3,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "3 INITIALIZATION BIAS CORRECTION",
+              "source_kind": "reading_element",
+              "span_text": "As explained in section 2, Adam utilizes initialization bias correction terms. We will here derive the term for the second moment estimate; the derivation for the first moment estimate is completely analogous. Let $g$ be the gradient of the stochastic objective $f ,$ and we wish to estimate its second raw moment (uncentered variance) using an exponential moving average of the squared gradient, with decay rate $\\beta _ { 2 }$ . Let $g _ { 1 } , . . . , g _ { T }$ be the gradients at subsequent timesteps, each a draw from an underlying gradient distribution $g _ { t } \\sim p ( g _ { t } )$ . Let us initialize the exponential moving average as $v _ { 0 } = 0$ (a vector of zeros). First note that the update at timestep t of the exponential moving average $v _ { t } = \\beta _ { 2 } \\cdot v _ { t - 1 } + ( 1 - \\beta _ { 2 } ) \\cdot g _ { t } ^ { 2 }$ (where $g _ { t } ^ { 2 }$ indicates the elementwise square $g _ { t } \\odot g _ { t } )$ can be written as a function of the gradients at all previous timesteps:",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_c478868f3b1b547e",
+              "evidence_quality": "verified",
+              "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "matched_anchor_id": "transformer_adam_training_params_span",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.3 Optimizer",
+              "source_kind": "reading_element",
+              "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_8a3081bac08c3a20",
+              "evidence_quality": "verified",
+              "location": "reading_element_d8210ddc051f4101861b92a420d170bd",
+              "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+              "matched_anchor_id": null,
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.3 Optimizer",
+              "source_kind": "reading_element",
+              "span_text": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_2690549efd6d369e",
+              "evidence_quality": "verified",
+              "location": "reading_element_04766f7eea5b4abfacd467c62c9b32d3",
+              "location_ref": "reading_element_04766f7eea5b4abfacd467c62c9b32d3",
+              "matched_anchor_id": null,
+              "page": 13,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "10.1 CONVERGENCE PROOF",
+              "source_kind": "reading_element",
+              "span_text": "To simplify the notation, we define $\\begin{array} { r } { \\gamma \\triangleq \\frac { \\beta _ { 1 } ^ { 2 } } { \\sqrt { \\beta _ { 2 } } } } \\end{array}$ . Intuitively, our following theorem holds when the learning rate $\\alpha _ { t }$ is decaying at a rate of $t ^ { - \\frac { 1 } { 2 } }$ and first moment running average coefficient $\\beta _ { 1 , t }$ decay exponentially with $\\lambda ,$ that is typically close to $1 , \\mathrm { e . g . 1 - 1 0 ^ { - 8 } }$",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_c590d1286e633af2",
+              "evidence_quality": "verified",
+              "location": "reading_element_9278b129eb6f45cb816e320688d87e6d",
+              "location_ref": "reading_element_9278b129eb6f45cb816e320688d87e6d",
+              "matched_anchor_id": null,
+              "page": 3,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "3 INITIALIZATION BIAS CORRECTION",
+              "source_kind": "reading_element",
+              "span_text": "where $\\zeta = 0$ if the true second moment $\\mathbb { E } [ g _ { i } ^ { 2 } ]$ is stationary; otherwise $\\zeta$ can be kept small since the exponential decay rate $\\beta _ { 1 }$ can (and should) be chosen such that the exponential moving average assigns small weights to gradients too far in the past. What is left is the term $( 1 - \\beta _ { 2 } ^ { t } )$ which is caused by initializing the running average with zeros. In algorithm 1 we therefore divide by this term to correct the initialization bias.",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "table",
+              "evidence_id": "ev_bc5eb354fc05156e",
+              "evidence_quality": "verified",
+              "location": "table_ref_7d6ea770a84340eabc9b43eb07246608",
+              "location_ref": "table_ref_7d6ea770a84340eabc9b43eb07246608",
+              "matched_anchor_id": null,
+              "page": 8,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.4 Regularization",
+              "source_kind": "reading_element",
+              "span_text": "Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost.\nModel | BLEU | Training Cost (FLOPs) | EN-DE | EN-FR | EN-DE | EN-FR | ByteNet [18] | 23.75 | | | | Deep-Att + PosUnk [39] | | 39.2 | | $1 . 0 \\cdot 1 0 ^ { 2 0 }$ | GNMT + RL [38] | 24.6 | 39.92 | $2 . 3 \\cdot 1 0 ^ { 1 9 }$ | $1 . 4 \\cdot 1 0 ^ { 2 0 }$ | ConvS2S [9] | 25.16 | 40.46 | $9 . 6 \\cdot 1 0 ^ { 1 8 }$ | $1 . 5 \\cdot 1 0 ^ { 2 0 }$ | MoE [32] | 26.03 | 40.56 | $2 . 0 \\cdot 1 0 ^ { 1 9 }$ | $1 . 2 \\cdot 1 0 ^ { 2 0 }$ | Deep-Att + PosUnk Ensemble [39] | | 40.4 | | $\\overline { { 8 . 0 \\cdot 1 0 ^ { 2 0 } } }$ | $\\mathrm { G N M T } + \\mathrm { R I }$ Ensemble [38] | 26.30 | 41.16 | $1 . 8 \\cdot 1 0 ^ { 2 0 }$ | $1 . 1 \\cdot 1 0 ^ { 2 1 }$ | ConvS2S Ensemble [9] | 26.36 | 41.29 | $7 . 7 \\cdot 1 0 ^ { 1 9 }$ | $1 . 2 \\cdot 1 0 ^ { 2 1 }$ | Transformer (base model) | 27.3 | 38.1 | $\\mathbf { 3 . 3 \\cdot 1 0 ^ { 1 8 } }$ | | Transformer (big) | 28.4 | 41.8 | $2 . 3 \\cdot 1 0 ^ { 1 9 }$ |",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_2d5a073c20b48c32",
+              "evidence_quality": "verified",
+              "location": "reading_element_bcfadf2c36da428ebfa75b2aab138bf8",
+              "location_ref": "reading_element_bcfadf2c36da428ebfa75b2aab138bf8",
+              "matched_anchor_id": null,
+              "page": 2,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "1 Introduction",
+              "source_kind": "reading_element",
+              "span_text": "Recurrent models typically factor computation along the symbol positions of the input and output sequences. Aligning the positions to steps in computation time, they generate a sequence of hidden states $h _ { t } ,$ as a function of the previous hidden state $h _ { t - 1 }$ and the input for position t. This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer sequence lengths, as memory constraints limit batching across examples. Recent work has achieved significant improvements in computational efficiency through factorization tricks [21] and conditional computation [32], while also improving model performance in case of the latter. The fundamental constraint of sequential computation, however, remains.",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "list",
+              "evidence_id": "ev_a03e82b6e3626bae",
+              "evidence_quality": "verified",
+              "location": "reading_element_9e1ba316a8824707b022fa58eaabac67",
+              "location_ref": "reading_element_9e1ba316a8824707b022fa58eaabac67",
+              "matched_anchor_id": null,
+              "page": 9,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "unsectioned",
+              "source_kind": "reading_element",
+              "span_text": "Algorithm 2: AdaMax, a variant of Adam based on the infinity norm. See section 7.1 for details.\nGood default settings for the tested machine learning problems are \\alpha \\ : = \\ : 0 . 0 0 2 , \\beta _ { 1 } \\ : = \\ : 0 . 9 and\n\\beta _ { 2 } = 0 . 9 9 9 . With \\beta _ { 1 } ^ { \\overline { { t } } } we denote \\beta _ { 1 } to the power t. Here, ( \\alpha / ( 1 - \\beta _ { 1 } ^ { t } ) ) is the learning rate with the\nbias-correction term for the first moment. All operations on vectors are element-wise.\nRequire: \\alpha \\mathrm { : } Stepsize\nRequire: \\beta _ { 1 } , \\beta _ { 2 } \\^ { \\mathrm { ~ \\bullet ~ } } ( 0 , 1 ) \\colon Exponential decay rates\nRequire: f ( \\theta ) { \\mathrm { : } } : Stochastic objective function with parameters \\theta\nRequire: \\theta _ { 0 } \\colon Initial parameter vector\nm _ { 0 } \\gets 0 (Initialize 1 ^ { \\mathrm { s t } } moment vector)\nu _ { 0 } \\gets 0 (Initialize the exponentially weighted infinity norm)\nt \\gets 0 (Initialize timestep)\nwhile \\theta _ { t } not converged do\nt \\gets t + 1\ng _ { t } \\gets \\nabla _ { \\theta } f _ { t } ( \\theta _ { t - 1 } ) (Get gradients w.r.t. stochastic objective at timestep t)\nm _ { t } \\gets \\beta _ { 1 } \\cdot m _ { t - 1 } + ( 1 - \\beta _ { 1 } ) \\cdot g _ { t } (Update biased first moment estimate)\nu _ { t } \\gets max ( \\beta _ { 2 } \\cdot u _ { t - 1 } , | g _ { t } | ) (Update the exponentially weighted infinity norm)\n\\theta _ { t } \\theta _ { t - 1 } - ( \\alpha / ( 1 - \\beta _ { 1 } ^ { t } ) ) \\cdot m _ { t } / u _ { t } (Update parameters)\nend while\nreturn \\theta _ { t } (Resulting parameters)",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_7fb5018fdf115c7e",
+              "evidence_quality": "verified",
+              "location": "reading_element_2e9b73bec67244d1bd0e65d0210cf109",
+              "location_ref": "reading_element_2e9b73bec67244d1bd0e65d0210cf109",
+              "matched_anchor_id": null,
+              "page": 2,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "2 ALGORITHM",
+              "source_kind": "reading_element",
+              "span_text": "The algorithm updates exponential moving averages of the gradient $( m _ { t } )$ and the squared gradient $( v _ { t } )$ where the hyper-parameters $\\beta _ { 1 } , \\beta _ { 2 } \\in [ 0 , 1 )$ control the exponential decay rates of these moving averages. The moving averages themselves are estimates of the $1 ^ { \\mathrm { s t } }$ moment (the mean) and the $2 ^ { \\mathrm { n d } }$ raw moment (the uncentered variance) of the gradient. However, these moving averages are initialized as (vectors of) $0 ^ { \\cdot } \\mathrm { s } ,$ leading to moment estimates that are biased towards zero, especially during the initial timesteps, and especially when the decay rates are small (i.e. the $\\beta \\mathbf { s }$ are close to 1). The good news is that this initialization bias can be easily counteracted, resulting in bias-corrected estimates $\\widehat { m } _ { t }$ and $\\widehat { v } _ { t } .$ . See section 3 for more details.",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "table",
+              "evidence_id": "ev_bbbed9faebc2ab0a",
+              "evidence_quality": "verified",
+              "location": "table_ref_bf2cdba7358444b48e9facbc784b9668",
+              "location_ref": "table_ref_bf2cdba7358444b48e9facbc784b9668",
+              "matched_anchor_id": null,
+              "page": 9,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "6.2 Model Variations",
+              "source_kind": "reading_element",
+              "span_text": "Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.\n| $N$ $d _ { \\mathrm { m o d e l } }$ | $d _ { \\mathrm { f f } }$ | h | $d _ { k }$ | $d _ { v }$ | $P _ { d r o p }$ | $\\epsilon _ { l s }$ | train steps | PPL (dev) | BLEU (dev) | params $\\times 1 0 ^ { 6 }$ | | base | 6 | 512 | 2048 | 8 | 64 | 64 | 0.1 0.1 | 100K | 4.92 | | 25.8 | 65 | (A) | | | 1 | 512 | 512 128 | | | | 5.29 | | 24.9 | | | | 4 | 128 | | | | | | 5.00 | 25.5 25.8 | | | | 16 32 | 32 16 | 32 16 | | | | 4.91 5.01 | 25.4 | | | (B) | | | | | 16 32 | | | | | 5.16 5.01 | 25.1 25.4 | 58 60 | (C) | 2 4 8 256 1024 | 1024 4096 | | 32 128 | 32 128 | | | | | 6.11 5.19 4.88 5.75 4.66 5.12 | 23.7 25.3 25.5 24.5 26.0 25.4 | 36 50 80 28 168 53 | (D) | | | | | | | 0.0 0.2 0.0 | | | 4.75 5.77 4.95 | 26.2 24.6 25.5 25.3 | 90 | (E) | | positional embedding instead of sinusoids | | | | | | 0.2 | | 4.67 5.47 | 25.7 25.7 | | big | 6 | 1024 | 4096 16 | | | | 0.3 | | 300K | 4.92 4.33 | 26.4 | 213",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_9f0ad4e5c9243e9e",
+              "evidence_quality": "verified",
+              "location": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+              "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+              "matched_anchor_id": null,
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.2 Hardware and Schedule",
+              "source_kind": "reading_element",
+              "span_text": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_1eef0325a0ee2c33",
+              "evidence_quality": "verified",
+              "location": "reading_element_f7d3804d49174105a8d52bd3257b439b",
+              "location_ref": "reading_element_f7d3804d49174105a8d52bd3257b439b",
+              "matched_anchor_id": null,
+              "page": 4,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "4 CONVERGENCE ANALYSIS",
+              "source_kind": "reading_element",
+              "span_text": "where $\\begin{array} { r } { \\theta ^ { * } = \\arg \\operatorname* { m i n } _ { \\theta \\in \\mathcal { X } } \\sum _ { t = 1 } ^ { T } f _ { t } ( \\theta ) } \\end{array}$ . We show Adam has $O ( \\sqrt { T } )$ regret bound and a proof is given in the appendix. Our result is comparable to the best known bound for this general convex online learning problem. We also use some definitions simplify our notation, where $g _ { t } \\triangleq \\nabla f _ { t } ( \\theta _ { t } )$ and $g _ { t , i }$ as the $i ^ { \\mathrm { { t h } } }$ element. We define $g _ { 1 : t , i } \\in \\mathbb { R } ^ { t }$ as a vector that contains the $i ^ { \\mathrm { { t h } } }$ dimension of the gradients over all iterations till $t , g _ { 1 : t , i } = [ g _ { 1 , i } , g _ { 2 , i } , \\cdot \\cdot \\cdot , g _ { t , i } ]$ . Also, we define $\\begin{array} { r } { \\gamma \\triangleq \\frac { \\beta _ { 1 } ^ { 2 } } { \\sqrt { \\beta _ { 2 } } } } \\end{array}$ . Our following theorem holds when the learning rate $\\alpha _ { t }$ is decaying at a rate of $t ^ { - { \\frac { 1 } { 2 } } }$ and first moment running average coefficient $\\beta _ { 1 , t }$ decay exponentially with λ, that is typically close to $1 , \\mathrm { e . g . ~ } 1 - 1 0 ^ { - 8 }$",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "table",
+              "evidence_id": "ev_de4048def54fa203",
+              "evidence_quality": "verified",
+              "location": "table-97",
+              "location_ref": "table-97",
+              "matched_anchor_id": null,
+              "page": 12,
+              "paper_id": "gpt3_2020",
+              "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "3.1.2 LAMBADA",
+              "source_kind": "table",
+              "span_text": "Caption: Table 3.2: Performance on cloze and completion tasks. GPT-3 significantly improves SOTA on LAMBADA while achieving respectable performance on two difficult completion prediction datasets. <sup>a</sup>[Tur20] <sup>b</sup>[RWC<sup>+</sup>19] <sup>c</sup>[LDL19] <sup>d</sup>[LCH<sup>+</sup>20]\nSetting LAMBADA (acc) LAMBADA (ppl) StoryCloze (acc) HellaSwag (acc) SOTA 68.0ª 8.63b 91.8c 85.6d GPT-3 Zero-Shot 76.2 3.00 83.2 78.9 GPT-3 One-Shot 72.5 3.35 84.7 78.1 GPT-3 Few-Shot 86.4 1.92 87.7 79.3",
+              "supports_claim_ids": [],
+              "title": "Language Models are Few-Shot Learners"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_5de0c3d04b154124",
+              "evidence_quality": "verified",
+              "location": "reading_element_8040bd5ae6e043a1826a0ed601e140c4",
+              "location_ref": "reading_element_8040bd5ae6e043a1826a0ed601e140c4",
+              "matched_anchor_id": null,
+              "page": 8,
+              "paper_id": "adam_2014",
+              "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "6.4 EXPERIMENT: BIAS-CORRECTION TERM",
+              "source_kind": "reading_element",
+              "span_text": "We also empirically evaluate the effect of the bias correction terms explained in sections 2 and 3. Discussed in section 5, removal of the bias correction terms results in a version of RMSProp (Tieleman & Hinton, 2012) with momentum. We vary the $\\beta _ { 1 }$ and $\\beta _ { 2 }$ when training a variational autoencoder (VAE) with the same architecture as in (Kingma & Welling, 2013) with a single hidden layer with 500 hidden units with softplus nonlinearities and a 50-dimensional spherical Gaussian latent variable. We iterated over a broad range of hyper-parameter choices, i.e. $\\beta _ { 1 } \\in [ 0 , 0 . 9 ]$ and $\\beta _ { 2 } \\in [ 0 . 9 9 , 0 . 9 9 9 , 0 . 9 9 9 9 ]$ , and $\\log _ { 1 0 } ( \\alpha ) \\in [ - \\bar { 5 } , . . . , \\bar { - 1 } ]$ . Values of $\\beta _ { 2 }$ close to 1, required for robustness to sparse gradients, results in larger initialization bias; therefore we expect the bias correction term is important in such cases of slow decay, preventing an adverse effect on optimization.",
+              "supports_claim_ids": [],
+              "title": "Adam: A Method for Stochastic Optimization"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "table",
+              "evidence_id": "ev_d0cb7163a03dc4f4",
+              "evidence_quality": "verified",
+              "location": "table-110",
+              "location_ref": "table-110",
+              "matched_anchor_id": null,
+              "page": 9,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "6.2 Model Variations",
+              "source_kind": "table",
+              "span_text": "Caption: Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.\n$N$ $d _ { \\mathrm { m o d e l } }$ $d _ { \\mathrm { f f } }$ h $d _ { k }$ $d _ { v }$ $P _ { d r o p }$ $\\epsilon _ { l s }$ train steps PPL (dev) BLEU (dev) params $\\times 1 0 ^ { 6 }$ base 6 512 2048 8 64 64 0.1 0.1 100K 4.92 25.8 65 (A) 1 512 512 128 5.29 24.9 4 128 5.00 25.5 25.8 16 32 32 16 32 16 4.91 5.01 25.4 (B) 16 32 5.16 5.01 25.1 25.4 58 60 (C) 2 4 8 256 1024 1024 4096 32 128 32 128 6.11 5.19 4.88 5.75 4.66 5.12 23.7 25.3 25.5 24.5 26.0 25.4 36 50 80 28 168 53 (D) 0.0 0.2 0.0 4.75 5.77 4.95 26.2 24.6 25.5 25.3 90 (E) positional embedding instead of sinusoids 0.2 4.67 5.47 25.7 25.7 big 6 1024 4096 16 0.3 300K 4.92 4.33 26.4 213",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "missing_location_refs": []
+        },
+        "tool_call_id": "read_initial",
+        "tool_name": "read_locations"
+      }
+    ]
+  },
+  {
+    "claim_ids": [
+      "adam_default_beta2_claim",
+      "transformer_beta2_claim"
+    ],
+    "decision_summary": "Constructed 2 evidence-linked atomic claim(s).",
+    "evidence_ids": [
+      "ev_25fa64ee50482ccf",
+      "ev_a03e82b6e3626bae",
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [
+      "adam_paper_beta2",
+      "transformer_paper_beta2"
+    ],
+    "semantic_goal": "distinguish_scope",
+    "stage_name": "construct_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "adam_default_beta2_claim",
+      "transformer_beta2_claim"
+    ],
+    "decision_summary": "Verified 2 atomic claim(s): 1 kept, 1 rewritten, 0 dropped.",
+    "evidence_ids": [
+      "ev_25fa64ee50482ccf",
+      "ev_a03e82b6e3626bae",
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "verify_resolution",
+    "stage_name": "verify_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "adam_default_beta2_claim",
+      "transformer_beta2_claim"
+    ],
+    "decision_summary": "Rendered only verified claims.",
+    "evidence_ids": [
+      "ev_25fa64ee50482ccf",
+      "ev_a03e82b6e3626bae",
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "render_verified_claims",
+    "stage_name": "render_answer",
+    "status": "completed",
+    "tool_calls": []
+  }
+]

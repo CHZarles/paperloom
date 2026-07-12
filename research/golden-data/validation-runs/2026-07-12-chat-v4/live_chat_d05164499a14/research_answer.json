@@ -1,0 +1,24 @@
+{
+  "answer_id": "answer_live_chat_d05164499a14",
+  "answer_type": "constraint_filter",
+  "cited_claim_ids": [
+    "survey_picks_foundational_surveys"
+  ],
+  "cited_evidence_ids": [
+    "ev_e6721d3dea5b7f0a",
+    "ev_9188eb801bcb62a7"
+  ],
+  "fields": {
+    "survey_picks": "[\"A Survey of Useful LLM Evaluation (a96e1a7c10024c45b186dde5a3ce0122) - anchors the corpus with a core-ability-to-agent evaluation framework covering reasoning, societal impact, domain knowledge, embodied action, planning, and tool learning; foundational for LLM evaluation methodology\", \"A Survey on Evaluation of LLM-based Agents (8b9e2f64d565137ca85ae75029e77fff) - foundational for agent evaluation, cataloguing early tool-use benchmarks (ToolAlpaca, APIBench, ToolBench, BFCL v1) and establishing baseline pass-rate and structural-accuracy metrics\"]"
+  },
+  "markdown": "1. A foundational survey pick for the corpus is \"A Survey of Useful LLM Evaluation,\" which proposes a two-stage framework progressing from core ability (reasoning, societal impact, domain knowledge) to agent (embodied action, planning, tool learning), anchoring LLM evaluation methodology across the core-to-agent spectrum. It is paired with \"A Survey on Evaluation of LLM-based Agents,\" which is foundational for the agent evaluation theme and catalogues early agent benchmarks such as ToolAlpaca, APIBench, ToolBench, and the Berkeley Function Calling Leaderboard v1 (BFCL), establishing baseline metrics like pass rates and structural accuracy for one-step tool use. [1][2]\n\nSources\n[1] A Survey on Evaluation of LLM-based Agents, B.2 Function Calling & Tool Use, p. 22\n[2] A Survey of Useful LLM Evaluation, Abstract, p. 1",
+  "outcome": "partial",
+  "question_id": "live_chat_d05164499a14",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_d05164499a14"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "A foundational survey pick for the corpus is \"A Survey of Useful LLM Evaluation,\" which proposes a two-stage framework progressing from core ability (reasoning, societal impact, domain knowledge) to agent (embodied action, planning, tool learning), anchoring LLM evaluation methodology across the cor",
+  "verification_id": "verification_live_chat_d05164499a14"
+}

@@ -1,0 +1,299 @@
+{
+  "actionability": "none",
+  "expected_evidence_types": [],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "survey_picks",
+      "description": "Identify the most foundational evaluation/survey papers that anchor the corpus (LLM evaluation, agent evaluation, multimodal evaluation, hallucination, conversation analysis) and briefly state why each is a foundational pick.",
+      "id": "select_canonical_surveys",
+      "kind": "recommendation",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "a96e1a7c10024c45b186dde5a3ce0122",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+        "c754a224706f987c2cc61bb2b63cab99",
+        "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+        "c270139b1a43dd2675126d74038fa3c5"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "",
+      "description": "Identify foundational",
+      "id": "select_agent_benchmarks",
+      "kind": "claim",
+      "paper_scope": [],
+      "required": true
+    }
+  ],
+  "paradigm": "context_specific_brainstorming",
+  "plan_id": "plan_live_chat_d05164499a14",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "select_canonical_surveys"
+          ],
+          "query_id": "Q1_surveys_scope",
+          "query_text": "abstract scope evaluation challenges taxonomy",
+          "section_query": "abstract",
+          "target_ids": [
+            "T1_survey_agents",
+            "T2_survey_useful_llm",
+            "T3_survey_multiturn",
+            "T4_survey_mllm",
+            "T5_survey_hallucination",
+            "T6_survey_conversation"
+          ],
+          "top_k": 2
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "query_id": "Q2_agentbench_scope",
+          "query_text": "benchmark multi-turn agent evaluation real-world",
+          "section_query": "abstract",
+          "target_ids": [
+            "T7_agentbench",
+            "T8_mmau",
+            "T9_agentboard",
+            "T14_biggenbench"
+          ],
+          "top_k": 2
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "query_id": "Q3_visual_smartplay",
+          "query_text": "benchmark domains generalization foundation agents",
+          "section_query": "abstract",
+          "target_ids": [
+            "T10_visualagentbench",
+            "T11_smartplay",
+            "T12_gaia",
+            "T13_agentcompany"
+          ],
+          "top_k": 2
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_canonical_surveys"
+          ],
+          "discovery_query": "",
+          "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+          "target_id": "T1_survey_agents",
+          "title": "A Survey on Evaluation of LLM-based Agents"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_canonical_surveys"
+          ],
+          "discovery_query": "",
+          "paper_id": "a96e1a7c10024c45b186dde5a3ce0122",
+          "target_id": "T2_survey_useful_llm",
+          "title": "A Survey of Useful LLM Evaluation"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_canonical_surveys"
+          ],
+          "discovery_query": "",
+          "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+          "target_id": "T3_survey_multiturn",
+          "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_canonical_surveys"
+          ],
+          "discovery_query": "",
+          "paper_id": "c754a224706f987c2cc61bb2b63cab99",
+          "target_id": "T4_survey_mllm",
+          "title": "A Survey on Evaluation of Multimodal Large Language Models"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_canonical_surveys"
+          ],
+          "discovery_query": "",
+          "paper_id": "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+          "target_id": "T5_survey_hallucination",
+          "title": "Hallucination of Multimodal Large Language Models: A Survey"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_canonical_surveys"
+          ],
+          "discovery_query": "",
+          "paper_id": "c270139b1a43dd2675126d74038fa3c5",
+          "target_id": "T6_survey_conversation",
+          "title": "The Imperative of Conversation Analysis in the Era of LLMs: A Survey of Tasks, Techniques, and Trends"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "bf00436579e72429679264b76a660d3f",
+          "target_id": "T7_agentbench",
+          "title": "AGENTBENCH: EVALUATING LLMS AS AGENTS"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "04d0a73eef7b1e83869ee2ce1d83beb1",
+          "target_id": "T8_mmau",
+          "title": "MMAU: A Holistic Benchmark of Agent Capabilities Across Diverse Domains"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "3d47869e74a9e6ccb1ecddd25eef9d33",
+          "target_id": "T9_agentboard",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "0a69c4fad229fd7a5d619e23df594ecf",
+          "target_id": "T10_visualagentbench",
+          "title": "VisualAgentBench: Towards Large Multimodal Models as Visual Foundation Agents"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "2ed909035dbfe4059c1a409cbc24feea",
+          "target_id": "T11_smartplay",
+          "title": "SMARTPLAY : A BENCHMARK FOR LLMS AS INTELLI-GENT AGENTS"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "f66a3a3cca316754ec460037e78d73a2",
+          "target_id": "T12_gaia",
+          "title": "GAIA:"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "c37bf09fd44806fd2d5b4f46e1e29c01",
+          "target_id": "T13_agentcompany",
+          "title": "TheAgentCompany: Benchmarking LLM Agents on Consequential Real World Tasks"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "select_agent_benchmarks"
+          ],
+          "discovery_query": "",
+          "paper_id": "5768178b603533c617487221e26d9c00",
+          "target_id": "T14_biggenbench",
+          "title": "The BIGGEN BENCH: A Principled Benchmark for Fine-grained Evaluation of Language Models with Language Models"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_d05164499a14",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "resolve_selection_constraints",
+      "stage_name": "resolve_selection_constraints",
+      "step_id": "stage_1_resolve_selection_constraints",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "resolve_selection_constraints"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_candidate_evidence",
+      "stage_name": "collect_candidate_evidence",
+      "step_id": "stage_2_collect_candidate_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_candidate_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "select_bounded_options",
+      "stage_name": "select_bounded_options",
+      "step_id": "stage_3_select_bounded_options",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "select_bounded_options"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_recommendations",
+      "stage_name": "verify_recommendations",
+      "step_id": "stage_4_verify_recommendations",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_recommendations"
+    }
+  ],
+  "target_entities": []
+}

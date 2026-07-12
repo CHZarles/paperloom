@@ -1,0 +1,162 @@
+{
+  "case_id": "live_chat_3fbaade565e7",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_3fbaade565e7",
+    "question_id": "live_chat_3fbaade565e7"
+  },
+  "completed_at": "2026-07-12T07:07:11Z",
+  "diagnostics": {
+    "completed_stage_count": 0,
+    "completion_tokens": 976,
+    "duration_ms": 9760,
+    "finish_reason": "turn_decision_clarification",
+    "last_model_content_preview": "",
+    "model_call_count": 1,
+    "model_latency_ms": 9760,
+    "paradigm": "ambiguity_resolution",
+    "prompt_tokens": 3532,
+    "stage_count": 0,
+    "tool_call_count": 0,
+    "total_tokens": 4508
+  },
+  "evidence_ledger": {
+    "items": [],
+    "ledger_id": "ledger_live_chat_3fbaade565e7",
+    "missing_evidence": [],
+    "question_id": "live_chat_3fbaade565e7",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_3fbaade565e7",
+    "answer_type": "ambiguity_clarification",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "RLHF stands for Reinforcement Learning from Human Feedback. The idea is to take a base language model, collect human preferences over its outputs (e.g., \"response A is better than response B\"), train a reward model on those preferences, and then fine-tune the language model with reinforcement learning so it scores higher on that reward model. It's the technique behind the alignment step in models like ChatGPT, and it ties to InstructGPT, PPO-based fine-tuning, and later variants such as DPO and RLAIF.\\n\\nSo which type of RLHF papers would help you most?",
+    "outcome": "needs_clarification",
+    "question_id": "live_chat_3fbaade565e7",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "RLHF stands for Reinforcement Learning from Human Feedback. The idea is to take a base language model, collect human preferences over its outputs (e.g., \"response A is better than response B\"), train a reward model on those preferences, and then fine-tune the language model with reinforcement learning so it scores higher on that reward model. It's the technique behind the alignment step in models ",
+    "verification_id": "verification_live_chat_3fbaade565e7"
+  },
+  "harness_id": "python_single_decision_turn_harness_v1",
+  "intent_frame": {
+    "actionability": "blocking",
+    "ambiguity_status": "needs_user_choice",
+    "answer_type": "ambiguity_clarification",
+    "constraints": {
+      "coverage_assumption": "The user is asking for the meaning of RLHF while the previous flavor-choice offer is still open. Resolve both in one clarification turn: briefly define RLHF and re-offer the same single-choice options (overview / benchmarks / methods) so the recommendation can proceed.",
+      "task": {
+        "object": "papers",
+        "topic": "RLHF",
+        "verb": "recommend"
+      },
+      "topic": "RLHF"
+    },
+    "dataset_mentions": [],
+    "entities": [],
+    "intent_id": "intent_live_chat_3fbaade565e7",
+    "method_mentions": [],
+    "normalized_question": "Explain the meaning of RLHF and confirm RLHF as the recommendation topic with the user's preferred paper type (overview / benchmarks / methods).",
+    "paper_mentions": [],
+    "primary_paradigm": "ambiguity_resolution",
+    "question_id": "live_chat_3fbaade565e7",
+    "raw_question": "what is the meaning of RLHF",
+    "required_capabilities": [],
+    "required_evidence_types": [],
+    "requires_corpus_observation": false
+  },
+  "memory_update": {
+    "pending_interaction": {
+      "interaction_id": "clarify_rlhf_kind_v3",
+      "kind": "choice",
+      "options": [
+        {
+          "id": "overview",
+          "label": "Surveys / overview articles",
+          "task_patch": {
+            "object": "overview_papers",
+            "topic": "RLHF",
+            "verb": "recommend"
+          }
+        },
+        {
+          "id": "benchmarks",
+          "label": "Key benchmarks or datasets",
+          "task_patch": {
+            "object": "benchmark_papers",
+            "topic": "RLHF",
+            "verb": "recommend"
+          }
+        },
+        {
+          "id": "methods",
+          "label": "Foundational methods papers",
+          "task_patch": {
+            "object": "method_papers",
+            "topic": "RLHF",
+            "verb": "recommend"
+          }
+        }
+      ],
+      "question": "Which type of RLHF papers would be most useful for you?"
+    }
+  },
+  "question_id": "live_chat_3fbaade565e7",
+  "reasoning_artifacts": [],
+  "research_answer": {
+    "answer_id": "answer_live_chat_3fbaade565e7",
+    "answer_type": "ambiguity_clarification",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "RLHF stands for Reinforcement Learning from Human Feedback. The idea is to take a base language model, collect human preferences over its outputs (e.g., \"response A is better than response B\"), train a reward model on those preferences, and then fine-tune the language model with reinforcement learning so it scores higher on that reward model. It's the technique behind the alignment step in models like ChatGPT, and it ties to InstructGPT, PPO-based fine-tuning, and later variants such as DPO and RLAIF.\\n\\nSo which type of RLHF papers would help you most?",
+    "outcome": "needs_clarification",
+    "question_id": "live_chat_3fbaade565e7",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "RLHF stands for Reinforcement Learning from Human Feedback. The idea is to take a base language model, collect human preferences over its outputs (e.g., \"response A is better than response B\"), train a reward model on those preferences, and then fine-tune the language model with reinforcement learning so it scores higher on that reward model. It's the technique behind the alignment step in models ",
+    "verification_id": "verification_live_chat_3fbaade565e7"
+  },
+  "result_status": "NEEDS_CLARIFICATION",
+  "retrieval_plan": {
+    "actionability": "blocking",
+    "expected_evidence_types": [],
+    "hard_negative_policy": [],
+    "paradigm": "ambiguity_resolution",
+    "plan_id": "plan_live_chat_3fbaade565e7",
+    "question_id": "live_chat_3fbaade565e7",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "request_user_input"
+    ],
+    "strategy_steps": [],
+    "target_entities": []
+  },
+  "run_id": "run_live_chat_3fbaade565e7",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [],
+  "started_at": "2026-07-12T07:07:11Z",
+  "status": "NEEDS_CLARIFICATION",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "status": "pending_user_input"
+    },
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_3fbaade565e7",
+    "required_capabilities_attempted": [],
+    "required_evidence_status": [],
+    "satisfied_trace_obligation_ids": [],
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_3fbaade565e7"
+  }
+}

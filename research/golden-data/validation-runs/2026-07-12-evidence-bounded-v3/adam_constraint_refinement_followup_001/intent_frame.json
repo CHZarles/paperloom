@@ -1,0 +1,44 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "exact_fact",
+  "constraints": {
+    "coverage_assumption": "The user is asking for the Adam beta2 hyperparameter value as reported in the \"Attention Is All You Need\" paper, based on the assistant's disambiguation question in the previous turn.",
+    "parameter": "Adam beta2",
+    "source": "attention_is_all_you_need_2017",
+    "task": {
+      "object": "hyperparameter value",
+      "verb": "extract"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "Adam beta2 value in the Transformer paper"
+  ],
+  "intent_id": "intent_live_chat_50ba2e59aacf",
+  "method_mentions": [],
+  "normalized_question": "Extract the Adam beta2 hyperparameter value used in the Transformer paper (\"Attention Is All You Need\", 2017).",
+  "obligations": [
+    {
+      "answer_field": "beta2",
+      "description": "What is the Adam beta2 value used in the Transformer paper (\"Attention Is All You Need\", 2017)?",
+      "id": "adam_beta2_transformer",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "precision_fact_extraction",
+  "question_id": "live_chat_50ba2e59aacf",
+  "raw_question": "The Transformer value.",
+  "required_capabilities": [
+    "paper_content_reading"
+  ],
+  "required_evidence_types": [
+    "hyperparameter configuration"
+  ],
+  "requires_corpus_observation": true
+}

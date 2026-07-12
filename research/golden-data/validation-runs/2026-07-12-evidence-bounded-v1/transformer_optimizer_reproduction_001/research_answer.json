@@ -1,0 +1,32 @@
+{
+  "answer_id": "answer_live_chat_3032d4455f59",
+  "answer_type": "exact_fact",
+  "cited_claim_ids": [
+    "c_opt_name",
+    "c_opt_beta1",
+    "c_opt_beta2",
+    "c_opt_epsilon",
+    "c_opt_lr_schedule"
+  ],
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e",
+    "ev_8a3081bac08c3a20"
+  ],
+  "fields": {
+    "beta1": "0.9",
+    "beta2": "0.98",
+    "epsilon": "10^{-9}",
+    "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number",
+    "optimizer": "Adam"
+  },
+  "markdown": "- **optimizer:** Adam [1]\n- **beta1:** 0.9 [1]\n- **beta2:** 0.98 [1]\n- **epsilon:** 10^{-9} [1]\n- **lr_schedule:** linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number [1][2]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "live_chat_3032d4455f59",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_3032d4455f59"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "The optimizer used in Attention Is All You Need is the Adam optimizer.",
+  "verification_id": "verification_live_chat_3032d4455f59"
+}

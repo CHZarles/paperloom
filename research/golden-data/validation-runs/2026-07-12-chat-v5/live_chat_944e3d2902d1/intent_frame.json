@@ -1,0 +1,26 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "coverage_assumption": "User specified the topic RLHF as a partial answer to the prior clarification, but the kind of recommendation (overview, benchmarks, or methods) is still unresolved.",
+    "task": {
+      "object": "papers",
+      "topic": "RLHF",
+      "verb": "recommend"
+    },
+    "topic": "RLHF"
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_944e3d2902d1",
+  "method_mentions": [],
+  "normalized_question": "User wants important paper recommendations on RLHF, but has not specified what kind of papers (overview, benchmarks, or foundational methods).",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_944e3d2902d1",
+  "raw_question": "RLHF",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

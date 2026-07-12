@@ -1,0 +1,30 @@
+{
+  "answer_id": "answer_live_chat_bfd4ff883d07",
+  "answer_type": "citation_genealogy",
+  "cited_claim_ids": [
+    "edge_attn_to_bert_technical_meaning"
+  ],
+  "cited_evidence_ids": [
+    "ev_3540835408466c6e",
+    "ev_f189c6c5f4214d2e",
+    "ev_80e066e1a3177125",
+    "ev_bdb5cc5caf5772fe",
+    "ev_7f19acb3f716bc64",
+    "ev_71ef1901f3139ae8",
+    "ev_2c75c5a0daa399bd",
+    "ev_1d621919718ca361"
+  ],
+  "fields": {
+    "lineage_technical_content": "BERT reuses the multi-layer Transformer encoder stack (with multi-head self-attention, positionwise feed-forward sub-layers, residual connections, and layer normalization) from Vaswani et al. (2017), differing from the original encoder-decoder Transformer by being a bidirectional Transformer encoder that uses unconstrained self-attention rather than the decoder's masked self-attention, and adds novel pre-training objectives (masked language model and next sentence prediction) on top of that reused encoder."
+  },
+  "markdown": "1. BERT describes its architecture as a multi-layer bidirectional Transformer encoder \"based on the original implementation\" in Vaswani et al. (2017) and \"almost identical to the original,\" omitting an exhaustive background description and referring readers to Vaswani et al. (2017). The Transformer encoder it reuses is composed of N identical layers each containing a multi-head self-attention sub-layer and a positionwise fully connected feed-forward sub-layer, with residual connections around each sub-layer followed by layer normalization; the multi-head attention consists of scaled dot-product attention run in parallel over multiple heads. Differing from the original encoder-decoder Transformer, BERT is a bidirectional Transformer encoder that uses unconstrained self-attention so every token can attend to both left and right context in all layers (whereas the original Transformer decoder uses masked self-attention preventing positions from attending to subsequent positions). BERT adopts the parameterization conventions (number of layers L, hidden size H, number of self-attention heads A) with BERT_BASE (L=12, H=768, A=12, 110M parameters) and BERT_LARGE (L=24, H=1024, A=16, 340M parameters). On top of this reused encoder, BERT introduces new pre-training objectives: a masked language model (MLM) that randomly masks tokens and predicts the original vocabulary id from context, enabling bidirectional pre-training, and a \"next sentence prediction\" task that jointly pretrains text-pair representations. For downstream use, BERT uses the self-attention mechanism to unify text-pair encoding and bidirectional cross-attention in a single Transformer stack by encoding concatenated text pairs with self-attention. [1][2][3][4][5][6][7][8]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1\n[4] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[5] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[6] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[7] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[8] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.2 Fine-tuning BERT, p. 5",
+  "outcome": "answered",
+  "question_id": "live_chat_bfd4ff883d07",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_bfd4ff883d07"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "BERT describes its architecture as a multi-layer bidirectional Transformer encoder \"based on the original implementation\" in Vaswani et al. (2017) and \"almost identical to the original,\" omitting an exhaustive background description and referring readers to Vaswani et al. (2017). The Transformer enc",
+  "verification_id": "verification_live_chat_bfd4ff883d07"
+}

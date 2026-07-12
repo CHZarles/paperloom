@@ -1,0 +1,70 @@
+{
+  "abstention_required": true,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [
+    "select_canonical_surveys",
+    "select_agent_benchmarks",
+    "select_agent_methodology",
+    "select_social_cognition"
+  ],
+  "missing_required_evidence": [
+    {
+      "description": "Identify the most survey/foundational evaluation papers that anchor the corpus",
+      "obligation_id": "select_canonical_surveys"
+    },
+    {
+      "description": "Identify foundational agent benchmark papers",
+      "obligation_id": "select_agent_benchmarks"
+    },
+    {
+      "description": "Identify foundational methodology/framework papers for LLM agents",
+      "obligation_id": "select_agent_methodology"
+    },
+    {
+      "description": "Identify notable social-cognition / writing / reasoning evaluation papers",
+      "obligation_id": "select_social_cognition"
+    }
+  ],
+  "question_id": "live_chat_ba3e24ed58fa",
+  "required_capabilities_attempted": [],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "select_canonical_surveys",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "select_agent_benchmarks",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "select_agent_methodology",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "select_social_cognition",
+      "status": "missing"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_ba3e24ed58fa"
+}

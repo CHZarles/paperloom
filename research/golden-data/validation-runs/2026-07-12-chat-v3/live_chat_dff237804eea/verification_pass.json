@@ -1,0 +1,114 @@
+{
+  "abstention_required": true,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [
+    "bench_general_agent",
+    "bench_multimodal_agent",
+    "bench_trajectory_process",
+    "bench_realworld_task",
+    "bench_cost_safety_efficiency",
+    "bench_social_cognition",
+    "bench_writing_generative",
+    "bench_meta_self_reasoning"
+  ],
+  "missing_required_evidence": [
+    {
+      "description": "为\"通用 LLM agent 能力 benchmark\"维度挑选最匹配的语料论文并说明理由（覆盖多任务、多环境、agent-as-agent 评估）。",
+      "obligation_id": "bench_general_agent"
+    },
+    {
+      "description": "为\"多模态 visual / multimodal agent benchmark\"维度挑选最匹配的语料论文并说明理由。",
+      "obligation_id": "bench_multimodal_agent"
+    },
+    {
+      "description": "为\"轨迹/过程/可视化评估\"维度挑选最匹配的语料论文并说明理由（trajectory evaluation、可视化分析、过程 reward）。",
+      "obligation_id": "bench_trajectory_process"
+    },
+    {
+      "description": "为\"真实世界 / 软件工程 / 自主任务\"维度挑选最匹配的语料论文并说明理由。",
+      "obligation_id": "bench_realworld_task"
+    },
+    {
+      "description": "为\"成本 / 效率 / 安全 / 规则\"维度挑选最匹配的语料论文并说明理由。",
+      "obligation_id": "bench_cost_safety_efficiency"
+    },
+    {
+      "description": "为\"社会认知 / 多 agent 协作 / prosocial\"维度挑选最匹配的语料论文并说明理由。",
+      "obligation_id": "bench_social_cognition"
+    },
+    {
+      "description": "为\"写作 / 开放式生成 / 创造性\"维度挑选最匹配的语料论文并说明理由。",
+      "obligation_id": "bench_writing_generative"
+    },
+    {
+      "description": "为\"自推理 / 元认知 / AGI 评估\"维度挑选最匹配的语料论文并说明理由。",
+      "obligation_id": "bench_meta_self_reasoning"
+    }
+  ],
+  "question_id": "live_chat_dff237804eea",
+  "required_capabilities_attempted": [],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_general_agent",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_multimodal_agent",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_trajectory_process",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_realworld_task",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_cost_safety_efficiency",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_social_cognition",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_writing_generative",
+      "status": "missing"
+    },
+    {
+      "evidence_ids": [],
+      "note": "evidence not recovered",
+      "obligation_id": "bench_meta_self_reasoning",
+      "status": "missing"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_dff237804eea"
+}

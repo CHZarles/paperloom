@@ -1,0 +1,1399 @@
+{
+  "case_id": "bert_vs_transformer_comparison_001",
+  "citation_validation": {
+    "cited_evidence_ids": [
+      "ev_12722a3120bf0362",
+      "ev_2c62e46d83f5d96f",
+      "ev_7f19acb3f716bc64",
+      "ev_71ef1901f3139ae8",
+      "ev_3540835408466c6e",
+      "ev_f189c6c5f4214d2e",
+      "ev_293b2260f8df0db9",
+      "ev_29d869df07082d3e",
+      "ev_944a542df0f94975",
+      "ev_6ca2d757fafd70dd",
+      "ev_c478868f3b1b547e",
+      "ev_6162425a06109cb2",
+      "ev_0f82af3db4559191",
+      "ev_50abc0b358bb77ad",
+      "ev_9c9a9e4f55a8193d"
+    ],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-12T14:27:46Z",
+  "diagnostics": {
+    "completion_tokens": 9952,
+    "duration_ms": 90217,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 11,
+    "model_latency_ms": 90153,
+    "prompt_tokens": 136532,
+    "skills_used": [],
+    "tool_call_count": 14,
+    "total_tokens": 146484
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_2c62e46d83f5d96f",
+        "evidence_quality": "verified",
+        "location": "reading_element_aa69509b4243455da15d24dbfae670a7",
+        "location_ref": "reading_element_aa69509b4243455da15d24dbfae670a7",
+        "matched_anchor_id": null,
+        "page": 3,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3 Model Architecture",
+        "source_kind": "reading_element",
+        "span_text": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1, respectively.",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_7f19acb3f716bc64",
+        "evidence_quality": "verified",
+        "location": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+        "location_ref": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+        "matched_anchor_id": null,
+        "page": 3,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Encoder and Decoder Stacks",
+        "source_kind": "reading_element",
+        "span_text": "Encoder: The encoder is composed of a stack of $N = 6$ identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, positionwise fully connected feed-forward network. We employ a residual connection [11] around each of the two sub-layers, followed by layer normalization [1]. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself. To facilitate these residual connections, all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $d _ { \\mathrm { m o d e l } } = 5 1 2$",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_71ef1901f3139ae8",
+        "evidence_quality": "verified",
+        "location": "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+        "location_ref": "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+        "matched_anchor_id": null,
+        "page": 3,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Encoder and Decoder Stacks",
+        "source_kind": "reading_element",
+        "span_text": "Decoder: The decoder is also composed of a stack of $N = 6$ identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. Similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i.",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_12722a3120bf0362",
+        "evidence_quality": "verified",
+        "location": "reading_element_c4c19cd7893248e68718b34c655eb76f",
+        "location_ref": "reading_element_c4c19cd7893248e68718b34c655eb76f",
+        "matched_anchor_id": null,
+        "page": 2,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3 Model Architecture",
+        "source_kind": "reading_element",
+        "span_text": "Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35]. Here, the encoder maps an input sequence of symbol representations $( x _ { 1 } , . . . , x _ { n } )$ to a sequence of continuous representations $\\textbf { z } = ~ ( z _ { 1 } , . . . , z _ { n } )$ . Given z, the decoder then generates an output sequence $\\left( y _ { 1 } , . . . , y _ { m } \\right)$ of symbols one element at a time. At each step the model is auto-regressive [10], consuming the previously generated symbols as additional input when generating the next.",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_f189c6c5f4214d2e",
+        "evidence_quality": "verified",
+        "location": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+        "location_ref": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "Abstract",
+        "source_kind": "reading_element",
+        "span_text": "We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models (Peters et al., 2018a; Radford et al., 2018), BERT is designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-art models for a wide range of tasks, such as question answering and language inference, without substantial taskspecific architecture modifications.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_0f82af3db4559191",
+        "evidence_quality": "verified",
+        "location": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+        "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1 Introduction",
+        "source_kind": "reading_element",
+        "span_text": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-toright language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer. In addition to the masked language model, we also use a “next sentence prediction” task that jointly pretrains text-pair representations. The contributions of our paper are as follows:",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_3540835408466c6e",
+        "evidence_quality": "verified",
+        "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+        "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+        "matched_anchor_id": "bert_transformer_encoder_background",
+        "page": 3,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3 BERT",
+        "source_kind": "reading_element",
+        "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_944a542df0f94975",
+        "evidence_quality": "verified",
+        "location": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+        "location_ref": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "Task #1: Masked LM Intuitively, it is reasonable to believe that a deep bidirectional model is strictly more powerful than either a left-to-right model or the shallow concatenation of a left-toright and a right-to-left model. Unfortunately, standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly “see itself”, and the model could trivially predict the target word in a multi-layered context.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_50abc0b358bb77ad",
+        "evidence_quality": "verified",
+        "location": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+        "location_ref": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "Although this allows us to obtain a bidirectional pre-trained model, a downside is that we are creating a mismatch between pre-training and fine-tuning, since the [MASK] token does not appear during fine-tuning. To mitigate this, we do not always replace “masked” words with the actual [MASK] token. The training data generator chooses 15% of the token positions at random for prediction. If the i-th token is chosen, we replace the i-th token with (1) the [MASK] token 80% of the time (2) a random token 10% of the time (3) the unchanged i-th token 10% of the time. Then, $T _ { i }$ will be used to predict the original token with cross entropy loss. We compare variations of this procedure in Appendix C.2.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_9c9a9e4f55a8193d",
+        "evidence_quality": "verified",
+        "location": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+        "location_ref": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.1 Pre-training BERT",
+        "source_kind": "reading_element",
+        "span_text": "Task #2: Next Sentence Prediction (NSP) Many important downstream tasks such as Question Answering (QA) and Natural Language Inference (NLI) are based on understanding the relationship between two sentences, which is not directly captured by language modeling. In order to train a model that understands sentence relationships, we pre-train for a binarized next sentence prediction task that can be trivially generated from any monolingual corpus. Specifically, when choosing the sentences A and B for each pretraining example, 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext). As we show in Figure 1, C is used for next sentence prediction (NSP).<sup>5</sup> Despite its simplicity, we demonstrate in Section 5.1 that pre-training towards this task is very beneficial to both QA and NLI. 6",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "figure",
+        "evidence_id": "ev_6ca2d757fafd70dd",
+        "evidence_quality": "verified",
+        "location": "figure-152",
+        "location_ref": "figure-152",
+        "matched_anchor_id": null,
+        "page": 13,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "A.1 Illustration of the Pre-training Tasks",
+        "source_kind": "figure",
+        "span_text": "Figure 3: Differences in pre-training model architectures. BERT uses a bidirectional Transformer. OpenAI GPT uses a left-to-right Transformer. ELMo uses the concatenation of independently trained left-to-right and right-toleft LSTMs to generate features for downstream tasks. Among the three, only BERT representations are jointly conditioned on both left and right context in all layers. In addition to the architecture differences, BERT and OpenAI GPT are fine-tuning approaches, while ELMo is a feature-based approach.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_6162425a06109cb2",
+        "evidence_quality": "verified",
+        "location": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+        "location_ref": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+        "matched_anchor_id": null,
+        "page": 8,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.4 Regularization",
+        "source_kind": "reading_element",
+        "span_text": "Label Smoothing During training, we employed label smoothing of value $\\epsilon _ { l s } = 0 . 1 [ 3 6 ]$ . This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_c478868f3b1b547e",
+        "evidence_quality": "verified",
+        "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "matched_anchor_id": "transformer_adam_training_params_span",
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.3 Optimizer",
+        "source_kind": "reading_element",
+        "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_29d869df07082d3e",
+        "evidence_quality": "verified",
+        "location": "reading_element_0871f142ab20436cb7b829b983bff573",
+        "location_ref": "reading_element_0871f142ab20436cb7b829b983bff573",
+        "matched_anchor_id": null,
+        "page": 9,
+        "paper_id": "bert_2018",
+        "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.3 Feature-based Approach with BERT",
+        "source_kind": "reading_element",
+        "span_text": "All of the BERT results presented so far have used the fine-tuning approach, where a simple classification layer is added to the pre-trained model, and all parameters are jointly fine-tuned on a downstream task. However, the feature-based approach, where fixed features are extracted from the pretrained model, has certain advantages. First, not all tasks can be easily represented by a Transformer encoder architecture, and therefore require a task-specific model architecture to be added. Second, there are major computational benefits to pre-compute an expensive representation of the training data once and then run many experiments with cheaper models on top of this representation.",
+        "supports_claim_ids": [],
+        "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_293b2260f8df0db9",
+        "evidence_quality": "verified",
+        "location": "reading_element_0ca2035128c44f6ea0f60b5502fb57af",
+        "location_ref": "reading_element_0ca2035128c44f6ea0f60b5502fb57af",
+        "matched_anchor_id": null,
+        "page": 5,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "3.4 Embeddings and Softmax",
+        "source_kind": "reading_element",
+        "span_text": "Similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension $d _ { \\mathrm { m o d e l } }$ . We also use the usual learned linear transformation and softmax function to convert the decoder output to predicted next-token probabilities. In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation, similar to [30]. In the embedding layers, we multiply those weights by $\\sqrt { d _ { \\mathrm { { m o d e l } } } }$",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_a1c234fbe7b3",
+    "missing_evidence": [],
+    "question_id": "live_chat_a1c234fbe7b3",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_a1c234fbe7b3",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_12722a3120bf0362",
+      "ev_2c62e46d83f5d96f",
+      "ev_7f19acb3f716bc64",
+      "ev_71ef1901f3139ae8",
+      "ev_3540835408466c6e",
+      "ev_f189c6c5f4214d2e",
+      "ev_293b2260f8df0db9",
+      "ev_29d869df07082d3e",
+      "ev_944a542df0f94975",
+      "ev_6ca2d757fafd70dd",
+      "ev_c478868f3b1b547e",
+      "ev_6162425a06109cb2",
+      "ev_0f82af3db4559191",
+      "ev_50abc0b358bb77ad",
+      "ev_9c9a9e4f55a8193d"
+    ],
+    "fields": {},
+    "markdown": "# Comparing the Original Transformer (Vaswani et al., 2017) and BERT (Devlin et al., 2018)\n\nBelow is a side-by-side comparison grounded in the two source papers.\n\n---\n\n## 1. Architecture Role\n\n**Transformer — full encoder–decoder sequence transduction model.**\nVaswani et al. position it explicitly within the standard encoder–decoder paradigm: the encoder maps an input sequence to continuous representations z = (z₁,…,zₙ), and the decoder then generates an output sequence (y₁,…,yₘ) one element at a time [1](attention_is_all_you_need_2017/reading_element_c4c19cd7893248e68718b34c655eb76f). The architecture \"follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1\" [2](attention_is_all_you_need_2017/reading_element_aa69509b4243455da15d24dbfae670a7).\n\n- **Encoder** (N=6 layers): multi-head self-attention + position-wise feed-forward, with residual connections and layer norm [3](attention_is_all_you_need_2017/reading_element_03dba0820f6e439d976b2a4bf51178ef).\n- **Decoder** (N=6 layers): same two sub-layers plus a third sub-layer doing multi-head attention over the encoder stack; self-attention is \"modified to prevent positions from attending to subsequent positions\" [4](attention_is_all_you_need_2017/reading_element_adce10960c0b4a1dac2bcb0ce5312d34).\n\n**BERT — encoder-only.**\nDevlin et al. state: \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) … our implementation is almost identical to the original\" [5](bert_2018/reading_element_3f7beee8c6f3400d81fdce44c3bae795). The name itself decodes this: **B**idirectional **E**ncoder **R**epresentations from **T**ransformers. There is no decoder stack; instead \"the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-art models for a wide range of tasks\" [6](bert_2018/reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4).\n\n| | Transformer | BERT |\n|---|---|---|\n| Role in pipeline | Encoder–decoder sequence generator | Standalone encoder for representation / fine-tuning |\n| Output head | Built-in decoder + softmax projection [7](attention_is_all_you_need_2017/reading_element_0ca2035128c44f6ea0f60b5502fb57af) | Task-specific layer added at fine-tune time [8](bert_2018/reading_element_0871f142ab20436cb7b829b983bff573) |\n| Decoding | Auto-regressive token-by-token generation [1] | No generation; representation extraction only |\n\n---\n\n## 2. Directionality\n\nThe two models occupy opposite ends of the spectrum within the same Transformer family.\n\n**Transformer — mixed / partial directionality.**\n- **Encoder self-attention is fully bidirectional.** A standard multi-head self-attention layer attends over all positions in the input sequence.\n- **Decoder self-attention is left-to-right (auto-regressive).** Vaswani et al. \"modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i\" [4](attention_is_all_you_need_2017/reading_element_adce10960c0b4a1dac2bcb0ce5312d34). So during training and decoding, the model consumes \"the previously generated symbols as additional input when generating the next\" [1](attention_is_all_you_need_2017/reading_element_c4c19cd7893248e68718b34c655eb76f).\n- **Encoder–decoder cross-attention** lets every decoder position attend over the *complete* encoder output (full source-side context) [[attention_is_all_you_need_2017 §3.2.3]].\n\n**BERT — purely bidirectional, jointly conditioned.**\nBERT is introduced as \"a new language representation model … designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers\" [6](bert_2018/reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4). Devlin et al. motivate the choice explicitly: \"standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly 'see itself,' and the model could trivially predict the target word in a multi-layered context\" — which is why they turn to masked LM rather than vanilla CLM [9](bert_2018/reading_element_ac5053fcd03b41ea8d3af99e56c106b7). The appendix figure reinforces: \"BERT uses a bidirectional Transformer. OpenAI GPT uses a left-to-right Transformer. ELMo uses the concatenation of independently trained left-to-right and right-to-left LSTMs … Among the three, only BERT representations are jointly conditioned on both left and right context in all layers\" [10](bert_2018/figure-152).\n\nNet effect: in Transformer, attention directionality is *deliberately split* between encoder and decoder; in BERT, the entire network is unconstrained in both directions.\n\n---\n\n## 3. Training Objective\n\n**Transformer — supervised sequence-to-sequence (translation) with auto-regressive next-token prediction.**\nThe model is trained on parallel data for machine translation (WMT 2014 En–De and En–Fr) using an auto-regressive decoder objective: a linear projection over the decoder output converted via the \"usual learned linear transformation and softmax function … to predicted next-token probabilities\" [7](attention_is_all_you_need_2017/reading_element_0ca2035128c44f6ea0f60b5502fb57af). Training uses the Adam optimizer (β₁=0.9, β₂=0.98, ε=10⁻⁹) with a warmup-linear-then-inverse-sqrt-decay learning-rate schedule [11](attention_is_all_you_need_2017/reading_element_260d1b8af78b454dbe0f610483436730). Regularization includes label smoothing ε_ls = 0.1 — \"this hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score\" [12](attention_is_all_you_need_2017/reading_element_a576f0d28cc640b7aa8330b3b8a1edbe).\n\n**BERT — self-supervised pre-training with Masked LM + Next Sentence Prediction, followed by task fine-tuning.**\nTwo pre-training tasks are jointly optimized:\n\n1. **Masked Language Modeling (MLM).** \"The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-to-right language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer\" [13](bert_2018/reading_element_db79b2580f2a4f8a8a09ffcfeca354ee). Concretely, 15% of token positions are chosen; the chosen token is replaced with `[MASK]` 80% of the time, a random token 10%, or left unchanged 10%; the model then predicts the original token with cross-entropy loss [14](bert_2018/reading_element_f6e32313b401438fa46be4a39c1540fc).\n\n2. **Next Sentence Prediction (NSP).** A \"binarized next sentence prediction task … 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext)\" [15](bert_2018/reading_element_3d4803f42a3f44c6b3898d3f357e7ae9).\n\nAfter pre-training, \"a simple classification layer is added to the pre-trained model, and all parameters are jointly fine-tuned on a downstream task\" (a feature-based variant is also discussed) [8](bert_2018/reading_element_0871f142ab20436cb7b829b983bff573).\n\n| Objective aspect | Transformer | BERT |\n|---|---|---|\n| Supervision signal | Parallel translation data (supervised) | Unlabeled monolingual text (self-supervised) |\n| Prediction target | Next token in target sequence (auto-regressive) | (1) Original vocabulary id of masked tokens; (2) IsNext / NotNext for sentence pairs |\n| Loss surface | Cross-entropy on next-token probabilities with label smoothing ε_ls=0.1 | Cross-entropy on masked-token logits + binary classification on NSP |\n| Usage after training | Directly used for generation | Pre-training stage; weights transferred and fine-tuned on downstream tasks |\n\n---\n\n## Summary\n\n| Dimension | Original Transformer | BERT |\n|---|---|---|\n| Architecture role | Encoder + decoder for end-to-end sequence transduction | Encoder-only stack used as a representation model |\n| Directionality | Encoder: bidirectional; Decoder: masked left-to-right (auto-regressive) | Bidirectional at every layer, jointly seeing left and right context |\n| Training objective | Supervised next-token prediction over a target sequence with cross-entropy + label smoothing | Self-supervised MLM + NSP on unlabeled text, followed by task fine-tuning |\n\nTogether, the comparison shows that BERT inherits the *encoder half* of the original Transformer, opens up its attention fully (bidirectionality), and replaces the supervised translation objective with denoising-style self-supervised pretraining objectives that can later be transferred to many tasks via fine-tuning.\n\nSources\n[1] Attention Is All You Need, 3 Model Architecture, p. 2\n[2] Attention Is All You Need, 3 Model Architecture, p. 3\n[3] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[4] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[5] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[6] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[7] Attention Is All You Need, 3.4 Embeddings and Softmax, p. 5\n[8] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.3 Feature-based Approach with BERT, p. 9\n[9] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[10] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, A.1 Illustration of the Pre-training Tasks, p. 13\n[11] Attention Is All You Need, 5.3 Optimizer, p. 7\n[12] Attention Is All You Need, 5.4 Regularization, p. 8\n[13] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1\n[14] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[15] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4",
+    "outcome": "answered",
+    "question_id": "live_chat_a1c234fbe7b3",
+    "status": "COMPLETED",
+    "summary": "# Comparing the Original Transformer (Vaswani et al., 2017) and BERT (Devlin et al., 2018)\n\nBelow is a side-by-side comparison grounded in the two source papers.\n\n---\n\n## 1. Architecture Role\n\n**Transformer — full encoder–decoder sequence transduction model.**\nVaswani et al. position it explicitly within the standard encoder–decoder paradigm: the encoder maps an input sequence to continuous repres"
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_12722a3120bf0362",
+      "ev_2c62e46d83f5d96f",
+      "ev_7f19acb3f716bc64",
+      "ev_71ef1901f3139ae8",
+      "ev_3540835408466c6e",
+      "ev_f189c6c5f4214d2e",
+      "ev_293b2260f8df0db9",
+      "ev_29d869df07082d3e",
+      "ev_944a542df0f94975",
+      "ev_6ca2d757fafd70dd",
+      "ev_c478868f3b1b547e",
+      "ev_6162425a06109cb2",
+      "ev_0f82af3db4559191",
+      "ev_50abc0b358bb77ad",
+      "ev_9c9a9e4f55a8193d"
+    ],
+    "selected_paper_ids": [
+      "attention_is_all_you_need_2017",
+      "bert_2018"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "1706.03762",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "filename": null,
+      "paper_id": "attention_is_all_you_need_2017",
+      "preview": "",
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "arxiv_id": "1810.04805",
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "filename": null,
+      "paper_id": "bert_2018",
+      "preview": "",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    }
+  ],
+  "question_id": "bert_vs_transformer_comparison_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "limit": 5,
+        "query_text": "Attention Is All You Need Transformer"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "1706.03762",
+            "authors": [
+              "Ashish Vaswani",
+              "Noam Shazeer"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "attention_is_all_you_need_2017",
+            "preview": "",
+            "title": "Attention Is All You Need",
+            "venue": "NeurIPS",
+            "year": 2017
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 1,
+        "next_offset": null,
+        "query_text": "Attention Is All You Need Transformer",
+        "returned_count": 1
+      },
+      "tool_call_id": "call_QlSBIDMyVGGxSVGGm7zrYK8p",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 5,
+        "query_text": "BERT Pre-training Deep Bidirectional Transformers"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "1810.04805",
+            "authors": [
+              "Jacob Devlin",
+              "Ming-Wei Chang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "bert_2018",
+            "preview": "",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+            "venue": "NAACL",
+            "year": 2018
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 1,
+        "next_offset": null,
+        "query_text": "BERT Pre-training Deep Bidirectional Transformers",
+        "returned_count": 1
+      },
+      "tool_call_id": "call_b0pE5hB9zMADcnD70MBGybHH",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "heading",
+          "paragraph",
+          "figure"
+        ],
+        "paper_ids": [
+          "attention_is_all_you_need_2017"
+        ],
+        "query_text": "encoder decoder architecture attention self-attention",
+        "top_k": 8
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_aa69509b4243455da15d24dbfae670a7",
+            "page": 3,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1, respectively.",
+            "section": "3 Model Architecture",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+            "page": 1,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being mor",
+            "section": "Abstract",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+            "page": 3,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Encoder: The encoder is composed of a stack of $N = 6$ identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, positionwise fully connected feed-forward network. We employ a residual connection [11] around each of the two sub-layers, followed by layer normalization [1]. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself. To facilitate th",
+            "section": "3.1 Encoder and Decoder Stacks",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+            "page": 3,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Decoder: The decoder is also composed of a stack of $N = 6$ identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. Similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This ma",
+            "section": "3.1 Encoder and Decoder Stacks",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_81373c3c3c5b4ed1a20260bf7f728fba",
+            "page": 6,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "In this section we compare various aspects of self-attention layers to the recurrent and convolutional layers commonly used for mapping one variable-length sequence of symbol representations $( x _ { 1 } , . . . , x _ { n } )$ to another sequence of equal length $\\left( z _ { 1 } , . . . , z _ { n } \\right)$ , with $x _ { i } , z _ { i } \\in \\mathbb { R } ^ { d }$ , such as a hidden layer in a typical sequence transduction encoder or decoder. Motivating our use of self-attention we consider thre",
+            "section": "4 Why Self-Attention",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d1cfd781ff3645b4839ecb0fec45510e",
+            "page": 10,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "In this work, we presented the Transformer, the first sequence transduction model based entirely on attention, replacing the recurrent layers most commonly used in encoder-decoder architectures with multi-headed self-attention.",
+            "section": "7 Conclusion",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_c4c19cd7893248e68718b34c655eb76f",
+            "page": 2,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35]. Here, the encoder maps an input sequence of symbol representations $( x _ { 1 } , . . . , x _ { n } )$ to a sequence of continuous representations $\\textbf { z } = ~ ( z _ { 1 } , . . . , z _ { n } )$ . Given z, the decoder then generates an output sequence $\\left( y _ { 1 } , . . . , y _ { m } \\right)$ of symbols one element at a time. At each step the model is auto-regressive [10], consuming the ",
+            "section": "3 Model Architecture",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_f2d7a84201a845b8b51808e7604eb518",
+            "page": 5,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "• In \"encoder-decoder attention\" layers, the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder. This allows every position in the decoder to attend over all positions in the input sequence. This mimics the typical encoder-decoder attention mechanisms in sequence-to-sequence models such as [38, 2, 9].",
+            "section": "3.2.3 Applications of Attention in our Model",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "matched_count": 81,
+        "query_text": "encoder decoder architecture attention self-attention",
+        "returned_count": 8
+      },
+      "tool_call_id": "call_lR2f1p1qUoAtWZQzpLsX1oBl",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "heading",
+          "paragraph",
+          "figure"
+        ],
+        "paper_ids": [
+          "bert_2018"
+        ],
+        "query_text": "model architecture encoder bidirectional pre-training",
+        "top_k": 8
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+            "page": 1,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models (Peters et al., 2018a; Radford et al., 2018), BERT is designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-a",
+            "section": "Abstract",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+            "page": 1,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike",
+            "section": "1 Introduction",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_0871f142ab20436cb7b829b983bff573",
+            "page": 9,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "All of the BERT results presented so far have used the fine-tuning approach, where a simple classification layer is added to the pre-trained model, and all parameters are jointly fine-tuned on a downstream task. However, the feature-based approach, where fixed features are extracted from the pretrained model, has certain advantages. First, not all tasks can be easily represented by a Transformer encoder architecture, and therefore require a task-specific model architecture to be added. Second, t",
+            "section": "5.3 Feature-based Approach with BERT",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "figure",
+            "location_ref": "figure-152",
+            "page": 13,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "Figure 3: Differences in pre-training model architectures. BERT uses a bidirectional Transformer. OpenAI GPT uses a left-to-right Transformer. ELMo uses the concatenation of independently trained left-to-right and right-toleft LSTMs to generate features for downstream tasks. Among the three, only BERT representations are jointly conditioned on both left and right context in all layers. In addition to the architecture differences, BERT and OpenAI GPT are fine-tuning approaches, while ELMo is a fe",
+            "section": "A.1 Illustration of the Pre-training Tasks",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+            "page": 3,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotat",
+            "section": "3 BERT",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+            "page": 4,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "Task #1: Masked LM Intuitively, it is reasonable to believe that a deep bidirectional model is strictly more powerful than either a left-to-right model or the shallow concatenation of a left-toright and a right-to-left model. Unfortunately, standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly “see itself”, and the model could trivially predict the target word in a multi-layered context.",
+            "section": "3.1 Pre-training BERT",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+            "page": 4,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "Although this allows us to obtain a bidirectional pre-trained model, a downside is that we are creating a mismatch between pre-training and fine-tuning, since the [MASK] token does not appear during fine-tuning. To mitigate this, we do not always replace “masked” words with the actual [MASK] token. The training data generator chooses 15% of the token positions at random for prediction. If the i-th token is chosen, we replace the i-th token with (1) the [MASK] token 80% of the time (2) a random t",
+            "section": "3.1 Pre-training BERT",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_58e0f803695148aa91f8f13e8f80417d",
+            "page": 8,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "No NSP: A bidirectional model which is trained using the “masked LM” (MLM) but without the “next sentence prediction” (NSP) task.",
+            "section": "5.1 Effect of Pre-training Tasks",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          }
+        ],
+        "matched_count": 116,
+        "query_text": "model architecture encoder bidirectional pre-training",
+        "returned_count": 8
+      },
+      "tool_call_id": "call_tIi0NYcA9FVw8gNjMhEs9Bpj",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "reading_element_aa69509b4243455da15d24dbfae670a7",
+          "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+          "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+          "reading_element_c4c19cd7893248e68718b34c655eb76f"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_2c62e46d83f5d96f",
+            "evidence_quality": "verified",
+            "location": "reading_element_aa69509b4243455da15d24dbfae670a7",
+            "location_ref": "reading_element_aa69509b4243455da15d24dbfae670a7",
+            "page": 3,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3 Model Architecture",
+            "source_kind": "reading_element",
+            "span_text": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1, respectively.",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_7f19acb3f716bc64",
+            "evidence_quality": "verified",
+            "location": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+            "location_ref": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+            "page": 3,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3.1 Encoder and Decoder Stacks",
+            "source_kind": "reading_element",
+            "span_text": "Encoder: The encoder is composed of a stack of $N = 6$ identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, positionwise fully connected feed-forward network. We employ a residual connection [11] around each of the two sub-layers, followed by layer normalization [1]. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself. To facilitate these residual connections, all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $d _ { \\mathrm { m o d e l } } = 5 1 2$",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_71ef1901f3139ae8",
+            "evidence_quality": "verified",
+            "location": "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+            "location_ref": "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+            "page": 3,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3.1 Encoder and Decoder Stacks",
+            "source_kind": "reading_element",
+            "span_text": "Decoder: The decoder is also composed of a stack of $N = 6$ identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. Similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i.",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_12722a3120bf0362",
+            "evidence_quality": "verified",
+            "location": "reading_element_c4c19cd7893248e68718b34c655eb76f",
+            "location_ref": "reading_element_c4c19cd7893248e68718b34c655eb76f",
+            "page": 2,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3 Model Architecture",
+            "source_kind": "reading_element",
+            "span_text": "Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35]. Here, the encoder maps an input sequence of symbol representations $( x _ { 1 } , . . . , x _ { n } )$ to a sequence of continuous representations $\\textbf { z } = ~ ( z _ { 1 } , . . . , z _ { n } )$ . Given z, the decoder then generates an output sequence $\\left( y _ { 1 } , . . . , y _ { m } \\right)$ of symbols one element at a time. At each step the model is auto-regressive [10], consuming the previously generated symbols as additional input when generating the next.",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_Th627tHTo0nQC4NMaMlimpjo",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+          "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+          "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+          "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+          "reading_element_f6e32313b401438fa46be4a39c1540fc"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_f189c6c5f4214d2e",
+            "evidence_quality": "verified",
+            "location": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+            "location_ref": "reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4",
+            "page": 1,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "Abstract",
+            "source_kind": "reading_element",
+            "span_text": "We introduce a new language representation model called BERT, which stands for Bidirectional Encoder Representations from Transformers. Unlike recent language representation models (Peters et al., 2018a; Radford et al., 2018), BERT is designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers. As a result, the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-art models for a wide range of tasks, such as question answering and language inference, without substantial taskspecific architecture modifications.",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_0f82af3db4559191",
+            "evidence_quality": "verified",
+            "location": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+            "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+            "page": 1,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "1 Introduction",
+            "source_kind": "reading_element",
+            "span_text": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-toright language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer. In addition to the masked language model, we also use a “next sentence prediction” task that jointly pretrains text-pair representations. The contributions of our paper are as follows:",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_3540835408466c6e",
+            "evidence_quality": "verified",
+            "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+            "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+            "page": 3,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3 BERT",
+            "source_kind": "reading_element",
+            "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_944a542df0f94975",
+            "evidence_quality": "verified",
+            "location": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+            "location_ref": "reading_element_ac5053fcd03b41ea8d3af99e56c106b7",
+            "page": 4,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3.1 Pre-training BERT",
+            "source_kind": "reading_element",
+            "span_text": "Task #1: Masked LM Intuitively, it is reasonable to believe that a deep bidirectional model is strictly more powerful than either a left-to-right model or the shallow concatenation of a left-toright and a right-to-left model. Unfortunately, standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly “see itself”, and the model could trivially predict the target word in a multi-layered context.",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_50abc0b358bb77ad",
+            "evidence_quality": "verified",
+            "location": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+            "location_ref": "reading_element_f6e32313b401438fa46be4a39c1540fc",
+            "page": 4,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3.1 Pre-training BERT",
+            "source_kind": "reading_element",
+            "span_text": "Although this allows us to obtain a bidirectional pre-trained model, a downside is that we are creating a mismatch between pre-training and fine-tuning, since the [MASK] token does not appear during fine-tuning. To mitigate this, we do not always replace “masked” words with the actual [MASK] token. The training data generator chooses 15% of the token positions at random for prediction. If the i-th token is chosen, we replace the i-th token with (1) the [MASK] token 80% of the time (2) a random token 10% of the time (3) the unchanged i-th token 10% of the time. Then, $T _ { i }$ will be used to predict the original token with cross entropy loss. We compare variations of this procedure in Appendix C.2.",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_RegjqAr503Rh5S1npnszr4d3",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "heading",
+          "paragraph"
+        ],
+        "paper_ids": [
+          "attention_is_all_you_need_2017"
+        ],
+        "query_text": "training training procedure cross entropy translation label smoothing",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+            "page": 8,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Label Smoothing During training, we employed label smoothing of value $\\epsilon _ { l s } = 0 . 1 [ 3 6 ]$ . This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.",
+            "section": "5.4 Regularization",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+            "page": 1,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being mor",
+            "section": "Abstract",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_5d8dfbf2106a494984247e53ab701543",
+            "page": 8,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "On the WMT 2014 English-to-German translation task, the big transformer model (Transformer (big) in Table 2) outperforms the best previously reported models (including ensembles) by more than 2.0 BLEU, establishing a new state-of-the-art BLEU score of 28.4. The configuration of this model is listed in the bottom line of Table 3. Training took 3.5 days on 8 P100 GPUs. Even our base model surpasses all previously published models and ensembles, at a fraction of the training cost of any of the comp",
+            "section": "6.1 Machine Translation",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_ab5e6274120b4192981927f5fc31523f",
+            "page": 8,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "On the WMT 2014 English-to-French translation task, our big model achieves a BLEU score of 41.0, outperforming all of the previously published single models, at less than 1/4 the training cost of the previous state-of-the-art model. The Transformer (big) model trained for English-to-French used dropout rate $P _ { d r o p } = 0 . 1$ , instead of 0.3.",
+            "section": "6.1 Machine Translation",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_640660df1dc64c06965a705cb2e176f8",
+            "page": 8,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Table 2 summarizes our results and compares our translation quality and training costs to other model architectures from the literature. We estimate the number of floating point operations used to train a model by multiplying the training time, the number of GPUs used, and an estimate of the sustained single-precision floating-point capacity of each $\\mathrm { G P U } ^ { 5 }$",
+            "section": "6.1 Machine Translation",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "matched_count": 30,
+        "query_text": "training training procedure cross entropy translation label smoothing",
+        "returned_count": 5
+      },
+      "tool_call_id": "call_tHMtS0167Fe9vXamEHsGhmUR",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "heading",
+          "paragraph"
+        ],
+        "paper_ids": [
+          "bert_2018"
+        ],
+        "query_text": "next sentence prediction NSP task pre-training",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+            "page": 4,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "Task #2: Next Sentence Prediction (NSP) Many important downstream tasks such as Question Answering (QA) and Natural Language Inference (NLI) are based on understanding the relationship between two sentences, which is not directly captured by language modeling. In order to train a model that understands sentence relationships, we pre-train for a binarized next sentence prediction task that can be trivially generated from any monolingual corpus. Specifically, when choosing the sentences A and B fo",
+            "section": "3.1 Pre-training BERT",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_58e0f803695148aa91f8f13e8f80417d",
+            "page": 8,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "No NSP: A bidirectional model which is trained using the “masked LM” (MLM) but without the “next sentence prediction” (NSP) task.",
+            "section": "5.1 Effect of Pre-training Tasks",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+            "page": 1,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike",
+            "section": "1 Introduction",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_7a3ad1dc1eb5487ea4c8adc08d51b993",
+            "page": 13,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "Next Sentence Prediction The next sentence prediction task can be illustrated in the following examples.",
+            "section": "A.1 Illustration of the Pre-training Tasks",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_5a499291363b447c99a1fa6a739783f2",
+            "page": 13,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "preview": "To generate each training input sequence, we sample two spans of text from the corpus, which we refer to as “sentences” even though they are typically much longer than single sentences (but can be shorter also). The first sentence receives the A embedding and the second receives the B embedding. 50% of the time B is the actual next sentence that follows A and 50% of the time it is a random sentence, which is done for the “next sentence prediction” task. They are sampled such that the combined le",
+            "section": "A.2 Pre-training Procedure",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          }
+        ],
+        "matched_count": 130,
+        "query_text": "next sentence prediction NSP task pre-training",
+        "returned_count": 5
+      },
+      "tool_call_id": "call_6TJobPYn9RkIw6RIwvae0cBt",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "heading",
+          "paragraph"
+        ],
+        "paper_ids": [
+          "attention_is_all_you_need_2017"
+        ],
+        "query_text": "optimizer Adam learning rate training batches",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+            "section": "5.3 Optimizer",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+            "section": "5.3 Optimizer",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_ab5e6274120b4192981927f5fc31523f",
+            "page": 8,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "On the WMT 2014 English-to-French translation task, our big model achieves a BLEU score of 41.0, outperforming all of the previously published single models, at less than 1/4 the training cost of the previous state-of-the-art model. The Transformer (big) model trained for English-to-French used dropout rate $P _ { d r o p } = 0 . 1$ , instead of 0.3.",
+            "section": "6.1 Machine Translation",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+            "page": 1,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being mor",
+            "section": "Abstract",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_bcfadf2c36da428ebfa75b2aab138bf8",
+            "page": 2,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Recurrent models typically factor computation along the symbol positions of the input and output sequences. Aligning the positions to steps in computation time, they generate a sequence of hidden states $h _ { t } ,$ as a function of the previous hidden state $h _ { t - 1 }$ and the input for position t. This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer sequence lengths, as memory constraints limit batching across examples. Rec",
+            "section": "1 Introduction",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "matched_count": 28,
+        "query_text": "optimizer Adam learning rate training batches",
+        "returned_count": 5
+      },
+      "tool_call_id": "call_K5M5HiBfrezqq8MrjdB3n1u8",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_9c9a9e4f55a8193d",
+            "evidence_quality": "verified",
+            "location": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+            "location_ref": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+            "page": 4,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3.1 Pre-training BERT",
+            "source_kind": "reading_element",
+            "span_text": "Task #2: Next Sentence Prediction (NSP) Many important downstream tasks such as Question Answering (QA) and Natural Language Inference (NLI) are based on understanding the relationship between two sentences, which is not directly captured by language modeling. In order to train a model that understands sentence relationships, we pre-train for a binarized next sentence prediction task that can be trivially generated from any monolingual corpus. Specifically, when choosing the sentences A and B for each pretraining example, 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext). As we show in Figure 1, C is used for next sentence prediction (NSP).<sup>5</sup> Despite its simplicity, we demonstrate in Section 5.1 that pre-training towards this task is very beneficial to both QA and NLI. 6",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_xyQZ4YUxmCLGzZBLZi6d4P3t",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "figure-152"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "figure",
+            "evidence_id": "ev_6ca2d757fafd70dd",
+            "evidence_quality": "verified",
+            "location": "figure-152",
+            "location_ref": "figure-152",
+            "page": 13,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "A.1 Illustration of the Pre-training Tasks",
+            "source_kind": "figure",
+            "span_text": "Figure 3: Differences in pre-training model architectures. BERT uses a bidirectional Transformer. OpenAI GPT uses a left-to-right Transformer. ELMo uses the concatenation of independently trained left-to-right and right-toleft LSTMs to generate features for downstream tasks. Among the three, only BERT representations are jointly conditioned on both left and right context in all layers. In addition to the architecture differences, BERT and OpenAI GPT are fine-tuning approaches, while ELMo is a feature-based approach.",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_R1en7XiGgLXOAW9HtlFsfwr7",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+          "reading_element_260d1b8af78b454dbe0f610483436730"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_6162425a06109cb2",
+            "evidence_quality": "verified",
+            "location": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+            "location_ref": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+            "page": 8,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "5.4 Regularization",
+            "source_kind": "reading_element",
+            "span_text": "Label Smoothing During training, we employed label smoothing of value $\\epsilon _ { l s } = 0 . 1 [ 3 6 ]$ . This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_c478868f3b1b547e",
+            "evidence_quality": "verified",
+            "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+            "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "5.3 Optimizer",
+            "source_kind": "reading_element",
+            "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_goKWwf0LQ5H6ntTzCK2TQSq5",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "paragraph"
+        ],
+        "paper_ids": [
+          "attention_is_all_you_need_2017"
+        ],
+        "query_text": "softmax linear output projection token",
+        "top_k": 3
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_0ca2035128c44f6ea0f60b5502fb57af",
+            "page": 5,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension $d _ { \\mathrm { m o d e l } }$ . We also use the usual learned linear transformation and softmax function to convert the decoder output to predicted next-token probabilities. In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation, similar to [30]. In the embedding layers, we multiply tho",
+            "section": "3.4 Embeddings and Softmax",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_7ba709fc229047bd85f155830446b7f5",
+            "page": 4,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Instead of performing a single attention function with $d _ { \\mathrm { m o d e l } }$ -dimensional keys, values and queries, we found it beneficial to linearly project the queries, keys and values h times with different, learned linear projections to $d _ { k } , d _ { k }$ and $d _ { v }$ dimensions, respectively. On each of these projected versions of queries, keys and values we then perform the attention function in parallel, yielding $d _ { v }$ -dimensional output values. These are concate",
+            "section": "3.2.2 Multi-Head Attention",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_76f347883f164bdeaaf7d5bff1c752c4",
+            "page": 5,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "While the linear transformations are the same across different positions, they use different parameters from layer to layer. Another way of describing this is as two convolutions with kernel size 1. The dimensionality of input and output is $d _ { \\mathrm { m o d e l } } = 5 1 2$ , and the inner-layer has dimensionality $d _ { f f } = 2 0 4 8$",
+            "section": "3.3 Position-wise Feed-Forward Networks",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "matched_count": 31,
+        "query_text": "softmax linear output projection token",
+        "returned_count": 3
+      },
+      "tool_call_id": "call_C4rYdwWzjvoMRl9JLGWuRpQh",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "markdown": "# Comparing the Original Transformer (Vaswani et al., 2017) and BERT (Devlin et al., 2018)\n\nBelow is a side-by-side comparison grounded in the two source papers.\n\n---\n\n## 1. Architecture Role\n\n**Transformer — full encoder–decoder sequence transduction model.**\nVaswani et al. position it explicitly within the standard encoder–decoder paradigm: the encoder maps an input sequence to continuous representations z = (z₁,…,zₙ), and the decoder then generates an output sequence (y₁,…,yₘ) one element at a time [[ev_12722a3120bf0362]](attention_is_all_you_need_2017/reading_element_c4c19cd7893248e68718b34c655eb76f). The architecture \"follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1\" [[ev_2c62e46d83f5d96f]](attention_is_all_you_need_2017/reading_element_aa69509b4243455da15d24dbfae670a7).\n\n- **Encoder** (N=6 layers): multi-head self-attention + position-wise feed-forward, with residual connections and layer norm [[ev_7f19acb3f716bc64]](attention_is_all_you_need_2017/reading_element_03dba0820f6e439d976b2a4bf51178ef).\n- **Decoder** (N=6 layers): same two sub-layers plus a third sub-layer doing multi-head attention over the encoder stack; self-attention is \"modified to prevent positions from attending to subsequent positions\" [[ev_71ef1901f3139ae8]](attention_is_all_you_need_2017/reading_element_adce10960c0b4a1dac2bcb0ce5312d34).\n\n**BERT — encoder-only.**\nDevlin et al. state: \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) … our implementation is almost identical to the original\" [[ev_3540835408466c6e]](bert_2018/reading_element_3f7beee8c6f3400d81fdce44c3bae795). The name itself decodes this: **B**idirectional **E**ncoder **R**epresentations from **T**ransformers. There is no decoder stack; instead \"the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-art models for a wide range of tasks\" [[ev_f189c6c5f4214d2e]](bert_2018/reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4).\n\n| | Transformer | BERT |\n|---|---|---|\n| Role in pipeline | Encoder–decoder sequence generator | Standalone encoder for representation / fine-tuning |\n| Output head | Built-in decoder + softmax projection | Task-specific layer added at fine-tune time |\n| Decoding | Auto-regressive token-by-token generation [[ev_12722a3120bf0362]] | No generation; representation extraction only |\n\n---\n\n## 2. Directionality\n\nThe two models occupy opposite ends of the spectrum within the same Transformer family.\n\n**Transformer — mixed / partial directionality.**\n- **Encoder self-attention is fully bidirectional.** A standard multi-head self-attention layer attends over all positions in the input sequence.\n- **Decoder self-attention is left-to-right (auto-regressive).** Vaswani et al. \"modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i\" [[ev_71ef1901f3139ae8]](attention_is_all_you_need_2017/reading_element_adce10960c0b4a1dac2bcb0ce5312d34). So during training and decoding, the model consumes \"the previously generated symbols as additional input when generating the next\" [[ev_12722a3120bf0362]](attention_is_all_you_need_2017/reading_element_c4c19cd7893248e68718b34c655eb76f).\n\n**BERT — purely bidirectional, jointly conditioned.**\nBERT is introduced as \"a new language representation model … designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers\" [[ev_f189c6c5f4214d2e]](bert_2018/reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4). Devlin et al. motivate the choice explicitly: \"standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly 'see itself,' and the model could trivially predict the target word in a multi-layered context\" — which is why they turn to masked LM rather than vanilla CLM [[ev_944a542df0f94975]](bert_2018/reading_element_ac5053fcd03b41ea8d3af99e56c106b7). The appendix figure reinforces: \"BERT uses a bidirectional Transformer. OpenAI GPT uses a left-to-right Transformer. ELMo uses the concatenation of independently trained left-to-right and right-to-left LSTMs … Among the three, only BERT representations are jointly conditioned on both left and right context in all layers\" [[ev_6ca2d757fafd70dd]](bert_2018/figure-152).\n\nNet effect: in Transformer, attention directionality is *deliberately split* between encoder and decoder; in BERT, the entire network is unconstrained in both directions.\n\n---\n\n## 3. Training Objective\n\n**Transformer — supervised sequence-to-sequence (translation) with auto-regressive next-token prediction.**\nThe model is trained on parallel data for machine translation (WMT 2014 En–De and En–Fr) using an auto-regressive decoder objective: a linear projection over the decoder output converted via the \"usual learned linear transformation and softmax function … to predicted next-token probabilities\" [[ev_0ca2035128c44f6ea0f60b5502fb57af]](attention_is_all_you_need_2017/reading_element_0ca2035128c44f6ea0f60b5502fb57af). Training uses the Adam optimizer (β₁=0.9, β₂=0.98, ε=10⁻⁹) with a warmup-linear-then-inverse-sqrt-decay learning-rate schedule [[ev_c478868f3b1b547e]](attention_is_all_you_need_2017/reading_element_260d1b8af78b454dbe0f610483436730). Regularization includes label smoothing ε_ls = 0.1 — \"this hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score\" [[ev_6162425a06109cb2]](attention_is_all_you_need_2017/reading_element_a576f0d28cc640b7aa8330b3b8a1edbe).\n\n**BERT — self-supervised pre-training with Masked LM + Next Sentence Prediction, followed by task fine-tuning.**\nTwo pre-training tasks are jointly optimized:\n\n1. **Masked Language Modeling (MLM).** \"The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-to-right language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer\" [[ev_0f82af3db4559191]](bert_2018/reading_element_db79b2580f2a4f8a8a09ffcfeca354ee). Concretely, 15% of token positions are chosen; the chosen token is replaced with `[MASK]` 80% of the time, a random token 10%, or left unchanged 10%; the model then predicts the original token with cross-entropy loss [[ev_50abc0b358bb77ad]](bert_2018/reading_element_f6e32313b401438fa46be4a39c1540fc).\n\n2. **Next Sentence Prediction (NSP).** A \"binarized next sentence prediction task … 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext)\" [[ev_9c9a9e4f55a8193d]](bert_2018/reading_element_3d4803f42a3f44c6b3898d3f357e7ae9).\n\nAfter pre-training, \"a simple classification layer is added to the pre-trained model, and all parameters are jointly fine-tuned on a downstream task\" [[ev_0871f142ab20436cb7b829b983bff573]](bert_2018/reading_element_0871f142ab20436cb7b829b983bff573).\n\n| Objective aspect | Transformer | BERT |\n|---|---|---|\n| Supervision signal | Parallel translation data (supervised) | Unlabeled monolingual text (self-supervised) |\n| Prediction target | Next token in target sequence (auto-regressive) | (1) Original vocabulary id of masked tokens; (2) IsNext / NotNext for sentence pairs |\n| Loss surface | Cross-entropy on next-token probabilities with label smoothing ε_ls=0.1 | Cross-entropy on masked-token logits + binary classification on NSP |\n| Usage after training | Directly used for generation | Pre-training stage; weights transferred and fine-tuned on downstream tasks |\n\n---\n\n## Summary\n\n| Dimension | Original Transformer | BERT |\n|---|---|---|\n| Architecture role | Encoder + decoder for end-to-end sequence transduction | Encoder-only stack used as a representation model |\n| Directionality | Encoder: bidirectional; Decoder: masked left-to-right (auto-regressive) | Bidirectional at every layer, jointly seeing left and right context |\n| Training objective | Supervised next-token prediction over a target sequence with cross-entropy + label smoothing | Self-supervised MLM + NSP on unlabeled text, followed by task fine-tuning |\n\nTogether, the comparison shows that BERT inherits the *encoder half* of the original Transformer, opens up its attention fully (bidirectionality), and replaces the supervised translation objective with denoising-style self-supervised pretraining objectives that can later be transferred to many tasks via fine-tuning.",
+        "outcome": "answered"
+      },
+      "result": {
+        "accepted": false,
+        "error": "unknown cited evidence ids: ev_0871f142ab20436cb7b829b983bff573, ev_0ca2035128c44f6ea0f60b5502fb57af"
+      },
+      "tool_call_id": "call_XXkWVdmGuQdUCN4DEAv9GngR",
+      "tool_name": "submit_research_answer"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "reading_element_0871f142ab20436cb7b829b983bff573",
+          "reading_element_0ca2035128c44f6ea0f60b5502fb57af"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_29d869df07082d3e",
+            "evidence_quality": "verified",
+            "location": "reading_element_0871f142ab20436cb7b829b983bff573",
+            "location_ref": "reading_element_0871f142ab20436cb7b829b983bff573",
+            "page": 9,
+            "paper_id": "bert_2018",
+            "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "5.3 Feature-based Approach with BERT",
+            "source_kind": "reading_element",
+            "span_text": "All of the BERT results presented so far have used the fine-tuning approach, where a simple classification layer is added to the pre-trained model, and all parameters are jointly fine-tuned on a downstream task. However, the feature-based approach, where fixed features are extracted from the pretrained model, has certain advantages. First, not all tasks can be easily represented by a Transformer encoder architecture, and therefore require a task-specific model architecture to be added. Second, there are major computational benefits to pre-compute an expensive representation of the training data once and then run many experiments with cheaper models on top of this representation.",
+            "supports_claim_ids": [],
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+          },
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_293b2260f8df0db9",
+            "evidence_quality": "verified",
+            "location": "reading_element_0ca2035128c44f6ea0f60b5502fb57af",
+            "location_ref": "reading_element_0ca2035128c44f6ea0f60b5502fb57af",
+            "page": 5,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "3.4 Embeddings and Softmax",
+            "source_kind": "reading_element",
+            "span_text": "Similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension $d _ { \\mathrm { m o d e l } }$ . We also use the usual learned linear transformation and softmax function to convert the decoder output to predicted next-token probabilities. In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation, similar to [30]. In the embedding layers, we multiply those weights by $\\sqrt { d _ { \\mathrm { { m o d e l } } } }$",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_S4ZgIienZW8ZU1qdaPwVyGhW",
+      "tool_name": "read_locations"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_a1c234fbe7b3",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_12722a3120bf0362",
+      "ev_2c62e46d83f5d96f",
+      "ev_7f19acb3f716bc64",
+      "ev_71ef1901f3139ae8",
+      "ev_3540835408466c6e",
+      "ev_f189c6c5f4214d2e",
+      "ev_293b2260f8df0db9",
+      "ev_29d869df07082d3e",
+      "ev_944a542df0f94975",
+      "ev_6ca2d757fafd70dd",
+      "ev_c478868f3b1b547e",
+      "ev_6162425a06109cb2",
+      "ev_0f82af3db4559191",
+      "ev_50abc0b358bb77ad",
+      "ev_9c9a9e4f55a8193d"
+    ],
+    "fields": {},
+    "markdown": "# Comparing the Original Transformer (Vaswani et al., 2017) and BERT (Devlin et al., 2018)\n\nBelow is a side-by-side comparison grounded in the two source papers.\n\n---\n\n## 1. Architecture Role\n\n**Transformer — full encoder–decoder sequence transduction model.**\nVaswani et al. position it explicitly within the standard encoder–decoder paradigm: the encoder maps an input sequence to continuous representations z = (z₁,…,zₙ), and the decoder then generates an output sequence (y₁,…,yₘ) one element at a time [1](attention_is_all_you_need_2017/reading_element_c4c19cd7893248e68718b34c655eb76f). The architecture \"follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1\" [2](attention_is_all_you_need_2017/reading_element_aa69509b4243455da15d24dbfae670a7).\n\n- **Encoder** (N=6 layers): multi-head self-attention + position-wise feed-forward, with residual connections and layer norm [3](attention_is_all_you_need_2017/reading_element_03dba0820f6e439d976b2a4bf51178ef).\n- **Decoder** (N=6 layers): same two sub-layers plus a third sub-layer doing multi-head attention over the encoder stack; self-attention is \"modified to prevent positions from attending to subsequent positions\" [4](attention_is_all_you_need_2017/reading_element_adce10960c0b4a1dac2bcb0ce5312d34).\n\n**BERT — encoder-only.**\nDevlin et al. state: \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) … our implementation is almost identical to the original\" [5](bert_2018/reading_element_3f7beee8c6f3400d81fdce44c3bae795). The name itself decodes this: **B**idirectional **E**ncoder **R**epresentations from **T**ransformers. There is no decoder stack; instead \"the pre-trained BERT model can be finetuned with just one additional output layer to create state-of-the-art models for a wide range of tasks\" [6](bert_2018/reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4).\n\n| | Transformer | BERT |\n|---|---|---|\n| Role in pipeline | Encoder–decoder sequence generator | Standalone encoder for representation / fine-tuning |\n| Output head | Built-in decoder + softmax projection [7](attention_is_all_you_need_2017/reading_element_0ca2035128c44f6ea0f60b5502fb57af) | Task-specific layer added at fine-tune time [8](bert_2018/reading_element_0871f142ab20436cb7b829b983bff573) |\n| Decoding | Auto-regressive token-by-token generation [1] | No generation; representation extraction only |\n\n---\n\n## 2. Directionality\n\nThe two models occupy opposite ends of the spectrum within the same Transformer family.\n\n**Transformer — mixed / partial directionality.**\n- **Encoder self-attention is fully bidirectional.** A standard multi-head self-attention layer attends over all positions in the input sequence.\n- **Decoder self-attention is left-to-right (auto-regressive).** Vaswani et al. \"modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i\" [4](attention_is_all_you_need_2017/reading_element_adce10960c0b4a1dac2bcb0ce5312d34). So during training and decoding, the model consumes \"the previously generated symbols as additional input when generating the next\" [1](attention_is_all_you_need_2017/reading_element_c4c19cd7893248e68718b34c655eb76f).\n- **Encoder–decoder cross-attention** lets every decoder position attend over the *complete* encoder output (full source-side context) [[attention_is_all_you_need_2017 §3.2.3]].\n\n**BERT — purely bidirectional, jointly conditioned.**\nBERT is introduced as \"a new language representation model … designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers\" [6](bert_2018/reading_element_a5c22e58afbb4dc09f9cdcf3b5b800f4). Devlin et al. motivate the choice explicitly: \"standard conditional language models can only be trained left-to-right or right-to-left, since bidirectional conditioning would allow each word to indirectly 'see itself,' and the model could trivially predict the target word in a multi-layered context\" — which is why they turn to masked LM rather than vanilla CLM [9](bert_2018/reading_element_ac5053fcd03b41ea8d3af99e56c106b7). The appendix figure reinforces: \"BERT uses a bidirectional Transformer. OpenAI GPT uses a left-to-right Transformer. ELMo uses the concatenation of independently trained left-to-right and right-to-left LSTMs … Among the three, only BERT representations are jointly conditioned on both left and right context in all layers\" [10](bert_2018/figure-152).\n\nNet effect: in Transformer, attention directionality is *deliberately split* between encoder and decoder; in BERT, the entire network is unconstrained in both directions.\n\n---\n\n## 3. Training Objective\n\n**Transformer — supervised sequence-to-sequence (translation) with auto-regressive next-token prediction.**\nThe model is trained on parallel data for machine translation (WMT 2014 En–De and En–Fr) using an auto-regressive decoder objective: a linear projection over the decoder output converted via the \"usual learned linear transformation and softmax function … to predicted next-token probabilities\" [7](attention_is_all_you_need_2017/reading_element_0ca2035128c44f6ea0f60b5502fb57af). Training uses the Adam optimizer (β₁=0.9, β₂=0.98, ε=10⁻⁹) with a warmup-linear-then-inverse-sqrt-decay learning-rate schedule [11](attention_is_all_you_need_2017/reading_element_260d1b8af78b454dbe0f610483436730). Regularization includes label smoothing ε_ls = 0.1 — \"this hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score\" [12](attention_is_all_you_need_2017/reading_element_a576f0d28cc640b7aa8330b3b8a1edbe).\n\n**BERT — self-supervised pre-training with Masked LM + Next Sentence Prediction, followed by task fine-tuning.**\nTwo pre-training tasks are jointly optimized:\n\n1. **Masked Language Modeling (MLM).** \"The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-to-right language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer\" [13](bert_2018/reading_element_db79b2580f2a4f8a8a09ffcfeca354ee). Concretely, 15% of token positions are chosen; the chosen token is replaced with `[MASK]` 80% of the time, a random token 10%, or left unchanged 10%; the model then predicts the original token with cross-entropy loss [14](bert_2018/reading_element_f6e32313b401438fa46be4a39c1540fc).\n\n2. **Next Sentence Prediction (NSP).** A \"binarized next sentence prediction task … 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext)\" [15](bert_2018/reading_element_3d4803f42a3f44c6b3898d3f357e7ae9).\n\nAfter pre-training, \"a simple classification layer is added to the pre-trained model, and all parameters are jointly fine-tuned on a downstream task\" (a feature-based variant is also discussed) [8](bert_2018/reading_element_0871f142ab20436cb7b829b983bff573).\n\n| Objective aspect | Transformer | BERT |\n|---|---|---|\n| Supervision signal | Parallel translation data (supervised) | Unlabeled monolingual text (self-supervised) |\n| Prediction target | Next token in target sequence (auto-regressive) | (1) Original vocabulary id of masked tokens; (2) IsNext / NotNext for sentence pairs |\n| Loss surface | Cross-entropy on next-token probabilities with label smoothing ε_ls=0.1 | Cross-entropy on masked-token logits + binary classification on NSP |\n| Usage after training | Directly used for generation | Pre-training stage; weights transferred and fine-tuned on downstream tasks |\n\n---\n\n## Summary\n\n| Dimension | Original Transformer | BERT |\n|---|---|---|\n| Architecture role | Encoder + decoder for end-to-end sequence transduction | Encoder-only stack used as a representation model |\n| Directionality | Encoder: bidirectional; Decoder: masked left-to-right (auto-regressive) | Bidirectional at every layer, jointly seeing left and right context |\n| Training objective | Supervised next-token prediction over a target sequence with cross-entropy + label smoothing | Self-supervised MLM + NSP on unlabeled text, followed by task fine-tuning |\n\nTogether, the comparison shows that BERT inherits the *encoder half* of the original Transformer, opens up its attention fully (bidirectionality), and replaces the supervised translation objective with denoising-style self-supervised pretraining objectives that can later be transferred to many tasks via fine-tuning.\n\nSources\n[1] Attention Is All You Need, 3 Model Architecture, p. 2\n[2] Attention Is All You Need, 3 Model Architecture, p. 3\n[3] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[4] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[5] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[6] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[7] Attention Is All You Need, 3.4 Embeddings and Softmax, p. 5\n[8] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.3 Feature-based Approach with BERT, p. 9\n[9] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[10] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, A.1 Illustration of the Pre-training Tasks, p. 13\n[11] Attention Is All You Need, 5.3 Optimizer, p. 7\n[12] Attention Is All You Need, 5.4 Regularization, p. 8\n[13] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1\n[14] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4\n[15] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4",
+    "outcome": "answered",
+    "question_id": "live_chat_a1c234fbe7b3",
+    "status": "COMPLETED",
+    "summary": "# Comparing the Original Transformer (Vaswani et al., 2017) and BERT (Devlin et al., 2018)\n\nBelow is a side-by-side comparison grounded in the two source papers.\n\n---\n\n## 1. Architecture Role\n\n**Transformer — full encoder–decoder sequence transduction model.**\nVaswani et al. position it explicitly within the standard encoder–decoder paradigm: the encoder maps an input sequence to continuous repres"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_live_chat_a1c234fbe7b3",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-12T14:26:22Z",
+  "status": "COMPLETED"
+}

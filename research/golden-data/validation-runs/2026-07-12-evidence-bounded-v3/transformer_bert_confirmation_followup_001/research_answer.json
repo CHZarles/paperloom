@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_3c0b4f837eae",
+  "answer_type": "unknown",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "name 'Obligation' is not defined",
+  "outcome": null,
+  "question_id": "live_chat_3c0b4f837eae",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "FAILED_TECHNICAL",
+  "summary": "name 'Obligation' is not defined",
+  "verification_id": "verification_live_chat_3c0b4f837eae"
+}

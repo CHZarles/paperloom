@@ -1,0 +1,48 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_50ba2e59aacf",
+    "payload": {
+      "answer_fields": {
+        "beta2": "0.98"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "c_adam_beta2_transformer",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "beta2": "0.98"
+          },
+          "reason": "The evidence passage directly states Adam optimizer with β1 = 0.9, β2 = 0.98, exactly matching the claim.",
+          "verdict": "keep",
+          "verified_text": "In \"Attention Is All You Need\", the Adam optimizer is used with β2 = 0.98."
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_27940da4f69cadba",
+            "ev_1490018fc1286791"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "adam_beta2_transformer",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "ev_c478868f3b1b547e",
+        "ev_27940da4f69cadba",
+        "ev_1490018fc1286791"
+      ]
+    },
+    "question_id": "live_chat_50ba2e59aacf",
+    "source_claim_ids": [
+      "c_adam_beta2_transformer"
+    ],
+    "title": "Extract the Adam beta2 hyperparameter value used in the Transformer paper \"Attention Is All You Need\".",
+    "type": "exact_fact"
+  }
+]

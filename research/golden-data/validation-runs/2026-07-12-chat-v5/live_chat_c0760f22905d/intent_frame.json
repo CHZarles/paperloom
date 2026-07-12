@@ -1,0 +1,26 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "coverage_assumption": "User typed 'what do you means flavor' as a short clarification question about the assistant's previous 'Which flavor' phrasing. The pending choice offer still stands and should be re-asked more plainly.",
+    "task": {
+      "object": "papers",
+      "topic": "RLHF",
+      "verb": "recommend"
+    },
+    "topic": "RLHF"
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_c0760f22905d",
+  "method_mentions": [],
+  "normalized_question": "User wants paper recommendations on RLHF, but the requested 'flavor' (overview, benchmarks, or methods) is still unresolved.",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_c0760f22905d",
+  "raw_question": "what do you means flavor",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

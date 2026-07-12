@@ -1,0 +1,24 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "coverage_assumption": "User has no topic yet and needs to specify one before a grounded recommendation can be produced.",
+    "task": {
+      "object": "papers",
+      "verb": "recommend"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_5fb505103ff1",
+  "method_mentions": [],
+  "normalized_question": "User wants paper recommendations but did not specify a topic, method, dataset, or research goal.",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_5fb505103ff1",
+  "raw_question": "recommend me some important paper",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

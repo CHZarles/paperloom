@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_live_chat_ba3e24ed58fa",
+  "answer_type": "constraint_filter",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "No requested claim was verified from the available corpus evidence.\n\nUnresolved from the available corpus evidence:\n- survey_picks\n- benchmark_picks\n- methodology_picks\n- social_picks",
+  "outcome": "abstained",
+  "question_id": "live_chat_ba3e24ed58fa",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_ba3e24ed58fa"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "No requested claim was verified from the available corpus evidence.",
+  "verification_id": "verification_live_chat_ba3e24ed58fa"
+}

@@ -25,6 +25,46 @@ The explicit data domain selected for a retrieval run, such as `PRODUCT_LIBRARY`
 `EVAL_LITSEARCH`, or `EVAL_QASPER`.
 _Avoid_: includeEval flag, mixed corpus
 
+**Paper Pack**:
+An eval-only curated paper situation containing target papers plus predecessor, successor,
+distractor, contradiction, or boundary papers needed to test harness behavior.
+_Avoid_: topic folder, product collection, paper dump
+
+**Golden Case**:
+An evidence-first benchmark item that defines the user question, expected intent, required
+evidence anchors, claim obligations, answer contract, and trace obligations.
+_Avoid_: flat QA row, final answer string, smoke test case
+
+**Evidence Anchor**:
+A gold reference to the smallest inspectable paper unit, such as a span, table cell, figure,
+formula, algorithm step, or metadata fact, that supports or refutes a benchmark claim.
+_Avoid_: citation text, answer regex, whole paper
+
+**Answer Contract**:
+The required answer shape for a Golden Case, such as exact fields, comparison axes, graph nodes, or
+uncertainty sections, without requiring one canonical prose wording.
+_Avoid_: gold prose answer, style guide, prompt template
+
+**Trace Obligation**:
+A required visible harness artifact or action, such as identity resolution, table retrieval,
+claim-to-evidence linking, contradiction surfacing, or uncertainty verification.
+_Avoid_: hidden heuristic, final answer requirement, debug log
+
+**Harness Run Trace**:
+An eval-facing record of one harness attempt, including intent frame, retrieval plan, evidence
+ledger, claim graph, reasoning artifacts, verification pass, final answer, and diagnostics.
+_Avoid_: product trace artifact, raw debug log, chat transcript
+
+**Scoring Profile**:
+The named set of scoring rules that determines how Golden Cases are validated across retrieval,
+claim, reasoning, and trace layers.
+_Avoid_: metric name, prompt rubric, benchmark id
+
+**Compatibility Projection**:
+A derived flat eval row generated from a Golden Case so existing `RagBenchmarkCase` runners can
+smoke-test the same question without replacing the richer golden source of truth.
+_Avoid_: canonical case, duplicate dataset, lossy migration
+
 **PDF Reading Readiness**:
 The product-facing state describing which PDF-derived reading assets exist for a product paper,
 such as text chunks, page screenshots, table crops, figure crops, and parser artifacts.
@@ -219,6 +259,13 @@ A paper-level candidate assembled before final answer generation. It may include
 reasons and supporting Reading Locations, but it is not itself a final recommendation and does not
 authorize paper-content claims unless those locations are read into Source Quotes.
 _Avoid_: final recommendation, Source Quote, raw location hit, answer citation
+
+**Beginner Paper Role**:
+A product-facing classification for why a paper belongs in an entry-level reading path, such as
+survey, benchmark, method, critique, background, or example. A Beginner Paper Role must come from
+Product Paper metadata or quote-backed evidence. The model may not create this role from title
+wording, hidden state claims, or hard-coded keyword matches.
+_Avoid_: model-inferred role, title guess, recommendation proof, paper-content claim
 
 **Paper Outline**:
 A whole-paper structure view for one or more Product Papers, including section headings, section

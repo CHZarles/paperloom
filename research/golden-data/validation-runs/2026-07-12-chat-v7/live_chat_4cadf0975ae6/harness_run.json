@@ -1,0 +1,64 @@
+{
+  "case_id": "live_chat_4cadf0975ae6",
+  "citation_validation": {
+    "cited_evidence_ids": [],
+    "corpus_tools_used": false,
+    "passed": true
+  },
+  "completed_at": "2026-07-12T14:39:06Z",
+  "diagnostics": {
+    "completion_tokens": 138,
+    "duration_ms": 3587,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 2,
+    "model_latency_ms": 3381,
+    "prompt_tokens": 4395,
+    "skills_used": [],
+    "tool_call_count": 0,
+    "total_tokens": 4533
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [],
+    "ledger_id": "ledger_live_chat_4cadf0975ae6",
+    "missing_evidence": [],
+    "question_id": "live_chat_4cadf0975ae6",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_4cadf0975ae6",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Hi! How can I help you today?",
+    "outcome": "answered",
+    "question_id": "live_chat_4cadf0975ae6",
+    "status": "COMPLETED",
+    "summary": "Hi! How can I help you today?"
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": []
+  },
+  "paper_candidates": [],
+  "question_id": "live_chat_4cadf0975ae6",
+  "react_trace": [],
+  "research_answer": {
+    "answer_id": "answer_live_chat_4cadf0975ae6",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Hi! How can I help you today?",
+    "outcome": "answered",
+    "question_id": "live_chat_4cadf0975ae6",
+    "status": "COMPLETED",
+    "summary": "Hi! How can I help you today?"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_live_chat_4cadf0975ae6",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-12T14:39:02Z",
+  "status": "COMPLETED"
+}

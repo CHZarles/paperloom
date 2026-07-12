@@ -1,0 +1,152 @@
+{
+  "coverage": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_943af035f9927560",
+        "ev_d6c41f300ee2bab1"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_name",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_943af035f9927560",
+        "ev_d6c41f300ee2bab1"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_beta1",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_943af035f9927560",
+        "ev_d6c41f300ee2bab1"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_beta2",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_943af035f9927560",
+        "ev_d6c41f300ee2bab1"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "opt_epsilon",
+      "status": "covered"
+    }
+  ],
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "citeable": false,
+      "element_type": "corpus_search",
+      "evidence_id": "corpus_observation_identity_1",
+      "evidence_quality": "corpus_observation",
+      "location": "find_papers_by_identity",
+      "location_ref": "find_papers_by_identity",
+      "page": "metadata",
+      "paper_id": null,
+      "paper_version": "current_scope",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "find_papers_by_identity",
+      "section": "corpus_index",
+      "source_kind": "corpus_search",
+      "span_text": "{\"query\": {\"paper_id\": \"attention_is_all_you_need_2017\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Attention Is All You Need\"]}",
+      "supports_claim_ids": [],
+      "title": "Corpus candidate search"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_c478868f3b1b547e",
+      "evidence_quality": "verified",
+      "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "matched_anchor_id": "transformer_adam_training_params_span",
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.3 Optimizer",
+      "source_kind": "reading_element",
+      "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_943af035f9927560",
+      "evidence_quality": "verified",
+      "location": "reading_element_9750d0727ec04aad805b3c373834c96f",
+      "location_ref": "reading_element_9750d0727ec04aad805b3c373834c96f",
+      "matched_anchor_id": null,
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5 Training",
+      "source_kind": "reading_element",
+      "span_text": "This section describes the training regime for our models.",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_d6c41f300ee2bab1",
+      "evidence_quality": "verified",
+      "location": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+      "location_ref": "reading_element_545bea3e9d5c42c598ad0d6539ca6016",
+      "matched_anchor_id": null,
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.1 Training Data and Batching",
+      "source_kind": "reading_element",
+      "span_text": "We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million sentence pairs. Sentences were encoded using byte-pair encoding [3], which has a shared sourcetarget vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT 2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece vocabulary [38]. Sentence pairs were batched together by approximate sequence length. Each training batch contained a set of sentence pairs containing approximately 25000 source tokens and 25000 target tokens.",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_3032d4455f59",
+  "missing_evidence": [],
+  "question_id": "live_chat_3032d4455f59",
+  "rejected_items": []
+}

@@ -1,0 +1,92 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "definition_trace",
+  "constraints": {
+    "coverage_assumption": "The user is resolving the prior assistant's choice menu by selecting option (2) BERT, and wants an explanation of how BERT enables bidirectional Transformer encoders.",
+    "paper_focus": "bert_2018",
+    "task": {
+      "object": "bidirectional Transformer encoders in BERT",
+      "verb": "explain"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "bert_2018",
+    "Transformer encoder architecture used",
+    "Masked language modeling (MLM) objective",
+    "Definition of deep bidirectionality vs unidirectional",
+    "Next Sentence Prediction (NSP)",
+    "Input representation"
+  ],
+  "intent_id": "intent_live_chat_ed5dd7cd3d93",
+  "method_mentions": [],
+  "normalized_question": "Explain how the BERT paper (paper_id bert_2018) introduces and enables bidirectional Transformer encoders, including the masked language modeling pre-training objective that conditions on both left and right context, the Transformer encoder architecture used, and how this bidirectionality differs from unidirectional (left-to-right) language model pre-training.",
+  "obligations": [
+    {
+      "answer_field": "architecture",
+      "description": "What architecture does BERT use (multi-layer Transformer encoder, number of layers, hidden size, attention heads), and how does this support bidirectionality at every layer?",
+      "id": "bert_architecture",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "mlm_objective",
+      "description": "What is the masked language modeling (MLM) pre-training objective in BERT, including the masking procedure (which tokens, replacement choices, masking rate) and how it differs from standard left-to-right language modeling?",
+      "id": "bert_mlm_objective",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bidirectionality_definition",
+      "description": "How does BERT define and motivate 'deep bidirectional' versus shallow bidirectional and unidirectional (left-to-right) representations?",
+      "id": "bert_bidirectional_definition",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "nsp_objective",
+      "description": "What is the Next Sentence Prediction (NSP) pre-training objective and why is it included alongside MLM?",
+      "id": "bert_nsp_objective",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "input_representation",
+      "description": "What is BERT's input representation (token embeddings, segment embeddings, position embeddings) and how does it enable sentence-pair tasks?",
+      "id": "bert_input_representation",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "bert_2018"
+  ],
+  "primary_paradigm": "concept_tracing_definition",
+  "question_id": "live_chat_ed5dd7cd3d93",
+  "raw_question": "The second.",
+  "required_capabilities": [
+    "paper_grounded_fact_extraction"
+  ],
+  "required_evidence_types": [
+    "architecture_parameters",
+    "pretraining_objective",
+    "input_representation"
+  ],
+  "requires_corpus_observation": true
+}

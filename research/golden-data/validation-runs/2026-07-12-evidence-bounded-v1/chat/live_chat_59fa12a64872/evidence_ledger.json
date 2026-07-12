@@ -1,0 +1,507 @@
+{
+  "coverage": [
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_675fca9661b26bfa"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_675fca9661b26bfa"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_scope",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_fc60e9cc9fdd5a6c",
+        "ev_3e731d621272672c"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_fc60e9cc9fdd5a6c",
+        "ev_3e731d621272672c"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_taxonomy",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_675fca9661b26bfa"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_675fca9661b26bfa"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_benchmarks",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_3e731d621272672c"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_3e731d621272672c"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_frameworks",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_675fca9661b26bfa",
+        "ev_394a88565bab8e83"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_675fca9661b26bfa",
+        "ev_394a88565bab8e83"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_methodology",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_2e63d32c8d5ba8c8",
+        "ev_985210f77a60dcf4"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_2e63d32c8d5ba8c8",
+        "ev_985210f77a60dcf4"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_end_to_end_vs_component_perspective",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_3e731d621272672c",
+        "ev_ceb02e5ea599218f"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_3e731d621272672c",
+        "ev_ceb02e5ea599218f"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_trends",
+      "status": "covered"
+    }
+  ],
+  "items": [
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_8b9e2f64d565137ca85ae75029e77fff",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "A Survey on Evaluation of LLM-based Agents",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents",
+      "venue": null,
+      "year": null
+    },
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "paper_version": "rm_1783570479344_38abbf2f4d8a467fb3eca931d4e7a565",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+      "venue": null,
+      "year": null
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_ddb084a0ece5ad74",
+      "evidence_quality": "verified",
+      "location": "reading_element_42100331b7ae45b09251da9187a2ee29",
+      "location_ref": "reading_element_42100331b7ae45b09251da9187a2ee29",
+      "matched_anchor_id": null,
+      "page": 1,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "Abstract",
+      "source_kind": "reading_element",
+      "span_text": "LLM-based agents represent a paradigm shift in AI, enabling autonomous systems to plan, reason, and use tools while interacting with dynamic environments. This paper provides the first comprehensive survey of evaluation methods for these increasingly capable agents. We analyze the field of agent evaluation across five perspectives: (1) Core LLM capabilities needed for agentic workflows, like planning, and tool use; (2) Application-specific benchmarks such as web and SWE agents; (3) Evaluation of generalist agents; (4) Analysis of agent benchmarks� core dimensions; and (5) Evaluation frameworks and tools for agent developers. Our analysis reveals current trends, including a shift toward more realistic, challenging evaluations with continuously updated benchmarks. We also identify critical gaps that future research must address�particularly in assessing cost-efficiency, safety, and robustness, and in developing fine-grained, scalable evaluation methods <sup>1</sup>.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_ceb02e5ea599218f",
+      "evidence_quality": "verified",
+      "location": "reading_element_44555bfafcb34d9ab9ae27697e58ebe1",
+      "location_ref": "reading_element_44555bfafcb34d9ab9ae27697e58ebe1",
+      "matched_anchor_id": null,
+      "page": 1,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "1 Introduction",
+      "source_kind": "reading_element",
+      "span_text": "We begin by discussing the evaluation of fundamental LLM-based agent capabilities (�2). These include planning, tool use, self-reflection, and memory. We then review benchmarks and evaluation strategies for prominent types of agentic applications: web agents, software engineering agents, scientific agents, and conversational agents (�3). We continue to describe benchmarks and leaderboards for evaluating generalist agents (�4). Consequently, we define and analyze core dimensions of agent benchmarks (�5). �6 reviews current evaluation frameworks for agent developers. These frameworks integrate with the agent�s development environment, and support its evaluation throughout the entire development cycle. We conclude with a discussion (�7) of current trends and future research directions in agent evaluation. Figure 1 offers a visual summary of the survey�s structure.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "citeable": true,
+      "element_type": "paragraph",
+      "evidence_id": "ev_94d09c1772db0a83",
+      "evidence_quality": "conversation_memory",
+      "location": "reading_element_91d8a3671f2544f39d43e4f6fd20f1f8",
+      "location_ref": "reading_element_91d8a3671f2544f39d43e4f6fd20f1f8",
+      "page": 1,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "refutes_claim_ids": [],
+      "retrieval_strategy": "conversation_memory",
+      "section": "1 Introduction",
+      "span_text": "The shift from static models to adaptive, interactive agents calls for a new paradigm for evaluating LLM-based agents. Such evaluation must go beyond measuring LLM textual outputs to assess an agent�s capacity for sequential decision-making and operation within dynamic environments. It requires benchmarks that can assess the agent�s ability to accomplish user tasks via a sequence of actions and interactions. Moreover, benchmarks must co-evolve with agent capabilities, accommodating new classes of tasks and domains.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "citeable": true,
+      "element_type": "paragraph",
+      "evidence_id": "ev_eb00cd688a869556",
+      "evidence_quality": "conversation_memory",
+      "location": "reading_element_e6431b90214e4a409c043c796bf85c8b",
+      "location_ref": "reading_element_e6431b90214e4a409c043c796bf85c8b",
+      "page": 1,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "refutes_claim_ids": [],
+      "retrieval_strategy": "conversation_memory",
+      "section": "1 Introduction",
+      "span_text": "LLMs have recently made remarkable progress, tackling a wide range of challenging tasks. Yet, LLMs are static, having fixed knowledge, and confined to text-to-text interaction. LLM-based agents address those gaps by building on LLMs as a backbone, integrating them into multi-step workflows and equipping them with external tools (Wang et al., 2024a). Hence, LLM agents can perform computations, retrieve up-to-date information, and interact with their environment. Crucially, they can autonomously plan, execute, and adapt complex strategies in real-world settings. This agency enables them to tackle problems once beyond the reach of AI, unlocking innovative applications across diverse domains.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "citeable": true,
+      "element_type": "paragraph",
+      "evidence_id": "ev_2f58e77634814fd0",
+      "evidence_quality": "conversation_memory",
+      "location": "reading_element_85364e778f9646dca6950b3524009e1a",
+      "location_ref": "reading_element_85364e778f9646dca6950b3524009e1a",
+      "page": 1,
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "refutes_claim_ids": [],
+      "retrieval_strategy": "conversation_memory",
+      "section": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+      "span_text": "Additional Key Words and Phrases: large language models, agent, multi-turn conversation system, task-oriented dialogue systems, open-domain dialogue systems, evaluation",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+    },
+    {
+      "citeable": true,
+      "element_type": "paragraph",
+      "evidence_id": "ev_1f2ecd2f2c65b6ec",
+      "evidence_quality": "conversation_memory",
+      "location": "reading_element_c3d6f13d59e74f5f853994e61c63713f",
+      "location_ref": "reading_element_c3d6f13d59e74f5f853994e61c63713f",
+      "page": 2,
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "refutes_claim_ids": [],
+      "retrieval_strategy": "conversation_memory",
+      "section": "1 Introduction",
+      "span_text": "Multi-turn conversational agents powered by large language models (LLMs) mark a significant leap in conversational AI [74], ofering complex, context-aware interactions across multiple turns�essential for applications like customer service and personal assistants [38, 235]. Evaluating these systems poses unique challenges: methods must be automated, reproducible, and aligned with human judgments to ensure real-world reliability [247].",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+    },
+    {
+      "citeable": true,
+      "element_type": "paragraph",
+      "evidence_id": "ev_1c64675d2937d706",
+      "evidence_quality": "conversation_memory",
+      "location": "reading_element_c4aefcb0c4424829bfd14d406d19781e",
+      "location_ref": "reading_element_c4aefcb0c4424829bfd14d406d19781e",
+      "page": 2,
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "refutes_claim_ids": [],
+      "retrieval_strategy": "conversation_memory",
+      "section": "1 Introduction",
+      "span_text": "Historically, multi-turn dialogue dates back to ELIZA [232], developed in the 1960s, which maintained simple states through pattern matching rather than complex context modeling. Subsequent progress incorporated finite-state machines, frame-based approaches, and statistical methods, culminating in the application of hidden Markov models (HMMs) [178] for spoken language understanding. Deep neural networks and Transformer architectures [217] then revolutionized context modeling, leveraging larger datasets and advanced training methods (including supervised and reinforcement learning) to handle more complex dialogues. In nowadays, multi-turn conversational systems often build on large-scale pre",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+    },
+    {
+      "citeable": true,
+      "element_type": "paragraph",
+      "evidence_id": "ev_be9ffa7f121ef2a8",
+      "evidence_quality": "conversation_memory",
+      "location": "reading_element_727384e5ff7d4d17a5459fbc53704cd4",
+      "location_ref": "reading_element_727384e5ff7d4d17a5459fbc53704cd4",
+      "page": 6,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "refutes_claim_ids": [],
+      "retrieval_strategy": "conversation_memory",
+      "section": "5 Core Benchmark Dimensions",
+      "span_text": "Safety and Robustness Metrics While most benchmarks prioritize capability, safety, and robustness are critical for enterprise adoption. Robustness is often quantified via pass^k, the fraction of tasks where the agent succeeds across all k independent runs. Beyond robustness, enterprise agents must adhere to strict policies, such as data privacy and access control, which are rarely tested in standard benchmarks. For instance, SWE-Lancer does not inherently penalize risky behaviors unless they interfere with replicating the target behavior. Future benchmarks must integrate \"guardrail\" metrics, penalizing agents that achieve task success via non-compliant actions (e.g., deleting production data",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "citeable": true,
+      "element_type": "paragraph",
+      "evidence_id": "ev_cef6745d7b152804",
+      "evidence_quality": "conversation_memory",
+      "location": "reading_element_56890f6991f142d685d4a9a108ca3dec",
+      "location_ref": "reading_element_56890f6991f142d685d4a9a108ca3dec",
+      "page": 5,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "refutes_claim_ids": [],
+      "retrieval_strategy": "conversation_memory",
+      "section": "5 Core Benchmark Dimensions",
+      "span_text": "The preceding sections reviewed benchmarks organized by agent type and application domain. Here, we take a broader perspective and analyze benchmarks along shared orthogonal dimensions: data curation, environment, interface, metric, and safety. This analysis reveals common structural patterns and gaps. In Table 1, we compare representative benchmarks based on these dimensions.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_3e731d621272672c",
+      "evidence_quality": "verified",
+      "location": "reading_element_1d663fc5d1464c688cdd481481c02d02",
+      "location_ref": "reading_element_1d663fc5d1464c688cdd481481c02d02",
+      "matched_anchor_id": null,
+      "page": 1,
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "paper_version": "rm_1783570479344_38abbf2f4d8a467fb3eca931d4e7a565",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+      "source_kind": "reading_element",
+      "span_text": "This survey examines evaluation methods for large language model (LLM)-based agents in multi-turn conversational settings. Using a PRISMA-inspired framework, we systematically reviewed nearly 250 scholarly sources, capturing the state of the art from various venues of publication, and establishing a solid foundation for our analysis. Our study ofers a structured approach by developing two interrelated taxonomy systems: one that defines what to evaluate and another that explains how to evaluate. The first taxonomy identifies key components of LLM-based agents for multi-turn conversations and their evaluation dimensions, including task completion, response quality, user experience, memory and context retention, as well as planning and tool integration. These components ensure that the performance of conversational agents is assessed in a holistic and meaningful manner. The second taxonomy system focuses on the evaluation methodologies. It categorizes approaches into annotation-based evaluations, automated metrics, hybrid strategies that combine human assessments with quantitative measures, and self-judging methods utilizing LLMs. This framework not only captures traditional metrics derived from language understanding, such as BLEU and ROUGE scores, but also incorporates advanced techniques that reflect the dynamic, interactive nature of multi-turn dialogues. Together, these frameworks summarize the current status quo, expose limitations in traditional practices, and provide a structured blueprint for improvement. Based on the summarization of existing studies, we identify several challenges and propose future directions, including the development of scalable, real-time evaluation pipelines, enhanced privacy-preserving mechanisms, and robust metrics that capture dynamic multi-turn interactions. Our contributions bridge historical insights with modern practices, paving the way for next-generation, reliably evaluated conversational AI systems and ofering a comprehensive guide for researchers and practitioners",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+    },
+    {
+      "citeable": false,
+      "element_type": "corpus_search",
+      "evidence_id": "corpus_observation_identity_1",
+      "evidence_quality": "corpus_observation",
+      "location": "find_papers_by_identity",
+      "location_ref": "find_papers_by_identity",
+      "page": "metadata",
+      "paper_id": null,
+      "paper_version": "current_scope",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "find_papers_by_identity",
+      "section": "corpus_index",
+      "source_kind": "corpus_search",
+      "span_text": "{\"query\": {\"paper_id\": \"8b9e2f64d565137ca85ae75029e77fff\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"A Survey on Evaluation of LLM-based Agents\"]}",
+      "supports_claim_ids": [],
+      "title": "Corpus candidate search"
+    },
+    {
+      "citeable": false,
+      "element_type": "corpus_search",
+      "evidence_id": "corpus_observation_identity_2",
+      "evidence_quality": "corpus_observation",
+      "location": "find_papers_by_identity",
+      "location_ref": "find_papers_by_identity",
+      "page": "metadata",
+      "paper_id": null,
+      "paper_version": "current_scope",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "find_papers_by_identity",
+      "section": "corpus_index",
+      "source_kind": "corpus_search",
+      "span_text": "{\"query\": {\"paper_id\": \"726cfbbd5683cdfabbf4c24e2bf8f0b2\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\"]}",
+      "supports_claim_ids": [],
+      "title": "Corpus candidate search"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_fc60e9cc9fdd5a6c",
+      "evidence_quality": "verified",
+      "location": "reading_element_2241f83d98974417bda064d884cce8d7",
+      "location_ref": "reading_element_2241f83d98974417bda064d884cce8d7",
+      "matched_anchor_id": null,
+      "page": 20,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "A Literature Review Methodology",
+      "source_kind": "reading_element",
+      "span_text": "Expert Consultation To mitigate coverage gaps and ensure an accurate representation of specific subdomains, we consulted with domain experts corresponding to the key categories in our taxonomy (e.g., SWE and web agent researchers). We specifically engaged with creators of leading benchmarks and dominant agent architectures to discuss the selected manuscripts. This validation step ensured that our survey captures the nuances of state-of-theart evaluation protocols.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_394a88565bab8e83",
+      "evidence_quality": "verified",
+      "location": "reading_element_c92cec7ec0e245529ab9eba47b65cbbd",
+      "location_ref": "reading_element_c92cec7ec0e245529ab9eba47b65cbbd",
+      "matched_anchor_id": null,
+      "page": 20,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "A Literature Review Methodology",
+      "source_kind": "reading_element",
+      "span_text": "To ensure the comprehensiveness and validity of this survey, we employed a rigorous, multi-stage literature review process designed to capture the rapidly evolving landscape of LLM agent evaluation. Our methodology consisted of three primary phases: systematic search, structured selection, and expert validation.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_2e63d32c8d5ba8c8",
+      "evidence_quality": "verified",
+      "location": "reading_element_b8c8cbb6e3714c8381c957890eee2db0",
+      "location_ref": "reading_element_b8c8cbb6e3714c8381c957890eee2db0",
+      "matched_anchor_id": null,
+      "page": 4,
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.2 Software Engineering Agents",
+      "source_kind": "reading_element",
+      "span_text": "SWE-bench (Jimenez et al., 2023) was introduced to address the above shortcomings by providing an end-to-end evaluation framework grounded in real-world GitHub issues. Each task includes a detailed issue description, full repository context, executable environments (e.g., Docker), and validation tests, enabling agents to generate and verify code patches automatically. Several follow-up works identified evaluation issues, like overly specific or unrelated unit tests, underspecified issue descriptions, and problematic environmental setups, and thus proposed new variants (SWE-bench Lite, 2024; Xia et al., 2024; OpenAI, 2024; Aleithan et al., 2024). The most widely adopted of these, SWE-bench Verified (OpenAI, 2024), carries extensive human filtration and validation to yield a high-quality subset of 500 samples. It also standardizes execution through containerized environments and provides difficulty annotations, enabling more reproducible and interpretable evaluations. These improvements make SWE-bench Verified the de facto benchmark for assessing SWE agents.",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_675fca9661b26bfa",
+      "evidence_quality": "verified",
+      "location": "reading_element_8a30eb73d4ca447b9d0e743efa2da4bb",
+      "location_ref": "reading_element_8a30eb73d4ca447b9d0e743efa2da4bb",
+      "matched_anchor_id": null,
+      "page": 3,
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "paper_version": "rm_1783570479344_38abbf2f4d8a467fb3eca931d4e7a565",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "1.2 The Scope of This Survey",
+      "source_kind": "reading_element",
+      "span_text": "This paper surveys evaluation methods for LLM-based multi-turn conversational agents, focusing on (1) which aspects to evaluate and (2) how to evaluate them. It outlines key targets (task success, response quality, end-to-end user experience) and reviews existing methodologies and datasets, encompassing both automatic metrics and human evaluation protocols. Drawing on literature from 2017 to 2025, this survey follows a methodology inspired by PRISMA [165], outlined in Figure 2. An initial Google Scholar search retrieved 479 papers<sup>1</sup>, supplemented by 1,081 more from venues such as ICLR, NeurIPS, AAAI, NAACL, EMNLP, and ACL (2022�2024). After merging duplicates (1,123 unique records), we excluded 333 irrelevant works, leaving 790 papers; of these, 267 lacked focused coverage of LLM-based agents and were excluded. Ultimately, 351 papers progressed to qualitative synthesis, with 276 ofering targeted evaluation insights.",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_985210f77a60dcf4",
+      "evidence_quality": "verified",
+      "location": "reading_element_00e072b149274c62a9bc744100c32310",
+      "location_ref": "reading_element_00e072b149274c62a9bc744100c32310",
+      "matched_anchor_id": null,
+      "page": 6,
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "paper_version": "rm_1783570479344_38abbf2f4d8a467fb3eca931d4e7a565",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "2.1 Evaluating the End-to-end Experience of LLM-based Agents For Multi-Turn Conversation",
+      "source_kind": "reading_element",
+      "span_text": "It is natural to prioritize evaluating the end-to-end experience in the first place, as this holistic approach directly captures real-world performance before delving into granular metrics. Multi-turn dialogues inherently difer from isolated single-turn queries in that they often encompass multiple sequential or interleaved tasks within a single conversation. This complexity necessitates evaluating an agent�s performance at the dialogue level, beyond individua exchanges. Specifically, we must assess not only whether each task is completed but also how well tasks are executed. In other words, even if an agent successfully fulfills each requested task, we still examine the overall quality of task completion and the interaction process: does the agent transition smoothly between tasks, maintain context and coherence, and deliver responses that keep the user satisfied and engaged without producing harmful or irrelevan content? For example, an agent may correctly answer each question (achieving high task completion) but still fail overall if its responses are confusing, inconsistent, or inappropriate. Hence, We present an overview of End-to-end Experience evaluation goals for LLM-based agents in multi-turn interactions. The representative works could be categorized into five dimensions: (1) Task Completion in Multi-Turn Conversations, measuring how well agents fulfill user requests using metrics like completion rate; (2) Multitask Capabilities, assessing expertise across domains such as mathematics, coding and etc; (3) Interaction Patterns, analyzing structures like recollection, follow-up, and expansion to assess dialogue coherence and (4) User Experience and Safety, addressing satisfaction, engagement, and safeguards against harmful content, including adversarial attacks and prompt leakage.",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_59fa12a64872",
+  "missing_evidence": [
+    {
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff taxonomy for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_taxonomy",
+      "reason": "no verified claim satisfied this required obligation"
+    },
+    {
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff end to end vs component perspective for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_end_to_end_vs_component_perspective",
+      "reason": "no verified claim satisfied this required obligation"
+    },
+    {
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 trends for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends",
+      "reason": "no verified claim satisfied this required obligation"
+    },
+    {
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff trends for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_trends",
+      "reason": "no verified claim satisfied this required obligation"
+    }
+  ],
+  "question_id": "live_chat_59fa12a64872",
+  "rejected_items": []
+}

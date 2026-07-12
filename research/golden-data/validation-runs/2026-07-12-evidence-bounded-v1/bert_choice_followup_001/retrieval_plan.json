@@ -1,0 +1,202 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "architecture_parameters",
+    "pretraining_objective",
+    "input_representation"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "architecture",
+      "description": "What architecture does BERT use (multi-layer Transformer encoder, number of layers, hidden size, attention heads), and how does this support bidirectionality at every layer?",
+      "id": "bert_architecture",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "mlm_objective",
+      "description": "What is the masked language modeling (MLM) pre-training objective in BERT, including the masking procedure (which tokens, replacement choices, masking rate) and how it differs from standard left-to-right language modeling?",
+      "id": "bert_mlm_objective",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bidirectionality_definition",
+      "description": "How does BERT define and motivate 'deep bidirectional' versus shallow bidirectional and unidirectional (left-to-right) representations?",
+      "id": "bert_bidirectional_definition",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "nsp_objective",
+      "description": "What is the Next Sentence Prediction (NSP) pre-training objective and why is it included alongside MLM?",
+      "id": "bert_nsp_objective",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "input_representation",
+      "description": "What is BERT's input representation (token embeddings, segment embeddings, position embeddings) and how does it enable sentence-pair tasks?",
+      "id": "bert_input_representation",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "concept_tracing_definition",
+  "plan_id": "plan_live_chat_ed5dd7cd3d93",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_architecture"
+          ],
+          "query_id": "q_arch",
+          "query_text": "BERT_BASE L=12 H=768 A=12 Transformer encoder multi-layer bidirectional",
+          "section_query": null,
+          "target_ids": [
+            "bert_paper"
+          ],
+          "top_k": 4
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_mlm_objective"
+          ],
+          "query_id": "q_mlm",
+          "query_text": "masked language model 15% [MASK] random replacement token prediction",
+          "section_query": null,
+          "target_ids": [
+            "bert_paper"
+          ],
+          "top_k": 4
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_bidirectional_definition"
+          ],
+          "query_id": "q_bidir",
+          "query_text": "deep bidirectional left-to-right unidirectional shallow concatenation left context right context",
+          "section_query": null,
+          "target_ids": [
+            "bert_paper"
+          ],
+          "top_k": 4
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_nsp_objective"
+          ],
+          "query_id": "q_nsp",
+          "query_text": "Next Sentence Prediction NSP IsNext NotNext sentence pair binary classification",
+          "section_query": null,
+          "target_ids": [
+            "bert_paper"
+          ],
+          "top_k": 4
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "bert_input_representation"
+          ],
+          "query_id": "q_input",
+          "query_text": "token segment position embeddings [CLS] [SEP] input representation WordPiece",
+          "section_query": null,
+          "target_ids": [
+            "bert_paper"
+          ],
+          "top_k": 4
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "1810.04805",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "bert_architecture",
+            "bert_mlm_objective",
+            "bert_bidirectional_definition",
+            "bert_nsp_objective",
+            "bert_input_representation"
+          ],
+          "discovery_query": "",
+          "paper_id": "bert_2018",
+          "target_id": "bert_paper",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_ed5dd7cd3d93",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "define_trace_points",
+      "stage_name": "define_trace_points",
+      "step_id": "stage_1_define_trace_points",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "define_trace_points"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_definition_evidence",
+      "stage_name": "collect_definition_evidence",
+      "step_id": "stage_2_collect_definition_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_definition_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "trace_changes",
+      "stage_name": "trace_changes",
+      "step_id": "stage_3_trace_changes",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "trace_changes"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_trace",
+      "stage_name": "verify_trace",
+      "step_id": "stage_4_verify_trace",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_trace"
+    }
+  ],
+  "target_entities": [
+    "bert_2018"
+  ]
+}

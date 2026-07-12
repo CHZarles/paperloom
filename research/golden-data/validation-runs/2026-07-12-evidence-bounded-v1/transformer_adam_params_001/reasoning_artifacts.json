@@ -1,0 +1,96 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_e14469c7ef18",
+    "payload": {
+      "answer_fields": {
+        "beta1": "0.9",
+        "beta2": "0.98",
+        "epsilon": "10^-9"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "transformer_adam_beta1_value",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "beta1": "0.9"
+          },
+          "reason": "The evidence passage directly states β1 = 0.9 for Adam in the original Transformer paper.",
+          "verdict": "keep",
+          "verified_text": "The original Transformer paper used Adam with β1 = 0.9."
+        },
+        {
+          "claim_id": "transformer_adam_beta2_value",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "beta2": "0.98"
+          },
+          "reason": "The evidence passage directly states β2 = 0.98 for Adam in the original Transformer paper.",
+          "verdict": "keep",
+          "verified_text": "The original Transformer paper used Adam with β2 = 0.98."
+        },
+        {
+          "claim_id": "transformer_adam_epsilon_value",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "epsilon": "10^-9"
+          },
+          "reason": "The evidence passage directly states ε = 10^-9 for Adam in the original Transformer paper.",
+          "verdict": "keep",
+          "verified_text": "The original Transformer paper used Adam with ε = 10^-9."
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_9f0ad4e5c9243e9e",
+            "ev_bc5eb354fc05156e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "transformer_adam_beta1",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_9f0ad4e5c9243e9e",
+            "ev_bc5eb354fc05156e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "transformer_adam_beta2",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_9f0ad4e5c9243e9e",
+            "ev_bc5eb354fc05156e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "transformer_adam_epsilon",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "ev_c478868f3b1b547e",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_bc5eb354fc05156e"
+      ]
+    },
+    "question_id": "live_chat_e14469c7ef18",
+    "source_claim_ids": [
+      "transformer_adam_beta1_value",
+      "transformer_adam_beta2_value",
+      "transformer_adam_epsilon_value"
+    ],
+    "title": "Extract the exact Adam optimizer hyperparameters (beta1, beta2, epsilon) used in the original Transformer paper \"Attention Is All You Need\" (2017).",
+    "type": "exact_fact"
+  }
+]

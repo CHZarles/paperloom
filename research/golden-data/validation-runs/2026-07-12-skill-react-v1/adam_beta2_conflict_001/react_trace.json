@@ -1,0 +1,344 @@
+[
+  {
+    "arguments": {
+      "skill_id": "contradiction_resolution"
+    },
+    "result": {
+      "answer_guidance": "State both claims, the scope difference, and the resulting conclusion.",
+      "evidence_standard": "Use exact passages returned by read_locations for paper-content claims. Treat candidate metadata and location previews as navigation only, and state evidence gaps plainly.",
+      "instructions": [
+        "Read both primary passages.",
+        "Preserve qualifiers such as default, measured, recommended, and conditional.",
+        "Resolve by scope only when the evidence supports it."
+      ],
+      "skill_id": "contradiction_resolution",
+      "when_to_use": "Compare competing source claims and adjudicate or preserve their conflict."
+    },
+    "tool_call_id": "call_bgOLqK1RWvw05vV7IiLWKeuj",
+    "tool_name": "get_research_skill"
+  },
+  {
+    "arguments": {
+      "limit": 15,
+      "query_text": "Adam optimizer beta2 0.999 0.98 Transformer"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1412.6980",
+          "authors": [
+            "Diederik P. Kingma",
+            "Jimmy Ba"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "adam_2014",
+          "preview": "",
+          "title": "Adam: A Method for Stochastic Optimization",
+          "venue": "ICLR",
+          "year": 2014
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "Adam optimizer beta2 0.999 0.98 Transformer",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_O2gJbGoh8LjbNu5JSAnIAJTb",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "Attention is All You Need Transformer"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "Attention is All You Need Transformer",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_UqeSjxkpoLpdlXhbkC8ssjhy",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "adam_2014"
+      ],
+      "query_text": "beta2 0.999 default hyperparameters"
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "list",
+          "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "page": 2,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ {",
+          "section": "unsectioned",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "list",
+          "location_ref": "reading_element_9e1ba316a8824707b022fa58eaabac67",
+          "page": 9,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Algorithm 2: AdaMax, a variant of Adam based on the infinity norm. See section 7.1 for details.\nGood default settings for the tested machine learning problems are \\alpha \\ : = \\ : 0 . 0 0 2 , \\beta _ { 1 } \\ : = \\ : 0 . 9 and\n\\beta _ { 2 } = 0 . 9 9 9 . With \\beta _ { 1 } ^ { \\overline { { t } } } we denote \\beta _ { 1 } to the power t. Here, ( \\alpha / ( 1 - \\beta _ { 1 } ^ { t } ) ) is the learning rate with the\nbias-correction term for the first moment. All operations on vectors are element-w",
+          "section": "unsectioned",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2e9b73bec67244d1bd0e65d0210cf109",
+          "page": 2,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "The algorithm updates exponential moving averages of the gradient $( m _ { t } )$ and the squared gradient $( v _ { t } )$ where the hyper-parameters $\\beta _ { 1 } , \\beta _ { 2 } \\in [ 0 , 1 )$ control the exponential decay rates of these moving averages. The moving averages themselves are estimates of the $1 ^ { \\mathrm { s t } }$ moment (the mean) and the $2 ^ { \\mathrm { n d } }$ raw moment (the uncentered variance) of the gradient. However, these moving averages are initialized as (vectors",
+          "section": "2 ALGORITHM",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_b196419153cc43ecbe8c8e4bc29b3598",
+          "page": 2,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "An important property of Adam’s update rule is its careful choice of stepsizes. Assuming $\\epsilon = 0 .$ , the effective step taken in parameter space at timestep t is $\\Delta _ { t } = \\alpha \\cdot \\widehat { m } _ { t } / \\sqrt { \\widehat { v } _ { t } }$ . The effective stepsize has two upper bounds: $| \\Delta _ { t } ^ { \\bullet } | \\le \\alpha \\cdot ( 1 \\stackrel { \\bullet } { - } \\beta _ { 1 } ) / \\sqrt { 1 - \\beta _ { 2 } }$ in the case $( 1 - \\beta _ { 1 } ) > \\sqrt { 1 - \\beta _ { 2 } }",
+          "section": "2.1 ADAM’S UPDATE RULE",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_17652a55c6f74c4e981ce26e75def07d",
+          "page": 3,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "As explained in section 2, Adam utilizes initialization bias correction terms. We will here derive the term for the second moment estimate; the derivation for the first moment estimate is completely analogous. Let $g$ be the gradient of the stochastic objective $f ,$ and we wish to estimate its second raw moment (uncentered variance) using an exponential moving average of the squared gradient, with decay rate $\\beta _ { 2 }$ . Let $g _ { 1 } , . . . , g _ { T }$ be the gradients at subsequent ti",
+          "section": "3 INITIALIZATION BIAS CORRECTION",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9278b129eb6f45cb816e320688d87e6d",
+          "page": 3,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "where $\\zeta = 0$ if the true second moment $\\mathbb { E } [ g _ { i } ^ { 2 } ]$ is stationary; otherwise $\\zeta$ can be kept small since the exponential decay rate $\\beta _ { 1 }$ can (and should) be chosen such that the exponential moving average assigns small weights to gradients too far in the past. What is left is the term $( 1 - \\beta _ { 2 } ^ { t } )$ which is caused by initializing the running average with zeros. In algorithm 1 we therefore divide by this term to correct the initializa",
+          "section": "3 INITIALIZATION BIAS CORRECTION",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f7d3804d49174105a8d52bd3257b439b",
+          "page": 4,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "where $\\begin{array} { r } { \\theta ^ { * } = \\arg \\operatorname* { m i n } _ { \\theta \\in \\mathcal { X } } \\sum _ { t = 1 } ^ { T } f _ { t } ( \\theta ) } \\end{array}$ . We show Adam has $O ( \\sqrt { T } )$ regret bound and a proof is given in the appendix. Our result is comparable to the best known bound for this general convex online learning problem. We also use some definitions simplify our notation, where $g _ { t } \\triangleq \\nabla f _ { t } ( \\theta _ { t } )$ and $g _ { t , i }$ as the",
+          "section": "4 CONVERGENCE ANALYSIS",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_926c3af3c55f4c828a0fc3b8c95a7040",
+          "page": 4,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Theorem 4.1. Assume that the function $f _ { t }$ has bounded gradients, $\\| \\nabla f _ { t } ( \\theta ) \\| _ { 2 } \\leq G , \\| \\nabla f _ { t } ( \\theta ) \\| _ { \\infty } \\leq$ $G _ { \\infty } f o r a l l \\theta \\in R ^ { d }$ and distance between any $\\theta _ { t }$ generated by Adam is bounded, $\\begin{array} { r } { \\| \\theta _ { n } - \\theta _ { m } \\| _ { 2 } \\leq D , } \\end{array}$ $\\| \\theta _ { m } - \\theta _ { n } \\| _ { \\infty } \\leq D _ { \\infty }$ for any m, $n \\in \\{ 1 , . . . , T",
+          "section": "4 CONVERGENCE ANALYSIS",
+          "title": "Adam: A Method for Stochastic Optimization"
+        }
+      ],
+      "matched_count": 23,
+      "query_text": "beta2 0.999 default hyperparameters",
+      "returned_count": 8
+    },
+    "tool_call_id": "call_fkOS5HpJugswJETSEU7K1l24",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "attention_is_all_you_need_2017"
+      ],
+      "query_text": "Adam optimizer beta1 beta2 epsilon learning rate training settings"
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+          "page": 8,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Label Smoothing During training, we employed label smoothing of value $\\epsilon _ { l s } = 0 . 1 [ 3 6 ]$ . This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.",
+          "section": "5.4 Regularization",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ab5e6274120b4192981927f5fc31523f",
+          "page": 8,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "On the WMT 2014 English-to-French translation task, our big model achieves a BLEU score of 41.0, outperforming all of the previously published single models, at less than 1/4 the training cost of the previous state-of-the-art model. The Transformer (big) model trained for English-to-French used dropout rate $P _ { d r o p } = 0 . 1$ , instead of 0.3.",
+          "section": "6.1 Machine Translation",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+          "page": 1,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being mor",
+          "section": "Abstract",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bcfadf2c36da428ebfa75b2aab138bf8",
+          "page": 2,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Recurrent models typically factor computation along the symbol positions of the input and output sequences. Aligning the positions to steps in computation time, they generate a sequence of hidden states $h _ { t } ,$ as a function of the previous hidden state $h _ { t - 1 }$ and the input for position t. This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer sequence lengths, as memory constraints limit batching across examples. Rec",
+          "section": "1 Introduction",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7f339c9b7fca4a48915ff9bafc5b1285",
+          "page": 2,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Self-attention, sometimes called intra-attention is an attention mechanism relating different positions of a single sequence in order to compute a representation of the sequence. Self-attention has been used successfully in a variety of tasks including reading comprehension, abstractive summarization, textual entailment and learning task-independent sentence representations [4, 27, 28, 22].",
+          "section": "2 Background",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e28a6bf2492d4c928402a1b4a6eb4cf8",
+          "page": 6,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We also experimented with using learned positional embeddings [9] instead, and found that the two versions produced nearly identical results (see Table 3 row (E)). We chose the sinusoidal version because it may allow the model to extrapolate to sequence lengths longer than the ones encountered during training.",
+          "section": "3.5 Positional Encoding",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "matched_count": 30,
+      "query_text": "Adam optimizer beta1 beta2 epsilon learning rate training settings",
+      "returned_count": 8
+    },
+    "tool_call_id": "call_WDeCLGjUJtFFTKgFGlgsm457",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_914db2da80ce4b6e865ccb31050c5d19"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "list",
+          "evidence_id": "ev_25fa64ee50482ccf",
+          "evidence_quality": "verified",
+          "location": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "page": 2,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "unsectioned",
+          "source_kind": "reading_element",
+          "span_text": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ { 1 } ^ { t } and \\beta _ { 2 } ^ { t }\nwe denote \\beta _ { 1 } and \\beta _ { 2 } to the power t .\nRequire: \\alpha \\mathrm { : } Stepsize\nRequire: \\beta _ { 1 } , \\bar { \\beta _ { 2 } } \\overset { - } { \\in } [ 0 , 1 ) : Exponential decay rates for the moment estimates\nRequire: f ( \\theta ) { \\mathrm { : } } Stochastic objective function with parameters θ\nRequire: \\theta _ { 0 } \\colon Initial parameter vector\nm _ { 0 } \\gets 0 (Initialize 1 ^ { \\mathrm { s t } } moment vector)\nv _ { 0 } 0 (Initialize 2 ^ { \\mathrm { n d } } moment vector)\nt \\gets 0 (Initialize timestep)\nwhile \\theta _ { t } not converged do\nt \\gets t + 1\ng _ { t } \\gets \\nabla _ { \\theta } f _ { t } ( \\theta _ { t - 1 } ) (Get gradients w.r.t. stochastic objective at timestep t)\nm _ { t } \\gets \\beta _ { 1 } \\cdot m _ { t - 1 } \\dot { + } \\left( 1 \\bar { - } \\beta _ { 1 } \\right) \\cdot g _ { t } (Update biased first moment estimate)\nv _ { t } \\beta _ { 2 } \\cdot v _ { t - 1 } + ( 1 - \\beta _ { 2 } ) \\cdot g _ { t } ^ { 2 } (Update biased second raw moment estimate)\n\\widehat { m } _ { t } \\gets m _ { t } / ( 1 - \\beta _ { 1 } ^ { t } ) (Compute bias-corrected first moment estimate)\n\\widehat { v } _ { t } \\gets v _ { t } / ( 1 - \\beta _ { 2 } ^ { t } ) (Compute bias-corrected second raw moment estimate)\n\\theta _ { t } \\theta _ { t - 1 } - \\alpha \\cdot \\widehat { m } _ { t } / ( \\sqrt { v _ { t } } + \\epsilon ) (Update parameters)\nend while\nreturn { \\underline { { \\theta _ { t } } } } (Resulting parameters)",
+          "supports_claim_ids": [],
+          "title": "Adam: A Method for Stochastic Optimization"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_5e5RiYOLok1c4AfLJpSjNAOw",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_260d1b8af78b454dbe0f610483436730"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_or_cell_ref": null,
+          "element_type": "paragraph",
+          "evidence_id": "ev_c478868f3b1b547e",
+          "evidence_quality": "verified",
+          "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.3 Optimizer",
+          "source_kind": "reading_element",
+          "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "supports_claim_ids": [],
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_BwXQQrwcuI2VM1REVPSPLoqb",
+    "tool_name": "read_locations"
+  }
+]

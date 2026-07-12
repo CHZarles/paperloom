@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_93043cbabba4",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "GPT-5 is not in the available paper corpus (which contains only Attention Is All You Need, Adam, BERT, GPT-2, and GPT-3), so I can't ground architecture details for GPT-5 in the supplied sources. Could you clarify what you'd like?",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_93043cbabba4",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "GPT-5 is not in the available paper corpus (which contains only Attention Is All You Need, Adam, BERT, GPT-2, and GPT-3), so I can't ground architecture details for GPT-5 in the supplied sources. Could you clarify what you'd like?",
+  "verification_id": "verification_live_chat_93043cbabba4"
+}

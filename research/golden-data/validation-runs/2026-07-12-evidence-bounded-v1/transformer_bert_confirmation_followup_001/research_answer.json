@@ -1,0 +1,36 @@
+{
+  "answer_id": "answer_live_chat_3c0b4f837eae",
+  "answer_type": "comparison_matrix",
+  "cited_claim_ids": [
+    "aiayn_arch_role",
+    "bert_arch_role",
+    "aiayn_dir"
+  ],
+  "cited_evidence_ids": [
+    "ev_7f19acb3f716bc64",
+    "ev_71ef1901f3139ae8",
+    "ev_dd592d9c82214af0",
+    "ev_904885cb5f6b4082",
+    "ev_3540835408466c6e",
+    "ev_bdb5cc5caf5772fe",
+    "ev_1d621919718ca361",
+    "ev_f189c6c5f4214d2e",
+    "ev_1fa020e06b5649fa",
+    "ev_5a5633e888463cd3",
+    "ev_29a559db755fbd43"
+  ],
+  "fields": {
+    "attention_is_all_you_need_2017_architecture_role": "encoder-decoder (N=6 encoder layers + N=6 decoder layers, with cross-attention from decoder to encoder)",
+    "bert_2018_architecture_role": "encoder-only multi-layer bidirectional Transformer (based on Vaswani et al., 2017)"
+  },
+  "markdown": "| Dimension | Evidence-backed comparison |\n|---|---|\n| Architecture | The original Transformer is an encoder-decoder architecture with a stack of N=6 identical encoder layers and a stack of N=6 identical decoder layers, where each encoder layer has a multi-head self-attention sub-layer and a position-wise feed-forward network, and each decoder layer additionally performs multi-head attention over the encoder stack. [1][2][3][4]<br>BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation from Vaswani et al. (2017), and BERT uses the Transformer self-attention mechanism to unify text-pair encoding with what is effectively bidirectional cross attention between two sentences. [5][6][7][8] |\n| Directionality | In the original Transformer, each position in the encoder self-attention can attend to all positions in the previous layer, while the decoder self-attention is modified to prevent positions from attending to subsequent positions, so predictions for position i depend only on known outputs at positions less than i. [2][9][10][11] |\n\nUnresolved from the available corpus evidence:\n- bert_2018_directionality\n- attention_is_all_you_need_2017_training_objective\n- bert_2018_training_objective\n\nSources\n[1] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[2] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[3] Attention Is All You Need, 3.3 Position-wise Feed-Forward Networks, p. 5\n[4] Attention Is All You Need, 7 Conclusion, p. 10\n[5] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[6] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[7] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.2 Fine-tuning BERT, p. 5\n[8] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[9] Attention Is All You Need, 3.2.3 Applications of Attention in our Model, p. 5\n[10] Attention Is All You Need, 4 Why Self-Attention, p. 6\n[11] Attention Is All You Need, 2 Background, p. 2",
+  "outcome": "partial",
+  "question_id": "live_chat_3c0b4f837eae",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_3c0b4f837eae"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "The original Transformer is an encoder-decoder architecture with a stack of N=6 identical encoder layers and a stack of N=6 identical decoder layers, where each encoder layer has a multi-head self-attention sub-layer and a position-wise feed-forward network, and each decoder layer additionally perfo",
+  "verification_id": "verification_live_chat_3c0b4f837eae"
+}

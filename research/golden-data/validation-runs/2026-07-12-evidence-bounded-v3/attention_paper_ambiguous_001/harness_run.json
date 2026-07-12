@@ -1,0 +1,122 @@
+{
+  "case_id": "attention_paper_ambiguous_001",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_731cd947eef1",
+    "question_id": "live_chat_731cd947eef1"
+  },
+  "completed_at": "2026-07-12T05:43:15Z",
+  "diagnostics": {
+    "completed_stage_count": 0,
+    "completion_tokens": 1348,
+    "duration_ms": 12942,
+    "error": "clarify TurnDecision requires pending_interaction",
+    "finish_reason": "turn_decision_failed",
+    "last_model_content_preview": "",
+    "model_call_count": 1,
+    "model_latency_ms": 12942,
+    "paradigm": "direct_conversation",
+    "prompt_tokens": 3335,
+    "stage_count": 0,
+    "tool_call_count": 0,
+    "total_tokens": 4683
+  },
+  "evidence_ledger": {
+    "items": [],
+    "ledger_id": "ledger_live_chat_731cd947eef1",
+    "missing_evidence": [],
+    "question_id": "live_chat_731cd947eef1",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_731cd947eef1",
+    "answer_type": "conversation",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "clarify TurnDecision requires pending_interaction",
+    "outcome": null,
+    "question_id": "live_chat_731cd947eef1",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "FAILED_TECHNICAL",
+    "summary": "clarify TurnDecision requires pending_interaction",
+    "verification_id": "verification_live_chat_731cd947eef1"
+  },
+  "harness_id": "python_single_decision_turn_harness_v1",
+  "intent_frame": {
+    "actionability": "none",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "conversation",
+    "constraints": {},
+    "dataset_mentions": [],
+    "entities": [],
+    "intent_id": "intent_live_chat_731cd947eef1",
+    "method_mentions": [],
+    "normalized_question": "attention paper",
+    "paper_mentions": [],
+    "primary_paradigm": "direct_conversation",
+    "question_id": "live_chat_731cd947eef1",
+    "raw_question": "attention paper",
+    "required_capabilities": [],
+    "required_evidence_types": [],
+    "requires_corpus_observation": false
+  },
+  "memory_update": {
+    "pending_interaction": null
+  },
+  "question_id": "attention_paper_ambiguous_001",
+  "reasoning_artifacts": [],
+  "research_answer": {
+    "answer_id": "answer_live_chat_731cd947eef1",
+    "answer_type": "conversation",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "clarify TurnDecision requires pending_interaction",
+    "outcome": null,
+    "question_id": "live_chat_731cd947eef1",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "FAILED_TECHNICAL",
+    "summary": "clarify TurnDecision requires pending_interaction",
+    "verification_id": "verification_live_chat_731cd947eef1"
+  },
+  "result_status": "FAILED_TECHNICAL",
+  "retrieval_plan": {
+    "actionability": "none",
+    "expected_evidence_types": [],
+    "hard_negative_policy": [],
+    "paradigm": "direct_conversation",
+    "plan_id": "plan_live_chat_731cd947eef1",
+    "question_id": "live_chat_731cd947eef1",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "direct_reply"
+    ],
+    "strategy_steps": [],
+    "target_entities": []
+  },
+  "run_id": "run_live_chat_731cd947eef1",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [],
+  "started_at": "2026-07-12T05:43:15Z",
+  "status": "FAILED_TECHNICAL",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "status": "not_required"
+    },
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_731cd947eef1",
+    "required_capabilities_attempted": [],
+    "required_evidence_status": [],
+    "satisfied_trace_obligation_ids": [],
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_731cd947eef1"
+  }
+}

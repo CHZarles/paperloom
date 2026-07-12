@@ -1,0 +1,146 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "requires_user_choice": false,
+    "status": "unambiguous"
+  },
+  "answer_reference_integrity_passed": true,
+  "claim_verdicts": [
+    {
+      "claim_id": "scope_def_1",
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_ceb02e5ea599218f",
+        "ev_23dcc76307d339ca",
+        "ev_c8451279c5aff7c2",
+        "ev_2f58e77634814fd0",
+        "ev_985210f77a60dcf4"
+      ],
+      "field_values": {
+        "scope": "Evaluation of LLM-based agents, including core capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational), generalist agent benchmarks, and multi-turn conversation evaluation."
+      },
+      "reason": "The Abstract (ev_ddb084a0) and Introduction (ev_ceb02e5) of the evaluation survey explicitly enumerate core capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational), generalist agents, and the multi-turn survey (ev_2f58e, ev_985210) covers multi-turn conversation evaluation. The full list aligns directly.",
+      "verdict": "keep",
+      "verified_text": "Recommendations are scoped to the evaluation of LLM-based agents, covering sub-areas such as core capabilities (planning, tool use, self-reflection, memory), application-specific agent benchmarks (web, SWE, scientific, conversational), generalist agent benchmarks, and multi-turn conversation evaluation."
+    },
+    {
+      "claim_id": "corpus_in_stock_1",
+      "evidence_ids": [
+        "ev_0fcd65f08e2c1e3f",
+        "ev_aead9018f3eb7236",
+        "ev_cf8f947b23acb5ce",
+        "ev_8eb726c4c50ad455"
+      ],
+      "field_values": {
+        "in_corpus": "Only the two evaluation surveys are in the user-visible corpus; all other cited/influential agent papers appear only as references within those surveys and are not in the inventory as standalone items."
+      },
+      "reason": "Corpus identity searches confirm only the two surveys (corpus_observation_identity_1/2). The cited works (AgentBench, HAL, MetaTool, MTU-Bench, MMDU, API-Bank, BotChat, HUMOD, Gaia) appear only as cited references within the survey passages (ev_0fcd65f, ev_aead9018, ev_cf8f947b), not as standalone inventory items.",
+      "verdict": "keep",
+      "verified_text": "Only the two evaluation surveys themselves are present in the user-visible corpus: \"A Survey on Evaluation of LLM-based Agents\" and \"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey.\" The other works cited or discussed in these surveys (e.g., AgentBench, HAL, MTU-Bench, MMDU, API-Bank, BotChat, HUMOD, Gaia, MetaTool) appear only as references within those surveys and are not in the inventory as standalone items."
+    },
+    {
+      "claim_id": "corpus_coverage_1",
+      "evidence_ids": [
+        "ev_8eb726c4c50ad455",
+        "ev_2f58e77634814fd0",
+        "ev_3e731d621272672c",
+        "ev_aead9018f3eb7236",
+        "ev_97e56b2d94b70372",
+        "ev_cf8f947b23acb5ce"
+      ],
+      "field_values": {
+        "corpus_coverage": "Sufficient for an evaluation-focused, multi-turn-conversation-focused recommendation grounded in the two surveys; insufficient for a general LLM-based-agents literature recommendation beyond the evaluation sub-area."
+      },
+      "reason": "ev_8eb726c4 explicitly states the surveys exclude works proposing new agent architectures without distinct evaluation methodology, confirming the corpus is bounded to evaluation. ev_3e731d62 and ev_97e56b2 confirm multi-turn evaluation coverage. ev_2f58e, ev_aead9018, ev_cf8f947b show broader planning/tool-use/memory content appears only as referenced works, not as standalone corpus items—supporting insufficiency for a general agents recommendation beyond the evaluation scope.",
+      "verdict": "keep",
+      "verified_text": "The corpus of two evaluation-focused surveys is sufficient to ground a narrower recommendation set on the evaluation of LLM-based agents and multi-turn conversational agents, but it is not sufficient to ground a general \"important papers on LLM-based agents\" recommendation covering the broader literature (planning, tool use, memory, multi-agent systems, general agent architectures) outside the evaluation sub-area."
+    }
+  ],
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "corpus_observation_passed": true,
+  "corpus_observation_required": true,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_91b660e4455c",
+  "required_capabilities_attempted": [
+    "literature grounding within available corpus",
+    "transparent flagging of out-of-corpus recommendations"
+  ],
+  "required_evidence_status": [
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_94d09c1772db0a83",
+        "ev_ceb02e5ea599218f",
+        "ev_007b64413ba635bc",
+        "ev_23dcc76307d339ca",
+        "ev_c8451279c5aff7c2",
+        "ev_2f58e77634814fd0",
+        "ev_9ed6b1fff3669080",
+        "ev_28a5184ea0d65277",
+        "ev_985210f77a60dcf4"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "scope_definition",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_94d09c1772db0a83",
+        "ev_ceb02e5ea599218f",
+        "ev_007b64413ba635bc",
+        "ev_23dcc76307d339ca",
+        "ev_0fcd65f08e2c1e3f",
+        "ev_c750d2148fe35440",
+        "ev_8eb726c4c50ad455",
+        "ev_2f58e77634814fd0",
+        "ev_9ed6b1fff3669080",
+        "ev_28a5184ea0d65277",
+        "ev_985210f77a60dcf4",
+        "ev_aead9018f3eb7236",
+        "ev_e5e53ffde8fe3ba4",
+        "ev_97e56b2d94b70372",
+        "ev_cf8f947b23acb5ce"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "corpus_in_stock",
+      "status": "covered"
+    },
+    {
+      "evidence_ids": [
+        "corpus_observation_identity_1",
+        "corpus_observation_identity_2",
+        "ev_ddb084a0ece5ad74",
+        "ev_94d09c1772db0a83",
+        "ev_ceb02e5ea599218f",
+        "ev_007b64413ba635bc",
+        "ev_23dcc76307d339ca",
+        "ev_0fcd65f08e2c1e3f",
+        "ev_c750d2148fe35440",
+        "ev_8eb726c4c50ad455",
+        "ev_2f58e77634814fd0",
+        "ev_aead9018f3eb7236",
+        "ev_e5e53ffde8fe3ba4",
+        "ev_97e56b2d94b70372",
+        "ev_cf8f947b23acb5ce",
+        "ev_e0b3c0e1ded59f14",
+        "ev_3e731d621272672c",
+        "ev_3a7de85f0d242c83"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "corpus_coverage_decision",
+      "status": "covered"
+    }
+  ],
+  "rewritten_claim_count": 0,
+  "satisfied_trace_obligation_ids": [
+    "scope_definition",
+    "corpus_in_stock",
+    "corpus_coverage_decision"
+  ],
+  "stage_contracts_passed": true,
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_91b660e4455c"
+}

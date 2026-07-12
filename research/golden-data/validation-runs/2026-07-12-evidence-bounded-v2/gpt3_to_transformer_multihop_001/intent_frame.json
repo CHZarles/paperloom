@@ -1,0 +1,63 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "multi_hop_chain",
+  "constraints": {
+    "coverage_assumption": "The user wants a citation-genealogy answer covering only the three named papers; BERT and Adam are present in the corpus but out of scope for this question.",
+    "must_not": "Invent a direct GPT-3-to-Transformer citation",
+    "must_state": "What each hop establishes",
+    "source_constraint": "Use only the five papers available in the corpus",
+    "task": {
+      "object": "two-hop architecture lineage through GPT-3, GPT-2, and Attention Is All You Need",
+      "verb": "trace"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "Hop 1 edge: GPT-3 cites GPT-2",
+    "Hop 1 technical meaning: architecture carried from GPT-2 into GPT-3",
+    "Hop 2 edge: GPT-2 cites Attention Is All You Need",
+    "Hop 2 technical meaning: Transformer components used in GPT-2",
+    "Explicit absence of a direct GPT-3→Transformer citation for the same content"
+  ],
+  "intent_id": "intent_live_chat_257cfe464634",
+  "method_mentions": [],
+  "normalized_question": "Build a two-hop architecture lineage GPT-3 → GPT-2 → Attention Is All You Need using only the five papers in the corpus, stating what each hop establishes and explicitly not claiming a direct GPT-3→Transformer citation.",
+  "obligations": [
+    {
+      "answer_field": "",
+      "description": "Does the GPT-3 paper (gpt3_2020) cite GPT-2 (gpt2_2019) as an architectural predecessor, and what architecture-related content is attributed?",
+      "id": "hop1_gpt3_to_gpt2_citation",
+      "kind": "hop",
+      "paper_scope": [
+        "gpt3_2020",
+        "gpt2_2019"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "",
+      "description": "Does the GPT-2 paper (gpt2_2019) cite Attention Is All You Need (attention_is_all_you_need_2017) as the origin of the Transformer architecture used in GPT-2?",
+      "id": "hop2_gpt2_to_transformer_citation",
+      "kind": "hop",
+      "paper_scope": [
+        "gpt2_2019",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "complex_multihop_reasoning",
+  "question_id": "live_chat_257cfe464634",
+  "raw_question": "Using only the available papers, build the two-hop architecture chain from GPT-3 through GPT-2 to Attention Is All You Need. State what each hop establishes and do not invent a direct GPT-3-to-Transformer citation.",
+  "required_capabilities": [
+    "citation_extraction",
+    "architecture_description_extraction"
+  ],
+  "required_evidence_types": [
+    "Citation/reference statements",
+    "Architecture descriptions"
+  ],
+  "requires_corpus_observation": true
+}

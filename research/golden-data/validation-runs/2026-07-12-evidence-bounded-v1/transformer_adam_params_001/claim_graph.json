@@ -1,0 +1,52 @@
+{
+  "claims": [
+    {
+      "claim_id": "transformer_adam_beta1_value",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "transformer_adam_beta1"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "The original Transformer paper used Adam with β1 = 0.9.",
+      "verification_reason": "The evidence passage directly states β1 = 0.9 for Adam in the original Transformer paper.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "transformer_adam_beta2_value",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "transformer_adam_beta2"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "The original Transformer paper used Adam with β2 = 0.98.",
+      "verification_reason": "The evidence passage directly states β2 = 0.98 for Adam in the original Transformer paper.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "transformer_adam_epsilon_value",
+      "claim_type": "fact",
+      "obligation_ids": [
+        "transformer_adam_epsilon"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_c478868f3b1b547e"
+      ],
+      "text": "The original Transformer paper used Adam with ε = 10^-9.",
+      "verification_reason": "The evidence passage directly states ε = 10^-9 for Adam in the original Transformer paper.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_e14469c7ef18",
+  "question_id": "live_chat_e14469c7ef18"
+}

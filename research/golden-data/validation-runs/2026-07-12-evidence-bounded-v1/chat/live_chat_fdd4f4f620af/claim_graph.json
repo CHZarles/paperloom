@@ -1,0 +1,76 @@
+{
+  "claims": [
+    {
+      "claim_id": "paper1_scope_for_harness",
+      "claim_type": "fit",
+      "obligation_ids": [
+        "paper1_scope_for_harness"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_ceb02e5ea599218f",
+        "ev_0fcd65f08e2c1e3f",
+        "ev_e0b3c0e1ded59f14",
+        "ev_bb8279e8aac9d4fe",
+        "ev_2554a9d0f0eb1b8c",
+        "ev_be9ffa7f121ef2a8",
+        "ev_7151c41101c67b08",
+        "ev_dd37d6968725a026"
+      ],
+      "text": "Paper 1 (A Survey on Evaluation of LLM-based Agents) is directly relevant to designing an agent evaluation harness through its coverage of core agentic capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational agents), generalist agent evaluation platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness including pass^k), and evaluation frameworks for agent developers that integrate with the development environment and support evaluation across the development cycle.",
+      "verification_reason": "All listed scopes are directly supported by abstract, introduction, and detailed section passages from Paper 1.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "paper2_scope_for_harness",
+      "claim_type": "fit",
+      "obligation_ids": [
+        "paper2_scope_for_harness"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_675fca9661b26bfa",
+        "ev_3e731d621272672c",
+        "ev_985210f77a60dcf4",
+        "ev_aead9018f3eb7236",
+        "ev_0e5c7bd8b91122fa",
+        "ev_28a5184ea0d65277",
+        "ev_7591e3f0e1cb9369",
+        "ev_cf8f947b23acb5ce"
+      ],
+      "text": "Paper 2 (Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey) is directly relevant to designing an agent evaluation harness in the conversational setting through its two taxonomies: a 'what to evaluate' taxonomy covering task completion, response quality, user experience, memory/context retention, and planning/tool integration, and a 'how to evaluate' taxonomy covering annotation-based evaluation, automated metrics, hybrid human-plus-quantitative strategies, and LLM self-judging, along with multi-step tool selection and reasoning evaluation (e.g., MetaTool/ToolE, MTU-Bench) and end-to-end multi-turn interaction evaluation.",
+      "verification_reason": "Both taxonomies, specific tool benchmarks (MetaTool/ToolE, MTU-Bench), and end-to-end multi-turn evaluation are all directly stated in the supplied passages.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "recommendation_justification",
+      "claim_type": "recommendation",
+      "obligation_ids": [
+        "recommendation_justification"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_ceb02e5ea599218f",
+        "ev_0fcd65f08e2c1e3f",
+        "ev_675fca9661b26bfa",
+        "ev_3e731d621272672c",
+        "ev_bb8279e8aac9d4fe",
+        "ev_be9ffa7f121ef2a8",
+        "ev_7151c41101c67b08",
+        "ev_dd37d6968725a026",
+        "ev_0e5c7bd8b91122fa"
+      ],
+      "text": "Read paper 1 (A Survey on Evaluation of LLM-based Agents) first when designing an agent evaluation harness for general/multi-application agents. It offers broader coverage spanning core agentic capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational agents), generalist agent evaluation platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness via pass^k), and developer evaluation frameworks that integrate with the development environment and support evaluation across the development cycle, whereas paper 2 is narrower in scope (multi-turn conversational settings); paper 2's deeper taxonomy for multi-turn dialogue can then be consulted afterward for conversational-agent components.",
+      "verification_reason": "The recommendation's broader/narrower comparison is supported, but the phrase \"support harness architecture decisions\" goes beyond the evidence (which says frameworks integrate with development environment and support evaluation across the development cycle). Narrowed to remove unsupported wording.",
+      "verification_verdict": "rewrite"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_fdd4f4f620af",
+  "question_id": "live_chat_fdd4f4f620af"
+}

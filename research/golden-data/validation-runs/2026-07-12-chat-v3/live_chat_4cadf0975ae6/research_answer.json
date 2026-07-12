@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_4cadf0975ae6",
+  "answer_type": "conversation",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Hi! I have access to a 30-paper corpus on LLM agents and evaluation. What would you like to explore — a specific paper, a comparison, a recommendation, or something else?",
+  "outcome": "answered",
+  "question_id": "live_chat_4cadf0975ae6",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Hi! I have access to a 30-paper corpus on LLM agents and evaluation. What would you like to explore — a specific paper, a comparison, a recommendation, or something else?",
+  "verification_id": "verification_live_chat_4cadf0975ae6"
+}

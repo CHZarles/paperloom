@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_live_chat_1ac54f93794f",
+  "answer_type": "constraint_filter",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "I couldn't verify enough recommendations from the current paper collection. Tell me a narrower topic or goal, and I'll try again.",
+  "outcome": "abstained",
+  "question_id": "live_chat_1ac54f93794f",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_1ac54f93794f"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "I couldn't verify enough recommendations from the current paper collection. Tell me a narrower topic or goal, and I'll try again.",
+  "verification_id": "verification_live_chat_1ac54f93794f"
+}

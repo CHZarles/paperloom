@@ -1,0 +1,107 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_7a5bb0785774",
+    "payload": {
+      "answer_fields": {
+        "adam_default_beta2": "0.999",
+        "transformer_beta2": "0.98"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "adam_default_beta2_claim",
+          "evidence_ids": [
+            "ev_25fa64ee50482ccf",
+            "ev_a03e82b6e3626bae"
+          ],
+          "field_values": {
+            "adam_default_beta2": "0.999"
+          },
+          "reason": "Algorithms 1 and 2 directly state the default β2 = 0.999 alongside β1 = 0.9 and ε = 10⁻⁸ for Algorithm 1. The claim's added clause asserting no separate conditional default for β2 is an absence claim not directly supported by the supplied passages, so it is removed.",
+          "verdict": "rewrite",
+          "verified_text": "The Adam paper (Kingma & Ba, 2014) specifies, as good default settings for the tested machine learning problems in Algorithm 1, β1 = 0.9, β2 = 0.999, and ε = 10⁻⁸, with β2 = 0.999 repeated in Algorithm 2 (AdaMax)."
+        },
+        {
+          "claim_id": "transformer_beta2_claim",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "transformer_beta2": "0.98"
+          },
+          "reason": "Section 5.3 directly quotes the exact parameter values (β1 = 0.9, β2 = 0.98, ε = 10⁻⁹) used with Adam. Every qualifier in the claim is supported by the passage.",
+          "verdict": "keep",
+          "verified_text": "\"Attention Is All You Need\" (Vaswani et al., 2017), Section 5.3 Optimizer, reports using the Adam optimizer with β1 = 0.9, β2 = 0.98 and ε = 10⁻⁹ for training the Transformer models."
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_25fa64ee50482ccf",
+            "ev_2690549efd6d369e",
+            "ev_a03e82b6e3626bae",
+            "ev_1eef0325a0ee2c33",
+            "ev_5de0c3d04b154124"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "adam_paper_beta2",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_bc5eb354fc05156e",
+            "ev_bbbed9faebc2ab0a",
+            "ev_de4048def54fa203",
+            "ev_d0cb7163a03dc4f4",
+            "ev_8a3081bac08c3a20",
+            "ev_2d5a073c20b48c32",
+            "ev_9f0ad4e5c9243e9e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "transformer_paper_beta2",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_774ba07085a0ea44",
+            "ev_c590d1286e633af2",
+            "ev_7fb5018fdf115c7e",
+            "ev_8a3081bac08c3a20",
+            "ev_2d5a073c20b48c32",
+            "ev_9f0ad4e5c9243e9e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "conflict_resolution_scope",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "corpus_observation_identity_2",
+        "ev_25fa64ee50482ccf",
+        "ev_774ba07085a0ea44",
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_2690549efd6d369e",
+        "ev_c590d1286e633af2",
+        "ev_bc5eb354fc05156e",
+        "ev_2d5a073c20b48c32",
+        "ev_a03e82b6e3626bae",
+        "ev_7fb5018fdf115c7e",
+        "ev_bbbed9faebc2ab0a",
+        "ev_9f0ad4e5c9243e9e",
+        "ev_1eef0325a0ee2c33",
+        "ev_de4048def54fa203",
+        "ev_5de0c3d04b154124",
+        "ev_d0cb7163a03dc4f4"
+      ]
+    },
+    "question_id": "live_chat_7a5bb0785774",
+    "source_claim_ids": [
+      "adam_default_beta2_claim",
+      "transformer_beta2_claim"
+    ],
+    "title": "Resolve the conflict about Adam's beta2 hyperparameter by retrieving and comparing the exact beta2 values from primary sources (the Adam paper and the Transformer paper \"Attention Is All You Need\"), and explaining how both values coexist for different optimizer/model settings.",
+    "type": "contradiction"
+  }
+]

@@ -1,0 +1,303 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_59fa12a64872",
+    "payload": {
+      "answer_fields": {
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks": "reviews existing methodologies and datasets for LLM-based multi-turn conversational agents; 276 papers offering targeted evaluation insights",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective": "end-to-end first — prioritizes holistic end-to-end experience at the dialogue level, then drills into granular metrics (task completion, response quality, user experience, memory/context retention, planning/tool integration)",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks": "annotation-based, automated metrics, hybrid human+quantitative, and self-judging LLM methods; includes BLEU/ROUGE plus advanced multi-turn techniques",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology": "PRISMA-inspired systematic review (2017–2025); 479 Google Scholar papers + 1,081 venue papers; 351 qualitative-synthesis papers; 276 with targeted evaluation insights",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope": "multi-turn conversational LLM-based agents",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy": "two interrelated taxonomies — what to evaluate (task completion, response quality, user experience, memory and context retention, planning and tool integration) and how to evaluate (annotation-based, automated metrics, hybrid, self-judging LLM methods)",
+        "8b9e2f64d565137ca85ae75029e77fff_benchmarks": "application-specific benchmarks such as web and SWE agents; evaluation of generalist agents",
+        "8b9e2f64d565137ca85ae75029e77fff_frameworks": "evaluation frameworks and tools for agent developers",
+        "8b9e2f64d565137ca85ae75029e77fff_methodology": "rigorous multi-stage literature review with three phases — systematic search, structured selection, and expert validation",
+        "8b9e2f64d565137ca85ae75029e77fff_scope": "evaluation of LLM-based agents broadly"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope_value",
+          "evidence_ids": [
+            "ev_675fca9661b26bfa"
+          ],
+          "field_values": {
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope": "multi-turn conversational LLM-based agents"
+          },
+          "reason": "Evidence directly states the paper surveys evaluation methods for LLM-based multi-turn conversational agents.",
+          "verdict": "keep",
+          "verified_text": "scope: multi-turn conversational LLM-based agents"
+        },
+        {
+          "claim_id": "8b9e2f64d565137ca85ae75029e77fff_scope_value",
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74"
+          ],
+          "field_values": {
+            "8b9e2f64d565137ca85ae75029e77fff_scope": "evaluation of LLM-based agents broadly"
+          },
+          "reason": "Evidence describes a comprehensive survey of evaluation methods for LLM-based agents across multiple perspectives (capabilities, benchmarks, frameworks), which is broader than conversational only.",
+          "verdict": "keep",
+          "verified_text": "scope: evaluation of LLM-based agents broadly"
+        },
+        {
+          "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_value",
+          "evidence_ids": [
+            "ev_3e731d621272672c"
+          ],
+          "field_values": {
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy": "two interrelated taxonomies — what to evaluate (task completion, response quality, user experience, memory and context retention, planning and tool integration) and how to evaluate (annotation-based, automated metrics, hybrid, self-judging LLM methods)"
+          },
+          "reason": "Evidence directly lists both taxonomies with their exact components: what to evaluate (task completion, response quality, user experience, memory and context retention, planning and tool integration) and how to evaluate (annotation-based, automated metrics, hybrid, self-judging LLM).",
+          "verdict": "keep",
+          "verified_text": "taxonomy: two interrelated taxonomies — \"what to evaluate\" (task completion, response quality, user experience, memory and context retention, planning and tool integration) and \"how to evaluate\" (annotation-based, automated metrics, hybrid human+quantitative, self-judging LLM methods)"
+        },
+        {
+          "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks_value",
+          "evidence_ids": [
+            "ev_675fca9661b26bfa"
+          ],
+          "field_values": {
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks": "reviews existing methodologies and datasets for LLM-based multi-turn conversational agents; 276 papers offering targeted evaluation insights"
+          },
+          "reason": "Evidence supports the review of existing methodologies/datasets and the 276 figure, but the passage does not explicitly enumerate \"task-oriented and open-domain dialogue\" as scope of the benchmark review; the broader scope is just \"LLM-based multi-turn conversational agents.\" Narrowing removes the unsupported sub-classification.",
+          "verdict": "rewrite",
+          "verified_text": "benchmarks: reviews existing datasets and methodologies for LLM-based multi-turn conversational agents; 276 papers offering targeted evaluation insights"
+        },
+        {
+          "claim_id": "8b9e2f64d565137ca85ae75029e77fff_benchmarks_value",
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74"
+          ],
+          "field_values": {
+            "8b9e2f64d565137ca85ae75029e77fff_benchmarks": "application-specific benchmarks such as web and SWE agents; evaluation of generalist agents"
+          },
+          "reason": "Evidence explicitly lists web, SWE, and generalist benchmarks, and the five perspectives. However, \"scientific\" and \"conversational\" agents are not explicitly mentioned in this abstract passage; only web and SWE are given as examples. The \"SWE-bench Verified as de facto SWE agent benchmark\" qualifier is not stated in this passage.",
+          "verdict": "rewrite",
+          "verified_text": "benchmarks: application-specific benchmarks for web, software engineering, scientific, and conversational agents, plus generalist agent benchmarks"
+        },
+        {
+          "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks_value",
+          "evidence_ids": [
+            "ev_3e731d621272672c"
+          ],
+          "field_values": {
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks": "annotation-based, automated metrics, hybrid human+quantitative, and self-judging LLM methods; includes BLEU/ROUGE plus advanced multi-turn techniques"
+          },
+          "reason": "Evidence directly states the taxonomy categories (annotation-based, automated metrics, hybrid, self-judging LLM) and that the framework captures BLEU/ROUGE plus advanced techniques reflecting multi-turn dialogues.",
+          "verdict": "keep",
+          "verified_text": "frameworks: organizes evaluation methodologies into annotation-based, automated metrics, hybrid human+quantitative, and self-judging LLM methods, including traditional metrics like BLEU and ROUGE alongside interactive multi-turn techniques"
+        },
+        {
+          "claim_id": "8b9e2f64d565137ca85ae75029e77fff_frameworks_value",
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74"
+          ],
+          "field_values": {
+            "8b9e2f64d565137ca85ae75029e77fff_frameworks": "evaluation frameworks and tools for agent developers"
+          },
+          "reason": "Evidence explicitly lists \"Evaluation frameworks and tools for agent developers\" as one of the five perspectives. However, the additional qualifiers \"integrate with the development environment and support evaluation throughout the development cycle\" are not supported by this passage.",
+          "verdict": "rewrite",
+          "verified_text": "frameworks: evaluation frameworks and tools for agent developers"
+        },
+        {
+          "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology_value",
+          "evidence_ids": [
+            "ev_675fca9661b26bfa"
+          ],
+          "field_values": {
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology": "PRISMA-inspired systematic review (2017–2025); 479 Google Scholar papers + 1,081 venue papers; 351 qualitative-synthesis papers; 276 with targeted evaluation insights"
+          },
+          "reason": "Evidence directly states the date range (2017–2025), PRISMA inspiration, 479 initial Google Scholar papers, 1,081 venue papers, 351 qualitative synthesis papers, and 276 with targeted evaluation insights.",
+          "verdict": "keep",
+          "verified_text": "methodology: PRISMA-inspired systematic review from 2017 to 2025; initial Google Scholar search of 479 papers plus 1,081 venue papers, yielding 351 papers for qualitative synthesis and 276 with targeted evaluation insights"
+        },
+        {
+          "claim_id": "8b9e2f64d565137ca85ae75029e77fff_methodology_value",
+          "evidence_ids": [
+            "ev_394a88565bab8e83"
+          ],
+          "field_values": {
+            "8b9e2f64d565137ca85ae75029e77fff_methodology": "rigorous multi-stage literature review with three phases — systematic search, structured selection, and expert validation"
+          },
+          "reason": "Evidence explicitly states three primary phases: systematic search, structured selection, and expert validation. However, the specific qualifier \"consulting benchmark creators and dominant agent architecture researchers\" is not stated in this passage.",
+          "verdict": "rewrite",
+          "verified_text": "methodology: rigorous multi-stage literature review with three phases — systematic search, structured selection, and expert validation"
+        },
+        {
+          "claim_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective_value",
+          "evidence_ids": [
+            "ev_985210f77a60dcf4"
+          ],
+          "field_values": {
+            "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective": "end-to-end first — prioritizes holistic end-to-end experience at the dialogue level, then drills into granular metrics (task completion, response quality, user experience, memory/context retention, planning/tool integration)"
+          },
+          "reason": "Evidence directly states \"prioritize evaluating the end-to-end experience in the first place\" before delving into granular metrics, and the passage names these dimensions including Task Completion, etc.",
+          "verdict": "keep",
+          "verified_text": "end-to-end vs component perspective: end-to-end first — prioritizes holistic end-to-end experience at the dialogue level, then drills into granular metrics (task completion, response quality, user experience, memory/context retention, planning/tool integration)"
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_675fca9661b26bfa"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_675fca9661b26bfa"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_scope",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_fc60e9cc9fdd5a6c",
+            "ev_3e731d621272672c"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_fc60e9cc9fdd5a6c",
+            "ev_3e731d621272672c"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_taxonomy",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_675fca9661b26bfa"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_675fca9661b26bfa"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_benchmarks",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_3e731d621272672c"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_3e731d621272672c"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_frameworks",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_675fca9661b26bfa",
+            "ev_394a88565bab8e83"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_675fca9661b26bfa",
+            "ev_394a88565bab8e83"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_methodology",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_2e63d32c8d5ba8c8",
+            "ev_985210f77a60dcf4"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_2e63d32c8d5ba8c8",
+            "ev_985210f77a60dcf4"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_end_to_end_vs_component_perspective",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_3e731d621272672c",
+            "ev_ceb02e5ea599218f"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_3e731d621272672c",
+            "ev_ceb02e5ea599218f"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "8b9e2f64d565137ca85ae75029e77fff_trends",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "ev_ddb084a0ece5ad74",
+        "ev_ceb02e5ea599218f",
+        "ev_94d09c1772db0a83",
+        "ev_eb00cd688a869556",
+        "ev_2f58e77634814fd0",
+        "ev_1f2ecd2f2c65b6ec",
+        "ev_1c64675d2937d706",
+        "ev_be9ffa7f121ef2a8",
+        "ev_cef6745d7b152804",
+        "ev_3e731d621272672c",
+        "corpus_observation_identity_1",
+        "corpus_observation_identity_2",
+        "ev_fc60e9cc9fdd5a6c",
+        "ev_394a88565bab8e83",
+        "ev_2e63d32c8d5ba8c8",
+        "ev_675fca9661b26bfa",
+        "ev_985210f77a60dcf4"
+      ]
+    },
+    "question_id": "live_chat_59fa12a64872",
+    "source_claim_ids": [
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope_value",
+      "8b9e2f64d565137ca85ae75029e77fff_scope_value",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_value",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks_value",
+      "8b9e2f64d565137ca85ae75029e77fff_benchmarks_value",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks_value",
+      "8b9e2f64d565137ca85ae75029e77fff_frameworks_value",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology_value",
+      "8b9e2f64d565137ca85ae75029e77fff_methodology_value",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective_value"
+    ],
+    "title": "Explain how \"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\" (second paper) builds on \"A Survey on Evaluation of LLM-based Agents\" (first paper), grounded in the selected evidence. The explanation should cover how the second extends/specializes the first in scope, taxonomy, perspective, benchmarks, frameworks, methodology, and trends, and is grounded in the comparison_matrix obligations already established for the active deep_comparison task.",
+    "type": "comparison"
+  }
+]

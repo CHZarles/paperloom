@@ -1,0 +1,58 @@
+{
+  "claims": [
+    {
+      "claim_id": "edge_attn_bert_1",
+      "claim_type": "edge",
+      "obligation_ids": [
+        "edge_attn_bert"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_3540835408466c6e"
+      ],
+      "text": "BERT explicitly cites Vaswani et al. (2017) (\"Attention Is All You Need\") as the source of its core Transformer architecture, stating its model is \"a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017)\" and referring readers to that work for background on the model architecture.",
+      "verification_reason": "The quoted phrase and reference direction to Vaswani et al. (2017) appear verbatim in ev_3540835408466c6e; the claim is fully supported.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "edge_meaning_1",
+      "claim_type": "relationship",
+      "obligation_ids": [
+        "edge_meaning"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_2c75c5a0daa399bd",
+        "ev_1d621919718ca361",
+        "ev_80e066e1a3177125"
+      ],
+      "text": "BERT's model architecture is a multi-layer bidirectional Transformer encoder \"almost identical to the original\" implementation of Vaswani et al. (2017), using the same self-attention layers, Transformer blocks, and notation L (number of layers/Transformer blocks), H (hidden size), and A (number of self-attention heads).",
+      "verification_reason": "Self-attention layers, Transformer block notation (L, H, A), and self-attention heads are explicitly described; \"almost identical to the original\" is the passage's exact wording rather than \"reusing the same,\" so the claim is narrowed accordingly.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "edge_adaptation_1",
+      "claim_type": "relationship",
+      "obligation_ids": [
+        "edge_adaptation"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_f189c6c5f4214d2e",
+        "ev_0f82af3db4559191",
+        "ev_7397a8bf5eccf48d",
+        "ev_944a542df0f94975"
+      ],
+      "text": "BERT adapts the Transformer architecture by using only the encoder stack as a \"multi-layer bidirectional Transformer encoder,\" jointly conditioning on both left and right context in all layers, and pre-training with the Masked Language Model (MLM) objective together with a Next Sentence Prediction (NSP) task.",
+      "verification_reason": "Bidirectional conditioning and MLM/NSP pre-training are directly supported. The \"no decoder\" exclusion cannot be inferred from encoder-only descriptions, and the \"instead of the original sequence-to-sequence translation objective\" is unsupported — the passages only contrast with left-to-right language model pre-training.",
+      "verification_verdict": "rewrite"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_bfd4ff883d07",
+  "question_id": "live_chat_bfd4ff883d07"
+}

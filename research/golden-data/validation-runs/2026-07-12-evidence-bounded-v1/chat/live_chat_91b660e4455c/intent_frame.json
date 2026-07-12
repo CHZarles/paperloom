@@ -1,0 +1,67 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "constraint_filter",
+  "constraints": {
+    "coverage_assumption": "User wants a curated, broad set of influential LLM-agent papers; I will treat \"important\" as corpus-relative and methodological-salient within the evaluation surveys, and clearly flag external recommendations as beyond-corpus.",
+    "only_in_corpus": false,
+    "task": {
+      "object": "papers",
+      "verb": "recommend"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "core LLM-agent frameworks/methodologies",
+    "evaluation-focused LLM-agent surveys in corpus",
+    "tool use, planning, memory, multi-agent dimensions"
+  ],
+  "intent_id": "intent_live_chat_91b660e4455c",
+  "method_mentions": [],
+  "normalized_question": "Recommend important papers on LLM-based agents, grounded in the available corpus (survey on LLM-based agent evaluation, and survey on evaluating LLM-based agents for multi-turn conversations), while acknowledging that the corpus itself is limited to evaluation-focused surveys and broader influential LLM-agent papers are outside the inventory.",
+  "obligations": [
+    {
+      "answer_field": "scope",
+      "description": "What sub-area of 'LLM-based agents' the recommendations should cover (e.g., evaluation, multi-turn dialogue, tool use, planning, memory, multi-agent systems).",
+      "id": "scope_definition",
+      "kind": "recommendation",
+      "paper_scope": [],
+      "required": false
+    },
+    {
+      "answer_field": "in_corpus",
+      "description": "Whether each recommended paper is in the user-visible corpus (the two evaluation surveys) or only available as external knowledge, with reason grounded in evidence.",
+      "id": "corpus_in_stock",
+      "kind": "recommendation",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "corpus_coverage",
+      "description": "Whether the available corpus of two evaluation surveys is sufficient to ground 'important papers on LLM-based agents' as a general literature recommendation, vs. a narrower evaluation-focused recommendation.",
+      "id": "corpus_coverage_decision",
+      "kind": "corpus_boundary",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "context_specific_brainstorming",
+  "question_id": "live_chat_91b660e4455c",
+  "raw_question": "Recommend some important papers on LLM-based agents.",
+  "required_capabilities": [
+    "literature grounding within available corpus",
+    "transparent flagging of out-of-corpus recommendations"
+  ],
+  "required_evidence_types": [
+    "paper titles and topical focus",
+    "survey categorization of agent capabilities/benchmarks"
+  ],
+  "requires_corpus_observation": true
+}

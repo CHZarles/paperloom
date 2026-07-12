@@ -1,0 +1,236 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "scope and coverage statements",
+    "frameworks/tools discussed",
+    "taxonomies and methodology sections"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "paper1_relevance_to_harness_design",
+      "description": "Identify what aspects of paper 1 (8b9e2f64d565137ca85ae75029e77fff) are directly relevant to designing an agent evaluation harness.",
+      "id": "paper1_scope_for_harness",
+      "kind": "fact",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "paper2_relevance_to_harness_design",
+      "description": "Identify what aspects of paper 2 (726cfbbd5683cdfabbf4c24e2bf8f0b2) are directly relevant to designing an agent evaluation harness.",
+      "id": "paper2_scope_for_harness",
+      "kind": "fact",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "harness_focus_assumption",
+      "description": "Clarify that the recommendation assumes the user's agent evaluation harness targets general/multi-application agents rather than only multi-turn conversational agents; both choices should be presented as contingent on that scope.",
+      "id": "harness_focus_assumption",
+      "kind": "analysis_step",
+      "paper_scope": [],
+      "required": false
+    },
+    {
+      "answer_field": "first_read_recommendation",
+      "description": "Provide a reason grounded in evidence for why one paper is recommended first over the other, addressing coverage breadth, taxonomy/methodology depth, and applicability to harness architecture decisions.",
+      "id": "recommendation_justification",
+      "kind": "recommendation",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "context_specific_brainstorming",
+  "plan_id": "plan_live_chat_fdd4f4f620af",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "paper1_scope_for_harness",
+            "recommendation_justification"
+          ],
+          "query_id": "q1_p1_harness_frameworks",
+          "query_text": "evaluation frameworks for agent developers unified protocol general agent assessment",
+          "section_query": "Evaluation Frameworks",
+          "target_ids": [
+            "t1"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "paper1_scope_for_harness",
+            "recommendation_justification"
+          ],
+          "query_id": "q2_p1_benchmark_dimensions",
+          "query_text": "core dimensions of agent benchmarks task success rate metrics",
+          "section_query": "Core Dimensions",
+          "target_ids": [
+            "t1"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "paper1_scope_for_harness",
+            "recommendation_justification"
+          ],
+          "query_id": "q3_p1_generalist_app_benchmarks",
+          "query_text": "generalist agent evaluation AgentBench HAL Harbor Exgentic",
+          "section_query": "Generalist Agent Evaluation",
+          "target_ids": [
+            "t1"
+          ],
+          "top_k": 4
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "paper2_scope_for_harness",
+            "recommendation_justification"
+          ],
+          "query_id": "q4_p2_scope_taxonomy",
+          "query_text": "two taxonomies what to evaluate how to evaluate multi-turn conversation",
+          "section_query": "Taxonomy",
+          "target_ids": [
+            "t2"
+          ],
+          "top_k": 4
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "paper2_scope_for_harness",
+            "recommendation_justification"
+          ],
+          "query_id": "q5_p2_metrics_harness",
+          "query_text": "automatic metrics human evaluation protocols task-oriented dialogue open-domain",
+          "section_query": "Evaluation Methodologies",
+          "target_ids": [
+            "t2"
+          ],
+          "top_k": 4
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "paper1_scope_for_harness",
+            "recommendation_justification"
+          ],
+          "discovery_query": "",
+          "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+          "target_id": "t1",
+          "title": "A Survey on Evaluation of LLM-based Agents"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "paper2_scope_for_harness",
+            "recommendation_justification"
+          ],
+          "discovery_query": "",
+          "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+          "target_id": "t2",
+          "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+        }
+      ],
+      "reuse_evidence": [
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_ceb02e5ea599218f",
+            "ev_0fcd65f08e2c1e3f",
+            "ev_e0b3c0e1ded59f14"
+          ],
+          "obligation_id": "paper1_scope_for_harness"
+        },
+        {
+          "evidence_ids": [
+            "ev_675fca9661b26bfa",
+            "ev_3e731d621272672c",
+            "ev_985210f77a60dcf4",
+            "ev_2f58e77634814fd0",
+            "ev_aead9018f3eb7236"
+          ],
+          "obligation_id": "paper2_scope_for_harness"
+        },
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_ceb02e5ea599218f",
+            "ev_0fcd65f08e2c1e3f",
+            "ev_675fca9661b26bfa",
+            "ev_3e731d621272672c"
+          ],
+          "obligation_id": "recommendation_justification"
+        }
+      ],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_fdd4f4f620af",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "resolve_selection_constraints",
+      "stage_name": "resolve_selection_constraints",
+      "step_id": "stage_1_resolve_selection_constraints",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "resolve_selection_constraints"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_candidate_evidence",
+      "stage_name": "collect_candidate_evidence",
+      "step_id": "stage_2_collect_candidate_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_candidate_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "select_bounded_options",
+      "stage_name": "select_bounded_options",
+      "step_id": "stage_3_select_bounded_options",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "select_bounded_options"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_recommendations",
+      "stage_name": "verify_recommendations",
+      "step_id": "stage_4_verify_recommendations",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_recommendations"
+    }
+  ],
+  "target_entities": [
+    "8b9e2f64d565137ca85ae75029e77fff",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+  ]
+}

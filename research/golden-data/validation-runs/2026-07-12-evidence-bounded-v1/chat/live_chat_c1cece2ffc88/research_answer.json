@@ -1,0 +1,55 @@
+{
+  "answer_id": "answer_live_chat_c1cece2ffc88",
+  "answer_type": "comparison_matrix",
+  "cited_claim_ids": [
+    "paper1_scope",
+    "paper2_scope",
+    "paper1_taxonomy",
+    "paper2_taxonomy",
+    "paper1_benchmarks",
+    "paper2_benchmarks",
+    "paper1_e2e_vs_component",
+    "paper2_e2e_vs_component"
+  ],
+  "cited_evidence_ids": [
+    "ev_ddb084a0ece5ad74",
+    "ev_ceb02e5ea599218f",
+    "ev_94d09c1772db0a83",
+    "ev_eb00cd688a869556",
+    "ev_2f58e77634814fd0",
+    "ev_1f2ecd2f2c65b6ec",
+    "ev_1c64675d2937d706",
+    "ev_be9ffa7f121ef2a8",
+    "ev_cef6745d7b152804",
+    "ev_3e731d621272672c",
+    "ev_5c1285d80b129c84",
+    "ev_23dcc76307d339ca",
+    "ev_c8451279c5aff7c2",
+    "ev_0fcd65f08e2c1e3f",
+    "ev_cf8f947b23acb5ce",
+    "ev_4626c986e6937cad",
+    "ev_985210f77a60dcf4",
+    "ev_aead9018f3eb7236",
+    "ev_f89edd5f4bf66e37"
+  ],
+  "fields": {
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmark_categories": "Categories include dialogue modeling benchmarks (HUMOD, BotChat, AgentBench) and tool/action integration benchmarks (API-Bank, MMDU, MT-Mind2Web, MTU-Bench, Factcheck-Bench), emphasizing realism, long-horizon reasoning, multi-turn tool usage, and factual veracity",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_evaluation_perspective_end_to_end_vs_component": "Prioritizes end-to-end dialogue-level evaluation that captures real-world multi-turn performance, while also providing component-level evaluation of action and tool-use (e.g., MetaTool/ToolE, MTU-Bench, multi-step reasoning and math benchmarks in dialogue contexts)",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope": "Evaluation methods for LLM-based agents in multi-turn conversational settings, spanning task-oriented and open-domain dialogue systems, historical context from ELIZA to LLM-based agents, and emphasis on automated, reproducible, human-aligned evaluation",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy_of_evaluation": "Two interrelated taxonomies: (what) task completion, response quality, user experience, memory/context retention, planning and tool integration; (how) annotation-based, automated metrics (BLEU/ROUGE/BERTScore), hybrid human+quantitative, and LLM self-judging methods",
+    "8b9e2f64d565137ca85ae75029e77fff_benchmark_categories": "Categories include fundamental capability benchmarks (planning, tool use, self-reflection, memory); application-specific (web, SWE, scientific, conversational); generalist benchmarks (Gaia, Gaia2, AgentBench, HAL); with a trend from application-specific toward general-purpose agents",
+    "8b9e2f64d565137ca85ae75029e77fff_evaluation_perspective_end_to_end_vs_component": "Both end-to-end benchmarks (e.g., SWE-bench, WebArena) and component-level evaluation by capability (planning, tool use, self-reflection, memory); identifies a gap toward more granular, trajectory-level metrics as a future direction",
+    "8b9e2f64d565137ca85ae75029e77fff_scope": "Comprehensive survey of LLM-based agent evaluation across five perspectives: core capabilities (planning, tool use), application-specific benchmarks (web, SWE, scientific, conversational), generalist agents, core benchmark dimensions, and developer evaluation frameworks",
+    "8b9e2f64d565137ca85ae75029e77fff_taxonomy_of_evaluation": "Orthogonal core benchmark dimensions: data curation, environment, interface, metric, and safety (including pass^k robustness and guardrail metrics penalizing non-compliant task success)"
+  },
+  "markdown": "| Dimension | Evidence-backed comparison |\n|---|---|\n| Architecture | The paper \"A Survey on Evaluation of LLM-based Agents\" defines its scope as a comprehensive survey of evaluation methods for LLM-based agents, covering five perspectives: (1) core LLM capabilities for agentic workflows, (2) application-specific benchmarks such as web and SWE agents, (3) evaluation of generalist agents, (4) analysis of core benchmark dimensions, and (5) evaluation frameworks and tools for agent developers. It frames the field as a paradigm shift from static text-to-text LLMs to autonomous agents that plan, reason, and use tools in dynamic environments. [1][2][3][4]<br>The paper \"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\" defines its scope as the evaluation of LLM-based agents specifically in multi-turn conversational settings, covering task-oriented and open-domain dialogue systems. It situates these systems historically from ELIZA through statistical and Transformer-based models to modern LLM-powered agents, and emphasizes the unique challenges of automated, reproducible, human-aligned evaluation for context-aware multi-turn interactions such as customer service and personal assistants. [5][6][7]<br>\"A Survey on Evaluation of LLM-based Agents\" analyzes agent benchmarks along shared orthogonal core dimensions: data curation, environment, interface, metric, and safety. Within safety and robustness, it highlights metrics such as pass^k (fraction of tasks successful across all k independent runs) and the need for \"guardrail\" metrics that penalize agents achieving task success via non-compliant actions like policy violations. The taxonomy is structural and cross-cutting rather than organized around what/how to evaluate. [1][8][9]<br>\"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\" develops two interrelated taxonomy systems. The \"what to evaluate\" taxonomy identifies key components: task completion, response quality, user experience, memory and context retention, and planning and tool integration. The \"how to evaluate\" taxonomy categorizes methodologies into annotation-based evaluations, automated metrics (including BLEU, ROUGE, and BERTScore), hybrid strategies combining human and quantitative assessments, and self-judging methods utilizing LLMs. [10][11]<br>\"A Survey on Evaluation of LLM-based Agents\" surveys benchmarks across multiple categories: fundamental capability benchmarks (planning, tool use, self-reflection, memory); application-specific benchmarks for web agents, software engineering agents, scientific agents, and conversational agents; and generalist agent benchmarks such as Gaia, Gaia2, AgentBench, and the HAL (Holistic Agent Leaderboard). The survey observes a shift from application-specific toward general-purpose agents that integrate planning, reasoning, tool use, web interaction, file handling, and code execution. [12][13][14][2][1]<br>\"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\" surveys holistic multi-turn dialogue benchmarks organized into categories such as dialogue modeling (HUMOD, BotChat, AgentBench), and tool and action integration (API-Bank, MMDU, MT-Mind2Web, MTU-Bench, Factcheck-Bench). The survey emphasizes benchmarks that assess realism, domain knowledge, long-horizon reasoning, multi-turn tool usage, user intent understanding, and factual veracity in conversational contexts. [5][15] |\n| Directionality | \"A Survey on Evaluation of LLM-based Agents\" covers both end-to-end and component-level evaluation. It organizes the field by agent capabilities (planning, tool use, self-reflection, memory) and by application domains, and explicitly identifies as a future direction the need for \"advancing granular evaluation\" beyond coarse-grained end-to-end success metrics, calling for standardized, fine-grained, step-by-step assessment of agent trajectories such as tool selection and reasoning quality. [2][13][16]<br>\"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\" argues that multi-turn dialogues necessitate evaluating at the dialogue level rather than individual exchanges, prioritizing end-to-end experience because this holistic approach captures real-world performance. Complementing this, it devotes explicit attention to component-level evaluation of action and tool-use components, including multi-step tool selection and reasoning benchmarks such as MetaTool/ToolE, MTU-Bench, and program-synthesis and mathematical reasoning benchmarks tailored to dialogue contexts. [17][18][19] |\n\nUnresolved from the available corpus evidence:\n- 8b9e2f64d565137ca85ae75029e77fff_frameworks\n- 726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks\n- 8b9e2f64d565137ca85ae75029e77fff_methodology\n- 726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology\n- 8b9e2f64d565137ca85ae75029e77fff_trends\n- 726cfbbd5683cdfabbf4c24e2bf8f0b2_trends\n\nSources\n[1] A Survey on Evaluation of LLM-based Agents, Abstract, p. 1\n[2] A Survey on Evaluation of LLM-based Agents, 1 Introduction, p. 1\n[3] A Survey on Evaluation of LLM-based Agents, 1 Introduction, p. 1\n[4] A Survey on Evaluation of LLM-based Agents, 1 Introduction, p. 1\n[5] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, p. 1\n[6] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 1 Introduction, p. 2\n[7] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 1 Introduction, p. 2\n[8] A Survey on Evaluation of LLM-based Agents, 5 Core Benchmark Dimensions, p. 6\n[9] A Survey on Evaluation of LLM-based Agents, 5 Core Benchmark Dimensions, p. 5\n[10] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, p. 1\n[11] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 5 Conclusion, p. 25\n[12] A Survey on Evaluation of LLM-based Agents, 4 Generalist Agent Evaluation, p. 5\n[13] A Survey on Evaluation of LLM-based Agents, 4 Generalist Agent Evaluation, p. 5\n[14] A Survey on Evaluation of LLM-based Agents, 4 Generalist Agent Evaluation, p. 5\n[15] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 4.1 Trends and Status-quo, p. 22\n[16] A Survey on Evaluation of LLM-based Agents, 7.2 Future Directions, p. 9\n[17] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.1 Evaluating the End-to-end Experience of LLM-based Agents For Multi-Turn Conversation, p. 6\n[18] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.2 Evaluating The Action and Tool-use Components of LLM-based Agents for Multi-turn Conversation, p. 8\n[19] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 1.1 LLM-based Multi-turn Conversational Agent, p. 3",
+  "outcome": "partial",
+  "question_id": "live_chat_c1cece2ffc88",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_c1cece2ffc88"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "The paper \"A Survey on Evaluation of LLM-based Agents\" defines its scope as a comprehensive survey of evaluation methods for LLM-based agents, covering five perspectives: (1) core LLM capabilities for agentic workflows, (2) application-specific benchmarks such as web and SWE agents, (3) evaluation o",
+  "verification_id": "verification_live_chat_c1cece2ffc88"
+}

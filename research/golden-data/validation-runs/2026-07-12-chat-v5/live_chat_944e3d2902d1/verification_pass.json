@@ -1,0 +1,16 @@
+{
+  "abstention_required": false,
+  "ambiguity_resolution": {
+    "status": "pending_user_input"
+  },
+  "constraint_check_results": [],
+  "contradicted_claim_count": 0,
+  "failed_trace_obligation_ids": [],
+  "missing_required_evidence": [],
+  "question_id": "live_chat_944e3d2902d1",
+  "required_capabilities_attempted": [],
+  "required_evidence_status": [],
+  "satisfied_trace_obligation_ids": [],
+  "unsupported_claim_count": 0,
+  "verification_id": "verification_live_chat_944e3d2902d1"
+}

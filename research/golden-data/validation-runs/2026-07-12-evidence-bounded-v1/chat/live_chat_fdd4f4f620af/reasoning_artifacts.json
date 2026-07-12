@@ -1,0 +1,187 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_fdd4f4f620af",
+    "payload": {
+      "answer_fields": {
+        "paper1_relevance_to_harness_design": "core agent capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational), generalist agent platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness), and developer evaluation frameworks that integrate with the development cycle",
+        "paper2_relevance_to_harness_design": "two taxonomies: what to evaluate (task completion, response quality, user experience, memory/context, planning/tool integration) and how to evaluate (annotation-based, automated metrics, hybrid human-plus-quantitative, LLM self-judging), plus multi-step tool selection reasoning (MetaTool/ToolE, MTU-Bench) and end-to-end multi-turn interaction evaluation"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "paper1_scope_for_harness",
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_ceb02e5ea599218f",
+            "ev_0fcd65f08e2c1e3f",
+            "ev_e0b3c0e1ded59f14",
+            "ev_bb8279e8aac9d4fe",
+            "ev_2554a9d0f0eb1b8c",
+            "ev_be9ffa7f121ef2a8",
+            "ev_7151c41101c67b08",
+            "ev_dd37d6968725a026"
+          ],
+          "field_values": {
+            "paper1_relevance_to_harness_design": "core agent capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational), generalist agent platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness), and developer evaluation frameworks that integrate with the development cycle"
+          },
+          "reason": "All listed scopes are directly supported by abstract, introduction, and detailed section passages from Paper 1.",
+          "verdict": "keep",
+          "verified_text": "Paper 1 (A Survey on Evaluation of LLM-based Agents) is directly relevant to designing an agent evaluation harness through its coverage of core agentic capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational agents), generalist agent evaluation platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness including pass^k), and evaluation frameworks for agent developers that integrate with the development environment and support evaluation across the development cycle."
+        },
+        {
+          "claim_id": "paper2_scope_for_harness",
+          "evidence_ids": [
+            "ev_675fca9661b26bfa",
+            "ev_3e731d621272672c",
+            "ev_985210f77a60dcf4",
+            "ev_aead9018f3eb7236",
+            "ev_0e5c7bd8b91122fa",
+            "ev_28a5184ea0d65277",
+            "ev_7591e3f0e1cb9369",
+            "ev_cf8f947b23acb5ce"
+          ],
+          "field_values": {
+            "paper2_relevance_to_harness_design": "two taxonomies: what to evaluate (task completion, response quality, user experience, memory/context, planning/tool integration) and how to evaluate (annotation-based, automated metrics, hybrid human-plus-quantitative, LLM self-judging), plus multi-step tool selection reasoning (MetaTool/ToolE, MTU-Bench) and end-to-end multi-turn interaction evaluation"
+          },
+          "reason": "Both taxonomies, specific tool benchmarks (MetaTool/ToolE, MTU-Bench), and end-to-end multi-turn evaluation are all directly stated in the supplied passages.",
+          "verdict": "keep",
+          "verified_text": "Paper 2 (Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey) is directly relevant to designing an agent evaluation harness in the conversational setting through its two taxonomies: a 'what to evaluate' taxonomy covering task completion, response quality, user experience, memory/context retention, and planning/tool integration, and a 'how to evaluate' taxonomy covering annotation-based evaluation, automated metrics, hybrid human-plus-quantitative strategies, and LLM self-judging, along with multi-step tool selection and reasoning evaluation (e.g., MetaTool/ToolE, MTU-Bench) and end-to-end multi-turn interaction evaluation."
+        },
+        {
+          "claim_id": "recommendation_justification",
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_ceb02e5ea599218f",
+            "ev_0fcd65f08e2c1e3f",
+            "ev_675fca9661b26bfa",
+            "ev_3e731d621272672c",
+            "ev_bb8279e8aac9d4fe",
+            "ev_be9ffa7f121ef2a8",
+            "ev_7151c41101c67b08",
+            "ev_dd37d6968725a026",
+            "ev_0e5c7bd8b91122fa"
+          ],
+          "field_values": {},
+          "reason": "The recommendation's broader/narrower comparison is supported, but the phrase \"support harness architecture decisions\" goes beyond the evidence (which says frameworks integrate with development environment and support evaluation across the development cycle). Narrowed to remove unsupported wording.",
+          "verdict": "rewrite",
+          "verified_text": "Read paper 1 (A Survey on Evaluation of LLM-based Agents) first when designing an agent evaluation harness for general/multi-application agents. It offers broader coverage spanning core agentic capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational agents), generalist agent evaluation platforms (AgentBench, HAL, Harbor, Exgentic), core benchmark dimensions (metrics, static vs dynamic environments, safety/robustness via pass^k), and developer evaluation frameworks that integrate with the development environment and support evaluation across the development cycle, whereas paper 2 is narrower in scope (multi-turn conversational settings); paper 2's deeper taxonomy for multi-turn dialogue can then be consulted afterward for conversational-agent components."
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_ceb02e5ea599218f",
+            "ev_0fcd65f08e2c1e3f",
+            "ev_e0b3c0e1ded59f14",
+            "ev_bb8279e8aac9d4fe",
+            "ev_2554a9d0f0eb1b8c",
+            "ev_ff8ac0daef843c17",
+            "ev_531118ea976af50d",
+            "ev_be9ffa7f121ef2a8",
+            "ev_7151c41101c67b08",
+            "ev_dd37d6968725a026",
+            "ev_71ba898a792db8dc",
+            "ev_414f43ed4923cfb3",
+            "ev_a4df2c735a483195"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "paper1_scope_for_harness",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_675fca9661b26bfa",
+            "ev_3e731d621272672c",
+            "ev_985210f77a60dcf4",
+            "ev_2f58e77634814fd0",
+            "ev_aead9018f3eb7236",
+            "ev_0e5c7bd8b91122fa",
+            "ev_28a5184ea0d65277",
+            "ev_7591e3f0e1cb9369",
+            "ev_28e1c4ee26a4d6e0",
+            "ev_8cd96f828ccbc229",
+            "ev_e5e53ffde8fe3ba4",
+            "ev_cf8f947b23acb5ce"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "paper2_scope_for_harness",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [],
+          "note": "evidence not recovered",
+          "obligation_id": "harness_focus_assumption",
+          "status": "missing"
+        },
+        {
+          "evidence_ids": [
+            "ev_ddb084a0ece5ad74",
+            "ev_ceb02e5ea599218f",
+            "ev_0fcd65f08e2c1e3f",
+            "ev_675fca9661b26bfa",
+            "ev_3e731d621272672c",
+            "ev_bb8279e8aac9d4fe",
+            "ev_2554a9d0f0eb1b8c",
+            "ev_ff8ac0daef843c17",
+            "ev_531118ea976af50d",
+            "ev_be9ffa7f121ef2a8",
+            "ev_7151c41101c67b08",
+            "ev_dd37d6968725a026",
+            "ev_71ba898a792db8dc",
+            "ev_414f43ed4923cfb3",
+            "ev_a4df2c735a483195",
+            "ev_0e5c7bd8b91122fa",
+            "ev_28a5184ea0d65277",
+            "ev_7591e3f0e1cb9369",
+            "ev_28e1c4ee26a4d6e0",
+            "ev_8cd96f828ccbc229",
+            "ev_e5e53ffde8fe3ba4",
+            "ev_cf8f947b23acb5ce"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "recommendation_justification",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "ev_675fca9661b26bfa",
+        "ev_ddb084a0ece5ad74",
+        "ev_3e731d621272672c",
+        "ev_394a88565bab8e83",
+        "ev_985210f77a60dcf4",
+        "ev_0fcd65f08e2c1e3f",
+        "ev_ceb02e5ea599218f",
+        "ev_2f58e77634814fd0",
+        "ev_aead9018f3eb7236",
+        "ev_e0b3c0e1ded59f14",
+        "corpus_observation_identity_1",
+        "corpus_observation_identity_2",
+        "ev_bb8279e8aac9d4fe",
+        "ev_28e1c4ee26a4d6e0",
+        "ev_2554a9d0f0eb1b8c",
+        "ev_be9ffa7f121ef2a8",
+        "ev_71ba898a792db8dc",
+        "ev_0e5c7bd8b91122fa",
+        "ev_8cd96f828ccbc229",
+        "ev_ff8ac0daef843c17",
+        "ev_7151c41101c67b08",
+        "ev_414f43ed4923cfb3",
+        "ev_28a5184ea0d65277",
+        "ev_e5e53ffde8fe3ba4",
+        "ev_531118ea976af50d",
+        "ev_dd37d6968725a026",
+        "ev_a4df2c735a483195",
+        "ev_7591e3f0e1cb9369",
+        "ev_cf8f947b23acb5ce"
+      ]
+    },
+    "question_id": "live_chat_fdd4f4f620af",
+    "source_claim_ids": [
+      "paper1_scope_for_harness",
+      "paper2_scope_for_harness",
+      "recommendation_justification"
+    ],
+    "title": "Recommend which of the two selected surveys on LLM-based agent evaluation the user should read first when designing an agent evaluation harness, grounded in the selected evidence.",
+    "type": "recommendation"
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_c0760f22905d",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "No problem — by \"flavor\" I just meant which *type* of RLHF papers would help you most. Which of these sounds right?",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_c0760f22905d",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "No problem — by \"flavor\" I just meant which *type* of RLHF papers would help you most. Which of these sounds right?",
+  "verification_id": "verification_live_chat_c0760f22905d"
+}

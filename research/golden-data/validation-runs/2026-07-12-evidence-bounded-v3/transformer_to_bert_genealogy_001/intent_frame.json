@@ -1,0 +1,85 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "citation_genealogy",
+  "constraints": {
+    "coverage_assumption": "BERT is interpreted as the standard Devlin et al. 2018 paper present in the corpus; lineage is limited to one hop (Attention Is All You Need → BERT), not extended through GPT-2/GPT-3 unless needed for contrast.",
+    "task": {
+      "object": "direct technical lineage and cited relationship between Attention Is All You Need and BERT",
+      "verb": "trace"
+    },
+    "time_window": "2017-2018"
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "attention_is_all_you_need_2017",
+    "bert_2018",
+    "explicit citation of Attention Is All You Need by BERT",
+    "inherited Transformer components",
+    "BERT-specific adaptations (encoder-only, bidirectional, MLM/NSP)",
+    "architectural specifics from Attention Is All You Need"
+  ],
+  "intent_id": "intent_live_chat_bfd4ff883d07",
+  "method_mentions": [],
+  "normalized_question": "Establish the direct technical lineage from \"Attention Is All You Need\" (Transformer) to \"BERT\", citing BERT's explicit reference to the Transformer architecture and describing what BERT inherits and adapts (encoder stack, self-attention, positional encoding, etc.).",
+  "obligations": [
+    {
+      "answer_field": "bert_cites_attention",
+      "description": "Does BERT explicitly cite \"Attention Is All You Need\" as the source of its core architecture (the Transformer)?",
+      "id": "edge_attn_bert",
+      "kind": "relation",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "inherited_components",
+      "description": "What is the cited technical relationship: which components (multi-head self-attention, positional encoding, encoder/decoder structure, residual + layer norm, feed-forward sublayer) does BERT inherit from the Transformer described in Attention Is All You Need?",
+      "id": "edge_meaning",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_adaptations",
+      "description": "How does BERT adapt the Transformer architecture — specifically, BERT uses only the encoder stack (no decoder), uses bidirectional context, and is pre-trained with Masked Language Modeling and Next Sentence Prediction rather than the original seq2seq translation objective?",
+      "id": "edge_adaptation",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_architecture",
+      "description": "What architecture does Attention Is All You Need introduce: encoder-decoder with multi-head self-attention, scaled dot-product attention, positional encoding, and the specific notation/components that BERT later reuses?",
+      "id": "attn_architecture_facts",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "attention_is_all_you_need_2017",
+    "bert_2018"
+  ],
+  "primary_paradigm": "association_influence_genealogy",
+  "question_id": "live_chat_bfd4ff883d07",
+  "raw_question": "Show the direct technical lineage from Attention Is All You Need to BERT and explain the cited relationship.",
+  "required_capabilities": [
+    "citation lookup",
+    "structural comparison"
+  ],
+  "required_evidence_types": [
+    "citation reference",
+    "architecture description",
+    "pre-training objective"
+  ],
+  "requires_corpus_observation": true
+}

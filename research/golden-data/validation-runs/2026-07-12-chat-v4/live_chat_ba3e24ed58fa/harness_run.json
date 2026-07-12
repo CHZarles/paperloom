@@ -1,0 +1,908 @@
+{
+  "case_id": "live_chat_ba3e24ed58fa",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_ba3e24ed58fa",
+    "question_id": "live_chat_ba3e24ed58fa"
+  },
+  "completed_at": "2026-07-12T06:19:33Z",
+  "diagnostics": {
+    "completed_stage_count": 4,
+    "completion_tokens": 4992,
+    "duration_ms": 38405,
+    "finish_reason": "evidence_bounded_answer_rendered",
+    "model_call_count": 3,
+    "model_latency_ms": 38235,
+    "paradigm": "context_specific_brainstorming",
+    "prompt_tokens": 14434,
+    "stage_count": 4,
+    "tool_call_count": 4,
+    "total_tokens": 19426
+  },
+  "evidence_ledger": {
+    "coverage": [
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_canonical_surveys",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_agent_benchmarks",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_agent_methodology",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_social_cognition",
+        "status": "missing"
+      }
+    ],
+    "items": [
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_8b9e2f64d565137ca85ae75029e77fff",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+        "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "A Survey on Evaluation of LLM-based Agents",
+        "supports_claim_ids": [],
+        "title": "A Survey on Evaluation of LLM-based Agents",
+        "venue": null,
+        "year": null
+      },
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_a96e1a7c10024c45b186dde5a3ce0122",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "a96e1a7c10024c45b186dde5a3ce0122",
+        "paper_version": "rm_1783588586130_10ef542e582d48e49b617abf55beaf90",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "A Survey of Useful LLM Evaluation",
+        "supports_claim_ids": [],
+        "title": "A Survey of Useful LLM Evaluation",
+        "venue": null,
+        "year": null
+      },
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_726cfbbd5683cdfabbf4c24e2bf8f0b2",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+        "paper_version": "rm_1783570479344_38abbf2f4d8a467fb3eca931d4e7a565",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+        "supports_claim_ids": [],
+        "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+        "venue": null,
+        "year": null
+      },
+      {
+        "authors": [],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_c754a224706f987c2cc61bb2b63cab99",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "c754a224706f987c2cc61bb2b63cab99",
+        "paper_version": "rm_1783569437559_3dd22787c6cd4b72b65227c7c47e6276",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "A Survey on Evaluation of Multimodal Large Language Models",
+        "supports_claim_ids": [],
+        "title": "A Survey on Evaluation of Multimodal Large Language Models",
+        "venue": null,
+        "year": null
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_1",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"8b9e2f64d565137ca85ae75029e77fff\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"A Survey on Evaluation of LLM-based Agents\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_2",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"a96e1a7c10024c45b186dde5a3ce0122\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"A Survey of Useful LLM Evaluation\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_3",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"726cfbbd5683cdfabbf4c24e2bf8f0b2\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_4",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"c754a224706f987c2cc61bb2b63cab99\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"A Survey on Evaluation of Multimodal Large Language Models\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_ba3e24ed58fa",
+    "missing_evidence": [
+      {
+        "description": "Identify the most survey/foundational evaluation papers that anchor the corpus",
+        "obligation_id": "select_canonical_surveys",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "Identify foundational agent benchmark papers",
+        "obligation_id": "select_agent_benchmarks",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "Identify foundational methodology/framework papers for LLM agents",
+        "obligation_id": "select_agent_methodology",
+        "reason": "no verified claim satisfied this required obligation"
+      },
+      {
+        "description": "Identify notable social-cognition / writing / reasoning evaluation papers",
+        "obligation_id": "select_social_cognition",
+        "reason": "no verified claim satisfied this required obligation"
+      }
+    ],
+    "question_id": "live_chat_ba3e24ed58fa",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_ba3e24ed58fa",
+    "answer_type": "constraint_filter",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "No requested claim was verified from the available corpus evidence.\n\nUnresolved from the available corpus evidence:\n- survey_picks\n- benchmark_picks\n- methodology_picks\n- social_picks",
+    "outcome": "abstained",
+    "question_id": "live_chat_ba3e24ed58fa",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_ba3e24ed58fa"
+    ],
+    "sections": [],
+    "status": "INCOMPLETE_PRECISE",
+    "summary": "No requested claim was verified from the available corpus evidence.",
+    "verification_id": "verification_live_chat_ba3e24ed58fa"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "actionability": "non_blocking",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "constraint_filter",
+    "constraints": {
+      "coverage_assumption": "User wants corpus-grounded recommendations; 'important' interpreted as foundational / high-influence papers in the LLM-agents and LLM-evaluation areas covered by the inventory.",
+      "scope": "corpus",
+      "task": {
+        "object": "papers",
+        "verb": "recommend"
+      }
+    },
+    "dataset_mentions": [],
+    "entities": [
+      "surveys",
+      "agent benchmarks",
+      "methodology frameworks",
+      "social-cognition evaluations"
+    ],
+    "intent_id": "intent_live_chat_ba3e24ed58fa",
+    "method_mentions": [],
+    "normalized_question": "Recommend important papers from the 30-paper corpus, grounded in their titles and themes (LLM agents, evaluation, benchmarks, multimodal agents).",
+    "obligations": [
+      {
+        "answer_field": "survey_picks",
+        "description": "Identify the most survey/foundational evaluation papers that anchor the corpus",
+        "id": "select_canonical_surveys",
+        "kind": "recommendation",
+        "paper_scope": [
+          "8b9e2f64d565137ca85ae75029e77fff",
+          "a96e1a7c10024c45b186dde5a3ce0122",
+          "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+          "c754a224706f987c2cc61bb2b63cab99",
+          "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+          "c270139b1a43dd2675126d74038fa3c5"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "benchmark_picks",
+        "description": "Identify foundational agent benchmark papers",
+        "id": "select_agent_benchmarks",
+        "kind": "recommendation",
+        "paper_scope": [
+          "bf00436579e72429679264b76a660d3f",
+          "0a69c4fad229fd7a5d619e23df594ecf",
+          "04d0a73eef7b1e83869ee2ce1d83beb1",
+          "3d47869e74a9e6ccb1ecddd25eef9d33",
+          "6cce095e719b9980b7373dc031eeb9fe",
+          "2ed909035dbfe4059c1a409cbc24feea",
+          "f66a3a3cca316754ec460037e78d73a2",
+          "ae3678cdcd0e4704d9f6526cd76e3b98",
+          "c37bf09fd44806fd2d5b4f46e1e29c01",
+          "67b51f2a490d4092f0a2494c6349e7ee"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "methodology_picks",
+        "description": "Identify foundational methodology/framework papers for LLM agents",
+        "id": "select_agent_methodology",
+        "kind": "recommendation",
+        "paper_scope": [
+          "fcc5f75cc2acef290643a9e846d45349",
+          "f28d417b1505e7b90edee2953d4d408c",
+          "9d394df7133e93d0441d9c7db310e058",
+          "681813811bdc97ab4a25084e59b94182",
+          "5768178b603533c617487221e26d9c00",
+          "915dba7e6811ea85b2edbb705ae900c0",
+          "6b404d4d1a4a32194a5ddb32354d379d",
+          "72dde7f40dd84746da23ec8cdb9d5050",
+          "5e4b4f2d92647fe8b8847e38bae2f876",
+          "f7c075b5c7854d28fe3aecfbebaf3940"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "social_picks",
+        "description": "Identify notable social-cognition / writing / reasoning evaluation papers",
+        "id": "select_social_cognition",
+        "kind": "recommendation",
+        "paper_scope": [
+          "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+          "b387b0244b8c6c0f32a7041a04c47adf",
+          "cfaf846432ab040959794cf58e79d8a6",
+          "e9b61256490c3f82d41ee47d96f900d1"
+        ],
+        "required": true
+      }
+    ],
+    "paper_mentions": [],
+    "primary_paradigm": "context_specific_brainstorming",
+    "question_id": "live_chat_ba3e24ed58fa",
+    "raw_question": "recommend some important paper",
+    "required_capabilities": [],
+    "required_evidence_types": [
+      "paper title",
+      "theme relevance"
+    ],
+    "requires_corpus_observation": true
+  },
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": [
+      "8b9e2f64d565137ca85ae75029e77fff",
+      "a96e1a7c10024c45b186dde5a3ce0122",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "c754a224706f987c2cc61bb2b63cab99"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_8b9e2f64d565137ca85ae75029e77fff",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+      "paper_version": "rm_1783588835156_587dd4368bda41b4812b2dd16f9c69e8",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "A Survey on Evaluation of LLM-based Agents",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of LLM-based Agents",
+      "venue": null,
+      "year": null
+    },
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_a96e1a7c10024c45b186dde5a3ce0122",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "a96e1a7c10024c45b186dde5a3ce0122",
+      "paper_version": "rm_1783588586130_10ef542e582d48e49b617abf55beaf90",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "A Survey of Useful LLM Evaluation",
+      "supports_claim_ids": [],
+      "title": "A Survey of Useful LLM Evaluation",
+      "venue": null,
+      "year": null
+    },
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+      "paper_version": "rm_1783570479344_38abbf2f4d8a467fb3eca931d4e7a565",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+      "supports_claim_ids": [],
+      "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+      "venue": null,
+      "year": null
+    },
+    {
+      "authors": [],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_c754a224706f987c2cc61bb2b63cab99",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "c754a224706f987c2cc61bb2b63cab99",
+      "paper_version": "rm_1783569437559_3dd22787c6cd4b72b65227c7c47e6276",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "A Survey on Evaluation of Multimodal Large Language Models",
+      "supports_claim_ids": [],
+      "title": "A Survey on Evaluation of Multimodal Large Language Models",
+      "venue": null,
+      "year": null
+    }
+  ],
+  "question_id": "live_chat_ba3e24ed58fa",
+  "reasoning_artifacts": [
+    {
+      "artifact_id": "reasoning_live_chat_ba3e24ed58fa",
+      "payload": {
+        "answer_fields": {},
+        "claim_verdicts": [],
+        "obligation_coverage": [
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "select_canonical_surveys",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "select_agent_benchmarks",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "select_agent_methodology",
+            "status": "missing"
+          },
+          {
+            "evidence_ids": [],
+            "note": "evidence not recovered",
+            "obligation_id": "select_social_cognition",
+            "status": "missing"
+          }
+        ],
+        "source_evidence_ids": [
+          "corpus_observation_identity_1",
+          "corpus_observation_identity_2",
+          "corpus_observation_identity_3",
+          "corpus_observation_identity_4"
+        ]
+      },
+      "question_id": "live_chat_ba3e24ed58fa",
+      "source_claim_ids": [],
+      "title": "Recommend important papers from the 30-paper corpus, grounded in their titles and themes (LLM agents, evaluation, benchmarks, multimodal agents).",
+      "type": "recommendation"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_ba3e24ed58fa",
+    "answer_type": "constraint_filter",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "No requested claim was verified from the available corpus evidence.\n\nUnresolved from the available corpus evidence:\n- survey_picks\n- benchmark_picks\n- methodology_picks\n- social_picks",
+    "outcome": "abstained",
+    "question_id": "live_chat_ba3e24ed58fa",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_ba3e24ed58fa"
+    ],
+    "sections": [],
+    "status": "INCOMPLETE_PRECISE",
+    "summary": "No requested claim was verified from the available corpus evidence.",
+    "verification_id": "verification_live_chat_ba3e24ed58fa"
+  },
+  "result_status": "INCOMPLETE_PRECISE",
+  "retrieval_plan": {
+    "actionability": "non_blocking",
+    "expected_evidence_types": [
+      "paper title",
+      "theme relevance"
+    ],
+    "hard_negative_policy": [],
+    "obligations": [
+      {
+        "answer_field": "survey_picks",
+        "description": "Identify the most survey/foundational evaluation papers that anchor the corpus",
+        "id": "select_canonical_surveys",
+        "kind": "recommendation",
+        "paper_scope": [
+          "8b9e2f64d565137ca85ae75029e77fff",
+          "a96e1a7c10024c45b186dde5a3ce0122",
+          "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+          "c754a224706f987c2cc61bb2b63cab99",
+          "e2fecac036f40ba0a19a5ffbdfdbfe7e",
+          "c270139b1a43dd2675126d74038fa3c5"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "benchmark_picks",
+        "description": "Identify foundational agent benchmark papers",
+        "id": "select_agent_benchmarks",
+        "kind": "recommendation",
+        "paper_scope": [
+          "bf00436579e72429679264b76a660d3f",
+          "0a69c4fad229fd7a5d619e23df594ecf",
+          "04d0a73eef7b1e83869ee2ce1d83beb1",
+          "3d47869e74a9e6ccb1ecddd25eef9d33",
+          "6cce095e719b9980b7373dc031eeb9fe",
+          "2ed909035dbfe4059c1a409cbc24feea",
+          "f66a3a3cca316754ec460037e78d73a2",
+          "ae3678cdcd0e4704d9f6526cd76e3b98",
+          "c37bf09fd44806fd2d5b4f46e1e29c01",
+          "67b51f2a490d4092f0a2494c6349e7ee"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "methodology_picks",
+        "description": "Identify foundational methodology/framework papers for LLM agents",
+        "id": "select_agent_methodology",
+        "kind": "recommendation",
+        "paper_scope": [
+          "fcc5f75cc2acef290643a9e846d45349",
+          "f28d417b1505e7b90edee2953d4d408c",
+          "9d394df7133e93d0441d9c7db310e058",
+          "681813811bdc97ab4a25084e59b94182",
+          "5768178b603533c617487221e26d9c00",
+          "915dba7e6811ea85b2edbb705ae900c0",
+          "6b404d4d1a4a32194a5ddb32354d379d",
+          "72dde7f40dd84746da23ec8cdb9d5050",
+          "5e4b4f2d92647fe8b8847e38bae2f876",
+          "f7c075b5c7854d28fe3aecfbebaf3940"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "social_picks",
+        "description": "Identify notable social-cognition / writing / reasoning evaluation papers",
+        "id": "select_social_cognition",
+        "kind": "recommendation",
+        "paper_scope": [
+          "343ca44c6fbd3f63ca1045a1fe7ddbcf",
+          "b387b0244b8c6c0f32a7041a04c47adf",
+          "cfaf846432ab040959794cf58e79d8a6",
+          "e9b61256490c3f82d41ee47d96f900d1"
+        ],
+        "required": true
+      }
+    ],
+    "paradigm": "context_specific_brainstorming",
+    "plan_id": "plan_live_chat_ba3e24ed58fa",
+    "query_rounds": [
+      {
+        "evidence_queries": [],
+        "paper_targets": [],
+        "reuse_evidence": [],
+        "round": "initial"
+      },
+      {
+        "evidence_queries": [],
+        "paper_targets": [
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "select_canonical_surveys"
+            ],
+            "discovery_query": "",
+            "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+            "target_id": "T1",
+            "title": "A Survey on Evaluation of LLM-based Agents"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "select_canonical_surveys"
+            ],
+            "discovery_query": "",
+            "paper_id": "a96e1a7c10024c45b186dde5a3ce0122",
+            "target_id": "T2",
+            "title": "A Survey of Useful LLM Evaluation"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "select_canonical_surveys"
+            ],
+            "discovery_query": "",
+            "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+            "target_id": "T3",
+            "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [],
+            "discovery_query": null,
+            "paper_id": "c754a224706f987c2cc61bb2b63cab99",
+            "target_id": "T4",
+            "title": "A Survey on Evaluation of Multimodal Large Language Models"
+          }
+        ],
+        "reuse_evidence": [],
+        "round": "retry"
+      }
+    ],
+    "question_id": "live_chat_ba3e24ed58fa",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "all_required_obligations_verified",
+      "precise_evidence_gap"
+    ],
+    "strategy_steps": [
+      {
+        "allowed_tools": [],
+        "semantic_goal": "resolve_selection_constraints",
+        "stage_name": "resolve_selection_constraints",
+        "step_id": "stage_1_resolve_selection_constraints",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "resolve_selection_constraints"
+      },
+      {
+        "allowed_tools": [
+          "search_paper_candidates",
+          "find_papers_by_identity",
+          "find_reading_locations",
+          "read_locations",
+          "get_citation_edges"
+        ],
+        "semantic_goal": "collect_candidate_evidence",
+        "stage_name": "collect_candidate_evidence",
+        "step_id": "stage_2_collect_candidate_evidence",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "collect_candidate_evidence"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "select_bounded_options",
+        "stage_name": "select_bounded_options",
+        "step_id": "stage_3_select_bounded_options",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "select_bounded_options"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "verify_recommendations",
+        "stage_name": "verify_recommendations",
+        "step_id": "stage_4_verify_recommendations",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "verify_recommendations"
+      }
+    ],
+    "target_entities": []
+  },
+  "run_id": "run_live_chat_ba3e24ed58fa",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [
+    {
+      "claim_ids": [],
+      "decision_summary": "Executed 2 bounded retrieval round(s) with 4 corpus tool call(s).",
+      "evidence_ids": [],
+      "obligation_ids": [
+        "select_canonical_surveys",
+        "select_agent_benchmarks",
+        "select_agent_methodology",
+        "select_social_cognition"
+      ],
+      "semantic_goal": "collect_candidate_evidence",
+      "stage_name": "collect_evidence",
+      "status": "completed",
+      "tool_calls": [
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "8b9e2f64d565137ca85ae75029e77fff"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2503.16416.pdf",
+                "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+                "preview": "",
+                "title": "A Survey on Evaluation of LLM-based Agents",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_1",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "a96e1a7c10024c45b186dde5a3ce0122"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2406.00936.pdf",
+                "paper_id": "a96e1a7c10024c45b186dde5a3ce0122",
+                "preview": "",
+                "title": "A Survey of Useful LLM Evaluation",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_2",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2503.22458.pdf",
+                "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+                "preview": "",
+                "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_3",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "c754a224706f987c2cc61bb2b63cab99"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [],
+                "doi": null,
+                "filename": "2408.15769.pdf",
+                "paper_id": "c754a224706f987c2cc61bb2b63cab99",
+                "preview": "",
+                "title": "A Survey on Evaluation of Multimodal Large Language Models",
+                "venue": null,
+                "year": null
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_4",
+          "tool_name": "find_papers_by_identity"
+        }
+      ]
+    },
+    {
+      "claim_ids": [],
+      "decision_summary": "No citeable evidence was available for claim construction.",
+      "evidence_ids": [],
+      "obligation_ids": [],
+      "semantic_goal": "select_bounded_options",
+      "stage_name": "construct_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [],
+      "decision_summary": "No candidate claims were available for verification.",
+      "evidence_ids": [],
+      "obligation_ids": [],
+      "semantic_goal": "verify_recommendations",
+      "stage_name": "verify_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [],
+      "decision_summary": "Rendered only verified claims.",
+      "evidence_ids": [],
+      "obligation_ids": [],
+      "semantic_goal": "render_verified_claims",
+      "stage_name": "render_answer",
+      "status": "completed",
+      "tool_calls": []
+    }
+  ],
+  "started_at": "2026-07-12T06:19:09Z",
+  "status": "INCOMPLETE_PRECISE",
+  "verification_pass": {
+    "abstention_required": true,
+    "ambiguity_resolution": {
+      "requires_user_choice": false,
+      "status": "unambiguous"
+    },
+    "answer_reference_integrity_passed": true,
+    "claim_verdicts": [],
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "corpus_observation_passed": true,
+    "corpus_observation_required": true,
+    "failed_trace_obligation_ids": [
+      "select_canonical_surveys",
+      "select_agent_benchmarks",
+      "select_agent_methodology",
+      "select_social_cognition"
+    ],
+    "missing_required_evidence": [
+      {
+        "description": "Identify the most survey/foundational evaluation papers that anchor the corpus",
+        "obligation_id": "select_canonical_surveys"
+      },
+      {
+        "description": "Identify foundational agent benchmark papers",
+        "obligation_id": "select_agent_benchmarks"
+      },
+      {
+        "description": "Identify foundational methodology/framework papers for LLM agents",
+        "obligation_id": "select_agent_methodology"
+      },
+      {
+        "description": "Identify notable social-cognition / writing / reasoning evaluation papers",
+        "obligation_id": "select_social_cognition"
+      }
+    ],
+    "question_id": "live_chat_ba3e24ed58fa",
+    "required_capabilities_attempted": [],
+    "required_evidence_status": [
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_canonical_surveys",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_agent_benchmarks",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_agent_methodology",
+        "status": "missing"
+      },
+      {
+        "evidence_ids": [],
+        "note": "evidence not recovered",
+        "obligation_id": "select_social_cognition",
+        "status": "missing"
+      }
+    ],
+    "rewritten_claim_count": 0,
+    "satisfied_trace_obligation_ids": [],
+    "stage_contracts_passed": true,
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_ba3e24ed58fa"
+  }
+}

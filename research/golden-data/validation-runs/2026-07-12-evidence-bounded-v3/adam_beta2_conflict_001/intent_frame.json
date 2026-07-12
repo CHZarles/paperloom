@@ -1,0 +1,72 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "contradiction_arbitration",
+  "constraints": {
+    "coverage_assumption": "User is referring to the Adam optimizer paper (Kingma & Ba, 2014) and the original Transformer paper (Vaswani et al., 2017); both are present in the corpus.",
+    "task": {
+      "object": "conflict about Adam beta2 between sources",
+      "verb": "resolve"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "adam_2014",
+    "attention_is_all_you_need_2017",
+    "adam_beta2_default",
+    "transformer_beta2_used",
+    "scope_or_context_explanation"
+  ],
+  "intent_id": "intent_live_chat_7a5bb0785774",
+  "method_mentions": [],
+  "normalized_question": "Resolve the apparent conflict about Adam's β2 by retrieving what the Adam paper specifies versus what the Transformer paper actually uses, and explain why both sources appear to disagree.",
+  "obligations": [
+    {
+      "answer_field": "adam_beta2",
+      "description": "What value of β2 does the Adam paper (Kingma & Ba, 2014) report as its default or recommended setting?",
+      "id": "adam_beta2_default",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "adam_2014"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_beta2",
+      "description": "What value of β2 does the Transformer paper (Vaswani et al., 2017) report using for Adam in its optimizer configuration?",
+      "id": "transformer_beta2_used",
+      "kind": "conflict_side",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "scope_distinction",
+      "description": "What scope/context in each paper does the β2 value appear in (e.g., paper-wide default vs. specific model/optimizer-table entry), and does that distinction explain the apparent conflict?",
+      "id": "context_scope_distinction",
+      "kind": "conflict_resolution",
+      "paper_scope": [
+        "adam_2014",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "adam_2014",
+    "attention_is_all_you_need_2017"
+  ],
+  "primary_paradigm": "contradiction_resolution",
+  "question_id": "live_chat_7a5bb0785774",
+  "raw_question": "Some sources say Adam beta2 is 0.999, but the Transformer paper used 0.98. Resolve this conflict.",
+  "required_capabilities": [
+    "extract_structured_table_values",
+    "compare_paper_specific_settings"
+  ],
+  "required_evidence_types": [
+    "optimizer_configuration_table",
+    "experimental_setup_section"
+  ],
+  "requires_corpus_observation": true
+}

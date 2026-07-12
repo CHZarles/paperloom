@@ -1,0 +1,38 @@
+{
+  "answer_id": "answer_live_chat_91b660e4455c",
+  "answer_type": "constraint_filter",
+  "cited_claim_ids": [
+    "scope_def_1",
+    "corpus_in_stock_1",
+    "corpus_coverage_1"
+  ],
+  "cited_evidence_ids": [
+    "ev_ddb084a0ece5ad74",
+    "ev_ceb02e5ea599218f",
+    "ev_23dcc76307d339ca",
+    "ev_c8451279c5aff7c2",
+    "ev_2f58e77634814fd0",
+    "ev_985210f77a60dcf4",
+    "ev_0fcd65f08e2c1e3f",
+    "ev_aead9018f3eb7236",
+    "ev_cf8f947b23acb5ce",
+    "ev_8eb726c4c50ad455",
+    "ev_3e731d621272672c",
+    "ev_97e56b2d94b70372"
+  ],
+  "fields": {
+    "corpus_coverage": "Sufficient for an evaluation-focused, multi-turn-conversation-focused recommendation grounded in the two surveys; insufficient for a general LLM-based-agents literature recommendation beyond the evaluation sub-area.",
+    "in_corpus": "Only the two evaluation surveys are in the user-visible corpus; all other cited/influential agent papers appear only as references within those surveys and are not in the inventory as standalone items.",
+    "scope": "Evaluation of LLM-based agents, including core capabilities (planning, tool use, self-reflection, memory), application-specific benchmarks (web, SWE, scientific, conversational), generalist agent benchmarks, and multi-turn conversation evaluation."
+  },
+  "markdown": "1. Recommendations are scoped to the evaluation of LLM-based agents, covering sub-areas such as core capabilities (planning, tool use, self-reflection, memory), application-specific agent benchmarks (web, SWE, scientific, conversational), generalist agent benchmarks, and multi-turn conversation evaluation. [1][2][3][4][5][6]\n2. Only the two evaluation surveys themselves are present in the user-visible corpus: \"A Survey on Evaluation of LLM-based Agents\" and \"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey.\" The other works cited or discussed in these surveys (e.g., AgentBench, HAL, MTU-Bench, MMDU, API-Bank, BotChat, HUMOD, Gaia, MetaTool) appear only as references within those surveys and are not in the inventory as standalone items. [7][8][9][10]\n3. The corpus of two evaluation-focused surveys is sufficient to ground a narrower recommendation set on the evaluation of LLM-based agents and multi-turn conversational agents, but it is not sufficient to ground a general \"important papers on LLM-based agents\" recommendation covering the broader literature (planning, tool use, memory, multi-agent systems, general agent architectures) outside the evaluation sub-area. [10][5][11][8][12][9]\n\nSources\n[1] A Survey on Evaluation of LLM-based Agents, Abstract, p. 1\n[2] A Survey on Evaluation of LLM-based Agents, 1 Introduction, p. 1\n[3] A Survey on Evaluation of LLM-based Agents, 4 Generalist Agent Evaluation, p. 5\n[4] A Survey on Evaluation of LLM-based Agents, 4 Generalist Agent Evaluation, p. 5\n[5] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, p. 1\n[6] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.1 Evaluating the End-to-end Experience of LLM-based Agents For Multi-Turn Conversation, p. 6\n[7] A Survey on Evaluation of LLM-based Agents, 4 Generalist Agent Evaluation, p. 5\n[8] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 2.2 Evaluating The Action and Tool-use Components of LLM-based Agents for Multi-turn Conversation, p. 8\n[9] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 4.1 Trends and Status-quo, p. 22\n[10] A Survey on Evaluation of LLM-based Agents, A Literature Review Methodology, p. 20\n[11] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, p. 1\n[12] Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey, 3.2 Evaluation Metrics, p. 17",
+  "outcome": "answered",
+  "question_id": "live_chat_91b660e4455c",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_91b660e4455c"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Recommendations are scoped to the evaluation of LLM-based agents, covering sub-areas such as core capabilities (planning, tool use, self-reflection, memory), application-specific agent benchmarks (web, SWE, scientific, conversational), generalist agent benchmarks, and multi-turn conversation evaluat",
+  "verification_id": "verification_live_chat_91b660e4455c"
+}

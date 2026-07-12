@@ -1,0 +1,122 @@
+{
+  "coverage": [
+    {
+      "evidence_ids": [
+        "ev_c478868f3b1b547e",
+        "ev_27940da4f69cadba",
+        "ev_1490018fc1286791"
+      ],
+      "note": "covered by a passage retrieved for this obligation",
+      "obligation_id": "adam_beta2_transformer",
+      "status": "covered"
+    }
+  ],
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "citeable": false,
+      "element_type": "corpus_search",
+      "evidence_id": "corpus_observation_identity_1",
+      "evidence_quality": "corpus_observation",
+      "location": "find_papers_by_identity",
+      "location_ref": "find_papers_by_identity",
+      "page": "metadata",
+      "paper_id": null,
+      "paper_version": "current_scope",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "find_papers_by_identity",
+      "section": "corpus_index",
+      "source_kind": "corpus_search",
+      "span_text": "{\"query\": {\"paper_id\": \"attention_is_all_you_need_2017\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Attention Is All You Need\"]}",
+      "supports_claim_ids": [],
+      "title": "Corpus candidate search"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_c478868f3b1b547e",
+      "evidence_quality": "verified",
+      "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "matched_anchor_id": "transformer_adam_training_params_span",
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.3 Optimizer",
+      "source_kind": "reading_element",
+      "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "footnote",
+      "evidence_id": "ev_27940da4f69cadba",
+      "evidence_quality": "verified",
+      "location": "reading_element_c399858f91e34e588b434a7fdee59305",
+      "location_ref": "reading_element_c399858f91e34e588b434a7fdee59305",
+      "matched_anchor_id": null,
+      "page": 4,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.2.2 Multi-Head Attention",
+      "source_kind": "reading_element",
+      "span_text": "<sup>4</sup>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1. Then their dot product, $\\begin{array} { r } { \\boldsymbol { q } \\cdot \\boldsymbol { k } = \\sum _ { i = 1 } ^ { d _ { k } } q _ { i } k _ { i } } \\end{array}$ , has mean 0 and variance $d _ { k }$",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "formula",
+      "evidence_id": "ev_1490018fc1286791",
+      "evidence_quality": "verified",
+      "location": "reading_element_3e392a94ede84f1ab3df8ad7644de00b",
+      "location_ref": "reading_element_3e392a94ede84f1ab3df8ad7644de00b",
+      "matched_anchor_id": null,
+      "page": 5,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.3 Position-wise Feed-Forward Networks",
+      "source_kind": "reading_element",
+      "span_text": "$$\n\\mathrm { F F N } ( x ) = \\operatorname* { m a x } ( 0 , x W _ { 1 } + b _ { 1 } ) W _ { 2 } + b _ { 2 }\\tag{2}\n$$",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_50ba2e59aacf",
+  "missing_evidence": [],
+  "question_id": "live_chat_50ba2e59aacf",
+  "rejected_items": []
+}

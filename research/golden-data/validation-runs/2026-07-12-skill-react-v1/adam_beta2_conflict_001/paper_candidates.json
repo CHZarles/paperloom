@@ -1,0 +1,36 @@
+[
+  {
+    "arxiv_id": "1412.6980",
+    "authors": [
+      "Diederik P. Kingma",
+      "Jimmy Ba"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_adam_2014",
+    "filename": null,
+    "paper_id": "adam_2014",
+    "preview": "",
+    "title": "Adam: A Method for Stochastic Optimization",
+    "venue": "ICLR",
+    "year": 2014
+  },
+  {
+    "arxiv_id": "1706.03762",
+    "authors": [
+      "Ashish Vaswani",
+      "Noam Shazeer"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+    "filename": null,
+    "paper_id": "attention_is_all_you_need_2017",
+    "preview": "",
+    "title": "Attention Is All You Need",
+    "venue": "NeurIPS",
+    "year": 2017
+  }
+]

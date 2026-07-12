@@ -1,0 +1,217 @@
+[
+  {
+    "claim_ids": [],
+    "decision_summary": "Executed 1 bounded retrieval round(s) with 3 corpus tool call(s).",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e",
+      "ev_27940da4f69cadba",
+      "ev_1490018fc1286791"
+    ],
+    "obligation_ids": [
+      "adam_beta2_transformer"
+    ],
+    "semantic_goal": "collect_exact_evidence",
+    "stage_name": "collect_evidence",
+    "status": "completed",
+    "tool_calls": [
+      {
+        "allowed": true,
+        "arguments": {
+          "paper_id": "attention_is_all_you_need_2017"
+        },
+        "result": {
+          "matches": [
+            {
+              "arxiv_id": "1706.03762",
+              "authors": [
+                "Ashish Vaswani",
+                "Noam Shazeer"
+              ],
+              "doi": null,
+              "filename": null,
+              "paper_id": "attention_is_all_you_need_2017",
+              "preview": "",
+              "title": "Attention Is All You Need",
+              "venue": "NeurIPS",
+              "year": 2017
+            }
+          ],
+          "status": "resolved"
+        },
+        "tool_call_id": "identity_1",
+        "tool_name": "find_papers_by_identity"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "paper_ids": [
+            "attention_is_all_you_need_2017"
+          ],
+          "query_text": "Adam optimizer β2 0.98",
+          "top_k": 3
+        },
+        "result": {
+          "coverage": "truncated",
+          "locations": [
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "section": "5.3 Optimizer",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "footnote",
+              "location_ref": "reading_element_c399858f91e34e588b434a7fdee59305",
+              "page": 4,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "<sup>4</sup>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1. Then their dot product, $\\begin{array} { r } { \\boldsymbol { q } \\cdot \\boldsymbol { k } = \\sum _ { i = 1 } ^ { d _ { k } } q _ { i } k _ { i } } \\end{array}$ , has mean 0 and variance $d _ { k }$",
+              "section": "3.2.2 Multi-Head Attention",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "formula",
+              "location_ref": "reading_element_3e392a94ede84f1ab3df8ad7644de00b",
+              "page": 5,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "$$\n\\mathrm { F F N } ( x ) = \\operatorname* { m a x } ( 0 , x W _ { 1 } + b _ { 1 } ) W _ { 2 } + b _ { 2 }\\tag{2}\n$$",
+              "section": "3.3 Position-wise Feed-Forward Networks",
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "matched_count": 75,
+          "query_text": "Adam optimizer β2 0.98",
+          "returned_count": 3
+        },
+        "tool_call_id": "location_initial_1",
+        "tool_name": "find_reading_locations"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "location_refs": [
+            "reading_element_260d1b8af78b454dbe0f610483436730",
+            "reading_element_c399858f91e34e588b434a7fdee59305",
+            "reading_element_3e392a94ede84f1ab3df8ad7644de00b"
+          ]
+        },
+        "result": {
+          "items": [
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_c478868f3b1b547e",
+              "evidence_quality": "verified",
+              "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "matched_anchor_id": "transformer_adam_training_params_span",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.3 Optimizer",
+              "source_kind": "reading_element",
+              "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "footnote",
+              "evidence_id": "ev_27940da4f69cadba",
+              "evidence_quality": "verified",
+              "location": "reading_element_c399858f91e34e588b434a7fdee59305",
+              "location_ref": "reading_element_c399858f91e34e588b434a7fdee59305",
+              "matched_anchor_id": null,
+              "page": 4,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "3.2.2 Multi-Head Attention",
+              "source_kind": "reading_element",
+              "span_text": "<sup>4</sup>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1. Then their dot product, $\\begin{array} { r } { \\boldsymbol { q } \\cdot \\boldsymbol { k } = \\sum _ { i = 1 } ^ { d _ { k } } q _ { i } k _ { i } } \\end{array}$ , has mean 0 and variance $d _ { k }$",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "formula",
+              "evidence_id": "ev_1490018fc1286791",
+              "evidence_quality": "verified",
+              "location": "reading_element_3e392a94ede84f1ab3df8ad7644de00b",
+              "location_ref": "reading_element_3e392a94ede84f1ab3df8ad7644de00b",
+              "matched_anchor_id": null,
+              "page": 5,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "3.3 Position-wise Feed-Forward Networks",
+              "source_kind": "reading_element",
+              "span_text": "$$\n\\mathrm { F F N } ( x ) = \\operatorname* { m a x } ( 0 , x W _ { 1 } + b _ { 1 } ) W _ { 2 } + b _ { 2 }\\tag{2}\n$$",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "missing_location_refs": []
+        },
+        "tool_call_id": "read_initial",
+        "tool_name": "read_locations"
+      }
+    ]
+  },
+  {
+    "claim_ids": [
+      "c_adam_beta2_transformer"
+    ],
+    "decision_summary": "Constructed 1 evidence-linked atomic claim(s).",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [
+      "adam_beta2_transformer"
+    ],
+    "semantic_goal": "extract_atomic_facts",
+    "stage_name": "construct_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "c_adam_beta2_transformer"
+    ],
+    "decision_summary": "Verified 1 atomic claim(s): 1 kept, 0 rewritten, 0 dropped.",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "verify_exact_values",
+    "stage_name": "verify_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "c_adam_beta2_transformer"
+    ],
+    "decision_summary": "Rendered only verified claims.",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "render_verified_claims",
+    "stage_name": "render_answer",
+    "status": "completed",
+    "tool_calls": []
+  }
+]

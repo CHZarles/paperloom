@@ -1,0 +1,26 @@
+{
+  "actionability": "blocking",
+  "ambiguity_status": "needs_user_choice",
+  "answer_type": "ambiguity_clarification",
+  "constraints": {
+    "coverage_assumption": "The user is asking for the meaning of RLHF while the previous flavor-choice offer is still open. Resolve both in one clarification turn: briefly define RLHF and re-offer the same single-choice options (overview / benchmarks / methods) so the recommendation can proceed.",
+    "task": {
+      "object": "papers",
+      "topic": "RLHF",
+      "verb": "recommend"
+    },
+    "topic": "RLHF"
+  },
+  "dataset_mentions": [],
+  "entities": [],
+  "intent_id": "intent_live_chat_3fbaade565e7",
+  "method_mentions": [],
+  "normalized_question": "Explain the meaning of RLHF and confirm RLHF as the recommendation topic with the user's preferred paper type (overview / benchmarks / methods).",
+  "paper_mentions": [],
+  "primary_paradigm": "ambiguity_resolution",
+  "question_id": "live_chat_3fbaade565e7",
+  "raw_question": "what is the meaning of RLHF",
+  "required_capabilities": [],
+  "required_evidence_types": [],
+  "requires_corpus_observation": false
+}

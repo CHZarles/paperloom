@@ -1,0 +1,193 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "comparison_matrix",
+  "constraints": {
+    "coverage_assumption": "The two selected papers are: position 1 = \"A Survey on Evaluation of LLM-based Agents\" (8b9e2f64d565137ca85ae75029e77fff), position 2 = \"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\" (726cfbbd5683cdfabbf4c24e2bf8f0b2). The user is asking how the second extends / narrows scope of the first.",
+    "ground": "selected evidence",
+    "papers": [
+      "8b9e2f64d565137ca85ae75029e77fff",
+      "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+    ],
+    "task": {
+      "object": "how paper 2 builds on paper 1",
+      "verb": "explain"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "8b9e2f64d565137ca85ae75029e77fff",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+    "scope",
+    "taxonomy",
+    "benchmarks",
+    "frameworks",
+    "methodology",
+    "end-to-end vs component perspective",
+    "trends"
+  ],
+  "intent_id": "intent_live_chat_59fa12a64872",
+  "method_mentions": [],
+  "normalized_question": "Explain how \"Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey\" (second paper) builds on \"A Survey on Evaluation of LLM-based Agents\" (first paper), grounded in the selected evidence. The explanation should cover how the second extends/specializes the first in scope, taxonomy, perspective, benchmarks, frameworks, methodology, and trends, and is grounded in the comparison_matrix obligations already established for the active deep_comparison task.",
+  "obligations": [
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 scope for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_scope",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_scope",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff scope for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_scope",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 taxonomy for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_taxonomy",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_taxonomy",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff taxonomy for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_taxonomy",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 benchmarks for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_benchmarks",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_benchmarks",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff benchmarks for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_benchmarks",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 frameworks for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_frameworks",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_frameworks",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff frameworks for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_frameworks",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 methodology for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_methodology",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_methodology",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff methodology for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_methodology",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 end to end vs component perspective for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_end_to_end_vs_component_perspective",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_end_to_end_vs_component_perspective",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff end to end vs component perspective for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_end_to_end_vs_component_perspective",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends",
+      "description": "Determine 726cfbbd5683cdfabbf4c24e2bf8f0b2 trends for 726cfbbd5683cdfabbf4c24e2bf8f0b2 from source evidence.",
+      "id": "726cfbbd5683cdfabbf4c24e2bf8f0b2_trends",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "8b9e2f64d565137ca85ae75029e77fff_trends",
+      "description": "Determine 8b9e2f64d565137ca85ae75029e77fff trends for 8b9e2f64d565137ca85ae75029e77fff from source evidence.",
+      "id": "8b9e2f64d565137ca85ae75029e77fff_trends",
+      "kind": "comparison_cell",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "8b9e2f64d565137ca85ae75029e77fff",
+    "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+  ],
+  "primary_paradigm": "deep_comparison",
+  "question_id": "live_chat_59fa12a64872",
+  "raw_question": "How does the second build on the first?",
+  "required_capabilities": [
+    "paper content extraction",
+    "cross-paper comparison",
+    "lineage / specialization reasoning"
+  ],
+  "required_evidence_types": [
+    "abstract",
+    "introduction",
+    "section content",
+    "taxonomy structure"
+  ],
+  "requires_corpus_observation": true
+}

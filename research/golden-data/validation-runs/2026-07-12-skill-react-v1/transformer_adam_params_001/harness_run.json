@@ -1,0 +1,271 @@
+{
+  "case_id": "transformer_adam_params_001",
+  "citation_validation": {
+    "cited_evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-12T14:25:51Z",
+  "diagnostics": {
+    "completion_tokens": 562,
+    "duration_ms": 15566,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 5,
+    "model_latency_ms": 15532,
+    "prompt_tokens": 17877,
+    "skills_used": [],
+    "tool_call_count": 3,
+    "total_tokens": 18439
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_c478868f3b1b547e",
+        "evidence_quality": "verified",
+        "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+        "matched_anchor_id": "transformer_adam_training_params_span",
+        "page": 7,
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5.3 Optimizer",
+        "source_kind": "reading_element",
+        "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_e14469c7ef18",
+    "missing_evidence": [],
+    "question_id": "live_chat_e14469c7ef18",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_e14469c7ef18",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "fields": {},
+    "markdown": "The original Transformer paper (\"Attention Is All You Need\", Vaswani et al., 2017) used the Adam optimizer with the following hyperparameters in §5.3 Optimizer:\n\n- **β₁ = 0.9**\n- **β₂ = 0.98**\n- **ε = 10⁻⁹**\n\nNotably, β₂ was set higher than the default 0.999 typically used in Adam.[1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7",
+    "outcome": "answered",
+    "question_id": "live_chat_e14469c7ef18",
+    "status": "COMPLETED",
+    "summary": "The original Transformer paper (\"Attention Is All You Need\", Vaswani et al., 2017) used the Adam optimizer with the following hyperparameters in §5.3 Optimizer:\n\n- **β₁ = 0.9**\n- **β₂ = 0.98**\n- **ε = 10⁻⁹**\n\nNotably, β₂ was set higher than the default 0.999 typically used in Adam.[1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7"
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "selected_paper_ids": [
+      "attention_is_all_you_need_2017"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "1706.03762",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "filename": null,
+      "paper_id": "attention_is_all_you_need_2017",
+      "preview": "",
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    }
+  ],
+  "question_id": "transformer_adam_params_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "title": "Attention Is All You Need"
+      },
+      "result": {
+        "matches": [
+          {
+            "arxiv_id": "1706.03762",
+            "authors": [
+              "Ashish Vaswani",
+              "Noam Shazeer"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "attention_is_all_you_need_2017",
+            "preview": "",
+            "title": "Attention Is All You Need",
+            "venue": "NeurIPS",
+            "year": 2017
+          }
+        ],
+        "status": "resolved"
+      },
+      "tool_call_id": "call_019f56b82e7d76838b91d0a7",
+      "tool_name": "find_papers_by_identity"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "attention_is_all_you_need_2017"
+        ],
+        "query_text": "Adam beta1 beta2 epsilon optimizer"
+      },
+      "result": {
+        "coverage": "complete",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+            "section": "5.3 Optimizer",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "heading",
+            "location_ref": "reading_element_d05620e807ac4f3b8abbab6412407e22",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "5.3 Optimizer",
+            "section": "unsectioned",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "formula",
+            "location_ref": "reading_element_476961f4924c482bb6a81d89bd4c9026",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "$$\nl r a t e = d _ { \\mathrm { m o d e l } } ^ { - 0 . 5 } \\cdot \\mathrm { m i n } ( s t e p _ { - } n u m ^ { - 0 . 5 } , s t e p _ { - } n u m \\cdot w a r m u p _ { - } s t e p s ^ { - 1 . 5 } )\\tag{3}\n$$",
+            "section": "5.3 Optimizer",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+            "section": "5.3 Optimizer",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+            "page": 8,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Label Smoothing During training, we employed label smoothing of value $\\epsilon _ { l s } = 0 . 1 [ 3 6 ]$ . This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.",
+            "section": "5.4 Regularization",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "table",
+            "location_ref": "table_ref_bf2cdba7358444b48e9facbc784b9668",
+            "page": 9,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.\n| $N$ $d _ { \\mathrm { m o d e l } }$ | $d _ { \\mathrm { f f } }$ | h | $d _ { k }$ | $d _ { v }$ | $P _ { d r o p }$ | $\\epsilon _ { l s }$ | train steps | PPL (dev) | BLEU (d",
+            "section": "6.2 Model Variations",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "table",
+            "location_ref": "table-110",
+            "page": 9,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "Caption: Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.\n$N$ $d _ { \\mathrm { m o d e l } }$ $d _ { \\mathrm { f f } }$ h $d _ { k }$ $d _ { v }$ $P _ { d r o p }$ $\\epsilon _ { l s }$ train steps PPL (dev) BLEU (dev) params ",
+            "section": "6.2 Model Variations",
+            "title": "Attention Is All You Need"
+          },
+          {
+            "element_type": "formula",
+            "location_ref": "formula-92",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "preview": "$$\nl r a t e = d _ { \\mathrm { m o d e l } } ^ { - 0 . 5 } \\cdot \\mathrm { m i n } ( s t e p _ { - } n u m ^ { - 0 . 5 } , s t e p _ { - } n u m \\cdot w a r m u p _ { - } s t e p s ^ { - 1 . 5 } )\\tag{3}\n$$",
+            "section": "5.3 Optimizer",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "matched_count": 8,
+        "query_text": "Adam beta1 beta2 epsilon optimizer",
+        "returned_count": 8
+      },
+      "tool_call_id": "call_019f56b835967171ae90b3eb",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "reading_element_260d1b8af78b454dbe0f610483436730"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_c478868f3b1b547e",
+            "evidence_quality": "verified",
+            "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+            "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+            "page": 7,
+            "paper_id": "attention_is_all_you_need_2017",
+            "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "5.3 Optimizer",
+            "source_kind": "reading_element",
+            "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+            "supports_claim_ids": [],
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_019f56b83e7e72339338eb65",
+      "tool_name": "read_locations"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_e14469c7ef18",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "fields": {},
+    "markdown": "The original Transformer paper (\"Attention Is All You Need\", Vaswani et al., 2017) used the Adam optimizer with the following hyperparameters in §5.3 Optimizer:\n\n- **β₁ = 0.9**\n- **β₂ = 0.98**\n- **ε = 10⁻⁹**\n\nNotably, β₂ was set higher than the default 0.999 typically used in Adam.[1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7",
+    "outcome": "answered",
+    "question_id": "live_chat_e14469c7ef18",
+    "status": "COMPLETED",
+    "summary": "The original Transformer paper (\"Attention Is All You Need\", Vaswani et al., 2017) used the Adam optimizer with the following hyperparameters in §5.3 Optimizer:\n\n- **β₁ = 0.9**\n- **β₂ = 0.98**\n- **ε = 10⁻⁹**\n\nNotably, β₂ was set higher than the default 0.999 typically used in Adam.[1]\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_live_chat_e14469c7ef18",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-12T14:25:38Z",
+  "status": "COMPLETED"
+}

@@ -1,0 +1,191 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "citation reference",
+    "architecture description",
+    "pre-training objective"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "bert_cites_attention",
+      "description": "Does BERT explicitly cite \"Attention Is All You Need\" as the source of its core architecture (the Transformer)?",
+      "id": "edge_attn_bert",
+      "kind": "relation",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "inherited_components",
+      "description": "What is the cited technical relationship: which components (multi-head self-attention, positional encoding, encoder/decoder structure, residual + layer norm, feed-forward sublayer) does BERT inherit from the Transformer described in Attention Is All You Need?",
+      "id": "edge_meaning",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018",
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_adaptations",
+      "description": "How does BERT adapt the Transformer architecture — specifically, BERT uses only the encoder stack (no decoder), uses bidirectional context, and is pre-trained with Masked Language Modeling and Next Sentence Prediction rather than the original seq2seq translation objective?",
+      "id": "edge_adaptation",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_architecture",
+      "description": "What architecture does Attention Is All You Need introduce: encoder-decoder with multi-head self-attention, scaled dot-product attention, positional encoding, and the specific notation/components that BERT later reuses?",
+      "id": "attn_architecture_facts",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "association_influence_genealogy",
+  "plan_id": "plan_live_chat_bfd4ff883d07",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "edge_attn_bert"
+          ],
+          "query_id": "q_bert_cites_transformer",
+          "query_text": "Vaswani et al. 2017 Attention Is All You Need cited Transformer encoder",
+          "section_query": null,
+          "target_ids": [
+            "t_bert"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "edge_meaning"
+          ],
+          "query_id": "q_bert_inherited_components",
+          "query_text": "multi-head self-attention positional encoding feed-forward layer norm",
+          "section_query": null,
+          "target_ids": [
+            "t_bert"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "edge_adaptation"
+          ],
+          "query_id": "q_bert_adaptations",
+          "query_text": "encoder-only bidirectional masked language model next sentence prediction",
+          "section_query": null,
+          "target_ids": [
+            "t_bert"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "attn_architecture_facts"
+          ],
+          "query_id": "q_attn_architecture",
+          "query_text": "multi-head scaled dot-product attention positional encoding encoder decoder",
+          "section_query": null,
+          "target_ids": [
+            "t_attn"
+          ],
+          "top_k": 5
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "edge_attn_bert",
+            "edge_meaning",
+            "edge_adaptation"
+          ],
+          "discovery_query": "",
+          "paper_id": "bert_2018",
+          "target_id": "t_bert",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "attn_architecture_facts",
+            "edge_meaning"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "t_attn",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_bfd4ff883d07",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "resolve_nodes",
+      "stage_name": "resolve_nodes",
+      "step_id": "stage_1_resolve_nodes",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "resolve_nodes"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_edge_evidence",
+      "stage_name": "collect_edge_evidence",
+      "step_id": "stage_2_collect_edge_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_edge_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "state_relationships",
+      "stage_name": "state_relationships",
+      "step_id": "stage_3_state_relationships",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "state_relationships"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_edges",
+      "stage_name": "verify_edges",
+      "step_id": "stage_4_verify_edges",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_edges"
+    }
+  ],
+  "target_entities": [
+    "attention_is_all_you_need_2017",
+    "bert_2018"
+  ]
+}

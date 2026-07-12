@@ -1,0 +1,61 @@
+{
+  "claims": [
+    {
+      "claim_id": "aiayn_arch_role",
+      "claim_type": "architecture",
+      "obligation_ids": [
+        "attention_is_all_you_need_2017_architecture_role"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_7f19acb3f716bc64",
+        "ev_71ef1901f3139ae8",
+        "ev_dd592d9c82214af0",
+        "ev_904885cb5f6b4082"
+      ],
+      "text": "The original Transformer is an encoder-decoder architecture with a stack of N=6 identical encoder layers and a stack of N=6 identical decoder layers, where each encoder layer has a multi-head self-attention sub-layer and a position-wise feed-forward network, and each decoder layer additionally performs multi-head attention over the encoder stack.",
+      "verification_reason": "Encoder N=6 stack, decoder N=6 stack with cross-attention, FFN sub-layers, and encoder-decoder framing are all directly supported by the four cited passages.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "bert_arch_role",
+      "claim_type": "architecture",
+      "obligation_ids": [
+        "bert_2018_architecture_role"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_3540835408466c6e",
+        "ev_bdb5cc5caf5772fe",
+        "ev_1d621919718ca361",
+        "ev_f189c6c5f4214d2e"
+      ],
+      "text": "BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation from Vaswani et al. (2017), and BERT uses the Transformer self-attention mechanism to unify text-pair encoding with what is effectively bidirectional cross attention between two sentences.",
+      "verification_reason": "The passage states BERT uses self-attention to unify two stages and that this \"effectively includes bidirectional cross attention between two sentences.\" Rewording to \"what is effectively bidirectional cross attention\" preserves the passage's precise qualifier instead of asserting direct bidirectional cross attention.",
+      "verification_verdict": "rewrite"
+    },
+    {
+      "claim_id": "aiayn_dir",
+      "claim_type": "directionality",
+      "obligation_ids": [
+        "attention_is_all_you_need_2017_directionality"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_71ef1901f3139ae8",
+        "ev_1fa020e06b5649fa",
+        "ev_5a5633e888463cd3",
+        "ev_29a559db755fbd43"
+      ],
+      "text": "In the original Transformer, each position in the encoder self-attention can attend to all positions in the previous layer, while the decoder self-attention is modified to prevent positions from attending to subsequent positions, so predictions for position i depend only on known outputs at positions less than i.",
+      "verification_reason": "Encoder self-attention attending to all positions in the previous layer is stated in ev_1fa020e06b5649fa; decoder masking preventing subsequent positions and predictions depending only on outputs less than i is stated in ev_71ef1901f3139ae8. The cited background passages provide consistent context.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_3c0b4f837eae",
+  "question_id": "live_chat_3c0b4f837eae"
+}

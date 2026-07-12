@@ -1,0 +1,43 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "exact_fact",
+  "constraints": {
+    "coverage_assumption": "User selected the \"Transformer paper\" interpretation from the prior clarification.",
+    "source_paper": "attention_is_all_you_need_2017",
+    "task": {
+      "object": "Adam beta2 hyperparameter",
+      "verb": "extract"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "adam beta2"
+  ],
+  "intent_id": "intent_live_chat_50ba2e59aacf",
+  "method_mentions": [],
+  "normalized_question": "Extract the Adam beta2 hyperparameter value used in the Transformer paper \"Attention Is All You Need\".",
+  "obligations": [
+    {
+      "answer_field": "beta2",
+      "description": "What Adam beta2 (second moment decay) value is used in the Transformer paper \"Attention Is All You Need\"?",
+      "id": "adam_beta2_transformer",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "precision_fact_extraction",
+  "question_id": "live_chat_50ba2e59aacf",
+  "raw_question": "The Transformer value.",
+  "required_capabilities": [
+    "precision_fact_extraction"
+  ],
+  "required_evidence_types": [
+    "hyperparameter setting"
+  ],
+  "requires_corpus_observation": true
+}

@@ -1,0 +1,230 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "paper titles and topical focus",
+    "survey categorization of agent capabilities/benchmarks"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "scope",
+      "description": "What sub-area of 'LLM-based agents' the recommendations should cover (e.g., evaluation, multi-turn dialogue, tool use, planning, memory, multi-agent systems).",
+      "id": "scope_definition",
+      "kind": "recommendation",
+      "paper_scope": [],
+      "required": false
+    },
+    {
+      "answer_field": "in_corpus",
+      "description": "Whether each recommended paper is in the user-visible corpus (the two evaluation surveys) or only available as external knowledge, with reason grounded in evidence.",
+      "id": "corpus_in_stock",
+      "kind": "recommendation",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "corpus_coverage",
+      "description": "Whether the available corpus of two evaluation surveys is sufficient to ground 'important papers on LLM-based agents' as a general literature recommendation, vs. a narrower evaluation-focused recommendation.",
+      "id": "corpus_coverage_decision",
+      "kind": "corpus_boundary",
+      "paper_scope": [
+        "8b9e2f64d565137ca85ae75029e77fff",
+        "726cfbbd5683cdfabbf4c24e2bf8f0b2"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "context_specific_brainstorming",
+  "plan_id": "plan_live_chat_91b660e4455c",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph",
+            "heading"
+          ],
+          "obligation_ids": [
+            "scope_definition",
+            "corpus_in_stock",
+            "corpus_coverage_decision"
+          ],
+          "query_id": "eval_survey_taxonomy",
+          "query_text": "taxonomy of agent capabilities and evaluation benchmarks",
+          "section_query": null,
+          "target_ids": [
+            "eval_survey"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "corpus_in_stock",
+            "corpus_coverage_decision"
+          ],
+          "query_id": "eval_survey_referenced",
+          "query_text": "important agent frameworks and benchmark papers referenced",
+          "section_query": null,
+          "target_ids": [
+            "eval_survey"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "heading"
+          ],
+          "obligation_ids": [
+            "scope_definition"
+          ],
+          "query_id": "eval_survey_tool_planning_memory",
+          "query_text": "tool use planning memory multi-agent dimensions",
+          "section_query": null,
+          "target_ids": [
+            "eval_survey"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "heading"
+          ],
+          "obligation_ids": [
+            "scope_definition",
+            "corpus_in_stock"
+          ],
+          "query_id": "multiturn_survey_scope",
+          "query_text": "multi-turn dialogue agent evaluation scope and taxonomy",
+          "section_query": null,
+          "target_ids": [
+            "multiturn_survey"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "list"
+          ],
+          "obligation_ids": [
+            "corpus_in_stock",
+            "corpus_coverage_decision"
+          ],
+          "query_id": "multiturn_survey_referenced",
+          "query_text": "important multi-turn agent papers and benchmarks cited",
+          "section_query": null,
+          "target_ids": [
+            "multiturn_survey"
+          ],
+          "top_k": 5
+        },
+        {
+          "element_types": [
+            "paragraph",
+            "heading"
+          ],
+          "obligation_ids": [
+            "corpus_coverage_decision"
+          ],
+          "query_id": "eval_survey_conclusion_limitations",
+          "query_text": "survey scope limitations open challenges coverage of LLM agents",
+          "section_query": null,
+          "target_ids": [
+            "eval_survey",
+            "multiturn_survey"
+          ],
+          "top_k": 4
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "scope_definition",
+            "corpus_in_stock",
+            "corpus_coverage_decision"
+          ],
+          "discovery_query": "",
+          "paper_id": "8b9e2f64d565137ca85ae75029e77fff",
+          "target_id": "eval_survey",
+          "title": "A Survey on Evaluation of LLM-based Agents"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "scope_definition",
+            "corpus_in_stock",
+            "corpus_coverage_decision"
+          ],
+          "discovery_query": "",
+          "paper_id": "726cfbbd5683cdfabbf4c24e2bf8f0b2",
+          "target_id": "multiturn_survey",
+          "title": "Evaluating LLM-based Agents for Multi-Turn Conversations: A Survey"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    }
+  ],
+  "question_id": "live_chat_91b660e4455c",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "resolve_selection_constraints",
+      "stage_name": "resolve_selection_constraints",
+      "step_id": "stage_1_resolve_selection_constraints",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "resolve_selection_constraints"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_candidate_evidence",
+      "stage_name": "collect_candidate_evidence",
+      "step_id": "stage_2_collect_candidate_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_candidate_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "select_bounded_options",
+      "stage_name": "select_bounded_options",
+      "step_id": "stage_3_select_bounded_options",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "select_bounded_options"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_recommendations",
+      "stage_name": "verify_recommendations",
+      "step_id": "stage_4_verify_recommendations",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_recommendations"
+    }
+  ],
+  "target_entities": [
+    "",
+    ""
+  ]
+}

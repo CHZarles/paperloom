@@ -1,0 +1,242 @@
+{
+  "actionability": "non_blocking",
+  "expected_evidence_types": [
+    "direct quote from paper on Transformer usage",
+    "evidence of bidirectional (non-masked) self-attention"
+  ],
+  "hard_negative_policy": [],
+  "obligations": [
+    {
+      "answer_field": "bert_transformer_role",
+      "description": "What does the BERT paper state about how it uses the Transformer (encoder vs decoder)? Quote the relevant sentence(s).",
+      "id": "bert_transformer_role_claim",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "bert_architecture_components",
+      "description": "What architectural components of BERT are sourced from Transformer (e.g., multi-head self-attention, position-wise feed-forward, sinusoidal position embeddings, residual connections, layer norm)?",
+      "id": "bert_architecture_components",
+      "kind": "fact",
+      "paper_scope": [
+        "bert_2018"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "transformer_encoder_decoder_definition",
+      "description": "How does the original Transformer paper define the encoder stack and the decoder stack (what distinguishes them: bidirectional self-attention vs masked self-attention plus cross-attention)?",
+      "id": "transformer_encoder_vs_decoder_definition",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paradigm": "precision_fact_extraction",
+  "plan_id": "plan_live_chat_e65d6f637327",
+  "query_rounds": [
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "bert_transformer_role_claim"
+          ],
+          "query_id": "Q1",
+          "query_text": "Transformer encoder bidirectional BERT pre-training",
+          "section_query": null,
+          "target_ids": [
+            "T1"
+          ],
+          "top_k": 3
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "bert_architecture_components"
+          ],
+          "query_id": "Q2",
+          "query_text": "multi-head attention feed-forward layer normalization residual",
+          "section_query": null,
+          "target_ids": [
+            "T1"
+          ],
+          "top_k": 3
+        },
+        {
+          "element_types": [],
+          "obligation_ids": [
+            "transformer_encoder_vs_decoder_definition"
+          ],
+          "query_id": "Q3",
+          "query_text": null,
+          "section_query": null,
+          "target_ids": [],
+          "top_k": null
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "bert_transformer_role_claim",
+            "bert_architecture_components"
+          ],
+          "discovery_query": "",
+          "paper_id": "bert_2018",
+          "target_id": "T1",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "transformer_encoder_vs_decoder_definition"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "T2",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "initial"
+    },
+    {
+      "evidence_queries": [
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "bert_transformer_role_claim"
+          ],
+          "query_id": "Q1",
+          "query_text": "Bidirectional Encoder Representations from Transformers",
+          "section_query": null,
+          "target_ids": [
+            "T1"
+          ],
+          "top_k": 3
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "bert_architecture_components"
+          ],
+          "query_id": "Q2",
+          "query_text": "multi-layer bidirectional Transformer encoder based on the original implementation",
+          "section_query": null,
+          "target_ids": [
+            "T1"
+          ],
+          "top_k": 3
+        },
+        {
+          "element_types": [
+            "paragraph"
+          ],
+          "obligation_ids": [
+            "transformer_encoder_vs_decoder_definition"
+          ],
+          "query_id": "Q3",
+          "query_text": "The encoder is composed of a stack of N identical layers",
+          "section_query": null,
+          "target_ids": [
+            "T2"
+          ],
+          "top_k": 3
+        }
+      ],
+      "paper_targets": [
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "bert_transformer_role_claim",
+            "bert_architecture_components"
+          ],
+          "discovery_query": "",
+          "paper_id": "bert_2018",
+          "target_id": "T1",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "arxiv_id": "",
+          "browse_all": false,
+          "coverage_obligation_ids": [
+            "transformer_encoder_vs_decoder_definition"
+          ],
+          "discovery_query": "",
+          "paper_id": "attention_is_all_you_need_2017",
+          "target_id": "T2",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "reuse_evidence": [],
+      "round": "retry"
+    }
+  ],
+  "question_id": "live_chat_e65d6f637327",
+  "required_recall_targets": [],
+  "stop_conditions": [
+    "all_required_obligations_verified",
+    "precise_evidence_gap"
+  ],
+  "strategy_steps": [
+    {
+      "allowed_tools": [],
+      "semantic_goal": "define_fact_slots",
+      "stage_name": "define_fact_slots",
+      "step_id": "stage_1_define_fact_slots",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "define_fact_slots"
+    },
+    {
+      "allowed_tools": [
+        "search_paper_candidates",
+        "find_papers_by_identity",
+        "find_reading_locations",
+        "read_locations",
+        "get_citation_edges"
+      ],
+      "semantic_goal": "collect_exact_evidence",
+      "stage_name": "collect_exact_evidence",
+      "step_id": "stage_2_collect_exact_evidence",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "collect_exact_evidence"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "extract_atomic_facts",
+      "stage_name": "extract_atomic_facts",
+      "step_id": "stage_3_extract_atomic_facts",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "extract_atomic_facts"
+    },
+    {
+      "allowed_tools": [],
+      "semantic_goal": "verify_exact_values",
+      "stage_name": "verify_exact_values",
+      "step_id": "stage_4_verify_exact_values",
+      "stop_condition": "semantic_obligation_satisfied",
+      "strategy": "verify_exact_values"
+    }
+  ],
+  "target_entities": [
+    "bert_2018",
+    "attention_is_all_you_need_2017"
+  ]
+}

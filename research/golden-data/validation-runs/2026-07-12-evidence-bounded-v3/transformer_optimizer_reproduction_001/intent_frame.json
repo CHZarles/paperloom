@@ -1,0 +1,81 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "exact_fact",
+  "constraints": {
+    "coverage_assumption": "User wants optimizer hyperparameters strictly as stated in \"Attention Is All You Need\" (2017), not from the Adam paper's generic defaults.",
+    "do_not_substitute_defaults": "true",
+    "reproduction_strictness": "exact values as stated in paper",
+    "target_paper": "Attention Is All You Need (2017)",
+    "task": {
+      "object": "optimizer configuration (optimizer name, beta1, beta2, epsilon)",
+      "verb": "extract"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "attention_is_all_you_need_2017",
+    "optimizer name",
+    "beta1",
+    "beta2",
+    "epsilon"
+  ],
+  "intent_id": "intent_live_chat_3032d4455f59",
+  "method_mentions": [],
+  "normalized_question": "Build the optimizer portion of a strict reproduction checklist for \"Attention Is All You Need\": extract the exact optimizer name, beta1, beta2, and epsilon values as reported in the paper, without substituting generic Adam defaults.",
+  "obligations": [
+    {
+      "answer_field": "optimizer",
+      "description": "What optimizer name is used in Attention Is All You Need (e.g., Adam, Adam with warmup)?",
+      "id": "opt_name",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "beta1",
+      "description": "What is the beta1 value used for the optimizer in Attention Is All You Need?",
+      "id": "opt_beta1",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "beta2",
+      "description": "What is the beta2 value used for the optimizer in Attention Is All You Need?",
+      "id": "opt_beta2",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    },
+    {
+      "answer_field": "epsilon",
+      "description": "What is the epsilon value used for the optimizer in Attention Is All You Need?",
+      "id": "opt_epsilon",
+      "kind": "fact",
+      "paper_scope": [
+        "attention_is_all_you_need_2017"
+      ],
+      "required": true
+    }
+  ],
+  "paper_mentions": [
+    "attention_is_all_you_need_2017"
+  ],
+  "primary_paradigm": "precision_fact_extraction",
+  "question_id": "live_chat_3032d4455f59",
+  "raw_question": "Build the optimizer portion of a strict reproduction checklist for Attention Is All You Need: give the optimizer, beta1, beta2, and epsilon exactly as used in the paper, without substituting generic Adam defaults.",
+  "required_capabilities": [
+    "precision_fact_extraction"
+  ],
+  "required_evidence_types": [
+    "optimizer hyperparameter statement from paper text"
+  ],
+  "requires_corpus_observation": true
+}

@@ -34,7 +34,7 @@ No new tools are added in this spec.
 
 ## Trace Schema
 
-`ProductReadingTraceRecorder` must write `productStateItems` into `PRODUCT_READING_REACT_TURN` trace JSON.
+`ProductReadingTraceRecorder` must write `productStateItems` and the canonical research trace into `PRODUCT_READING_REACT_TURN` trace JSON.
 
 Rules:
 
@@ -42,14 +42,15 @@ Rules:
 - Null result items become `[]`.
 - Items are copied into trace JSON so later mutation of the `ProductTurnResult` list does not mutate the submitted trace payload.
 - The recorder does not promote Product State Items into evidence.
-- Trace version bumps from `3` to `4`.
+- Trace version is `5`.
+- `researchTrace` is always present and follows `research-harness-artifacts/v1`: `intentFrame`, `retrievalPlan`, `evidenceLedger`, `claimGraph`, `reasoningArtifacts`, `verificationPass`, and `researchAnswer`.
 
 Expected trace excerpt:
 
 ```json
 {
   "artifactType": "PRODUCT_READING_REACT_TURN",
-  "traceVersion": 4,
+  "traceVersion": 5,
   "toolCalls": [
     { "toolName": "list_papers" }
   ],
@@ -64,6 +65,16 @@ Expected trace excerpt:
       "title": "Agentic Eval Benchmark"
     }
   ],
+  "researchTrace": {
+    "schemaVersion": "research-harness-artifacts/v1",
+    "intentFrame": {},
+    "retrievalPlan": {},
+    "evidenceLedger": {},
+    "claimGraph": {},
+    "reasoningArtifacts": [],
+    "verificationPass": { "valid": true },
+    "researchAnswer": {}
+  },
   "references": []
 }
 ```
@@ -93,7 +104,9 @@ Case JSONL fields:
   "requiredProductStateKinds": ["READING_PAPER_CHOICE"],
   "requiredProductStateSourceTools": ["list_papers"],
   "requiresReference": false,
-  "expectedResultStatus": "COMPLETED"
+  "expectedResultStatus": "COMPLETED",
+  "requiresResearchTrace": true,
+  "requiresVerifiedResearchTrace": true
 }
 ```
 
@@ -106,6 +119,8 @@ Matching rules:
 - Every `requiredProductStateKinds[]` value must appear in `productStateItems[].kind`.
 - Every `requiredProductStateSourceTools[]` value must appear in `productStateItems[].sourceTool`.
 - If `requiresReference=true`, `references[]` must be non-empty.
+- If `requiresResearchTrace=true`, `researchTrace` must include the full canonical artifact order.
+- If `requiresVerifiedResearchTrace=true`, `researchTrace.verificationPass.valid` must be `true`.
 
 Output:
 

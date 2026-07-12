@@ -1,0 +1,23 @@
+{
+  "answer_id": "answer_live_chat_257cfe464634",
+  "answer_type": "multi_hop_chain",
+  "cited_claim_ids": [
+    "hop1_gpt3_extends_gpt2",
+    "hop2_gpt2_cites_transformer"
+  ],
+  "cited_evidence_ids": [
+    "ev_38e0df75f5c1dc48",
+    "ev_df9905f582fb729a"
+  ],
+  "fields": {},
+  "markdown": "1. Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded sparse attention patterns. [1]\n2. Hop 2 establishes that GPT-2 cites \"Attention Is All You Need\" as the source of its Transformer architecture: the GPT-2 paper references self-attention architectures like the Transformer (Vaswani et al., 2017) as providing significant improvements in the expressiveness of models computing conditional probabilities. [2]\n\nSources\n[1] Language Models are Few-Shot Learners, 2.1 Model and Architectures, p. 8\n[2] Language Models are Unsupervised Multitask Learners, 2. Approach, p. 2",
+  "outcome": "answered",
+  "question_id": "live_chat_257cfe464634",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_257cfe464634"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded spars",
+  "verification_id": "verification_live_chat_257cfe464634"
+}

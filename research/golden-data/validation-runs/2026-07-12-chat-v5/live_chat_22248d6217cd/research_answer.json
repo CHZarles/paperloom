@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_22248d6217cd",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Got it — PPO is the reinforcement learning algorithm most commonly used inside the RLHF fine-tuning step. Before I pull papers, one quick check:",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_22248d6217cd",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "Got it — PPO is the reinforcement learning algorithm most commonly used inside the RLHF fine-tuning step. Before I pull papers, one quick check:",
+  "verification_id": "verification_live_chat_22248d6217cd"
+}

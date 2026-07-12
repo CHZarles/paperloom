@@ -1,0 +1,77 @@
+{
+  "case_id": "bert_vs_transformer_comparison_001",
+  "claim_graph": {
+    "claims": [],
+    "edges": [],
+    "question_id": "live_chat_a1c234fbe7b3"
+  },
+  "completed_at": "2026-07-12T05:44:47Z",
+  "diagnostics": {
+    "completion_tokens": 6316,
+    "duration_ms": 47754,
+    "error": "name 'Obligation' is not defined",
+    "finish_reason": "evidence_bounded_runtime_failed",
+    "model_call_count": 4,
+    "model_latency_ms": 47696,
+    "prompt_tokens": 21016,
+    "total_tokens": 27332
+  },
+  "evidence_ledger": {
+    "items": [],
+    "missing_evidence": [],
+    "question_id": "live_chat_a1c234fbe7b3",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_a1c234fbe7b3",
+    "answer_type": "unknown",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "name 'Obligation' is not defined",
+    "outcome": null,
+    "question_id": "live_chat_a1c234fbe7b3",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "FAILED_TECHNICAL",
+    "summary": "name 'Obligation' is not defined",
+    "verification_id": "verification_live_chat_a1c234fbe7b3"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "primary_paradigm": "unknown",
+    "question_id": "live_chat_a1c234fbe7b3"
+  },
+  "memory_update": {},
+  "question_id": "bert_vs_transformer_comparison_001",
+  "reasoning_artifacts": [],
+  "research_answer": {
+    "answer_id": "answer_live_chat_a1c234fbe7b3",
+    "answer_type": "unknown",
+    "cited_claim_ids": [],
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "name 'Obligation' is not defined",
+    "outcome": null,
+    "question_id": "live_chat_a1c234fbe7b3",
+    "reasoning_artifact_ids": [],
+    "sections": [],
+    "status": "FAILED_TECHNICAL",
+    "summary": "name 'Obligation' is not defined",
+    "verification_id": "verification_live_chat_a1c234fbe7b3"
+  },
+  "result_status": "FAILED_TECHNICAL",
+  "retrieval_plan": {
+    "question_id": "live_chat_a1c234fbe7b3",
+    "strategy_steps": []
+  },
+  "run_id": "run_live_chat_a1c234fbe7b3",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [],
+  "started_at": "2026-07-12T05:44:13Z",
+  "status": "FAILED_TECHNICAL",
+  "verification_pass": {
+    "question_id": "live_chat_a1c234fbe7b3",
+    "unsupported_claim_count": 0
+  }
+}

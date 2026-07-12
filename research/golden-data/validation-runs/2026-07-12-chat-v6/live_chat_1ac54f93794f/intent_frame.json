@@ -1,0 +1,49 @@
+{
+  "actionability": "non_blocking",
+  "ambiguity_status": "unambiguous",
+  "answer_type": "constraint_filter",
+  "constraints": {
+    "answer_shape": "constraint_filter",
+    "coverage_assumption": "User constraint set is minimal: only \"efficient inference\" for LLMs is specified. No further filters (hardware, quantization-only, latency vs. throughput, open vs. closed model, domain) should be invented; recommendations span complementary efficient-inference techniques.",
+    "max_items": "5",
+    "paradigm": "context_specific_brainstorming",
+    "task": {
+      "object": "efficient inference papers for LLMs",
+      "verb": "recommend"
+    }
+  },
+  "dataset_mentions": [],
+  "entities": [
+    "paper titles and venues",
+    "core method/contribution per paper",
+    "why each paper fits \"efficient inference for LLMs\"",
+    "complementary coverage across techniques"
+  ],
+  "intent_id": "intent_live_chat_1ac54f93794f",
+  "method_mentions": [],
+  "normalized_question": "Recommend up to 3-5 papers on efficient inference for LLMs, with each recommendation grounded in the user's specific selection constraints and an explicit reason it fits.",
+  "obligations": [
+    {
+      "answer_field": "recommendations",
+      "description": "Select up to 3-5 distinct papers that directly address the requested topic and explain from source evidence why each fits. Do not substitute adjacent topics when the corpus lacks an exact match.",
+      "id": "recommendation_selection",
+      "kind": "recommendation",
+      "paper_scope": [],
+      "required": true
+    }
+  ],
+  "paper_mentions": [],
+  "primary_paradigm": "context_specific_brainstorming",
+  "question_id": "live_chat_1ac54f93794f",
+  "raw_question": "efficient inference",
+  "required_capabilities": [
+    "paper_recommendation",
+    "constraint_matching"
+  ],
+  "required_evidence_types": [
+    "paper_metadata",
+    "method_summary",
+    "fit_rationale"
+  ],
+  "requires_corpus_observation": true
+}

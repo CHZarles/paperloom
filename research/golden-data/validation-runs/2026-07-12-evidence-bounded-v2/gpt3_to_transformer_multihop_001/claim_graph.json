@@ -1,0 +1,88 @@
+{
+  "claims": [
+    {
+      "claim_id": "hop1_gpt3_to_gpt2_tokenizer_reuse",
+      "claim_type": "hop",
+      "obligation_ids": [
+        "hop1_gpt3_to_gpt2_citation"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_d837344a7d5e05f8"
+      ],
+      "text": "The GPT-3 paper attributes one specific component to GPT-2: it reuses the byte-level BPE tokenizer of GPT-2, noting that this tokenizer was developed for an almost entirely English training dataset.",
+      "verification_reason": "The passage explicitly states GPT-3's weakness could be \"due to reusing the byte-level BPE tokenizer of GPT-2 which was developed for an almost entirely English training dataset.\"",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "hop1_gpt3_to_gpt2_no_arch_citation_in_supplied_evidence",
+      "claim_type": "chain_boundary",
+      "obligation_ids": [
+        "hop1_gpt3_to_gpt2_citation"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_d837344a7d5e05f8",
+        "ev_e39994a5f520084c",
+        "ev_24494da5eb3d19a4",
+        "ev_ac751baccc60b289"
+      ],
+      "text": "Within the supplied evidence passages, no passage from the GPT-3 paper cites GPT-2 as an architectural predecessor; the only GPT-2 attribution appearing in the supplied GPT-3 evidence concerns tokenizer reuse.",
+      "verification_reason": "The supplied GPT-3 evidence passages only mention GPT-2 in the context of reusing the byte-level BPE tokenizer; no architectural attribution to GPT-2 appears in any supplied passage.",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "hop2_gpt2_to_transformer_model_section",
+      "claim_type": "hop",
+      "obligation_ids": [
+        "hop2_gpt2_to_transformer_citation"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_4396b43fa54864c2"
+      ],
+      "text": "The GPT-2 paper states in its Model section that it uses a Transformer (Vaswani et al., 2017) based architecture for its language models, and that the model largely follows the details of the OpenAI GPT model (Radford et al., 2018) with a few modifications.",
+      "verification_reason": "The passage from section 2.3 (Model) directly states: \"We use a Transformer (Vaswani et al., 2017) based architecture for our LMs. The model largely follows the details of the OpenAI GPT model (Radford et al., 2018) with a few modifications.\"",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "hop2_gpt2_to_transformer_approach_section",
+      "claim_type": "hop",
+      "obligation_ids": [
+        "hop2_gpt2_to_transformer_citation"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_df9905f582fb729a"
+      ],
+      "text": "The GPT-2 paper also names the Transformer (Vaswani et al., 2017) in its Approach section as an example of a self-attention architecture that has improved the expressiveness of models computing conditional token probabilities.",
+      "verification_reason": "The passage from section 2 (Approach) directly states there \"have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).\"",
+      "verification_verdict": "keep"
+    },
+    {
+      "claim_id": "chain_boundary_no_direct_gpt3_to_transformer_claim",
+      "claim_type": "chain_boundary",
+      "obligation_ids": [
+        "hop1_gpt3_to_gpt2_citation",
+        "hop2_gpt2_to_transformer_citation"
+      ],
+      "refuting_evidence_ids": [],
+      "status": "supported",
+      "supporting_evidence_ids": [
+        "ev_d837344a7d5e05f8",
+        "ev_4396b43fa54864c2",
+        "ev_df9905f582fb729a"
+      ],
+      "text": "No claim is made of a direct GPT-3 to Attention Is All You Need citation; the lineage is constructed only as GPT-3 → GPT-2 (tokenizer reuse) and GPT-2 → Attention Is All You Need (Transformer architecture attribution).",
+      "verification_reason": "The supplied GPT-3 evidence contains no Transformer/Vaswani citation; the Transformer attribution appears only in the GPT-2 evidence passages, confirming the chain boundary.",
+      "verification_verdict": "keep"
+    }
+  ],
+  "edges": [],
+  "graph_id": "claim_graph_live_chat_257cfe464634",
+  "question_id": "live_chat_257cfe464634"
+}

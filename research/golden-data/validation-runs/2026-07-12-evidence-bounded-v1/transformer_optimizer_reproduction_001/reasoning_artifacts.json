@@ -1,0 +1,145 @@
+[
+  {
+    "artifact_id": "reasoning_live_chat_3032d4455f59",
+    "payload": {
+      "answer_fields": {
+        "beta1": "0.9",
+        "beta2": "0.98",
+        "epsilon": "10^{-9}",
+        "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number",
+        "optimizer": "Adam"
+      },
+      "claim_verdicts": [
+        {
+          "claim_id": "c_opt_name",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "optimizer": "Adam"
+          },
+          "reason": "Evidence directly states \"We used the Adam optimizer\" in the Optimizer section.",
+          "verdict": "keep",
+          "verified_text": "The optimizer used in Attention Is All You Need is the Adam optimizer."
+        },
+        {
+          "claim_id": "c_opt_beta1",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "beta1": "0.9"
+          },
+          "reason": "Evidence states \"β1 = 0.9\" directly.",
+          "verdict": "keep",
+          "verified_text": "The exact beta1 value specified for the optimizer is 0.9."
+        },
+        {
+          "claim_id": "c_opt_beta2",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "beta2": "0.98"
+          },
+          "reason": "Evidence states \"β2 = 0.98\" directly.",
+          "verdict": "keep",
+          "verified_text": "The exact beta2 value specified for the optimizer is 0.98."
+        },
+        {
+          "claim_id": "c_opt_epsilon",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e"
+          ],
+          "field_values": {
+            "epsilon": "10^{-9}"
+          },
+          "reason": "Evidence states \"ε = 10^{-9}\" directly.",
+          "verdict": "keep",
+          "verified_text": "The exact epsilon value specified for the optimizer is 10^{-9}."
+        },
+        {
+          "claim_id": "c_opt_lr_schedule",
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_8a3081bac08c3a20"
+          ],
+          "field_values": {
+            "lr_schedule": "linear warmup over warmup_steps=4000, then decay proportionally to the inverse square root of the step number"
+          },
+          "reason": "Both passages together directly support: \"increasing the learning rate linearly for the first warmup_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup_steps = 4000.\"",
+          "verdict": "keep",
+          "verified_text": "The learning rate is increased linearly for the first warmup_steps training steps and decreased thereafter proportionally to the inverse square root of the step number, with warmup_steps = 4000."
+        }
+      ],
+      "obligation_coverage": [
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_8a3081bac08c3a20",
+            "ev_9f0ad4e5c9243e9e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_name",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_8a3081bac08c3a20",
+            "ev_9f0ad4e5c9243e9e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_beta1",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_8a3081bac08c3a20",
+            "ev_9f0ad4e5c9243e9e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_beta2",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_8a3081bac08c3a20",
+            "ev_9f0ad4e5c9243e9e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_epsilon",
+          "status": "covered"
+        },
+        {
+          "evidence_ids": [
+            "ev_c478868f3b1b547e",
+            "ev_8a3081bac08c3a20",
+            "ev_9f0ad4e5c9243e9e"
+          ],
+          "note": "covered by a passage retrieved for this obligation",
+          "obligation_id": "opt_learning_rate_warmup",
+          "status": "covered"
+        }
+      ],
+      "source_evidence_ids": [
+        "corpus_observation_identity_1",
+        "ev_c478868f3b1b547e",
+        "ev_8a3081bac08c3a20",
+        "ev_9f0ad4e5c9243e9e"
+      ]
+    },
+    "question_id": "live_chat_3032d4455f59",
+    "source_claim_ids": [
+      "c_opt_name",
+      "c_opt_beta1",
+      "c_opt_beta2",
+      "c_opt_epsilon",
+      "c_opt_lr_schedule"
+    ],
+    "title": "Extract the exact optimizer name and its hyperparameters (beta1, beta2, epsilon) as used in the Attention Is All You Need paper, for inclusion in a strict reproduction checklist (optimizer portion only). Do not substitute generic Adam defaults; quote values verbatim from the paper.",
+    "type": "exact_fact"
+  }
+]

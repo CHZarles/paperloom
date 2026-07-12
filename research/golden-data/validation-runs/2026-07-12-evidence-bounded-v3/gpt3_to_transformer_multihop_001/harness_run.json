@@ -1,0 +1,2050 @@
+{
+  "case_id": "gpt3_to_transformer_multihop_001",
+  "claim_graph": {
+    "claims": [
+      {
+        "claim_id": "hop1_gpt3_extends_gpt2",
+        "claim_type": "hop",
+        "obligation_ids": [
+          "hop1_citation_evidence"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_38e0df75f5c1dc48"
+        ],
+        "text": "Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded sparse attention patterns.",
+        "verification_reason": "The GPT-3 paper passage explicitly states it uses the same model and architecture as GPT-2, lists the same three components (modified initialization, pre-normalization, reversible tokenization), and identifies the only exception as alternating dense and locally banded sparse attention patterns. All qualifiers match.",
+        "verification_verdict": "keep"
+      },
+      {
+        "claim_id": "hop2_gpt2_cites_transformer",
+        "claim_type": "hop",
+        "obligation_ids": [
+          "hop2_citation_evidence"
+        ],
+        "refuting_evidence_ids": [],
+        "status": "supported",
+        "supporting_evidence_ids": [
+          "ev_df9905f582fb729a"
+        ],
+        "text": "Hop 2 establishes that GPT-2 cites \"Attention Is All You Need\" as the source of its Transformer architecture: the GPT-2 paper references self-attention architectures like the Transformer (Vaswani et al., 2017) as providing significant improvements in the expressiveness of models computing conditional probabilities.",
+        "verification_reason": "The GPT-2 paper passage explicitly references the Transformer (Vaswani et al., 2017) in the context of \"significant improvements in the expressiveness of models that can compute these conditional probabilities,\" matching all qualifiers in the claim.",
+        "verification_verdict": "keep"
+      }
+    ],
+    "edges": [],
+    "graph_id": "claim_graph_live_chat_257cfe464634",
+    "question_id": "live_chat_257cfe464634"
+  },
+  "completed_at": "2026-07-12T05:47:07Z",
+  "diagnostics": {
+    "completed_stage_count": 4,
+    "completion_tokens": 3782,
+    "duration_ms": 35109,
+    "finish_reason": "evidence_bounded_answer_rendered",
+    "model_call_count": 4,
+    "model_latency_ms": 34953,
+    "paradigm": "complex_multihop_reasoning",
+    "prompt_tokens": 13853,
+    "stage_count": 4,
+    "tool_call_count": 8,
+    "total_tokens": 17635
+  },
+  "evidence_ledger": {
+    "coverage": [
+      {
+        "evidence_ids": [
+          "ev_38e0df75f5c1dc48",
+          "ev_06a1af206aeadf95",
+          "ev_5d14ef2a4aff4fff",
+          "ev_7018ea1d6236da33",
+          "ev_ccd097f081823576",
+          "ev_5ce6d9df68e2a6e5",
+          "ev_d9035ceb47da1394",
+          "ev_15a35fcf9b7c03e5",
+          "ev_f67a9bc5850ee367",
+          "ev_203f21b035f24100"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "hop1_citation_evidence",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_df9905f582fb729a",
+          "ev_0ebf528c5676fd8e",
+          "ev_c6f57c440fbac148",
+          "ev_a50ed82b014ea1da",
+          "ev_3538c8ce53453db5",
+          "ev_1c90e949af9d954e",
+          "ev_d900b6583c494298",
+          "ev_ce8ef10429aeea41",
+          "ev_686e0ea8a6b4185f"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "hop2_citation_evidence",
+        "status": "covered"
+      }
+    ],
+    "items": [
+      {
+        "authors": [
+          "Tom B. Brown"
+        ],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_gpt3_2020",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "Language Models are Few-Shot Learners",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners",
+        "venue": "NeurIPS",
+        "year": 2020
+      },
+      {
+        "authors": [
+          "Alec Radford"
+        ],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_gpt2_2019",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "Language Models are Unsupervised Multitask Learners",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners",
+        "venue": "OpenAI technical report",
+        "year": 2019
+      },
+      {
+        "authors": [
+          "Ashish Vaswani",
+          "Noam Shazeer"
+        ],
+        "citeable": false,
+        "element_type": "paper_candidate",
+        "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+        "evidence_quality": "metadata_verified",
+        "location": "paper_candidate",
+        "page": "metadata",
+        "paper_id": "attention_is_all_you_need_2017",
+        "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "paper_identity_resolution",
+        "section": "paper_metadata",
+        "span_text": "Attention Is All You Need",
+        "supports_claim_ids": [],
+        "title": "Attention Is All You Need",
+        "venue": "NeurIPS",
+        "year": 2017
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_1",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"gpt3_2020\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Language Models are Few-Shot Learners\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_2",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"gpt2_2019\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Language Models are Unsupervised Multitask Learners\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "citeable": false,
+        "element_type": "corpus_search",
+        "evidence_id": "corpus_observation_identity_3",
+        "evidence_quality": "corpus_observation",
+        "location": "find_papers_by_identity",
+        "location_ref": "find_papers_by_identity",
+        "page": "metadata",
+        "paper_id": null,
+        "paper_version": "current_scope",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "find_papers_by_identity",
+        "section": "corpus_index",
+        "source_kind": "corpus_search",
+        "span_text": "{\"query\": {\"paper_id\": \"attention_is_all_you_need_2017\"}, \"status\": \"resolved\", \"matched_count\": 1, \"coverage\": null, \"candidate_titles\": [\"Attention Is All You Need\"]}",
+        "supports_claim_ids": [],
+        "title": "Corpus candidate search"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_38e0df75f5c1dc48",
+        "evidence_quality": "verified",
+        "location": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+        "location_ref": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+        "matched_anchor_id": "gpt3_uses_gpt2_architecture",
+        "page": 8,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "2.1 Model and Architectures",
+        "source_kind": "reading_element",
+        "span_text": "We use the same model and architecture as $\\mathrm { G P T } { - } 2 \\ \\mathrm { [ R W C ^ { + } 1 9 ] }$ , including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19]. To study the dependence of ML performance on model size, we train 8 different sizes of model, ranging over three orders of magnitude from 125 million parameters to 175 billion parameters, with the last being the model we call GPT-3. Previous work $[ \\mathrm { K M H ^ { + } 2 0 } ]$ suggests that with enough training data, scaling of validation loss should be approximately a smooth power law as a function of size; training models of many different sizes allows us to test this hypothesis both for validation loss and for downstream language tasks.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "heading",
+        "evidence_id": "ev_5ce6d9df68e2a6e5",
+        "evidence_quality": "verified",
+        "location": "reading_element_fd66a90c6ea14521aee5716a0433570a",
+        "location_ref": "reading_element_fd66a90c6ea14521aee5716a0433570a",
+        "matched_anchor_id": null,
+        "page": 68,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "reading_element",
+        "span_text": "References",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_df9905f582fb729a",
+        "evidence_quality": "verified",
+        "location": "reading_element_abfb59f443384600b2390b9a01acef75",
+        "location_ref": "reading_element_abfb59f443384600b2390b9a01acef75",
+        "matched_anchor_id": null,
+        "page": 2,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "2. Approach",
+        "source_kind": "reading_element",
+        "span_text": "This approach allows for tractable sampling from and estimation of $p ( x )$ as well as any conditionals of the form $p ( s _ { n - k } , . . . , s _ { n } \\vert s _ { 1 } , . . . , s _ { n - k - 1 } )$ . In recent years, there have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_1c90e949af9d954e",
+        "evidence_quality": "verified",
+        "location": "reading_element_12555232ab8f4aff922b538875b85d3d",
+        "location_ref": "reading_element_12555232ab8f4aff922b538875b85d3d",
+        "matched_anchor_id": null,
+        "page": 9,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5. Related Work",
+        "source_kind": "reading_element",
+        "span_text": "There has been extensive work on pre-training methods for language tasks. In addition to those mentioned in the introduction, GloVe (Pennington et al., 2014) scaled word vector representation learning to all of Common Crawl. An influential early work on deep representation learning for text was Skip-thought Vectors (Kiros et al., 2015). McCann et al. (2017) explored the use of representations derived from machine translation models and Howard & Ruder (2018)",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_06a1af206aeadf95",
+        "evidence_quality": "verified",
+        "location": "reading_element_aaae8e8c1c3d4282b76c660ad340836f",
+        "location_ref": "reading_element_aaae8e8c1c3d4282b76c660ad340836f",
+        "matched_anchor_id": null,
+        "page": 36,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "6.2.1 Gender",
+        "source_kind": "reading_element",
+        "span_text": "Occupation and participant words often have societal biases associated with them such as the assumption that most occupants are by default male. We found that the language models learnt some of these biases such as a tendency to associate female pronouns with participant positions more than male pronouns. GPT-3 175B had the highest accuracy of all the models (64.17%) on this task. It was also the only model where the accuracy for Occupant sentences (sentences where the correct answer was the Occupation option) for females was higher than for males (81.7% vs 76.7%). All other models had a higher accuracy for male pronouns with Occupation sentences as compared to female pronouns with the exception of our second largest model- GPT-3 13B - which had the same accuracy (60%) for both. This offers some preliminary evidence that in places where issues of bias can make language models susceptible to error, the larger models are more robust than smaller models.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_d9035ceb47da1394",
+        "evidence_quality": "verified",
+        "location": "reading_element_ae1768b93f5244658b45ed83d774db76",
+        "location_ref": "reading_element_ae1768b93f5244658b45ed83d774db76",
+        "matched_anchor_id": null,
+        "page": 68,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "References",
+        "source_kind": "reading_element",
+        "span_text": "68",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_0ebf528c5676fd8e",
+        "evidence_quality": "verified",
+        "location": "reading_element_456d0018158c4b0eb6bcd1e9ded8fa82",
+        "location_ref": "reading_element_456d0018158c4b0eb6bcd1e9ded8fa82",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1. Introduction",
+        "source_kind": "reading_element",
+        "span_text": "The current best performing systems on language tasks utilize a combination of pre-training and supervised finetuning. This approach has a long history with a trend towards more flexible forms of transfer. First, word vectors were learned and used as inputs to task-specific architectures (Mikolov et al., 2013) (Collobert et al., 2011), then the contextual representations of recurrent networks were transferred (Dai & Le, 2015) (Peters et al., 2018), and recent work suggests that task-specific architectures are no longer necessary and transferring many self-attention blocks is sufficient (Radford et al., 2018) (Devlin et al., 2018).",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_d900b6583c494298",
+        "evidence_quality": "verified",
+        "location": "reading_element_8151688617d04b999bfe3de9cd729e99",
+        "location_ref": "reading_element_8151688617d04b999bfe3de9cd729e99",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1. Introduction",
+        "source_kind": "reading_element",
+        "span_text": "Machine learning systems now excel (in expectation) at tasks they are trained for by using a combination of large datasets, high-capacity models, and supervised learning (Krizhevsky et al., 2012) (Sutskever et al., 2014) (Amodei et al., 2016). Yet these systems are brittle and sensitive to slight changes in the data distribution (Recht et al., 2018) and task specification (Kirkpatrick et al., 2017). Current systems are better characterized as narrow experts rather than competent generalists. We would like to move towards more general systems which can perform many tasks – eventually without the need to manually create and label a training dataset for each one.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_5d14ef2a4aff4fff",
+        "evidence_quality": "verified",
+        "location": "reading_element_dccf709f9786490d9e9bdf9b9c097abd",
+        "location_ref": "reading_element_dccf709f9786490d9e9bdf9b9c097abd",
+        "matched_anchor_id": null,
+        "page": 39,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "6.3 Energy Usage",
+        "source_kind": "reading_element",
+        "span_text": "Practical large-scale pre-training requires large amounts of computation, which is energy-intensive: training the GPT-3 175B consumed several thousand petaflop/s-days of compute during pre-training, compared to tens of petaflop/s-days for a 1.5B parameter GPT-2 model (Figure 2.2). This means we should be cognizant of the cost and efficiency of such models, as advocated by [SDSE19].",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_15a35fcf9b7c03e5",
+        "evidence_quality": "verified",
+        "location": "reading_element_e93c8248da98494ba7ac7dafa8ece180",
+        "location_ref": "reading_element_e93c8248da98494ba7ac7dafa8ece180",
+        "matched_anchor_id": null,
+        "page": 69,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "References",
+        "source_kind": "reading_element",
+        "span_text": "69",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_c6f57c440fbac148",
+        "evidence_quality": "verified",
+        "location": "reading_element_2548356a8d0f494ebae9e34c18d82506",
+        "location_ref": "reading_element_2548356a8d0f494ebae9e34c18d82506",
+        "matched_anchor_id": null,
+        "page": 4,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "2.2. Input Representation",
+        "source_kind": "reading_element",
+        "span_text": "Byte Pair Encoding (BPE) (Sennrich et al., 2015) is a practical middle ground between character and word level language modeling which effectively interpolates between word level inputs for frequent symbol sequences and character level inputs for infrequent symbol sequences. Despite its name, reference BPE implementations often operate on Unicode code points and not byte sequences. These implementations would require including the full space of Unicode symbols in order to model all Unicode strings. This would result in a base vocabulary of over 130,000 before any multi-symbol tokens are added. This is prohibitively large compared to the 32,000 to 64,000 token vocabularies often used with BPE. In contrast, a byte-level version of BPE only requires a base vocabulary of size 256. However, directly applying BPE to the byte sequence results in suboptimal merges due to BPE using a greedy frequency based heuristic for building the token vocabulary. We observed BPE including many versions of common words like dog since they occur in many variations such as dog. dog! dog? . This results in a sub-optimal allocation of limited vocabulary slots and model capacity. To avoid this, we prevent BPE from merging across character categories for any byte sequence. We add an exception for spaces which significantly improves the compression efficiency while adding only minimal fragmentation of words across multiple vocab tokens.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_ce8ef10429aeea41",
+        "evidence_quality": "verified",
+        "location": "reading_element_0d201a335bde4a23b4a189820e8654cf",
+        "location_ref": "reading_element_0d201a335bde4a23b4a189820e8654cf",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1. Introduction",
+        "source_kind": "reading_element",
+        "span_text": "The dominant approach to creating ML systems is to collect a dataset of training examples demonstrating correct behavior for a desired task, train a system to imitate these behaviors, and then test its performance on independent and identically distributed (IID) held-out examples. This has served well to make progress on narrow experts. But the often erratic behavior of captioning models (Lake et al., 2017), reading comprehension systems (Jia & Liang, 2017), and image classifiers (Alcorn et al., 2018) on the diversity and variety of possible inputs highlights some of the shortcomings of this approach.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_7018ea1d6236da33",
+        "evidence_quality": "verified",
+        "location": "reading_element_d4f90e9ad25c4844b5f8da18de77212d",
+        "location_ref": "reading_element_d4f90e9ad25c4844b5f8da18de77212d",
+        "matched_anchor_id": null,
+        "page": 40,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "7 Related Work",
+        "source_kind": "reading_element",
+        "span_text": "Algorithmic innovation in language models over the last two years has been enormous, including denoising-based bidirectionality [DCLT18], prefixLM [DL15] and encoder-decoder architectures $[ \\mathrm { L L G ^ { + } } 1 9 , \\mathrm { R S R ^ { + } } 1 \\bar { 9 } ]$ , random permutations during training $[ \\mathrm { Y } \\mathrm { D } \\bar { \\mathrm { Y } } ^ { + } 1 9 ] .$ , architectures that improve the efficiency of sampling $[ \\mathrm { D Y Y ^ { + } 1 9 } ] .$ , improvements in data and training procedures $[ \\mathrm { L O G ^ { + } } 1 9 ]$ , and efficiency increases in the embedding parameters $[ \\mathrm { L C G ^ { + } } 1 9 ]$ . Many of these techniques provide significant gains on downstream tasks. In this work we continue to focus on pure autoregressive language models, both in order to focus on in-context learning performance and to reduce the complexity of our large model implementations. However, it is very likely that incorporating these algorithmic advances could improve $\\mathrm { G P T } { - } \\bar { 3 } \\mathrm { \\bar { s } }$ performance on downstream tasks, especially in the fine-tuning setting, and combining GPT-3’s scale with these algorithmic techniques is a promising direction for future work.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_f67a9bc5850ee367",
+        "evidence_quality": "verified",
+        "location": "reading_element_f019797b13f640b9b7e3642d875a28c9",
+        "location_ref": "reading_element_f019797b13f640b9b7e3642d875a28c9",
+        "matched_anchor_id": null,
+        "page": 70,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "References",
+        "source_kind": "reading_element",
+        "span_text": "70",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_a50ed82b014ea1da",
+        "evidence_quality": "verified",
+        "location": "reading_element_2bbdefba138e4da7befc2698e5bf68ce",
+        "location_ref": "reading_element_2bbdefba138e4da7befc2698e5bf68ce",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "Abstract",
+        "source_kind": "reading_element",
+        "span_text": "Natural language processing tasks, such as question answering, machine translation, reading comprehension, and summarization, are typically approached with supervised learning on taskspecific datasets. We demonstrate that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText. When conditioned on a document plus questions, the answers generated by the language model reach 55 F1 on the CoQA dataset - matching or exceeding the performance of 3 out of 4 baseline systems without using the 127,000+ training examples. The capacity of the language model is essential to the success of zero-shot task transfer and increasing it improves performance in a log-linear fashion across tasks. Our largest model, GPT-2, is a 1.5B parameter Transformer that achieves state of the art results on 7 out of 8 tested language modeling datasets in a zero-shot setting but still underfits WebText. Samples from the model reflect these improvements and contain coherent paragraphs of text. These findings suggest a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_686e0ea8a6b4185f",
+        "evidence_quality": "verified",
+        "location": "reading_element_85032c97d359418d80c3cccb5bf1ef71",
+        "location_ref": "reading_element_85032c97d359418d80c3cccb5bf1ef71",
+        "matched_anchor_id": null,
+        "page": 1,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1. Introduction",
+        "source_kind": "reading_element",
+        "span_text": "Multitask learning (Caruana, 1997) is a promising framework for improving general performance. However, multitask training in NLP is still nascent. Recent work reports modest performance improvements (Yogatama et al., 2019) and the two most ambitious efforts to date have trained on a total of 10 and 17 (dataset, objective) pairs respectively (McCann et al., 2018) (Bowman et al., 2018). From a meta-learning perspective, each (dataset, objective) pair is a single training example sampled from the distribution of datasets and objectives. Current ML systems need hundreds to thousands of examples to induce functions which generalize well. This suggests that multitask training many need just as many effective training pairs to realize its promise with current approaches. It will be very difficult to continue to scale the creation of datasets and the design of objectives to the degree that may be required to brute force our way there with current techniques. This motivates exploring additional setups for performing multitask learning.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_ccd097f081823576",
+        "evidence_quality": "verified",
+        "location": "reading_element_c49cadd69b3842618572f7cc74a98183",
+        "location_ref": "reading_element_c49cadd69b3842618572f7cc74a98183",
+        "matched_anchor_id": null,
+        "page": 46,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "E Human Quality Assessment of Synthetic News Articles",
+        "source_kind": "reading_element",
+        "span_text": "Procedure and design: We arbitrarily selected 25 news articles that appeared in newser.com in early 2020. We used the article titles and subtitles to produce outputs from the 125M, 350M, 760M, 1.3B, 2.7B, 6.7B, 13.0B, and 200B (GPT-3) parameter language models. Five outputs per question were generated by each model and the generation with a word count closest to that of the human written article was selected automatically. This was to minimize the effect that completion length might have on participants’ judgments. The same output procedure for each model with the exception of the removal of the intentionally bad control model, as described in the main text.",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_203f21b035f24100",
+        "evidence_quality": "verified",
+        "location": "reading_element_0d008cb5b0b14968b9ab942a19381ae2",
+        "location_ref": "reading_element_0d008cb5b0b14968b9ab942a19381ae2",
+        "matched_anchor_id": null,
+        "page": 71,
+        "paper_id": "gpt3_2020",
+        "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "References",
+        "source_kind": "reading_element",
+        "span_text": "71",
+        "supports_claim_ids": [],
+        "title": "Language Models are Few-Shot Learners"
+      },
+      {
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_3538c8ce53453db5",
+        "evidence_quality": "verified",
+        "location": "reading_element_4410e2c0a0e540cf8b3944f0586bebad",
+        "location_ref": "reading_element_4410e2c0a0e540cf8b3944f0586bebad",
+        "matched_anchor_id": null,
+        "page": 2,
+        "paper_id": "gpt2_2019",
+        "paper_version": "OpenAI technical report PDF (2019-02)",
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1. Introduction",
+        "source_kind": "reading_element",
+        "span_text": "These methods still require supervised training in order to perform a task. When only minimal or no supervised data is available, another line of work has demonstrated the promise of language models to perform specific tasks, such as commonsense reasoning (Schwartz et al., 2017) and sentiment analysis (Radford et al., 2017).",
+        "supports_claim_ids": [],
+        "title": "Language Models are Unsupervised Multitask Learners"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_257cfe464634",
+    "missing_evidence": [],
+    "question_id": "live_chat_257cfe464634",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_257cfe464634",
+    "answer_type": "multi_hop_chain",
+    "cited_claim_ids": [
+      "hop1_gpt3_extends_gpt2",
+      "hop2_gpt2_cites_transformer"
+    ],
+    "cited_evidence_ids": [
+      "ev_38e0df75f5c1dc48",
+      "ev_df9905f582fb729a"
+    ],
+    "fields": {},
+    "markdown": "1. Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded sparse attention patterns. [1]\n2. Hop 2 establishes that GPT-2 cites \"Attention Is All You Need\" as the source of its Transformer architecture: the GPT-2 paper references self-attention architectures like the Transformer (Vaswani et al., 2017) as providing significant improvements in the expressiveness of models computing conditional probabilities. [2]\n\nSources\n[1] Language Models are Few-Shot Learners, 2.1 Model and Architectures, p. 8\n[2] Language Models are Unsupervised Multitask Learners, 2. Approach, p. 2",
+    "outcome": "answered",
+    "question_id": "live_chat_257cfe464634",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_257cfe464634"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded spars",
+    "verification_id": "verification_live_chat_257cfe464634"
+  },
+  "harness_id": "python_evidence_bounded_harness_v1",
+  "intent_frame": {
+    "actionability": "non_blocking",
+    "ambiguity_status": "unambiguous",
+    "answer_type": "multi_hop_chain",
+    "constraints": {
+      "chain_constraint": "two-hop via GPT-2",
+      "coverage_assumption": "Treat the requested chain strictly as a citation/architecture-lineage trace through the five available papers; absence of a direct GPT-3→Transformer citation is itself a finding to state.",
+      "prohibition": "no direct GPT-3 to Transformer edge",
+      "source_constraint": "corpus_only",
+      "task": {
+        "object": "architecture lineage chain across two hops",
+        "verb": "trace"
+      }
+    },
+    "dataset_mentions": [],
+    "entities": [
+      "gpt3_2020",
+      "gpt2_2019",
+      "attention_is_all_you_need_2017",
+      "Hop 1 evidence (GPT-3 → GPT-2)",
+      "Hop 2 evidence (GPT-2 → Attention Is All You Need)",
+      "Explicit statement on absence of direct GPT-3 → Transformer citation",
+      "Technical artifact transmitted at each hop"
+    ],
+    "intent_id": "intent_live_chat_257cfe464634",
+    "method_mentions": [],
+    "normalized_question": "Using only the 5-paper corpus, build a two-hop architecture chain GPT-3 → GPT-2 → \"Attention Is All You Need\". State what each hop establishes and explicitly do not invent a direct GPT-3 → Transformer citation.",
+    "obligations": [
+      {
+        "answer_field": "",
+        "description": "Does GPT-3 (gpt3_2020) cite GPT-2 (gpt2_2019) as the prior architecture it extends, and what text in GPT-3 supports that?",
+        "id": "hop1_citation_evidence",
+        "kind": "hop",
+        "paper_scope": [
+          "gpt3_2020",
+          "gpt2_2019"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "",
+        "description": "Does GPT-2 (gpt2_2019) cite \"Attention Is All You Need\" (attention_is_all_you_need_2017) as the source of its Transformer architecture, and what text supports that?",
+        "id": "hop2_citation_evidence",
+        "kind": "hop",
+        "paper_scope": [
+          "gpt2_2019",
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      }
+    ],
+    "paper_mentions": [
+      "gpt3_2020",
+      "gpt2_2019",
+      "attention_is_all_you_need_2017"
+    ],
+    "primary_paradigm": "complex_multihop_reasoning",
+    "question_id": "live_chat_257cfe464634",
+    "raw_question": "Using only the available papers, build the two-hop architecture chain from GPT-3 through GPT-2 to Attention Is All You Need. State what each hop establishes and do not invent a direct GPT-3-to-Transformer citation.",
+    "required_capabilities": [
+      "citation_extraction",
+      "architecture_comparison"
+    ],
+    "required_evidence_types": [
+      "citation text",
+      "architecture description"
+    ],
+    "requires_corpus_observation": true
+  },
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_38e0df75f5c1dc48",
+      "ev_df9905f582fb729a"
+    ],
+    "selected_paper_ids": [
+      "gpt3_2020",
+      "gpt2_2019"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "authors": [
+        "Tom B. Brown"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt3_2020",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "gpt3_2020",
+      "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Language Models are Few-Shot Learners",
+      "supports_claim_ids": [],
+      "title": "Language Models are Few-Shot Learners",
+      "venue": "NeurIPS",
+      "year": 2020
+    },
+    {
+      "authors": [
+        "Alec Radford"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt2_2019",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "gpt2_2019",
+      "paper_version": "OpenAI technical report PDF (2019-02)",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Language Models are Unsupervised Multitask Learners",
+      "supports_claim_ids": [],
+      "title": "Language Models are Unsupervised Multitask Learners",
+      "venue": "OpenAI technical report",
+      "year": 2019
+    },
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    }
+  ],
+  "question_id": "gpt3_to_transformer_multihop_001",
+  "reasoning_artifacts": [
+    {
+      "artifact_id": "reasoning_live_chat_257cfe464634",
+      "payload": {
+        "answer_fields": {},
+        "claim_verdicts": [
+          {
+            "claim_id": "hop1_gpt3_extends_gpt2",
+            "evidence_ids": [
+              "ev_38e0df75f5c1dc48"
+            ],
+            "field_values": {},
+            "reason": "The GPT-3 paper passage explicitly states it uses the same model and architecture as GPT-2, lists the same three components (modified initialization, pre-normalization, reversible tokenization), and identifies the only exception as alternating dense and locally banded sparse attention patterns. All qualifiers match.",
+            "verdict": "keep",
+            "verified_text": "Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded sparse attention patterns."
+          },
+          {
+            "claim_id": "hop2_gpt2_cites_transformer",
+            "evidence_ids": [
+              "ev_df9905f582fb729a"
+            ],
+            "field_values": {},
+            "reason": "The GPT-2 paper passage explicitly references the Transformer (Vaswani et al., 2017) in the context of \"significant improvements in the expressiveness of models that can compute these conditional probabilities,\" matching all qualifiers in the claim.",
+            "verdict": "keep",
+            "verified_text": "Hop 2 establishes that GPT-2 cites \"Attention Is All You Need\" as the source of its Transformer architecture: the GPT-2 paper references self-attention architectures like the Transformer (Vaswani et al., 2017) as providing significant improvements in the expressiveness of models computing conditional probabilities."
+          }
+        ],
+        "obligation_coverage": [
+          {
+            "evidence_ids": [
+              "ev_38e0df75f5c1dc48",
+              "ev_06a1af206aeadf95",
+              "ev_5d14ef2a4aff4fff",
+              "ev_7018ea1d6236da33",
+              "ev_ccd097f081823576",
+              "ev_5ce6d9df68e2a6e5",
+              "ev_d9035ceb47da1394",
+              "ev_15a35fcf9b7c03e5",
+              "ev_f67a9bc5850ee367",
+              "ev_203f21b035f24100"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "hop1_citation_evidence",
+            "status": "covered"
+          },
+          {
+            "evidence_ids": [
+              "ev_df9905f582fb729a",
+              "ev_0ebf528c5676fd8e",
+              "ev_c6f57c440fbac148",
+              "ev_a50ed82b014ea1da",
+              "ev_3538c8ce53453db5",
+              "ev_1c90e949af9d954e",
+              "ev_d900b6583c494298",
+              "ev_ce8ef10429aeea41",
+              "ev_686e0ea8a6b4185f"
+            ],
+            "note": "covered by a passage retrieved for this obligation",
+            "obligation_id": "hop2_citation_evidence",
+            "status": "covered"
+          }
+        ],
+        "source_evidence_ids": [
+          "corpus_observation_identity_1",
+          "corpus_observation_identity_2",
+          "corpus_observation_identity_3",
+          "ev_38e0df75f5c1dc48",
+          "ev_5ce6d9df68e2a6e5",
+          "ev_df9905f582fb729a",
+          "ev_1c90e949af9d954e",
+          "ev_06a1af206aeadf95",
+          "ev_d9035ceb47da1394",
+          "ev_0ebf528c5676fd8e",
+          "ev_d900b6583c494298",
+          "ev_5d14ef2a4aff4fff",
+          "ev_15a35fcf9b7c03e5",
+          "ev_c6f57c440fbac148",
+          "ev_ce8ef10429aeea41",
+          "ev_7018ea1d6236da33",
+          "ev_f67a9bc5850ee367",
+          "ev_a50ed82b014ea1da",
+          "ev_686e0ea8a6b4185f",
+          "ev_ccd097f081823576",
+          "ev_203f21b035f24100",
+          "ev_3538c8ce53453db5"
+        ]
+      },
+      "question_id": "live_chat_257cfe464634",
+      "source_claim_ids": [
+        "hop1_gpt3_extends_gpt2",
+        "hop2_gpt2_cites_transformer"
+      ],
+      "title": "Using only the 5-paper corpus, build a two-hop architecture chain GPT-3 → GPT-2 → \"Attention Is All You Need\". State what each hop establishes and explicitly do not invent a direct GPT-3 → Transformer citation.",
+      "type": "chain"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_257cfe464634",
+    "answer_type": "multi_hop_chain",
+    "cited_claim_ids": [
+      "hop1_gpt3_extends_gpt2",
+      "hop2_gpt2_cites_transformer"
+    ],
+    "cited_evidence_ids": [
+      "ev_38e0df75f5c1dc48",
+      "ev_df9905f582fb729a"
+    ],
+    "fields": {},
+    "markdown": "1. Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded sparse attention patterns. [1]\n2. Hop 2 establishes that GPT-2 cites \"Attention Is All You Need\" as the source of its Transformer architecture: the GPT-2 paper references self-attention architectures like the Transformer (Vaswani et al., 2017) as providing significant improvements in the expressiveness of models computing conditional probabilities. [2]\n\nSources\n[1] Language Models are Few-Shot Learners, 2.1 Model and Architectures, p. 8\n[2] Language Models are Unsupervised Multitask Learners, 2. Approach, p. 2",
+    "outcome": "answered",
+    "question_id": "live_chat_257cfe464634",
+    "reasoning_artifact_ids": [
+      "reasoning_live_chat_257cfe464634"
+    ],
+    "sections": [],
+    "status": "COMPLETED",
+    "summary": "Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded spars",
+    "verification_id": "verification_live_chat_257cfe464634"
+  },
+  "result_status": "COMPLETED",
+  "retrieval_plan": {
+    "actionability": "non_blocking",
+    "expected_evidence_types": [
+      "citation text",
+      "architecture description"
+    ],
+    "hard_negative_policy": [],
+    "obligations": [
+      {
+        "answer_field": "",
+        "description": "Does GPT-3 (gpt3_2020) cite GPT-2 (gpt2_2019) as the prior architecture it extends, and what text in GPT-3 supports that?",
+        "id": "hop1_citation_evidence",
+        "kind": "hop",
+        "paper_scope": [
+          "gpt3_2020",
+          "gpt2_2019"
+        ],
+        "required": true
+      },
+      {
+        "answer_field": "",
+        "description": "Does GPT-2 (gpt2_2019) cite \"Attention Is All You Need\" (attention_is_all_you_need_2017) as the source of its Transformer architecture, and what text supports that?",
+        "id": "hop2_citation_evidence",
+        "kind": "hop",
+        "paper_scope": [
+          "gpt2_2019",
+          "attention_is_all_you_need_2017"
+        ],
+        "required": true
+      }
+    ],
+    "paradigm": "complex_multihop_reasoning",
+    "plan_id": "plan_live_chat_257cfe464634",
+    "query_rounds": [
+      {
+        "evidence_queries": [
+          {
+            "element_types": [
+              "paragraph"
+            ],
+            "obligation_ids": [
+              "hop1_citation_evidence"
+            ],
+            "query_id": "Q1",
+            "query_text": "GPT-2 predecessor 1.5B parameters Transformer decoder same model architecture",
+            "section_query": "Approach / Model",
+            "target_ids": [
+              "T1"
+            ],
+            "top_k": 5
+          },
+          {
+            "element_types": [
+              "paragraph",
+              "footnote"
+            ],
+            "obligation_ids": [
+              "hop1_citation_evidence"
+            ],
+            "query_id": "Q2",
+            "query_text": "Radford et al. 2019 Language Models Unsupervised Multitask Learners",
+            "section_query": "References / Citations",
+            "target_ids": [
+              "T1"
+            ],
+            "top_k": 5
+          },
+          {
+            "element_types": [
+              "paragraph"
+            ],
+            "obligation_ids": [
+              "hop2_citation_evidence"
+            ],
+            "query_id": "Q3",
+            "query_text": "Transformer decoder-only architecture multi-layer self-attention",
+            "section_query": "Approach / Model",
+            "target_ids": [
+              "T2"
+            ],
+            "top_k": 5
+          },
+          {
+            "element_types": [
+              "paragraph",
+              "footnote"
+            ],
+            "obligation_ids": [
+              "hop2_citation_evidence"
+            ],
+            "query_id": "Q4",
+            "query_text": "Vaswani et al. 2017 Attention Is All You Need citation",
+            "section_query": "References / Introduction",
+            "target_ids": [
+              "T2"
+            ],
+            "top_k": 5
+          }
+        ],
+        "paper_targets": [
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "hop1_citation_evidence"
+            ],
+            "discovery_query": "",
+            "paper_id": "gpt3_2020",
+            "target_id": "T1",
+            "title": "Language Models are Few-Shot Learners"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "hop1_citation_evidence",
+              "hop2_citation_evidence"
+            ],
+            "discovery_query": "",
+            "paper_id": "gpt2_2019",
+            "target_id": "T2",
+            "title": "Language Models are Unsupervised Multitask Learners"
+          },
+          {
+            "arxiv_id": "",
+            "browse_all": false,
+            "coverage_obligation_ids": [
+              "hop2_citation_evidence"
+            ],
+            "discovery_query": "",
+            "paper_id": "attention_is_all_you_need_2017",
+            "target_id": "T3",
+            "title": "Attention Is All You Need"
+          }
+        ],
+        "reuse_evidence": [],
+        "round": "initial"
+      }
+    ],
+    "question_id": "live_chat_257cfe464634",
+    "required_recall_targets": [],
+    "stop_conditions": [
+      "all_required_obligations_verified",
+      "precise_evidence_gap"
+    ],
+    "strategy_steps": [
+      {
+        "allowed_tools": [],
+        "semantic_goal": "decompose_hops",
+        "stage_name": "decompose_hops",
+        "step_id": "stage_1_decompose_hops",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "decompose_hops"
+      },
+      {
+        "allowed_tools": [
+          "search_paper_candidates",
+          "find_papers_by_identity",
+          "find_reading_locations",
+          "read_locations",
+          "get_citation_edges"
+        ],
+        "semantic_goal": "collect_hop_evidence",
+        "stage_name": "collect_hop_evidence",
+        "step_id": "stage_2_collect_hop_evidence",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "collect_hop_evidence"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "compose_chain",
+        "stage_name": "compose_chain",
+        "step_id": "stage_3_compose_chain",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "compose_chain"
+      },
+      {
+        "allowed_tools": [],
+        "semantic_goal": "verify_each_hop",
+        "stage_name": "verify_each_hop",
+        "step_id": "stage_4_verify_each_hop",
+        "stop_condition": "semantic_obligation_satisfied",
+        "strategy": "verify_each_hop"
+      }
+    ],
+    "target_entities": [
+      "gpt3_2020",
+      "gpt2_2019",
+      "attention_is_all_you_need_2017"
+    ]
+  },
+  "run_id": "run_live_chat_257cfe464634",
+  "schema_version": "harness-run-trace/v1",
+  "stage_trace": [
+    {
+      "claim_ids": [],
+      "decision_summary": "Executed 1 bounded retrieval round(s) with 8 corpus tool call(s).",
+      "evidence_ids": [
+        "ev_38e0df75f5c1dc48",
+        "ev_06a1af206aeadf95",
+        "ev_5d14ef2a4aff4fff",
+        "ev_7018ea1d6236da33",
+        "ev_ccd097f081823576",
+        "ev_5ce6d9df68e2a6e5",
+        "ev_d9035ceb47da1394",
+        "ev_15a35fcf9b7c03e5",
+        "ev_f67a9bc5850ee367",
+        "ev_203f21b035f24100",
+        "ev_df9905f582fb729a",
+        "ev_0ebf528c5676fd8e",
+        "ev_c6f57c440fbac148",
+        "ev_a50ed82b014ea1da",
+        "ev_3538c8ce53453db5",
+        "ev_1c90e949af9d954e",
+        "ev_d900b6583c494298",
+        "ev_ce8ef10429aeea41",
+        "ev_686e0ea8a6b4185f"
+      ],
+      "obligation_ids": [
+        "hop1_citation_evidence",
+        "hop2_citation_evidence"
+      ],
+      "semantic_goal": "collect_hop_evidence",
+      "stage_name": "collect_evidence",
+      "status": "completed",
+      "tool_calls": [
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "gpt3_2020"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": "2005.14165",
+                "authors": [
+                  "Tom B. Brown"
+                ],
+                "doi": null,
+                "filename": null,
+                "paper_id": "gpt3_2020",
+                "preview": "",
+                "title": "Language Models are Few-Shot Learners",
+                "venue": "NeurIPS",
+                "year": 2020
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_1",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "gpt2_2019"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": null,
+                "authors": [
+                  "Alec Radford"
+                ],
+                "doi": null,
+                "filename": null,
+                "paper_id": "gpt2_2019",
+                "preview": "",
+                "title": "Language Models are Unsupervised Multitask Learners",
+                "venue": "OpenAI technical report",
+                "year": 2019
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_2",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "paper_id": "attention_is_all_you_need_2017"
+          },
+          "result": {
+            "matches": [
+              {
+                "arxiv_id": "1706.03762",
+                "authors": [
+                  "Ashish Vaswani",
+                  "Noam Shazeer"
+                ],
+                "doi": null,
+                "filename": null,
+                "paper_id": "attention_is_all_you_need_2017",
+                "preview": "",
+                "title": "Attention Is All You Need",
+                "venue": "NeurIPS",
+                "year": 2017
+              }
+            ],
+            "status": "resolved"
+          },
+          "tool_call_id": "identity_3",
+          "tool_name": "find_papers_by_identity"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "element_types": [
+              "paragraph"
+            ],
+            "paper_ids": [
+              "gpt3_2020"
+            ],
+            "query_text": "GPT-2 predecessor 1.5B parameters Transformer decoder same model architecture",
+            "section_query": "Approach / Model",
+            "top_k": 5
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+                "page": 8,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "We use the same model and architecture as $\\mathrm { G P T } { - } 2 \\ \\mathrm { [ R W C ^ { + } 1 9 ] }$ , including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19]. To study the dependence of ML performance on model size, we train 8 different sizes of model, ranging over three or",
+                "section": "2.1 Model and Architectures",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_aaae8e8c1c3d4282b76c660ad340836f",
+                "page": 36,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "Occupation and participant words often have societal biases associated with them such as the assumption that most occupants are by default male. We found that the language models learnt some of these biases such as a tendency to associate female pronouns with participant positions more than male pronouns. GPT-3 175B had the highest accuracy of all the models (64.17%) on this task. It was also the only model where the accuracy for Occupant sentences (sentences where the correct answer was the Occ",
+                "section": "6.2.1 Gender",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_dccf709f9786490d9e9bdf9b9c097abd",
+                "page": 39,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "Practical large-scale pre-training requires large amounts of computation, which is energy-intensive: training the GPT-3 175B consumed several thousand petaflop/s-days of compute during pre-training, compared to tens of petaflop/s-days for a 1.5B parameter GPT-2 model (Figure 2.2). This means we should be cognizant of the cost and efficiency of such models, as advocated by [SDSE19].",
+                "section": "6.3 Energy Usage",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_d4f90e9ad25c4844b5f8da18de77212d",
+                "page": 40,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "Algorithmic innovation in language models over the last two years has been enormous, including denoising-based bidirectionality [DCLT18], prefixLM [DL15] and encoder-decoder architectures $[ \\mathrm { L L G ^ { + } } 1 9 , \\mathrm { R S R ^ { + } } 1 \\bar { 9 } ]$ , random permutations during training $[ \\mathrm { Y } \\mathrm { D } \\bar { \\mathrm { Y } } ^ { + } 1 9 ] .$ , architectures that improve the efficiency of sampling $[ \\mathrm { D Y Y ^ { + } 1 9 } ] .$ , improvements in data and train",
+                "section": "7 Related Work",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_c49cadd69b3842618572f7cc74a98183",
+                "page": 46,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "Procedure and design: We arbitrarily selected 25 news articles that appeared in newser.com in early 2020. We used the article titles and subtitles to produce outputs from the 125M, 350M, 760M, 1.3B, 2.7B, 6.7B, 13.0B, and 200B (GPT-3) parameter language models. Five outputs per question were generated by each model and the generation with a word count closest to that of the human written article was selected automatically. This was to minimize the effect that completion length might have on part",
+                "section": "E Human Quality Assessment of Synthetic News Articles",
+                "title": "Language Models are Few-Shot Learners"
+              }
+            ],
+            "matched_count": 403,
+            "query_text": "GPT-2 predecessor 1.5B parameters Transformer decoder same model architecture",
+            "returned_count": 5
+          },
+          "tool_call_id": "location_initial_1",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "element_types": [
+              "paragraph",
+              "footnote"
+            ],
+            "paper_ids": [
+              "gpt3_2020"
+            ],
+            "query_text": "Radford et al. 2019 Language Models Unsupervised Multitask Learners",
+            "section_query": "References / Citations",
+            "top_k": 5
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "heading",
+                "location_ref": "reading_element_fd66a90c6ea14521aee5716a0433570a",
+                "page": 68,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "References",
+                "section": "unsectioned",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_ae1768b93f5244658b45ed83d774db76",
+                "page": 68,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "68",
+                "section": "References",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_e93c8248da98494ba7ac7dafa8ece180",
+                "page": 69,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "69",
+                "section": "References",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_f019797b13f640b9b7e3642d875a28c9",
+                "page": 70,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "70",
+                "section": "References",
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_0d008cb5b0b14968b9ab942a19381ae2",
+                "page": 71,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "preview": "71",
+                "section": "References",
+                "title": "Language Models are Few-Shot Learners"
+              }
+            ],
+            "matched_count": 192,
+            "query_text": "Radford et al. 2019 Language Models Unsupervised Multitask Learners",
+            "returned_count": 5
+          },
+          "tool_call_id": "location_initial_2",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "element_types": [
+              "paragraph"
+            ],
+            "paper_ids": [
+              "gpt2_2019"
+            ],
+            "query_text": "Transformer decoder-only architecture multi-layer self-attention",
+            "section_query": "Approach / Model",
+            "top_k": 5
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_abfb59f443384600b2390b9a01acef75",
+                "page": 2,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "This approach allows for tractable sampling from and estimation of $p ( x )$ as well as any conditionals of the form $p ( s _ { n - k } , . . . , s _ { n } \\vert s _ { 1 } , . . . , s _ { n - k - 1 } )$ . In recent years, there have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).",
+                "section": "2. Approach",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_456d0018158c4b0eb6bcd1e9ded8fa82",
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "The current best performing systems on language tasks utilize a combination of pre-training and supervised finetuning. This approach has a long history with a trend towards more flexible forms of transfer. First, word vectors were learned and used as inputs to task-specific architectures (Mikolov et al., 2013) (Collobert et al., 2011), then the contextual representations of recurrent networks were transferred (Dai & Le, 2015) (Peters et al., 2018), and recent work suggests that task-specific arc",
+                "section": "1. Introduction",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_2548356a8d0f494ebae9e34c18d82506",
+                "page": 4,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "Byte Pair Encoding (BPE) (Sennrich et al., 2015) is a practical middle ground between character and word level language modeling which effectively interpolates between word level inputs for frequent symbol sequences and character level inputs for infrequent symbol sequences. Despite its name, reference BPE implementations often operate on Unicode code points and not byte sequences. These implementations would require including the full space of Unicode symbols in order to model all Unicode strin",
+                "section": "2.2. Input Representation",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_2bbdefba138e4da7befc2698e5bf68ce",
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "Natural language processing tasks, such as question answering, machine translation, reading comprehension, and summarization, are typically approached with supervised learning on taskspecific datasets. We demonstrate that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText. When conditioned on a document plus questions, the answers generated by the language model reach 55 F1 on the CoQA dataset - matchin",
+                "section": "Abstract",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_4410e2c0a0e540cf8b3944f0586bebad",
+                "page": 2,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "These methods still require supervised training in order to perform a task. When only minimal or no supervised data is available, another line of work has demonstrated the promise of language models to perform specific tasks, such as commonsense reasoning (Schwartz et al., 2017) and sentiment analysis (Radford et al., 2017).",
+                "section": "1. Introduction",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              }
+            ],
+            "matched_count": 104,
+            "query_text": "Transformer decoder-only architecture multi-layer self-attention",
+            "returned_count": 5
+          },
+          "tool_call_id": "location_initial_3",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "element_types": [
+              "paragraph",
+              "footnote"
+            ],
+            "paper_ids": [
+              "gpt2_2019"
+            ],
+            "query_text": "Vaswani et al. 2017 Attention Is All You Need citation",
+            "section_query": "References / Introduction",
+            "top_k": 5
+          },
+          "result": {
+            "coverage": "truncated",
+            "locations": [
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_12555232ab8f4aff922b538875b85d3d",
+                "page": 9,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "There has been extensive work on pre-training methods for language tasks. In addition to those mentioned in the introduction, GloVe (Pennington et al., 2014) scaled word vector representation learning to all of Common Crawl. An influential early work on deep representation learning for text was Skip-thought Vectors (Kiros et al., 2015). McCann et al. (2017) explored the use of representations derived from machine translation models and Howard & Ruder (2018)",
+                "section": "5. Related Work",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_8151688617d04b999bfe3de9cd729e99",
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "Machine learning systems now excel (in expectation) at tasks they are trained for by using a combination of large datasets, high-capacity models, and supervised learning (Krizhevsky et al., 2012) (Sutskever et al., 2014) (Amodei et al., 2016). Yet these systems are brittle and sensitive to slight changes in the data distribution (Recht et al., 2018) and task specification (Kirkpatrick et al., 2017). Current systems are better characterized as narrow experts rather than competent generalists. We ",
+                "section": "1. Introduction",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_0d201a335bde4a23b4a189820e8654cf",
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "The dominant approach to creating ML systems is to collect a dataset of training examples demonstrating correct behavior for a desired task, train a system to imitate these behaviors, and then test its performance on independent and identically distributed (IID) held-out examples. This has served well to make progress on narrow experts. But the often erratic behavior of captioning models (Lake et al., 2017), reading comprehension systems (Jia & Liang, 2017), and image classifiers (Alcorn et al.,",
+                "section": "1. Introduction",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_85032c97d359418d80c3cccb5bf1ef71",
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "Multitask learning (Caruana, 1997) is a promising framework for improving general performance. However, multitask training in NLP is still nascent. Recent work reports modest performance improvements (Yogatama et al., 2019) and the two most ambitious efforts to date have trained on a total of 10 and 17 (dataset, objective) pairs respectively (McCann et al., 2018) (Bowman et al., 2018). From a meta-learning perspective, each (dataset, objective) pair is a single training example sampled from the ",
+                "section": "1. Introduction",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "element_type": "paragraph",
+                "location_ref": "reading_element_456d0018158c4b0eb6bcd1e9ded8fa82",
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "preview": "The current best performing systems on language tasks utilize a combination of pre-training and supervised finetuning. This approach has a long history with a trend towards more flexible forms of transfer. First, word vectors were learned and used as inputs to task-specific architectures (Mikolov et al., 2013) (Collobert et al., 2011), then the contextual representations of recurrent networks were transferred (Dai & Le, 2015) (Peters et al., 2018), and recent work suggests that task-specific arc",
+                "section": "1. Introduction",
+                "title": "Language Models are Unsupervised Multitask Learners"
+              }
+            ],
+            "matched_count": 86,
+            "query_text": "Vaswani et al. 2017 Attention Is All You Need citation",
+            "returned_count": 5
+          },
+          "tool_call_id": "location_initial_4",
+          "tool_name": "find_reading_locations"
+        },
+        {
+          "allowed": true,
+          "arguments": {
+            "location_refs": [
+              "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+              "reading_element_fd66a90c6ea14521aee5716a0433570a",
+              "reading_element_abfb59f443384600b2390b9a01acef75",
+              "reading_element_12555232ab8f4aff922b538875b85d3d",
+              "reading_element_aaae8e8c1c3d4282b76c660ad340836f",
+              "reading_element_ae1768b93f5244658b45ed83d774db76",
+              "reading_element_456d0018158c4b0eb6bcd1e9ded8fa82",
+              "reading_element_8151688617d04b999bfe3de9cd729e99",
+              "reading_element_dccf709f9786490d9e9bdf9b9c097abd",
+              "reading_element_e93c8248da98494ba7ac7dafa8ece180",
+              "reading_element_2548356a8d0f494ebae9e34c18d82506",
+              "reading_element_0d201a335bde4a23b4a189820e8654cf",
+              "reading_element_d4f90e9ad25c4844b5f8da18de77212d",
+              "reading_element_f019797b13f640b9b7e3642d875a28c9",
+              "reading_element_2bbdefba138e4da7befc2698e5bf68ce",
+              "reading_element_85032c97d359418d80c3cccb5bf1ef71",
+              "reading_element_c49cadd69b3842618572f7cc74a98183",
+              "reading_element_0d008cb5b0b14968b9ab942a19381ae2",
+              "reading_element_4410e2c0a0e540cf8b3944f0586bebad"
+            ]
+          },
+          "result": {
+            "items": [
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_38e0df75f5c1dc48",
+                "evidence_quality": "verified",
+                "location": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+                "location_ref": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+                "matched_anchor_id": "gpt3_uses_gpt2_architecture",
+                "page": 8,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "2.1 Model and Architectures",
+                "source_kind": "reading_element",
+                "span_text": "We use the same model and architecture as $\\mathrm { G P T } { - } 2 \\ \\mathrm { [ R W C ^ { + } 1 9 ] }$ , including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19]. To study the dependence of ML performance on model size, we train 8 different sizes of model, ranging over three orders of magnitude from 125 million parameters to 175 billion parameters, with the last being the model we call GPT-3. Previous work $[ \\mathrm { K M H ^ { + } 2 0 } ]$ suggests that with enough training data, scaling of validation loss should be approximately a smooth power law as a function of size; training models of many different sizes allows us to test this hypothesis both for validation loss and for downstream language tasks.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "heading",
+                "evidence_id": "ev_5ce6d9df68e2a6e5",
+                "evidence_quality": "verified",
+                "location": "reading_element_fd66a90c6ea14521aee5716a0433570a",
+                "location_ref": "reading_element_fd66a90c6ea14521aee5716a0433570a",
+                "matched_anchor_id": null,
+                "page": 68,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "unsectioned",
+                "source_kind": "reading_element",
+                "span_text": "References",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_df9905f582fb729a",
+                "evidence_quality": "verified",
+                "location": "reading_element_abfb59f443384600b2390b9a01acef75",
+                "location_ref": "reading_element_abfb59f443384600b2390b9a01acef75",
+                "matched_anchor_id": null,
+                "page": 2,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "2. Approach",
+                "source_kind": "reading_element",
+                "span_text": "This approach allows for tractable sampling from and estimation of $p ( x )$ as well as any conditionals of the form $p ( s _ { n - k } , . . . , s _ { n } \\vert s _ { 1 } , . . . , s _ { n - k - 1 } )$ . In recent years, there have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_1c90e949af9d954e",
+                "evidence_quality": "verified",
+                "location": "reading_element_12555232ab8f4aff922b538875b85d3d",
+                "location_ref": "reading_element_12555232ab8f4aff922b538875b85d3d",
+                "matched_anchor_id": null,
+                "page": 9,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "5. Related Work",
+                "source_kind": "reading_element",
+                "span_text": "There has been extensive work on pre-training methods for language tasks. In addition to those mentioned in the introduction, GloVe (Pennington et al., 2014) scaled word vector representation learning to all of Common Crawl. An influential early work on deep representation learning for text was Skip-thought Vectors (Kiros et al., 2015). McCann et al. (2017) explored the use of representations derived from machine translation models and Howard & Ruder (2018)",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_06a1af206aeadf95",
+                "evidence_quality": "verified",
+                "location": "reading_element_aaae8e8c1c3d4282b76c660ad340836f",
+                "location_ref": "reading_element_aaae8e8c1c3d4282b76c660ad340836f",
+                "matched_anchor_id": null,
+                "page": 36,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "6.2.1 Gender",
+                "source_kind": "reading_element",
+                "span_text": "Occupation and participant words often have societal biases associated with them such as the assumption that most occupants are by default male. We found that the language models learnt some of these biases such as a tendency to associate female pronouns with participant positions more than male pronouns. GPT-3 175B had the highest accuracy of all the models (64.17%) on this task. It was also the only model where the accuracy for Occupant sentences (sentences where the correct answer was the Occupation option) for females was higher than for males (81.7% vs 76.7%). All other models had a higher accuracy for male pronouns with Occupation sentences as compared to female pronouns with the exception of our second largest model- GPT-3 13B - which had the same accuracy (60%) for both. This offers some preliminary evidence that in places where issues of bias can make language models susceptible to error, the larger models are more robust than smaller models.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_d9035ceb47da1394",
+                "evidence_quality": "verified",
+                "location": "reading_element_ae1768b93f5244658b45ed83d774db76",
+                "location_ref": "reading_element_ae1768b93f5244658b45ed83d774db76",
+                "matched_anchor_id": null,
+                "page": 68,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "References",
+                "source_kind": "reading_element",
+                "span_text": "68",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_0ebf528c5676fd8e",
+                "evidence_quality": "verified",
+                "location": "reading_element_456d0018158c4b0eb6bcd1e9ded8fa82",
+                "location_ref": "reading_element_456d0018158c4b0eb6bcd1e9ded8fa82",
+                "matched_anchor_id": null,
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "1. Introduction",
+                "source_kind": "reading_element",
+                "span_text": "The current best performing systems on language tasks utilize a combination of pre-training and supervised finetuning. This approach has a long history with a trend towards more flexible forms of transfer. First, word vectors were learned and used as inputs to task-specific architectures (Mikolov et al., 2013) (Collobert et al., 2011), then the contextual representations of recurrent networks were transferred (Dai & Le, 2015) (Peters et al., 2018), and recent work suggests that task-specific architectures are no longer necessary and transferring many self-attention blocks is sufficient (Radford et al., 2018) (Devlin et al., 2018).",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_d900b6583c494298",
+                "evidence_quality": "verified",
+                "location": "reading_element_8151688617d04b999bfe3de9cd729e99",
+                "location_ref": "reading_element_8151688617d04b999bfe3de9cd729e99",
+                "matched_anchor_id": null,
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "1. Introduction",
+                "source_kind": "reading_element",
+                "span_text": "Machine learning systems now excel (in expectation) at tasks they are trained for by using a combination of large datasets, high-capacity models, and supervised learning (Krizhevsky et al., 2012) (Sutskever et al., 2014) (Amodei et al., 2016). Yet these systems are brittle and sensitive to slight changes in the data distribution (Recht et al., 2018) and task specification (Kirkpatrick et al., 2017). Current systems are better characterized as narrow experts rather than competent generalists. We would like to move towards more general systems which can perform many tasks – eventually without the need to manually create and label a training dataset for each one.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_5d14ef2a4aff4fff",
+                "evidence_quality": "verified",
+                "location": "reading_element_dccf709f9786490d9e9bdf9b9c097abd",
+                "location_ref": "reading_element_dccf709f9786490d9e9bdf9b9c097abd",
+                "matched_anchor_id": null,
+                "page": 39,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "6.3 Energy Usage",
+                "source_kind": "reading_element",
+                "span_text": "Practical large-scale pre-training requires large amounts of computation, which is energy-intensive: training the GPT-3 175B consumed several thousand petaflop/s-days of compute during pre-training, compared to tens of petaflop/s-days for a 1.5B parameter GPT-2 model (Figure 2.2). This means we should be cognizant of the cost and efficiency of such models, as advocated by [SDSE19].",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_15a35fcf9b7c03e5",
+                "evidence_quality": "verified",
+                "location": "reading_element_e93c8248da98494ba7ac7dafa8ece180",
+                "location_ref": "reading_element_e93c8248da98494ba7ac7dafa8ece180",
+                "matched_anchor_id": null,
+                "page": 69,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "References",
+                "source_kind": "reading_element",
+                "span_text": "69",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_c6f57c440fbac148",
+                "evidence_quality": "verified",
+                "location": "reading_element_2548356a8d0f494ebae9e34c18d82506",
+                "location_ref": "reading_element_2548356a8d0f494ebae9e34c18d82506",
+                "matched_anchor_id": null,
+                "page": 4,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "2.2. Input Representation",
+                "source_kind": "reading_element",
+                "span_text": "Byte Pair Encoding (BPE) (Sennrich et al., 2015) is a practical middle ground between character and word level language modeling which effectively interpolates between word level inputs for frequent symbol sequences and character level inputs for infrequent symbol sequences. Despite its name, reference BPE implementations often operate on Unicode code points and not byte sequences. These implementations would require including the full space of Unicode symbols in order to model all Unicode strings. This would result in a base vocabulary of over 130,000 before any multi-symbol tokens are added. This is prohibitively large compared to the 32,000 to 64,000 token vocabularies often used with BPE. In contrast, a byte-level version of BPE only requires a base vocabulary of size 256. However, directly applying BPE to the byte sequence results in suboptimal merges due to BPE using a greedy frequency based heuristic for building the token vocabulary. We observed BPE including many versions of common words like dog since they occur in many variations such as dog. dog! dog? . This results in a sub-optimal allocation of limited vocabulary slots and model capacity. To avoid this, we prevent BPE from merging across character categories for any byte sequence. We add an exception for spaces which significantly improves the compression efficiency while adding only minimal fragmentation of words across multiple vocab tokens.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_ce8ef10429aeea41",
+                "evidence_quality": "verified",
+                "location": "reading_element_0d201a335bde4a23b4a189820e8654cf",
+                "location_ref": "reading_element_0d201a335bde4a23b4a189820e8654cf",
+                "matched_anchor_id": null,
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "1. Introduction",
+                "source_kind": "reading_element",
+                "span_text": "The dominant approach to creating ML systems is to collect a dataset of training examples demonstrating correct behavior for a desired task, train a system to imitate these behaviors, and then test its performance on independent and identically distributed (IID) held-out examples. This has served well to make progress on narrow experts. But the often erratic behavior of captioning models (Lake et al., 2017), reading comprehension systems (Jia & Liang, 2017), and image classifiers (Alcorn et al., 2018) on the diversity and variety of possible inputs highlights some of the shortcomings of this approach.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_7018ea1d6236da33",
+                "evidence_quality": "verified",
+                "location": "reading_element_d4f90e9ad25c4844b5f8da18de77212d",
+                "location_ref": "reading_element_d4f90e9ad25c4844b5f8da18de77212d",
+                "matched_anchor_id": null,
+                "page": 40,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "7 Related Work",
+                "source_kind": "reading_element",
+                "span_text": "Algorithmic innovation in language models over the last two years has been enormous, including denoising-based bidirectionality [DCLT18], prefixLM [DL15] and encoder-decoder architectures $[ \\mathrm { L L G ^ { + } } 1 9 , \\mathrm { R S R ^ { + } } 1 \\bar { 9 } ]$ , random permutations during training $[ \\mathrm { Y } \\mathrm { D } \\bar { \\mathrm { Y } } ^ { + } 1 9 ] .$ , architectures that improve the efficiency of sampling $[ \\mathrm { D Y Y ^ { + } 1 9 } ] .$ , improvements in data and training procedures $[ \\mathrm { L O G ^ { + } } 1 9 ]$ , and efficiency increases in the embedding parameters $[ \\mathrm { L C G ^ { + } } 1 9 ]$ . Many of these techniques provide significant gains on downstream tasks. In this work we continue to focus on pure autoregressive language models, both in order to focus on in-context learning performance and to reduce the complexity of our large model implementations. However, it is very likely that incorporating these algorithmic advances could improve $\\mathrm { G P T } { - } \\bar { 3 } \\mathrm { \\bar { s } }$ performance on downstream tasks, especially in the fine-tuning setting, and combining GPT-3’s scale with these algorithmic techniques is a promising direction for future work.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_f67a9bc5850ee367",
+                "evidence_quality": "verified",
+                "location": "reading_element_f019797b13f640b9b7e3642d875a28c9",
+                "location_ref": "reading_element_f019797b13f640b9b7e3642d875a28c9",
+                "matched_anchor_id": null,
+                "page": 70,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "References",
+                "source_kind": "reading_element",
+                "span_text": "70",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_a50ed82b014ea1da",
+                "evidence_quality": "verified",
+                "location": "reading_element_2bbdefba138e4da7befc2698e5bf68ce",
+                "location_ref": "reading_element_2bbdefba138e4da7befc2698e5bf68ce",
+                "matched_anchor_id": null,
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "Abstract",
+                "source_kind": "reading_element",
+                "span_text": "Natural language processing tasks, such as question answering, machine translation, reading comprehension, and summarization, are typically approached with supervised learning on taskspecific datasets. We demonstrate that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText. When conditioned on a document plus questions, the answers generated by the language model reach 55 F1 on the CoQA dataset - matching or exceeding the performance of 3 out of 4 baseline systems without using the 127,000+ training examples. The capacity of the language model is essential to the success of zero-shot task transfer and increasing it improves performance in a log-linear fashion across tasks. Our largest model, GPT-2, is a 1.5B parameter Transformer that achieves state of the art results on 7 out of 8 tested language modeling datasets in a zero-shot setting but still underfits WebText. Samples from the model reflect these improvements and contain coherent paragraphs of text. These findings suggest a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_686e0ea8a6b4185f",
+                "evidence_quality": "verified",
+                "location": "reading_element_85032c97d359418d80c3cccb5bf1ef71",
+                "location_ref": "reading_element_85032c97d359418d80c3cccb5bf1ef71",
+                "matched_anchor_id": null,
+                "page": 1,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "1. Introduction",
+                "source_kind": "reading_element",
+                "span_text": "Multitask learning (Caruana, 1997) is a promising framework for improving general performance. However, multitask training in NLP is still nascent. Recent work reports modest performance improvements (Yogatama et al., 2019) and the two most ambitious efforts to date have trained on a total of 10 and 17 (dataset, objective) pairs respectively (McCann et al., 2018) (Bowman et al., 2018). From a meta-learning perspective, each (dataset, objective) pair is a single training example sampled from the distribution of datasets and objectives. Current ML systems need hundreds to thousands of examples to induce functions which generalize well. This suggests that multitask training many need just as many effective training pairs to realize its promise with current approaches. It will be very difficult to continue to scale the creation of datasets and the design of objectives to the degree that may be required to brute force our way there with current techniques. This motivates exploring additional setups for performing multitask learning.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_ccd097f081823576",
+                "evidence_quality": "verified",
+                "location": "reading_element_c49cadd69b3842618572f7cc74a98183",
+                "location_ref": "reading_element_c49cadd69b3842618572f7cc74a98183",
+                "matched_anchor_id": null,
+                "page": 46,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "E Human Quality Assessment of Synthetic News Articles",
+                "source_kind": "reading_element",
+                "span_text": "Procedure and design: We arbitrarily selected 25 news articles that appeared in newser.com in early 2020. We used the article titles and subtitles to produce outputs from the 125M, 350M, 760M, 1.3B, 2.7B, 6.7B, 13.0B, and 200B (GPT-3) parameter language models. Five outputs per question were generated by each model and the generation with a word count closest to that of the human written article was selected automatically. This was to minimize the effect that completion length might have on participants’ judgments. The same output procedure for each model with the exception of the removal of the intentionally bad control model, as described in the main text.",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_203f21b035f24100",
+                "evidence_quality": "verified",
+                "location": "reading_element_0d008cb5b0b14968b9ab942a19381ae2",
+                "location_ref": "reading_element_0d008cb5b0b14968b9ab942a19381ae2",
+                "matched_anchor_id": null,
+                "page": 71,
+                "paper_id": "gpt3_2020",
+                "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "References",
+                "source_kind": "reading_element",
+                "span_text": "71",
+                "supports_claim_ids": [],
+                "title": "Language Models are Few-Shot Learners"
+              },
+              {
+                "bbox_or_cell_ref": null,
+                "element_type": "paragraph",
+                "evidence_id": "ev_3538c8ce53453db5",
+                "evidence_quality": "verified",
+                "location": "reading_element_4410e2c0a0e540cf8b3944f0586bebad",
+                "location_ref": "reading_element_4410e2c0a0e540cf8b3944f0586bebad",
+                "matched_anchor_id": null,
+                "page": 2,
+                "paper_id": "gpt2_2019",
+                "paper_version": "OpenAI technical report PDF (2019-02)",
+                "refutes_claim_ids": [],
+                "relevance_score": 1.0,
+                "retrieval_strategy": "source_quote_reading",
+                "section": "1. Introduction",
+                "source_kind": "reading_element",
+                "span_text": "These methods still require supervised training in order to perform a task. When only minimal or no supervised data is available, another line of work has demonstrated the promise of language models to perform specific tasks, such as commonsense reasoning (Schwartz et al., 2017) and sentiment analysis (Radford et al., 2017).",
+                "supports_claim_ids": [],
+                "title": "Language Models are Unsupervised Multitask Learners"
+              }
+            ],
+            "missing_location_refs": []
+          },
+          "tool_call_id": "read_initial",
+          "tool_name": "read_locations"
+        }
+      ]
+    },
+    {
+      "claim_ids": [
+        "hop1_gpt3_extends_gpt2",
+        "hop2_gpt2_cites_transformer"
+      ],
+      "decision_summary": "Constructed 2 evidence-linked atomic claim(s).",
+      "evidence_ids": [
+        "ev_38e0df75f5c1dc48",
+        "ev_df9905f582fb729a"
+      ],
+      "obligation_ids": [
+        "hop1_citation_evidence",
+        "hop2_citation_evidence"
+      ],
+      "semantic_goal": "compose_chain",
+      "stage_name": "construct_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "hop1_gpt3_extends_gpt2",
+        "hop2_gpt2_cites_transformer"
+      ],
+      "decision_summary": "Verified 2 atomic claim(s): 2 kept, 0 rewritten, 0 dropped.",
+      "evidence_ids": [
+        "ev_38e0df75f5c1dc48",
+        "ev_df9905f582fb729a"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "verify_each_hop",
+      "stage_name": "verify_claims",
+      "status": "completed",
+      "tool_calls": []
+    },
+    {
+      "claim_ids": [
+        "hop1_gpt3_extends_gpt2",
+        "hop2_gpt2_cites_transformer"
+      ],
+      "decision_summary": "Rendered only verified claims.",
+      "evidence_ids": [
+        "ev_38e0df75f5c1dc48",
+        "ev_df9905f582fb729a"
+      ],
+      "obligation_ids": [],
+      "semantic_goal": "render_verified_claims",
+      "stage_name": "render_answer",
+      "status": "completed",
+      "tool_calls": []
+    }
+  ],
+  "started_at": "2026-07-12T05:46:47Z",
+  "status": "COMPLETED",
+  "verification_pass": {
+    "abstention_required": false,
+    "ambiguity_resolution": {
+      "requires_user_choice": false,
+      "status": "unambiguous"
+    },
+    "answer_reference_integrity_passed": true,
+    "claim_verdicts": [
+      {
+        "claim_id": "hop1_gpt3_extends_gpt2",
+        "evidence_ids": [
+          "ev_38e0df75f5c1dc48"
+        ],
+        "field_values": {},
+        "reason": "The GPT-3 paper passage explicitly states it uses the same model and architecture as GPT-2, lists the same three components (modified initialization, pre-normalization, reversible tokenization), and identifies the only exception as alternating dense and locally banded sparse attention patterns. All qualifiers match.",
+        "verdict": "keep",
+        "verified_text": "Hop 1 establishes that GPT-3 directly extends GPT-2's architecture: the GPT-3 paper states it uses the same model and architecture as GPT-2, including the modified initialization, pre-normalization, and reversible tokenization, with the only exception being alternating dense and locally banded sparse attention patterns."
+      },
+      {
+        "claim_id": "hop2_gpt2_cites_transformer",
+        "evidence_ids": [
+          "ev_df9905f582fb729a"
+        ],
+        "field_values": {},
+        "reason": "The GPT-2 paper passage explicitly references the Transformer (Vaswani et al., 2017) in the context of \"significant improvements in the expressiveness of models that can compute these conditional probabilities,\" matching all qualifiers in the claim.",
+        "verdict": "keep",
+        "verified_text": "Hop 2 establishes that GPT-2 cites \"Attention Is All You Need\" as the source of its Transformer architecture: the GPT-2 paper references self-attention architectures like the Transformer (Vaswani et al., 2017) as providing significant improvements in the expressiveness of models computing conditional probabilities."
+      }
+    ],
+    "constraint_check_results": [],
+    "contradicted_claim_count": 0,
+    "corpus_observation_passed": true,
+    "corpus_observation_required": true,
+    "failed_trace_obligation_ids": [],
+    "missing_required_evidence": [],
+    "question_id": "live_chat_257cfe464634",
+    "required_capabilities_attempted": [
+      "citation_extraction",
+      "architecture_comparison"
+    ],
+    "required_evidence_status": [
+      {
+        "evidence_ids": [
+          "ev_38e0df75f5c1dc48",
+          "ev_06a1af206aeadf95",
+          "ev_5d14ef2a4aff4fff",
+          "ev_7018ea1d6236da33",
+          "ev_ccd097f081823576",
+          "ev_5ce6d9df68e2a6e5",
+          "ev_d9035ceb47da1394",
+          "ev_15a35fcf9b7c03e5",
+          "ev_f67a9bc5850ee367",
+          "ev_203f21b035f24100"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "hop1_citation_evidence",
+        "status": "covered"
+      },
+      {
+        "evidence_ids": [
+          "ev_df9905f582fb729a",
+          "ev_0ebf528c5676fd8e",
+          "ev_c6f57c440fbac148",
+          "ev_a50ed82b014ea1da",
+          "ev_3538c8ce53453db5",
+          "ev_1c90e949af9d954e",
+          "ev_d900b6583c494298",
+          "ev_ce8ef10429aeea41",
+          "ev_686e0ea8a6b4185f"
+        ],
+        "note": "covered by a passage retrieved for this obligation",
+        "obligation_id": "hop2_citation_evidence",
+        "status": "covered"
+      }
+    ],
+    "rewritten_claim_count": 0,
+    "satisfied_trace_obligation_ids": [
+      "hop1_citation_evidence",
+      "hop2_citation_evidence"
+    ],
+    "stage_contracts_passed": true,
+    "unsupported_claim_count": 0,
+    "verification_id": "verification_live_chat_257cfe464634"
+  }
+}

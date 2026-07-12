@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_5453a23f57a1",
+  "answer_type": "ambiguity_clarification",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Sure. What topic should the paper recommendations focus on? LLM is broad — e.g., pretraining, instruction tuning/RLHF, efficient inference, agents, evaluation, or specific architectures.",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_5453a23f57a1",
+  "reasoning_artifact_ids": [],
+  "sections": [],
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "Sure. What topic should the paper recommendations focus on? LLM is broad — e.g., pretraining, instruction tuning/RLHF, efficient inference, agents, evaluation, or specific architectures.",
+  "verification_id": "verification_live_chat_5453a23f57a1"
+}

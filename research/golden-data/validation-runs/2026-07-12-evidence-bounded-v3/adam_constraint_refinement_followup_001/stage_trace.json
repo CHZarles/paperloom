@@ -1,0 +1,221 @@
+[
+  {
+    "claim_ids": [],
+    "decision_summary": "Executed 1 bounded retrieval round(s) with 3 corpus tool call(s).",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e",
+      "ev_966d657560db7e6c",
+      "ev_748440c3a76e13a4"
+    ],
+    "obligation_ids": [
+      "adam_beta2_transformer"
+    ],
+    "semantic_goal": "collect_exact_evidence",
+    "stage_name": "collect_evidence",
+    "status": "completed",
+    "tool_calls": [
+      {
+        "allowed": true,
+        "arguments": {
+          "paper_id": "attention_is_all_you_need_2017"
+        },
+        "result": {
+          "matches": [
+            {
+              "arxiv_id": "1706.03762",
+              "authors": [
+                "Ashish Vaswani",
+                "Noam Shazeer"
+              ],
+              "doi": null,
+              "filename": null,
+              "paper_id": "attention_is_all_you_need_2017",
+              "preview": "",
+              "title": "Attention Is All You Need",
+              "venue": "NeurIPS",
+              "year": 2017
+            }
+          ],
+          "status": "resolved"
+        },
+        "tool_call_id": "identity_1",
+        "tool_name": "find_papers_by_identity"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "element_types": [
+            "paragraph",
+            "table"
+          ],
+          "paper_ids": [
+            "attention_is_all_you_need_2017"
+          ],
+          "query_text": "Adam optimizer β2 0.98",
+          "top_k": 3
+        },
+        "result": {
+          "coverage": "truncated",
+          "locations": [
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "section": "5.3 Optimizer",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "paragraph",
+              "location_ref": "reading_element_76f347883f164bdeaaf7d5bff1c752c4",
+              "page": 5,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "While the linear transformations are the same across different positions, they use different parameters from layer to layer. Another way of describing this is as two convolutions with kernel size 1. The dimensionality of input and output is $d _ { \\mathrm { m o d e l } } = 5 1 2$ , and the inner-layer has dimensionality $d _ { f f } = 2 0 4 8$",
+              "section": "3.3 Position-wise Feed-Forward Networks",
+              "title": "Attention Is All You Need"
+            },
+            {
+              "element_type": "table",
+              "location_ref": "table_ref_03215748f2fd47338270f362561c9665",
+              "page": 6,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "preview": "Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations for different layer types. n is the sequence length, d is the representation dimension, k is the kernel size of convolutions and r the size of the neighborhood in restricted self-attention.\nLayer Type | Complexity per Layer | Sequential Operations | Maximum Path Length | Self-Attention | $\\overline { { O ( n ^ { 2 } \\cdot d ) } }$ | O(1) | 0(1) | Recurrent | $O ( n \\cdot d ^ { 2 } )$ | O(n) | $O ( n )",
+              "section": "3.4 Embeddings and Softmax",
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "matched_count": 75,
+          "query_text": "Adam optimizer β2 0.98",
+          "returned_count": 3
+        },
+        "tool_call_id": "location_initial_1",
+        "tool_name": "find_reading_locations"
+      },
+      {
+        "allowed": true,
+        "arguments": {
+          "location_refs": [
+            "reading_element_260d1b8af78b454dbe0f610483436730",
+            "reading_element_76f347883f164bdeaaf7d5bff1c752c4",
+            "table_ref_03215748f2fd47338270f362561c9665"
+          ]
+        },
+        "result": {
+          "items": [
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_c478868f3b1b547e",
+              "evidence_quality": "verified",
+              "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+              "matched_anchor_id": "transformer_adam_training_params_span",
+              "page": 7,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "5.3 Optimizer",
+              "source_kind": "reading_element",
+              "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "paragraph",
+              "evidence_id": "ev_966d657560db7e6c",
+              "evidence_quality": "verified",
+              "location": "reading_element_76f347883f164bdeaaf7d5bff1c752c4",
+              "location_ref": "reading_element_76f347883f164bdeaaf7d5bff1c752c4",
+              "matched_anchor_id": null,
+              "page": 5,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "3.3 Position-wise Feed-Forward Networks",
+              "source_kind": "reading_element",
+              "span_text": "While the linear transformations are the same across different positions, they use different parameters from layer to layer. Another way of describing this is as two convolutions with kernel size 1. The dimensionality of input and output is $d _ { \\mathrm { m o d e l } } = 5 1 2$ , and the inner-layer has dimensionality $d _ { f f } = 2 0 4 8$",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            },
+            {
+              "bbox_or_cell_ref": null,
+              "element_type": "table",
+              "evidence_id": "ev_748440c3a76e13a4",
+              "evidence_quality": "verified",
+              "location": "table_ref_03215748f2fd47338270f362561c9665",
+              "location_ref": "table_ref_03215748f2fd47338270f362561c9665",
+              "matched_anchor_id": null,
+              "page": 6,
+              "paper_id": "attention_is_all_you_need_2017",
+              "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+              "refutes_claim_ids": [],
+              "relevance_score": 1.0,
+              "retrieval_strategy": "source_quote_reading",
+              "section": "3.4 Embeddings and Softmax",
+              "source_kind": "reading_element",
+              "span_text": "Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations for different layer types. n is the sequence length, d is the representation dimension, k is the kernel size of convolutions and r the size of the neighborhood in restricted self-attention.\nLayer Type | Complexity per Layer | Sequential Operations | Maximum Path Length | Self-Attention | $\\overline { { O ( n ^ { 2 } \\cdot d ) } }$ | O(1) | 0(1) | Recurrent | $O ( n \\cdot d ^ { 2 } )$ | O(n) | $O ( n )$ | Convolutional | $O ( k \\cdot n \\cdot \\dot { d } ^ { 2 } )$ | O(1) | $O ( l o g _ { k } ( n ) )$ | Self-Attention (restricted) | ${ \\dot { O ( r \\cdot n \\cdot d ) } }$ | O(1) | $O ( n / r )$",
+              "supports_claim_ids": [],
+              "title": "Attention Is All You Need"
+            }
+          ],
+          "missing_location_refs": []
+        },
+        "tool_call_id": "read_initial",
+        "tool_name": "read_locations"
+      }
+    ]
+  },
+  {
+    "claim_ids": [
+      "adam_beta2_transformer"
+    ],
+    "decision_summary": "Constructed 1 evidence-linked atomic claim(s).",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [
+      "adam_beta2_transformer"
+    ],
+    "semantic_goal": "extract_atomic_facts",
+    "stage_name": "construct_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "adam_beta2_transformer"
+    ],
+    "decision_summary": "Verified 1 atomic claim(s): 1 kept, 0 rewritten, 0 dropped.",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "verify_exact_values",
+    "stage_name": "verify_claims",
+    "status": "completed",
+    "tool_calls": []
+  },
+  {
+    "claim_ids": [
+      "adam_beta2_transformer"
+    ],
+    "decision_summary": "Rendered only verified claims.",
+    "evidence_ids": [
+      "ev_c478868f3b1b547e"
+    ],
+    "obligation_ids": [],
+    "semantic_goal": "render_verified_claims",
+    "stage_name": "render_answer",
+    "status": "completed",
+    "tool_calls": []
+  }
+]

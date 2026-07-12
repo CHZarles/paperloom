@@ -1,0 +1,19 @@
+[
+  {
+    "arxiv_id": "1706.03762",
+    "authors": [
+      "Ashish Vaswani",
+      "Noam Shazeer"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+    "filename": null,
+    "paper_id": "attention_is_all_you_need_2017",
+    "preview": "",
+    "title": "Attention Is All You Need",
+    "venue": "NeurIPS",
+    "year": 2017
+  }
+]
