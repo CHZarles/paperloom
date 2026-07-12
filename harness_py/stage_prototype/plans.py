@@ -70,7 +70,7 @@ PARADIGM_RECIPES: dict[str, ParadigmRecipe] = {
         "comparison_matrix",
         "Create obligations for each requested target-axis cell and preserve asymmetric architecture or scope distinctions.",
         "Retrieve evidence for every target on every requested axis; do not fill missing cells from general knowledge.",
-        ("architecture", "directionality", "objective", "comparison", "gap"),
+        ("comparison", "gap"),
         "comparison",
         ("define_comparison_cells", "collect_cell_evidence", "align_target_claims", "verify_comparison"),
         golden_backed=True,

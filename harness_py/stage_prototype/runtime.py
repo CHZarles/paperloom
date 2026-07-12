@@ -565,15 +565,47 @@ class ClaimConstructor:
         recipe: ParadigmRecipe,
         state: ResearchState,
     ) -> list[Claim]:
+        obligation_evidence: list[JsonMap] = []
+        relevant_evidence_ids: list[str] = []
+        for obligation in task.obligations:
+            coverage = state.coverage_by_obligation_id.get(obligation.obligation_id)
+            if coverage is None or coverage.status != "covered":
+                continue
+            boundary = obligation.kind == "corpus_boundary"
+            evidence_ids = [
+                evidence_id
+                for evidence_id in coverage.evidence_ids
+                if evidence_id in state.evidence_items_by_id
+                and (
+                    boundary
+                    or state.evidence_items_by_id[evidence_id].get("citeable") is not False
+                )
+            ][:4]
+            if not evidence_ids:
+                continue
+            relevant_evidence_ids.extend(evidence_ids)
+            obligation_evidence.append({
+                "obligation": obligation.to_dict(),
+                "evidence": [
+                    _evidence_prompt_item(state.evidence_items_by_id[evidence_id])
+                    for evidence_id in evidence_ids
+                ],
+            })
         covered_required = [
-            item.obligation_id for item in task.obligations
-            if item.required
-            and state.coverage_by_obligation_id.get(item.obligation_id)
-            and state.coverage_by_obligation_id[item.obligation_id].status == "covered"
+            str(item["obligation"]["id"])
+            for item in obligation_evidence
+            if bool(item["obligation"].get("required"))
         ]
         tool = _claim_submission_tool(recipe, len(covered_required))
         response = self.model.complete_required_tool(
-            self._messages(turn, task, recipe, state),
+            self._messages(
+                turn,
+                task,
+                recipe,
+                state,
+                obligation_evidence,
+                unique_strings(relevant_evidence_ids),
+            ),
             [tool],
             "submit_claims",
             self.max_tokens,
@@ -677,6 +709,8 @@ class ClaimConstructor:
         task: TaskFrame,
         recipe: ParadigmRecipe,
         state: ResearchState,
+        obligation_evidence: list[JsonMap],
+        relevant_evidence_ids: list[str],
     ) -> list[JsonMap]:
         return [
             {
@@ -686,7 +720,8 @@ class ClaimConstructor:
                     "Construct the smallest sufficient set of atomic claims needed to satisfy the user's evidence "
                     "obligations. Call submit_claims exactly once. Do not write final Markdown.\n\n"
                     "Every claim must satisfy at least one supplied obligation and cite only supplied evidence ids. "
-                    "Return exactly one atomic claim for every covered required obligation; do not omit a covered slot. "
+                    "The obligation_evidence array is the complete claim checklist. Return exactly one atomic claim "
+                    "for every covered required obligation in that array; do not omit or merge slots. "
                     "Preserve limiting words from the source such as default, used, similar, except, encoder, and "
                     "decoder. Do not add optional background, causes, tradeoffs, corpus details, implementation "
                     "components, or recommendations unless an obligation explicitly asks for them. A missing "
@@ -715,7 +750,11 @@ class ClaimConstructor:
                     },
                     "obligations": [item.to_dict() for item in task.obligations],
                     "coverage": [item.to_dict() for item in state.coverage_by_obligation_id.values()],
-                    "evidence": [_evidence_prompt_item(item) for item in state.evidence_items_by_id.values()],
+                    "obligation_evidence": obligation_evidence,
+                    "evidence": [
+                        _evidence_prompt_item(state.evidence_items_by_id[evidence_id])
+                        for evidence_id in relevant_evidence_ids
+                    ],
                 }, ensure_ascii=False),
             },
         ]
@@ -1248,7 +1287,8 @@ def _claim_submission_tool(recipe: ParadigmRecipe, required_claim_count: int) ->
                                 "text": {"type": "string", "maxLength": 420},
                                 "obligation_ids": {
                                     "type": "array",
-                                    "maxItems": 8,
+                                    "minItems": 1,
+                                    "maxItems": 1 if recipe.paradigm_id == "deep_comparison" else 8,
                                     "items": {"type": "string"},
                                 },
                                 "evidence_ids": {
@@ -1547,7 +1587,7 @@ def _render_answer(
             cited_evidence_ids.append(evidence_id)
             citation_numbers[evidence_id] = len(cited_evidence_ids)
 
-    rendered_lines = _render_claim_lines(recipe.answer_layout, claims, citation_numbers)
+    rendered_lines = _render_claim_lines(recipe.answer_layout, task, claims, citation_numbers)
     if not rendered_lines:
         rendered_lines = ["No requested claim was verified from the available corpus evidence."]
     if missing_required:
@@ -1599,6 +1639,7 @@ def _render_answer(
 
 def _render_claim_lines(
     layout: str,
+    task: TaskFrame,
     claims: list[JsonMap],
     citation_numbers: dict[str, int],
 ) -> list[str]:
@@ -1617,9 +1658,11 @@ def _render_claim_lines(
         return [line(item, f"{index}. ") for index, item in enumerate(claims, start=1)]
     if layout == "comparison":
         rows = ["| Dimension | Evidence-backed comparison |", "|---|---|"]
+        obligations = {item.obligation_id: item for item in task.obligations}
         claims_by_role: dict[str, list[JsonMap]] = {}
         for item in claims:
-            claims_by_role.setdefault(str(item["role"]), []).append(item)
+            dimension = _comparison_dimension(item, obligations)
+            claims_by_role.setdefault(dimension, []).append(item)
         for role, role_claims in claims_by_role.items():
             cells: list[str] = []
             for item in role_claims:
@@ -1659,6 +1702,23 @@ def _render_claim_lines(
                 rows.append(line(item))
         return rows
     return [line(item) for item in claims]
+
+
+def _comparison_dimension(
+    claim: JsonMap,
+    obligations: dict[str, object],
+) -> str:
+    for obligation_id in claim.get("obligation_ids") or []:
+        obligation = obligations.get(str(obligation_id))
+        if not isinstance(obligation, Obligation):
+            continue
+        field = obligation.answer_field or obligation.obligation_id
+        if obligation.paper_scope:
+            prefix = _slug(obligation.paper_scope[0]) + "_"
+            if field.startswith(prefix):
+                field = field[len(prefix):]
+        return field.replace("_", " ").title()
+    return str(claim.get("role") or "comparison").replace("_", " ").title()
 
 
 def _claim_graph_items(state: ResearchState) -> list[JsonMap]:

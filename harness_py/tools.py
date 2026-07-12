@@ -158,8 +158,9 @@ class ReadingCorpusTools:
                 "find_reading_locations",
                 (
                     "Find relevant locations inside previously disclosed candidate papers. Returns "
-                    "non-citeable navigation previews and location refs. Use read_locations before "
-                    "making paper-content claims."
+                    "non-citeable navigation previews and location refs. element_types are ranking "
+                    "hints because parser labels can be noisy. Use read_locations before making "
+                    "paper-content claims."
                 ),
                 {
                     "type": "object",
@@ -321,8 +322,6 @@ class ReadingCorpusTools:
         for document in self.documents:
             if document.paper_id not in paper_ids:
                 continue
-            if element_types and document.element_type not in element_types:
-                continue
             page = _optional_int(document.page)
             if page_from is not None and (page is None or page < page_from):
                 continue
@@ -330,6 +329,8 @@ class ReadingCorpusTools:
                 continue
             document_tokens = set(_tokens(" ".join([document.section, document.text])))
             score = _score_tokens(query_tokens, document_tokens) if query_tokens else 1.0
+            if score > 0 and element_types and document.element_type in element_types:
+                score += 0.25
             if section_tokens:
                 score += _section_hint_score(section_query, document.section, document.text)
             if query and _normalize(query) in _normalize(document.text):

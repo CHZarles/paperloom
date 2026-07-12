@@ -184,6 +184,21 @@ class EvidenceBoundedHarnessTest(unittest.TestCase):
 
         self.assertEqual(["loc_1"], [item["location_ref"] for item in result["locations"]])
 
+    def test_element_type_hint_is_soft_for_parser_mismatches(self) -> None:
+        dataset = _synthetic_dataset()
+        dataset.reading_models_by_paper_id["synthetic_paper"]["reading_elements"][0]["elementType"] = "list"
+        tools = ReadingCorpusTools(dataset)
+        tools.find_papers_by_identity({"paper_id": "synthetic_paper"})
+
+        result = tools.find_reading_locations({
+            "paper_ids": ["synthetic_paper"],
+            "query_text": "structured value",
+            "element_types": ["paragraph"],
+            "top_k": 3,
+        })
+
+        self.assertEqual(["loc_1"], [item["location_ref"] for item in result["locations"]])
+
     def test_verifier_drops_unsupported_extra_claim_before_rendering(self) -> None:
         dataset = _synthetic_dataset()
 
