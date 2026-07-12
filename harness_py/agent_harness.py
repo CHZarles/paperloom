@@ -203,8 +203,24 @@ class ResearchAgentHarness:
                     "evidenceIds": _progress_evidence_ids(child_map(payload)),
                 })
 
+    @staticmethod
+    def _conversation_messages(messages: list[JsonMap]) -> list[JsonMap]:
+        result: list[JsonMap] = []
+        for item in messages:
+            role = str(item.get("role") or "")
+            if role not in {"user", "assistant"}:
+                continue
+            content = str(item.get("content") or item.get("summary") or "").strip()
+            if content:
+                result.append({"role": role, "content": content})
+        return result
+
     def _system_prompt(self) -> str:
-        return (
+        return research_agent_instructions(self.skills)
+
+
+def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
+    return (
             "You are a paper-research agent operating in one continuous ReAct loop. Trust the conversation history: "
             "decide whether to answer directly, ask one useful clarification, research, continue searching, combine "
             "research skills, or abstain. There is no fixed stage sequence and no research-round limit.\n\n"
@@ -232,20 +248,8 @@ class ResearchAgentHarness:
             "abstained when the corpus cannot fully support the request. Do not expose internal skills, tool names, "
             "schemas, statuses, reasoning traces, evidence-id syntax, or validation rules in the user-facing answer.\n\n"
             "AVAILABLE RESEARCH SKILLS\n"
-            f"{self.skills.catalog()}"
-        )
-
-    @staticmethod
-    def _conversation_messages(messages: list[JsonMap]) -> list[JsonMap]:
-        result: list[JsonMap] = []
-        for item in messages:
-            role = str(item.get("role") or "")
-            if role not in {"user", "assistant"}:
-                continue
-            content = str(item.get("content") or item.get("summary") or "").strip()
-            if content:
-                result.append({"role": role, "content": content})
-        return result
+            f"{skills.catalog()}"
+    )
 
 
 def _final_answer_tool() -> JsonMap:
