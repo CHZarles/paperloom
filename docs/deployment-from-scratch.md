@@ -52,6 +52,9 @@ cp .env.example .env
 - `MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1`
 - `MINIMAX_API_KEY=<研究 Harness 使用的 API Key>`
 - `MINIMAX_MODEL=MiniMax-M3`
+- `RESEARCH_HARNESS_RUNTIME=agents_sdk`
+- `RESEARCH_HARNESS_PYTHON=.venv-harness/bin/python`
+- `EVAL_DUMP_DIR=` (optional per-run offline eval capture root)
 - `RESEARCH_HARNESS_INTERNAL_TOKEN=<Java 与 Python 之间共享的随机字符串>`
 
 说明：
@@ -137,6 +140,8 @@ cd ..
 Java 聊天请求会转发到本机 Python Harness。先启动它：
 
 ```bash
+python3 -m venv .venv-harness
+.venv-harness/bin/python -m pip install -r harness_py/requirements.lock
 scripts/paperloom-start-harness.sh start
 ```
 

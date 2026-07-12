@@ -71,8 +71,21 @@ start() {
     return 0
   fi
   load_env
+  local python_bin="${RESEARCH_HARNESS_PYTHON:-}"
+  if [[ -z "$python_bin" ]]; then
+    if [[ -x .venv-harness/bin/python ]]; then
+      python_bin=.venv-harness/bin/python
+    else
+      python_bin=python3
+    fi
+  fi
+  if ! "$python_bin" -c 'import agents' >/dev/null 2>&1; then
+    echo "OpenAI Agents SDK is unavailable for ${python_bin}." >&2
+    echo "Create .venv-harness and install harness_py/requirements.lock." >&2
+    exit 1
+  fi
   mkdir -p "$(dirname "$PID_FILE")" "$(dirname "$LOG_FILE")"
-  nohup python3 -u -m harness_py serve \
+  nohup "$python_bin" -u -m harness_py serve \
     --host "$HOST" \
     --port "$PORT" \
     --internal-token "${RESEARCH_HARNESS_INTERNAL_TOKEN:-}" \
