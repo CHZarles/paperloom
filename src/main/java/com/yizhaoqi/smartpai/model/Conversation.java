@@ -44,6 +44,9 @@ public class Conversation {
     @Column(name = "reading_state_patch_json", columnDefinition = "LONGTEXT")
     private String readingStatePatchJson;
 
+    @Column(name = "research_events_json", columnDefinition = "LONGTEXT")
+    private String researchEventsJson;
+
     @CreationTimestamp
     private LocalDateTime timestamp; // 对话时间戳
 }

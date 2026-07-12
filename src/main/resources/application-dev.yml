@@ -150,6 +150,10 @@ paperloom:
     queue-capacity: ${PAPERLOOM_TRACE_QUEUE_CAPACITY:1000}
     writer-threads: ${PAPERLOOM_TRACE_WRITER_THREADS:1}
 
+research-harness:
+  base-url: ${RESEARCH_HARNESS_BASE_URL:http://127.0.0.1:8091}
+  internal-token: ${RESEARCH_HARNESS_INTERNAL_TOKEN:}
+
 elasticsearch:
   # dev 下允许按需使用 https + 自签名证书
   host: ${ELASTICSEARCH_HOST:localhost}

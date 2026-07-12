@@ -321,6 +321,22 @@ public class ConversationScopeService {
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
     }
 
+    public List<String> authorizedPaperIdsForHarness(Long userId, EffectiveConversationScope scope) {
+        User user = resolveUser(userId);
+        if (scope != null && scope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT) {
+            return resolveDirectPaperIds(user, scope.paperIds());
+        }
+        List<String> effectiveOrgTags = effectiveOrgTags(user);
+        return accessiblePapersForTitleMatch(user, effectiveOrgTags).stream()
+                .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                .filter(paperSearchabilityService::isSearchable)
+                .map(Paper::getPaperId)
+                .map(this::trimToNull)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
     private ConversationScopeMode parseScopeMode(String rawMode) {
         String mode = trimToNull(rawMode);
         if (mode == null) {

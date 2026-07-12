@@ -40,9 +40,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<{
-  (e: 'askAboutThis', payload: Api.Chat.Scope): void;
-}>();
 
 const openingOriginal = ref(false);
 const openingTableScreenshot = ref(false);
@@ -90,8 +87,8 @@ const readableAssetWarnings = computed(() =>
   (props.assetWarnings || []).map(warning => assetWarningLabels[warning] || warning)
 );
 const canDownloadOriginalPdf = computed(() => Boolean(props.paperId));
-const canOpenPageEvidence = computed(
-  () => Boolean(props.paperId && props.pageNumber) && props.pageScreenshotAvailable !== false
+const canOpenPageEvidence = computed(() =>
+  Boolean(props.paperId && props.pageNumber && props.pageScreenshotAvailable === true)
 );
 const tableImageUnavailable = computed(() => isTableSource.value && props.tableScreenshotAvailable === false);
 const figureImageUnavailable = computed(() => isFigureSource.value && props.figureScreenshotAvailable === false);
@@ -327,31 +324,6 @@ function openEvidenceImageInNewTab() {
   window.open(evidenceImageUrl.value, '_blank', 'noopener,noreferrer');
 }
 
-function askAboutThisEvidence() {
-  if (!props.paperId && !props.sourceQuoteRef) {
-    window.$message?.warning('Missing paper id.');
-    return;
-  }
-  emit('askAboutThis', {
-    paperIds: props.paperId ? [props.paperId] : [],
-    paperTitles: [displayPaper.value],
-    referenceNumber: props.referenceNumber,
-    conversationRecordId: props.conversationRecordId || undefined,
-    chunkId: props.chunkId || undefined,
-    pageNumber: props.pageNumber || undefined,
-    paperId: props.paperId || undefined,
-    paperTitle: displayPaper.value,
-    originalFilename: props.originalFilename || undefined,
-    matchedText: matchedText.value,
-    matchedChunkText: props.matchedChunkText || undefined,
-    evidenceSnippet: props.evidenceSnippet || undefined,
-    bboxJson: props.bboxJson || undefined,
-    sourceKind: props.sourceKind || undefined,
-    sourceQuoteRef: props.sourceQuoteRef || undefined,
-    readingAction: props.sourceQuoteRef ? 'TRACE_SOURCE_QUOTE' : undefined
-  });
-}
-
 function normalizePdfFilename(filename: string) {
   const normalized = filename.trim().replace(/[\\/\r\n\t"]/g, '_') || 'paper.pdf';
   return normalized.toLowerCase().endsWith('.pdf') ? normalized : `${normalized}.pdf`;
@@ -459,12 +431,6 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="source-evidence__actions">
-      <NButton type="primary" secondary :disabled="!paperId && !sourceQuoteRef" @click="askAboutThisEvidence">
-        <template #icon>
-          <icon-lucide:message-square-plus />
-        </template>
-        Ask about this
-      </NButton>
       <NButton
         v-if="isTableSource"
         type="primary"
@@ -510,6 +476,9 @@ onBeforeUnmount(() => {
         Download original PDF
       </NButton>
     </div>
+    <p v-if="paperId && pageNumber && !canOpenPageEvidence" class="source-evidence__empty-text">
+      A page image is not available for this citation. Use the quoted text or download the original PDF.
+    </p>
 
     <NModal v-model:show="evidenceImageVisible" class="evidence-image-modal-shell" :auto-focus="false">
       <div class="evidence-image-modal">

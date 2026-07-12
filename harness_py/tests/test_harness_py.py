@@ -14,7 +14,7 @@ from unittest.mock import patch
 import yaml
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from harness_py.agent_harness import ResearchAgentHarness
+from harness_py.agent_harness import ResearchAgentHarness, _answer_validation_error
 from harness_py.conversation import ConversationState
 from harness_py.dataset import load_dataset
 from harness_py.golden_fixture import GoldenFixtureHarness
@@ -49,7 +49,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         report = BehaviorScorer().score_dataset(dataset, runs)
 
-        self.assertEqual(12, report["case_count"])
+        self.assertEqual(15, report["case_count"])
         self.assertEqual(0, report["failed_count"], report)
         self.assertTrue(all("evidence_ledger" in run for run in runs))
         self.assertTrue(all("citation_validation" in run for run in runs))
@@ -94,6 +94,24 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         self.assertEqual("INCOMPLETE_PRECISE", run["research_answer"]["status"])
         self.assertEqual("abstained", run["research_answer"]["outcome"])
+
+    def test_metadata_answer_does_not_require_paper_content_citation(self) -> None:
+        error = _answer_validation_error(
+            {"outcome": "answered", "markdown": "There are five papers."},
+            {},
+            used_paper_evidence=False,
+        )
+
+        self.assertEqual("", error)
+
+    def test_answer_after_reading_paper_evidence_still_requires_citation(self) -> None:
+        error = _answer_validation_error(
+            {"outcome": "answered", "markdown": "The paper proposes a new method."},
+            {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
+            used_paper_evidence=True,
+        )
+
+        self.assertIn("paper-content evidence was read", error)
 
     def test_minimax_client_sends_openai_compatible_tool_request(self) -> None:
         captured = {"bodies": []}

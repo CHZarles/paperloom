@@ -62,7 +62,7 @@ public class ConversationService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
-        return saveConversation(user, question, answer, null, null, null, null, null);
+        return saveConversation(user, question, answer, null, null, null, null, null, null);
     }
 
     @Transactional
@@ -75,7 +75,7 @@ public class ConversationService {
     public Long recordConversation(Long userId, String question, String answer, String conversationId,
                                    Map<String, Map<String, Object>> referenceMappings,
                                    Map<String, Object> effectiveScope) {
-        return recordConversation(userId, question, answer, conversationId, referenceMappings, effectiveScope, null, null);
+        return recordConversation(userId, question, answer, conversationId, referenceMappings, effectiveScope, null, null, null);
     }
 
     @Transactional
@@ -84,11 +84,24 @@ public class ConversationService {
                                    Map<String, Object> effectiveScope,
                                    ReadingTurnArtifacts readingArtifacts,
                                    ReadingStatePatch readingStatePatch) {
+        return recordConversation(
+                userId, question, answer, conversationId, referenceMappings, effectiveScope,
+                readingArtifacts, readingStatePatch, null
+        );
+    }
+
+    @Transactional
+    public Long recordConversation(Long userId, String question, String answer, String conversationId,
+                                   Map<String, Map<String, Object>> referenceMappings,
+                                   Map<String, Object> effectiveScope,
+                                   ReadingTurnArtifacts readingArtifacts,
+                                   ReadingStatePatch readingStatePatch,
+                                   List<Map<String, Object>> researchEvents) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
         Long conversationRecordId = saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope,
-                readingArtifacts, readingStatePatch);
+                readingArtifacts, readingStatePatch, researchEvents);
         updateSessionReadingMemory(userId, conversationId, readingStatePatch);
         updateSessionTitleIfDefault(userId, conversationId, question);
         touchSessionUpdatedAt(userId, conversationId);
@@ -99,7 +112,8 @@ public class ConversationService {
                                   Map<String, Map<String, Object>> referenceMappings,
                                   Map<String, Object> effectiveScope,
                                   ReadingTurnArtifacts readingArtifacts,
-                                  ReadingStatePatch readingStatePatch) {
+                                  ReadingStatePatch readingStatePatch,
+                                  List<Map<String, Object>> researchEvents) {
         Conversation conversation = new Conversation();
         conversation.setUser(user);
         conversation.setQuestion(question);
@@ -109,6 +123,7 @@ public class ConversationService {
         conversation.setEffectiveScopeJson(writeEffectiveScope(effectiveScope));
         conversation.setReadingArtifactsJson(writeReadingArtifacts(readingArtifacts));
         conversation.setReadingStatePatchJson(writeReadingStatePatch(readingStatePatch));
+        conversation.setResearchEventsJson(writeResearchEvents(researchEvents));
 
         Conversation saved = conversationRepository.save(conversation);
         if (saved != null && saved.getId() != null) {
@@ -451,6 +466,7 @@ public class ConversationService {
                             includeUsername ? conversation.getUser().getUsername() : null,
                             parseEffectiveScope(conversation.getEffectiveScopeJson()),
                             null,
+                            null,
                             null
                     ));
                     messages.add(buildMessage(
@@ -463,7 +479,8 @@ public class ConversationService {
                             includeUsername ? conversation.getUser().getUsername() : null,
                             null,
                             parseJsonObject(conversation.getReadingArtifactsJson(), "reading artifacts"),
-                            parseJsonObject(conversation.getReadingStatePatchJson(), "reading state patch")
+                            parseJsonObject(conversation.getReadingStatePatchJson(), "reading state patch"),
+                            parseResearchEvents(conversation.getResearchEventsJson())
                     ));
                 });
 
@@ -476,7 +493,8 @@ public class ConversationService {
                                              String username,
                                              Map<String, Object> effectiveScope,
                                              Map<String, Object> readingArtifacts,
-                                             Map<String, Object> readingStatePatch) {
+                                             Map<String, Object> readingStatePatch,
+                                             List<Map<String, Object>> researchEvents) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
         message.put("content", content);
@@ -503,6 +521,9 @@ public class ConversationService {
         }
         if (readingStatePatch != null && !readingStatePatch.isEmpty()) {
             message.put("readingStatePatch", readingStatePatch);
+        }
+        if (researchEvents != null && !researchEvents.isEmpty()) {
+            message.put("researchEvents", researchEvents);
         }
         return message;
     }
@@ -809,6 +830,18 @@ public class ConversationService {
         }
     }
 
+    private String writeResearchEvents(List<Map<String, Object>> researchEvents) {
+        if (researchEvents == null || researchEvents.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(researchEvents);
+        } catch (Exception e) {
+            logger.warn("序列化 research events 失败，将跳过检索过程持久化", e);
+            return null;
+        }
+    }
+
     private Map<String, Object> parseEffectiveScope(String effectiveScopeJson) {
         if (effectiveScopeJson == null || effectiveScopeJson.isBlank()) {
             return null;
@@ -841,6 +874,23 @@ public class ConversationService {
             return parsed == null || parsed.isEmpty() ? null : parsed;
         } catch (Exception e) {
             logger.warn("解析{}失败，将返回无结构化阅读状态的历史记录", label, e);
+            return null;
+        }
+    }
+
+    private List<Map<String, Object>> parseResearchEvents(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            List<Map<String, Object>> parsed = objectMapper.readValue(
+                    json,
+                    new TypeReference<List<Map<String, Object>>>() {
+                    }
+            );
+            return parsed == null || parsed.isEmpty() ? null : List.copyOf(parsed);
+        } catch (Exception e) {
+            logger.warn("解析 research events 失败，将返回无检索过程的历史记录", e);
             return null;
         }
     }

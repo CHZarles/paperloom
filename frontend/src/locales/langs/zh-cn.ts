@@ -166,7 +166,7 @@ const local: App.I18n.Schema = {
     'chat-history': '问答记录',
     'invite-code': '邀请码管理',
     'knowledge-base': '文献库',
-    'model-provider': '实验配置',
+    'model-provider': '向量模型',
     'org-tag': '分类标签',
     'usage-monitor': '用量曲线',
     user: '协作者',

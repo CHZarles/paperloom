@@ -262,6 +262,7 @@ public class AdminController {
         validateAdmin(adminUsername);
 
         try {
+            requireEmbeddingProviderScope(scope);
             return ResponseEntity.ok(Map.of(
                     "code", 200,
                     "message", "模型配置更新成功",
@@ -286,6 +287,7 @@ public class AdminController {
         validateAdmin(adminUsername);
 
         try {
+            requireEmbeddingProviderScope(scope);
             return ResponseEntity.ok(Map.of(
                     "code", 200,
                     "message", "模型连接测试完成",
@@ -296,6 +298,15 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("code", 500, "message", "模型连接测试失败: " + e.getMessage()));
+        }
+    }
+
+    private void requireEmbeddingProviderScope(String scope) {
+        if (!ModelProviderConfigService.SCOPE_EMBEDDING.equalsIgnoreCase(scope)) {
+            throw new CustomException(
+                    "LLM provider configuration is deployment-managed",
+                    HttpStatus.BAD_REQUEST
+            );
         }
     }
     

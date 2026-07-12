@@ -3,7 +3,6 @@ import { nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
-import ProductReadingArtifactsPanel from './product-reading-artifacts-panel.vue';
 import ProductReadingPaperChoiceList from './product-reading-paper-choice-list.vue';
 defineOptions({ name: 'ChatMessage' });
 
@@ -58,6 +57,7 @@ const emit = defineEmits<{
       sourceQuoteRef?: string | null;
     }
   ): void;
+  (e: 'openProcess', message: Api.Chat.Message): void;
   (e: 'retry'): void;
 }>();
 
@@ -131,6 +131,7 @@ const activeReferenceNumber = ref<number | null>(null);
 // eslint-disable-next-line no-useless-escape
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
 const toolEvents = computed(() => props.msg.toolEvents || []);
+const researchEvents = computed(() => props.msg.researchEvents || []);
 const assistantIsRunning = computed(
   () =>
     props.msg.role === 'assistant' &&
@@ -140,9 +141,6 @@ const assistantIsGenerating = computed(
   () => props.msg.role === 'assistant' && ['pending', 'loading'].includes(props.msg.status || '')
 );
 const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
-const showToolProgress = computed(
-  () => props.msg.role === 'assistant' && assistantIsGenerating.value
-);
 const canRetry = computed(() => props.msg.role === 'assistant' && Boolean(props.retrievalQueryFallback?.trim()));
 const hasReadingArtifacts = computed(() => {
   const artifacts = props.msg.readingArtifacts;
@@ -158,29 +156,91 @@ const hasReadingArtifacts = computed(() => {
       artifacts.uncertaintyNotes?.length
   );
 });
+const showResearchDetails = computed(
+  () =>
+    props.msg.role === 'assistant' &&
+    (assistantIsGenerating.value ||
+      researchEvents.value.length > 0 ||
+      toolEvents.value.length > 0 ||
+      hasReadingArtifacts.value)
+);
 
-function toolEventClass(event: Api.Chat.AgentToolEvent) {
-  return {
-    'assistant-process__line--executing': event.status === 'executing',
-    'assistant-process__line--success': event.status === 'success',
-    'assistant-process__line--failed': event.status === 'failed'
-  };
+function progressEventTitle(event: Api.Chat.ResearchProgressEvent) {
+  const eventType = event.eventType || event.type;
+  if (eventType === 'job_started') return 'Research started';
+  if (eventType === 'model_call_started')
+    return event.attempt && event.attempt > 1 ? `Thinking · pass ${event.attempt}` : 'Thinking';
+  if (eventType === 'model_call_completed') return `Completed model pass ${event.attempt || ''}`.trim();
+  if (eventType === 'answer_completed') return 'Preparing the answer';
+  if (eventType === 'job_failed') return 'Research failed';
+  if (eventType === 'job_cancelled') return 'Research cancelled';
+  if (eventType === 'tool_started') return toolActionLabel(event.tool, true);
+  if (eventType === 'tool_completed') return toolActionLabel(event.tool, false);
+  return 'Research progress';
 }
 
-function toolEventLabel(event: Api.Chat.AgentToolEvent) {
-  const labels: Record<string, string> = {
-    get_session_state: 'Checking reading scope',
-    list_papers: 'Browsing readable papers',
-    search_paper_candidates: 'Finding candidate papers',
-    find_papers_by_identity: 'Resolving paper identity',
-    get_paper_outline: 'Inspecting paper outline',
-    list_paper_locations: 'Listing reading locations',
-    find_reading_locations: 'Locating relevant passages',
-    read_locations: 'Reading selected passages',
-    trace_source_quotes: 'Checking cited evidence'
+function toolActionLabel(tool?: string, running = false) {
+  const labels: Record<string, [string, string]> = {
+    search_paper_candidates: ['Searching papers', 'Searched papers'],
+    find_reading_locations: ['Finding relevant locations', 'Found relevant locations'],
+    read_locations: ['Reading paper locations', 'Read paper locations'],
+    get_citation_edges: ['Tracing citations', 'Traced citations'],
+    get_research_skill: ['Loading research guidance', 'Loaded research guidance']
   };
-  return labels[event.tool] || 'Checking reading workspace';
+  const pair = labels[tool || ''];
+  if (pair) return running ? pair[0] : pair[1];
+  return running ? `Running ${tool || 'tool'}` : `Completed ${tool || 'tool'}`;
 }
+
+// Runtime events are intentionally rendered by tool-specific deterministic branches.
+// eslint-disable-next-line complexity
+function progressEventDetail(event: Api.Chat.ResearchProgressEvent) {
+  const input = event.input || {};
+  const output = event.output || {};
+  const eventType = event.eventType || event.type;
+  if (eventType === 'model_call_completed') {
+    const tokens = Number(event.usage?.totalTokens || 0);
+    return [event.durationMs ? `${event.durationMs} ms` : '', tokens ? `${tokens.toLocaleString()} tokens` : '']
+      .filter(Boolean)
+      .join(' · ');
+  }
+  if (eventType === 'job_failed') {
+    return event.errorType ? `${event.errorType}: ${event.message || 'Research failed'}` : event.message || '';
+  }
+  if (event.tool === 'search_paper_candidates') {
+    const query = String(input.query || '').trim();
+    const count = Number(output.resultCount || 0);
+    return eventType === 'tool_completed'
+      ? `${count} paper${count === 1 ? '' : 's'} returned${query ? ` for “${query}”` : ''}`
+      : query || 'Searching the selected paper collection';
+  }
+  if (event.tool === 'find_reading_locations') {
+    const query = String(input.query || '').trim();
+    const count = Number(output.resultCount || 0);
+    return eventType === 'tool_completed'
+      ? `${count} location${count === 1 ? '' : 's'} found`
+      : query || 'Locating relevant sections and pages';
+  }
+  if (event.tool === 'read_locations') {
+    const count = Number(output.readCount || input.locationCount || 0);
+    const evidenceCount = Number(output.evidenceCount || 0);
+    const pages = Array.isArray(output.pages) ? output.pages.join(', ') : '';
+    if (eventType === 'tool_completed') {
+      return `${count} location${count === 1 ? '' : 's'} read · ${evidenceCount} evidence passage${evidenceCount === 1 ? '' : 's'}${pages ? ` · pages ${pages}` : ''}`;
+    }
+    return `${count} location${count === 1 ? '' : 's'} selected`;
+  }
+  if (event.tool === 'get_citation_edges') return `${Number(output.edgeCount || 0)} citation edges`;
+  if (event.tool === 'get_research_skill') return String(input.skillId || output.skillId || '');
+  return '';
+}
+
+const currentProgressText = computed(() => {
+  const latest = researchEvents.value[researchEvents.value.length - 1];
+  if (!latest) return 'Thinking';
+  const detail = progressEventDetail(latest);
+  return detail ? `${progressEventTitle(latest)} · ${detail}` : progressEventTitle(latest);
+});
 
 function splitTrailingUrlPunctuation(rawUrl: string) {
   let url = rawUrl;
@@ -228,11 +288,13 @@ function normalizeBareUrls(text: string) {
   });
 }
 
+// Citation fallback priority mirrors the persisted reference contract.
+// eslint-disable-next-line complexity
 function createCompactCitationLink(sourceNum: string) {
   const persistedDetail = props.msg.referenceMappings?.[sourceNum];
   const sourceQuoteRef = persistedDetail?.sourceQuoteRef?.trim();
   if (!persistedDetail?.paperId && !sourceQuoteRef) {
-    return `<span class="source-citation-chip source-citation-chip--muted" data-reference-number="${sourceNum}" title="Evidence mapping unavailable">[${sourceNum}]</span>`;
+    return `[${sourceNum}]`;
   }
 
   const fileId = `source-file-${sourceFiles.value.length}`;
@@ -442,7 +504,15 @@ function handleContentClick(event: MouseEvent) {
       if (file) {
         activeReferenceNumber.value = file.referenceNumber;
         if (!file.paperId && file.sourceQuoteRef && !props.msg.conversationRecordId) {
-          handleSourceQuoteClick(file);
+          openReferenceEvidencePage({
+            paperTitle: file.paperTitle,
+            originalFilename: file.originalFilename,
+            pageNumber: file.pageNumber,
+            evidenceSnippet: file.paperTitle,
+            matchedChunkText: file.paperTitle,
+            referenceNumber: file.referenceNumber,
+            sourceQuoteRef: file.sourceQuoteRef
+          });
           return;
         }
         const contextAnchorText = extractContextAnchorText(sourceTarget);
@@ -475,66 +545,6 @@ function handleContentKeydown(event: KeyboardEvent) {
   sourceTarget.click();
 }
 
-function handleSourceQuoteClick(fileInfo: {
-  paperTitle: string;
-  originalFilename?: string | null;
-  referenceNumber: number;
-  paperId?: string;
-  pageNumber?: number;
-  sourceQuoteRef?: string | null;
-}) {
-  if (!fileInfo.sourceQuoteRef) {
-    return;
-  }
-  chatStore.setReferenceFocus({
-    sourceQuoteRef: fileInfo.sourceQuoteRef,
-    referenceNumber: fileInfo.referenceNumber,
-    paperId: fileInfo.paperId,
-    paperTitle: fileInfo.paperTitle,
-    originalFilename: fileInfo.originalFilename || undefined,
-    pageNumber: fileInfo.pageNumber
-  });
-  if (!chatStore.input.message.trim()) {
-    chatStore.input.message = '解释这个引用';
-  }
-}
-
-function handleArtifactSourceQuoteOpen(payload: {
-  sourceQuoteRef?: string;
-  paperId?: string;
-  paperTitle?: string;
-  originalFilename?: string;
-  referenceNumber?: number;
-  evidenceSnippet?: string;
-  matchedChunkText?: string;
-}) {
-  const referenceNumber = payload.referenceNumber || 0;
-  activeReferenceNumber.value = referenceNumber || null;
-  if (referenceNumber > 0) {
-    handleSourceFileClick({
-      paperTitle: payload.paperTitle || payload.evidenceSnippet || 'Evidence',
-      originalFilename: payload.originalFilename,
-      referenceNumber,
-      paperId: payload.paperId,
-      sourceQuoteRef: payload.sourceQuoteRef,
-      anchorText: payload.evidenceSnippet || payload.matchedChunkText || '',
-      evidenceSnippet: payload.evidenceSnippet,
-      matchedChunkText: payload.matchedChunkText
-    });
-    return;
-  }
-  openReferenceEvidencePage({
-    paperTitle: payload.paperTitle || payload.evidenceSnippet || 'Evidence',
-    originalFilename: payload.originalFilename,
-    paperId: payload.paperId,
-    anchorText: payload.evidenceSnippet || payload.matchedChunkText || '',
-    evidenceSnippet: payload.evidenceSnippet,
-    matchedChunkText: payload.matchedChunkText,
-    referenceNumber: 0,
-    sourceQuoteRef: payload.sourceQuoteRef
-  });
-}
-
 // 处理来源证据点击事件
 // Product Reading source quotes must be re-opened through the durable reference endpoint.
 // eslint-disable-next-line complexity
@@ -565,7 +575,17 @@ async function handleSourceFileClick(fileInfo: {
   const requiresAuthoritativeSourceQuote = Boolean(sourceQuoteRefForDetail && conversationRecordId);
 
   if (sourceQuoteRefForDetail && !conversationRecordId) {
-    window.$message?.error('Citation detail is not available until this reading turn is saved.');
+    openReferenceEvidencePage({
+      paperTitle: persistedDetail?.paperTitle || paperTitle,
+      originalFilename: persistedDetail?.originalFilename || originalFilename,
+      paperId: persistedDetail?.paperId || extractedPaperId,
+      pageNumber: persistedDetail?.pageNumber ?? extractedPageNumber,
+      anchorText: persistedDetail?.anchorText || clickedAnchorText || '',
+      evidenceSnippet: persistedDetail?.evidenceSnippet || fileInfo.evidenceSnippet,
+      matchedChunkText: persistedDetail?.matchedChunkText || fileInfo.matchedChunkText,
+      referenceNumber,
+      sourceQuoteRef: sourceQuoteRefForDetail
+    });
     return;
   }
 
@@ -702,21 +722,17 @@ async function handleSourceFileClick(fileInfo: {
       </span>
 
       <div class="message-body">
-        <div v-if="showToolProgress" class="assistant-process" aria-live="polite">
-          <div v-if="assistantIsGenerating" class="assistant-process__line assistant-process__line--thinking">
-            <span class="assistant-process__dot" aria-hidden="true" />
-            <span class="assistant-process__text">Thinking</span>
-          </div>
-          <div
-            v-for="event in toolEvents"
-            :key="event.id || `${event.tool}:${event.timestamp}`"
-            class="assistant-process__line"
-            :class="toolEventClass(event)"
-          >
-            <span class="assistant-process__dot" aria-hidden="true" />
-            <span class="assistant-process__text">{{ toolEventLabel(event) }}</span>
-          </div>
-        </div>
+        <button
+          v-if="assistantIsGenerating && showResearchDetails"
+          type="button"
+          class="assistant-live-status"
+          aria-label="Open research process"
+          @click="emit('openProcess', msg)"
+        >
+          <span class="assistant-process__dot" aria-hidden="true" />
+          <span>{{ currentProgressText }}</span>
+          <icon-lucide:panel-right-open />
+        </button>
         <NText v-if="msg.status === 'error'" class="message-error">
           {{ msg.content || '服务器繁忙，请稍后再试' }}
         </NText>
@@ -734,14 +750,19 @@ async function handleSourceFileClick(fileInfo: {
           v-if="msg.role === 'assistant' && msg.productStateItems?.length && !hasReadingArtifacts"
           :items="msg.productStateItems"
         />
-        <ProductReadingArtifactsPanel
-          v-if="msg.role === 'assistant' && hasReadingArtifacts"
-          :artifacts="msg.readingArtifacts"
-          :legacy-items="msg.productStateItems"
-          @open-source-quote="handleArtifactSourceQuoteOpen"
-        />
         <NDivider v-if="showMessageActions" class="message-divider" />
         <div v-if="showMessageActions" class="message-actions">
+          <NButton
+            v-if="showResearchDetails"
+            quaternary
+            title="Research process"
+            aria-label="Research process"
+            @click="emit('openProcess', msg)"
+          >
+            <template #icon>
+              <icon-lucide:list-tree />
+            </template>
+          </NButton>
           <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
             <template #icon>
               <icon-lucide:copy />
@@ -1043,22 +1064,35 @@ async function handleSourceFileClick(fileInfo: {
     sans-serif;
 }
 
-.assistant-process {
-  display: grid;
-  width: fit-content;
+.assistant-live-status {
+  display: inline-flex;
   max-width: 100%;
-  gap: 5px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.assistant-process__line {
-  display: grid;
-  grid-template-columns: 12px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  min-width: 0;
+  margin-bottom: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 12px;
+  text-align: left;
+}
+
+.assistant-live-status:hover {
+  color: var(--color-primary);
+}
+
+.assistant-live-status .assistant-process__dot {
+  flex: 0 0 auto;
+  background: var(--color-primary);
+  animation: runner-dot 1.2s ease-in-out infinite;
+}
+
+.assistant-live-status svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .assistant-process__dot {
@@ -1067,30 +1101,6 @@ async function handleSourceFileClick(fileInfo: {
   border-radius: 999px;
   background: var(--color-text-muted);
   opacity: 0.58;
-}
-
-.assistant-process__line--thinking .assistant-process__dot,
-.assistant-process__line--executing .assistant-process__dot {
-  background: var(--color-primary);
-  animation: runner-dot 1.2s ease-in-out infinite;
-}
-
-.assistant-process__line--success .assistant-process__dot {
-  background: var(--color-success);
-  opacity: 0.9;
-}
-
-.assistant-process__line--failed .assistant-process__dot {
-  background: var(--color-error);
-  opacity: 0.9;
-}
-
-.assistant-process__text {
-  overflow: hidden;
-  color: var(--color-text-muted);
-  font-weight: 520;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @keyframes runner-dot {
@@ -1139,8 +1149,7 @@ async function handleSourceFileClick(fileInfo: {
   .user-content,
   .assistant-content,
   .message-divider,
-  .message-actions,
-  .assistant-process {
+  .message-actions {
     width: 100%;
     max-width: 100%;
   }

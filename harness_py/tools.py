@@ -58,6 +58,17 @@ class ReadingDocument:
     text: str
     source_kind: str
     matched_anchor_id: str | None = None
+    original_filename: str | None = None
+    bbox_json: str | None = None
+    parser_name: str | None = None
+    parser_version: str | None = None
+    table_id: str | None = None
+    figure_id: str | None = None
+    formula_id: str | None = None
+    page_screenshot_available: bool = False
+    pdf_evidence_available: bool = False
+    table_screenshot_available: bool = False
+    figure_screenshot_available: bool = False
 
     def evidence_id(self) -> str:
         raw = f"{self.paper_id}:{self.location_ref}:{self.element_type}:{self.page}"
@@ -67,6 +78,7 @@ class ReadingDocument:
         return {
             "paper_id": self.paper_id,
             "title": self.title,
+            "original_filename": self.original_filename,
             "paper_version": self.paper_version,
             "location_ref": self.location_ref,
             "section": self.section or "unsectioned",
@@ -88,8 +100,18 @@ class ReadingDocument:
             "location_ref": self.location_ref,
             "element_type": self.element_type,
             "span_text": self.text,
-            "bbox_or_cell_ref": None,
+            "bbox_or_cell_ref": self.bbox_json,
+            "bbox_json": self.bbox_json,
+            "parser_name": self.parser_name,
+            "parser_version": self.parser_version,
             "source_kind": self.source_kind,
+            "table_id": self.table_id,
+            "figure_id": self.figure_id,
+            "formula_id": self.formula_id,
+            "page_screenshot_available": self.page_screenshot_available,
+            "pdf_evidence_available": self.pdf_evidence_available,
+            "table_screenshot_available": self.table_screenshot_available,
+            "figure_screenshot_available": self.figure_screenshot_available,
             "retrieval_strategy": "source_quote_reading",
             "relevance_score": 1.0,
             "evidence_quality": "verified",
@@ -115,9 +137,10 @@ class ReadingCorpusTools:
                 "search_paper_candidates",
                 (
                     "Search or browse candidate papers in the fixed corpus using title, abstract, "
-                    "author, venue, year, and metadata. Results are non-citeable paper cards, not "
-                    "paper-content evidence or recommendations. Use an empty query_text with a "
-                    "large limit to inspect the complete fixed corpus in one call."
+                    "author, venue, year, and metadata. Results are authoritative for corpus counts, "
+                    "inventories, identities, and metadata filters, but are not citeable paper-content "
+                    "evidence. Use an empty query_text with a large limit to inspect the complete fixed "
+                    "corpus in one call."
                 ),
                 {
                     "type": "object",
@@ -407,7 +430,9 @@ def _build_documents(dataset: GoldenDataset) -> list[ReadingDocument]:
     for paper_id, model in dataset.reading_models_by_paper_id.items():
         paper = dataset.paper_records_by_id.get(paper_id, {})
         identity = child_map(paper.get("identity"))
+        product_db = child_map(paper.get("product_db"))
         title = str(identity.get("title") or paper_id)
+        original_filename = str(product_db.get("original_filename") or "") or None
         version = str(identity.get("version_label") or model.get("model_version") or "unknown")
         for element in as_list(model.get("reading_elements")):
             element_map = child_map(element)
@@ -424,7 +449,21 @@ def _build_documents(dataset: GoldenDataset) -> list[ReadingDocument]:
                 page=element_map.get("pageNumber"),
                 section=str(element_map.get("sectionTitle") or ""),
                 text=text,
-                source_kind="reading_element",
+                source_kind=str(element_map.get("elementType") or "reading_element").lower(),
+                original_filename=original_filename,
+                bbox_json=str(element_map.get("bboxJson") or "") or None,
+                parser_name=str(element_map.get("parserName") or model.get("parser_name") or "") or None,
+                parser_version=str(element_map.get("parserVersion") or model.get("parser_version") or "") or None,
+                table_id=(str(element_map.get("sourceObjectId") or "") or None)
+                if str(element_map.get("elementType") or "").lower() == "table" else None,
+                figure_id=(str(element_map.get("sourceObjectId") or "") or None)
+                if str(element_map.get("elementType") or "").lower() in {"figure", "chart"} else None,
+                formula_id=(str(element_map.get("sourceObjectId") or "") or None)
+                if str(element_map.get("elementType") or "").lower() == "formula" else None,
+                page_screenshot_available=bool(element_map.get("pageScreenshotAvailable")),
+                pdf_evidence_available=bool(element_map.get("pdfEvidenceAvailable")),
+                table_screenshot_available=bool(element_map.get("tableScreenshotAvailable")),
+                figure_screenshot_available=bool(element_map.get("figureScreenshotAvailable")),
             )
             doc.matched_anchor_id = _match_anchor(doc, anchors_by_paper.get(paper_id, []))
             documents.append(doc)

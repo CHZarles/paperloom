@@ -1,0 +1,96 @@
+{
+  "case_count": 3,
+  "dataset_id": "harness_golden_seed",
+  "failed_count": 0,
+  "passed_count": 3,
+  "schema_version": "harness-score-report/v2",
+  "scores": [
+    {
+      "case_id": "corpus_paper_count_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "States that the current corpus contains exactly five papers.",
+          "Answers naturally without discussing citation rules or evidence identifiers."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Lists all five paper titles in the corpus.",
+          "Does not refuse merely because paper-card metadata is non-citeable."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Understands that 'them' refers to the five papers in the current corpus.",
+          "Lists all five paper titles after consulting corpus metadata."
+        ],
+        "status": "not_run"
+      }
+    }
+  ]
+}

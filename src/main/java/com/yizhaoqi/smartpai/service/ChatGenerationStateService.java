@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,6 +61,7 @@ public class ChatGenerationStateService {
         redisTemplate.delete(diagnosticsKey(generationId));
         redisTemplate.delete(readingArtifactsKey(generationId));
         redisTemplate.delete(readingStatePatchKey(generationId));
+        redisTemplate.delete(progressEventsKey(generationId));
         redisTemplate.opsForValue().set(contentKey(generationId), "", GENERATION_TTL);
         writeMeta(meta);
         redisTemplate.opsForValue().set(activeGenerationKey(userId), generationId, GENERATION_TTL);
@@ -120,6 +123,19 @@ public class ChatGenerationStateService {
         updateReadingMap(generationId, readingStatePatchKey(generationId), readingStatePatch, "reading state patch");
     }
 
+    public void appendProgressEvent(String generationId, Map<String, Object> event) {
+        if (event == null || event.isEmpty()) {
+            return;
+        }
+        try {
+            redisTemplate.opsForList().rightPush(progressEventsKey(generationId), objectMapper.writeValueAsString(event));
+            redisTemplate.expire(progressEventsKey(generationId), GENERATION_TTL);
+            touch(generationId);
+        } catch (Exception error) {
+            logger.warn("保存研究进度事件失败: generationId={}", generationId, error);
+        }
+    }
+
     public void updateConversationRecordId(String generationId, Long conversationRecordId) {
         if (conversationRecordId == null) {
             touch(generationId);
@@ -168,7 +184,8 @@ public class ChatGenerationStateService {
         Map<String, Object> diagnostics = readDiagnostics(generationId);
         Map<String, Object> readingArtifacts = readReadingMap(readingArtifactsKey(generationId), "reading artifacts");
         Map<String, Object> readingStatePatch = readReadingMap(readingStatePatchKey(generationId), "reading state patch");
-        return Optional.of(toSnapshot(meta, content, references, diagnostics, readingArtifacts, readingStatePatch));
+        List<Map<String, Object>> progressEvents = readProgressEvents(generationId);
+        return Optional.of(toSnapshot(meta, content, references, diagnostics, readingArtifacts, readingStatePatch, progressEvents));
     }
 
     public Optional<GenerationSnapshot> getGenerationForUser(String generationId, String userId) {
@@ -290,6 +307,7 @@ public class ChatGenerationStateService {
         redisTemplate.expire(diagnosticsKey(generationId), GENERATION_TTL);
         redisTemplate.expire(readingArtifactsKey(generationId), GENERATION_TTL);
         redisTemplate.expire(readingStatePatchKey(generationId), GENERATION_TTL);
+        redisTemplate.expire(progressEventsKey(generationId), GENERATION_TTL);
     }
 
     private void writeMeta(GenerationMeta meta) {
@@ -356,11 +374,31 @@ public class ChatGenerationStateService {
         }
     }
 
+    private List<Map<String, Object>> readProgressEvents(String generationId) {
+        var operations = redisTemplate.opsForList();
+        if (operations == null) {
+            return List.of();
+        }
+        List<String> rawEvents = operations.range(progressEventsKey(generationId), 0, -1);
+        if (rawEvents == null || rawEvents.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> events = new ArrayList<>();
+        for (String raw : rawEvents) {
+            try {
+                events.add(objectMapper.readValue(raw, DIAGNOSTICS_MAP_TYPE));
+            } catch (Exception error) {
+                logger.warn("解析研究进度事件失败: generationId={}", generationId, error);
+            }
+        }
+        return List.copyOf(events);
+    }
+
     private GenerationSnapshot toSnapshot(GenerationMeta meta,
                                           String content,
                                           Map<String, Map<String, Object>> referenceMappings,
                                           Map<String, Object> diagnostics) {
-        return toSnapshot(meta, content, referenceMappings, diagnostics, Collections.emptyMap(), Collections.emptyMap());
+        return toSnapshot(meta, content, referenceMappings, diagnostics, Collections.emptyMap(), Collections.emptyMap(), List.of());
     }
 
     private GenerationSnapshot toSnapshot(GenerationMeta meta,
@@ -368,7 +406,8 @@ public class ChatGenerationStateService {
                                           Map<String, Map<String, Object>> referenceMappings,
                                           Map<String, Object> diagnostics,
                                           Map<String, Object> readingArtifacts,
-                                          Map<String, Object> readingStatePatch) {
+                                          Map<String, Object> readingStatePatch,
+                                          List<Map<String, Object>> progressEvents) {
         return new GenerationSnapshot(
                 meta.generationId(),
                 meta.userId(),
@@ -383,6 +422,7 @@ public class ChatGenerationStateService {
                 diagnostics == null ? Collections.emptyMap() : diagnostics,
                 readingArtifacts == null ? Collections.emptyMap() : readingArtifacts,
                 readingStatePatch == null ? Collections.emptyMap() : readingStatePatch,
+                progressEvents == null ? List.of() : progressEvents,
                 meta.conversationRecordId()
         );
     }
@@ -409,6 +449,10 @@ public class ChatGenerationStateService {
 
     private String readingStatePatchKey(String generationId) {
         return "chat:generation:" + generationId + ":reading_state_patch";
+    }
+
+    private String progressEventsKey(String generationId) {
+        return "chat:generation:" + generationId + ":progress_events";
     }
 
     private String activeGenerationKey(String userId) {
@@ -462,7 +506,26 @@ public class ChatGenerationStateService {
             Map<String, Object> diagnostics,
             Map<String, Object> readingArtifacts,
             Map<String, Object> readingStatePatch,
+            List<Map<String, Object>> progressEvents,
             Long conversationRecordId
     ) {
+        public GenerationSnapshot(String generationId,
+                                  String userId,
+                                  String conversationId,
+                                  String question,
+                                  GenerationStatus status,
+                                  String content,
+                                  String createdAt,
+                                  String updatedAt,
+                                  String errorMessage,
+                                  Map<String, Map<String, Object>> referenceMappings,
+                                  Map<String, Object> diagnostics,
+                                  Map<String, Object> readingArtifacts,
+                                  Map<String, Object> readingStatePatch,
+                                  Long conversationRecordId) {
+            this(generationId, userId, conversationId, question, status, content, createdAt, updatedAt,
+                    errorMessage, referenceMappings, diagnostics, readingArtifacts, readingStatePatch,
+                    List.of(), conversationRecordId);
+        }
     }
 }

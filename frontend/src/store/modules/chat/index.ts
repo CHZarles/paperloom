@@ -119,6 +119,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (snapshot.readingStatePatch) {
         assistant.readingStatePatch = snapshot.readingStatePatch;
       }
+      if (snapshot.progressEvents) {
+        assistant.researchEvents = snapshot.progressEvents;
+      }
       return;
     }
 
@@ -142,6 +145,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       diagnostics: snapshot.diagnostics,
       readingArtifacts: snapshot.readingArtifacts,
       readingStatePatch: snapshot.readingStatePatch,
+      researchEvents: snapshot.progressEvents,
       route: normalizeChatRoute(snapshot.diagnostics?.route)
     });
   }
@@ -216,8 +220,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
 
   // ---- Session management ----
 
-  async function loadSessions() {
-    sessionsLoading.value = true;
+  async function loadSessions(options: { silent?: boolean } = {}) {
+    const { silent = false } = options;
+    if (!silent) sessionsLoading.value = true;
     const { error, data } = await request<Api.Chat.ConversationSession[]>({
       url: 'users/conversations'
     });
@@ -235,7 +240,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
         }
       }
     }
-    sessionsLoading.value = false;
+    if (!silent) sessionsLoading.value = false;
   }
 
   async function fetchCurrentSession() {

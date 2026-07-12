@@ -85,6 +85,23 @@ python3 -m harness_py chat-shell \
   --out /tmp/paismart-chat-runs
 ```
 
+Run the internal service used by the Java application:
+
+```bash
+export MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1
+export MINIMAX_API_KEY=...
+export MINIMAX_MODEL=MiniMax-M3
+python3 -m harness_py serve --host 127.0.0.1 --port 8091
+```
+
+Java calls `/v1/research/stream` over internal HTTP and consumes an NDJSON stream containing model,
+tool, evidence, and terminal-result events. Java owns authentication, Redis generation state,
+reconnection, permissions, and usage settlement. The Python harness does not access Redis and has no
+overall execution deadline. `/v1/research/turn` remains available for local synchronous diagnostics.
+
+Progress events are derived from model-call lifecycle, tool arguments, and tool results. They do not
+use an additional LLM summarization call and do not expose chain-of-thought.
+
 `--limit` caps papers loaded from the product database. `--state` persists conversation context.
 `--out` writes optional evidence, skill, ReAct trace, citation-validation, and answer artifacts.
 

@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_live_chat_ab6232d6673a",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "There are **5 papers** in the current corpus:\n\n1. **Language Models are Few-Shot Learners** (GPT-3) — Brown et al., NeurIPS 2020\n2. **Language Models are Unsupervised Multitask Learners** (GPT-2) — Radford et al., 2019\n3. **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** — Devlin et al., NAACL 2018\n4. **Attention Is All You Need** — Vaswani et al., NeurIPS 2017\n5. **Adam: A Method for Stochastic Optimization** — Kingma & Ba, ICLR 2014\n\nLet me know if you'd like details on any of these.",
+  "outcome": "answered",
+  "question_id": "live_chat_ab6232d6673a",
+  "status": "COMPLETED",
+  "summary": "There are **5 papers** in the current corpus:\n\n1. **Language Models are Few-Shot Learners** (GPT-3) — Brown et al., NeurIPS 2020\n2. **Language Models are Unsupervised Multitask Learners** (GPT-2) — Radford et al., 2019\n3. **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** — Devlin et al., NAACL 2018\n4. **Attention Is All You Need** — Vaswani et al., NeurIPS 2017\n5"
+}

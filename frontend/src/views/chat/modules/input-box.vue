@@ -189,7 +189,7 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
 
   if (payload.conversationId) {
     chatStore.loadConversationScope(payload.conversationId).catch(() => {});
-    chatStore.loadSessions().catch(() => {});
+    chatStore.loadSessions({ silent: true }).catch(() => {});
   }
   if (!startedAssistant.timestamp && timestamp) {
     startedAssistant.timestamp = timestamp;
@@ -269,9 +269,8 @@ function stopGenerationStatusMonitor() {
 
 function startGenerationStatusMonitor() {
   stopGenerationStatusMonitor();
-  const startedAt = Date.now();
   lastStreamContentLength = 0;
-  lastStreamContentChangedAt = startedAt;
+  lastStreamContentChangedAt = Date.now();
   generationStatusTimer = window.setInterval(async () => {
     const assistant = findAssistantMessage(latestMessage.value?.generationId);
     if (!assistant || assistant.role !== 'assistant') {
@@ -279,10 +278,6 @@ function startGenerationStatusMonitor() {
       return;
     }
     if (!['pending', 'loading'].includes(assistant.status || '')) {
-      stopGenerationStatusMonitor();
-      return;
-    }
-    if (Date.now() - startedAt > 130_000) {
       stopGenerationStatusMonitor();
       return;
     }
@@ -396,6 +391,17 @@ function handleToolCallPayload(assistant: Api.Chat.Message, payload: Record<stri
   }
 }
 
+function handleResearchProgressPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  assistant.status = 'loading';
+  const event = payload as Api.Chat.ResearchProgressEvent;
+  const sequence = Number(event.sequence || 0);
+  const existing = assistant.researchEvents || [];
+  if (sequence > 0 && existing.some(item => Number(item.sequence || 0) === sequence)) {
+    return;
+  }
+  assistant.researchEvents = [...existing, event];
+}
+
 watch(wsData, val => {
   if (!val) return;
 
@@ -418,6 +424,12 @@ watch(wsData, val => {
 
   if (payload.type === 'completion') {
     handleCompletionPayload(assistant, payload);
+    return;
+  }
+
+
+  if (payload.type === 'research_progress') {
+    handleResearchProgressPayload(assistant, payload);
     return;
   }
 

@@ -155,7 +155,10 @@ public class ChatHandler {
             if (referenceFocus != null) {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
-            SourceScope productScope = productSourceScope(effectiveScope, retrievalBudgetProfile);
+            SourceScope productScope = SourceScope.manual(
+                    conversationScopeService.authorizedPaperIdsForHarness(userIdLong, effectiveScope),
+                    retrievalBudgetProfile
+            );
             String clickedSourceQuoteRef = structuredSourceQuoteRef(referenceFocus);
             List<String> clickedPaperHandles = clickedPaperHandles(referenceFocus);
             List<String> clickedLocationRefs = clickedLocationRefs(referenceFocus);
@@ -183,7 +186,7 @@ public class ChatHandler {
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
 
-            timing.route("PRODUCT_READING_REACT");
+            timing.route("PYTHON_RESEARCH_HARNESS");
             timing.mark("intent_route_decided");
 
             // 2. 异步执行 Product Reading ReAct Harness；产品语义由 Harness 和产品工具目录处理。
@@ -209,14 +212,6 @@ public class ChatHandler {
             }
             handleError(userId, requestClientId, generationId, e);
         }
-    }
-
-    private SourceScope productSourceScope(ConversationScopeService.EffectiveConversationScope effectiveScope,
-                                           RetrievalBudgetProfile retrievalBudgetProfile) {
-        if (effectiveScope != null && effectiveScope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT) {
-            return SourceScope.manual(effectiveScope.paperIds(), retrievalBudgetProfile);
-        }
-        return SourceScope.auto(retrievalBudgetProfile);
     }
 
     private ProductReferenceFocus referenceFocus(ProductReferenceFocus incomingScope) {
@@ -544,22 +539,18 @@ public class ChatHandler {
                                          SourceScope scope,
                                          CompletableFuture<String> responseFuture) {
         try {
-            runReadingHarness(userId, userMessage, conversationId, generationId, scope, responseFuture);
+            submitReadingHarness(userId, userMessage, conversationId, generationId, scope, responseFuture);
         } catch (Exception e) {
-            logger.error("Product Reading ReAct Harness 执行失败: generationId={}", generationId, e);
-            chatGenerationStateService.markFailed(generationId, e.getMessage());
-            handleError(userId, generationId, e);
-            sendCompletionNotification(userId, generationId, conversationId, true, false);
-            cleanupGenerationState(generationId, e);
+            finishReadingHarnessFailure(userId, conversationId, generationId, e);
         }
     }
 
-    private void runReadingHarness(String userId,
-                                   String userMessage,
-                                   String conversationId,
-                                   String generationId,
-                                   SourceScope scope,
-                                   CompletableFuture<String> responseFuture) {
+    private void submitReadingHarness(String userId,
+                                      String userMessage,
+                                      String conversationId,
+                                      String generationId,
+                                      SourceScope scope,
+                                      CompletableFuture<String> responseFuture) {
         if (productReadingConversationService == null) {
             throw new IllegalStateException("ProductReadingConversationService is required for reading chat");
         }
@@ -568,7 +559,7 @@ public class ChatHandler {
             timing.begin("product_reading_react_harness");
         }
         Map<String, Object> effectiveScope = generationEffectiveScopes.get(generationId);
-        ProductTurnResult answer = productReadingConversationService.runTurn(
+        productReadingConversationService.submitTurn(
                 Long.parseLong(userId),
                 conversationId,
                 generationId,
@@ -576,8 +567,40 @@ public class ChatHandler {
                 scope,
                 ProductModelContext.defaults(),
                 effectiveScope,
-                event -> sendProductToolCall(userId, generationId, conversationId, event)
-        );
+                event -> sendResearchProgress(userId, generationId, conversationId, event)
+        ).whenComplete((answer, error) -> {
+            Runnable completion = () -> {
+                if (error != null) {
+                    if (isGenerationCancelled(generationId)) {
+                        finishCancelledGeneration(generationId, responseFuture, responseBuilders.get(generationId));
+                    } else {
+                        finishReadingHarnessFailure(userId, conversationId, generationId, unwrapCompletionError(error));
+                    }
+                    return;
+                }
+                try {
+                    finishReadingHarness(
+                            userId, userMessage, conversationId, generationId, responseFuture, effectiveScope, answer);
+                } catch (Exception exception) {
+                    finishReadingHarnessFailure(userId, conversationId, generationId, exception);
+                }
+            };
+            try {
+                chatMonitorExecutor.execute(completion);
+            } catch (RejectedExecutionException rejected) {
+                completion.run();
+            }
+        });
+    }
+
+    private void finishReadingHarness(String userId,
+                                      String userMessage,
+                                      String conversationId,
+                                      String generationId,
+                                      CompletableFuture<String> responseFuture,
+                                      Map<String, Object> effectiveScope,
+                                      ProductTurnResult answer) {
+        ChatRequestTiming timing = generationTimings.get(generationId);
         if (timing != null) {
             timing.end("product_reading_react_harness");
             timing.route(answer.envelope() == null ? answer.stopReason().name() : answer.envelope().answerType().name());
@@ -585,7 +608,7 @@ public class ChatHandler {
         }
         Map<String, Object> diagnostics = productDiagnostics(answer);
         if (!diagnostics.isEmpty()) {
-            diagnostics.put("harness", "PRODUCT_READING_REACT");
+            diagnostics.put("harness", "PYTHON_RESEARCH_HARNESS");
             generationDiagnostics.put(generationId, diagnostics);
             chatGenerationStateService.updateDiagnostics(generationId, diagnostics);
         }
@@ -614,6 +637,9 @@ public class ChatHandler {
             generationReferenceMappings.put(generationId, productReferences);
             chatGenerationStateService.updateReferenceMappings(generationId, serializableReferences);
         }
+        List<Map<String, Object>> researchEvents = chatGenerationStateService.getGeneration(generationId)
+                .map(ChatGenerationStateService.GenerationSnapshot::progressEvents)
+                .orElse(List.of());
         Long conversationRecordId = conversationService.recordConversation(
                 Long.parseLong(userId),
                 userMessage,
@@ -622,7 +648,8 @@ public class ChatHandler {
                 serializableReferences,
                 effectiveScope == null ? Map.of() : effectiveScope,
                 answer.readingArtifacts(),
-                answer.readingStatePatch()
+                answer.readingStatePatch(),
+                researchEvents
         );
         if (conversationRecordId != null) {
             generationConversationRecordIds.put(generationId, conversationRecordId);
@@ -645,12 +672,33 @@ public class ChatHandler {
         );
     }
 
+    private void finishReadingHarnessFailure(String userId,
+                                             String conversationId,
+                                             String generationId,
+                                             Throwable error) {
+        logger.error("Python research harness execution failed: generationId={}", generationId, error);
+        chatGenerationStateService.markFailed(generationId, error.getMessage());
+        handleError(userId, generationId, error);
+        sendCompletionNotification(userId, generationId, conversationId, true, false);
+        cleanupGenerationState(generationId, error);
+    }
+
+    private Throwable unwrapCompletionError(Throwable error) {
+        Throwable current = error;
+        while (current.getCause() != null
+                && (current instanceof java.util.concurrent.CompletionException
+                || current instanceof java.util.concurrent.ExecutionException)) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
     private Map<String, Object> productDiagnostics(ProductTurnResult answer) {
         if (answer == null) {
             return Map.of();
         }
         Map<String, Object> diagnostics = new LinkedHashMap<>();
-        diagnostics.put("harness", "PRODUCT_READING_REACT");
+        diagnostics.put("harness", "PYTHON_RESEARCH_HARNESS");
         diagnostics.put("resultStatus", answer.resultStatus().name());
         diagnostics.put("stopReason", answer.stopReason().name());
         if (answer.envelope() != null) {
@@ -1230,6 +1278,23 @@ public class ChatHandler {
         sendJsonToGenerationClient(userId, generationId, payload);
     }
 
+    private void sendResearchProgress(String userId,
+                                      String generationId,
+                                      String conversationId,
+                                      Map<String, Object> event) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (event != null) {
+            payload.putAll(event);
+        }
+        payload.put("type", "research_progress");
+        payload.put("eventType", event == null ? "progress" : event.get("type"));
+        payload.put("generationId", generationId);
+        payload.put("conversationId", conversationId);
+        payload.putIfAbsent("timestamp", System.currentTimeMillis());
+        chatGenerationStateService.appendProgressEvent(generationId, payload);
+        sendJsonToGenerationClient(userId, generationId, payload);
+    }
+
     private void sendCompletionNotification(String userId,
                                             String generationId,
                                             String conversationId,
@@ -1293,7 +1358,10 @@ public class ChatHandler {
             sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
             return;
         }
-        errorResponse.put("error", "AI服务暂时不可用，请稍后重试");
+        errorResponse.put(
+                "error",
+                "The research run stopped because of an internal service error. Your conversation is preserved; retry this turn."
+        );
         sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
     }
 
@@ -1381,6 +1449,7 @@ public class ChatHandler {
         // 设置停止标志
         cancelledGenerations.add(targetGenerationId);
         stopFlags.put(targetGenerationId, true);
+        productReadingConversationService.cancelTurn(targetGenerationId);
         chatGenerationStateService.markCancelled(targetGenerationId);
         CompletableFuture<String> responseFuture = responseFutures.get(targetGenerationId);
         if (responseFuture != null && !responseFuture.isDone()) {

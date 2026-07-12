@@ -7,6 +7,7 @@ import InputBox from './modules/input-box.vue';
 import ConversationSidebar from './modules/conversation-sidebar.vue';
 import ReferenceEvidencePage from './modules/reference-evidence-page.vue';
 import SourceEvidencePanel from './modules/source-evidence-panel.vue';
+import ResearchProcessPanel from './modules/research-process-panel.vue';
 
 const route = useRoute();
 const showReferenceEvidence = computed(() => route.query.evidence === 'reference');
@@ -14,6 +15,8 @@ const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth <
 const chatStore = useChatStore();
 const { connectionStatus, list } = storeToRefs(chatStore);
 const referencePanelVisible = ref(false);
+const activeReviewTab = ref<'process' | 'evidence'>('evidence');
+const processMessage = ref<Api.Chat.Message | null>(null);
 const settingsVisible = ref(false);
 const settingsModalHostStyle = { width: 'min(1480px, calc(100vw - 32px))' };
 const inputBoxRef = ref<InstanceType<typeof InputBox> | null>(null);
@@ -45,18 +48,18 @@ const connectionText = computed(() => {
 
 function handleOpenReference(payload: NonNullable<typeof referencePayload.value>) {
   referencePayload.value = payload;
+  activeReviewTab.value = 'evidence';
+  referencePanelVisible.value = true;
+}
+
+function handleOpenProcess(message: Api.Chat.Message) {
+  processMessage.value = message;
+  activeReviewTab.value = 'process';
   referencePanelVisible.value = true;
 }
 
 function closeReferencePanel() {
   referencePanelVisible.value = false;
-}
-
-function handleAskAboutReference(scope: Api.Chat.Scope) {
-  chatStore.setReferenceFocus(scope);
-  if (!chatStore.input.message.trim()) {
-    chatStore.input.message = '解释这个引用';
-  }
 }
 
 function handleRetryMessage(message: string) {
@@ -109,24 +112,28 @@ onBeforeUnmount(() => {
         <button
           class="topbar-icon-button"
           :class="{ 'topbar-icon-button--active': referencePanelVisible }"
-          aria-label="引用证据"
+          aria-label="Research review"
           @click="referencePanelVisible = !referencePanelVisible"
         >
-          <icon-lucide:file-text class="text-18px" />
+          <icon-lucide:panel-right-open class="text-18px" />
         </button>
       </header>
 
       <section class="chat-workspace">
         <div class="chat-conversation">
-          <ChatList @open-reference="handleOpenReference" @retry-message="handleRetryMessage" />
+          <ChatList
+            @open-reference="handleOpenReference"
+            @open-process="handleOpenProcess"
+            @retry-message="handleRetryMessage"
+          />
           <InputBox v-if="showDockInput" ref="inputBoxRef" />
         </div>
 
         <aside v-if="referencePanelVisible" class="reference-panel">
           <div class="reference-panel__header">
             <div>
-              <div class="reference-panel__title">Source Evidence</div>
-              <div class="reference-panel__subtitle">核对引用对应的论文原文</div>
+              <div class="reference-panel__title">Research Review</div>
+              <div class="reference-panel__subtitle">Review retrieval activity and cited paper evidence</div>
             </div>
             <NButton quaternary circle size="small" @click="closeReferencePanel">
               <template #icon>
@@ -134,8 +141,31 @@ onBeforeUnmount(() => {
               </template>
             </NButton>
           </div>
+          <div class="review-mode-switch" role="tablist" aria-label="Research review mode">
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeReviewTab === 'process'"
+              :class="{ 'is-active': activeReviewTab === 'process' }"
+              @click="activeReviewTab = 'process'"
+            >
+              <icon-lucide:list-tree />
+              Process
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeReviewTab === 'evidence'"
+              :class="{ 'is-active': activeReviewTab === 'evidence' }"
+              @click="activeReviewTab = 'evidence'"
+            >
+              <icon-lucide:file-text />
+              Source Evidence
+            </button>
+          </div>
+          <ResearchProcessPanel v-if="activeReviewTab === 'process'" :message="processMessage" />
           <SourceEvidencePanel
-            v-if="referencePayload"
+            v-else-if="referencePayload"
             :key="referenceEvidenceKey"
             :reference-number="referencePayload.referenceNumber"
             :paper-title="referencePayload.paperTitle"
@@ -161,7 +191,6 @@ onBeforeUnmount(() => {
             :asset-warnings="referencePayload.assetWarnings"
             :conversation-record-id="referencePayload.conversationRecordId"
             :source-quote-ref="referencePayload.sourceQuoteRef || undefined"
-            @ask-about-this="handleAskAboutReference"
           />
           <div v-else class="reference-panel__empty">
             <icon-lucide:file-text class="text-34px" />
@@ -365,6 +394,45 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
+.review-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 10px 14px 0;
+  border: 1px solid var(--chat-line);
+  border-radius: 6px;
+  background: var(--color-card-band);
+  padding: 2px;
+}
+
+.review-mode-switch button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--chat-text-muted);
+  cursor: pointer;
+  padding: 7px 9px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.review-mode-switch button.is-active {
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+  color: var(--chat-accent);
+}
+
+.review-mode-switch svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
 .reference-panel__empty {
   display: flex;
   min-height: 0;
@@ -383,6 +451,11 @@ onBeforeUnmount(() => {
   flex: 1 1 0;
   overflow: auto;
   padding: 12px 14px;
+}
+
+.reference-panel :deep(.research-process) {
+  min-height: 0;
+  flex: 1 1 0;
 }
 
 .mobile-sidebar-mask {

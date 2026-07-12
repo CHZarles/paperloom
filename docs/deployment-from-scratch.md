@@ -49,6 +49,10 @@ cp .env.example .env
 - `ADMIN_BOOTSTRAP_ENABLED=true`
 - `ADMIN_BOOTSTRAP_USERNAME=admin`
 - `ADMIN_BOOTSTRAP_PASSWORD=PaismartAdmin2025!`
+- `MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1`
+- `MINIMAX_API_KEY=<研究 Harness 使用的 API Key>`
+- `MINIMAX_MODEL=MiniMax-M3`
+- `RESEARCH_HARNESS_INTERNAL_TOKEN=<Java 与 Python 之间共享的随机字符串>`
 
 说明：
 
@@ -128,7 +132,21 @@ cd ..
 - Kafka Controller: `localhost:29093`
 - Elasticsearch: `localhost:29200`
 
-## 5. 启动后端
+## 5. 启动研究 Harness
+
+Java 聊天请求会转发到本机 Python Harness。先启动它：
+
+```bash
+scripts/paperloom-start-harness.sh start
+```
+
+健康检查地址：`http://127.0.0.1:8091/health`。
+
+Harness 的 LLM 配置只从部署环境读取，不再由前端模型配置页面控制。Java 通过内部 NDJSON
+流接收检索进度和最终回答；Redis 仍由 Java 用于保存前端可恢复的生成状态，Python Harness
+本身不连接 Redis。
+
+## 6. 启动后端
 
 回到项目根目录后启动 Spring Boot：
 
@@ -153,7 +171,14 @@ java -jar target/SmartPAI-0.0.1-SNAPSHOT.jar
 - `管理员账号 'admin' 创建成功`
 - `管理员账号 'admin' 已存在，跳过创建步骤`
 
-## 6. 启动前端
+也可以使用后台启动脚本：
+
+```bash
+mvn clean package -DskipTests
+scripts/paperloom-start-backend.sh start
+```
+
+## 7. 启动前端
 
 打开另一个终端，进入前端目录：
 
@@ -177,7 +202,7 @@ http://localhost:9527
 
 如果你本地 Vite 端口被占用，以终端输出为准。
 
-## 7. 最终访问顺序
+## 8. 最终访问顺序
 
 启动完成后，按这个顺序确认：
 
@@ -193,7 +218,7 @@ http://localhost:9527
 
 如果浏览器打不开，先确认 WSL 里的后端和前端进程都在运行，再确认 Windows 侧没有把同一个端口的别的程序占住。
 
-## 8. 常见问题
+## 9. 常见问题
 
 ### 8.1 `docker compose` 报命令不存在
 
@@ -255,7 +280,7 @@ corepack pnpm run dev
 corepack prepare pnpm@8.15.9 --activate
 ```
 
-## 9. 停止服务
+## 10. 停止服务
 
 停止 Docker 依赖：
 

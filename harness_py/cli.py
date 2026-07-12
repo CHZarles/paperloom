@@ -16,6 +16,7 @@ from .llm import MiniMaxChatModel
 from .product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
 from .provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
 from .scoring import BehaviorScorer
+from .service import serve
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -59,6 +60,12 @@ def main(argv: list[str] | None = None) -> int:
     shell_parser.add_argument("--print-run", action="store_true")
     shell_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
     shell_parser.add_argument("--max-tokens", type=int, default=3000)
+    serve_parser = subcommands.add_parser("serve", help="Run the internal HTTP research harness service.")
+    serve_parser.add_argument("--host", default="127.0.0.1")
+    serve_parser.add_argument("--port", type=int, default=8091)
+    serve_parser.add_argument("--internal-token", default="")
+    serve_parser.add_argument("--max-tokens", type=int, default=3000)
+    serve_parser.add_argument("--corpus-limit", type=int, default=1000)
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
         help="Compare one LLM judge with fixed human-labelled harness runs.",
@@ -201,6 +208,15 @@ def main(argv: list[str] | None = None) -> int:
             state_path=state_path,
             out=args.out,
             print_run=args.print_run,
+        )
+        return 0
+    if args.command == "serve":
+        serve(
+            host=args.host,
+            port=args.port,
+            internal_token=args.internal_token,
+            max_completion_tokens=args.max_tokens,
+            corpus_limit=args.corpus_limit,
         )
         return 0
     if args.command == "judge-calibrate":

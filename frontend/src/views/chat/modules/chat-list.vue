@@ -51,6 +51,7 @@ const emit = defineEmits<{
       referenceNumber: number;
     }
   ): void;
+  (e: 'openProcess', message: Api.Chat.Message): void;
   (e: 'retryMessage', message: string): void;
 }>();
 
@@ -187,6 +188,7 @@ function handleRetry(index: number) {
                 :retrieval-query-fallback="getRetrievalQueryFallback(index)"
                 evidence-mode="drawer"
                 @open-reference="emit('openReference', $event)"
+                @open-process="emit('openProcess', $event)"
                 @retry="handleRetry(index)"
               />
             </VueMarkdownItProvider>

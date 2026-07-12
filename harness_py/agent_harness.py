@@ -4,6 +4,7 @@ import json
 import re
 from datetime import UTC, datetime
 from time import perf_counter
+from typing import Callable
 
 from .golden_case import case_history, case_question, paper_ids_for_case
 from .llm import ChatModel, ChatTurn, ToolCall
@@ -13,6 +14,7 @@ from .tools import ReadingCorpusTools, model_facing_payload
 
 
 _CITATION_RE = re.compile(r"\[\[(ev_[A-Za-z0-9_-]+)\]\]")
+_NUMERIC_CITATION_RE = re.compile(r"(?<!\[)\[(\d+)\]")
 _FINAL_TOOL = "submit_research_answer"
 
 
@@ -45,6 +47,8 @@ class ResearchAgentHarness:
         conversation_messages: list[JsonMap],
         prior_evidence: dict[str, JsonMap] | None = None,
         selected_paper_ids: list[str] | None = None,
+        progress_listener: Callable[[JsonMap], None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> JsonMap:
         started_at = _now()
         started = perf_counter()
@@ -87,17 +91,37 @@ class ResearchAgentHarness:
         model_latency_ms = 0
 
         while True:
+            _raise_if_cancelled(should_cancel)
+            _emit_progress(progress_listener, {
+                "type": "model_call_started",
+                "attempt": model_call_count + 1,
+            })
             model_started = perf_counter()
             response = self.model.complete(messages, definitions, self.max_completion_tokens)
-            model_latency_ms += round((perf_counter() - model_started) * 1000)
+            call_latency_ms = round((perf_counter() - model_started) * 1000)
+            model_latency_ms += call_latency_ms
             model_call_count += 1
             usage = child_map(response.raw.get("usage"))
-            prompt_tokens += int(usage.get("prompt_tokens") or 0)
-            completion_tokens += int(usage.get("completion_tokens") or 0)
-            total_tokens += int(
+            call_prompt_tokens = int(usage.get("prompt_tokens") or 0)
+            call_completion_tokens = int(usage.get("completion_tokens") or 0)
+            call_total_tokens = int(
                 usage.get("total_tokens")
-                or int(usage.get("prompt_tokens") or 0) + int(usage.get("completion_tokens") or 0)
+                or call_prompt_tokens + call_completion_tokens
             )
+            prompt_tokens += call_prompt_tokens
+            completion_tokens += call_completion_tokens
+            total_tokens += call_total_tokens
+            _emit_progress(progress_listener, {
+                "type": "model_call_completed",
+                "attempt": model_call_count,
+                "durationMs": call_latency_ms,
+                "usage": {
+                    "promptTokens": call_prompt_tokens,
+                    "completionTokens": call_completion_tokens,
+                    "totalTokens": call_total_tokens,
+                    "cumulativeTotalTokens": total_tokens,
+                },
+            })
 
             if not response.tool_calls:
                 messages.append({"role": "assistant", "content": response.content})
@@ -114,7 +138,7 @@ class ResearchAgentHarness:
                 validation_error = _answer_validation_error(
                     final,
                     {**prior_evidence, **corpus.observations_by_evidence_id},
-                    any(item["tool_name"] in _corpus_tool_names(corpus) for item in trace),
+                    bool(corpus.observations_by_evidence_id),
                 )
                 if validation_error:
                     payload = {"accepted": False, "error": validation_error}
@@ -152,6 +176,13 @@ class ResearchAgentHarness:
             for call in response.tool_calls:
                 if call.name == _FINAL_TOOL:
                     continue
+                _raise_if_cancelled(should_cancel)
+                _emit_progress(progress_listener, {
+                    "type": "tool_started",
+                    "tool": call.name,
+                    "input": _progress_input(call.name, call.arguments),
+                })
+                tool_started = perf_counter()
                 if call.name == "get_research_skill":
                     skill_id = str(call.arguments.get("skill_id") or "")
                     payload = self.skills.get(skill_id)
@@ -161,6 +192,15 @@ class ResearchAgentHarness:
                     payload = model_facing_payload(corpus.call(call.name, call.arguments).payload)
                 trace.append(_trace_item(call, payload))
                 messages.append(_tool_message(call, payload))
+                _emit_progress(progress_listener, {
+                    "type": "tool_completed",
+                    "tool": call.name,
+                    "status": "success" if "error" not in child_map(payload) else "failed",
+                    "durationMs": round((perf_counter() - tool_started) * 1000),
+                    "input": _progress_input(call.name, call.arguments),
+                    "output": _progress_output(call.name, child_map(payload)),
+                    "evidenceIds": _progress_evidence_ids(child_map(payload)),
+                })
 
     def _system_prompt(self) -> str:
         return (
@@ -170,17 +210,26 @@ class ResearchAgentHarness:
             "Keep ordinary conversation natural and concise. For a greeting, respond briefly. If a recommendation "
             "request is missing only its topic, use outcome=needs_clarification and ask only what topic to focus on; "
             "do not demand optional purpose, venue, year, or paper-type constraints.\n\n"
+            "Paper cards and identity results are authoritative for corpus metadata such as paper count, title, author, "
+            "year, venue, and identifiers. Answer corpus inventory and filtering questions directly from those results "
+            "without paper-content citations. Before submitting any corpus count, list, or metadata-filter answer, you must "
+            "call search_paper_candidates in the current turn; use an empty query and a sufficiently large limit for a "
+            "complete inventory. Never reconstruct paper titles from conversation history or general knowledge. A previous "
+            "assistant refusal is not proof that a request is impossible; "
+            "use the available tool again when the current follow-up can be answered. Metadata does not support claims "
+            "about methods, findings, performance, importance, or technical contributions.\n\n"
             "Use get_research_skill when a paradigm playbook would help. Skills are guidance, not gates, and may be "
-            "combined. Candidate metadata and navigation previews are not citeable. Read exact locations before making "
+            "combined. Candidate metadata and navigation previews are not citeable as paper content. Read exact locations before making "
             "paper-content claims. A citation does not license related general knowledge: every factual sentence, "
             "comparison, default value, and causal explanation must be directly entailed by a cited span_text. Cite "
             "with the exact syntax [[evidence_id]] and cite only evidence returned by read_locations or supplied as "
-            "previous evidence. For an exact-fact request, give the requested facts and source without extra rationale. "
+            "previous evidence. Never write numeric citations or a Sources section yourself; the harness renders those "
+            "from evidence ids. For an exact-fact request, give the requested facts and source without extra rationale. "
             "Never substitute adjacent papers when the corpus lacks the requested topic; state the gap plainly.\n\n"
             "When you are ready to finish the turn, call submit_research_answer as the only tool call. Put all text the "
             "user should see in markdown. Use needs_clarification only for a genuinely blocking question. Use partial or "
             "abstained when the corpus cannot fully support the request. Do not expose internal skills, tool names, "
-            "schemas, statuses, or reasoning traces in the user-facing answer.\n\n"
+            "schemas, statuses, reasoning traces, evidence-id syntax, or validation rules in the user-facing answer.\n\n"
             "AVAILABLE RESEARCH SKILLS\n"
             f"{self.skills.catalog()}"
         )
@@ -216,8 +265,9 @@ def _final_answer_tool() -> JsonMap:
                         "type": "string",
                         "maxLength": 16000,
                         "description": (
-                            "Natural user-facing answer. Include only claims directly supported by cited passages; "
-                            "do not add defaults, comparisons, or causal explanations from general knowledge."
+                            "Natural user-facing answer. Paper-content claims must be supported by cited passages. "
+                            "Corpus metadata may be answered directly from paper cards without citations. Do not add "
+                            "defaults, comparisons, or causal explanations from general knowledge."
                         ),
                     },
                     "fields": {
@@ -231,13 +281,15 @@ def _final_answer_tool() -> JsonMap:
     }
 
 
-def _answer_validation_error(final: JsonMap, known_evidence: dict[str, JsonMap], used_corpus: bool) -> str:
+def _answer_validation_error(final: JsonMap, known_evidence: dict[str, JsonMap], used_paper_evidence: bool) -> str:
     outcome = str(final.get("outcome") or "")
     markdown = final.get("markdown")
     if outcome not in {"answered", "needs_clarification", "partial", "abstained"}:
         return "invalid outcome"
     if not isinstance(markdown, str) or not markdown.strip():
         return "markdown is required"
+    if _NUMERIC_CITATION_RE.search(markdown):
+        return "use [[evidence_id]] markers instead of numeric citations or a manually written Sources section"
     cited = set(_CITATION_RE.findall(markdown))
     citeable = {
         evidence_id for evidence_id, item in known_evidence.items()
@@ -246,8 +298,8 @@ def _answer_validation_error(final: JsonMap, known_evidence: dict[str, JsonMap],
     unknown = sorted(cited - citeable)
     if unknown:
         return "unknown cited evidence ids: " + ", ".join(unknown)
-    if used_corpus and outcome in {"answered", "partial"} and not cited:
-        return "a corpus-grounded answer must cite evidence using [[evidence_id]]"
+    if used_paper_evidence and outcome in {"answered", "partial"} and not cited:
+        return "paper-content evidence was read, so cite a returned evidence item; do not mention this validation rule"
     if final.get("fields") is not None and not isinstance(final.get("fields"), dict):
         return "fields must be an object"
     return ""
@@ -421,6 +473,112 @@ def _paper_candidates(trace: list[JsonMap]) -> list[JsonMap]:
                     "citeable": False,
                 }
     return list(candidates.values())
+
+
+def _emit_progress(listener: Callable[[JsonMap], None] | None, event: JsonMap) -> None:
+    if listener:
+        listener(event)
+
+
+def _raise_if_cancelled(should_cancel: Callable[[], bool] | None) -> None:
+    if should_cancel and should_cancel():
+        raise RuntimeError("research job cancelled")
+
+
+def _progress_input(tool_name: str, arguments: JsonMap) -> JsonMap:
+    if tool_name == "search_paper_candidates":
+        return {
+            "query": arguments.get("query_text") or arguments.get("query"),
+            "limit": arguments.get("limit"),
+        }
+    if tool_name == "find_reading_locations":
+        return {
+            "paperIds": as_list(arguments.get("paper_ids")),
+            "query": arguments.get("query_text"),
+            "limit": arguments.get("top_k"),
+        }
+    if tool_name == "read_locations":
+        return {
+            "locationRefs": as_list(arguments.get("location_refs")),
+            "locationCount": len(as_list(arguments.get("location_refs"))),
+        }
+    if tool_name == "get_citation_edges":
+        return {"paperId": arguments.get("paper_id")}
+    if tool_name == "get_research_skill":
+        return {"skillId": arguments.get("skill_id")}
+    return {
+        key: value
+        for key, value in arguments.items()
+        if key in {"paper_id", "paper_ids", "query", "query_text", "limit", "top_k"}
+    }
+
+
+def _progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
+    if tool_name == "search_paper_candidates":
+        candidates = [child_map(item) for item in as_list(payload.get("candidates"))]
+        return {
+            "resultCount": len(candidates),
+            "papers": [
+                {
+                    "paperId": item.get("paper_id"),
+                    "title": item.get("title"),
+                }
+                for item in candidates[:10]
+            ],
+        }
+    if tool_name == "find_reading_locations":
+        locations = [child_map(item) for item in as_list(payload.get("locations"))]
+        return {
+            "resultCount": len(locations),
+            "locations": [
+                {
+                    "paperId": item.get("paper_id"),
+                    "title": item.get("title"),
+                    "section": item.get("section"),
+                    "page": item.get("page"),
+                    "locationRef": item.get("location_ref"),
+                }
+                for item in locations[:10]
+            ],
+        }
+    if tool_name == "read_locations":
+        items = [child_map(item) for item in as_list(payload.get("items"))]
+        return {
+            "readCount": len(items),
+            "evidenceCount": len(items),
+            "pages": _unique(item.get("page") for item in items if item.get("page") not in {None, "", "unknown"}),
+            "evidence": [
+                {
+                    "evidenceId": item.get("evidence_id"),
+                    "paperId": item.get("paper_id"),
+                    "title": item.get("title"),
+                    "section": item.get("section"),
+                    "page": item.get("page"),
+                    "quote": str(item.get("span_text") or "")[:300],
+                }
+                for item in items[:10]
+            ],
+        }
+    if tool_name == "get_citation_edges":
+        return {"edgeCount": len(as_list(payload.get("edges")))}
+    if tool_name == "get_research_skill":
+        return {"skillId": payload.get("skill_id"), "found": "error" not in payload}
+    return {
+        "resultCount": max(
+            len(as_list(payload.get("items"))),
+            len(as_list(payload.get("matches"))),
+            len(as_list(payload.get("papers"))),
+        ),
+        "error": payload.get("error"),
+    }
+
+
+def _progress_evidence_ids(payload: JsonMap) -> list[str]:
+    return _unique(
+        child_map(item).get("evidence_id")
+        for item in as_list(payload.get("items"))
+        if child_map(item).get("evidence_id")
+    )
 
 
 def _evidence_card(item: JsonMap) -> JsonMap:

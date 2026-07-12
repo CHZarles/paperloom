@@ -480,7 +480,7 @@ function buildAvatarFill(seed: string) {
             @click="activeSection = 'modelProvider'"
           >
             <icon-lucide:flask-conical />
-            <span>Model Provider / 模型配置</span>
+            <span>Embedding Model / 向量模型</span>
           </button>
           <button
             type="button"

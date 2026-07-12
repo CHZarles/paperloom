@@ -587,6 +587,29 @@ declare namespace Api {
       timestamp?: number;
     }
 
+    interface ResearchProgressEvent {
+      generationId?: string;
+      sequence?: number;
+      type: string;
+      eventType?: string;
+      tool?: string;
+      status?: string;
+      attempt?: number;
+      durationMs?: number;
+      message?: string;
+      errorType?: string;
+      input?: Record<string, any>;
+      output?: Record<string, any>;
+      usage?: {
+        promptTokens?: number;
+        completionTokens?: number;
+        totalTokens?: number;
+        cumulativeTotalTokens?: number;
+      };
+      evidenceIds?: string[];
+      timestamp?: number | string;
+    }
+
     interface ReadingPaperChoiceItem {
       kind: 'READING_PAPER_CHOICE';
       sourceTool: 'list_papers' | 'search_paper_candidates' | 'find_papers_by_identity';
@@ -770,6 +793,7 @@ declare namespace Api {
       readingArtifacts?: ReadingTurnArtifacts;
       readingStatePatch?: Record<string, any>;
       toolEvents?: AgentToolEvent[];
+      researchEvents?: ResearchProgressEvent[];
       feedbackRating?: 'good' | 'bad';
       effectiveScope?: ConversationScope | Record<string, any>;
     }
@@ -864,6 +888,7 @@ declare namespace Api {
       diagnostics?: Diagnostics;
       readingArtifacts?: ReadingTurnArtifacts;
       readingStatePatch?: Record<string, any>;
+      progressEvents?: ResearchProgressEvent[];
     }
 
     interface ConversationSession {

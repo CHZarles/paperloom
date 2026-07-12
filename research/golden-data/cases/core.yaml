@@ -261,3 +261,52 @@ cases:
       facts:
         beta2: "0.98"
       citations: required
+
+  - schema_version: harness-golden-case/v2
+    id: corpus_paper_count_001
+    split: stress
+    paradigm: precision_fact_extraction
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "How many papers are available in the current corpus?"
+    expect:
+      outcome: answered
+      citations: forbidden
+    review:
+      - "States that the current corpus contains exactly five papers."
+      - "Answers naturally without discussing citation rules or evidence identifiers."
+
+  - schema_version: harness-golden-case/v2
+    id: corpus_paper_list_001
+    split: stress
+    paradigm: precision_fact_extraction
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "List all papers in the current corpus."
+    expect:
+      outcome: answered
+      citations: forbidden
+    review:
+      - "Lists all five paper titles in the corpus."
+      - "Does not refuse merely because paper-card metadata is non-citeable."
+
+  - schema_version: harness-golden-case/v2
+    id: corpus_paper_list_followup_001
+    split: stress
+    paradigm: precision_fact_extraction
+    paper_pack: transformer_bert_gpt
+    messages:
+      - role: user
+        content: "How many papers are available?"
+      - role: assistant
+        content: "There are five papers in the current corpus."
+      - role: user
+        content: "List all of them."
+    expect:
+      outcome: answered
+      citations: forbidden
+    review:
+      - "Understands that 'them' refers to the five papers in the current corpus."
+      - "Lists all five paper titles after consulting corpus metadata."

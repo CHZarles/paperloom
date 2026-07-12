@@ -68,7 +68,12 @@ class DockerMySqlProductCorpusStore:
             for row in paper_rows
             if row.get("paper_id") and row.get("model_version")
         }))
-        return build_product_dataset(paper_rows, element_rows)
+        visual_asset_rows = self._query_json_lines(_visual_asset_rows_sql([
+            str(row["paper_id"])
+            for row in paper_rows
+            if row.get("paper_id")
+        ]))
+        return build_product_dataset(paper_rows, element_rows, visual_asset_rows)
 
     def _query_json_lines(self, sql: str) -> list[JsonMap]:
         db_name = _database_name(self.env.get("SPRING_DATASOURCE_URL", ""))
@@ -103,15 +108,20 @@ class DockerMySqlProductCorpusStore:
         return rows
 
 
-def build_product_dataset(paper_rows: list[JsonMap], element_rows: list[JsonMap]) -> GoldenDataset:
+def build_product_dataset(
+    paper_rows: list[JsonMap],
+    element_rows: list[JsonMap],
+    visual_asset_rows: list[JsonMap] | None = None,
+) -> GoldenDataset:
     paper_records: dict[str, JsonMap] = {}
     reading_models: dict[str, JsonMap] = {}
     elements_by_paper: dict[str, list[JsonMap]] = {}
+    visual_assets = _visual_assets_by_paper(visual_asset_rows or [])
     for row in element_rows:
         paper_id = str(row.get("paper_id") or "")
         if not paper_id:
             continue
-        elements_by_paper.setdefault(paper_id, []).append(_reading_element(row))
+        elements_by_paper.setdefault(paper_id, []).append(_reading_element(row, visual_assets.get(paper_id, {})))
 
     for row in paper_rows:
         paper_id = str(row.get("paper_id") or "")
@@ -200,7 +210,7 @@ def _paper_rows_sql(paper_ids: list[str], query: str, limit: int) -> str:
             "f.arxiv_id like " + like + " escape '\\\\'"
             ")"
         )
-    safe_limit = max(1, min(int(limit or 30), 200))
+    safe_limit = max(1, min(int(limit or 30), 1000))
     return f"""
 select json_object(
   'paper_id', m.paper_id,
@@ -284,7 +294,34 @@ order by e.paper_id, coalesce(e.reading_order, e.id), e.id
 """.strip()
 
 
-def _reading_element(row: JsonMap) -> JsonMap:
+def _visual_asset_rows_sql(paper_ids: list[str]) -> str:
+    if not paper_ids:
+        return "select json_object() where false"
+    return f"""
+select json_object(
+  'paper_id', a.paper_id,
+  'asset_type', a.asset_type,
+  'page_number', a.page_number,
+  'table_id', a.table_id,
+  'figure_id', a.figure_id,
+  'reading_element_id', a.reading_element_id,
+  'bbox_json', a.bbox_json
+) as row_json
+from paper_visual_assets a
+where a.asset_status = 'AVAILABLE'
+  and a.paper_id in ({",".join(_mysql_quote(paper_id) for paper_id in paper_ids)})
+order by a.paper_id, a.page_number, a.id
+""".strip()
+
+
+def _reading_element(row: JsonMap, visual_assets: JsonMap | None = None) -> JsonMap:
+    visual_assets = visual_assets or {}
+    page_number = row.get("pageNumber")
+    table_id = row.get("sourceObjectId") if str(row.get("elementType") or "").lower() == "table" else None
+    figure_id = row.get("sourceObjectId") if str(row.get("elementType") or "").lower() in {"figure", "chart"} else None
+    page_screenshots = set(as_list(visual_assets.get("pageScreenshots")))
+    table_screenshots = set(as_list(visual_assets.get("tableScreenshots")))
+    figure_screenshots = set(as_list(visual_assets.get("figureScreenshots")))
     return {
         "id": row.get("id") or row.get("readingElementId"),
         "readingElementId": row.get("readingElementId") or row.get("id"),
@@ -292,7 +329,7 @@ def _reading_element(row: JsonMap) -> JsonMap:
         "parserElementId": row.get("parserElementId"),
         "sourceObjectId": row.get("sourceObjectId"),
         "elementType": row.get("elementType") or "paragraph",
-        "pageNumber": row.get("pageNumber"),
+        "pageNumber": page_number,
         "readingOrder": row.get("readingOrder"),
         "sectionTitle": row.get("sectionTitle"),
         "parentReadingElementId": row.get("parentReadingElementId"),
@@ -311,7 +348,32 @@ def _reading_element(row: JsonMap) -> JsonMap:
         "rawAttributesJson": row.get("rawAttributesJson"),
         "parserName": row.get("parserName"),
         "parserVersion": row.get("parserVersion"),
+        "pageScreenshotAvailable": page_number in page_screenshots,
+        "pdfEvidenceAvailable": bool(page_screenshots),
+        "tableScreenshotAvailable": bool(table_id and table_id in table_screenshots),
+        "figureScreenshotAvailable": bool(figure_id and figure_id in figure_screenshots),
     }
+
+
+def _visual_assets_by_paper(rows: list[JsonMap]) -> dict[str, JsonMap]:
+    result: dict[str, JsonMap] = {}
+    for row in rows:
+        paper_id = str(row.get("paper_id") or "")
+        if not paper_id:
+            continue
+        item = result.setdefault(paper_id, {
+            "pageScreenshots": [],
+            "tableScreenshots": [],
+            "figureScreenshots": [],
+        })
+        asset_type = str(row.get("asset_type") or "")
+        if asset_type == "PAGE_SCREENSHOT" and row.get("page_number") is not None:
+            item["pageScreenshots"].append(row.get("page_number"))
+        if asset_type == "TABLE_CROP" and row.get("table_id"):
+            item["tableScreenshots"].append(row.get("table_id"))
+        if asset_type in {"FIGURE_CROP", "CHART_CROP"} and row.get("figure_id"):
+            item["figureScreenshots"].append(row.get("figure_id"))
+    return result
 
 
 def _authors(value: object) -> list[str]:

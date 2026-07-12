@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import Callable
 
 from .agent_harness import ResearchAgentHarness
 from .conversation import ConversationState
@@ -33,6 +34,8 @@ class LiveResearchChatHarness:
         dataset: GoldenDataset,
         state: ConversationState,
         user_message: str,
+        progress_listener: Callable[[JsonMap], None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> tuple[JsonMap, ConversationState]:
         if not user_message.strip():
             raise ValueError("user_message is required")
@@ -46,6 +49,8 @@ class LiveResearchChatHarness:
                 conversation_messages=state.model_messages(),
                 prior_evidence=state.evidence_items_by_id,
                 selected_paper_ids=state.selected_paper_ids,
+                progress_listener=progress_listener,
+                should_cancel=should_cancel,
             )
         except Exception as error:
             run = _technical_failure_run(case_id, user_message, str(error))

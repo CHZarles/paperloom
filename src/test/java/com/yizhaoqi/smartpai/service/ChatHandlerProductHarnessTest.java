@@ -17,6 +17,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,12 +70,15 @@ class ChatHandlerProductHarnessTest {
                 any()
         );
         verify(fixture.sessionRegistry, times(1)).sendJsonToClient(eq("1"), eq("client-1"), argThat(payload ->
-                "calling_tool".equals(payload.get("type")) && "get_session_state".equals(payload.get("toolName"))));
+                "research_progress".equals(payload.get("type"))
+                        && "calling_tool".equals(payload.get("eventType"))
+                        && "get_session_state".equals(payload.get("tool"))));
         verify(fixture.conversationService).recordConversation(
                 eq(1L),
                 eq("现在有多少论文可以检索"),
                 eq("当前 session scope 内有 2 篇 READY 论文。"),
                 eq("conversation-1"),
+                any(),
                 any(),
                 any(),
                 any(),
@@ -404,6 +408,7 @@ class ChatHandlerProductHarnessTest {
                 persistedReferencesCaptor.capture(),
                 persistedScopeCaptor.capture(),
                 any(),
+                any(),
                 any()
         );
         assertSourceQuoteMapping(persistedReferencesCaptor.getValue().get("1"));
@@ -423,6 +428,7 @@ class ChatHandlerProductHarnessTest {
                 eq("解释这个引用"),
                 anyString(),
                 eq("conversation-1"),
+                any(),
                 any(),
                 any(),
                 any(),
@@ -782,6 +788,7 @@ class ChatHandlerProductHarnessTest {
         ConversationScopeService conversationScopeService = mock(ConversationScopeService.class);
         when(conversationScopeService.resolveForChat(1L, conversationId)).thenReturn(scope);
         when(conversationScopeService.lockForFirstMessage(1L, conversationId)).thenReturn(scope);
+        when(conversationScopeService.authorizedPaperIdsForHarness(1L, scope)).thenReturn(scope.paperIds());
 
         ThreadPoolTaskExecutor executor = mock(ThreadPoolTaskExecutor.class);
         doAnswer(invocation -> {
@@ -792,6 +799,26 @@ class ChatHandlerProductHarnessTest {
         ProductReadingConversationService readingConversationService = mock(ProductReadingConversationService.class);
         when(readingConversationService.runTurn(eq(1L), eq(conversationId), eq(generationId), anyString(), any(), any(), any(), any()))
                 .thenReturn(completedTurn("reading ok", List.of()));
+        when(readingConversationService.submitTurn(
+                eq(1L), eq(conversationId), eq(generationId), anyString(), any(), any(), any(), any()))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(readingConversationService.runTurn(
+                        invocation.getArgument(0),
+                        invocation.getArgument(1),
+                        invocation.getArgument(2),
+                        invocation.getArgument(3),
+                        invocation.getArgument(4),
+                        invocation.getArgument(5),
+                        invocation.getArgument(6),
+                        (Consumer<ToolProgressEvent>) event -> {
+                            @SuppressWarnings("unchecked")
+                            Consumer<Map<String, Object>> progressListener = invocation.getArgument(7, Consumer.class);
+                            progressListener.accept(Map.of(
+                                    "type", event.type(),
+                                    "tool", event.toolName(),
+                                    "status", "executing"
+                            ));
+                        }
+                )));
         ProductPaperHandleService productPaperHandleService = mock(ProductPaperHandleService.class);
         ConversationService conversationService = mock(ConversationService.class);
         ChatHandler handler = new ChatHandler(

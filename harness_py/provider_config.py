@@ -42,15 +42,18 @@ class EnvProviderConfigStore(ProviderConfigStore):
         api_base_url_env: str = "MINIMAX_API_BASE_URL",
         api_key_env: str = "MINIMAX_API_KEY",
         model_env: str = "MINIMAX_MODEL",
+        env_path: str | Path = ".env",
     ):
         self.api_base_url_env = api_base_url_env
         self.api_key_env = api_key_env
         self.model_env = model_env
+        self.env_path = Path(env_path)
 
     def load_active_provider(self, scope: str = "llm") -> ProviderConfig:
-        api_base_url = os.getenv(self.api_base_url_env, "").strip()
-        api_key = os.getenv(self.api_key_env, "").strip()
-        model = os.getenv(self.model_env, "").strip()
+        file_env = _read_env_file(self.env_path)
+        api_base_url = _env_value(self.api_base_url_env, file_env)
+        api_key = _env_value(self.api_key_env, file_env)
+        model = _env_value(self.model_env, file_env)
         if not api_base_url or not api_key or not model:
             missing = [
                 name
@@ -203,3 +206,7 @@ def _mysql_quote(value: str) -> str:
 
 def _truthy(value: str) -> bool:
     return value in {"1", "\x01", "true", "TRUE", "t"}
+
+
+def _env_value(name: str, file_env: dict[str, str]) -> str:
+    return (os.getenv(name) or file_env.get(name) or "").strip()
