@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import json
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from agents import FunctionTool, ModelTracing
 
-from harness_py.agents_model import MiniMaxAgentsModel
+from harness_py.agents_context import ResearchRunContext
+from harness_py.agents_model import MiniMaxAgentsModel, bind_research_context
+from harness_py.eval_recorder import EvalRecorder
+from harness_py.memory import ResearchMemory
 from harness_py.provider_config import ProviderConfig
+from harness_py.runtime import TurnExecutionInput
+from harness_py.tests import test_harness_py as _harness_tests
 
 
 class AgentsModelTest(unittest.TestCase):
@@ -78,29 +84,50 @@ class AgentsModelTest(unittest.TestCase):
             strict_json_schema=False,
         )
 
-        async def invoke() -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+
+        async def invoke(context: ResearchRunContext) -> None:
             try:
-                await model.get_response(
-                    "System prompt",
-                    [{"role": "user", "content": "Hello"}],
-                    model.research_settings(1234),
-                    [tool],
-                    None,
-                    [],
-                    ModelTracing.DISABLED,
-                    previous_response_id=None,
-                    conversation_id=None,
-                    prompt=None,
-                )
+                with bind_research_context(context):
+                    await model.get_response(
+                        "System prompt",
+                        [{"role": "user", "content": "Hello"}],
+                        model.research_settings(1234),
+                        [tool],
+                        None,
+                        [],
+                        ModelTracing.DISABLED,
+                        previous_response_id=None,
+                        conversation_id=None,
+                        prompt=None,
+                    )
             finally:
                 await model.close()
 
-        try:
-            asyncio.run(invoke())
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join(timeout=2)
+        with tempfile.TemporaryDirectory() as tmp:
+            recorder = EvalRecorder(tmp, "run_model_test")
+            context = ResearchRunContext(TurnExecutionInput(
+                dataset=dataset,
+                case_id="model_test",
+                run_id="run_model_test",
+                question="Hello",
+                conversation_messages=[],
+                research_memory=ResearchMemory(),
+                eval_recorder=recorder,
+            ))
+            context.current_model_call_id = "model_1"
+            try:
+                asyncio.run(invoke(context))
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
+            recorder.finish({"status": "COMPLETED"})
+            events_text = recorder.events_path.read_text(encoding="utf-8")
+            event_kinds = {
+                json.loads(line)["kind"]
+                for line in events_text.splitlines()
+            }
 
         self.assertEqual("required", captured["tool_choice"])
         self.assertEqual({"type": "adaptive"}, captured["thinking"])
@@ -108,3 +135,5 @@ class AgentsModelTest(unittest.TestCase):
         self.assertEqual(0.0, captured["temperature"])
         self.assertEqual(1.0, captured["top_p"])
         self.assertEqual("submit_research_answer", captured["tools"][0]["function"]["name"])
+        self.assertEqual({"model.request", "model.response"}, event_kinds)
+        self.assertNotIn("test-key", events_text)

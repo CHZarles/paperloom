@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 from datetime import UTC, datetime
@@ -114,6 +115,7 @@ class EvalRecorder:
         self._ok = False
         if not self._error:
             self._error = f"{type(error).__name__}: {error}"
+            logging.getLogger(__name__).error("eval capture failed for run_id=%s: %s", self.run_id, error)
 
 
 def _now() -> str:
