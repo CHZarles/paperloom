@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from time import perf_counter
 from typing import Any
@@ -70,16 +71,44 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
     ) -> None:
         if model is None and provider is None:
             raise ValueError("provider or model is required")
-        self.model = model or MiniMaxAgentsModel(provider)  # type: ignore[arg-type]
+        self.provider = provider
+        self.injected_model = model
         self.max_completion_tokens = max_completion_tokens
         self.model_settings = model_settings
 
     def run_turn(self, turn: TurnExecutionInput) -> TurnExecutionResult:
         context = ResearchRunContext(turn)
+        final = asyncio.run(self._run_agent(context))
+        context.check_cancelled()
+        run = _build_run(
+            case_id=turn.case_id,
+            final=final,
+            prior_evidence=turn.research_memory.evidence_items_by_id,
+            corpus=context.corpus,
+            trace=context.trace,
+            skills_used=context.skills_used,
+            started_at=context.started_at,
+            duration_ms=round((perf_counter() - context.started_monotonic) * 1000),
+            diagnostics={
+                "model_call_count": context.model_call_count,
+                "prompt_tokens": context.prompt_tokens,
+                "completion_tokens": context.completion_tokens,
+                "total_tokens": context.total_tokens,
+                "model_latency_ms": context.model_latency_ms,
+            },
+            harness_id=self.harness_id,
+        )
+        run["run_id"] = turn.run_id
+        return TurnExecutionResult(run=run)
+
+    async def _run_agent(self, context: ResearchRunContext) -> JsonMap:
+        turn = context.turn
+        model = self.injected_model or MiniMaxAgentsModel(self.provider)  # type: ignore[arg-type]
+        owns_model = self.injected_model is None
         tools = build_agent_tools(context)
         settings = self.model_settings
-        if settings is None and isinstance(self.model, MiniMaxAgentsModel):
-            settings = self.model.research_settings(self.max_completion_tokens)
+        if settings is None and isinstance(model, MiniMaxAgentsModel):
+            settings = model.research_settings(self.max_completion_tokens)
         settings = settings or ModelSettings(
             max_tokens=self.max_completion_tokens,
             tool_choice="required",
@@ -88,7 +117,7 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
         agent = Agent[ResearchRunContext](
             name="PaiSmart Research Harness",
             instructions=research_agent_instructions(context.skills),
-            model=self.model,
+            model=model,
             model_settings=settings,
             tools=tools,
             tool_use_behavior=tools_to_final_output,
@@ -110,40 +139,24 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
             session_input_callback=request_session_input,
             tool_execution=ToolExecutionConfig(max_function_tool_concurrency=1),
         )
-        with bind_research_context(context):
-            result = Runner.run_sync(
-                agent,
-                input_items,
-                context=context,
-                max_turns=None,
-                hooks=ResearchRunHooks(),
-                run_config=run_config,
-                session=session,
-            )
-        context.check_cancelled()
+        try:
+            with bind_research_context(context):
+                result = await Runner.run(
+                    agent,
+                    input_items,
+                    context=context,
+                    max_turns=None,
+                    hooks=ResearchRunHooks(),
+                    run_config=run_config,
+                    session=session,
+                )
+        finally:
+            if owns_model:
+                await model.close()
         final = result.final_output if isinstance(result.final_output, dict) else context.final_draft
         if not isinstance(final, dict):
             raise RuntimeError("Agents SDK run ended without an accepted submit_research_answer")
-        run = _build_run(
-            case_id=turn.case_id,
-            final=final,
-            prior_evidence=turn.research_memory.evidence_items_by_id,
-            corpus=context.corpus,
-            trace=context.trace,
-            skills_used=context.skills_used,
-            started_at=context.started_at,
-            duration_ms=round((perf_counter() - context.started_monotonic) * 1000),
-            diagnostics={
-                "model_call_count": context.model_call_count,
-                "prompt_tokens": context.prompt_tokens,
-                "completion_tokens": context.completion_tokens,
-                "total_tokens": context.total_tokens,
-                "model_latency_ms": context.model_latency_ms,
-            },
-            harness_id=self.harness_id,
-        )
-        run["run_id"] = turn.run_id
-        return TurnExecutionResult(run=run)
+        return final
 
 
 def _evidence_card(item: JsonMap) -> JsonMap:
