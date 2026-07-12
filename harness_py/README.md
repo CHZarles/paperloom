@@ -3,15 +3,22 @@
 This package is the lightweight exploration harness for paper RAG.
 
 ```text
-persisted conversation
-+ one model-driven ReAct loop
+request-scoped OpenAI Agents SDK session
++ one model-driven tool loop
 + 22 optional research skills
 + corpus tools
 + deterministic citation validation
 ```
 
 The public runtime is `LiveResearchChatHarness.run_turn(...)`. Golden agent runs and terminal chat
-use that same runtime.
+use that same runtime. `agents_sdk` is the default; `legacy` remains available as a rollback flag.
+
+Install the pinned Python dependencies first:
+
+```bash
+python3 -m venv .venv-harness
+.venv-harness/bin/python -m pip install -r harness_py/requirements.lock
+```
 
 ## Runtime
 
@@ -42,9 +49,9 @@ answer and returns citation errors to the same loop for repair.
 
 ## Conversation
 
-`ConversationState` persists messages, selected papers, cited evidence, and per-turn traces. The
-newest user message may continue or replace the prior topic without a separate context state
-machine.
+`ConversationState` persists messages, selected papers, cited evidence, and the last run reference.
+It does not persist another copy of the complete tool trace. The newest user message may continue
+or replace the prior topic without a separate context state machine.
 
 In `chat-shell`:
 
@@ -71,15 +78,18 @@ python3 -m harness_py audit
 Run selected golden cases through MiniMax:
 
 ```bash
-python3 -m harness_py agent-run \
+.venv-harness/bin/python -m harness_py agent-run \
   --case-id transformer_adam_params_001 \
+  --runtime agents_sdk \
+  --eval-dump /tmp/paismart-agent-eval \
   --out /tmp/paismart-agent-run
 ```
 
 Open terminal chat over papers in the product database:
 
 ```bash
-python3 -m harness_py chat-shell \
+.venv-harness/bin/python -m harness_py chat-shell \
+  --runtime agents_sdk \
   --limit 30 \
   --state /tmp/paismart-chat-state.json \
   --out /tmp/paismart-chat-runs
@@ -91,7 +101,10 @@ Run the internal service used by the Java application:
 export MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1
 export MINIMAX_API_KEY=...
 export MINIMAX_MODEL=MiniMax-M3
-python3 -m harness_py serve --host 127.0.0.1 --port 8091
+.venv-harness/bin/python -m harness_py serve \
+  --runtime agents_sdk \
+  --host 127.0.0.1 \
+  --port 8091
 ```
 
 Java calls `/v1/research/stream` over internal HTTP and consumes an NDJSON stream containing model,
@@ -105,6 +118,10 @@ use an additional LLM summarization call and do not expose chain-of-thought.
 `--limit` caps papers loaded from the product database. `--state` persists conversation context.
 `--out` writes optional evidence, skill, ReAct trace, citation-validation, and answer artifacts.
 
+Set `EVAL_DUMP_DIR` or pass `--eval-dump` to capture offline evaluation data. Each execution writes
+one `<run_id>/events.jsonl` plus one atomic `<run_id>/result.json`. The live harness never reads
+these files; RL, cache, provider, and tool-process analyses remain offline.
+
 ## Evaluation
 
 Golden scoring checks observable outcome, retrieval, structured content, and citations. It does not
@@ -114,5 +131,10 @@ LLM-as-judge agreement check against fixed human labels.
 Focused verification:
 
 ```bash
-python3 -m unittest harness_py.tests.test_harness_py harness_py.tests.test_golden_v2
+python3 -m unittest \
+  harness_py.tests.test_agents_model \
+  harness_py.tests.test_agents_tools \
+  harness_py.tests.test_agents_runtime \
+  harness_py.tests.test_service \
+  harness_py.tests.test_eval_recorder
 ```
