@@ -9,12 +9,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from agents import FunctionTool, ModelTracing
 
-from harness_py.agents_context import ResearchRunContext
-from harness_py.agents_model import MiniMaxAgentsModel, bind_research_context
-from harness_py.eval_recorder import EvalRecorder
-from harness_py.memory import ResearchMemory
-from harness_py.provider_config import ProviderConfig
-from harness_py.runtime import TurnExecutionInput
+from harness_py.evaluation.eval_recorder import EvalRecorder
+from harness_py.orchestration.agents.context import ResearchRunContext
+from harness_py.orchestration.agents.model import MiniMaxAgentsModel, bind_research_context
+from harness_py.orchestration.memory import ResearchMemory
+from harness_py.orchestration.runtime import TurnExecutionInput
+from harness_py.transport.provider_config import ProviderConfig
 from harness_py.tests import test_harness_py as _harness_tests
 
 

@@ -7,8 +7,8 @@ from typing import Any
 
 import yaml
 
-from .llm import ChatModel
-from .models import JsonMap, as_list, child_map
+from ..core.models import JsonMap, as_list, child_map
+from ..orchestration.legacy.llm import ChatModel
 
 
 HUMAN_LABEL_SCHEMA_VERSION = "harness-human-labels/v1"

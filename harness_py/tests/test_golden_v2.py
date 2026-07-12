@@ -10,10 +10,10 @@ from unittest.mock import patch
 
 import yaml
 
-from harness_py.dataset import load_dataset
-from harness_py.golden_fixture import GoldenFixtureHarness
-from harness_py.models import GoldenDataset
-from harness_py.scoring import BehaviorScorer
+from harness_py.core.models import GoldenDataset
+from harness_py.evaluation.dataset import load_dataset
+from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
+from harness_py.evaluation.scoring import BehaviorScorer
 
 
 class GoldenV2Test(unittest.TestCase):
@@ -58,7 +58,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(15, len(self.dataset.cases))
 
     def test_history_snapshot_becomes_live_conversation_context(self) -> None:
-        from harness_py.golden_case import case_question, conversation_state_for_case
+        from harness_py.evaluation.golden_case import case_question, conversation_state_for_case
 
         case = next(case for case in self.dataset.cases if case["id"] == "bert_choice_followup_001")
         state = conversation_state_for_case(self.dataset, case)
@@ -96,7 +96,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual([], self.dataset.load_warnings)
 
     def test_all_authored_anchors_are_locatable_in_reading_models(self) -> None:
-        from harness_py.audit import audit_dataset
+        from harness_py.evaluation.audit import audit_dataset
 
         report = audit_dataset(self.dataset)
 
@@ -106,7 +106,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertTrue(all(len(item["matched_location_refs"]) == 1 for item in report["anchors"]), report)
 
     def test_runtime_anchor_matcher_rejects_partial_overlap_unrelated_passage(self) -> None:
-        from harness_py.tools import ReadingDocument, _match_anchor
+        from harness_py.corpus.tools import ReadingDocument, _match_anchor
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         document = ReadingDocument(
@@ -124,7 +124,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertIsNone(_match_anchor(document, [anchor]))
 
     def test_runtime_anchor_matcher_requires_exact_quote_on_the_authored_page(self) -> None:
-        from harness_py.tools import ReadingDocument, _match_anchor
+        from harness_py.corpus.tools import ReadingDocument, _match_anchor
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         quote = anchor["selector"]["exact_text"]
@@ -181,7 +181,7 @@ class GoldenV2Test(unittest.TestCase):
                     load_dataset(root / "manifest.yaml", repo_root=Path.cwd())
 
     def test_committed_runtime_anchor_tags_are_exact_and_page_constrained(self) -> None:
-        from harness_py.tools import ReadingCorpusTools, _normalize
+        from harness_py.corpus.tools import ReadingCorpusTools, _normalize
 
         tagged: dict[str, list[str]] = {}
         for document in ReadingCorpusTools(self.dataset).documents:
@@ -205,7 +205,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertTrue(all(len(location_refs) == 1 for location_refs in tagged.values()), tagged)
 
     def test_audit_reports_ambiguous_when_multiple_elements_match_the_same_anchor(self) -> None:
-        from harness_py.audit import audit_dataset
+        from harness_py.evaluation.audit import audit_dataset
 
         dataset = self._dataset_with_anchor_quote(
             "bert_masked_lm_pretraining",
@@ -220,7 +220,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(2, len(anchor["matched_location_refs"]))
 
     def test_audit_reports_not_found_when_page_constrained_match_has_no_page(self) -> None:
-        from harness_py.audit import audit_dataset
+        from harness_py.evaluation.audit import audit_dataset
 
         dataset = self._dataset_with_reading_element(
             "attention_is_all_you_need_2017",
@@ -236,7 +236,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual([], anchor["matched_location_refs"])
 
     def test_audit_rejects_an_anchor_with_an_invalid_authored_page(self) -> None:
-        from harness_py.audit import audit_dataset
+        from harness_py.evaluation.audit import audit_dataset
 
         anchors = deepcopy(self.dataset.anchors_by_id)
         anchors["transformer_adam_training_params_span"]["element"]["page"] = "page seven"
@@ -248,7 +248,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual([], anchor["matched_location_refs"])
 
     def test_audit_reports_not_found_when_matching_element_has_no_location_ref(self) -> None:
-        from harness_py.audit import audit_dataset
+        from harness_py.evaluation.audit import audit_dataset
 
         dataset = self._dataset_with_reading_element(
             "attention_is_all_you_need_2017",

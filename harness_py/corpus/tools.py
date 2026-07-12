@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from .models import GoldenDataset, JsonMap, as_list, child_map
+from ..core.models import GoldenDataset, JsonMap, as_list, child_map
 from .pages import parse_positive_page
 
 

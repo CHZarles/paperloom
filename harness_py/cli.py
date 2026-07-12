@@ -7,18 +7,18 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-from .audit import audit_dataset
-from .dataset import load_dataset
-from .conversation import ConversationState
-from .golden_fixture import GoldenFixtureHarness
-from .judge import LLMJudge, evaluate_calibration, load_calibration_cases
-from .live_chat import LiveResearchChatHarness
-from .llm import MiniMaxChatModel
-from .product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
-from .provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
-from .runtime import build_harness_runtime
-from .scoring import BehaviorScorer
-from .service import serve
+from .corpus.product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
+from .evaluation.audit import audit_dataset
+from .evaluation.dataset import load_dataset
+from .evaluation.golden_fixture import GoldenFixtureHarness
+from .evaluation.judge import LLMJudge, evaluate_calibration, load_calibration_cases
+from .evaluation.scoring import BehaviorScorer
+from .orchestration.conversation import ConversationState
+from .orchestration.legacy.llm import MiniMaxChatModel
+from .orchestration.live_chat import LiveResearchChatHarness
+from .orchestration.runtime import build_harness_runtime
+from .transport.provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
+from .transport.service import serve
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -9,13 +9,13 @@ from pathlib import Path
 from typing import Callable
 
 from .conversation import ConversationState
-from .errors import HarnessCancelled
-from .eval_recorder import EvalRecorder
-from .golden_case import case_question, conversation_state_for_case
-from .llm import ChatModel
+from ..core.errors import HarnessCancelled
+from ..core.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stable_id
+from ..evaluation.eval_recorder import EvalRecorder
+from ..evaluation.golden_case import case_question, conversation_state_for_case
 from .memory import ResearchMemory
-from .models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stable_id
 from .runtime import HarnessRuntime, LegacyHarnessRuntime, TurnExecutionInput, new_run_id
+from .legacy.llm import ChatModel
 
 
 class LiveResearchChatHarness:

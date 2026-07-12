@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from harness_py.live_chat import LiveResearchChatHarness
-from harness_py.service import ResearchHarnessService
+from harness_py.orchestration.live_chat import LiveResearchChatHarness
+from harness_py.transport.service import ResearchHarnessService
 from harness_py.tests import test_harness_py as _harness_tests
 
 

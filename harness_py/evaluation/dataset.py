@@ -7,7 +7,7 @@ from typing import Any
 import yaml
 
 from .golden_case import CITATION_POLICIES, OUTCOMES
-from .models import (
+from ..core.models import (
     GOLDEN_CASE_SCHEMA_VERSION,
     GOLDEN_SCHEMA_VERSION,
     PAPER_PACK_SCHEMA_VERSION,
@@ -16,7 +16,7 @@ from .models import (
     as_list,
     child_map,
 )
-from .pages import parse_positive_page
+from ..corpus.pages import parse_positive_page
 
 
 REMOVED_CASE_FIELDS = {

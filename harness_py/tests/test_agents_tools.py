@@ -5,10 +5,10 @@ import unittest
 
 from agents.tool_context import ToolContext
 
-from harness_py.agents_context import ResearchRunContext
-from harness_py.agents_tools import FINAL_TOOL_NAME, _invoke_final
-from harness_py.memory import ResearchMemory
-from harness_py.runtime import TurnExecutionInput
+from harness_py.orchestration.agents.context import ResearchRunContext
+from harness_py.orchestration.agents.tools import FINAL_TOOL_NAME, _invoke_final
+from harness_py.orchestration.memory import ResearchMemory
+from harness_py.orchestration.runtime import TurnExecutionInput
 from harness_py.tests import test_harness_py as _harness_tests
 
 

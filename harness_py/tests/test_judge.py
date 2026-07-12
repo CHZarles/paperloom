@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import yaml
 
-from harness_py.judge import (
+from harness_py.evaluation.judge import (
     CalibrationDataError,
     JudgeProtocolError,
     JudgeVerdict,
@@ -17,7 +17,7 @@ from harness_py.judge import (
     evaluate_calibration,
     load_calibration_cases,
 )
-from harness_py.llm import ChatModel, ChatTurn, ToolCall
+from harness_py.orchestration.legacy.llm import ChatModel, ChatTurn, ToolCall
 
 
 LABELS_PATH = Path("research/golden-data/human-labels.yaml")

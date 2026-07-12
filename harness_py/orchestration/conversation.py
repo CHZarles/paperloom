@@ -4,7 +4,7 @@ import json
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
-from .models import GoldenDataset, JsonMap, as_list, child_map
+from ..core.models import GoldenDataset, JsonMap, as_list, child_map
 
 
 @dataclass(frozen=True)

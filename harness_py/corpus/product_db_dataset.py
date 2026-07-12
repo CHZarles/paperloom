@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .models import GoldenDataset, JsonMap, as_list
-from .provider_config import DockerMySqlProviderConfigStore, _database_name, _mysql_quote
+from ..core.models import GoldenDataset, JsonMap, as_list
+from ..transport.provider_config import DockerMySqlProviderConfigStore, _database_name, _mysql_quote
 
 
 CommandRunner = Callable[[list[str]], subprocess.CompletedProcess[str]]

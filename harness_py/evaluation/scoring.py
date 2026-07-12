@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .golden_case import case_expect
-from .models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
-from .status import (
+from ..core.models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
+from ..core.status import (
     ExecutionStatus,
     execution_status_error,
     normalize_research_outcome,

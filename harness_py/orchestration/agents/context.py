@@ -4,11 +4,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from time import perf_counter
 
-from .errors import HarnessCancelled
-from .models import JsonMap
-from .research_skills import ResearchSkillRegistry
-from .runtime import TurnExecutionInput
-from .tools import ReadingCorpusTools
+from ...core.errors import HarnessCancelled
+from ...core.models import JsonMap
+from ...corpus.tools import ReadingCorpusTools
+from ..research_skills import ResearchSkillRegistry
+from ..runtime import TurnExecutionInput
 
 
 @dataclass

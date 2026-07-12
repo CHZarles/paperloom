@@ -14,24 +14,24 @@ from unittest.mock import patch
 import yaml
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from harness_py.agent_harness import ResearchAgentHarness, _answer_validation_error
-from harness_py.conversation import ConversationState
-from harness_py.dataset import load_dataset
-from harness_py.golden_fixture import GoldenFixtureHarness
-from harness_py.live_chat import LiveResearchChatHarness
-from harness_py.llm import (
+from harness_py.core.models import GoldenDataset
+from harness_py.corpus.product_db_dataset import build_product_dataset, summarize_product_corpus
+from harness_py.corpus.tools import ReadingCorpusTools
+from harness_py.evaluation.dataset import load_dataset
+from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
+from harness_py.evaluation.scoring import BehaviorScorer, _scalar_string
+from harness_py.orchestration.conversation import ConversationState
+from harness_py.orchestration.legacy.harness import ResearchAgentHarness, _answer_validation_error
+from harness_py.orchestration.legacy.llm import (
     ChatModel,
     ChatTurn,
     MiniMaxChatModel,
     ToolCall,
     _normalize_structured_arguments,
 )
-from harness_py.models import GoldenDataset
-from harness_py.provider_config import ProviderConfig, decrypt_provider_key
-from harness_py.product_db_dataset import build_product_dataset, summarize_product_corpus
-from harness_py.research_skills import ResearchSkillRegistry
-from harness_py.scoring import BehaviorScorer, _scalar_string
-from harness_py.tools import ReadingCorpusTools
+from harness_py.orchestration.live_chat import LiveResearchChatHarness
+from harness_py.orchestration.research_skills import ResearchSkillRegistry
+from harness_py.transport.provider_config import ProviderConfig, decrypt_provider_key
 
 
 class PythonHarnessPrototypeTest(unittest.TestCase):

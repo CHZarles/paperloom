@@ -7,8 +7,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
 
-from .models import JsonMap
-from .provider_config import ProviderConfig
+from ...core.models import JsonMap
+from ...transport.provider_config import ProviderConfig
 
 
 @dataclass(frozen=True)

@@ -8,7 +8,9 @@ from agents import FunctionTool, FunctionToolResult, ToolsToFinalOutputResult
 from agents.run_context import RunContextWrapper
 from agents.tool_context import ToolContext
 
-from .agent_harness import (
+from ...core.models import JsonMap, child_map
+from ...corpus.tools import model_facing_payload
+from ..legacy.harness import (
     _answer_validation_error,
     _final_answer_tool,
     _progress_evidence_ids,
@@ -16,11 +18,9 @@ from .agent_harness import (
     _progress_output,
     _trace_item,
 )
-from .agents_context import ResearchRunContext
-from .agents_model import TEXT_NUDGE_TOOL_NAME
-from .llm import ToolCall, _normalize_structured_arguments
-from .models import JsonMap, child_map
-from .tools import model_facing_payload
+from ..legacy.llm import ToolCall, _normalize_structured_arguments
+from .context import ResearchRunContext
+from .model import TEXT_NUDGE_TOOL_NAME
 
 
 FINAL_TOOL_NAME = "submit_research_answer"

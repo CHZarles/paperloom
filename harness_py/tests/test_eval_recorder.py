@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from harness_py.eval_recorder import EvalRecorder
+from harness_py.evaluation.eval_recorder import EvalRecorder
 
 
 class EvalRecorderTest(unittest.TestCase):

@@ -11,8 +11,8 @@ from agents import ItemHelpers, ModelSettings, OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseFunctionToolCall
 
-from .agents_context import ResearchRunContext
-from .provider_config import ProviderConfig
+from ...transport.provider_config import ProviderConfig
+from .context import ResearchRunContext
 
 
 _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(

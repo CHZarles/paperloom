@@ -9,9 +9,9 @@ from pathlib import Path
 from agents import Model, ModelResponse, ModelSettings, ModelTracing, Usage
 from openai.types.responses import ResponseFunctionToolCall
 
-from harness_py.agents_runtime import AgentsSdkHarnessRuntime
-from harness_py.conversation import ConversationState
-from harness_py.live_chat import LiveResearchChatHarness
+from harness_py.orchestration.agents.runtime import AgentsSdkHarnessRuntime
+from harness_py.orchestration.conversation import ConversationState
+from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.tests import test_harness_py as _harness_tests
 
 

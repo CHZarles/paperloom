@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Protocol
 from uuid import uuid4
 
-from .agent_harness import ResearchAgentHarness
+from ..core.models import GoldenDataset, JsonMap
+from .legacy.harness import ResearchAgentHarness
 from .memory import ResearchMemory
-from .models import GoldenDataset, JsonMap
 
 if TYPE_CHECKING:
-    from .eval_recorder import EvalRecorder
-    from .llm import ChatModel
-    from .provider_config import ProviderConfig
+    from ..evaluation.eval_recorder import EvalRecorder
+    from ..transport.provider_config import ProviderConfig
+    from .legacy.llm import ChatModel
 
 
 ProgressListener = Callable[[JsonMap], None]
@@ -73,14 +73,14 @@ def build_harness_runtime(
     max_completion_tokens: int = 3000,
 ) -> HarnessRuntime:
     if runtime_name == "legacy":
-        from .llm import MiniMaxChatModel
+        from .legacy.llm import MiniMaxChatModel
 
         return LegacyHarnessRuntime(
             MiniMaxChatModel(provider, temperature=0.0, top_p=1.0),
             max_completion_tokens=max_completion_tokens,
         )
     if runtime_name == "agents_sdk":
-        from .agents_runtime import AgentsSdkHarnessRuntime
+        from .agents.runtime import AgentsSdkHarnessRuntime
 
         return AgentsSdkHarnessRuntime(
             provider,

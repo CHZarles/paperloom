@@ -16,14 +16,14 @@ from agents import (
     ToolExecutionConfig,
 )
 
-from .agent_harness import _build_run, research_agent_instructions
-from .agents_context import ResearchRunContext
-from .agents_model import MiniMaxAgentsModel, bind_research_context
-from .agents_tools import build_agent_tools, tools_to_final_output
-from .memory import RequestBackedSession, request_session_input
-from .models import JsonMap
-from .provider_config import ProviderConfig
-from .runtime import HarnessRuntime, TurnExecutionInput, TurnExecutionResult
+from ...core.models import JsonMap
+from ...transport.provider_config import ProviderConfig
+from ..legacy.harness import _build_run, research_agent_instructions
+from ..memory import RequestBackedSession, request_session_input
+from ..runtime import HarnessRuntime, TurnExecutionInput, TurnExecutionResult
+from .context import ResearchRunContext
+from .model import MiniMaxAgentsModel, bind_research_context
+from .tools import build_agent_tools, tools_to_final_output
 
 
 class ResearchRunHooks(RunHooks[ResearchRunContext]):

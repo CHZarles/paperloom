@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from .models import GoldenDataset, JsonMap, as_list, child_map
-from .pages import parse_positive_page
+from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..corpus.pages import parse_positive_page
 
 
 def audit_dataset(dataset: GoldenDataset) -> JsonMap:

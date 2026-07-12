@@ -6,12 +6,12 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from .conversation import ConversationState
-from .live_chat import LiveResearchChatHarness
-from .models import JsonMap, as_list, child_map
-from .product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
+from ..core.models import JsonMap, as_list, child_map
+from ..corpus.product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
+from ..orchestration.conversation import ConversationState
+from ..orchestration.live_chat import LiveResearchChatHarness
+from ..orchestration.runtime import build_harness_runtime
 from .provider_config import EnvProviderConfigStore
-from .runtime import build_harness_runtime
 
 
 class ResearchHarnessService:
