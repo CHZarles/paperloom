@@ -7,7 +7,7 @@ from typing import Any
 from ..models import JsonMap, as_list, child_map
 
 
-MAX_PROMPT_EVIDENCE_ITEMS = 12
+MAX_PROMPT_EVIDENCE_ITEMS = 16
 _RESULT_STATUS_ABSENT = object()
 
 
@@ -90,7 +90,38 @@ class TurnFrame:
 
 
 @dataclass(frozen=True)
-class IntentFrame:
+class Obligation:
+    obligation_id: str
+    description: str
+    kind: str = "claim"
+    paper_scope: list[str] = field(default_factory=list)
+    required: bool = True
+    answer_field: str = ""
+
+    @classmethod
+    def from_dict(cls, value: JsonMap, index: int = 0) -> Obligation:
+        return cls(
+            obligation_id=str(value.get("id") or value.get("obligation_id") or f"obligation_{index + 1}"),
+            description=str(value.get("description") or "").strip(),
+            kind=str(value.get("kind") or "claim").strip(),
+            paper_scope=unique_strings(as_list(value.get("paper_scope"))),
+            required=bool(value.get("required", True)),
+            answer_field=str(value.get("answer_field") or "").strip(),
+        )
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "id": self.obligation_id,
+            "description": self.description,
+            "kind": self.kind,
+            "paper_scope": list(self.paper_scope),
+            "required": self.required,
+            "answer_field": self.answer_field,
+        }
+
+
+@dataclass(frozen=True)
+class TaskFrame:
     primary_paradigm: str
     normalized_goal: str
     answer_shape: str
@@ -99,6 +130,7 @@ class IntentFrame:
     constraints: JsonMap
     ambiguity: JsonMap
     confidence: float
+    obligations: list[Obligation] = field(default_factory=list)
     required_evidence_types: list[str] = field(default_factory=list)
     required_capabilities: list[str] = field(default_factory=list)
     actionability: str = "none"
@@ -109,10 +141,12 @@ class IntentFrame:
         return str(self.ambiguity.get("status") or "unambiguous")
 
     def to_dict(self) -> JsonMap:
-        return asdict(self)
+        value = asdict(self)
+        value["obligations"] = [item.to_dict() for item in self.obligations]
+        return value
 
     @classmethod
-    def from_dict(cls, value: JsonMap) -> IntentFrame:
+    def from_dict(cls, value: JsonMap) -> TaskFrame:
         return cls(
             primary_paradigm=str(value.get("primary_paradigm") or ""),
             normalized_goal=str(value.get("normalized_goal") or ""),
@@ -122,6 +156,10 @@ class IntentFrame:
             constraints=child_map(value.get("constraints")),
             ambiguity=child_map(value.get("ambiguity")),
             confidence=float(value.get("confidence") or 0.0),
+            obligations=[
+                Obligation.from_dict(child_map(item), index)
+                for index, item in enumerate(as_list(value.get("obligations")))
+            ],
             required_evidence_types=[str(item) for item in as_list(value.get("required_evidence_types"))],
             required_capabilities=[str(item) for item in as_list(value.get("required_capabilities"))],
             actionability=str(value.get("actionability") or "none"),
@@ -129,7 +167,8 @@ class IntentFrame:
         )
 
 
-ParadigmFrame = IntentFrame
+IntentFrame = TaskFrame
+ParadigmFrame = TaskFrame
 
 
 @dataclass(frozen=True)
@@ -140,6 +179,7 @@ class TurnDecision:
     constraints: JsonMap
     primary_paradigm: str
     answer_shape: str
+    obligations: list[Obligation] = field(default_factory=list)
     assumption: str = ""
     blocking_reason: str | None = None
     direct_reply: str = ""
@@ -160,6 +200,10 @@ class TurnDecision:
             constraints=child_map(value.get("constraints")),
             primary_paradigm=str(value.get("primary_paradigm") or "").strip(),
             answer_shape=str(value.get("answer_shape") or "unknown").strip(),
+            obligations=[
+                Obligation.from_dict(child_map(item), index)
+                for index, item in enumerate(as_list(value.get("obligations")))
+            ],
             assumption=str(value.get("assumption") or "").strip(),
             blocking_reason=(
                 str(value.get("blocking_reason")).strip()
@@ -176,7 +220,7 @@ class TurnDecision:
             confidence=float(value.get("confidence") or 0.0),
         )
 
-    def to_intent_frame(self) -> IntentFrame:
+    def to_task_frame(self) -> TaskFrame:
         constraints = dict(self.constraints)
         if self.task:
             constraints.setdefault("task", self.task)
@@ -185,12 +229,12 @@ class TurnDecision:
         actionability = "blocking" if self.route == "clarify" else (
             "non_blocking" if self.assumption else "none"
         )
-        ambiguity = {
+        ambiguity: JsonMap = {
             "status": "needs_user_choice" if self.route == "clarify" else "unambiguous",
         }
         if self.blocking_reason:
             ambiguity["reason"] = self.blocking_reason
-        return IntentFrame(
+        return TaskFrame(
             primary_paradigm=(
                 "ambiguity_resolution" if self.route == "clarify" else self.primary_paradigm
             ),
@@ -201,11 +245,18 @@ class TurnDecision:
             constraints=constraints,
             ambiguity=ambiguity,
             confidence=self.confidence,
+            obligations=self.obligations,
             required_evidence_types=self.required_evidence_types,
             required_capabilities=self.required_capabilities,
             actionability=actionability,
-            requires_corpus_observation=self.requires_corpus_observation,
+            requires_corpus_observation=(
+                self.requires_corpus_observation
+                or (self.route == "research" and bool(self.obligations))
+            ),
         )
+
+    def to_intent_frame(self) -> TaskFrame:
+        return self.to_task_frame()
 
     def active_task(self) -> JsonMap:
         return {
@@ -214,73 +265,95 @@ class TurnDecision:
             "constraints": self.constraints,
             "paradigm": self.primary_paradigm,
             "answer_shape": self.answer_shape,
+            "obligations": [item.to_dict() for item in self.obligations],
             "assumption": self.assumption,
         }
 
 
 @dataclass(frozen=True)
-class StageSpec:
-    name: str
-    instruction: str
-    strategy: str = "semantic_stage_execution"
-    allowed_tools: tuple[str, ...] = ()
-    requires_new_evidence: bool = False
-    produces_answer: bool = False
-    max_model_turns: int = 4
-    max_tool_calls: int = 6
+class EvidenceCoverage:
+    obligation_id: str
+    status: str
+    evidence_ids: list[str] = field(default_factory=list)
+    note: str = ""
+
+    @classmethod
+    def from_dict(cls, value: JsonMap) -> EvidenceCoverage:
+        status = str(value.get("status") or "missing").strip().lower()
+        if status not in {"covered", "missing"}:
+            status = "missing"
+        return cls(
+            obligation_id=str(value.get("obligation_id") or value.get("id") or "").strip(),
+            status=status,
+            evidence_ids=unique_strings(as_list(value.get("evidence_ids"))),
+            note=str(value.get("note") or "").strip(),
+        )
 
     def to_dict(self) -> JsonMap:
-        value = asdict(self)
-        value["allowed_tools"] = list(self.allowed_tools)
-        return value
+        return asdict(self)
 
 
 @dataclass(frozen=True)
-class StageResult:
-    status: str
-    decision_summary: str
-    selected_paper_ids: list[str] = field(default_factory=list)
-    accepted_evidence_ids: list[str] = field(default_factory=list)
-    rejected_evidence_ids: list[str] = field(default_factory=list)
-    claims: list[JsonMap] = field(default_factory=list)
-    state_values: JsonMap = field(default_factory=dict)
-    missing_obligations: list[JsonMap] = field(default_factory=list)
-    answer: JsonMap = field(default_factory=dict)
-    memory_update: JsonMap = field(default_factory=dict)
-    diagnostics: JsonMap = field(default_factory=dict)
+class Claim:
+    claim_id: str
+    role: str
+    text: str
+    obligation_ids: list[str]
+    evidence_ids: list[str]
+    field_values: JsonMap = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, value: JsonMap) -> StageResult:
+    def from_dict(cls, value: JsonMap, index: int = 0) -> Claim:
         return cls(
-            status=_normalize_stage_status(value.get("status")),
-            decision_summary=str(value.get("decision_summary") or ""),
-            selected_paper_ids=[str(item) for item in as_list(value.get("selected_paper_ids"))],
-            accepted_evidence_ids=[str(item) for item in as_list(value.get("accepted_evidence_ids"))],
-            rejected_evidence_ids=[str(item) for item in as_list(value.get("rejected_evidence_ids"))],
-            claims=[child_map(item) for item in as_list(value.get("claims"))],
-            state_values=child_map(value.get("state_values")),
-            missing_obligations=[child_map(item) for item in as_list(value.get("missing_obligations"))],
-            answer=child_map(value.get("answer")),
-            memory_update=child_map(value.get("memory_update")),
-            diagnostics=child_map(value.get("diagnostics")),
+            claim_id=str(value.get("claim_id") or f"claim_{index + 1}"),
+            role=str(value.get("role") or "answer").strip(),
+            text=str(value.get("text") or "").strip(),
+            obligation_ids=unique_strings(as_list(value.get("obligation_ids"))),
+            evidence_ids=unique_strings(as_list(value.get("evidence_ids"))),
+            field_values=_field_values(value.get("field_values")),
         )
+
+    def to_dict(self) -> JsonMap:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ClaimVerdict:
+    claim_id: str
+    verdict: str
+    verified_text: str
+    evidence_ids: list[str]
+    field_values: JsonMap = field(default_factory=dict)
+    reason: str = ""
+
+    @classmethod
+    def from_dict(cls, value: JsonMap) -> ClaimVerdict:
+        verdict = str(value.get("verdict") or "drop").strip().lower()
+        if verdict not in {"keep", "rewrite", "drop"}:
+            verdict = "drop"
+        return cls(
+            claim_id=str(value.get("claim_id") or "").strip(),
+            verdict=verdict,
+            verified_text=str(value.get("verified_text") or "").strip(),
+            evidence_ids=unique_strings(as_list(value.get("evidence_ids"))),
+            field_values=_field_values(value.get("field_values")),
+            reason=str(value.get("reason") or "").strip(),
+        )
+
+    def to_dict(self) -> JsonMap:
+        return asdict(self)
 
 
 @dataclass(frozen=True)
 class StageTrace:
     stage_name: str
     semantic_goal: str
-    strategy: str
-    completion_contract: str
-    allowed_tools: list[str]
-    max_model_turns: int
-    max_tool_calls: int
     status: str
-    decision_summary: str
-    tool_calls: list[JsonMap]
-    accepted_evidence_ids: list[str]
-    claim_ids: list[str]
-    missing_obligations: list[JsonMap]
+    decision_summary: str = ""
+    tool_calls: list[JsonMap] = field(default_factory=list)
+    obligation_ids: list[str] = field(default_factory=list)
+    evidence_ids: list[str] = field(default_factory=list)
+    claim_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> JsonMap:
         return asdict(self)
@@ -293,12 +366,12 @@ class ResearchState:
     selected_paper_ids: list[str] = field(default_factory=list)
     paper_candidates_by_id: dict[str, JsonMap] = field(default_factory=dict)
     evidence_items_by_id: dict[str, JsonMap] = field(default_factory=dict)
-    rejected_evidence: list[JsonMap] = field(default_factory=list)
+    coverage_by_obligation_id: dict[str, EvidenceCoverage] = field(default_factory=dict)
+    claims_by_id: dict[str, Claim] = field(default_factory=dict)
+    verdicts_by_claim_id: dict[str, ClaimVerdict] = field(default_factory=dict)
     missing_obligations: list[JsonMap] = field(default_factory=list)
-    claims_by_id: dict[str, JsonMap] = field(default_factory=dict)
-    state_values: JsonMap = field(default_factory=dict)
+    retrieval_rounds: list[JsonMap] = field(default_factory=list)
     stage_trace: list[StageTrace] = field(default_factory=list)
-    answer_draft: JsonMap = field(default_factory=dict)
     memory_update: JsonMap = field(default_factory=dict)
 
     @classmethod
@@ -307,7 +380,7 @@ class ResearchState:
 
     def to_prompt_dict(self) -> JsonMap:
         evidence_items = list(self.evidence_items_by_id.values())
-        evidence_items.sort(key=lambda item: item.get("element_type") == "metadata")
+        evidence_items.sort(key=lambda item: item.get("citeable") is False)
         return {
             "authorized_paper_ids": self.authorized_paper_ids,
             "selected_paper_ids": self.selected_paper_ids,
@@ -316,41 +389,11 @@ class ResearchState:
                 for item in self.paper_candidates_by_id.values()
             ],
             "evidence": [_evidence_card(item) for item in evidence_items[:MAX_PROMPT_EVIDENCE_ITEMS]],
-            "claims": list(self.claims_by_id.values()),
-            "state_values": self.state_values,
+            "coverage": [item.to_dict() for item in self.coverage_by_obligation_id.values()],
+            "claims": [item.to_dict() for item in self.claims_by_id.values()],
+            "verdicts": [item.to_dict() for item in self.verdicts_by_claim_id.values()],
             "missing_obligations": self.missing_obligations,
         }
-
-
-def normalize_claim(raw: JsonMap, known_evidence_ids: set[str], index: int) -> JsonMap:
-    supporting = [
-        str(item) for item in as_list(raw.get("supporting_evidence_ids"))
-        if str(item) in known_evidence_ids
-    ]
-    refuting = [
-        str(item) for item in as_list(raw.get("refuting_evidence_ids"))
-        if str(item) in known_evidence_ids
-    ]
-    status = str(raw.get("status") or ("supported" if supporting else "underdetermined")).lower()
-    status = {
-        "support": "supported",
-        "verified": "supported",
-        "true": "supported",
-        "unsupported": "underdetermined",
-        "unknown": "underdetermined",
-    }.get(status, status)
-    if status == "supported" and not supporting:
-        status = "underdetermined"
-    return {
-        "claim_id": str(raw.get("claim_id") or f"claim_{index + 1}"),
-        "text": str(raw.get("text") or ""),
-        "claim_type": str(raw.get("claim_type") or "semantic_stage_claim"),
-        "supporting_evidence_ids": supporting,
-        "refuting_evidence_ids": refuting,
-        "status": status,
-        "confidence": float(raw.get("confidence") or (1.0 if status == "supported" and supporting else 0.0)),
-        "depends_on_claim_ids": [str(item) for item in as_list(raw.get("depends_on_claim_ids"))],
-    }
 
 
 def unique_strings(values: Any) -> list[str]:
@@ -372,7 +415,8 @@ def _evidence_card(item: JsonMap) -> JsonMap:
         "section": item.get("section"),
         "page": item.get("page"),
         "element_type": item.get("element_type"),
-        "span_text": str(item.get("span_text") or "")[:700],
+        "span_text": str(item.get("span_text") or "")[:1200],
+        "citeable": item.get("citeable", True),
     }
 
 
@@ -389,14 +433,22 @@ def _paper_candidate_card(item: JsonMap) -> JsonMap:
     }
 
 
-def _normalize_stage_status(value: Any) -> str:
-    raw = str(value or "completed").lower()
-    return {
-        "ok": "completed",
-        "complete": "completed",
-        "completed_precise": "completed",
-        "needs_user_choice": "needs_clarification",
-        "clarify": "needs_clarification",
-        "incomplete": "incomplete_precise",
-        "abstained": "incomplete_precise",
-    }.get(raw, raw)
+def _field_values(value: Any) -> JsonMap:
+    if isinstance(value, list):
+        return {
+            str(child_map(item).get("name") or ""): child_map(item).get("value")
+            for item in value
+            if str(child_map(item).get("name") or "").strip()
+        }
+    parsed = child_map(value)
+    text = parsed.get("$text")
+    if isinstance(text, str):
+        try:
+            import json
+
+            decoded = json.loads(text)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, dict):
+            return {str(key): item for key, item in decoded.items()}
+    return parsed

@@ -72,7 +72,14 @@ class MiniMaxChatModel(ChatModel):
             raise ValueError("required tool must be present in the available tools")
         thinking_type = (
             "disabled"
-            if required_tool_name in {"submit_stage_result", "submit_judgment"}
+            if required_tool_name in {
+                "submit_judgment",
+                "submit_turn_decision",
+                "submit_evidence_coverage",
+                "submit_retrieval_queries",
+                "submit_claims",
+                "submit_claim_verdicts",
+            }
             else None
         )
         return self._complete(
@@ -156,6 +163,7 @@ def _parse_openai_compatible_turn(raw: JsonMap) -> ChatTurn:
             parsed_arguments = arguments
         else:
             parsed_arguments = {}
+        parsed_arguments = _normalize_structured_arguments(parsed_arguments)
         tool_calls.append(ToolCall(
             id=str(raw_call.get("id") or f"call_{len(tool_calls) + 1}"),
             name=str(function.get("name") or raw_call.get("name") or ""),
@@ -165,3 +173,20 @@ def _parse_openai_compatible_turn(raw: JsonMap) -> ChatTurn:
     if not isinstance(content, str):
         content = json.dumps(content, ensure_ascii=False)
     return ChatTurn(content=content, tool_calls=tool_calls, raw=raw)
+
+
+def _normalize_structured_arguments(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_normalize_structured_arguments(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if set(value) == {"$text"} and isinstance(value["$text"], str):
+        try:
+            decoded = json.loads(value["$text"])
+        except json.JSONDecodeError:
+            return value["$text"]
+        return _normalize_structured_arguments(decoded)
+    return {
+        str(key): _normalize_structured_arguments(item)
+        for key, item in value.items()
+    }

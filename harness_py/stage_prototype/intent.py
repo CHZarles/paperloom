@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import re
+from dataclasses import replace
 from time import perf_counter
 
 from ..llm import ChatModel
 from ..models import GoldenDataset, JsonMap, child_map
-from .models import IntentFrame, TurnDecision, TurnFrame
-from .plans import PARADIGM_DEFINITIONS, get_paradigm, intent_catalog_text
+from .models import Obligation, TaskFrame, TurnDecision, TurnFrame
+from .plans import PARADIGM_RECIPES, get_paradigm, intent_catalog_text
 
 
 class IntentRecognitionError(RuntimeError):
@@ -17,7 +19,7 @@ TURN_DECISION_TOOL: JsonMap = {
     "type": "function",
     "function": {
         "name": "submit_turn_decision",
-        "description": "Return the single authoritative interpretation of the current conversation turn.",
+        "description": "Return the single authoritative interpretation and evidence obligations for the current turn.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -34,10 +36,71 @@ TURN_DECISION_TOOL: JsonMap = {
                 "constraints": {"type": "object", "additionalProperties": True},
                 "primary_paradigm": {"type": "string"},
                 "answer_shape": {"type": "string"},
+                "obligations": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "id", "description", "kind", "paper_scope", "required", "answer_field"
+                        ],
+                        "properties": {
+                            "id": {"type": "string", "maxLength": 80},
+                            "description": {"type": "string", "maxLength": 320},
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "fact",
+                                    "comparison_cell",
+                                    "relation",
+                                    "hop",
+                                    "procedure_item",
+                                    "conflict_side",
+                                    "conflict_resolution",
+                                    "recommendation",
+                                    "corpus_boundary",
+                                    "clarification",
+                                    "analysis_step",
+                                ],
+                            },
+                            "paper_scope": {
+                                "type": "array",
+                                "maxItems": 8,
+                                "items": {"type": "string"},
+                            },
+                            "required": {"type": "boolean"},
+                            "answer_field": {"type": "string", "maxLength": 80},
+                        },
+                        "additionalProperties": False,
+                    },
+                },
                 "assumption": {"type": "string"},
                 "blocking_reason": {"type": ["string", "null"]},
                 "direct_reply": {"type": "string"},
-                "pending_interaction": {"type": ["object", "null"]},
+                "pending_interaction": {
+                    "type": "object",
+                    "required": ["interaction_id", "kind", "question", "options"],
+                    "properties": {
+                        "interaction_id": {"type": "string", "maxLength": 100},
+                        "kind": {"type": "string", "enum": ["none", "choice", "free_text"]},
+                        "question": {"type": "string", "maxLength": 500},
+                        "options": {
+                            "type": "array",
+                            "maxItems": 6,
+                            "items": {
+                                "type": "object",
+                                "required": ["id", "label", "task_patch"],
+                                "properties": {
+                                    "id": {"type": "string", "maxLength": 80},
+                                    "label": {"type": "string", "maxLength": 160},
+                                    "task_patch": {"type": "object", "additionalProperties": True},
+                                },
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                    "additionalProperties": False,
+                },
                 "paper_references": {"type": "array", "items": {"type": "object"}},
                 "requested_aspects": {"type": "array", "items": {"type": "string"}},
                 "required_evidence_types": {"type": "array", "items": {"type": "string"}},
@@ -52,13 +115,17 @@ TURN_DECISION_TOOL: JsonMap = {
                 "constraints",
                 "primary_paradigm",
                 "answer_shape",
+                "obligations",
                 "assumption",
                 "blocking_reason",
                 "direct_reply",
                 "pending_interaction",
+                "paper_references",
+                "requested_aspects",
                 "requires_corpus_observation",
                 "required_evidence_types",
                 "required_capabilities",
+                "confidence",
             ],
             "additionalProperties": False,
         },
@@ -67,7 +134,7 @@ TURN_DECISION_TOOL: JsonMap = {
 
 
 class TurnInterpreter:
-    def __init__(self, model: ChatModel, max_tokens: int = 1400):
+    def __init__(self, model: ChatModel, max_tokens: int = 2400):
         self.model = model
         self.max_tokens = max_tokens
         self.last_diagnostics: JsonMap = {}
@@ -93,7 +160,11 @@ class TurnInterpreter:
         calls = [call for call in response.tool_calls if call.name == "submit_turn_decision"]
         if len(calls) != 1:
             raise IntentRecognitionError("turn model did not submit one structured TurnDecision")
-        decision = TurnDecision.from_dict(calls[0].arguments)
+        decision = _normalize_turn_decision(TurnDecision.from_dict(calls[0].arguments), turn)
+        self._validate(decision, turn)
+        return decision
+
+    def _validate(self, decision: TurnDecision, turn: TurnFrame) -> None:
         if decision.route == "direct":
             if not decision.direct_reply:
                 raise IntentRecognitionError("direct TurnDecision requires direct_reply")
@@ -103,7 +174,7 @@ class TurnInterpreter:
             )
             if has_active_work and str(decision.task.get("verb") or "") != "cancel":
                 raise IntentRecognitionError("direct TurnDecision cannot discard an active task")
-            return decision
+            return
         if decision.route == "clarify":
             pending = decision.pending_interaction
             if (
@@ -112,20 +183,28 @@ class TurnInterpreter:
                 or not pending.get("question")
             ):
                 raise IntentRecognitionError("clarify TurnDecision requires pending_interaction")
-            return decision
+            return
         if decision.route != "research":
             raise IntentRecognitionError(f"unsupported turn route: {decision.route}")
         if not decision.effective_goal:
             raise IntentRecognitionError("research TurnDecision requires effective_goal")
         if not decision.task.get("verb") or not decision.task.get("object"):
             raise IntentRecognitionError("research TurnDecision requires task verb and object")
-        if decision.primary_paradigm not in PARADIGM_DEFINITIONS:
+        if decision.primary_paradigm not in PARADIGM_RECIPES:
             raise IntentRecognitionError(f"unsupported paradigm: {decision.primary_paradigm}")
-        if decision.blocking_reason:
-            raise IntentRecognitionError("research TurnDecision cannot retain a blocking_reason")
-        return decision
+        if decision.requires_corpus_observation and not decision.obligations:
+            raise IntentRecognitionError("corpus-grounded research requires evidence obligations")
+        obligation_ids = [item.obligation_id for item in decision.obligations]
+        if len(set(obligation_ids)) != len(obligation_ids):
+            raise IntentRecognitionError("research obligations require unique ids")
+        if any(not item.description for item in decision.obligations):
+            raise IntentRecognitionError("research obligations require descriptions")
 
     def _messages(self, turn: TurnFrame, dataset: GoldenDataset) -> list[JsonMap]:
+        obligation_guidance = "\n".join(
+            f"- {recipe.paradigm_id}: {recipe.obligation_guidance}"
+            for recipe in PARADIGM_RECIPES.values()
+        )
         return [
             {
                 "role": "system",
@@ -136,146 +215,52 @@ class TurnInterpreter:
                     "Choose direct for greetings or ordinary conversation that requires no paper research. "
                     "Choose clarify only when unresolved paper identity, unresolved conversation reference, "
                     "or a missing hard constraint makes research unsafe. Broad scope, missing preferences, "
-                    "and words such as 'important' are not blocking; choose research and state an assumption.\n\n"
+                    "and words such as 'important' are not blocking; choose research and state an assumption. A bare "
+                    "paper nickname, topic fragment, or paper title with no requested action is blocking: ask one focused "
+                    "question about the intended paper or task instead of silently turning it into a summary.\n\n"
                     "When conversation_context contains active_task or pending_interaction, interpret the current "
                     "message as a continuation. Merge a resolved choice, confirmation, correction, or constraint "
                     "into effective_goal and choose research immediately. Never return a choice acknowledgement "
-                    "as the completed user task.\n\n"
-                    "Represent semantics as task.verb, task.object, and constraints. Select the paradigm from the "
-                    "requested operation, not from a noun used only as a filter. For example, recommending "
-                    "systematic-review papers is a recommendation with paper_type=systematic_review; conducting "
-                    "a systematic review is meta_analysis_systematic_review. Every request to recommend or suggest "
-                    "papers uses task.verb=recommend, task.object=papers, primary_paradigm="
-                    "context_specific_brainstorming, and answer_shape=constraint_filter. Requested genres, topics, "
-                    "years, and methods remain constraints. Use meta_analysis_systematic_review only when the user "
-                    "asks the harness to conduct or synthesize a review across studies. For words such as "
-                    "'important' or 'influential', use corpus-relative breadth and methodological salience unless "
-                    "the available tools actually expose external citation metrics; do not require or claim "
-                    "unobserved citation counts.\n\n"
+                    "as the completed user task. Preserve prior active-task obligations when they remain relevant.\n\n"
+                    "Recent messages are also authoritative when structured pending state is unavailable. If the last "
+                    "assistant message offered numbered choices or proposed comparison axes and the current user message "
+                    "selects, confirms, or refines that offer, resolve it against that message and resume the original "
+                    "task immediately. Do not reinterpret the selected paper as a new request for summary or critique.\n\n"
+                    "pending_interaction is always an object. For direct or research routes, use kind=none with empty "
+                    "interaction_id, question, and options. For clarify, use kind=choice or free_text and provide a "
+                    "stable interaction_id, one focused question, and optional choices with id, label, and task_patch.\n\n"
+                    "For research, create the smallest complete set of semantic evidence obligations. An obligation "
+                    "states what must be established, not which tool to call and not the expected answer. Write obligation "
+                    "descriptions as neutral questions or slots: do not embed a guessed value, architecture exclusion, "
+                    "causal explanation, or other candidate answer in the description. Split exact "
+                    "fact slots, comparison target-axis cells, conflict sides, and multi-hop edges. Do not create "
+                    "obligations for optional background, generic explanations, or unrequested recommendations. "
+                    "Use paper_scope for titles, paper ids, or source descriptions explicitly constrained by the user. "
+                    "For a requested scalar fact, set answer_field to the concise user-facing field name, such as "
+                    "beta1 rather than a source-prefixed name; otherwise set answer_field to an empty string. Evidence "
+                    "quotes, source locations, and background distinctions are support for an obligation, not separate "
+                    "obligations unless the user explicitly requested them. Use corpus_boundary for a corpus-coverage "
+                    "decision.\n\n"
+                    "Select the paradigm from the requested operation, not from a noun used only as a filter. Every "
+                    "request to recommend or suggest papers uses task.verb=recommend, task.object=papers, and "
+                    "primary_paradigm=context_specific_brainstorming. Use meta_analysis_systematic_review only when "
+                    "the user asks to conduct a review across studies. Use complex_multihop_reasoning when the answer "
+                    "depends on composing two or more separately evidenced hops through an intermediate node; create "
+                    "one kind=hop obligation per requested hop. Use association_influence_genealogy for a direct lineage "
+                    "or citation relationship, not for a dependent multi-hop chain. A prohibition such as 'do not invent "
+                    "a direct edge' is a claim constraint, not a separate absence-search obligation unless the user "
+                    "explicitly asks to verify that the edge is absent. For words such as 'important', use corpus-relative "
+                    "breadth and methodological salience unless tools expose external citation metrics.\n\n"
+                    "The user-visible research corpus is the fixed paper inventory supplied below. If a named paper or "
+                    "model is absent and the user asks for its paper-grounded details, use "
+                    "uncertainty_knowledge_boundary and create one corpus_boundary obligation describing the unsupported "
+                    "scope. Do not invent separate fact-slot obligations for details that the inventory cannot cover, and "
+                    "do not infer an absent model's architecture from an earlier related paper.\n\n"
                     "A corpus recommendation or paper-content answer sets requires_corpus_observation=true.\n\n"
                     "PARADIGM CATALOG\n"
-                    f"{intent_catalog_text()}"
-                ),
-            },
-            {
-                "role": "user",
-                "content": json.dumps({
-                    "user_message": turn.question,
-                    "conversation_context": turn.conversation_context,
-                    "corpus": {
-                        "paper_count": len(dataset.paper_records_by_id),
-                        "reading_model_count": len(dataset.reading_models_by_paper_id),
-                    },
-                }, ensure_ascii=False),
-            },
-        ]
-
-
-class IntentRecognizer:
-    def __init__(self, model: ChatModel, max_tokens: int = 1400):
-        self.model = model
-        self.max_tokens = max_tokens
-
-    def recognize(self, turn: TurnFrame, dataset: GoldenDataset) -> IntentFrame:
-        messages = self._messages(turn, dataset)
-        response = self.model.complete(messages, [], self.max_tokens)
-        payload = _parse_json_object(response.content)
-        if payload is None:
-            messages.extend([
-                {"role": "assistant", "content": response.content},
-                {
-                    "role": "user",
-                    "content": "Return exactly one valid JSON object matching the required intent schema.",
-                },
-            ])
-            response = self.model.complete(messages, [], self.max_tokens)
-            payload = _parse_json_object(response.content)
-        if payload is None:
-            raise IntentRecognitionError("intent model did not return parseable JSON")
-        intent = IntentFrame.from_dict(payload)
-        if intent.primary_paradigm not in PARADIGM_DEFINITIONS:
-            raise IntentRecognitionError(f"unsupported paradigm: {intent.primary_paradigm}")
-        ambiguity = _normalize_ambiguity(intent.ambiguity)
-        actionability = _normalize_actionability(
-            payload.get("actionability") if "actionability" in payload else None,
-            ambiguity,
-        )
-        primary_paradigm = intent.primary_paradigm
-        if actionability == "blocking":
-            primary_paradigm = "ambiguity_resolution"
-        definition = get_paradigm(primary_paradigm)
-        answer_shape = intent.answer_shape
-        if primary_paradigm != intent.primary_paradigm or answer_shape == "unknown":
-            answer_shape = definition.default_answer_shape
-        return IntentFrame(
-            primary_paradigm=primary_paradigm,
-            normalized_goal=intent.normalized_goal or turn.question,
-            answer_shape=answer_shape,
-            paper_references=intent.paper_references,
-            requested_aspects=intent.requested_aspects,
-            constraints=intent.constraints,
-            ambiguity=ambiguity,
-            confidence=intent.confidence,
-            required_evidence_types=intent.required_evidence_types,
-            required_capabilities=intent.required_capabilities,
-            actionability=actionability,
-            requires_corpus_observation=intent.requires_corpus_observation,
-        )
-
-    def _messages(self, turn: TurnFrame, dataset: GoldenDataset) -> list[JsonMap]:
-        return [
-            {
-                "role": "system",
-                "content": (
-                    "INTENT_RECOGNITION\n"
-                    "Classify one research turn. Choose exactly one primary_paradigm from the catalog. "
-                    "Do not answer the research question and do not retrieve evidence. Use conversation "
-                    "context only to resolve references such as 'the first two'. Extract constraints and "
-                    "the requested answer shape. Return one JSON object and no prose.\n\n"
-                    "PARADIGM CATALOG\n"
                     f"{intent_catalog_text()}\n\n"
-                    "PARADIGM SELECTION RULES\n"
-                    "- Label actionability as none when the target is clear, non_blocking when a useful "
-                    "corpus-grounded answer can proceed under a stated assumption or coverage policy, "
-                    "and blocking only when proceeding risks the wrong identity, version, relation, or "
-                    "hard constraint. Broadness or a missing preference is non_blocking, not blocking.\n"
-                    "- Choose complex_multihop_reasoning over association_influence_genealogy when "
-                    "the user explicitly requires two or more dependent hops, an intermediate node, "
-                    "or a conclusion that is invalid if the hops are collapsed into a direct edge.\n"
-                    "- Choose association_influence_genealogy when the citation or influence graph "
-                    "itself is the result and its edges can be reported independently.\n"
-                    "- Choose methodology_reproduction over precision_fact_extraction when the user "
-                    "asks for a procedure, protocol, experiment design, or reproduction checklist, "
-                    "even when some requested items are exact values.\n"
-                    "- Choose ambiguity_resolution when a user decision is required before any other "
-                    "research paradigm can be executed safely.\n\n"
-                    "- Choose uncertainty_knowledge_boundary when the requested entity, version, time "
-                    "period, or required evidence is absent from the available corpus. Do not choose "
-                    "precision_fact_extraction merely because the user asks for exact details that the "
-                    "corpus cannot support.\n"
-                    "- Choose concept_tracing_definition for origin and meaning evolution; choose "
-                    "association_influence_genealogy for influence or citation relationships.\n"
-                    "- Choose contribution_critical_assessment when novelty, limitations, or overclaim "
-                    "must be judged; choose deep_comparison for a symmetric comparison over declared axes.\n"
-                    "- Choose data_benchmark_provenance for construction and version history; choose "
-                    "dataset_contamination_generalization for leakage, overlap, shortcuts, or shift diagnosis.\n"
-                    "- Choose hypothetical_discussion when one assumption is deliberately changed; "
-                    "choose future_prediction_open_problem for a time-bounded forecast from trend evidence.\n"
-                    "- Choose multimodal_cross_domain_system_design when components and interfaces must "
-                    "form an architecture; choose context_specific_brainstorming for evidence-bounded options.\n"
-                    "- Choose theory_math_formal_proof for derivation or proof reconstruction; choose "
-                    "structured_info_nontraditional_query when the main target is a table, figure, formula, or algorithm.\n"
-                    "- Choose meta_analysis_systematic_review for protocol-driven synthesis across many "
-                    "studies; choose boundary_failure_counterexample when failures delimit a broad claim.\n"
-                    "- Choose complex_constraint_combination when all hard constraints must be intersected "
-                    "without relaxation, and author_institution_research_style for a scoped research trajectory.\n\n"
-                    "Set requires_corpus_observation true when the intended answer recommends papers "
-                    "from this corpus or makes corpus-grounded factual claims.\n\n"
-                    "JSON schema: {primary_paradigm, normalized_goal, answer_shape, actionability, "
-                    "requires_corpus_observation:boolean, "
-                    "paper_references:[{text?,paper_id?,kind?}], requested_aspects:[string], "
-                    "constraints:{}, ambiguity:{status,candidates?,clarification_question?}, "
-                    "confidence:number, required_evidence_types:[string], required_capabilities:[string]}."
+                    "OBLIGATION GUIDANCE\n"
+                    f"{obligation_guidance}"
                 ),
             },
             {
@@ -286,51 +271,243 @@ class IntentRecognizer:
                     "corpus": {
                         "paper_count": len(dataset.paper_records_by_id),
                         "reading_model_count": len(dataset.reading_models_by_paper_id),
+                        "papers": [
+                            {
+                                "paper_id": paper_id,
+                                "title": child_map(record.get("identity")).get("title"),
+                                "year": child_map(record.get("identity")).get("year"),
+                            }
+                            for paper_id, record in dataset.paper_records_by_id.items()
+                        ],
                     },
                 }, ensure_ascii=False),
             },
         ]
 
 
-def _parse_json_object(content: str) -> JsonMap | None:
-    text = content.strip()
-    if text.startswith("```"):
-        text = text.strip("`")
-        if text.startswith("json"):
-            text = text[4:].strip()
-    if not text.startswith("{") and "{" in text and "}" in text:
-        text = text[text.find("{"): text.rfind("}") + 1]
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError:
-        return None
-    return payload if isinstance(payload, dict) else None
+def task_frame_for_decision(decision: TurnDecision) -> TaskFrame:
+    recipe = get_paradigm(
+        "ambiguity_resolution" if decision.route == "clarify" else decision.primary_paradigm
+    )
+    task = decision.to_task_frame()
+    if task.answer_shape == "unknown":
+        return TaskFrame(
+            **{
+                **task.to_dict(),
+                "answer_shape": recipe.default_answer_shape,
+                "obligations": task.obligations,
+            }
+        )
+    return task
 
 
-def _normalize_ambiguity(value: JsonMap) -> JsonMap:
-    ambiguity = dict(value or {})
-    raw_status = str(ambiguity.get("status") or "unambiguous").lower()
-    ambiguity["status"] = {
-        "none": "unambiguous",
-        "clear": "unambiguous",
-        "low": "unambiguous",
-        "resolved": "unambiguous",
-    }.get(raw_status, raw_status)
-    return ambiguity
+def _normalize_turn_decision(
+    decision: TurnDecision,
+    turn: TurnFrame | None = None,
+) -> TurnDecision:
+    unresolved_precision_scope = (
+        decision.route == "research"
+        and decision.primary_paradigm == "precision_fact_extraction"
+        and any(len(set(obligation.paper_scope)) > 1 for obligation in decision.obligations)
+    )
+    if unresolved_precision_scope:
+        return replace(
+            decision,
+            route="clarify",
+            primary_paradigm="ambiguity_resolution",
+            answer_shape=get_paradigm("ambiguity_resolution").default_answer_shape,
+            obligations=[Obligation(
+                obligation_id="clarify_paper_and_task",
+                description="Resolve the intended paper and requested research action.",
+                kind="clarification",
+                required=True,
+            )],
+            blocking_reason="paper identity or requested action is unresolved",
+            direct_reply="",
+            pending_interaction={
+                "interaction_id": "clarify_paper_and_task",
+                "kind": "free_text",
+                "question": "Which paper do you mean, and what would you like to know about it?",
+                "options": [],
+            },
+            requires_corpus_observation=False,
+        )
+
+    recent_messages = (
+        turn.conversation_context.get("recent_messages", [])
+        if turn is not None else []
+    )
+    selected_paper = str(decision.constraints.get("selected_paper") or "").strip()
+    if selected_paper and len(recent_messages) >= 2:
+        selected_scope = next(
+            (
+                scope
+                for obligation in decision.obligations
+                for scope in obligation.paper_scope
+                if scope
+            ),
+            selected_paper,
+        )
+        focus = str(decision.constraints.get("focus") or "the active research goal")
+        decision = replace(
+            decision,
+            task={"verb": "recommend", "object": "paper"},
+            primary_paradigm="context_specific_brainstorming",
+            answer_shape=get_paradigm("context_specific_brainstorming").default_answer_shape,
+            obligations=[Obligation(
+                obligation_id="selected_paper_fit",
+                description=f"Explain from source evidence why the selected paper fits {focus}.",
+                kind="recommendation",
+                paper_scope=[selected_scope],
+                required=True,
+                answer_field="",
+            )],
+        )
+
+    if decision.primary_paradigm == "precision_fact_extraction":
+        requested_count = len([
+            aspect for aspect in decision.requested_aspects
+            if aspect not in {
+                scope
+                for obligation in decision.obligations
+                for scope in obligation.paper_scope
+            }
+        ])
+        scalar_obligations = [
+            obligation for obligation in decision.obligations
+            if obligation.required and obligation.answer_field
+        ]
+        if requested_count and len(scalar_obligations) > requested_count:
+            decision = replace(
+                decision,
+                obligations=scalar_obligations[:requested_count],
+            )
+
+    if decision.primary_paradigm == "deep_comparison":
+        targets = _comparison_targets(decision)
+        aspects = [
+            aspect for aspect in decision.requested_aspects
+            if aspect not in set(targets)
+        ]
+        if len(targets) >= 2 and aspects:
+            decision = replace(
+                decision,
+                obligations=[
+                    Obligation(
+                        obligation_id=f"{_slug(target)}_{_slug(aspect)}"[:80],
+                        description=f"Determine {aspect} for {target} from source evidence.",
+                        kind="comparison_cell",
+                        paper_scope=[target],
+                        required=True,
+                        answer_field=f"{_slug(target)}_{_slug(aspect)}"[:80],
+                    )
+                    for aspect in aspects
+                    for target in targets
+                ],
+            )
+        target_cells = [
+            obligation for obligation in decision.obligations
+            if obligation.required
+            and obligation.kind == "comparison_cell"
+            and len(set(obligation.paper_scope)) == 1
+        ]
+        target_scopes = {
+            obligation.paper_scope[0] for obligation in target_cells
+        }
+        if len(target_cells) >= 2 and len(target_scopes) >= 2:
+            decision = replace(
+                decision,
+                obligations=[
+                    replace(
+                        obligation,
+                        description=(
+                            f"Determine {(obligation.answer_field or 'the requested comparison cell').replace('_', ' ')} "
+                            f"for {obligation.paper_scope[0]} from source evidence."
+                        ),
+                    )
+                    for obligation in target_cells
+                ],
+            )
+
+    if decision.primary_paradigm == "association_influence_genealogy":
+        edge_obligations = [
+            obligation for obligation in decision.obligations
+            if obligation.required
+            and obligation.kind == "relation"
+            and len(set(obligation.paper_scope)) >= 2
+        ]
+        if edge_obligations:
+            decision = replace(decision, obligations=edge_obligations)
+
+    if decision.primary_paradigm == "contradiction_resolution":
+        side_obligations: list[Obligation] = []
+        seen_scopes: set[str] = set()
+        for obligation in decision.obligations:
+            if not obligation.required or len(set(obligation.paper_scope)) != 1:
+                continue
+            scope = obligation.paper_scope[0]
+            if scope in seen_scopes:
+                continue
+            seen_scopes.add(scope)
+            side_obligations.append(replace(obligation, kind="conflict_side"))
+        resolution = next(
+            (
+                replace(obligation, kind="conflict_resolution")
+                for obligation in decision.obligations
+                if obligation.required
+                and (
+                    obligation.kind == "conflict_resolution"
+                    or len(set(obligation.paper_scope)) >= 2
+                )
+            ),
+            None,
+        )
+        if len(side_obligations) >= 2 and resolution is not None:
+            decision = replace(
+                decision,
+                obligations=[*side_obligations[:2], resolution],
+            )
+
+    edge_obligations = []
+    seen_edges: set[tuple[str, ...]] = set()
+    for obligation in decision.obligations:
+        edge = tuple(sorted(set(obligation.paper_scope)))
+        if obligation.required and obligation.kind in {"relation", "hop"} and len(edge) >= 2:
+            if edge not in seen_edges:
+                seen_edges.add(edge)
+                edge_obligations.append(replace(obligation, kind="hop", answer_field=""))
+    dependent_chain = any(
+        set(left.paper_scope) & set(right.paper_scope)
+        and len(set(left.paper_scope) | set(right.paper_scope)) >= 3
+        for index, left in enumerate(edge_obligations)
+        for right in edge_obligations[index + 1:]
+    )
+    if not dependent_chain:
+        return decision
+    return replace(
+        decision,
+        primary_paradigm="complex_multihop_reasoning",
+        answer_shape=get_paradigm("complex_multihop_reasoning").default_answer_shape,
+        obligations=edge_obligations,
+    )
 
 
-def _normalize_actionability(value: object, ambiguity: JsonMap) -> str:
-    raw = str(value or "").strip().lower()
-    aliases = {
-        "actionable": "none",
-        "clear": "none",
-        "unambiguous": "none",
-        "assumption": "non_blocking",
-        "proceed": "non_blocking",
-        "needs_clarification": "blocking",
-        "ambiguous": "blocking",
-    }
-    normalized = aliases.get(raw, raw)
-    if normalized in {"none", "non_blocking", "blocking"}:
-        return normalized
-    return "blocking" if str(ambiguity.get("status")) in {"ambiguous", "needs_clarification"} else "none"
+def _comparison_targets(decision: TurnDecision) -> list[str]:
+    targets: list[str] = []
+    for obligation in decision.obligations:
+        if len(set(obligation.paper_scope)) != 1:
+            continue
+        target = obligation.paper_scope[0]
+        if target and target not in targets:
+            targets.append(target)
+    if len(targets) >= 2:
+        return targets
+    for reference in decision.paper_references:
+        target = str(reference.get("paper_id") or reference.get("text") or "").strip()
+        if target and target not in targets:
+            targets.append(target)
+    return targets
+
+
+def _slug(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_") or "item"

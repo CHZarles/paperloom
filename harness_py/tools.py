@@ -16,6 +16,7 @@ SEARCH_ELEMENT_TYPES = (
     "table",
     "list",
     "image",
+    "figure",
     "footnote",
     "chart",
     "formula",
@@ -328,9 +329,9 @@ class ReadingCorpusTools:
             if page_to is not None and (page is None or page > page_to):
                 continue
             document_tokens = set(_tokens(" ".join([document.section, document.text])))
-            if section_tokens and not section_tokens <= set(_tokens(document.section)):
-                continue
             score = _score_tokens(query_tokens, document_tokens) if query_tokens else 1.0
+            if section_tokens:
+                score += _section_hint_score(section_query, document.section, document.text)
             if query and _normalize(query) in _normalize(document.text):
                 score += 2.0
             if score > 0:
@@ -661,6 +662,31 @@ def _score_tokens(query_tokens: set[str], text_tokens: set[str]) -> float:
         return 0.0
     overlap = query_tokens & text_tokens
     return len(overlap) / max(len(query_tokens), 1)
+
+
+def _section_hint_score(query: str, section: str, text: str) -> float:
+    normalized_section = _normalize(section)
+    normalized_lead = _normalize(text[:500])
+    hints = [
+        _normalize(item)
+        for item in re.split(r"[/|>]", query)
+        if _normalize(item)
+    ]
+    if not hints:
+        return 0.0
+    best = 0.0
+    for hint in hints:
+        specificity = min(len(_tokens(hint)), 3)
+        if hint in normalized_section:
+            best = max(best, 0.5 + 0.5 * specificity)
+        elif hint in normalized_lead:
+            best = max(best, 0.75 + 0.5 * specificity)
+        else:
+            best = max(
+                best,
+                0.5 * _score_tokens(set(_tokens(hint)), set(_tokens(section))),
+            )
+    return best
 
 
 def _normalize(value: str) -> str:

@@ -19,12 +19,18 @@ from harness_py.conversation import ConversationState
 from harness_py.dataset import load_artifact_contracts, load_dataset
 from harness_py.golden_fixture import GoldenFixtureHarness
 from harness_py.live_chat import LiveResearchChatHarness
-from harness_py.llm import ChatModel, ChatTurn, MiniMaxChatModel, ToolCall
+from harness_py.llm import (
+    ChatModel,
+    ChatTurn,
+    MiniMaxChatModel,
+    ToolCall,
+    _normalize_structured_arguments,
+)
 from harness_py.models import GoldenDataset
 from harness_py.provider_config import ProviderConfig, decrypt_provider_key
 from harness_py.product_db_dataset import build_product_dataset, summarize_product_corpus
 from harness_py.scoring import BehaviorScorer, _scalar_string
-from harness_py.tests.test_stage_prototype import _ExactFactHarnessModel
+from harness_py.tests.test_stage_prototype import _ExactFactHarnessModel, _NoEvidenceHarnessModel
 from harness_py.tools import ReadingCorpusTools
 
 
@@ -92,7 +98,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         dataset = self._synthetic_dataset()
         case = dataset.cases[0]
 
-        run = ResearchAgentHarness(_NoEvidenceStageModel()).run_case(dataset, case)
+        run = ResearchAgentHarness(_NoEvidenceHarnessModel()).run_case(dataset, case)
 
         self.assertEqual("INCOMPLETE_PRECISE", run["research_answer"]["status"])
         self.assertTrue(run["evidence_ledger"]["missing_evidence"])
@@ -155,11 +161,12 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 [{"role": "user", "content": "submit"}],
                 [{
                     "type": "function",
-                    "function": {"name": "submit_stage_result", "parameters": {"type": "object"}},
+                    "function": {"name": "submit_claims", "parameters": {"type": "object"}},
                 }],
-                "submit_stage_result",
+                "submit_claims",
                 16,
             )
+
             MiniMaxChatModel(provider, timeout_seconds=5).complete_required_tool(
                 [{"role": "user", "content": "judge"}],
                 [{
@@ -183,7 +190,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             captured["bodies"][0]["tool_choice"],
         )
         self.assertEqual(
-            {"type": "function", "function": {"name": "submit_stage_result"}},
+            {"type": "function", "function": {"name": "submit_claims"}},
             captured["bodies"][1]["tool_choice"],
         )
         self.assertEqual(
@@ -196,6 +203,18 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         )
         self.assertEqual("search_paper_candidates", turn.tool_calls[0].name)
         self.assertEqual({"query_text": "synthetic"}, turn.tool_calls[0].arguments)
+
+    def test_minimax_structured_text_wrappers_decode_objects_and_scalars(self) -> None:
+        self.assertEqual(
+            {
+                "claim_id": "claim_1",
+                "field_values": [{"name": "beta1", "value": "0.9"}],
+            },
+            _normalize_structured_arguments({
+                "claim_id": {"$text": "claim_1"},
+                "field_values": {"$text": '[{"name":"beta1","value":"0.9"}]'},
+            }),
+        )
 
     def test_provider_key_decrypts_java_secret_crypto_format(self) -> None:
         key = AESGCM.generate_key(bit_length=128)
@@ -735,18 +754,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         )
 
 
-class _NoEvidenceStageModel(_ExactFactHarnessModel):
-    def complete(self, messages, tools, max_tokens):
-        system = str(messages[0].get("content") or "")
-        if "SEMANTIC_STAGE:locate_exact_evidence" in system:
-            return ChatTurn(content=json.dumps({
-                "status": "completed",
-                "decision_summary": "Claimed completion without evidence.",
-                "accepted_evidence_ids": [],
-            }))
-        return super().complete(messages, tools, max_tokens)
-
-
 class _ActionFirstRecommendationModel(ChatModel):
     def __init__(self) -> None:
         self.request_payloads: list[dict] = []
@@ -766,13 +773,22 @@ class _ActionFirstRecommendationModel(ChatModel):
                     "constraints": {},
                     "primary_paradigm": "",
                     "answer_shape": "conversation",
+                    "obligations": [],
                     "assumption": "",
                     "blocking_reason": None,
                     "direct_reply": "Hi. What would you like to research?",
-                    "pending_interaction": None,
+                    "pending_interaction": {
+                        "interaction_id": "",
+                        "kind": "none",
+                        "question": "",
+                        "options": [],
+                    },
+                    "paper_references": [],
+                    "requested_aspects": [],
                     "requires_corpus_observation": False,
                     "required_evidence_types": [],
                     "required_capabilities": [],
+                    "confidence": 1.0,
                 }
             elif context.get("pending_interaction"):
                 arguments = {
@@ -782,13 +798,29 @@ class _ActionFirstRecommendationModel(ChatModel):
                     "constraints": {"paper_type": "systematic_review"},
                     "primary_paradigm": "context_specific_brainstorming",
                     "answer_shape": "constraint_filter",
+                    "obligations": [{
+                        "id": "recommendation",
+                        "description": "Select and justify one paper matching the requested paper type.",
+                        "kind": "recommendation",
+                        "paper_scope": [],
+                        "required": True,
+                        "answer_field": "",
+                    }],
                     "assumption": "Use broad corpus coverage within the selected paper type.",
                     "blocking_reason": None,
                     "direct_reply": "",
-                    "pending_interaction": None,
+                    "pending_interaction": {
+                        "interaction_id": "",
+                        "kind": "none",
+                        "question": "",
+                        "options": [],
+                    },
+                    "paper_references": [],
+                    "requested_aspects": ["systematic review"],
                     "requires_corpus_observation": True,
                     "required_evidence_types": ["metadata", "paragraph"],
                     "required_capabilities": ["candidate_retrieval", "evidence_retrieval"],
+                    "confidence": 1.0,
                 }
             else:
                 arguments = {
@@ -798,135 +830,120 @@ class _ActionFirstRecommendationModel(ChatModel):
                     "constraints": {},
                     "primary_paradigm": "context_specific_brainstorming",
                     "answer_shape": "constraint_filter",
+                    "obligations": [{
+                        "id": "recommendation",
+                        "description": "Select and justify a representative paper from the current corpus.",
+                        "kind": "recommendation",
+                        "paper_scope": [],
+                        "required": True,
+                        "answer_field": "",
+                    }],
                     "assumption": "Important means representative and methodologically influential within this corpus.",
                     "blocking_reason": None,
                     "direct_reply": "",
-                    "pending_interaction": None,
+                    "pending_interaction": {
+                        "interaction_id": "",
+                        "kind": "none",
+                        "question": "",
+                        "options": [],
+                    },
+                    "paper_references": [],
+                    "requested_aspects": ["representative coverage"],
                     "requires_corpus_observation": True,
                     "required_evidence_types": ["metadata", "paragraph"],
                     "required_capabilities": ["candidate_retrieval", "evidence_retrieval"],
+                    "confidence": 1.0,
                 }
             return ChatTurn(content="", tool_calls=[ToolCall(
                 id="turn_decision",
                 name="submit_turn_decision",
                 arguments=arguments,
             )])
-        if "INTENT_RECOGNITION" in system:
-            self.request_payloads.append(json.loads(messages[-1]["content"]))
-            return ChatTurn(content=json.dumps({
-                "primary_paradigm": "context_specific_brainstorming",
-                "normalized_goal": "Recommend a broad, evidence-backed set from the corpus.",
-                "answer_shape": "constraint_filter",
-                "paper_references": [],
-                "requested_aspects": ["representative coverage"],
-                "constraints": {"scope": "broad"},
-                "ambiguity": {"status": "ambiguous"},
-                "actionability": "non_blocking",
-                "requires_corpus_observation": True,
-                "confidence": 1.0,
-                "required_evidence_types": ["metadata", "paragraph"],
-                "required_capabilities": ["candidate_retrieval", "evidence_retrieval"],
-            }))
-
-        self.request_payloads.append(json.loads(messages[-1]["content"]))
-        stage_name = system.split("SEMANTIC_STAGE:", 1)[1].splitlines()[0].strip()
-        tool_messages = [message for message in messages if message.get("role") == "tool"]
-        tool_names = {
-            tool["function"]["name"]
-            for tool in tools
-        }
-        if stage_name in {"resolve_candidate_methods", "select_candidates"}:
-            if not tool_messages:
-                return ChatTurn(content="", tool_calls=[ToolCall(
-                    id="candidate_list",
-                    name="search_paper_candidates",
-                    arguments={"query_text": "synthetic", "limit": 4},
-                )])
-            return _stage_turn(selected_paper_ids=["synthetic_paper"])
-        if stage_name == "select_and_ground_candidates":
-            if not tool_messages:
-                return ChatTurn(content="", tool_calls=[ToolCall(
-                    id="candidate_list",
-                    name="search_paper_candidates",
-                    arguments={"query_text": "synthetic", "limit": 4},
-                )])
-            if tool_messages[-1].get("name") == "search_paper_candidates":
-                return ChatTurn(content="", tool_calls=[ToolCall(
-                    id="recommendation_evidence",
-                    name="find_reading_locations",
-                    arguments={"query_text": "structured value", "paper_ids": ["synthetic_paper"]},
-                )])
-            if tool_messages[-1].get("name") == "find_reading_locations":
-                locations = json.loads(tool_messages[-1]["content"])["locations"]
-                return ChatTurn(content="", tool_calls=[ToolCall(
-                    id="read_recommendation_evidence",
-                    name="read_locations",
-                    arguments={"location_refs": [item["location_ref"] for item in locations]},
-                )])
-            evidence_ids = [
-                item["evidence_id"]
-                for message in tool_messages
-                for item in json.loads(message["content"]).get("items", [])
+        if "EVIDENCE_QUERY_PLANNING" in system:
+            payload = json.loads(messages[-1]["content"])
+            self.request_payloads.append(payload)
+            existing = [
+                item for item in payload.get("existing_state", {}).get("evidence", [])
+                if item.get("citeable") is not False
             ]
-            return _stage_turn(
-                selected_paper_ids=["synthetic_paper"],
-                accepted_evidence_ids=evidence_ids,
-            )
-        if stage_name in {"retrieve_transfer_relevant_evidence", "ground_candidates"}:
-            if not tool_messages:
-                return ChatTurn(content="", tool_calls=[ToolCall(
-                    id="recommendation_evidence",
-                    name="find_reading_locations",
-                    arguments={"query_text": "structured value", "paper_ids": ["synthetic_paper"]},
-                )])
-            if tool_messages[-1].get("name") == "find_reading_locations":
-                locations = json.loads(tool_messages[-1]["content"])["locations"]
-                return ChatTurn(content="", tool_calls=[ToolCall(
-                    id="read_recommendation_evidence",
-                    name="read_locations",
-                    arguments={"location_refs": [item["location_ref"] for item in locations]},
-                )])
-            evidence_ids = [
-                item["evidence_id"]
-                for message in tool_messages
-                for item in json.loads(message["content"]).get("items", [])
-            ]
-            return _stage_turn(
-                selected_paper_ids=["synthetic_paper"],
-                accepted_evidence_ids=evidence_ids,
-            )
-        if stage_name in {"present_contextual_options", "recommend"}:
+            if existing:
+                return _recommendation_plan(reuse_evidence=[{
+                    "obligation_id": "recommendation",
+                    "evidence_ids": [existing[0]["evidence_id"]],
+                }])
+            return _recommendation_plan()
+        if "ATOMIC_CLAIM_CONSTRUCTION" in system:
+            payload = json.loads(messages[-1]["content"])
+            self.request_payloads.append(payload)
             evidence_id = next(
                 item["evidence_id"]
-                for item in json.loads(messages[-1]["content"])["research_state"]["evidence"]
-                if item["element_type"] == "paragraph"
+                for item in payload["evidence"]
+                if item.get("citeable") is not False
             )
-            return _stage_turn(
-                claims=[{
-                    "claim_id": "recommendation_claim",
-                    "text": "Synthetic Paper is relevant to the requested broad coverage.",
-                    "status": "supported",
-                    "supporting_evidence_ids": [evidence_id],
-                }],
-                answer={
-                    "status": "COMPLETED",
-                    "outcome": "answered",
-                    "answer_type": "constraint_filter",
-                    "summary": "Synthetic Paper is the available representative recommendation.",
-                    "markdown": "Synthetic Paper is the available representative recommendation.",
-                    "cited_claim_ids": ["recommendation_claim"],
-                    "cited_evidence_ids": [evidence_id],
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="submit_recommendation_claim",
+                name="submit_claims",
+                arguments={
+                    "claims": [{
+                        "claim_id": "recommendation_claim",
+                        "role": "recommendation",
+                        "text": "Synthetic Paper is relevant because it reports the requested structured result.",
+                        "obligation_ids": ["recommendation"],
+                        "evidence_ids": [evidence_id],
+                        "field_values": [],
+                    }],
+                    "summary": "Constructed one bounded recommendation.",
                 },
-            )
-        return _stage_turn(state_values={"stage": stage_name, "tools": sorted(tool_names)})
+            )])
+        if "ATOMIC_CLAIM_VERIFICATION" in system:
+            payload = json.loads(messages[-1]["content"])
+            self.request_payloads.append(payload)
+            claim = payload["claims"][0]
+            return ChatTurn(content="", tool_calls=[ToolCall(
+                id="verify_recommendation_claim",
+                name="submit_claim_verdicts",
+                arguments={
+                    "verdicts": [{
+                        "claim_id": claim["claim_id"],
+                        "verdict": "keep",
+                        "verified_text": claim["text"],
+                        "evidence_ids": claim["evidence_ids"],
+                        "field_values": [],
+                        "reason": "The recommendation rationale is directly supported.",
+                    }],
+                    "summary": "Recommendation verified.",
+                },
+            )])
+        raise AssertionError(f"unexpected model prompt: {system[:80]}")
 
 
-def _stage_turn(**values) -> ChatTurn:
-    return ChatTurn(content=json.dumps({
-        "status": "completed",
-        "decision_summary": "Stage completed for the action-first recommendation regression.",
-        **values,
-    }))
+def _recommendation_plan(reuse_evidence: list[dict] | None = None) -> ChatTurn:
+    return ChatTurn(content="", tool_calls=[ToolCall(
+        id="submit_recommendation_plan",
+        name="submit_retrieval_queries",
+        arguments={
+            "paper_targets": [] if reuse_evidence else [{
+                "target_id": "candidate_pool",
+                "paper_id": "",
+                "title": "",
+                "arxiv_id": "",
+                "discovery_query": "synthetic",
+                "browse_all": False,
+                "coverage_obligation_ids": [],
+            }],
+            "evidence_queries": [] if reuse_evidence else [{
+                "query_id": "recommendation_evidence",
+                "obligation_ids": ["recommendation"],
+                "target_ids": ["candidate_pool"],
+                "query_text": "structured value",
+                "section_query": "",
+                "element_types": ["paragraph"],
+                "top_k": 3,
+            }],
+            "reuse_evidence": reuse_evidence or [],
+            "summary": "Planned one bounded recommendation retrieval round.",
+        },
+    )])
 
 
 class _ShellFakeHarness:

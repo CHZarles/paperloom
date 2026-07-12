@@ -58,7 +58,7 @@ class LiveResearchChatHarness:
         )
         interpreter = TurnInterpreter(
             self.model,
-            max_tokens=min(self.max_completion_tokens, 1600),
+            max_tokens=min(self.max_completion_tokens, 2400),
         )
         try:
             decision = interpreter.interpret(turn, scoped_dataset)

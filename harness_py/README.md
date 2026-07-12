@@ -5,8 +5,8 @@ This is a fast prototype of the research harness as a Python module.
 It has three harness modes and one evaluator:
 
 - `GoldenFixtureHarness`: deterministic behavior fixture used to validate authored v2 cases and scorer output.
-- `ResearchAgentHarness`: paradigm-driven semantic-stage harness backed by MiniMax through the product DB provider config.
-- `LiveResearchChatHarness`: multi-turn chat wrapper over the same stage runtime for current product DB papers.
+- `ResearchAgentHarness`: evidence-bounded, paradigm-driven harness backed by MiniMax through the product DB provider config.
+- `LiveResearchChatHarness`: multi-turn chat wrapper over the same runtime for current product DB papers.
 - `LLMJudge`: one-call semantic evaluator calibrated against fixed human-labelled runs.
 
 The real agent harness keeps one external interface:
@@ -45,28 +45,36 @@ The production path no longer uses one unrestricted top-level ReAct loop. Each t
 ```text
 current message + bounded conversation context + active task + pending interaction
 -> one forced structured TurnDecision: direct | clarify | research
--> direct answer, one persisted clarification, or one explicit paradigm plan
--> sequential online semantic stages for research only
--> deterministic evidence/claim verification
+-> direct answer, one persisted clarification, or TaskFrame + evidence obligations
+-> one compact LLM retrieval-query plan
+-> bounded corpus-tool execution with one relaxed replan when obligations remain uncovered
+-> atomic claim construction from retrieved passages only
+-> one semantic claim-verification call
+-> deterministic rendering of verified claims
 -> ResearchAnswer
 ```
 
 `TurnDecision` is the single owner of conversation interpretation. A reply to a pending choice is
 merged into the authoritative `active_task` and immediately resumes research; it is not reclassified
 as an isolated question and cannot complete with a choice acknowledgement. Greetings and other
-non-research turns bypass the semantic-stage runtime entirely.
+non-research turns bypass the research runtime entirely.
 
-A stage receives only its semantic goal, current research state, compact output contract, and
-stage-scoped tools. Evidence and claims are applied to live shared state before the next stage.
-`stage_trace.json` records inspectable goals, decisions, tool calls, evidence links, status, and
-missing obligations; it does not persist chain-of-thought.
+The paradigm recipe defines obligation guidance, retrieval guidance, allowed claim roles, and answer
+layout. It does not define a dynamic DAG. Retrieval resolves paper targets, executes short location
+queries, reads passages fairly across obligations, and records an explicit coverage map. Candidate
+cards may support a corpus boundary, but they cannot support ordinary paper-content claims.
+
+The claim model cannot write final Markdown. It emits atomic claims linked to obligation and evidence
+ids. One verifier keeps, narrows, or drops each claim. The renderer adds only layout and citation
+markers, so visible factual prose cannot bypass claim verification. `stage_trace.json` stores compact
+decisions and tool calls, not model summaries or chain-of-thought.
 
 Open-ended requests are action-first: broadness and preference gaps become a stated coverage
 assumption rather than a clarification loop. Clarification is reserved for unresolved paper identity,
 unresolved conversational reference, or a missing hard constraint. A corpus recommendation or
 paper-content claim must observe the corpus through its stage tools before it can complete.
 
-All 22 paradigms from `research/remake.md` now have short explicit semantic-stage plans. The
+All 22 paradigms from `research/remake.md` now have short explicit recipes. The
 golden-validated slice currently covers these nine paradigms as primary intents:
 
 - `precision_fact_extraction`
@@ -79,9 +87,9 @@ golden-validated slice currently covers these nine paradigms as primary intents:
 - `contradiction_resolution`
 - `context_specific_brainstorming`
 
-Each paradigm is a short explicit stage list in `stage_prototype/plans.py`; there is no generic
-workflow compiler or keyword router. The other thirteen plans are implemented but remain provisional
-until dedicated golden cases and live corpus smokes are added.
+Each paradigm is a short explicit recipe in `stage_prototype/plans.py`; there is no generic workflow
+compiler, keyword router, fallback harness, or judge ensemble. The other thirteen recipes remain
+provisional until dedicated golden cases and live corpus smokes are added.
 
 ## Behavior Scoring
 
@@ -224,11 +232,18 @@ Deterministic behavior fixture validation:
 python3 -m harness_py --manifest research/golden-data/manifest.yaml validate
 ```
 
-Unit tests, including all twelve committed golden cases and all nine primary paradigms through the
-semantic-stage runtime:
+Unit tests for the evidence-bounded contracts, retrieval adaptation, conversation state, tools,
+artifacts, scorer, and all twelve committed fixture cases:
 
 ```bash
 python3 -m unittest discover -s harness_py/tests -v
+```
+
+Run the live MiniMax path against all committed cases separately:
+
+```bash
+python3 -m harness_py --manifest research/golden-data/manifest.yaml agent-run \
+  --out /tmp/paismart-evidence-bounded-golden
 ```
 
 The committed cases include three history snapshots for the real chat path:

@@ -7,31 +7,26 @@ from time import perf_counter
 
 from ..llm import ChatModel
 from ..models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map, stable_id
-from ..tools import ReadingCorpusTools, model_facing_payload
-from .intent import IntentRecognitionError, IntentRecognizer, _parse_json_object
+from ..tools import SEARCH_ELEMENT_TYPES, ReadingCorpusTools
+from .intent import IntentRecognitionError, TurnInterpreter
 from .models import (
-    IntentFrame,
+    Claim,
+    ClaimVerdict,
+    EvidenceCoverage,
+    ExecutionStatus,
     ResearchState,
-    StageResult,
-    StageSpec,
     StageTrace,
+    TaskFrame,
     TurnFrame,
-    normalize_claim,
-    normalize_research_outcome,
-    research_outcome_error,
     unique_strings,
 )
-from .plans import ParadigmDefinition, get_paradigm
+from .plans import ParadigmRecipe, get_paradigm
 
 
 MAX_SELECTED_PAPER_IDS = 6
-
-
-@dataclass(frozen=True)
-class StageExecution:
-    result: StageResult
-    tool_trace: list[JsonMap]
-    last_model_content: str
+MAX_CANDIDATE_ITEMS = 20
+MAX_RETRIEVAL_TOOL_CALLS = 14
+MAX_LOCATION_SEARCHES = 10
 
 
 @dataclass
@@ -80,487 +75,801 @@ class _RunMetricsModel(ChatModel):
         }
 
 
-class StageRunner:
+@dataclass(frozen=True)
+class RetrievalResult:
+    coverage: list[EvidenceCoverage]
+    selected_paper_ids: list[str]
+    tool_trace: list[JsonMap]
+
+
+class EvidenceCollector:
     def __init__(
         self,
         model: ChatModel,
         tools: ReadingCorpusTools,
-        max_completion_tokens: int = 2400,
-        max_model_turns: int | None = None,
+        max_completion_tokens: int,
     ):
         self.model = model
         self.tools = tools
         self.max_completion_tokens = max_completion_tokens
-        self.max_model_turns = max_model_turns
 
-    def run(
+    def collect(
         self,
-        stage: StageSpec,
         turn: TurnFrame,
-        intent: IntentFrame,
+        task: TaskFrame,
+        recipe: ParadigmRecipe,
         state: ResearchState,
         dataset: GoldenDataset,
-    ) -> StageExecution:
+    ) -> RetrievalResult:
         self.tools.authorized_paper_ids.update(
-            paper_id for paper_id in [*state.authorized_paper_ids, *state.selected_paper_ids]
+            paper_id for paper_id in state.authorized_paper_ids
             if paper_id in dataset.paper_records_by_id
         )
         self.tools.disclosed_location_refs.update(
             str(item.get("location_ref") or item.get("location"))
             for item in state.evidence_items_by_id.values()
-            if str(item.get("paper_id") or "") in self.tools.authorized_paper_ids
-            and str(item.get("location_ref") or item.get("location")) in self.tools.documents_by_location
+            if str(item.get("location_ref") or item.get("location")) in self.tools.documents_by_location
         )
-        messages = self._messages(stage, turn, intent, state, dataset)
-        definitions = _filter_tool_definitions(self.tools.definitions(), set(stage.allowed_tools))
         tool_trace: list[JsonMap] = []
-        observed_before = set(self.tools.observations_by_evidence_id)
-        last_content = ""
-        result: StageResult | None = None
-        stage_status_repair_attempted = False
-        evidence_contract_repair_attempted = False
-        candidate_observation_repair_attempted = False
-        answer_contract_repair_attempted = False
-        submission_tool = _stage_result_submission_tool(stage)
-        limit = min(stage.max_model_turns, self.max_model_turns) if self.max_model_turns else stage.max_model_turns
+        plan = self._plan(turn, task, recipe, state, dataset, retry=False)
+        state.retrieval_rounds.append(_compact_retrieval_round("initial", plan))
+        target_map, target_observations = self._resolve_targets(
+            plan,
+            task,
+            state,
+            dataset,
+            tool_trace,
+        )
+        evidence_by_obligation: dict[str, list[str]] = {
+            item.obligation_id: [] for item in task.obligations
+        }
+        notes_by_obligation: dict[str, str] = {}
+        self._apply_reuse(plan, state, evidence_by_obligation, notes_by_obligation)
+        for obligation_id, observation_ids in target_observations.items():
+            evidence_by_obligation.setdefault(obligation_id, []).extend(observation_ids)
 
-        for _ in range(max(1, limit)):
-            required_tool = _required_stage_tool(stage, definitions, tool_trace, submission_tool)
-            required_tool_name = ""
-            if required_tool:
-                required_tool_name = str(child_map(required_tool.get("function")).get("name"))
-                response = self.model.complete_required_tool(
-                    messages,
-                    [required_tool],
-                    required_tool_name,
-                    self.max_completion_tokens,
-                )
-            else:
-                response = self.model.complete(messages, definitions, self.max_completion_tokens)
-            if (
-                required_tool_name in stage.allowed_tools
-                and not any(call.name == required_tool_name for call in response.tool_calls)
-            ):
-                messages.extend([
-                    {"role": "assistant", "content": response.content},
-                    {
-                        "role": "user",
-                        "content": (
-                            f"This stage is not ready for submission. Call {required_tool_name} now; "
-                            "do not return a StageResult until that tool call has been executed."
-                        ),
-                    },
-                ])
-                continue
-            submitted_payload = _submitted_stage_result(response)
-            last_content = (
-                json.dumps(submitted_payload, ensure_ascii=False, sort_keys=True)
-                if submitted_payload is not None else
-                response.content
+        self._execute_evidence_queries(
+            plan,
+            target_map,
+            state,
+            dataset,
+            tool_trace,
+            evidence_by_obligation,
+            notes_by_obligation,
+            round_id="initial",
+            relax_constraints=False,
+        )
+        required_uncovered = [
+            item for item in task.obligations
+            if item.required and not evidence_by_obligation.get(item.obligation_id)
+        ]
+        if required_uncovered and len(tool_trace) < MAX_RETRIEVAL_TOOL_CALLS - 1:
+            retry_plan = self._plan(
+                turn,
+                replace(task, obligations=required_uncovered),
+                recipe,
+                state,
+                dataset,
+                retry=True,
+                resolved_targets=target_map,
+                previous_plan=plan,
             )
-            submission_error = (
-                _stage_submission_error(stage, submitted_payload)
-                if submitted_payload is not None else
-                ""
+            state.retrieval_rounds.append(_compact_retrieval_round("retry", retry_plan))
+            retry_targets, retry_observations = self._resolve_targets(
+                retry_plan,
+                task,
+                state,
+                dataset,
+                tool_trace,
+                existing_targets=target_map,
             )
-            if submission_error:
-                messages.append({
-                    "role": "user",
-                    "content": (
-                        f"The submit_stage_result call violated its contract: {submission_error}. "
-                        "Call submit_stage_result again with a complete compact payload."
-                    ),
-                })
-                continue
-            if response.tool_calls and submitted_payload is None:
-                messages.append({
-                    "role": "assistant",
-                    "content": response.content,
-                    "tool_calls": [
-                        {
-                            "id": call.id,
-                            "type": "function",
-                            "function": {"name": call.name, "arguments": json.dumps(call.arguments)},
-                        }
-                        for call in response.tool_calls
-                    ],
-                })
-                for call in response.tool_calls:
-                    violation: str | None = None
-                    if len(tool_trace) >= stage.max_tool_calls:
-                        payload = {"error": "stage_tool_budget_exhausted", "tool_name": call.name}
-                        allowed = False
-                        violation = "stage_tool_budget_exhausted"
-                    elif call.name not in stage.allowed_tools:
-                        payload = {"error": "tool_not_allowed_for_stage", "tool_name": call.name}
-                        allowed = False
-                        violation = "out_of_stage_tool_call"
-                    else:
-                        payload = self.tools.call(call.name, call.arguments).payload
-                        allowed = True
-                    tool_trace.append({
-                        "tool_call_id": call.id,
-                        "tool_name": call.name,
-                        "arguments": call.arguments,
-                        "allowed": allowed,
-                        "violation": violation,
-                        "result": payload,
-                    })
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": call.id,
-                        "name": call.name,
-                        "content": json.dumps(
-                            model_facing_payload(payload),
-                            ensure_ascii=False,
-                            sort_keys=True,
-                        ),
-                    })
-                continue
-
-            payload = submitted_payload if submitted_payload is not None else _parse_json_object(response.content)
-            if payload is not None:
-                candidate = StageResult.from_dict(payload)
-                observed_so_far = set(self.tools.observations_by_evidence_id) - observed_before
-                evidence_tool_attempted = any(
-                    item.get("allowed")
-                    and item.get("tool_name") in {"find_reading_locations", "read_locations"}
-                    for item in tool_trace
-                )
-                candidate_tool_attempted = any(
-                    item.get("allowed")
-                    and item.get("tool_name") in {"search_paper_candidates", "find_papers_by_identity"}
-                    for item in tool_trace
-                )
-                candidate_observation_required = (
-                    intent.requires_corpus_observation
-                    and _is_identity_stage(stage)
-                    and not _has_candidate_observation(state.stage_trace)
-                    and not _selection_is_conversation_authorized(candidate, state)
-                )
-                explicit_no_match = _explicit_no_match(candidate, tool_trace)
-                evidence_contract_needs_repair = (
-                    candidate.status == "completed"
-                    and not (set(candidate.accepted_evidence_ids) & observed_so_far)
-                    and not explicit_no_match
-                ) or (
-                    candidate.status != "completed"
-                    and not evidence_tool_attempted
-                    and not explicit_no_match
-                )
-                if (
-                    stage.requires_new_evidence
-                    and evidence_contract_needs_repair
-                    and not evidence_contract_repair_attempted
-                ):
-                    evidence_contract_repair_attempted = True
-                    messages.extend([
-                        {"role": "assistant", "content": last_content},
-                        {
-                            "role": "user",
-                            "content": (
-                                "This stage requires newly observed inspectable evidence and must "
-                                "use the authorized candidate -> location -> read sequence before either "
-                                "completing or declaring precise incompleteness. Candidate cards, location "
-                                "previews, and citation edges are not evidence. Call find_reading_locations "
-                                "and then read_locations now, then accept only evidence_id values returned "
-                                "by read_locations."
-                            ),
-                        },
-                    ])
-                    continue
-                if (
-                    candidate_observation_required
-                    and not candidate_tool_attempted
-                    and not candidate_observation_repair_attempted
-                ):
-                    candidate_observation_repair_attempted = True
-                    messages.extend([
-                        {"role": "assistant", "content": last_content},
-                        {
-                            "role": "user",
-                            "content": (
-                                "This corpus-grounded answer requires a candidate observation before "
-                                "completion. Call search_paper_candidates or find_papers_by_identity now, then return "
-                                "a corrected compact StageResult with a bounded selected_paper_ids list."
-                            ),
-                        },
-                    ])
-                    continue
-                answer_contract_error = _answer_contract_error(candidate, state, observed_so_far)
-                if (
-                    stage.produces_answer
-                    and answer_contract_error
-                    and not answer_contract_repair_attempted
-                ):
-                    answer_contract_repair_attempted = True
-                    messages.extend([
-                        {"role": "assistant", "content": last_content},
-                        {
-                            "role": "user",
-                            "content": (
-                                f"The answer contract is invalid: {answer_contract_error}. "
-                                "Use at most six actual atomic claims. Every supported claim must cite "
-                                "known evidence, and answer.cited_claim_ids / cited_evidence_ids must refer "
-                                "only to claims and evidence present in the submitted StageResult or current "
-                                "research state. Return a corrected submit_stage_result payload now."
-                            ),
-                        },
-                    ])
-                    continue
-                if (
-                    not stage_status_repair_attempted
-                    and _should_repair_stage_status(stage, candidate)
-                ):
-                    stage_status_repair_attempted = True
-                    messages.extend([
-                        {"role": "assistant", "content": last_content},
-                        {
-                            "role": "user",
-                            "content": (
-                                "That status treats work assigned to a later stage as a blocker. "
-                                "Complete only this stage's own semantic goal using the observations "
-                                "and state already available. Do not publish claims, draft the final "
-                                "answer, or stop merely because downstream evidence is not available "
-                                "yet. "
-                                f"{_stage_repair_guidance(stage)} "
-                                "Return a corrected "
-                                "StageResult JSON object using exactly this compact contract: "
-                                f"{_stage_output_contract(stage)}"
-                            ),
-                        },
-                    ])
-                    continue
-                result = candidate
-                break
-            messages.extend([
-                {"role": "assistant", "content": last_content},
-                {
-                    "role": "user",
-                    "content": "Return exactly one valid StageResult JSON object and no prose.",
-                },
-            ])
-
-        if result is None:
-            messages.append({
-                "role": "user",
-                "content": "Do not call more tools. Return the final compact StageResult JSON now.",
-            })
-            response = self.model.complete_required_tool(
-                messages,
-                [submission_tool],
-                "submit_stage_result",
-                self.max_completion_tokens,
+            target_map.update(retry_targets)
+            for obligation_id, observation_ids in retry_observations.items():
+                evidence_by_obligation.setdefault(obligation_id, []).extend(observation_ids)
+            self._execute_evidence_queries(
+                retry_plan,
+                target_map,
+                state,
+                dataset,
+                tool_trace,
+                evidence_by_obligation,
+                notes_by_obligation,
+                round_id="retry",
+                relax_constraints=True,
             )
-            submitted_payload = _submitted_stage_result(response)
-            last_content = (
-                json.dumps(submitted_payload, ensure_ascii=False, sort_keys=True)
-                if submitted_payload is not None else
-                response.content
+
+        coverage = [
+            EvidenceCoverage(
+                obligation_id=item.obligation_id,
+                status="covered" if evidence_by_obligation.get(item.obligation_id) else "missing",
+                evidence_ids=unique_strings(evidence_by_obligation.get(item.obligation_id, [])),
+                note=(
+                    notes_by_obligation.get(item.obligation_id)
+                    or (
+                        "covered by inspected evidence"
+                        if evidence_by_obligation.get(item.obligation_id)
+                        else "evidence not recovered"
+                    )
+                ),
             )
-            payload = submitted_payload if submitted_payload is not None else _parse_json_object(response.content)
-            if payload is not None and not _stage_submission_error(stage, payload):
-                result = StageResult.from_dict(payload)
-            else:
-                result = StageResult(
-                    status="incomplete_precise",
-                    decision_summary="Stage model did not return a valid structured result.",
-                    missing_obligations=[{"stage": stage.name, "reason": "invalid_stage_submission"}],
-                )
+            for item in task.obligations
+        ]
+        selected = unique_strings(
+            paper_id
+            for item in coverage
+            for evidence_id in item.evidence_ids
+            for paper_id in [str(state.evidence_items_by_id.get(evidence_id, {}).get("paper_id") or "")]
+            if paper_id in dataset.paper_records_by_id
+        )[:MAX_SELECTED_PAPER_IDS]
+        if not selected:
+            selected = unique_strings(
+                paper_id for paper_ids in target_map.values() for paper_id in paper_ids
+                if paper_id in dataset.paper_records_by_id
+            )[:MAX_SELECTED_PAPER_IDS]
+        state.selected_paper_ids = selected
+        state.authorized_paper_ids = unique_strings([
+            *state.authorized_paper_ids,
+            *selected,
+        ])
+        state.coverage_by_obligation_id = {
+            item.obligation_id: item for item in coverage
+        }
+        state.missing_obligations = [
+            {
+                "obligation_id": item.obligation_id,
+                "reason": item.note or "required evidence was not recovered",
+            }
+            for item in coverage
+            if item.status == "missing"
+        ]
+        state.stage_trace.append(StageTrace(
+            stage_name="collect_evidence",
+            semantic_goal=recipe.semantic_steps[1] if len(recipe.semantic_steps) > 1 else "collect_evidence",
+            status="completed",
+            decision_summary=(
+                f"Executed {len(state.retrieval_rounds)} bounded retrieval round(s) with "
+                f"{len(tool_trace)} corpus tool call(s)."
+            ),
+            tool_calls=tool_trace,
+            obligation_ids=[item.obligation_id for item in coverage],
+            evidence_ids=unique_strings(
+                evidence_id for item in coverage for evidence_id in item.evidence_ids
+            ),
+        ))
+        return RetrievalResult(
+            coverage=coverage,
+            selected_paper_ids=selected,
+            tool_trace=tool_trace,
+        )
 
-        observed_now = set(self.tools.observations_by_evidence_id) - observed_before
-        result = self._validate_result(stage, result, intent, state, dataset, observed_now, tool_trace)
-        return StageExecution(result=result, tool_trace=tool_trace, last_model_content=last_content)
-
-    def _messages(
+    def _plan(
         self,
-        stage: StageSpec,
         turn: TurnFrame,
-        intent: IntentFrame,
+        task: TaskFrame,
+        recipe: ParadigmRecipe,
         state: ResearchState,
         dataset: GoldenDataset,
-    ) -> list[JsonMap]:
-        output_contract = _stage_output_contract(stage)
-        tool_budget_guidance = (
-            f"At most {stage.max_tool_calls} tool calls are permitted in this stage; parallel calls "
-            "each count separately. Keep search top_k small and batch evidence IDs into one "
-            "read_locations call whenever possible. "
-            if stage.allowed_tools else
-            "No tools are permitted in this stage. "
-        )
-        answer_size_guidance = (
-            "Do not repeat the answer prose across decision_summary, claims, summary, sections, and "
-            "markdown. Use at most 6 atomic claims with concise text and cite at most 12 evidence ids. "
-            "Keep each claim to one sentence, answer.markdown under 2500 characters, and answer.summary "
-            "under 300 characters. Finish the answer cleanly; when space is tight, remove detail instead "
-            "of ending mid-sentence or mid-table. Omit answer.sections and answer.fields unless the "
-            "question or required answer fields genuinely need them. StageResult.status is authoritative: "
-            "a complete answer that reports uncertainty still uses completed / COMPLETED; use "
-            "incomplete_precise only when this stage could not deliver its required answer. Set "
-            "answer.outcome independently to answered, needs_clarification, abstained, or partial. "
-            if stage.produces_answer else ""
-        )
-        evidence_size_guidance = (
-            "Accept at most 6 evidence ids in this stage; choose the smallest set that covers the "
-            "selected papers and do not repeat metadata ids when a reading-model passage is available. "
-            if stage.requires_new_evidence else ""
-        )
-        interaction_guidance = (
-            "If this is a blocking clarification answer, put a typed pending interaction in "
-            "memory_update.pending_interaction. It must contain interaction_id, kind "
-            "(choice or free_text), question, and options with stable ids, labels, and task_patch values.\n\n"
-            if stage.produces_answer and intent.actionability == "blocking" else ""
-        )
-        stepwise_tool_guidance = (
-            "This stage exposes required tools one step at a time: first "
-            "find_reading_locations, then read_locations after locations are returned. Call the "
-            "tool available in the current turn. A later allowed tool not shown in the current API "
-            "call is not unavailable; the harness will expose it at the next step.\n\n"
-            if stage.requires_new_evidence
-            and set(stage.allowed_tools) == {"find_reading_locations", "read_locations"} else
-            ""
-        )
-        return [
+        *,
+        retry: bool,
+        resolved_targets: dict[str, list[str]] | None = None,
+        previous_plan: JsonMap | None = None,
+    ) -> JsonMap:
+        tool = _retrieval_query_submission_tool(task)
+        messages = [
             {
                 "role": "system",
                 "content": (
-                    f"SEMANTIC_STAGE:{stage.name}\n"
-                    "Execute exactly one online semantic research stage. The stage goal governs all "
-                    "tool calls and output. Do not perform later stages. Use only the tools provided. "
-                    f"{tool_budget_guidance}"
-                    "Judge status against this stage's own goal, not the final research answer. Work "
-                    "explicitly assigned to a later stage is not a missing obligation and must not "
-                    "cause needs_clarification or incomplete_precise. "
-                    "Accepted evidence ids must come from tool results or prior research state. "
-                    "If this stage requires new evidence, call a provided search/read tool before "
-                    "returning completed and accept at least one evidence_id observed in this stage. "
-                    "Supported claims must cite accepted evidence ids. Return one JSON object and no prose.\n\n"
-                    "For non-answer stages, keep state_values under 600 characters. Store only short "
-                    "stage decisions, identifiers, axes, or slot names; it is not a draft answer, and "
-                    "must not contain inferred paper facts that belong to later evidence stages.\n\n"
-                    f"{answer_size_guidance}"
-                    f"{evidence_size_guidance}"
-                    f"{interaction_guidance}"
-                    f"{stepwise_tool_guidance}"
-                    f"STAGE GOAL\n{stage.instruction}\n\n"
-                    "STAGE CONTRACT\n"
-                    f"{_stage_execution_contract(stage)}\n\n"
-                    "OUTPUT CONTRACT\n"
-                    f"{output_contract}\n"
-                    "Omit fields that are not in this contract. Keep decision_summary concise. "
-                    "When required_answer_field_names is non-empty, use those exact keys in "
-                    "answer.fields."
+                    "EVIDENCE_QUERY_PLANNING\n"
+                    "Plan one compact retrieval round and call submit_retrieval_queries exactly once. Do not answer "
+                    "the user. The runtime will execute the plan against the fixed corpus.\n\n"
+                    "Create the smallest set of paper targets and evidence queries that covers the supplied obligations. "
+                    "For a paper present in the supplied corpus inventory, copy its exact paper_id into the target and "
+                    "leave discovery_query empty. Use title or arxiv_id only when paper_id is unavailable. Use "
+                    "discovery_query for topical candidate discovery, and browse_all only for corpus-wide discovery, "
+                    "recommendation, or a corpus-boundary check. Each evidence query must name the obligations it serves "
+                    "and one or more target ids. Make query_text either one short source-like phrase or 3-8 distinctive "
+                    "content terms. Do not include the paper title, task verbs, broad context terms, synonym lists, or a "
+                    "long restatement of the obligation. For an architecture-role cell, query the architecture noun "
+                    "phrase itself rather than surrounding pre-training or application language. If one obligation needs "
+                    "two independently stated source facts, emit two short queries for that same obligation. Combine "
+                    "obligations only when one passage is likely to cover them.\n\n"
+                    "On a retry round, only reformulate queries for the supplied still-uncovered obligations. Remove "
+                    "overly narrow section or element constraints and do not repeat the same failed query. Candidate "
+                    "cards and citation edges are navigation; paper-content facts still require read passages.\n\n"
+                    f"PARADIGM: {recipe.paradigm_id}\n"
+                    f"RETRIEVAL GUIDANCE: {recipe.retrieval_guidance}"
                 ),
             },
             {
                 "role": "user",
                 "content": json.dumps({
                     "question": turn.question,
-                    "intent": intent.to_dict(),
-                    "required_answer_field_names": turn.required_answer_field_names,
+                    "task": task.to_dict(),
                     "conversation_context": turn.conversation_context,
                     "corpus": {
                         "paper_count": len(dataset.paper_records_by_id),
                         "reading_model_count": len(dataset.reading_models_by_paper_id),
+                        "papers": [
+                            {
+                                "paper_id": paper_id,
+                                "title": child_map(record.get("identity")).get("title"),
+                            }
+                            for paper_id, record in dataset.paper_records_by_id.items()
+                        ],
                     },
-                    "research_state": state.to_prompt_dict(),
+                    "existing_state": state.to_prompt_dict(),
+                    "retry": retry,
+                    "resolved_targets": resolved_targets or {},
+                    "previous_plan": previous_plan or {},
+                }, ensure_ascii=False),
+            },
+        ]
+        response = self.model.complete_required_tool(
+            messages,
+            [tool],
+            "submit_retrieval_queries",
+            self.max_completion_tokens,
+        )
+        calls = [call for call in response.tool_calls if call.name == "submit_retrieval_queries"]
+        if len(calls) != 1:
+            raise ValueError("evidence collector did not submit one retrieval query plan")
+        return calls[0].arguments
+
+    def _resolve_targets(
+        self,
+        plan: JsonMap,
+        task: TaskFrame,
+        state: ResearchState,
+        dataset: GoldenDataset,
+        tool_trace: list[JsonMap],
+        existing_targets: dict[str, list[str]] | None = None,
+    ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+        target_map = dict(existing_targets or {})
+        observations_by_obligation: dict[str, list[str]] = {}
+        obligations_by_id = {
+            item.obligation_id: item for item in task.obligations
+        }
+        boundary_obligation_ids = [
+            item.obligation_id for item in task.obligations
+            if item.kind == "corpus_boundary"
+        ]
+        for index, raw in enumerate(as_list(plan.get("paper_targets"))):
+            if len(tool_trace) >= MAX_RETRIEVAL_TOOL_CALLS - 2:
+                break
+            target = child_map(raw)
+            target_id = str(target.get("target_id") or f"target_{index + 1}")
+            if target_id in target_map and target_map[target_id]:
+                continue
+            identity_args = _target_identity_arguments(target, dataset)
+            paper_ids: list[str] = []
+            observation_ids: list[str] = []
+            if identity_args:
+                payload, observation_id = self._call_tool(
+                    state,
+                    dataset,
+                    tool_trace,
+                    f"identity_{index + 1}",
+                    "find_papers_by_identity",
+                    identity_args,
+                )
+                if payload.get("status") == "resolved":
+                    paper_ids = [
+                        str(item.get("paper_id")) for item in as_list(payload.get("matches"))
+                        if str(item.get("paper_id")) in dataset.paper_records_by_id
+                    ]
+                if observation_id:
+                    observation_ids.append(observation_id)
+            query = str(target.get("discovery_query") or "")
+            if (not paper_ids and query) or bool(target.get("browse_all")):
+                payload, observation_id = self._call_tool(
+                    state,
+                    dataset,
+                    tool_trace,
+                    f"candidate_{index + 1}",
+                    "search_paper_candidates",
+                    {
+                        "query_text": "" if target.get("browse_all") else query,
+                        "limit": min(8, MAX_CANDIDATE_ITEMS),
+                    },
+                )
+                paper_ids = [
+                    str(item.get("paper_id")) for item in as_list(payload.get("candidates"))
+                    if str(item.get("paper_id")) in dataset.paper_records_by_id
+                ]
+                paper_ids = paper_ids[
+                    :MAX_SELECTED_PAPER_IDS if target.get("browse_all") or not identity_args else 1
+                ]
+                if observation_id:
+                    observation_ids.append(observation_id)
+            target_map[target_id] = unique_strings(paper_ids)
+            coverage_obligation_ids = [
+                obligation_id
+                for obligation_id in unique_strings(as_list(target.get("coverage_obligation_ids")))
+                if obligations_by_id.get(obligation_id)
+                and obligations_by_id[obligation_id].kind == "corpus_boundary"
+            ]
+            if (
+                observation_ids
+                and task.primary_paradigm == "uncertainty_knowledge_boundary"
+            ):
+                coverage_obligation_ids = unique_strings([
+                    *coverage_obligation_ids,
+                    *boundary_obligation_ids,
+                ])
+            for obligation_id in coverage_obligation_ids:
+                observations_by_obligation.setdefault(str(obligation_id), []).extend(observation_ids)
+        return target_map, observations_by_obligation
+
+    def _execute_evidence_queries(
+        self,
+        plan: JsonMap,
+        target_map: dict[str, list[str]],
+        state: ResearchState,
+        dataset: GoldenDataset,
+        tool_trace: list[JsonMap],
+        evidence_by_obligation: dict[str, list[str]],
+        notes_by_obligation: dict[str, str],
+        *,
+        round_id: str,
+        relax_constraints: bool,
+    ) -> set[str]:
+        obligations_by_ref: dict[str, list[str]] = {}
+        ref_groups: list[list[str]] = []
+        empty_obligations: set[str] = set()
+        planned_obligations: set[str] = set()
+        for index, raw in enumerate(as_list(plan.get("evidence_queries"))):
+            if (
+                len(tool_trace) >= MAX_RETRIEVAL_TOOL_CALLS - 1
+                or sum(
+                    1 for call in tool_trace
+                    if call.get("tool_name") == "find_reading_locations"
+                ) >= MAX_LOCATION_SEARCHES
+            ):
+                break
+            query = child_map(raw)
+            obligation_ids = unique_strings(as_list(query.get("obligation_ids")))
+            planned_obligations.update(obligation_ids)
+            paper_ids = unique_strings(
+                paper_id
+                for target_id in as_list(query.get("target_ids"))
+                for paper_id in target_map.get(str(target_id), [])
+            )
+            if not obligation_ids or not paper_ids:
+                empty_obligations.update(obligation_ids)
+                continue
+            arguments: JsonMap = {
+                "query_text": str(query.get("query_text") or ""),
+                "paper_ids": paper_ids,
+                "top_k": min(max(int(query.get("top_k") or 3), 1), 5),
+            }
+            section_query = str(query.get("section_query") or "").strip()
+            element_types = [
+                item for item in unique_strings(as_list(query.get("element_types")))
+                if item in SEARCH_ELEMENT_TYPES
+            ]
+            if section_query and not relax_constraints:
+                arguments["section_query"] = section_query
+            if element_types and not relax_constraints:
+                arguments["element_types"] = element_types
+            payload, _ = self._call_tool(
+                state,
+                dataset,
+                tool_trace,
+                f"location_{round_id}_{index + 1}",
+                "find_reading_locations",
+                arguments,
+            )
+            locations = as_list(payload.get("locations"))
+            if not locations:
+                empty_obligations.update(obligation_ids)
+                continue
+            query_refs: list[str] = []
+            for location in locations:
+                ref = str(child_map(location).get("location_ref") or "")
+                if not ref:
+                    continue
+                obligations_by_ref.setdefault(ref, []).extend(obligation_ids)
+                query_refs.append(ref)
+            if query_refs:
+                ref_groups.append(unique_strings(query_refs))
+
+        refs = _round_robin_refs(ref_groups, 20)
+        if refs and len(tool_trace) < MAX_RETRIEVAL_TOOL_CALLS:
+            payload, _ = self._call_tool(
+                state,
+                dataset,
+                tool_trace,
+                f"read_{round_id}",
+                "read_locations",
+                {"location_refs": refs[:20]},
+            )
+            items_by_ref = {
+                str(child_map(item).get("location_ref") or child_map(item).get("location") or ""): child_map(item)
+                for item in as_list(payload.get("items"))
+            }
+            for ref, obligation_ids in obligations_by_ref.items():
+                item = items_by_ref.get(ref)
+                if not item:
+                    empty_obligations.update(obligation_ids)
+                    continue
+                evidence_id = str(item.get("evidence_id") or "")
+                if not evidence_id:
+                    continue
+                for obligation_id in obligation_ids:
+                    evidence_by_obligation.setdefault(obligation_id, []).append(evidence_id)
+                    notes_by_obligation[obligation_id] = "covered by a passage retrieved for this obligation"
+                    empty_obligations.discard(obligation_id)
+        for obligation_id in planned_obligations:
+            if not evidence_by_obligation.get(obligation_id):
+                empty_obligations.add(obligation_id)
+        return empty_obligations
+
+    def _apply_reuse(
+        self,
+        plan: JsonMap,
+        state: ResearchState,
+        evidence_by_obligation: dict[str, list[str]],
+        notes_by_obligation: dict[str, str],
+    ) -> None:
+        for raw in as_list(plan.get("reuse_evidence")):
+            item = child_map(raw)
+            obligation_id = str(item.get("obligation_id") or "")
+            evidence_ids = _resolve_known_ids(
+                unique_strings(as_list(item.get("evidence_ids"))),
+                set(state.evidence_items_by_id),
+            )
+            if obligation_id and evidence_ids:
+                evidence_by_obligation.setdefault(obligation_id, []).extend(evidence_ids)
+                notes_by_obligation[obligation_id] = "covered by conversation evidence"
+
+    def _call_tool(
+        self,
+        state: ResearchState,
+        dataset: GoldenDataset,
+        tool_trace: list[JsonMap],
+        call_id: str,
+        tool_name: str,
+        arguments: JsonMap,
+    ) -> tuple[JsonMap, str | None]:
+        if len(tool_trace) >= MAX_RETRIEVAL_TOOL_CALLS:
+            return {"error": "retrieval_tool_budget_exhausted"}, None
+        payload = self.tools.call(tool_name, arguments).payload
+        model_payload = _capture_tool_result(
+            state,
+            call_id,
+            tool_name,
+            arguments,
+            payload,
+            dataset,
+            self.tools,
+        )
+        tool_trace.append({
+            "tool_call_id": call_id,
+            "tool_name": tool_name,
+            "arguments": arguments,
+            "allowed": "error" not in payload,
+            "result": payload,
+        })
+        return payload, str(model_payload.get("corpus_observation_id") or "") or None
+
+
+class ClaimConstructor:
+    def __init__(self, model: ChatModel, max_tokens: int):
+        self.model = model
+        self.max_tokens = max_tokens
+
+    def construct(
+        self,
+        turn: TurnFrame,
+        task: TaskFrame,
+        recipe: ParadigmRecipe,
+        state: ResearchState,
+    ) -> list[Claim]:
+        covered_required = [
+            item.obligation_id for item in task.obligations
+            if item.required
+            and state.coverage_by_obligation_id.get(item.obligation_id)
+            and state.coverage_by_obligation_id[item.obligation_id].status == "covered"
+        ]
+        tool = _claim_submission_tool(recipe, len(covered_required))
+        response = self.model.complete_required_tool(
+            self._messages(turn, task, recipe, state),
+            [tool],
+            "submit_claims",
+            self.max_tokens,
+        )
+        calls = [call for call in response.tool_calls if call.name == "submit_claims"]
+        if len(calls) != 1:
+            raise ValueError(
+                "claim constructor did not submit one claim set; "
+                f"tool_calls={[call.name for call in response.tool_calls]}"
+            )
+        covered_obligations = {
+            item.obligation_id for item in state.coverage_by_obligation_id.values()
+            if item.status == "covered"
+        }
+        obligations_by_id = {
+            item.obligation_id: item for item in task.obligations
+        }
+        allowed_fields = {
+            item.answer_field for item in task.obligations if item.answer_field
+        }
+        known_evidence = set(state.evidence_items_by_id)
+        claims: list[Claim] = []
+        seen: set[str] = set()
+        one_claim_per_obligation = recipe.paradigm_id == "deep_comparison"
+        claimed_required_obligations: set[str] = set()
+        for index, raw in enumerate(as_list(calls[0].arguments.get("claims"))):
+            claim = Claim.from_dict(child_map(raw), index)
+            obligation_evidence_ids = {
+                evidence_id
+                for obligation_id in claim.obligation_ids
+                for evidence_id in state.coverage_by_obligation_id.get(
+                    obligation_id,
+                    EvidenceCoverage(obligation_id, "missing"),
+                ).evidence_ids
+            }
+            boundary_only = bool(claim.obligation_ids) and all(
+                obligations_by_id.get(obligation_id)
+                and obligations_by_id[obligation_id].kind == "corpus_boundary"
+                for obligation_id in claim.obligation_ids
+            )
+            evidence_ids = [
+                evidence_id for evidence_id in _resolve_known_ids(
+                    claim.evidence_ids,
+                    obligation_evidence_ids & known_evidence,
+                )
+                if evidence_id in known_evidence
+                and (
+                    boundary_only
+                    or state.evidence_items_by_id[evidence_id].get("citeable") is not False
+                )
+            ]
+            if (
+                not claim.text
+                or claim.claim_id in seen
+                or not set(claim.obligation_ids) <= covered_obligations
+                or not claim.obligation_ids
+                or not evidence_ids
+                or claim.role not in recipe.claim_roles
+                or (
+                    recipe.paradigm_id == "uncertainty_knowledge_boundary"
+                    and not boundary_only
+                )
+            ):
+                continue
+            required_claim_obligations = set(claim.obligation_ids) & set(covered_required)
+            if (
+                one_claim_per_obligation
+                and required_claim_obligations <= claimed_required_obligations
+            ):
+                continue
+            claim = replace(
+                claim,
+                evidence_ids=evidence_ids,
+                field_values={
+                    key: value for key, value in claim.field_values.items()
+                    if key in allowed_fields
+                },
+            )
+            seen.add(claim.claim_id)
+            claims.append(claim)
+            claimed_required_obligations.update(required_claim_obligations)
+        state.claims_by_id = {item.claim_id: item for item in claims}
+        state.stage_trace.append(StageTrace(
+            stage_name="construct_claims",
+            semantic_goal=recipe.semantic_steps[2] if len(recipe.semantic_steps) > 2 else "construct_claims",
+            status="completed",
+            decision_summary=f"Constructed {len(claims)} evidence-linked atomic claim(s).",
+            obligation_ids=unique_strings(
+                obligation_id for claim in claims for obligation_id in claim.obligation_ids
+            ),
+            evidence_ids=unique_strings(
+                evidence_id for claim in claims for evidence_id in claim.evidence_ids
+            ),
+            claim_ids=[item.claim_id for item in claims],
+        ))
+        return claims
+
+    def _messages(
+        self,
+        turn: TurnFrame,
+        task: TaskFrame,
+        recipe: ParadigmRecipe,
+        state: ResearchState,
+    ) -> list[JsonMap]:
+        return [
+            {
+                "role": "system",
+                "content": (
+                    "ATOMIC_CLAIM_CONSTRUCTION\n"
+                    "Construct the smallest sufficient set of atomic claims needed to satisfy the user's evidence "
+                    "obligations. Call submit_claims exactly once. Do not write final Markdown.\n\n"
+                    "Every claim must satisfy at least one supplied obligation and cite only supplied evidence ids. "
+                    "Return exactly one atomic claim for every covered required obligation; do not omit a covered slot. "
+                    "Preserve limiting words from the source such as default, used, similar, except, encoder, and "
+                    "decoder. Do not add optional background, causes, tradeoffs, corpus details, implementation "
+                    "components, or recommendations unless an obligation explicitly asks for them. A missing "
+                    "obligation remains missing; do not fill it from external knowledge. Claim text must not contain "
+                    "internal evidence ids or citation markers. A corpus-wide absence claim must satisfy a "
+                    "corpus_boundary obligation and use an allowed boundary claim role; passages about other papers "
+                    "cannot be turned into an absence claim for the requested paper. Do not infer 'no decoder', "
+                    "'no cross-attention', an unmasked attention implementation, a loss function, or the absence of a "
+                    "pre-training stage unless the cited passage states that point directly.\n\n"
+                    "For any scalar obligation with a non-empty answer_field, return one field_values entry whose name "
+                    "exactly equals answer_field and whose value is the exact scalar notation. For non-scalar claims, "
+                    "field_values is empty.\n\n"
+                    f"PARADIGM: {recipe.paradigm_id}\n"
+                    f"OBLIGATION GUIDANCE: {recipe.obligation_guidance}\n"
+                    f"ALLOWED CLAIM ROLES: {', '.join(recipe.claim_roles)}"
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps({
+                    "question": turn.question,
+                    "effective_request": task.normalized_goal,
+                    "constraints": {
+                        key: value for key, value in task.constraints.items()
+                        if key not in {"coverage_assumption", "task"}
+                    },
+                    "obligations": [item.to_dict() for item in task.obligations],
+                    "coverage": [item.to_dict() for item in state.coverage_by_obligation_id.values()],
+                    "evidence": [_evidence_prompt_item(item) for item in state.evidence_items_by_id.values()],
                 }, ensure_ascii=False),
             },
         ]
 
-    def _validate_result(
+
+class ClaimVerifier:
+    def __init__(self, model: ChatModel, max_tokens: int):
+        self.model = model
+        self.max_tokens = max_tokens
+
+    def verify(
         self,
-        stage: StageSpec,
-        result: StageResult,
-        intent: IntentFrame,
+        task: TaskFrame,
+        recipe: ParadigmRecipe,
         state: ResearchState,
-        dataset: GoldenDataset,
-        observed_now: set[str],
-        tool_trace: list[JsonMap],
-    ) -> StageResult:
-        known_papers = set(dataset.paper_records_by_id) & self.tools.authorized_paper_ids
-        selected = unique_strings(
-            paper_id for paper_id in result.selected_paper_ids if paper_id in known_papers
+    ) -> list[ClaimVerdict]:
+        claims = list(state.claims_by_id.values())
+        if not claims:
+            state.stage_trace.append(StageTrace(
+                stage_name="verify_claims",
+                semantic_goal=recipe.semantic_steps[-1],
+                status="completed",
+                decision_summary="No candidate claims were available for verification.",
+            ))
+            return []
+        tool = _verdict_submission_tool(claims)
+        response = self.model.complete_required_tool(
+            self._messages(task, recipe, state, claims),
+            [tool],
+            "submit_claim_verdicts",
+            self.max_tokens,
         )
-        candidate_cap_applied = len(selected) > MAX_SELECTED_PAPER_IDS
-        selected = selected[:MAX_SELECTED_PAPER_IDS]
-        known_evidence = set(state.evidence_items_by_id) | set(self.tools.observations_by_evidence_id)
-        accepted = [evidence_id for evidence_id in result.accepted_evidence_ids if evidence_id in known_evidence]
-        rejected = [evidence_id for evidence_id in result.rejected_evidence_ids if evidence_id in known_evidence]
-        claims = result.claims if stage.produces_answer else []
-        answer = result.answer if stage.produces_answer else {}
-        if not _stage_collects_evidence(stage):
-            accepted = []
-            rejected = []
-        missing = list(result.missing_obligations)
-        status = result.status
-
-        violations = {
-            str(item.get("violation"))
-            for item in tool_trace
-            if item.get("violation")
+        calls = [call for call in response.tool_calls if call.name == "submit_claim_verdicts"]
+        if len(calls) != 1:
+            raise ValueError("claim verifier did not submit one verdict set")
+        raw_by_id = {
+            str(child_map(raw).get("claim_id") or ""): child_map(raw)
+            for raw in as_list(calls[0].arguments.get("verdicts"))
         }
-        if "out_of_stage_tool_call" in violations:
-            status = "incomplete_precise"
-            missing.append({"stage": stage.name, "reason": "out_of_stage_tool_call"})
-        candidate_observed = bool(state.authorized_paper_ids) or _has_candidate_observation(state.stage_trace) or any(
-            item.get("allowed")
-            and item.get("tool_name") in {"search_paper_candidates", "find_papers_by_identity"}
-            and not child_map(item.get("result")).get("error")
-            for item in tool_trace
-        )
-        if intent.requires_corpus_observation and _is_identity_stage(stage) and not candidate_observed:
-            status = "incomplete_precise"
-            missing.append({"stage": stage.name, "reason": "candidate_observation_required"})
-        explicit_no_match = _explicit_no_match(result, tool_trace)
-        if stage.requires_new_evidence and not (set(accepted) & observed_now) and not explicit_no_match:
-            status = "incomplete_precise"
-            missing.append({"stage": stage.name, "reason": "required_stage_evidence_not_accepted"})
-        if stage.produces_answer and status == "completed" and not result.answer:
-            status = "incomplete_precise"
-            missing.append({"stage": stage.name, "reason": "answer_draft_missing"})
-        if (
-            stage.produces_answer
-            and intent.actionability == "non_blocking"
-            and status == "incomplete_precise"
-            and answer
-            and not _has_terminal_runtime_missing(missing)
-        ):
-            status = "completed"
-            answer = {**answer, "status": "COMPLETED"}
-            missing = []
-        if stage.produces_answer and answer:
-            answer = {
-                **answer,
-                "status": {
-                    "completed": "COMPLETED",
-                    "needs_clarification": "NEEDS_CLARIFICATION",
-                    "incomplete_precise": "INCOMPLETE_PRECISE",
-                }[status],
-            }
+        known_evidence = set(state.evidence_items_by_id)
+        verdicts: list[ClaimVerdict] = []
+        for claim in claims:
+            raw = raw_by_id.get(claim.claim_id)
+            if raw is None:
+                verdict = ClaimVerdict(
+                    claim_id=claim.claim_id,
+                    verdict="drop",
+                    verified_text="",
+                    evidence_ids=[],
+                    reason="verifier omitted this claim",
+                )
+            else:
+                parsed = ClaimVerdict.from_dict(raw)
+                evidence_ids = _resolve_known_ids(
+                    parsed.evidence_ids,
+                    known_evidence & set(claim.evidence_ids),
+                )
+                if parsed.verdict == "keep" and evidence_ids:
+                    verdict = replace(
+                        parsed,
+                        verified_text=claim.text,
+                        evidence_ids=evidence_ids,
+                        field_values=dict(claim.field_values),
+                    )
+                elif parsed.verdict == "rewrite" and parsed.verified_text and evidence_ids:
+                    verdict = replace(
+                        parsed,
+                        evidence_ids=evidence_ids,
+                        field_values={
+                            key: value for key, value in parsed.field_values.items()
+                            if key in claim.field_values
+                        },
+                    )
+                else:
+                    verdict = replace(
+                        parsed,
+                        verdict="drop",
+                        verified_text="",
+                        evidence_ids=[],
+                        field_values={},
+                    )
+            verdicts.append(verdict)
+        state.verdicts_by_claim_id = {item.claim_id: item for item in verdicts}
+        state.stage_trace.append(StageTrace(
+            stage_name="verify_claims",
+            semantic_goal=recipe.semantic_steps[-1],
+            status="completed",
+            decision_summary=(
+                f"Verified {len(verdicts)} atomic claim(s): "
+                f"{sum(item.verdict == 'keep' for item in verdicts)} kept, "
+                f"{sum(item.verdict == 'rewrite' for item in verdicts)} rewritten, "
+                f"{sum(item.verdict == 'drop' for item in verdicts)} dropped."
+            ),
+            evidence_ids=unique_strings(
+                evidence_id for item in verdicts for evidence_id in item.evidence_ids
+            ),
+            claim_ids=[item.claim_id for item in verdicts],
+        ))
+        return verdicts
 
-        return replace(
-            result,
-            status=status,
-            selected_paper_ids=selected,
-            accepted_evidence_ids=unique_strings(accepted),
-            rejected_evidence_ids=unique_strings(rejected),
-            claims=claims,
-            answer=answer,
-            missing_obligations=missing,
-            diagnostics={
-                **result.diagnostics,
-                "observed_evidence_ids": sorted(observed_now),
-                "tool_call_count": len(tool_trace),
-                "candidate_cap_applied": candidate_cap_applied,
-                "tool_budget_exhausted": "stage_tool_budget_exhausted" in violations,
-                "explicit_no_match": explicit_no_match,
-            },
+    def _messages(
+        self,
+        task: TaskFrame,
+        recipe: ParadigmRecipe,
+        state: ResearchState,
+        claims: list[Claim],
+    ) -> list[JsonMap]:
+        evidence_ids = unique_strings(
+            evidence_id for claim in claims for evidence_id in claim.evidence_ids
         )
+        return [
+            {
+                "role": "system",
+                "content": (
+                    "ATOMIC_CLAIM_VERIFICATION\n"
+                    "Verify each candidate claim using only its supplied evidence passages. Call "
+                    "submit_claim_verdicts exactly once. Do not use external knowledge.\n\n"
+                    "Use keep only when the cited passages support the exact wording and every qualifier. Use rewrite "
+                    "to narrow the claim to what the passages directly support. Use drop when the core assertion, "
+                    "causal explanation, scope, comparison, or qualifier is unsupported. Familiar or plausible facts "
+                    "are still unsupported. Evidence for one clause does not support added clauses. Preserve source "
+                    "distinctions such as recommended default versus experiment-specific use, similar versus identical, "
+                    "and a causal decoder versus an entire architecture.\n\n"
+                    "Do not infer an architecture exclusion such as 'no decoder' or 'no cross-attention' merely from an "
+                    "encoder description. Do not infer masking behavior from the word bidirectional, a loss function from "
+                    "training data or label smoothing, or the absence of a pre-training stage from silence. Rewrite away "
+                    "any such clause unless the supplied passage states it directly.\n\n"
+                    "A passage about a different paper cannot establish that the requested fact is absent from the "
+                    "corpus. Keep a corpus-wide absence claim only when it is tied to a corpus_boundary obligation and "
+                    "supported by a complete corpus observation.\n\n"
+                    "For keep, copy the original claim meaning without expansion. For rewrite, return only the narrower "
+                    "verified text and field values directly supported by the evidence."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps({
+                    "paradigm": recipe.paradigm_id,
+                    "obligation_kinds": {
+                        item.obligation_id: item.kind for item in task.obligations
+                    },
+                    "claims": [item.to_dict() for item in claims],
+                    "evidence": [
+                        _evidence_prompt_item(state.evidence_items_by_id[evidence_id])
+                        for evidence_id in evidence_ids
+                        if evidence_id in state.evidence_items_by_id
+                    ],
+                }, ensure_ascii=False),
+            },
+        ]
 
 
 class ParadigmDrivenHarness:
-    harness_id = "python_paradigm_stage_harness_v1"
+    harness_id = "python_evidence_bounded_harness_v1"
 
     def __init__(self, model: ChatModel, max_turns: int = 8, max_completion_tokens: int = 3000):
         self.model = model
@@ -568,17 +877,28 @@ class ParadigmDrivenHarness:
         self.max_completion_tokens = max_completion_tokens
 
     def run_case(self, dataset: GoldenDataset, case: JsonMap) -> JsonMap:
-        run_started = perf_counter()
         started_at = _now()
+        run_started = perf_counter()
         turn = _turn_frame(dataset, case)
         scoped_dataset = _scope_dataset(dataset, turn.allowed_paper_ids)
         measured_model = _RunMetricsModel(self.model)
         try:
-            intent = IntentRecognizer(
+            decision = TurnInterpreter(
                 measured_model,
-                max_tokens=min(self.max_completion_tokens, 1600),
-            ).recognize(turn, scoped_dataset)
-            paradigm = get_paradigm(intent.primary_paradigm)
+                max_tokens=min(self.max_completion_tokens, 2400),
+            ).interpret(turn, scoped_dataset)
+            if decision.route != "research":
+                return _decision_run(
+                    case,
+                    decision.route,
+                    decision.direct_reply,
+                    decision.pending_interaction,
+                    started_at,
+                    measured_model.diagnostics(),
+                    round((perf_counter() - run_started) * 1000),
+                    self.harness_id,
+                )
+            task = decision.to_task_frame()
         except (IntentRecognitionError, ValueError) as error:
             return _technical_failure_run(
                 case,
@@ -588,14 +908,12 @@ class ParadigmDrivenHarness:
                 measured_model.diagnostics(),
                 round((perf_counter() - run_started) * 1000),
             )
-
-        return self._run_with_intent(
+        return self._run_with_task(
             dataset,
             case,
             turn,
             scoped_dataset,
-            intent,
-            paradigm,
+            task,
             measured_model,
             started_at,
             run_started,
@@ -605,16 +923,72 @@ class ParadigmDrivenHarness:
         self,
         dataset: GoldenDataset,
         case: JsonMap,
-        intent: IntentFrame,
+        intent: TaskFrame,
     ) -> JsonMap:
-        run_started = perf_counter()
         started_at = _now()
+        run_started = perf_counter()
         turn = _turn_frame(dataset, case)
         scoped_dataset = _scope_dataset(dataset, turn.allowed_paper_ids)
         measured_model = _RunMetricsModel(self.model)
+        return self._run_with_task(
+            dataset,
+            case,
+            turn,
+            scoped_dataset,
+            intent,
+            measured_model,
+            started_at,
+            run_started,
+        )
+
+    def _run_with_task(
+        self,
+        dataset: GoldenDataset,
+        case: JsonMap,
+        turn: TurnFrame,
+        scoped_dataset: GoldenDataset,
+        task: TaskFrame,
+        measured_model: _RunMetricsModel,
+        started_at: str,
+        run_started: float,
+    ) -> JsonMap:
         try:
-            paradigm = get_paradigm(intent.primary_paradigm)
-        except ValueError as error:
+            recipe = get_paradigm(task.primary_paradigm)
+            tools = ReadingCorpusTools(scoped_dataset)
+            state = _initial_research_state(turn, scoped_dataset)
+            if task.requires_corpus_observation:
+                EvidenceCollector(
+                    measured_model,
+                    tools,
+                    self.max_completion_tokens,
+                ).collect(turn, task, recipe, state, scoped_dataset)
+            else:
+                state.coverage_by_obligation_id = {
+                    item.obligation_id: EvidenceCoverage(
+                        obligation_id=item.obligation_id,
+                        status="missing",
+                        note="corpus observation was not requested",
+                    )
+                    for item in task.obligations
+                }
+            ClaimConstructor(measured_model, self.max_completion_tokens).construct(
+                turn,
+                task,
+                recipe,
+                state,
+            )
+            ClaimVerifier(measured_model, self.max_completion_tokens).verify(task, recipe, state)
+            return _build_run(
+                case=case,
+                started_at=started_at,
+                task=task,
+                recipe=recipe,
+                state=state,
+                harness_id=self.harness_id,
+                model_diagnostics=measured_model.diagnostics(),
+                duration_ms=round((perf_counter() - run_started) * 1000),
+            )
+        except Exception as error:
             return _technical_failure_run(
                 case,
                 started_at,
@@ -623,149 +997,71 @@ class ParadigmDrivenHarness:
                 measured_model.diagnostics(),
                 round((perf_counter() - run_started) * 1000),
             )
-        return self._run_with_intent(
-            dataset,
-            case,
-            turn,
-            scoped_dataset,
-            intent,
-            paradigm,
-            measured_model,
-            started_at,
-            run_started,
-        )
-
-    def _run_with_intent(
-        self,
-        dataset: GoldenDataset,
-        case: JsonMap,
-        turn: TurnFrame,
-        scoped_dataset: GoldenDataset,
-        intent: IntentFrame,
-        paradigm: ParadigmDefinition,
-        measured_model: _RunMetricsModel,
-        started_at: str,
-        run_started: float,
-    ) -> JsonMap:
-
-        tools = ReadingCorpusTools(scoped_dataset)
-        runner = StageRunner(
-            measured_model,
-            tools,
-            max_completion_tokens=self.max_completion_tokens,
-            max_model_turns=self.max_turns,
-        )
-        state = _initial_research_state(turn, scoped_dataset)
-        last_content = ""
-        for stage in paradigm.stages:
-            execution = runner.run(stage, turn, intent, state, scoped_dataset)
-            last_content = execution.last_model_content
-            _apply_stage(state, stage, execution, intent, tools, scoped_dataset)
-            if _is_terminal_stage_result(stage, execution.result, intent):
-                break
-
-        return _build_run(
-            case=case,
-            started_at=started_at,
-            intent=intent,
-            paradigm=paradigm,
-            state=state,
-            last_model_content=last_content,
-            harness_id=self.harness_id,
-            model_diagnostics=measured_model.diagnostics(),
-            duration_ms=round((perf_counter() - run_started) * 1000),
-        )
-
-
-def _apply_stage(
-    state: ResearchState,
-    stage: StageSpec,
-    execution: StageExecution,
-    intent: IntentFrame,
-    tools: ReadingCorpusTools,
-    dataset: GoldenDataset,
-) -> None:
-    result = execution.result
-    state.selected_paper_ids = unique_strings([
-        *state.selected_paper_ids,
-        *(paper_id for paper_id in result.selected_paper_ids if paper_id in dataset.paper_records_by_id),
-    ])
-    state.authorized_paper_ids = unique_strings([
-        *state.authorized_paper_ids,
-        *state.selected_paper_ids,
-    ])
-    for paper_id in result.selected_paper_ids:
-        if paper_id in dataset.paper_records_by_id:
-            state.paper_candidates_by_id[paper_id] = _paper_candidate_observation(dataset, paper_id)
-    for evidence_id in result.accepted_evidence_ids:
-        item = tools.observations_by_evidence_id.get(evidence_id)
-        if item:
-            state.evidence_items_by_id[evidence_id] = dict(item)
-    for evidence_id in result.rejected_evidence_ids:
-        item = tools.observations_by_evidence_id.get(evidence_id)
-        if item:
-            rejected = dict(item)
-            rejected["evidence_quality"] = "rejected"
-            state.rejected_evidence.append(rejected)
-
-    known_evidence_ids = set(state.evidence_items_by_id)
-    claim_ids: list[str] = []
-    for index, raw_claim in enumerate(result.claims):
-        claim = normalize_claim(raw_claim, known_evidence_ids, len(state.claims_by_id) + index)
-        state.claims_by_id[claim["claim_id"]] = claim
-        claim_ids.append(claim["claim_id"])
-        for evidence_id in claim["supporting_evidence_ids"]:
-            item = dict(state.evidence_items_by_id[evidence_id])
-            item["supports_claim_ids"] = unique_strings([*as_list(item.get("supports_claim_ids")), claim["claim_id"]])
-            state.evidence_items_by_id[evidence_id] = item
-        for evidence_id in claim["refuting_evidence_ids"]:
-            item = dict(state.evidence_items_by_id[evidence_id])
-            item["refutes_claim_ids"] = unique_strings([*as_list(item.get("refutes_claim_ids")), claim["claim_id"]])
-            state.evidence_items_by_id[evidence_id] = item
-
-    state.state_values = {**state.state_values, **result.state_values}
-    if _is_terminal_stage_result(stage, result, intent):
-        state.missing_obligations.extend(result.missing_obligations)
-    if result.answer:
-        state.answer_draft = result.answer
-    state.memory_update = {**state.memory_update, **result.memory_update}
-    state.stage_trace.append(StageTrace(
-        stage_name=stage.name,
-        semantic_goal=stage.instruction,
-        strategy=stage.strategy,
-        completion_contract=_stage_execution_contract(stage),
-        allowed_tools=list(stage.allowed_tools),
-        max_model_turns=stage.max_model_turns,
-        max_tool_calls=stage.max_tool_calls,
-        status=result.status,
-        decision_summary=result.decision_summary,
-        tool_calls=execution.tool_trace,
-        accepted_evidence_ids=result.accepted_evidence_ids,
-        claim_ids=claim_ids,
-        missing_obligations=result.missing_obligations,
-    ))
 
 
 def _build_run(
     case: JsonMap,
     started_at: str,
-    intent: IntentFrame,
-    paradigm: ParadigmDefinition,
+    task: TaskFrame,
+    recipe: ParadigmRecipe,
     state: ResearchState,
-    last_model_content: str,
     harness_id: str,
     model_diagnostics: JsonMap,
     duration_ms: int,
 ) -> JsonMap:
     case_id = str(case.get("id") or "turn")
-    plan = _retrieval_plan(case, intent, paradigm, state)
-    verification = _verification(case, intent, state, plan)
-    answer = _research_answer(case_id, intent, state, verification)
-    artifact = _reasoning_artifact(case_id, intent, state, answer)
+    verified_claims = _verified_claims(state)
+    verified_obligations = {
+        obligation_id
+        for claim in verified_claims
+        for obligation_id in claim["obligation_ids"]
+    }
+    missing_required = [
+        item for item in task.obligations
+        if item.required and item.obligation_id not in verified_obligations
+    ]
+    boundary_answer = (
+        task.primary_paradigm == "uncertainty_knowledge_boundary"
+        and any(claim["role"] == "unsupported_boundary" for claim in verified_claims)
+    )
+    if boundary_answer:
+        status = ExecutionStatus.COMPLETED.value
+        outcome = "abstained"
+    elif not verified_claims:
+        status = ExecutionStatus.INCOMPLETE_PRECISE.value
+        outcome = "abstained"
+    elif missing_required:
+        status = ExecutionStatus.INCOMPLETE_PRECISE.value
+        outcome = "partial"
+    else:
+        status = ExecutionStatus.COMPLETED.value
+        outcome = "answered"
+
+    answer = _render_answer(
+        case_id,
+        task,
+        recipe,
+        state,
+        verified_claims,
+        missing_required,
+        status,
+        outcome,
+    )
+    plan = _retrieval_plan(case, task, recipe, state)
+    verification = _verification(case, task, state, verified_claims, missing_required)
+    state.stage_trace.append(StageTrace(
+        stage_name="render_answer",
+        semantic_goal="render_verified_claims",
+        status="completed",
+        decision_summary="Rendered only verified claims.",
+        evidence_ids=list(answer["cited_evidence_ids"]),
+        claim_ids=list(answer["cited_claim_ids"]),
+    ))
+    artifact = _reasoning_artifact(case_id, task, recipe, state, answer)
     memory_update = {
         **state.memory_update,
-        "selected_paper_ids": state.memory_update.get("selected_paper_ids") or state.selected_paper_ids,
-        "selected_evidence_ids": state.memory_update.get("selected_evidence_ids") or answer["cited_evidence_ids"],
+        "selected_paper_ids": state.selected_paper_ids,
+        "selected_evidence_ids": answer["cited_evidence_ids"],
     }
     return {
         "schema_version": RUN_TRACE_SCHEMA_VERSION,
@@ -775,12 +1071,12 @@ def _build_run(
         "harness_id": harness_id,
         "started_at": started_at,
         "completed_at": _now(),
-        "status": answer["status"],
-        "result_status": answer["status"],
+        "status": status,
+        "result_status": status,
         "memory_update": memory_update,
-        "intent_frame": _intent_artifact(case_id, case, intent),
+        "intent_frame": _intent_artifact(case_id, case, task),
         "retrieval_plan": plan,
-        "stage_trace": [trace.to_dict() for trace in state.stage_trace],
+        "stage_trace": [item.to_dict() for item in state.stage_trace],
         "paper_candidates": list(state.paper_candidates_by_id.values()),
         "evidence_ledger": {
             "ledger_id": stable_id("ledger", case_id),
@@ -789,13 +1085,21 @@ def _build_run(
                 *state.paper_candidates_by_id.values(),
                 *state.evidence_items_by_id.values(),
             ],
-            "rejected_items": state.rejected_evidence,
-            "missing_evidence": state.missing_obligations,
+            "coverage": [item.to_dict() for item in state.coverage_by_obligation_id.values()],
+            "rejected_items": [],
+            "missing_evidence": [
+                {
+                    "obligation_id": item.obligation_id,
+                    "description": item.description,
+                    "reason": "no verified claim satisfied this required obligation",
+                }
+                for item in missing_required
+            ],
         },
         "claim_graph": {
             "graph_id": stable_id("claim_graph", case_id),
             "question_id": case_id,
-            "claims": list(state.claims_by_id.values()),
+            "claims": _claim_graph_items(state),
             "edges": [],
         },
         "reasoning_artifacts": [artifact],
@@ -803,235 +1107,772 @@ def _build_run(
         "research_answer": answer,
         "final_answer": answer,
         "diagnostics": {
-            "finish_reason": "semantic_stage_plan_completed" if answer["status"] == "COMPLETED" else "semantic_stage_plan_stopped",
-            "paradigm": intent.primary_paradigm,
-            "completed_stage_count": sum(1 for trace in state.stage_trace if trace.status == "completed"),
+            "finish_reason": "evidence_bounded_answer_rendered",
+            "paradigm": task.primary_paradigm,
+            "completed_stage_count": len(state.stage_trace),
             "stage_count": len(state.stage_trace),
-            "tool_call_count": sum(len(trace.tool_calls) for trace in state.stage_trace),
+            "tool_call_count": sum(len(item.tool_calls) for item in state.stage_trace),
             **model_diagnostics,
             "duration_ms": duration_ms,
-            "last_model_content_preview": last_model_content[:1000],
         },
     }
 
 
-def _intent_artifact(case_id: str, case: JsonMap, intent: IntentFrame) -> JsonMap:
-    references = intent.paper_references
-    mentions = [str(item.get("text") or item.get("paper_id") or "") for item in references if item]
+def _retrieval_query_submission_tool(task: TaskFrame) -> JsonMap:
+    obligation_ids = [item.obligation_id for item in task.obligations] or ["none"]
     return {
-        "intent_id": stable_id("intent", case_id),
-        "question_id": case_id,
-        "raw_question": case.get("raw_question") or _case_question(case),
-        "normalized_question": intent.normalized_goal,
-        "primary_paradigm": intent.primary_paradigm,
-        "entities": unique_strings([*mentions, *intent.requested_aspects]),
-        "paper_mentions": unique_strings(mentions),
-        "method_mentions": [],
-        "dataset_mentions": [],
-        "constraints": intent.constraints,
-        "answer_type": intent.answer_shape,
-        "ambiguity_status": intent.ambiguity_status,
-        "actionability": intent.actionability,
-        "requires_corpus_observation": intent.requires_corpus_observation,
-        "required_evidence_types": intent.required_evidence_types,
-        "required_capabilities": intent.required_capabilities,
+        "type": "function",
+        "function": {
+            "name": "submit_retrieval_queries",
+            "description": "Submit a compact paper-target and evidence-query plan for one retrieval round.",
+            "parameters": {
+                "type": "object",
+                "required": ["paper_targets", "evidence_queries", "reuse_evidence"],
+                "properties": {
+                    "paper_targets": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "target_id",
+                                "paper_id",
+                                "title",
+                                "arxiv_id",
+                                "discovery_query",
+                                "browse_all",
+                                "coverage_obligation_ids",
+                            ],
+                            "properties": {
+                                "target_id": {"type": "string", "maxLength": 80},
+                                "paper_id": {"type": "string", "maxLength": 100},
+                                "title": {"type": "string", "maxLength": 240},
+                                "arxiv_id": {"type": "string", "maxLength": 40},
+                                "discovery_query": {"type": "string", "maxLength": 160},
+                                "browse_all": {"type": "boolean"},
+                                "coverage_obligation_ids": {
+                                    "type": "array",
+                                    "maxItems": 16,
+                                    "items": {"type": "string", "enum": obligation_ids},
+                                },
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                    "evidence_queries": {
+                        "type": "array",
+                        "maxItems": 12,
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "query_id",
+                                "obligation_ids",
+                                "target_ids",
+                                "query_text",
+                            ],
+                            "properties": {
+                                "query_id": {"type": "string", "maxLength": 80},
+                                "obligation_ids": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 16,
+                                    "items": {"type": "string", "enum": obligation_ids},
+                                },
+                                "target_ids": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 8,
+                                    "items": {"type": "string"},
+                                },
+                                "query_text": {"type": "string", "maxLength": 140},
+                                "section_query": {"type": "string", "maxLength": 100},
+                                "element_types": {
+                                    "type": "array",
+                                    "maxItems": 5,
+                                    "items": {
+                                        "type": "string",
+                                        "enum": list(SEARCH_ELEMENT_TYPES),
+                                    },
+                                },
+                                "top_k": {"type": "integer", "minimum": 1, "maximum": 5},
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                    "reuse_evidence": {
+                        "type": "array",
+                        "maxItems": 16,
+                        "items": {
+                            "type": "object",
+                            "required": ["obligation_id", "evidence_ids"],
+                            "properties": {
+                                "obligation_id": {"type": "string", "enum": obligation_ids},
+                                "evidence_ids": {
+                                    "type": "array",
+                                    "maxItems": 8,
+                                    "items": {"type": "string"},
+                                },
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "additionalProperties": False,
+            },
+        },
     }
 
 
-def _retrieval_plan(case: JsonMap, intent: IntentFrame, paradigm: ParadigmDefinition, state: ResearchState) -> JsonMap:
-    steps: list[JsonMap] = []
-    for index, stage in enumerate(paradigm.stages):
-        steps.append({
-            "step_id": stable_id("stage", f"{index + 1}_{stage.name}"),
-            "stage_name": stage.name,
-            "semantic_goal": stage.instruction,
-            "strategy": stage.strategy,
-            "allowed_tools": list(stage.allowed_tools),
-            "stop_condition": "stage_contract_satisfied_or_precise_stop",
-        })
-    for trace in state.stage_trace:
-        for call in trace.tool_calls:
-            steps.append({
-                "step_id": stable_id("tool", str(call.get("tool_call_id"))),
-                "stage_name": trace.stage_name,
-                "strategy": _tool_strategy(str(call.get("tool_name"))),
-                "tool_name": call.get("tool_name"),
-                "stop_condition": "tool_observation_returned",
-            })
-    scope = child_map(case.get("corpus_scope"))
+def _claim_submission_tool(recipe: ParadigmRecipe, required_claim_count: int) -> JsonMap:
     return {
-        "plan_id": stable_id("plan", str(case.get("id"))),
-        "question_id": case.get("id"),
-        "paradigm": intent.primary_paradigm,
-        "actionability": intent.actionability,
-        "target_entities": [str(item.get("text") or item.get("paper_id") or "") for item in intent.paper_references],
-        "strategy_steps": steps,
-        "expected_evidence_types": intent.required_evidence_types,
-        "required_recall_targets": as_list(scope.get("required_paper_ids")),
-        "hard_negative_policy": as_list(scope.get("hard_negative_paper_ids")),
-        "stop_conditions": ["needs_clarification", "incomplete_precise", "all_stages_completed"],
+        "type": "function",
+        "function": {
+            "name": "submit_claims",
+            "description": "Submit the minimal atomic claim set for the covered obligations.",
+            "parameters": {
+                "type": "object",
+                "required": ["claims"],
+                "properties": {
+                    "claims": {
+                        "type": "array",
+                        "minItems": required_claim_count,
+                        "maxItems": 16,
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "claim_id", "role", "text", "obligation_ids", "evidence_ids", "field_values"
+                            ],
+                            "properties": {
+                                "claim_id": {"type": "string", "maxLength": 80},
+                                "role": {"type": "string", "enum": list(recipe.claim_roles)},
+                                "text": {"type": "string", "maxLength": 420},
+                                "obligation_ids": {
+                                    "type": "array",
+                                    "maxItems": 8,
+                                    "items": {"type": "string"},
+                                },
+                                "evidence_ids": {
+                                    "type": "array",
+                                    "maxItems": 8,
+                                    "items": {"type": "string"},
+                                },
+                                "field_values": {
+                                    "type": "array",
+                                    "maxItems": 8,
+                                    "items": {
+                                        "type": "object",
+                                        "required": ["name", "value"],
+                                        "properties": {
+                                            "name": {"type": "string", "maxLength": 80},
+                                            "value": {"type": "string", "maxLength": 200},
+                                        },
+                                        "additionalProperties": False,
+                                    },
+                                },
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "additionalProperties": False,
+            },
+        },
     }
 
 
-def _verification(case: JsonMap, intent: IntentFrame, state: ResearchState, plan: JsonMap) -> JsonMap:
-    evidence_ids = set(state.evidence_items_by_id)
-    unsupported = [
-        claim for claim in state.claims_by_id.values()
-        if claim.get("status") == "supported"
-        and (
-            not as_list(claim.get("supporting_evidence_ids"))
-            or not set(as_list(claim.get("supporting_evidence_ids"))) <= evidence_ids
-        )
-    ]
-    stage_needs_clarification = (
-        intent.actionability == "blocking"
-        and any(trace.status == "needs_clarification" for trace in state.stage_trace)
-    )
-    stage_incomplete = any(
-        trace.status == "incomplete_precise"
-        and _stage_is_terminal_for_intent(trace.stage_name, intent)
-        for trace in state.stage_trace
-    )
-    corpus_observation_required = intent.requires_corpus_observation
-    corpus_observation_passed = (
-        not corpus_observation_required
-        or bool(state.authorized_paper_ids)
-        or _has_candidate_observation(state.stage_trace)
-    )
-    missing_required_evidence = list(state.missing_obligations)
-    if not corpus_observation_passed:
-        missing_required_evidence.append({
-            "reason": "corpus_candidate_observation_not_attempted",
-            "required_tools": ["search_paper_candidates", "find_papers_by_identity"],
-        })
-    raw_answer = state.answer_draft
-    answer_status = _normalize_answer_status(raw_answer.get("status") or "COMPLETED")
-    cited_evidence = set(str(item) for item in as_list(raw_answer.get("cited_evidence_ids")))
-    cited_claims = set(str(item) for item in as_list(raw_answer.get("cited_claim_ids")))
-    unknown_answer_refs = bool(cited_evidence - evidence_ids or cited_claims - set(state.claims_by_id))
+def _verdict_submission_tool(claims: list[Claim]) -> JsonMap:
+    claim_ids = [item.claim_id for item in claims]
     return {
-        "verification_id": stable_id("verification", str(case.get("id"))),
-        "question_id": case.get("id"),
-        "required_capabilities_attempted": intent.required_capabilities,
-        "required_evidence_status": [
-            {"evidence_id": evidence_id, "status": "accepted"}
-            for evidence_id in state.evidence_items_by_id
+        "type": "function",
+        "function": {
+            "name": "submit_claim_verdicts",
+            "description": "Submit one evidence-support verdict for every candidate claim.",
+            "parameters": {
+                "type": "object",
+                "required": ["verdicts"],
+                "properties": {
+                    "verdicts": {
+                        "type": "array",
+                        "minItems": len(claims),
+                        "maxItems": len(claims),
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "claim_id", "verdict", "verified_text", "evidence_ids", "field_values", "reason"
+                            ],
+                            "properties": {
+                                "claim_id": {"type": "string", "enum": claim_ids},
+                                "verdict": {"type": "string", "enum": ["keep", "rewrite", "drop"]},
+                                "verified_text": {"type": "string", "maxLength": 420},
+                                "evidence_ids": {
+                                    "type": "array",
+                                    "maxItems": 8,
+                                    "items": {"type": "string"},
+                                },
+                                "field_values": {
+                                    "type": "array",
+                                    "maxItems": 8,
+                                    "items": {
+                                        "type": "object",
+                                        "required": ["name", "value"],
+                                        "properties": {
+                                            "name": {"type": "string", "maxLength": 80},
+                                            "value": {"type": "string", "maxLength": 200},
+                                        },
+                                        "additionalProperties": False,
+                                    },
+                                },
+                                "reason": {"type": "string", "maxLength": 180},
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def _compact_retrieval_round(round_id: str, plan: JsonMap) -> JsonMap:
+    return {
+        "round": round_id,
+        "paper_targets": [
+            {
+                "target_id": target.get("target_id"),
+                "paper_id": target.get("paper_id"),
+                "title": target.get("title"),
+                "arxiv_id": target.get("arxiv_id"),
+                "discovery_query": target.get("discovery_query"),
+                "browse_all": bool(target.get("browse_all")),
+                "coverage_obligation_ids": unique_strings(
+                    as_list(target.get("coverage_obligation_ids"))
+                ),
+            }
+            for target in (child_map(item) for item in as_list(plan.get("paper_targets")))
         ],
-        "unsupported_claim_count": len(unsupported),
-        "contradicted_claim_count": sum(1 for claim in state.claims_by_id.values() if claim.get("status") == "contradicted"),
-        "missing_required_evidence": missing_required_evidence,
-        "ambiguity_resolution": {
-            "status": intent.ambiguity_status,
-            "requires_user_choice": stage_needs_clarification,
-        },
-        "constraint_check_results": [],
-        "abstention_required": (
-            stage_incomplete
-            or not corpus_observation_passed
-            or bool(state.missing_obligations)
-            or answer_status == "INCOMPLETE_PRECISE"
-        ),
-        "satisfied_trace_obligation_ids": [],
-        "failed_trace_obligation_ids": [],
-        "stage_contracts_passed": not stage_needs_clarification and not stage_incomplete,
-        "answer_reference_integrity_passed": not unknown_answer_refs,
-        "corpus_observation_required": corpus_observation_required,
-        "corpus_observation_passed": corpus_observation_passed,
+        "evidence_queries": [
+            {
+                "query_id": query.get("query_id"),
+                "obligation_ids": unique_strings(as_list(query.get("obligation_ids"))),
+                "target_ids": unique_strings(as_list(query.get("target_ids"))),
+                "query_text": query.get("query_text"),
+                "section_query": query.get("section_query"),
+                "element_types": unique_strings(as_list(query.get("element_types"))),
+                "top_k": query.get("top_k"),
+            }
+            for query in (child_map(item) for item in as_list(plan.get("evidence_queries")))
+        ],
+        "reuse_evidence": [
+            {
+                "obligation_id": item.get("obligation_id"),
+                "evidence_ids": unique_strings(as_list(item.get("evidence_ids"))),
+            }
+            for item in (child_map(raw) for raw in as_list(plan.get("reuse_evidence")))
+        ],
     }
 
 
-def _research_answer(case_id: str, intent: IntentFrame, state: ResearchState, verification: JsonMap) -> JsonMap:
-    raw = state.answer_draft
-    cited_claim_ids = [
-        str(item) for item in as_list(raw.get("cited_claim_ids"))
-        if str(item) in state.claims_by_id
-    ]
-    if "cited_claim_ids" not in raw:
-        cited_claim_ids = list(state.claims_by_id)
-    cited_evidence_ids = [
-        str(item) for item in as_list(raw.get("cited_evidence_ids"))
-        if str(item) in state.evidence_items_by_id
-    ]
-    if "cited_evidence_ids" not in raw:
-        cited_evidence_ids = list(state.evidence_items_by_id)
-    status = _normalize_answer_status(raw.get("status") or "COMPLETED")
-    if child_map(verification.get("ambiguity_resolution")).get("requires_user_choice"):
-        status = "NEEDS_CLARIFICATION"
-    elif (
-        verification.get("unsupported_claim_count")
-        or not verification.get("stage_contracts_passed")
-        or not verification.get("answer_reference_integrity_passed")
-    ):
-        status = "INCOMPLETE_PRECISE"
-    raw_outcome = raw.get("outcome")
-    outcome = normalize_research_outcome(raw_outcome)
-    if research_outcome_error(
-        status,
-        raw_outcome,
-        outcome_present="outcome" in raw,
-    ):
-        outcome = None
-    summary = str(raw.get("summary") or "")
-    if not summary:
-        if status == "NEEDS_CLARIFICATION":
-            summary = str(intent.ambiguity.get("clarification_question") or "Please clarify the intended interpretation.")
-        elif status == "INCOMPLETE_PRECISE":
-            summary = "The available evidence does not satisfy every required research obligation."
-        else:
-            summary = " ".join(str(claim.get("text") or "") for claim in state.claims_by_id.values())
+def _target_identity_arguments(target: JsonMap, dataset: GoldenDataset) -> JsonMap:
+    paper_id = str(target.get("paper_id") or "").strip()
+    if paper_id in dataset.paper_records_by_id:
+        return {"paper_id": paper_id}
+    for key in ("title", "arxiv_id"):
+        value = str(target.get(key) or "").strip()
+        if value and value.lower() not in {"unknown", "none", "null", "n/a"}:
+            return {key: value}
+    return {}
+
+
+def _resolve_known_ids(values: list[str], known_ids: set[str]) -> list[str]:
+    by_lower = {item.lower(): item for item in known_ids}
+    return unique_strings(
+        by_lower[value.lower()]
+        for value in values
+        if value.lower() in by_lower
+    )
+
+
+def _round_robin_refs(groups: list[list[str]], limit: int) -> list[str]:
+    selected: list[str] = []
+    seen: set[str] = set()
+    depth = 0
+    while len(selected) < limit:
+        added = False
+        for group in groups:
+            if depth >= len(group):
+                continue
+            ref = group[depth]
+            if ref not in seen:
+                seen.add(ref)
+                selected.append(ref)
+                if len(selected) >= limit:
+                    break
+            added = True
+        if not added:
+            break
+        depth += 1
+    return selected
+
+
+def _capture_tool_result(
+    state: ResearchState,
+    call_id: str,
+    tool_name: str,
+    arguments: JsonMap,
+    payload: JsonMap,
+    dataset: GoldenDataset,
+    tools: ReadingCorpusTools,
+) -> JsonMap:
+    model_payload = dict(payload)
+    if tool_name in {"search_paper_candidates", "find_papers_by_identity"}:
+        cards = as_list(payload.get("candidates")) or as_list(payload.get("matches"))
+        for raw_card in cards[:MAX_CANDIDATE_ITEMS]:
+            card = child_map(raw_card)
+            paper_id = str(card.get("paper_id") or "")
+            if paper_id not in dataset.paper_records_by_id:
+                continue
+            state.paper_candidates_by_id[paper_id] = _paper_candidate_observation(dataset, paper_id, card)
+        observation_id = stable_id("corpus_observation", call_id)
+        candidate_titles = [str(child_map(card).get("title") or "") for card in cards[:MAX_CANDIDATE_ITEMS]]
+        observation = {
+            "evidence_id": observation_id,
+            "paper_id": None,
+            "title": "Corpus candidate search",
+            "paper_version": "current_scope",
+            "section": "corpus_index",
+            "page": "metadata",
+            "location": tool_name,
+            "location_ref": tool_name,
+            "element_type": "corpus_search",
+            "span_text": json.dumps({
+                "query": arguments,
+                "status": payload.get("status"),
+                "matched_count": payload.get("matched_count", len(cards)),
+                "coverage": payload.get("coverage"),
+                "candidate_titles": candidate_titles,
+            }, ensure_ascii=False),
+            "source_kind": "corpus_search",
+            "retrieval_strategy": tool_name,
+            "relevance_score": 1.0,
+            "evidence_quality": "corpus_observation",
+            "citeable": False,
+            "supports_claim_ids": [],
+            "refutes_claim_ids": [],
+        }
+        state.evidence_items_by_id[observation_id] = observation
+        model_payload["corpus_observation_id"] = observation_id
+    if tool_name == "read_locations":
+        for raw_item in as_list(payload.get("items")):
+            item = child_map(raw_item)
+            evidence_id = str(item.get("evidence_id") or "")
+            if evidence_id:
+                state.evidence_items_by_id[evidence_id] = dict(item)
+    state.authorized_paper_ids = unique_strings([
+        *state.authorized_paper_ids,
+        *(paper_id for paper_id in tools.authorized_paper_ids if paper_id in dataset.paper_records_by_id),
+    ])
+    return model_payload
+
+
+def _initial_research_state(turn: TurnFrame, dataset: GoldenDataset) -> ResearchState:
+    state = ResearchState.new(turn.turn_id)
+    state.authorized_paper_ids = unique_strings(
+        paper_id
+        for paper_id in as_list(turn.conversation_context.get("selected_paper_ids"))
+        if str(paper_id) in dataset.paper_records_by_id
+    )
+    for raw_item in as_list(turn.conversation_context.get("selected_evidence_refs")):
+        item = child_map(raw_item)
+        evidence_id = str(item.get("evidence_id") or "")
+        paper_id = str(item.get("paper_id") or "")
+        if not evidence_id or paper_id not in dataset.paper_records_by_id:
+            continue
+        state.authorized_paper_ids = unique_strings([*state.authorized_paper_ids, paper_id])
+        state.evidence_items_by_id[evidence_id] = {
+            **item,
+            "evidence_id": evidence_id,
+            "paper_id": paper_id,
+            "location_ref": item.get("location_ref") or item.get("location"),
+            "retrieval_strategy": "conversation_memory",
+            "evidence_quality": "conversation_memory",
+            "citeable": True,
+            "supports_claim_ids": [],
+            "refutes_claim_ids": [],
+        }
+    for paper_id in state.authorized_paper_ids:
+        state.paper_candidates_by_id[paper_id] = _paper_candidate_observation(dataset, paper_id)
+    return state
+
+
+def _verified_claims(state: ResearchState) -> list[JsonMap]:
+    result: list[JsonMap] = []
+    for claim in state.claims_by_id.values():
+        verdict = state.verdicts_by_claim_id.get(claim.claim_id)
+        if verdict is None or verdict.verdict == "drop":
+            continue
+        text = claim.text if verdict.verdict == "keep" else verdict.verified_text
+        fields = claim.field_values if verdict.verdict == "keep" else verdict.field_values
+        if not text or not verdict.evidence_ids:
+            continue
+        result.append({
+            "claim_id": claim.claim_id,
+            "role": claim.role,
+            "text": text,
+            "obligation_ids": claim.obligation_ids,
+            "evidence_ids": verdict.evidence_ids,
+            "field_values": fields,
+            "verdict": verdict.verdict,
+        })
+    return result
+
+
+def _render_answer(
+    case_id: str,
+    task: TaskFrame,
+    recipe: ParadigmRecipe,
+    state: ResearchState,
+    claims: list[JsonMap],
+    missing_required: list,
+    status: str,
+    outcome: str,
+) -> JsonMap:
+    citation_numbers: dict[str, int] = {}
+    cited_evidence_ids: list[str] = []
+    for claim in claims:
+        for evidence_id in claim["evidence_ids"]:
+            item = state.evidence_items_by_id.get(evidence_id, {})
+            if item.get("citeable") is False or evidence_id in citation_numbers:
+                continue
+            cited_evidence_ids.append(evidence_id)
+            citation_numbers[evidence_id] = len(cited_evidence_ids)
+
+    rendered_lines = _render_claim_lines(recipe.answer_layout, claims, citation_numbers)
+    if not rendered_lines:
+        rendered_lines = ["No requested claim was verified from the available corpus evidence."]
+    if missing_required:
+        rendered_lines.extend([
+            "",
+            "Unresolved from the available corpus evidence:",
+            *[
+                f"- {item.answer_field or item.description}"
+                for item in missing_required
+            ],
+        ])
+    source_lines = []
+    for evidence_id in cited_evidence_ids:
+        item = state.evidence_items_by_id[evidence_id]
+        location = ", ".join(
+            part for part in [
+                str(item.get("section") or "").strip(),
+                f"p. {item.get('page')}" if item.get("page") not in {None, "", "unknown"} else "",
+            ]
+            if part
+        )
+        source_lines.append(
+            f"[{citation_numbers[evidence_id]}] {item.get('title') or item.get('paper_id')}"
+            + (f", {location}" if location else "")
+        )
+    markdown = "\n".join(rendered_lines)
+    if source_lines:
+        markdown += "\n\nSources\n" + "\n".join(source_lines)
+    fields: JsonMap = {}
+    for claim in claims:
+        fields.update(child_map(claim.get("field_values")))
+    summary = str(claims[0]["text"] if claims else rendered_lines[0])[:300]
     return {
         "answer_id": stable_id("answer", case_id),
         "question_id": case_id,
         "status": status,
         "outcome": outcome,
-        "answer_type": str(raw.get("answer_type") or intent.answer_shape),
+        "answer_type": task.answer_shape or recipe.default_answer_shape,
         "summary": summary,
-        "sections": as_list(raw.get("sections")),
-        "markdown": str(raw.get("markdown") or summary),
-        "fields": _normalize_answer_fields(raw.get("fields")),
-        "cited_claim_ids": cited_claim_ids,
+        "sections": [],
+        "markdown": markdown,
+        "fields": fields,
+        "cited_claim_ids": [str(item["claim_id"]) for item in claims],
         "cited_evidence_ids": cited_evidence_ids,
         "reasoning_artifact_ids": [stable_id("reasoning", case_id)],
-        "verification_id": verification.get("verification_id"),
+        "verification_id": stable_id("verification", case_id),
     }
 
 
-def _reasoning_artifact(case_id: str, intent: IntentFrame, state: ResearchState, answer: JsonMap) -> JsonMap:
-    artifact_type = {
-        "exact_fact": "exact_fact_card",
-        "comparison_matrix": "comparison_table",
-        "reproduction_protocol": "reproduction_checklist",
-        "reproduction_checklist": "reproduction_checklist",
-        "citation_genealogy": "citation_graph",
-        "definition_trace": "definition_evolution_trace",
-        "critical_assessment": "critical_assessment_report",
-        "multi_hop_chain": "multi_hop_chain",
-        "uncertainty_boundary": "uncertainty_boundary_report",
-        "ambiguity_clarification": "uncertainty_boundary_report",
-        "contradiction_arbitration": "conflict_matrix",
-        "constraint_filter": "constraint_filter_table",
-        "figure_table_formula_interpretation": "structured_evidence_interpretation",
-        "data_provenance": "provenance_record",
-        "counterfactual_analysis": "counterfactual_analysis",
-        "system_design": "system_architecture",
-        "formal_derivation": "formal_derivation",
-        "research_profile": "research_trajectory",
-        "generalization_audit": "generalization_audit",
-        "systematic_review": "systematic_review",
-        "boundary_counterexample": "boundary_counterexample_report",
-        "evidence_forecast": "evidence_forecast",
-    }.get(answer.get("answer_type"), "exact_fact_card")
+def _render_claim_lines(
+    layout: str,
+    claims: list[JsonMap],
+    citation_numbers: dict[str, int],
+) -> list[str]:
+    def line(claim: JsonMap, prefix: str = "- ") -> str:
+        markers = "".join(
+            f"[{citation_numbers[evidence_id]}]"
+            for evidence_id in claim["evidence_ids"]
+            if evidence_id in citation_numbers
+        )
+        suffix = f" {markers}" if markers else ""
+        return f"{prefix}{claim['text']}{suffix}"
+
+    if layout == "checklist":
+        return [line(item, "- [x] ") for item in claims]
+    if layout in {"chain", "genealogy", "recommendation", "timeline", "derivation"}:
+        return [line(item, f"{index}. ") for index, item in enumerate(claims, start=1)]
+    if layout == "comparison":
+        rows = ["| Dimension | Evidence-backed comparison |", "|---|---|"]
+        claims_by_role: dict[str, list[JsonMap]] = {}
+        for item in claims:
+            claims_by_role.setdefault(str(item["role"]), []).append(item)
+        for role, role_claims in claims_by_role.items():
+            cells: list[str] = []
+            for item in role_claims:
+                markers = "".join(
+                    f"[{citation_numbers[evidence_id]}]"
+                    for evidence_id in item["evidence_ids"]
+                    if evidence_id in citation_numbers
+                )
+                text = str(item["text"]).replace("|", "\\|")
+                cells.append(f"{text} {markers}".strip())
+            rows.append(
+                f"| {role.replace('_', ' ').title()} | {'<br>'.join(cells)} |"
+            )
+        return rows
+    if layout == "contradiction":
+        labels = {"source_a": "Source A", "source_b": "Source B", "resolution": "Resolution"}
+        return [line(item, f"- **{labels.get(item['role'], item['role'].title())}:** ") for item in claims]
+    if layout == "boundary":
+        labels = {"supported_context": "Supported context", "unsupported_boundary": "Corpus boundary"}
+        return [line(item, f"- **{labels.get(item['role'], item['role'].title())}:** ") for item in claims]
+    if layout == "exact_fact":
+        rows: list[str] = []
+        for item in claims:
+            markers = "".join(
+                f"[{citation_numbers[evidence_id]}]"
+                for evidence_id in item["evidence_ids"]
+                if evidence_id in citation_numbers
+            )
+            suffix = f" {markers}" if markers else ""
+            field_values = child_map(item.get("field_values"))
+            if field_values:
+                rows.extend(
+                    f"- **{name}:** {value}{suffix}"
+                    for name, value in field_values.items()
+                )
+            else:
+                rows.append(line(item))
+        return rows
+    return [line(item) for item in claims]
+
+
+def _claim_graph_items(state: ResearchState) -> list[JsonMap]:
+    items: list[JsonMap] = []
+    for claim in state.claims_by_id.values():
+        verdict = state.verdicts_by_claim_id.get(claim.claim_id)
+        supported = verdict is not None and verdict.verdict in {"keep", "rewrite"}
+        corpus_supported = supported and verdict is not None and all(
+            state.evidence_items_by_id.get(evidence_id, {}).get("citeable") is False
+            for evidence_id in verdict.evidence_ids
+        )
+        text = (
+            claim.text
+            if verdict is None or verdict.verdict != "rewrite"
+            else verdict.verified_text
+        )
+        items.append({
+            "claim_id": claim.claim_id,
+            "text": text,
+            "claim_type": claim.role,
+            "status": (
+                "corpus_supported"
+                if corpus_supported else
+                "supported" if supported else "underdetermined"
+            ),
+            "supporting_evidence_ids": verdict.evidence_ids if supported and verdict else [],
+            "refuting_evidence_ids": [],
+            "obligation_ids": claim.obligation_ids,
+            "verification_verdict": verdict.verdict if verdict else "not_run",
+            "verification_reason": verdict.reason if verdict else "",
+        })
+    return items
+
+
+def _verification(
+    case: JsonMap,
+    task: TaskFrame,
+    state: ResearchState,
+    verified_claims: list[JsonMap],
+    missing_required: list,
+) -> JsonMap:
+    dropped = [
+        item for item in state.verdicts_by_claim_id.values()
+        if item.verdict == "drop"
+    ]
+    rewritten = [
+        item for item in state.verdicts_by_claim_id.values()
+        if item.verdict == "rewrite"
+    ]
+    return {
+        "verification_id": stable_id("verification", str(case.get("id"))),
+        "question_id": case.get("id"),
+        "required_capabilities_attempted": task.required_capabilities,
+        "required_evidence_status": [item.to_dict() for item in state.coverage_by_obligation_id.values()],
+        "claim_verdicts": [item.to_dict() for item in state.verdicts_by_claim_id.values()],
+        "unsupported_claim_count": len(dropped),
+        "rewritten_claim_count": len(rewritten),
+        "contradicted_claim_count": 0,
+        "missing_required_evidence": [
+            {
+                "obligation_id": item.obligation_id,
+                "description": item.description,
+            }
+            for item in missing_required
+        ],
+        "ambiguity_resolution": {
+            "status": task.ambiguity_status,
+            "requires_user_choice": False,
+        },
+        "constraint_check_results": [],
+        "abstention_required": not verified_claims,
+        "satisfied_trace_obligation_ids": [
+            item.obligation_id for item in task.obligations
+            if any(item.obligation_id in claim["obligation_ids"] for claim in verified_claims)
+        ],
+        "failed_trace_obligation_ids": [item.obligation_id for item in missing_required],
+        "stage_contracts_passed": True,
+        "answer_reference_integrity_passed": True,
+        "corpus_observation_required": task.requires_corpus_observation,
+        "corpus_observation_passed": bool(state.evidence_items_by_id) or not task.requires_corpus_observation,
+    }
+
+
+def _intent_artifact(case_id: str, case: JsonMap, task: TaskFrame) -> JsonMap:
+    references = task.paper_references
+    mentions = [str(item.get("text") or item.get("paper_id") or "") for item in references if item]
+    return {
+        "intent_id": stable_id("intent", case_id),
+        "question_id": case_id,
+        "raw_question": case.get("raw_question") or _case_question(case),
+        "normalized_question": task.normalized_goal,
+        "primary_paradigm": task.primary_paradigm,
+        "entities": unique_strings([*mentions, *task.requested_aspects]),
+        "paper_mentions": unique_strings(mentions),
+        "method_mentions": [],
+        "dataset_mentions": [],
+        "constraints": task.constraints,
+        "answer_type": task.answer_shape,
+        "ambiguity_status": task.ambiguity_status,
+        "actionability": task.actionability,
+        "requires_corpus_observation": task.requires_corpus_observation,
+        "required_evidence_types": task.required_evidence_types,
+        "required_capabilities": task.required_capabilities,
+        "obligations": [item.to_dict() for item in task.obligations],
+    }
+
+
+def _retrieval_plan(
+    case: JsonMap,
+    task: TaskFrame,
+    recipe: ParadigmRecipe,
+    state: ResearchState,
+) -> JsonMap:
+    return {
+        "plan_id": stable_id("plan", str(case.get("id"))),
+        "question_id": case.get("id"),
+        "paradigm": task.primary_paradigm,
+        "actionability": task.actionability,
+        "target_entities": [
+            str(item.get("text") or item.get("paper_id") or "")
+            for item in task.paper_references
+        ],
+        "obligations": [item.to_dict() for item in task.obligations],
+        "query_rounds": state.retrieval_rounds,
+        "strategy_steps": [
+            {
+                "step_id": stable_id("stage", f"{index + 1}_{name}"),
+                "stage_name": name,
+                "semantic_goal": name,
+                "strategy": name,
+                "allowed_tools": (
+                    [
+                        "search_paper_candidates",
+                        "find_papers_by_identity",
+                        "find_reading_locations",
+                        "read_locations",
+                        "get_citation_edges",
+                    ]
+                    if index == 1 else []
+                ),
+                "stop_condition": "semantic_obligation_satisfied",
+            }
+            for index, name in enumerate(recipe.semantic_steps)
+        ],
+        "expected_evidence_types": task.required_evidence_types,
+        "required_recall_targets": [],
+        "hard_negative_policy": [],
+        "stop_conditions": ["all_required_obligations_verified", "precise_evidence_gap"],
+    }
+
+
+def _reasoning_artifact(
+    case_id: str,
+    task: TaskFrame,
+    recipe: ParadigmRecipe,
+    state: ResearchState,
+    answer: JsonMap,
+) -> JsonMap:
     return {
         "artifact_id": stable_id("reasoning", case_id),
         "question_id": case_id,
-        "type": artifact_type,
-        "title": intent.normalized_goal or "Research result",
+        "type": recipe.answer_layout,
+        "title": task.normalized_goal or "Research result",
         "source_claim_ids": list(state.claims_by_id),
         "payload": {
             "answer_fields": answer.get("fields", {}),
-            "stage_trace": [trace.to_dict() for trace in state.stage_trace],
+            "obligation_coverage": [item.to_dict() for item in state.coverage_by_obligation_id.values()],
+            "claim_verdicts": [item.to_dict() for item in state.verdicts_by_claim_id.values()],
             "source_evidence_ids": list(state.evidence_items_by_id),
         },
+    }
+
+
+def _paper_candidate_observation(
+    dataset: GoldenDataset,
+    paper_id: str,
+    card: JsonMap | None = None,
+) -> JsonMap:
+    record = dataset.paper_records_by_id[paper_id]
+    identity = child_map(record.get("identity"))
+    model = child_map(dataset.reading_models_by_paper_id.get(paper_id))
+    card = card or {}
+    return {
+        "evidence_id": stable_id("paper_candidate", paper_id),
+        "paper_id": paper_id,
+        "title": card.get("title") or identity.get("title") or paper_id,
+        "paper_version": identity.get("version_label") or model.get("model_version") or identity.get("year") or "unknown",
+        "authors": as_list(card.get("authors")) or as_list(identity.get("authors")),
+        "year": card.get("year") or identity.get("year"),
+        "venue": card.get("venue") or identity.get("venue"),
+        "section": "paper_metadata",
+        "page": "metadata",
+        "location": "paper_candidate",
+        "element_type": "paper_candidate",
+        "span_text": str(card.get("preview") or record.get("abstract") or identity.get("title") or paper_id)[:500],
+        "retrieval_strategy": "paper_identity_resolution",
+        "relevance_score": 1.0,
+        "evidence_quality": "metadata_verified",
+        "citeable": False,
+        "supports_claim_ids": [],
+        "refutes_claim_ids": [],
+    }
+
+
+def _evidence_prompt_item(item: JsonMap) -> JsonMap:
+    return {
+        "evidence_id": item.get("evidence_id"),
+        "paper_id": item.get("paper_id"),
+        "title": item.get("title"),
+        "section": item.get("section"),
+        "page": item.get("page"),
+        "element_type": item.get("element_type"),
+        "span_text": str(item.get("span_text") or "")[:1400],
+        "citeable": item.get("citeable", True),
     }
 
 
@@ -1070,516 +1911,58 @@ def _scope_dataset(dataset: GoldenDataset, allowed_paper_ids: list[str]) -> Gold
     )
 
 
-def _initial_research_state(turn: TurnFrame, dataset: GoldenDataset) -> ResearchState:
-    state = ResearchState.new(turn.turn_id)
-    state.authorized_paper_ids = unique_strings(
-        paper_id
-        for paper_id in as_list(turn.conversation_context.get("selected_paper_ids"))
-        if str(paper_id) in dataset.paper_records_by_id
-    )
-    for raw_item in as_list(turn.conversation_context.get("selected_evidence_refs")):
-        item = child_map(raw_item)
-        evidence_id = str(item.get("evidence_id") or "")
-        paper_id = str(item.get("paper_id") or "")
-        if not evidence_id or paper_id not in dataset.paper_records_by_id:
-            continue
-        state.authorized_paper_ids = unique_strings([*state.authorized_paper_ids, paper_id])
-        state.evidence_items_by_id[evidence_id] = {
-            **item,
-            "evidence_id": evidence_id,
-            "paper_id": paper_id,
-            "location_ref": item.get("location_ref") or item.get("location"),
-            "retrieval_strategy": "conversation_memory",
-            "evidence_quality": "conversation_memory",
-            "supports_claim_ids": [],
-            "refutes_claim_ids": [],
-        }
-    for paper_id in state.authorized_paper_ids:
-        state.paper_candidates_by_id[paper_id] = _paper_candidate_observation(dataset, paper_id)
-    return state
-
-
-def _filter_tool_definitions(definitions: list[JsonMap], allowed: set[str]) -> list[JsonMap]:
-    return [
-        definition for definition in definitions
-        if child_map(definition.get("function")).get("name") in allowed
-    ]
-
-
-def _required_stage_tool(
-    stage: StageSpec,
-    definitions: list[JsonMap],
-    tool_trace: list[JsonMap],
-    submission_tool: JsonMap,
-) -> JsonMap | None:
-    if stage.produces_answer:
-        return submission_tool
-    if not stage.requires_new_evidence:
-        return None
-
-    successful_read = any(
-        item.get("allowed")
-        and item.get("tool_name") == "read_locations"
-        and not child_map(item.get("result")).get("error")
-        for item in tool_trace
-    )
-    if successful_read:
-        return submission_tool
-
-    if set(stage.allowed_tools) != {"find_reading_locations", "read_locations"}:
-        return None
-
-    definitions_by_name = {
-        str(child_map(definition.get("function")).get("name")): definition
-        for definition in definitions
+def _decision_run(
+    case: JsonMap,
+    route: str,
+    direct_reply: str,
+    pending_interaction: JsonMap,
+    started_at: str,
+    diagnostics: JsonMap,
+    duration_ms: int,
+    harness_id: str,
+) -> JsonMap:
+    case_id = str(case.get("id") or "turn")
+    clarify = route == "clarify"
+    status = "NEEDS_CLARIFICATION" if clarify else "COMPLETED"
+    outcome = "needs_clarification" if clarify else "answered"
+    markdown = direct_reply or str(pending_interaction.get("question") or "Please clarify your request.")
+    answer = {
+        "answer_id": stable_id("answer", case_id),
+        "question_id": case_id,
+        "status": status,
+        "outcome": outcome,
+        "answer_type": "ambiguity_clarification" if clarify else "conversation",
+        "summary": markdown[:300],
+        "markdown": markdown,
+        "sections": [],
+        "fields": {},
+        "cited_claim_ids": [],
+        "cited_evidence_ids": [],
+        "reasoning_artifact_ids": [],
+        "verification_id": stable_id("verification", case_id),
     }
-    location_calls = [
-        item for item in tool_trace
-        if item.get("allowed") and item.get("tool_name") == "find_reading_locations"
-    ]
-    if not location_calls:
-        return definitions_by_name.get("find_reading_locations")
-
-    location_result = child_map(location_calls[-1].get("result"))
-    if location_result.get("error") or not as_list(location_result.get("locations")):
-        return submission_tool
-
-    read_attempted = any(
-        item.get("allowed") and item.get("tool_name") == "read_locations"
-        for item in tool_trace
-    )
-    if not read_attempted:
-        return definitions_by_name.get("read_locations")
-    return submission_tool
-
-
-def _stage_result_submission_tool(stage: StageSpec) -> JsonMap:
-    required = ["status", "decision_summary"]
-    if stage.produces_answer:
-        required.append("answer")
-    properties: JsonMap = {
-        "status": {
-            "type": "string",
-            "enum": ["completed", "needs_clarification", "incomplete_precise"],
-        },
-        "decision_summary": {"type": "string", "maxLength": 300},
-        "missing_obligations": {
-            "type": "array",
-            "maxItems": 8,
-            "items": {"type": "object"},
-        },
-    }
-    if stage.produces_answer:
-        properties.update({
-            "claims": {
-                "type": "array",
-                "maxItems": 6,
-                "items": {
-                    "type": "object",
-                    "required": ["claim_id", "text", "status", "supporting_evidence_ids"],
-                    "properties": {
-                        "claim_id": {"type": "string", "maxLength": 80},
-                        "text": {"type": "string", "maxLength": 320},
-                        "claim_type": {"type": "string", "maxLength": 80},
-                        "status": {
-                            "type": "string",
-                            "enum": [
-                                "supported",
-                                "partially_supported",
-                                "underdetermined",
-                                "contradicted",
-                            ],
-                        },
-                        "supporting_evidence_ids": {
-                            "type": "array",
-                            "maxItems": 4,
-                            "items": {"type": "string"},
-                        },
-                        "refuting_evidence_ids": {
-                            "type": "array",
-                            "maxItems": 4,
-                            "items": {"type": "string"},
-                        },
-                        "depends_on_claim_ids": {
-                            "type": "array",
-                            "maxItems": 4,
-                            "items": {"type": "string"},
-                        },
-                        "confidence": {"type": "number"},
-                    },
-                    "additionalProperties": False,
-                },
-            },
-            "state_values": {"type": "object"},
-            "answer": {
-                "type": "object",
-                "required": [
-                    "status", "outcome", "answer_type", "summary",
-                    "cited_claim_ids", "cited_evidence_ids",
-                ],
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "enum": ["COMPLETED", "NEEDS_CLARIFICATION", "INCOMPLETE_PRECISE"],
-                    },
-                    "outcome": {
-                        "type": "string",
-                        "enum": ["answered", "needs_clarification", "abstained", "partial"],
-                    },
-                    "answer_type": {"type": "string"},
-                    "summary": {"type": "string", "maxLength": 300},
-                    "markdown": {"type": "string", "maxLength": 2500},
-                    "fields": {"type": "object"},
-                    "sections": {"type": "array"},
-                    "cited_claim_ids": {
-                        "type": "array",
-                        "maxItems": 6,
-                        "items": {"type": "string"},
-                    },
-                    "cited_evidence_ids": {
-                        "type": "array",
-                        "maxItems": 12,
-                        "items": {"type": "string"},
-                    },
-                },
-                "additionalProperties": False,
-            },
-            "memory_update": {"type": "object"},
-        })
-    elif stage.requires_new_evidence:
-        properties.update({
-            "selected_paper_ids": {
-                "type": "array",
-                "maxItems": MAX_SELECTED_PAPER_IDS,
-                "items": {"type": "string"},
-            },
-            "accepted_evidence_ids": {
-                "type": "array",
-                "maxItems": 6,
-                "items": {"type": "string"},
-            },
-            "rejected_evidence_ids": {
-                "type": "array",
-                "maxItems": 6,
-                "items": {"type": "string"},
-            },
-            "state_values": {
-                "type": "object",
-                "properties": {"support_found": {"type": "boolean"}},
-                "additionalProperties": False,
-            },
-        })
-    else:
-        properties["state_values"] = {"type": "object"}
-        if stage.allowed_tools:
-            properties["selected_paper_ids"] = {
-                "type": "array",
-                "maxItems": MAX_SELECTED_PAPER_IDS,
-                "items": {"type": "string"},
-            }
     return {
-        "type": "function",
-        "function": {
-            "name": "submit_stage_result",
-            "description": (
-                f"Submit the final structured result for semantic stage {stage.name}. "
-                "This is an output contract, not a retrieval action."
-            ),
-            "parameters": {
-                "type": "object",
-                "required": required,
-                "properties": properties,
-                "additionalProperties": False,
-            },
-        },
+        "schema_version": RUN_TRACE_SCHEMA_VERSION,
+        "run_id": stable_id("run", case_id),
+        "question_id": case_id,
+        "case_id": case_id,
+        "harness_id": harness_id,
+        "started_at": started_at,
+        "completed_at": _now(),
+        "status": status,
+        "result_status": status,
+        "memory_update": {"pending_interaction": pending_interaction or None},
+        "intent_frame": {"question_id": case_id, "primary_paradigm": "ambiguity_resolution" if clarify else "direct_conversation"},
+        "retrieval_plan": {"question_id": case_id, "strategy_steps": []},
+        "stage_trace": [],
+        "evidence_ledger": {"question_id": case_id, "items": [], "rejected_items": [], "missing_evidence": []},
+        "claim_graph": {"question_id": case_id, "claims": [], "edges": []},
+        "reasoning_artifacts": [],
+        "verification_pass": {"question_id": case_id, "unsupported_claim_count": 0},
+        "research_answer": answer,
+        "final_answer": answer,
+        "diagnostics": {**diagnostics, "duration_ms": duration_ms, "finish_reason": f"turn_decision_{route}"},
     }
-
-
-def _submitted_stage_result(response) -> JsonMap | None:
-    for call in response.tool_calls:
-        if call.name == "submit_stage_result":
-            return call.arguments
-    return None
-
-
-def _stage_submission_error(stage: StageSpec, payload: JsonMap) -> str:
-    missing = [
-        name for name in ("status", "decision_summary")
-        if not str(payload.get(name) or "").strip()
-    ]
-    if stage.produces_answer and not child_map(payload.get("answer")):
-        missing.append("answer")
-    if missing:
-        return "missing required fields: " + ", ".join(missing)
-    if stage.produces_answer:
-        answer = child_map(payload.get("answer"))
-        stage_status = {
-            "completed": "COMPLETED",
-            "needs_clarification": "NEEDS_CLARIFICATION",
-            "incomplete_precise": "INCOMPLETE_PRECISE",
-        }.get(str(payload.get("status") or "").lower(), "")
-        answer_status = _normalize_answer_status(answer.get("status"))
-        if stage_status and answer_status != stage_status:
-            return f"answer.status={answer_status} is inconsistent with stage status={stage_status}"
-        outcome_error = research_outcome_error(
-            answer_status,
-            answer.get("outcome"),
-            outcome_present="outcome" in answer,
-        )
-        if outcome_error:
-            return outcome_error
-    return ""
-
-
-def _is_semantic_state_stage(stage: StageSpec) -> bool:
-    return not stage.allowed_tools and not stage.requires_new_evidence and not stage.produces_answer
-
-
-def _should_repair_stage_status(stage: StageSpec, result: StageResult) -> bool:
-    if result.status not in {"needs_clarification", "incomplete_precise"}:
-        return False
-    if _is_semantic_state_stage(stage):
-        return True
-    if stage.produces_answer or stage.requires_new_evidence:
-        return False
-    if _is_identity_stage(stage):
-        return bool(result.selected_paper_ids) or result.status == "incomplete_precise"
-    if _stage_collects_evidence(stage):
-        return bool(result.state_values)
-    return bool(result.selected_paper_ids)
-
-
-def _stage_collects_evidence(stage: StageSpec) -> bool:
-    return "read_locations" in stage.allowed_tools
-
-
-def _explicit_no_match(result: StageResult, tool_trace: list[JsonMap]) -> bool:
-    precise_no_match = any(
-        item.get("allowed") and _tool_result_proves_no_match(item)
-        for item in tool_trace
-    )
-    return (
-        precise_no_match
-        and result.state_values.get("support_found") is False
-        and bool(result.missing_obligations)
-    )
-
-
-def _tool_result_proves_no_match(call: JsonMap) -> bool:
-    result = child_map(call.get("result"))
-    name = str(call.get("tool_name") or "")
-    if name == "search_paper_candidates":
-        return result.get("coverage") == "complete" and int(result.get("matched_count") or 0) == 0
-    if name == "find_papers_by_identity":
-        return result.get("status") == "not_found"
-    if name == "find_reading_locations":
-        return not result.get("error") and int(result.get("matched_count") or 0) == 0
-    if name == "read_locations":
-        return not result.get("error") and not as_list(result.get("items"))
-    return False
-
-
-def _is_identity_stage(stage: StageSpec) -> bool:
-    tools = set(stage.allowed_tools)
-    return (
-        stage.strategy == "bounded_candidate_grounding"
-        or (bool(tools) and tools <= {"search_paper_candidates", "find_papers_by_identity"})
-    )
-
-
-def _selection_is_conversation_authorized(result: StageResult, state: ResearchState) -> bool:
-    authorized = set(state.authorized_paper_ids)
-    selected = set(result.selected_paper_ids)
-    return bool(authorized) and (not selected or selected <= authorized)
-
-
-def _has_candidate_observation(stage_trace) -> bool:
-    return any(
-        call.get("allowed")
-        and call.get("tool_name") in {"search_paper_candidates", "find_papers_by_identity"}
-        for trace in stage_trace
-        for call in trace.tool_calls
-    )
-
-
-def _answer_contract_error(
-    result: StageResult,
-    state: ResearchState,
-    observed_evidence_ids: set[str],
-) -> str:
-    known_evidence_ids = set(state.evidence_items_by_id) | observed_evidence_ids
-    for claim in result.claims:
-        status = str(claim.get("status") or "").lower()
-        if status not in {"supported", "support", "verified", "true"}:
-            continue
-        evidence_ids = {str(item) for item in as_list(claim.get("supporting_evidence_ids"))}
-        if not evidence_ids or not evidence_ids <= known_evidence_ids:
-            return "a supported claim lacks known supporting evidence"
-
-    known_claim_ids = set(state.claims_by_id) | {
-        str(claim.get("claim_id"))
-        for claim in result.claims
-        if str(claim.get("claim_id") or "")
-    }
-    cited_claim_ids = {str(item) for item in as_list(result.answer.get("cited_claim_ids"))}
-    cited_evidence_ids = {str(item) for item in as_list(result.answer.get("cited_evidence_ids"))}
-    unknown_claim_ids = sorted(cited_claim_ids - known_claim_ids)
-    unknown_evidence_ids = sorted(cited_evidence_ids - known_evidence_ids)
-    if unknown_claim_ids:
-        return "answer cites undefined claim ids: " + ", ".join(unknown_claim_ids[:6])
-    if unknown_evidence_ids:
-        return "answer cites unknown evidence ids: " + ", ".join(unknown_evidence_ids[:6])
-    return ""
-
-
-def _has_terminal_runtime_missing(missing_obligations: list[JsonMap]) -> bool:
-    terminal_reasons = {
-        "out_of_stage_tool_call",
-        "required_stage_evidence_not_accepted",
-        "unparseable_stage_result",
-        "invalid_stage_submission",
-        "answer_draft_missing",
-    }
-    return any(str(item.get("reason")) in terminal_reasons for item in missing_obligations)
-
-
-def _is_terminal_stage_result(stage: StageSpec, result: StageResult, intent: IntentFrame) -> bool:
-    if result.status == "incomplete_precise":
-        return stage.requires_new_evidence or stage.produces_answer
-    if result.status == "needs_clarification":
-        return stage.produces_answer and intent.actionability == "blocking"
-    return False
-
-
-def _stage_is_terminal_for_intent(stage_name: str, intent: IntentFrame) -> bool:
-    for stage in get_paradigm(intent.primary_paradigm).stages:
-        if stage.name == stage_name:
-            return stage.requires_new_evidence or stage.produces_answer
-    return True
-
-
-def _stage_execution_contract(stage: StageSpec) -> str:
-    if stage.produces_answer:
-        return "Produce evidence-linked claims and the final answer draft for this paradigm."
-    if stage.requires_new_evidence:
-        return (
-            "Find candidate locations, read the selected locations, and accept only evidence ids "
-            "returned by read_locations that satisfy this stage's semantic goal. Candidate cards, "
-            "navigation previews, and citation metadata are insufficient."
-        )
-    if _is_identity_stage(stage):
-        return (
-            "Resolve identity only. Complete with the unambiguous target paper ids in "
-            "selected_paper_ids. Paper-content retrieval belongs to a later stage and is not a "
-            "missing obligation here."
-        )
-    if _is_semantic_state_stage(stage):
-        return "Complete this semantic transformation in state_values without performing later stages."
-    return "Complete only this stage's semantic goal and record its result in state_values."
-
-
-def _stage_repair_guidance(stage: StageSpec) -> str:
-    if _is_identity_stage(stage):
-        return (
-            "Use the available paper cards or identity tools and return selected_paper_ids; do not "
-            "evaluate paper-content evidence in this stage."
-        )
-    return "Record this stage's completed semantic result in state_values."
-
-
-def _stage_output_contract(stage: StageSpec) -> str:
-    statuses = "completed|needs_clarification|incomplete_precise"
-    if stage.produces_answer:
-        return (
-            "{status:" + statuses + ", decision_summary:string, "
-            "claims:[{claim_id,text,claim_type?,status,supporting_evidence_ids,"
-            "refuting_evidence_ids?,depends_on_claim_ids?}], state_values:{}, "
-            "missing_obligations:[{}], answer:{status:COMPLETED|NEEDS_CLARIFICATION|INCOMPLETE_PRECISE,"
-            "outcome:answered|needs_clarification|abstained|partial,answer_type,summary,markdown?,fields?:{},"
-            "sections?:[],cited_claim_ids:[string],cited_evidence_ids:[string]}, memory_update:{}}. "
-            "Answer fields must use direct scalar/list/object values; do not wrap a value in "
-            "{type,value,notation}."
-        )
-    if _stage_collects_evidence(stage):
-        return (
-            "{status:" + statuses + ", decision_summary:string, selected_paper_ids:[string], "
-            "accepted_evidence_ids:[string], rejected_evidence_ids:[string], state_values:{}, "
-            "missing_obligations:[{}]}"
-        )
-    if stage.allowed_tools:
-        return (
-            "{status:" + statuses + ", decision_summary:string, selected_paper_ids:[string], "
-            "state_values:{}, missing_obligations:[{}]}"
-        )
-    return (
-        "{status:" + statuses + ", decision_summary:string, state_values:{}, "
-        "missing_obligations:[{}]}"
-    )
-
-
-def _paper_candidate_observation(dataset: GoldenDataset, paper_id: str) -> JsonMap:
-    record = dataset.paper_records_by_id[paper_id]
-    identity = child_map(record.get("identity"))
-    model = child_map(dataset.reading_models_by_paper_id.get(paper_id))
-    return {
-        "evidence_id": stable_id("paper_candidate", paper_id),
-        "paper_id": paper_id,
-        "title": identity.get("title") or paper_id,
-        "paper_version": identity.get("version_label") or model.get("model_version") or identity.get("year") or "unknown",
-        "authors": as_list(identity.get("authors")),
-        "year": identity.get("year"),
-        "venue": identity.get("venue"),
-        "section": "paper_metadata",
-        "page": "metadata",
-        "location": "paper_candidate",
-        "element_type": "paper_candidate",
-        "span_text": str(record.get("abstract") or identity.get("title") or paper_id)[:500],
-        "retrieval_strategy": "paper_identity_resolution",
-        "relevance_score": 1.0,
-        "evidence_quality": "metadata_verified",
-        "citeable": False,
-        "supports_claim_ids": [],
-        "refutes_claim_ids": [],
-    }
-
-
-def _tool_strategy(tool_name: str) -> str:
-    return {
-        "search_paper_candidates": "paper_candidate_search",
-        "find_papers_by_identity": "paper_identity_resolution",
-        "find_reading_locations": "reading_location_search",
-        "read_locations": "source_quote_reading",
-        "get_citation_edges": "citation_graph_traversal",
-    }.get(tool_name, "semantic_stage_execution")
-
-
-def _normalize_answer_status(value: object) -> str:
-    raw = str(value or "").lower()
-    return {
-        "answered": "COMPLETED",
-        "answerable": "COMPLETED",
-        "completed": "COMPLETED",
-        "completed_precise": "COMPLETED",
-        "draft_complete": "COMPLETED",
-        "ok": "COMPLETED",
-        "ok_precise": "COMPLETED",
-        "resolved": "COMPLETED",
-        "contradiction_report": "COMPLETED",
-        "needs_clarification": "NEEDS_CLARIFICATION",
-        "clarify": "NEEDS_CLARIFICATION",
-        "incomplete": "INCOMPLETE_PRECISE",
-        "incomplete_precise": "INCOMPLETE_PRECISE",
-        "abstained": "INCOMPLETE_PRECISE",
-    }.get(raw, str(value or "INCOMPLETE_PRECISE").upper())
-
-
-def _normalize_answer_fields(value: object) -> JsonMap:
-    fields = child_map(value)
-    normalized: JsonMap = {}
-    for key, field_value in fields.items():
-        field_map = child_map(field_value)
-        normalized[key] = field_map.get("value") if "value" in field_map else field_value
-    return normalized
 
 
 def _technical_failure_run(
@@ -1617,35 +2000,17 @@ def _technical_failure_run(
         "status": "FAILED_TECHNICAL",
         "result_status": "FAILED_TECHNICAL",
         "memory_update": {},
-        "intent_frame": {
-            "question_id": case_id,
-            "raw_question": _case_question(case),
-            "normalized_question": _case_question(case),
-            "entities": [], "paper_mentions": [], "method_mentions": [], "dataset_mentions": [],
-            "constraints": {}, "answer_type": "unknown", "ambiguity_status": "unknown",
-            "required_evidence_types": [], "required_capabilities": [],
-        },
-        "retrieval_plan": {
-            "plan_id": stable_id("plan", case_id), "question_id": case_id, "target_entities": [],
-            "strategy_steps": [], "expected_evidence_types": [], "required_recall_targets": [],
-            "hard_negative_policy": [], "stop_conditions": ["technical_failure"],
-        },
+        "intent_frame": {"question_id": case_id, "primary_paradigm": "unknown"},
+        "retrieval_plan": {"question_id": case_id, "strategy_steps": []},
         "stage_trace": [],
-        "evidence_ledger": {"ledger_id": stable_id("ledger", case_id), "question_id": case_id, "items": [], "rejected_items": [], "missing_evidence": []},
-        "claim_graph": {"graph_id": stable_id("claim_graph", case_id), "question_id": case_id, "claims": [], "edges": []},
+        "evidence_ledger": {"question_id": case_id, "items": [], "rejected_items": [], "missing_evidence": []},
+        "claim_graph": {"question_id": case_id, "claims": [], "edges": []},
         "reasoning_artifacts": [],
-        "verification_pass": {
-            "verification_id": stable_id("verification", case_id), "question_id": case_id,
-            "required_capabilities_attempted": [], "required_evidence_status": [],
-            "unsupported_claim_count": 0, "contradicted_claim_count": 0,
-            "missing_required_evidence": [], "ambiguity_resolution": {"status": "technical_failure"},
-            "constraint_check_results": [], "abstention_required": False,
-            "satisfied_trace_obligation_ids": [], "failed_trace_obligation_ids": [],
-        },
+        "verification_pass": {"question_id": case_id, "unsupported_claim_count": 0},
         "research_answer": answer,
         "final_answer": answer,
         "diagnostics": {
-            "finish_reason": "intent_recognition_failed",
+            "finish_reason": "evidence_bounded_runtime_failed",
             "error": reason,
             **(model_diagnostics or {}),
             "duration_ms": duration_ms,

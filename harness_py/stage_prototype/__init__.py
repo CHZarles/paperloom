@@ -1,27 +1,35 @@
-"""Paradigm-driven online semantic-stage research harness."""
+"""Evidence-bounded, paradigm-driven paper research harness."""
 
-from .intent import IntentRecognizer
+from .intent import TurnInterpreter
 from .models import (
+    Claim,
+    ClaimVerdict,
+    EvidenceCoverage,
     IntentFrame,
+    Obligation,
     ParadigmFrame,
     ResearchState,
-    StageResult,
-    StageSpec,
+    TaskFrame,
+    TurnDecision,
     TurnFrame,
 )
-from .plans import PARADIGM_DEFINITIONS, ParadigmDefinition
-from .runtime import ParadigmDrivenHarness, StageRunner
+from .plans import PARADIGM_RECIPES, ParadigmRecipe
+from .runtime import EvidenceCollector, ParadigmDrivenHarness
 
 __all__ = [
+    "Claim",
+    "ClaimVerdict",
+    "EvidenceCollector",
+    "EvidenceCoverage",
     "IntentFrame",
-    "IntentRecognizer",
-    "PARADIGM_DEFINITIONS",
-    "ParadigmFrame",
-    "ParadigmDefinition",
+    "Obligation",
+    "PARADIGM_RECIPES",
     "ParadigmDrivenHarness",
+    "ParadigmFrame",
+    "ParadigmRecipe",
     "ResearchState",
-    "StageResult",
-    "StageRunner",
-    "StageSpec",
+    "TaskFrame",
+    "TurnDecision",
     "TurnFrame",
+    "TurnInterpreter",
 ]

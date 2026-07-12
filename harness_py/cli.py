@@ -332,7 +332,7 @@ def _terminal_state_summary(state: ConversationState) -> dict:
 def _live_model(provider_source: str):
     store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
     provider = store.load_active_provider("llm")
-    return provider, MiniMaxChatModel(provider)
+    return provider, MiniMaxChatModel(provider, temperature=0.0, top_p=1.0)
 
 
 def _judge_model(provider_source: str):
