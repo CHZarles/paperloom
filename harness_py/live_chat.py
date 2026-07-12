@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import hashlib
+import logging
+import os
 from dataclasses import replace
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Callable
 
 from .conversation import ConversationState
 from .errors import HarnessCancelled
+from .eval_recorder import EvalRecorder
 from .golden_case import case_question, conversation_state_for_case
 from .llm import ChatModel
 from .memory import ResearchMemory
@@ -17,12 +21,20 @@ from .runtime import HarnessRuntime, LegacyHarnessRuntime, TurnExecutionInput, n
 class LiveResearchChatHarness:
     """Conversation wrapper around the same skill-guided ReAct agent used by golden cases."""
 
-    def __init__(self, runtime_or_model: HarnessRuntime | ChatModel, max_completion_tokens: int = 3000):
+    def __init__(
+        self,
+        runtime_or_model: HarnessRuntime | ChatModel,
+        max_completion_tokens: int = 3000,
+        eval_dump_dir: str | Path | None = None,
+    ):
         self.runtime: HarnessRuntime = (
             LegacyHarnessRuntime(runtime_or_model, max_completion_tokens=max_completion_tokens)
             if isinstance(runtime_or_model, ChatModel)
             else runtime_or_model
         )
+        self.eval_dump_dir = Path(eval_dump_dir or os.getenv("EVAL_DUMP_DIR", "")) if (
+            eval_dump_dir or os.getenv("EVAL_DUMP_DIR")
+        ) else None
 
     def run_question(self, dataset: GoldenDataset, question: str) -> JsonMap:
         run, _ = self.run_turn(dataset, ConversationState.new("transient_live_chat"), question)
@@ -48,6 +60,25 @@ class LiveResearchChatHarness:
         scoped = _dataset_for_scope(dataset, state.effective_scope_paper_ids(dataset))
         case_id = _live_case_id(scoped, state, user_message)
         run_id = new_run_id()
+        recorder = self._open_recorder(run_id)
+        if recorder:
+            recorder.append(
+                kind="run.started",
+                operation_id="run",
+                payload={
+                    "case_id": case_id,
+                    "conversation_id": state.conversation_id,
+                    "turn_index": state.turn_index + 1,
+                    "question": user_message,
+                    "conversation_messages": state.model_messages(),
+                    "research_memory": {
+                        "selected_paper_ids": state.selected_paper_ids,
+                        "selected_evidence_ids": state.selected_evidence_ids,
+                        "evidence_items_by_id": state.evidence_items_by_id,
+                    },
+                    "corpus_paper_ids": sorted(scoped.paper_records_by_id),
+                },
+            )
         try:
             result = self.runtime.run_turn(TurnExecutionInput(
                 dataset=scoped,
@@ -62,13 +93,43 @@ class LiveResearchChatHarness:
                 ),
                 progress_listener=progress_listener,
                 should_cancel=should_cancel,
+                eval_recorder=recorder,
             ))
             run = result.run
-        except HarnessCancelled:
+        except HarnessCancelled as error:
+            if recorder:
+                recorder.append(
+                    kind="run.error",
+                    operation_id="run",
+                    payload={"error_type": type(error).__name__, "message": str(error)},
+                )
+                recorder.finish({
+                    "run_id": run_id,
+                    "status": "CANCELLED",
+                    "error_type": type(error).__name__,
+                    "message": str(error),
+                })
             raise
         except Exception as error:
+            if recorder:
+                recorder.append(
+                    kind="run.error",
+                    operation_id="run",
+                    payload={"error_type": type(error).__name__, "message": str(error)},
+                )
             run = _technical_failure_run(run_id, case_id, user_message, str(error))
+        if recorder:
+            recorder.finish(run)
         return run, state.updated_from_run(scoped, run, user_message)
+
+    def _open_recorder(self, run_id: str) -> EvalRecorder | None:
+        if self.eval_dump_dir is None:
+            return None
+        try:
+            return EvalRecorder(self.eval_dump_dir, run_id)
+        except Exception as error:
+            logging.getLogger(__name__).error("eval capture open failed: %s", error)
+            return None
 
 
 def _live_case_id(dataset: GoldenDataset, state: ConversationState, question: str) -> str:

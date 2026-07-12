@@ -29,6 +29,7 @@ class ResearchRunContext:
     current_model_started: float = 0.0
     tool_call_groups: dict[str, tuple[str, ...]] = field(default_factory=dict)
     tool_call_models: dict[str, str] = field(default_factory=dict)
+    transport_attempts: dict[str, int] = field(default_factory=dict)
     final_draft: JsonMap | None = None
 
     def __post_init__(self) -> None:
@@ -84,6 +85,14 @@ class ResearchRunContext:
         for call_id, _ in call_ids_and_names:
             self.tool_call_groups[call_id] = names
             self.tool_call_models[call_id] = self.current_model_call_id
+
+    def next_transport_attempt(self) -> int:
+        attempt = self.transport_attempts.get(self.current_model_call_id, 0) + 1
+        self.transport_attempts[self.current_model_call_id] = attempt
+        return attempt
+
+    def current_transport_attempt(self) -> int:
+        return self.transport_attempts.get(self.current_model_call_id, 1)
 
     def state_snapshot(self) -> JsonMap:
         return {

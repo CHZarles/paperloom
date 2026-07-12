@@ -61,7 +61,22 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
             return json.dumps(payload, ensure_ascii=False)
         if name == FINAL_TOOL_NAME:
             return _invoke_final(context, tool_context, arguments)
-        return _invoke_domain(context, tool_context, name, arguments)
+        try:
+            return _invoke_domain(context, tool_context, name, arguments)
+        except Exception as error:
+            recorder = context.turn.eval_recorder
+            if recorder:
+                recorder.append(
+                    kind="tool.error",
+                    operation_id=tool_context.tool_call_id,
+                    payload={
+                        "tool_name": name,
+                        "raw_arguments": raw_arguments,
+                        "error_type": type(error).__name__,
+                        "message": str(error),
+                    },
+                )
+            raise
 
     return FunctionTool(
         name=name,
@@ -86,6 +101,18 @@ def _invoke_domain(
     })
     started = perf_counter()
     before = context.state_snapshot()
+    recorder = context.turn.eval_recorder
+    if recorder:
+        recorder.append(
+            kind="tool.started",
+            operation_id=tool_context.tool_call_id,
+            payload={
+                "tool_name": name,
+                "model_call_id": context.tool_call_models.get(tool_context.tool_call_id),
+                "raw_arguments": tool_context.tool_arguments,
+                "arguments": arguments,
+            },
+        )
     if name == "get_research_skill":
         skill_id = str(arguments.get("skill_id") or "")
         internal = context.skills.get(skill_id)

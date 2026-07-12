@@ -17,7 +17,7 @@ from agents import (
 
 from .agent_harness import _build_run, research_agent_instructions
 from .agents_context import ResearchRunContext
-from .agents_model import MiniMaxAgentsModel
+from .agents_model import MiniMaxAgentsModel, bind_research_context
 from .agents_tools import build_agent_tools, tools_to_final_output
 from .memory import RequestBackedSession, request_session_input
 from .models import JsonMap
@@ -110,15 +110,16 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
             session_input_callback=request_session_input,
             tool_execution=ToolExecutionConfig(max_function_tool_concurrency=1),
         )
-        result = Runner.run_sync(
-            agent,
-            input_items,
-            context=context,
-            max_turns=None,
-            hooks=ResearchRunHooks(),
-            run_config=run_config,
-            session=session,
-        )
+        with bind_research_context(context):
+            result = Runner.run_sync(
+                agent,
+                input_items,
+                context=context,
+                max_turns=None,
+                hooks=ResearchRunHooks(),
+                run_config=run_config,
+                session=session,
+            )
         context.check_cancelled()
         final = result.final_output if isinstance(result.final_output, dict) else context.final_draft
         if not isinstance(final, dict):
