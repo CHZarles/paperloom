@@ -17,6 +17,7 @@ from .agent_harness import (
     _trace_item,
 )
 from .agents_context import ResearchRunContext
+from .agents_model import TEXT_NUDGE_TOOL_NAME
 from .llm import ToolCall, _normalize_structured_arguments
 from .models import JsonMap, child_map
 from .tools import model_facing_payload
@@ -30,6 +31,18 @@ def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
         context.skills.tool_definition(),
         *context.corpus.definitions(),
         _final_answer_tool(),
+        {
+            "type": "function",
+            "function": {
+                "name": TEXT_NUDGE_TOOL_NAME,
+                "description": "Continue after a text-only response and finish through the required submission tool.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"content": {"type": "string"}},
+                    "additionalProperties": False,
+                },
+            },
+        },
     ]
     return [_function_tool(definition) for definition in definitions]
 
@@ -59,6 +72,15 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
             payload = {"error": "invalid_tool_arguments", "message": parse_error}
             context.trace.append(_trace_item(ToolCall(tool_context.tool_call_id, name, {}), payload))
             return json.dumps(payload, ensure_ascii=False)
+        if name == TEXT_NUDGE_TOOL_NAME:
+            return json.dumps({
+                "continue": True,
+                "message": (
+                    "Finish by calling submit_research_answer as the only tool call. "
+                    "Copy exact evidence IDs returned by read_locations; placeholders such as "
+                    "[[evidence_id]] are invalid. Remove claims not directly supported by cited spans."
+                ),
+            }, ensure_ascii=False)
         if name == FINAL_TOOL_NAME:
             return _invoke_final(context, tool_context, arguments)
         try:

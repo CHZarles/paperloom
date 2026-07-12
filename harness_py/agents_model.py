@@ -4,10 +4,12 @@ import json
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Iterator
+from uuid import uuid4
 
 import httpx
-from agents import ModelSettings, OpenAIChatCompletionsModel
+from agents import ItemHelpers, ModelSettings, OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
+from openai.types.responses import ResponseFunctionToolCall
 
 from .agents_context import ResearchRunContext
 from .provider_config import ProviderConfig
@@ -17,6 +19,7 @@ _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(
     "paismart_agents_context",
     default=None,
 )
+TEXT_NUDGE_TOOL_NAME = "_continue_research_turn"
 
 
 @contextmanager
@@ -70,7 +73,7 @@ class MiniMaxAgentsModel(OpenAIChatCompletionsModel):
 
     async def get_response(self, *args, **kwargs):
         try:
-            return await super().get_response(*args, **kwargs)
+            response = await super().get_response(*args, **kwargs)
         except Exception as error:
             context = _ACTIVE_CONTEXT.get()
             recorder = context.turn.eval_recorder if context else None
@@ -85,6 +88,20 @@ class MiniMaxAgentsModel(OpenAIChatCompletionsModel):
                     },
                 )
             raise
+        if any(getattr(item, "type", "") == "function_call" for item in response.output):
+            return response
+        text = "\n".join(
+            value
+            for value in (ItemHelpers.extract_text(item) for item in response.output)
+            if value
+        )
+        response.output = [ResponseFunctionToolCall(
+            arguments=json.dumps({"content": text}, ensure_ascii=False),
+            call_id=f"call_text_nudge_{uuid4().hex}",
+            name=TEXT_NUDGE_TOOL_NAME,
+            type="function_call",
+        )]
+        return response
 
     async def _record_request(self, request: httpx.Request) -> None:
         context = _ACTIVE_CONTEXT.get()
