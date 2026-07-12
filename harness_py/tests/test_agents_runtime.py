@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 from agents import Model, ModelResponse, ModelSettings, ModelTracing, Usage
 from openai.types.responses import ResponseFunctionToolCall
@@ -10,23 +12,31 @@ from openai.types.responses import ResponseFunctionToolCall
 from harness_py.agents_runtime import AgentsSdkHarnessRuntime
 from harness_py.conversation import ConversationState
 from harness_py.live_chat import LiveResearchChatHarness
-from harness_py.tests.test_harness_py import PythonHarnessPrototypeTest
+from harness_py.tests import test_harness_py as _harness_tests
 
 
 class AgentsRuntimeTest(unittest.TestCase):
     def test_sdk_runtime_executes_stateful_tools_and_validated_final_submission(self) -> None:
-        dataset = PythonHarnessPrototypeTest()._synthetic_dataset()
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
         progress: list[dict] = []
-        harness = LiveResearchChatHarness(
-            AgentsSdkHarnessRuntime(model=_ScriptedAgentsModel())
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            harness = LiveResearchChatHarness(
+                AgentsSdkHarnessRuntime(model=_ScriptedAgentsModel()),
+                eval_dump_dir=tmp,
+            )
 
-        run, state = harness.run_turn(
-            dataset,
-            ConversationState.new("agents_sdk_test"),
-            "What is the synthetic answer?",
-            progress_listener=progress.append,
-        )
+            run, state = harness.run_turn(
+                dataset,
+                ConversationState.new("agents_sdk_test"),
+                "What is the synthetic answer?",
+                progress_listener=progress.append,
+            )
+            run_dir = Path(tmp) / run["run_id"]
+            events = [
+                json.loads(line)
+                for line in (run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            result = json.loads((run_dir / "result.json").read_text(encoding="utf-8"))
 
         self.assertEqual("COMPLETED", run["status"])
         self.assertEqual("42", run["research_answer"]["fields"]["answer"])
@@ -35,6 +45,10 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertTrue(run["run_id"].startswith("run_"))
         self.assertEqual(1, state.turn_index)
         self.assertIn("answer.validation", _event_kinds(progress, run))
+        self.assertIn("run.started", {event["kind"] for event in events})
+        self.assertIn("tool.completed", {event["kind"] for event in events})
+        self.assertTrue(result["capture_ok"])
+        self.assertEqual(run["run_id"], result["result"]["run_id"])
 
 
 class _ScriptedAgentsModel(Model):
