@@ -60,6 +60,7 @@ class ResearchHarnessService:
         if not paper_ids:
             raise ValueError("scope.paper_ids must contain the papers authorized by Java")
 
+        # Java 是权限源，Python 只加载本次请求明确授权的论文。
         dataset = self.corpus_store.load_dataset(
             paper_ids=paper_ids,
             limit=max(len(paper_ids), self.corpus_limit),
@@ -160,6 +161,7 @@ def serve(
                         **event,
                     })
                 except (BrokenPipeError, ConnectionResetError):
+                    # 写流失败即视为客户端取消，后续模型或工具回调会看到该状态。
                     disconnected = True
                     raise
 
@@ -213,12 +215,12 @@ def serve(
 def _conversation_state(request: JsonMap, conversation_id: str, paper_ids: list[str]) -> ConversationState:
     history = [
         {
-            "role": str(child_map(item).get("role") or ""),
-            "content": str(child_map(item).get("content") or ""),
+            "role": str(item.get("role") or ""),
+            "content": str(item.get("content") or ""),
         }
-        for item in as_list(request.get("history"))
-        if str(child_map(item).get("role") or "") in {"user", "assistant"}
-        and str(child_map(item).get("content") or "").strip()
+        for raw in as_list(request.get("history"))
+        if (item := child_map(raw)).get("role") in {"user", "assistant"}
+        and str(item.get("content") or "").strip()
     ]
     memory = child_map(request.get("research_memory"))
     previous_evidence = {

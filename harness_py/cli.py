@@ -36,38 +36,17 @@ def main(argv: list[str] | None = None) -> int:
     agent_parser = subcommands.add_parser("agent-run", help="Run the real tool-using agent harness with MiniMax.")
     agent_parser.add_argument("--out", default="eval/rag/runs/python-minimax-agent")
     agent_parser.add_argument("--case-id", action="append", default=[])
-    agent_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    agent_parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
-    agent_parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
-    agent_parser.add_argument("--max-tokens", type=int, default=3000)
+    _add_runtime_options(agent_parser)
     chat_parser = subcommands.add_parser("chat", help="Chat with current product DB papers.")
     chat_parser.add_argument("--question", required=True)
-    chat_parser.add_argument("--paper-id", action="append", default=[])
-    chat_parser.add_argument("--paper-query", default="")
-    chat_parser.add_argument("--limit", type=int, default=30)
-    chat_parser.add_argument("--out", default="")
-    chat_parser.add_argument("--state", default="")
-    chat_parser.add_argument("--state-out", default="")
-    chat_parser.add_argument("--conversation-id", default="live_conversation")
+    _add_chat_options(chat_parser)
     chat_parser.add_argument("--print-state", action="store_true")
-    chat_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    chat_parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
-    chat_parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
-    chat_parser.add_argument("--max-tokens", type=int, default=3000)
+    _add_runtime_options(chat_parser)
     chat_parser.add_argument("--print-run", action="store_true")
     shell_parser = subcommands.add_parser("chat-shell", help="Open an interactive terminal chat with product DB papers.")
-    shell_parser.add_argument("--paper-id", action="append", default=[])
-    shell_parser.add_argument("--paper-query", default="")
-    shell_parser.add_argument("--limit", type=int, default=30)
-    shell_parser.add_argument("--out", default="")
-    shell_parser.add_argument("--state", default="")
-    shell_parser.add_argument("--state-out", default="")
-    shell_parser.add_argument("--conversation-id", default="live_conversation")
+    _add_chat_options(shell_parser)
     shell_parser.add_argument("--print-run", action="store_true")
-    shell_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    shell_parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
-    shell_parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
-    shell_parser.add_argument("--max-tokens", type=int, default=3000)
+    _add_runtime_options(shell_parser)
     serve_parser = subcommands.add_parser("serve", help="Run the internal HTTP research harness service.")
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8091)
@@ -108,14 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         harness = GoldenFixtureHarness()
         runs = [harness.run_case(dataset, case) for case in dataset.cases]
         report = BehaviorScorer().score_dataset(dataset, runs)
-        out = Path(args.out)
-        out.mkdir(parents=True, exist_ok=True)
-        for run in runs:
-            case_dir = out / str(run["case_id"])
-            case_dir.mkdir(parents=True, exist_ok=True)
-            _write_json(case_dir / "harness_run.json", run)
-            _write_child_artifacts(case_dir, run)
-        _write_json(out / "score_report.json", report)
+        out = _write_runs(args.out, runs, report)
         print(json.dumps({"out": str(out), "score_report": report}, indent=2, sort_keys=True))
         return 0 if report["failed_count"] == 0 else 1
     if args.command == "agent-run":
@@ -141,14 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             dataset if not selected else _dataset_with_cases(dataset, cases),
             runs,
         )
-        out = Path(args.out)
-        out.mkdir(parents=True, exist_ok=True)
-        for run in runs:
-            case_dir = out / str(run["case_id"])
-            case_dir.mkdir(parents=True, exist_ok=True)
-            _write_json(case_dir / "harness_run.json", run)
-            _write_child_artifacts(case_dir, run)
-        _write_json(out / "score_report.json", report)
+        out = _write_runs(args.out, runs, report)
         print(json.dumps({
             "out": str(out),
             "provider": provider.public_diagnostics(),
@@ -173,18 +138,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         state = _chat_state(args, dataset)
         run, state = harness.run_turn(dataset, state, args.question)
-        out_value = None
-        if args.out:
-            out = Path(args.out)
-            case_dir = out / str(run["case_id"])
-            case_dir.mkdir(parents=True, exist_ok=True)
-            _write_json(case_dir / "harness_run.json", run)
-            _write_child_artifacts(case_dir, run)
-            _write_json(case_dir / "conversation_state.json", state.to_dict())
-            out_value = str(case_dir)
+        case_dir = _write_run_if_requested(run, state, args.out)
         state_path = args.state_out or args.state
-        if state_path:
-            state.save(state_path)
+        _save_state_if_requested(state, state_path)
         response = {
             "provider": provider.public_diagnostics(),
             "corpus": summarize_product_corpus(dataset).to_dict(),
@@ -202,8 +158,8 @@ def main(argv: list[str] | None = None) -> int:
                 "tool_call_count": run["diagnostics"].get("tool_call_count"),
             },
         }
-        if out_value:
-            response["out"] = out_value
+        if case_dir:
+            response["out"] = str(case_dir)
         if args.print_run:
             response["harness_run"] = run
         if args.print_state:
@@ -277,6 +233,24 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         return 0 if report["accepted"] else 1
     return 2
+
+
+def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
+    # 三个实时命令共享同一组运行时开关，集中维护可避免默认值悄悄分叉。
+    parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
+    parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
+    parser.add_argument("--max-tokens", type=int, default=3000)
+
+
+def _add_chat_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--paper-id", action="append", default=[])
+    parser.add_argument("--paper-query", default="")
+    parser.add_argument("--limit", type=int, default=30)
+    parser.add_argument("--out", default="")
+    parser.add_argument("--state", default="")
+    parser.add_argument("--state-out", default="")
+    parser.add_argument("--conversation-id", default="live_conversation")
 
 
 def run_chat_shell(
@@ -380,8 +354,7 @@ def _live_harness(
     max_completion_tokens: int,
     eval_dump: str,
 ):
-    store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
-    provider = store.load_active_provider("llm")
+    provider = _provider(provider_source)
     runtime = build_harness_runtime(
         provider,
         runtime_name,
@@ -392,15 +365,18 @@ def _live_harness(
 
 def _live_model(provider_source: str):
     """Legacy helper retained for callers that still construct the hand-written runtime."""
-    store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
-    provider = store.load_active_provider("llm")
+    provider = _provider(provider_source)
     return provider, MiniMaxChatModel(provider, temperature=0.0, top_p=1.0)
 
 
 def _judge_model(provider_source: str):
-    store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
-    provider = store.load_active_provider("llm")
+    provider = _provider(provider_source)
     return provider, MiniMaxChatModel(provider, temperature=0.0, top_p=1.0)
+
+
+def _provider(provider_source: str):
+    store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
+    return store.load_active_provider("llm")
 
 
 def _chat_state(args, dataset):
@@ -423,6 +399,18 @@ def _state_scope_paper_ids(path: str) -> list[str]:
 
 def _dataset_with_cases(dataset, cases):
     return replace(dataset, cases=cases)
+
+
+def _write_runs(out_path: str, runs: list[dict], report: dict) -> Path:
+    out = Path(out_path)
+    out.mkdir(parents=True, exist_ok=True)
+    for run in runs:
+        case_dir = out / str(run["case_id"])
+        case_dir.mkdir(parents=True, exist_ok=True)
+        _write_json(case_dir / "harness_run.json", run)
+        _write_child_artifacts(case_dir, run)
+    _write_json(out / "score_report.json", report)
+    return out
 
 
 def _write_child_artifacts(case_dir: Path, run: dict) -> None:
