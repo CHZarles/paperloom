@@ -1,0 +1,28 @@
+{
+  "answer_id": "answer_live_chat_257cfe464634",
+  "answer_type": "multi_hop_chain",
+  "cited_claim_ids": [
+    "c_hop1_basis",
+    "c_hop1_method_align",
+    "c_hop2_basis",
+    "c_hop2_self_attention",
+    "c_no_direct_edge"
+  ],
+  "cited_evidence_ids": [
+    "ev_38e0df75f5c1dc48",
+    "ev_b7e36fa4c9ee54fa",
+    "ev_4396b43fa54864c2",
+    "ev_df9905f582fb729a"
+  ],
+  "fields": {},
+  "markdown": "## Two-Hop Architecture Lineage (GPT-3 → GPT-2 → Attention Is All You Need)\n\n| Hop | From → To | Basis | Corpus Evidence (quote / evidence_id) |\n|---|---|---|---|\n| 1 | **GPT-3** ([RWC+19] in text) → **GPT-2** | **Architectural inheritance** (model + training pipeline reused wholesale) | GPT-3 §2.1 (ev_38e0df75f5c1dc48): *\"We use the same model and architecture as GPT-2 [RWC+19], including the modified initialization, pre-normalization, and reversible tokenization described therein…\"*; §2 (ev_b7e36fa4c9ee54fa): *\"Our basic pre-training approach, including model, data, and training, is similar to the process described in [RWC+19]…\"* |\n| 2 | **GPT-2** → **Attention Is All You Need** (Vaswani et al., 2017) | **Cited influence / component reuse** (Transformer adopted as backbone) | GPT-2 §2.3 (ev_4396b43fa54864c2): *\"We use a Transformer (Vaswani et al., 2017) based architecture for our LMs.\"*; §2 (ev_df9905f582fb729a): *\"…self-attention architectures like the Transformer (Vaswani et al., 2017).\"* |\n\n### Notes on the lineage\n- **Hop 1 basis**: *architectural inheritance*. GPT-3 explicitly reuses the GPT-2 model/architecture (init, pre-norm, reversible tokenization) and scales it up; this is a direct citation [RWC+19] of the GPT-2 paper, not an indirect lineage.\n- **Hop 2 basis**: *cited influence + component reuse*. GPT-2 cites Vaswani et al. (2017) twice: once to declare the Transformer as its base architecture, once to characterize it as a self-attention architecture. This makes the Transformer a reused component of GPT-2, which GPT-3 in turn inherits via Hop 1.\n- **Forbidden edge avoided**: No corpus quote in the GPT-3 paper references Vaswani et al. 2017 directly; the provided ev_38e0df75f5c1dc48 and ev_b7e36fa4c9ee54fa both cite [RWC+19] (GPT-2) and a separately introduced Sparse Transformer reference. Therefore the lineage necessarily flows through GPT-2, satisfying the no-direct-GPT-3→Transformer requirement.",
+  "outcome": "answered",
+  "question_id": "live_chat_257cfe464634",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_257cfe464634"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Two-hop chain GPT-3 → GPT-2 → Attention Is All You Need is fully supported by corpus evidence; no direct GPT-3→Transformer edge is invented.",
+  "verification_id": "verification_live_chat_257cfe464634"
+}

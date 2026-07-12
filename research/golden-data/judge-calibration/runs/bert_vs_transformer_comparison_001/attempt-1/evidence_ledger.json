@@ -1,0 +1,167 @@
+{
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "supports_claim_ids": [],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_12722a3120bf0362",
+      "evidence_quality": "verified",
+      "location": "reading_element_c4c19cd7893248e68718b34c655eb76f",
+      "location_ref": "reading_element_c4c19cd7893248e68718b34c655eb76f",
+      "matched_anchor_id": null,
+      "page": 2,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3 Model Architecture",
+      "source_kind": "reading_element",
+      "span_text": "Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35]. Here, the encoder maps an input sequence of symbol representations $( x _ { 1 } , . . . , x _ { n } )$ to a sequence of continuous representations $\\textbf { z } = ~ ( z _ { 1 } , . . . , z _ { n } )$ . Given z, the decoder then generates an output sequence $\\left( y _ { 1 } , . . . , y _ { m } \\right)$ of symbols one element at a time. At each step the model is auto-regressive [10], consuming the previously generated symbols as additional input when generating the next.",
+      "supports_claim_ids": [
+        "c1_arch_transformer",
+        "c4_obj_transformer"
+      ],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_5a465492abf3009b",
+      "evidence_quality": "verified",
+      "location": "reading_element_2a9dd535848b4faeb46b65bdb08b1199",
+      "location_ref": "reading_element_2a9dd535848b4faeb46b65bdb08b1199",
+      "matched_anchor_id": null,
+      "page": 5,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.2.3 Applications of Attention in our Model",
+      "source_kind": "reading_element",
+      "span_text": "• Similarly, self-attention layers in the decoder allow each position in the decoder to attend to all positions in the decoder up to and including that position. We need to prevent leftward information flow in the decoder to preserve the auto-regressive property. We implement this inside of scaled dot-product attention by masking out (setting to −∞) all values in the input of the softmax which correspond to illegal connections. See Figure 2.",
+      "supports_claim_ids": [
+        "c3_dir_transformer"
+      ],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_3540835408466c6e",
+      "evidence_quality": "verified",
+      "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+      "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+      "matched_anchor_id": "bert_transformer_encoder_background",
+      "page": 3,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3 BERT",
+      "source_kind": "reading_element",
+      "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+      "supports_claim_ids": [
+        "c2_arch_dir_bert"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_0f82af3db4559191",
+      "evidence_quality": "verified",
+      "location": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+      "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+      "matched_anchor_id": null,
+      "page": 1,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "1 Introduction",
+      "source_kind": "reading_element",
+      "span_text": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-toright language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer. In addition to the masked language model, we also use a “next sentence prediction” task that jointly pretrains text-pair representations. The contributions of our paper are as follows:",
+      "supports_claim_ids": [
+        "c2_arch_dir_bert",
+        "c5_obj_mlm_bert",
+        "c6_obj_nsp_bert"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_45a55f2597027de7",
+      "evidence_quality": "verified",
+      "location": "reading_element_b7a270533c8b4dd497028e1af831fddd",
+      "location_ref": "reading_element_b7a270533c8b4dd497028e1af831fddd",
+      "matched_anchor_id": null,
+      "page": 16,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "C.2 Ablation for Different Masking Procedures",
+      "source_kind": "reading_element",
+      "span_text": "In Section 3.1, we mention that BERT uses a mixed strategy for masking the target tokens when pre-training with the masked language model (MLM) objective. The following is an ablation study to evaluate the effect of different masking strategies.",
+      "supports_claim_ids": [
+        "c5_obj_mlm_bert"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_a1c234fbe7b3",
+  "missing_evidence": [],
+  "question_id": "live_chat_a1c234fbe7b3",
+  "rejected_items": []
+}

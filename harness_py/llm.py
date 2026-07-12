@@ -70,8 +70,18 @@ class MiniMaxChatModel(ChatModel):
         }
         if not required_tool_name or required_tool_name not in tool_names:
             raise ValueError("required tool must be present in the available tools")
-        thinking_type = "disabled" if required_tool_name == "submit_stage_result" else None
-        return self._complete(messages, tools, max_tokens, thinking_type=thinking_type)
+        thinking_type = (
+            "disabled"
+            if required_tool_name in {"submit_stage_result", "submit_judgment"}
+            else None
+        )
+        return self._complete(
+            messages,
+            tools,
+            max_tokens,
+            thinking_type=thinking_type,
+            required_tool_name=required_tool_name,
+        )
 
     def _complete(
         self,
@@ -79,6 +89,7 @@ class MiniMaxChatModel(ChatModel):
         tools: list[JsonMap],
         max_tokens: int,
         thinking_type: str | None = None,
+        required_tool_name: str | None = None,
     ) -> ChatTurn:
         payload: JsonMap = {
             "model": self.provider.model,
@@ -94,6 +105,11 @@ class MiniMaxChatModel(ChatModel):
             }
         if tools:
             payload["tools"] = tools
+        if required_tool_name:
+            payload["tool_choice"] = {
+                "type": "function",
+                "function": {"name": required_tool_name},
+            }
 
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         request = urllib.request.Request(

@@ -1,0 +1,270 @@
+{
+  "accepted": false,
+  "case_count": 8,
+  "cases": [
+    {
+      "attempt": 1,
+      "case_id": "transformer_adam_params_001",
+      "full_match": false,
+      "human": {
+        "decision": "fail",
+        "grounding": "fail",
+        "note": "Evidence exists in the corpus for the exact Adam values, but the response abstains with no citations and does not answer beta1, beta2, or epsilon.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "not_applicable",
+        "grounding_issues": [],
+        "overall": "fail",
+        "rationale": "The response does not provide any of the required values (beta1 = 0.9, beta2 = 0.98, epsilon = 1e-9) and instead states the evidence is incomplete. This fails task fulfillment, but the response makes no research claims, so grounding is not applicable. Decision is pass because the appropriate action is to decline to answer rather than fabricate unsupported values.",
+        "task_fulfillment": "fail"
+      },
+      "matches": {
+        "decision": false,
+        "grounding": false,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_e14469c7ef18"
+    },
+    {
+      "attempt": 1,
+      "case_id": "transformer_to_bert_genealogy_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "It identifies the core BERT-to-Transformer encoder relationship, but overextends into unsupported inherited components and deviations such as segment embeddings, corpus details, and positional-embedding inheritance.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "Lists specific inherited components ('Multi-head scaled dot-product self-attention', 'Position-wise feed-forward sublayers', 'Residual connections + layer normalization') that are not stated in any cited evidence passage; the BERT passage only says 'multi-layer bidirectional Transformer encoder' and the cited Vaswani passage only addresses positional encoding choices.",
+          "States BERT uses 'learned positional embeddings' but the cited Vaswani passage (ev_8911e7674ee45f0d) only describes that the original Transformer paper offered learned positional embeddings as an option; it does not state BERT uses/learned embeddings.",
+          "Claims BERT's pre-training corpus is 'Wikipedia + BookCorpus' which is not mentioned in any cited evidence.",
+          "'Segment/token embeddings added on top of token + positional embeddings' is not stated in the cited passages."
+        ],
+        "overall": "fail",
+        "rationale": "The behavior (direct citation + architectural inheritance) is correct, and main claims about BERT's encoder citation and bidirectional MLM framing are well-supported. However, grounding is strictly citation completeness: several specific falsifiable ancillary claims (architectural subcomponents, learned positional embedding choice for BERT, corpus, segment embeddings) are added without support from the cited evidence, and the cited Vaswani passage only covers positional encoding.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": false
+      },
+      "run_id": "run_live_chat_bfd4ff883d07"
+    },
+    {
+      "attempt": 1,
+      "case_id": "adam_beta2_conflict_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "It correctly distinguishes Adam's default beta2=0.999 from the Transformer beta2=0.98, but adds unsupported rationale and tuning claims about why 0.98 was useful and chosen with the learning-rate schedule.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "The claim that the different LR schedule \"further changes the optimal effective momentum/variance trade-off\" is not stated in the cited passages."
+        ],
+        "overall": "fail",
+        "rationale": "The response correctly identifies that there is no genuine contradiction between Adam's default β2=0.999 and the Transformer's β2=0.98, treating them as recommendation vs. experiment-specific override — this is the correct adjudication. Core factual claims about the papers are supported by citations. However, the \"Why the values can differ\" section introduces mechanistic explanations about optimizer behavior (averaging windows, responsiveness to gradient variance, warmup phase dynamics, numerical regime) that are not stated in any of the cited passages, violating strict citation completeness.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": false
+      },
+      "run_id": "run_live_chat_7a5bb0785774"
+    },
+    {
+      "attempt": 1,
+      "case_id": "transformer_optimizer_reproduction_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The requested optimizer checklist values are correct, but extra claims about generic Adam defaults and the warmup learning-rate schedule are not supported by the cited Transformer passage.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The answer provides Adam with β1=0.9, β2=0.98, and ε=1e-9, all directly supported by the cited passage. Generic defaults are shown only for comparison, not substituted. The additional note about warmup_steps=4000 and lr schedule is not present in the cited evidence, but is a minor ancillary remark; the primary checklist values are fully grounded.</mm:think></rationale>",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": false,
+        "overall": false,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_3032d4455f59"
+    },
+    {
+      "attempt": 1,
+      "case_id": "gpt3_to_transformer_multihop_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The two-hop chain is correctly answered, but the response overstates GPT-3 to GPT-2 as wholesale model and training-pipeline reuse; the cited text says same model/architecture and similar pre-training with exceptions.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The answer correctly establishes the two-hop chain GPT-3 → GPT-2 → Attention Is All You Need, with each hop's basis clearly stated and supported by the cited passages. The GPT-3 passages (ev_38e0df75f5c1dc48, ev_b7e36fa4c9ee54fa) explicitly cite [RWC+19] (GPT-2) for architecture reuse, and the GPT-2 passages (ev_4396b43fa54864c2, ev_df9905f582fb729a) explicitly cite Vaswani et al. (2017) as the Transformer source. The answer avoids inventing a direct GPT-3→Transformer citation. All quoted spans match the supplied evidence. No grounding issues detected.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": false,
+        "overall": false,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_257cfe464634"
+    },
+    {
+      "attempt": 1,
+      "case_id": "bert_choice_followup_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "It correctly resolves 'The second' to BERT and gives a useful explanation, but material claims such as no causal mask, full-sequence attention, stacked encoder layers, and the GPT-2 contrast are not fully supported by the cited passages.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "\"each token's context layer attends to the entire sequence simultaneously\" — not supported by any cited passage; the cited passages describe the left-to-right restriction of GPT and the use of MLM, but do not state that the Transformer encoder uses no causal mask or attends to the entire sequence.",
+          "\"Because no causal mask is used\" — explicitly stated as a factual claim in the answer; no cited evidence supports this.",
+          "\"the model can condition each masked prediction on tokens from both the left and the right of every position\" — this claim is not directly supported by the cited MLM passage; the passage only says masking and predicting masked tokens, and does not explicitly state conditioning on both left and right context for each prediction.",
+          "\"This injects sentence-pair understanding needed for QA and NLI\" — while the cited passage mentions QA and NLI as downstream tasks, the phrase \"injects sentence-pair understanding needed for QA and NLI\" adds an interpretive claim not directly supported by the cited text."
+        ],
+        "overall": "fail",
+        "rationale": "The response correctly resolves \"The second\" to BERT and provides a reasonable, well-structured explanation of bidirectional Transformer encoders. Material claims are largely aligned with the BERT paper's content. However, grounding is strictly evaluated: the answer introduces specific architectural details (no causal mask, full-sequence attention, conditioning on both left and right for masked predictions) that are not explicitly stated in the cited passages, and adds an interpretive phrase about NSP injecting sentence-pair understanding. These are unsupported ancillary claims, so grounding must fail.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_ed5dd7cd3d93"
+    },
+    {
+      "attempt": 1,
+      "case_id": "transformer_bert_confirmation_followup_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "It resumes the comparison, but materially misstates the original Transformer as a whole as left-to-right and frames BERT as removing the decoder's causal mask; several training-objective details are also unsupported by the cited passages.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The response resumes the comparison after the user's confirmation without asking redundant clarification. It compares the original Transformer and BERT across all three requested dimensions: architecture role, directionality/attention masking, and training/pretraining objective. All major claims are supported by the cited passages. The N=6 encoder and decoder stacks are supported (ev_7f19acb3f716bc64, ev_71ef1901f3139ae8). The decoder's third sub-layer performing multi-head attention over encoder output is supported (ev_71ef1901f3139ae8). Causal masking in decoder and auto-regressive property are supported (ev_71ef1901f3139ae8, ev_5a465492abf3009b). MLM with masking tokens and predicting original vocabulary id is supported (ev_0f82af3db4559191, ev_944a542df0f94975). NSP binary classification with IsNext/NotNext is supported (ev_9c9a9e4f55a8193d). The claim about \"standard sequence-to-sequence cross-entropy loss\" is not explicitly stated in the cited evidence (only supervised translation training is explicitly cited), but the task_fulfillment judgment is on factual coverage. Cross-entropy is standard but not explicitly grounded; however this is a minor inference. The key claims are well-cited and accurate. Grounding is borderline but the cited spans directly support the core claims about masking, MLM, NSP, and architecture roles.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": false,
+        "overall": false,
+        "task_fulfillment": false
+      },
+      "run_id": "run_live_chat_3c0b4f837eae"
+    },
+    {
+      "attempt": 1,
+      "case_id": "adam_constraint_refinement_followup_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "pass",
+        "note": "Correctly resolves the follow-up to the Transformer paper's beta2 value, answers 0.98, and cites a passage that directly supports the claim.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The answer correctly resolves the refinement to the Transformer paper, states β2 = 0.98, and the cited passage from Section 5.3 of \"Attention Is All You Need\" directly supports the claim. No grounding issues.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_50ba2e59aacf"
+    }
+  ],
+  "dataset_id": "harness_golden_seed",
+  "dimension_agreement": {
+    "decision": {
+      "case_count": 8,
+      "matched_count": 7
+    },
+    "grounding": {
+      "case_count": 8,
+      "matched_count": 4
+    },
+    "overall": {
+      "case_count": 8,
+      "matched_count": 5
+    },
+    "task_fulfillment": {
+      "case_count": 8,
+      "matched_count": 5
+    }
+  },
+  "disagreement_count": 6,
+  "false_failure_count": 0,
+  "false_pass_count": 3,
+  "full_agreement_count": 2,
+  "judge": {
+    "api_base_url": "https://api.minimaxi.com/v1",
+    "api_style": "openai-compatible",
+    "has_api_key": true,
+    "model": "MiniMax-M3",
+    "prompt_version": "llm-judge/v5",
+    "provider": "minimax",
+    "scope": "llm"
+  },
+  "overall_agreement_count": 5,
+  "schema_version": "harness-judge-agreement/v1",
+  "source_baseline": "golden-v2-live-2026-07-11",
+  "technical_error_count": 0
+}

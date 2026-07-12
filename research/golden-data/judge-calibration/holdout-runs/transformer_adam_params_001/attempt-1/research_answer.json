@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_live_chat_e14469c7ef18",
+  "answer_type": "exact_fact",
+  "cited_claim_ids": [],
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "The available evidence does not satisfy every required research obligation.",
+  "outcome": null,
+  "question_id": "live_chat_e14469c7ef18",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_e14469c7ef18"
+  ],
+  "sections": [],
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "The available evidence does not satisfy every required research obligation.",
+  "verification_id": "verification_live_chat_e14469c7ef18"
+}

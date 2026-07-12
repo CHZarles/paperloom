@@ -2,11 +2,12 @@
 
 This is a fast prototype of the research harness as a Python module.
 
-It has three runnable modes:
+It has three harness modes and one evaluator:
 
 - `GoldenFixtureHarness`: deterministic behavior fixture used to validate authored v2 cases and scorer output.
 - `ResearchAgentHarness`: paradigm-driven semantic-stage harness backed by MiniMax through the product DB provider config.
 - `LiveResearchChatHarness`: multi-turn chat wrapper over the same stage runtime for current product DB papers.
+- `LLMJudge`: one-call semantic evaluator calibrated against fixed human-labelled runs.
 
 The real agent harness keeps one external interface:
 
@@ -92,9 +93,33 @@ when every configured dimension avoids `fail`. The four dimensions are:
 - `content`: expected scalar facts are present with matching normalized values.
 - `grounding`: citation policy, cited evidence ids, and supported claim grounding are valid.
 
-Claim rubrics and review strings are carried forward as `review.status=not_run` until human review or
-a later semantic judge exists. Stage order, tool count, intent labels, and answer prose are not golden
-expectations.
+This deterministic scorer remains useful for artifact diagnostics, but exact field and anchor checks
+are not the primary semantic quality signal. Stage order, tool count, intent labels, and answer prose
+are not Golden expectations.
+
+## LLM Judge Calibration
+
+`judge-calibrate` compares one structured LLM judgment with the fixed human labels in
+`research/golden-data/human-labels.yaml`:
+
+```bash
+python3 -m harness_py judge-calibrate \
+  --labels research/golden-data/human-labels.yaml \
+  --out eval/rag/runs/llm-judge-calibration
+```
+
+The judge sees the user request, expected-behavior rubric, user-visible answer, cited evidence
+passages, and citation-integrity diagnostics. It does not receive the human verdict, annotation note,
+stage trace, tool count, paradigm, `answer_type`, private answer fields, or exact anchor tags.
+
+Each valid run uses one required `submit_judgment` tool call for `decision`, `task_fulfillment`, and
+`grounding`. `overall` is derived deterministically. The command writes `agreement_report.json` and
+returns `0` only when every labelled run agrees on every dimension, `1` for semantic disagreement,
+and `2` for setup or judge protocol errors.
+
+The default judge uses the active DB-backed LLM provider with temperature zero. When MiniMax-M3
+judges MiniMax-M3 harness outputs, the report is suitable for prototype calibration but remains a
+same-model, provisional evaluation.
 
 ## Tools
 

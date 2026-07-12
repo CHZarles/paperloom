@@ -1,0 +1,27 @@
+{
+  "answer_id": "answer_live_chat_ed5dd7cd3d93",
+  "answer_type": "explanation",
+  "cited_claim_ids": [
+    "c1_unidirectional_limit",
+    "c2_bidirectional_pre_training",
+    "c3_mlm_objective",
+    "c4_nsp_objective"
+  ],
+  "cited_evidence_ids": [
+    "ev_80e066e1a3177125",
+    "ev_b5cb6101ea792641",
+    "ev_668e1f7f3b701941",
+    "ev_9c9a9e4f55a8193d"
+  ],
+  "fields": {},
+  "markdown": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding\n\nHow BERT implements bidirectional Transformer encoders:\n\n1. Bidirectional self-attention enables deep bidirectional representations.\nUnlike OpenAI GPT, which \"uses a left-to-right architecture, where every token can only attend to previous tokens in the self-attention layers of the Transformer (Vaswani et al., 2017)\" [ev_80e066e1a3177125], BERT applies Transformer encoders without the causal mask, so each token's context layer attends to the entire sequence simultaneously. \"BERT uses masked language models to enable pretrained deep bidirectional representations,\" in contrast to \"the shallow concatenation of independently trained left-to-right and right-to-left LMs\" of ELMo [ev_b5cb6101ea792641].\n\n2. Masked Language Modeling (MLM) is the core mechanism for bidirectionality.\n\"To train a deep bidirectional representation, we simply mask some percentage of the input tokens at random, and then predict those masked tokens… In all of our experiments, we mask 15% of all WordPiece tokens in each sequence at random.\" Because no causal mask is used, the model can condition each masked prediction on tokens from both the left and the right of every position [ev_668e1f7f3b701941].\n\n3. Next Sentence Prediction (NSP) complements MLM.\nBERT is pretrained on a binarized next-sentence prediction task: \"50% of the time B is the actual next sentence that follows A (labeled IsNext), and 50% of the time it is a random sentence from the corpus (labeled NotNext).\" This injects sentence-pair understanding needed for QA and NLI [ev_9c9a9e4f55a8193d].\n\nNet effect: by stacking bidirectional Transformer encoder layers and training them with MLM (+ NSP), every layer sees the full left and right context at every position, yielding the \"deep bidirectional\" representation that distinguishes BERT from unidirectional left-to-right models such as GPT-2.",
+  "outcome": "answered",
+  "question_id": "live_chat_ed5dd7cd3d93",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_ed5dd7cd3d93"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "BERT implements bidirectional Transformer encoders by stacking deep self-attention layers with full (non-causal) attention, so every token attends to both left and right context. Bidirectionality is realized through the Masked Language Modeling pretraining objective (predicting 15% masked tokens from full context), combined with NSP for sentence-pair understanding.",
+  "verification_id": "verification_live_chat_ed5dd7cd3d93"
+}

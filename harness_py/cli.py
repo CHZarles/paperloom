@@ -10,6 +10,7 @@ from .audit import audit_dataset
 from .dataset import load_dataset
 from .conversation import ConversationState
 from .golden_fixture import GoldenFixtureHarness
+from .judge import LLMJudge, evaluate_calibration, load_calibration_cases
 from .live_chat import LiveResearchChatHarness
 from .llm import MiniMaxChatModel
 from .product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
@@ -61,6 +62,14 @@ def main(argv: list[str] | None = None) -> int:
     shell_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
     shell_parser.add_argument("--max-turns", type=int, default=8)
     shell_parser.add_argument("--max-tokens", type=int, default=3000)
+    judge_parser = subcommands.add_parser(
+        "judge-calibrate",
+        help="Compare one LLM judge with fixed human-labelled harness runs.",
+    )
+    judge_parser.add_argument("--labels", default="research/golden-data/human-labels.yaml")
+    judge_parser.add_argument("--out", default="eval/rag/runs/llm-judge-calibration")
+    judge_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    judge_parser.add_argument("--max-tokens", type=int, default=1200)
     args = parser.parse_args(argv)
 
     if args.command == "validate":
@@ -197,6 +206,33 @@ def main(argv: list[str] | None = None) -> int:
             print_run=args.print_run,
         )
         return 0
+    if args.command == "judge-calibrate":
+        try:
+            calibration = load_calibration_cases(args.labels)
+            provider, model = _judge_model(args.provider_source)
+        except Exception as error:
+            print(json.dumps({
+                "error": "judge_calibration_setup_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        report = evaluate_calibration(
+            calibration,
+            LLMJudge(model, max_tokens=args.max_tokens),
+            judge_metadata=provider.public_diagnostics(),
+        )
+        out = Path(args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        report_path = out / "agreement_report.json"
+        _write_json(report_path, report)
+        print(json.dumps({
+            "out": str(out),
+            "agreement_report": report,
+        }, indent=2, sort_keys=True, ensure_ascii=False))
+        if report["technical_error_count"]:
+            return 2
+        return 0 if report["accepted"] else 1
     return 2
 
 
@@ -297,6 +333,12 @@ def _live_model(provider_source: str):
     store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
     provider = store.load_active_provider("llm")
     return provider, MiniMaxChatModel(provider)
+
+
+def _judge_model(provider_source: str):
+    store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
+    provider = store.load_active_provider("llm")
+    return provider, MiniMaxChatModel(provider, temperature=0.0, top_p=1.0)
 
 
 def _chat_state(args, dataset):

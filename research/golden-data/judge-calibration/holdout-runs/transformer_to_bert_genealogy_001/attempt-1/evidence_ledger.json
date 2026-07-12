@@ -1,0 +1,190 @@
+{
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "supports_claim_ids": [],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_3540835408466c6e",
+      "evidence_quality": "verified",
+      "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+      "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+      "matched_anchor_id": "bert_transformer_encoder_background",
+      "page": 3,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3 BERT",
+      "source_kind": "reading_element",
+      "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+      "supports_claim_ids": [
+        "c1",
+        "c3",
+        "c6"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_bdb5cc5caf5772fe",
+      "evidence_quality": "verified",
+      "location": "reading_element_9a041d0b686c48b6a77ab12ee8829efc",
+      "location_ref": "reading_element_9a041d0b686c48b6a77ab12ee8829efc",
+      "matched_anchor_id": null,
+      "page": 3,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3 BERT",
+      "source_kind": "reading_element",
+      "span_text": "BERT<sub>BASE</sub> was chosen to have the same model size as OpenAI GPT for comparison purposes. Critically, however, the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left.<sup>4</sup>",
+      "supports_claim_ids": [
+        "c2",
+        "c4"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_80e066e1a3177125",
+      "evidence_quality": "verified",
+      "location": "reading_element_f21a88ef26644d24a92bf0cf6b351925",
+      "location_ref": "reading_element_f21a88ef26644d24a92bf0cf6b351925",
+      "matched_anchor_id": null,
+      "page": 1,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "1 Introduction",
+      "source_kind": "reading_element",
+      "span_text": "We argue that current techniques restrict the power of the pre-trained representations, especially for the fine-tuning approaches. The major limitation is that standard language models are unidirectional, and this limits the choice of architectures that can be used during pre-training. For example, in OpenAI GPT, the authors use a left-toright architecture, where every token can only attend to previous tokens in the self-attention layers of the Transformer (Vaswani et al., 2017). Such restrictions are sub-optimal for sentence-level tasks, and could be very harmful when applying finetuning based approaches to token-level tasks such as question answering, where it is crucial to incorporate context from both directions.",
+      "supports_claim_ids": [
+        "c2",
+        "c4"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_0f82af3db4559191",
+      "evidence_quality": "verified",
+      "location": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+      "location_ref": "reading_element_db79b2580f2a4f8a8a09ffcfeca354ee",
+      "matched_anchor_id": null,
+      "page": 1,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "1 Introduction",
+      "source_kind": "reading_element",
+      "span_text": "In this paper, we improve the fine-tuning based approaches by proposing BERT: Bidirectional Encoder Representations from Transformers. BERT alleviates the previously mentioned unidirectionality constraint by using a “masked language model” (MLM) pre-training objective, inspired by the Cloze task (Taylor, 1953). The masked language model randomly masks some of the tokens from the input, and the objective is to predict the original vocabulary id of the masked word based only on its context. Unlike left-toright language model pre-training, the MLM objective enables the representation to fuse the left and the right context, which allows us to pretrain a deep bidirectional Transformer. In addition to the masked language model, we also use a “next sentence prediction” task that jointly pretrains text-pair representations. The contributions of our paper are as follows:",
+      "supports_claim_ids": [
+        "c5"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_499103108ff29656",
+      "evidence_quality": "verified",
+      "location": "reading_element_36eecbebc6c74d97933c222c21df3aa0",
+      "location_ref": "reading_element_36eecbebc6c74d97933c222c21df3aa0",
+      "matched_anchor_id": null,
+      "page": 13,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "A.2 Pre-training Procedure",
+      "source_kind": "reading_element",
+      "span_text": "Longer sequences are disproportionately expensive because attention is quadratic to the sequence length. To speed up pretraing in our experiments, we pre-train the model with sequence length of 128 for 90% of the steps. Then, we train the rest 10% of the steps of sequence of 512 to learn the positional embeddings.",
+      "supports_claim_ids": [
+        "c5"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_8911e7674ee45f0d",
+      "evidence_quality": "verified",
+      "location": "reading_element_e28a6bf2492d4c928402a1b4a6eb4cf8",
+      "location_ref": "reading_element_e28a6bf2492d4c928402a1b4a6eb4cf8",
+      "matched_anchor_id": null,
+      "page": 6,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.5 Positional Encoding",
+      "source_kind": "reading_element",
+      "span_text": "We also experimented with using learned positional embeddings [9] instead, and found that the two versions produced nearly identical results (see Table 3 row (E)). We chose the sinusoidal version because it may allow the model to extrapolate to sequence lengths longer than the ones encountered during training.",
+      "supports_claim_ids": [
+        "c3"
+      ],
+      "title": "Attention Is All You Need"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_bfd4ff883d07",
+  "missing_evidence": [],
+  "question_id": "live_chat_bfd4ff883d07",
+  "rejected_items": []
+}

@@ -1,0 +1,167 @@
+{
+  "items": [
+    {
+      "authors": [
+        "Tom B. Brown"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt3_2020",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "gpt3_2020",
+      "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Language Models are Few-Shot Learners",
+      "supports_claim_ids": [],
+      "title": "Language Models are Few-Shot Learners",
+      "venue": "NeurIPS",
+      "year": 2020
+    },
+    {
+      "authors": [
+        "Alec Radford"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt2_2019",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "gpt2_2019",
+      "paper_version": "OpenAI technical report PDF (2019-02)",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Language Models are Unsupervised Multitask Learners",
+      "supports_claim_ids": [],
+      "title": "Language Models are Unsupervised Multitask Learners",
+      "venue": "OpenAI technical report",
+      "year": 2019
+    },
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_38e0df75f5c1dc48",
+      "evidence_quality": "verified",
+      "location": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+      "location_ref": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+      "matched_anchor_id": "gpt3_uses_gpt2_architecture",
+      "page": 8,
+      "paper_id": "gpt3_2020",
+      "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "2.1 Model and Architectures",
+      "source_kind": "reading_element",
+      "span_text": "We use the same model and architecture as $\\mathrm { G P T } { - } 2 \\ \\mathrm { [ R W C ^ { + } 1 9 ] }$ , including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19]. To study the dependence of ML performance on model size, we train 8 different sizes of model, ranging over three orders of magnitude from 125 million parameters to 175 billion parameters, with the last being the model we call GPT-3. Previous work $[ \\mathrm { K M H ^ { + } 2 0 } ]$ suggests that with enough training data, scaling of validation loss should be approximately a smooth power law as a function of size; training models of many different sizes allows us to test this hypothesis both for validation loss and for downstream language tasks.",
+      "supports_claim_ids": [
+        "c_hop1_basis",
+        "c_no_direct_edge"
+      ],
+      "title": "Language Models are Few-Shot Learners"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_b7e36fa4c9ee54fa",
+      "evidence_quality": "verified",
+      "location": "reading_element_3c362d9e9b1f464a922ef89dece57f4a",
+      "location_ref": "reading_element_3c362d9e9b1f464a922ef89dece57f4a",
+      "matched_anchor_id": null,
+      "page": 6,
+      "paper_id": "gpt3_2020",
+      "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "2 Approach",
+      "source_kind": "reading_element",
+      "span_text": "Our basic pre-training approach, including model, data, and training, is similar to the process described in [RWC<sup>+</sup>19], with relatively straightforward scaling up of the model size, dataset size and diversity, and length of training. Our use of in-context learning is also similar to [RWC<sup>+</sup>19], but in this work we systematically explore different settings for learning within the context. Therefore, we start this section by explicitly defining and contrasting the different settings that we will be evaluating GPT-3 on or could in principle evaluate GPT-3 on. These settings can be seen as lying on a spectrum of how much task-specific data they tend to rely on. Specifically, we can identify at least four points on thi spectrum (see Figure 2.1 for an illustration):",
+      "supports_claim_ids": [
+        "c_hop1_basis",
+        "c_hop1_method_align",
+        "c_no_direct_edge"
+      ],
+      "title": "Language Models are Few-Shot Learners"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_4396b43fa54864c2",
+      "evidence_quality": "verified",
+      "location": "reading_element_bc4586d5694d4ffdb9750798e26dec91",
+      "location_ref": "reading_element_bc4586d5694d4ffdb9750798e26dec91",
+      "matched_anchor_id": "gpt2_transformer_language_model",
+      "page": 4,
+      "paper_id": "gpt2_2019",
+      "paper_version": "OpenAI technical report PDF (2019-02)",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "2.3. Model",
+      "source_kind": "reading_element",
+      "span_text": "We use a Transformer (Vaswani et al., 2017) based architecture for our LMs. The model largely follows the details of the OpenAI GPT model (Radford et al., 2018) with a few modifications. Layer normalization (Ba et al., 2016) was moved to the input of each sub-block, similar to a pre-activation residual network (He et al., 2016) and an additional layer normalization was added after the final selfattention block. A modified initialization which accounts for the accumulation on the residual path with model depth is used. We scale the weights of residual layers at initialization by a factor of $1 / \\hat { \\sqrt { N } }$ where N is the number of residual layers. The vocabulary is expanded to 50,257. We also increase the context size from 512 to 1024 tokens and a larger batchsize of 512 is used.",
+      "supports_claim_ids": [
+        "c_hop2_basis"
+      ],
+      "title": "Language Models are Unsupervised Multitask Learners"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_df9905f582fb729a",
+      "evidence_quality": "verified",
+      "location": "reading_element_abfb59f443384600b2390b9a01acef75",
+      "location_ref": "reading_element_abfb59f443384600b2390b9a01acef75",
+      "matched_anchor_id": null,
+      "page": 2,
+      "paper_id": "gpt2_2019",
+      "paper_version": "OpenAI technical report PDF (2019-02)",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "2. Approach",
+      "source_kind": "reading_element",
+      "span_text": "This approach allows for tractable sampling from and estimation of $p ( x )$ as well as any conditionals of the form $p ( s _ { n - k } , . . . , s _ { n } \\vert s _ { 1 } , . . . , s _ { n - k - 1 } )$ . In recent years, there have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).",
+      "supports_claim_ids": [
+        "c_hop2_basis",
+        "c_hop2_self_attention"
+      ],
+      "title": "Language Models are Unsupervised Multitask Learners"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_257cfe464634",
+  "missing_evidence": [],
+  "question_id": "live_chat_257cfe464634",
+  "rejected_items": []
+}

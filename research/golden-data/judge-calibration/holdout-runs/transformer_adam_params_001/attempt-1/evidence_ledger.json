@@ -1,0 +1,41 @@
+{
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    }
+  ],
+  "ledger_id": "ledger_live_chat_e14469c7ef18",
+  "missing_evidence": [
+    {
+      "$text": "{\"slot\": \"adam_beta1\", \"reason\": \"No reading-model location matching 'Adam optimizer beta1 beta2 epsilon hyperparameters' was returned for paper attention_is_all_you_need_2017; cannot cite exact source text.\"}"
+    },
+    {
+      "$text": "{\"slot\": \"adam_beta2\", \"reason\": \"No reading-model location matching 'Adam optimizer beta1 beta2 epsilon hyperparameters' was returned for paper attention_is_all_you_need_2017; cannot cite exact source text.\"}"
+    },
+    {
+      "$text": "{\"slot\": \"adam_epsilon\", \"reason\": \"No reading-model location matching 'Adam optimizer beta1 beta2 epsilon hyperparameters' was returned for paper attention_is_all_you_need_2017; cannot cite exact source text.\"}"
+    }
+  ],
+  "question_id": "live_chat_e14469c7ef18",
+  "rejected_items": []
+}

@@ -1,0 +1,155 @@
+{
+  "accepted": true,
+  "case_count": 4,
+  "cases": [
+    {
+      "attempt": 1,
+      "case_id": "bert_transformer_role_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "pass",
+        "note": "Correctly answers that BERT uses a bidirectional Transformer encoder, not a decoder; the added architecture details are supported by the cited BERT passages.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The answer correctly identifies BERT as encoder-only, supported by direct quotes from the cited evidence. All claims (architecture, MLM objective, bidirectionality, model sizes, no decoder) are grounded in the supplied passages. Citations match the content referenced.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_e65d6f637327"
+    },
+    {
+      "attempt": 1,
+      "case_id": "bert_vs_transformer_comparison_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The response compares all requested axes and is factually reasonable, but the cited Transformer passage for the training objective does not support cross-entropy, supervised training objective, or machine-translation objective details.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "Claims BERT is \"Followed by task-specific fine-tuning\" — none of the cited passages describe fine-tuning as a separate post-pretraining stage.</item>"
+        ],
+        "overall": "fail",
+        "rationale": "The response correctly compares both models across all three requested axes with accurate high-level distinctions. However, under strict citation completeness: the cross-entropy loss for the Transformer and the fine-tuning step for BERT are added details not present in the cited evidence. Architecture, directionality, and objective descriptions are otherwise well-supported.</rationale>",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_a1c234fbe7b3"
+    },
+    {
+      "attempt": 1,
+      "case_id": "attention_paper_ambiguous_001",
+      "full_match": true,
+      "human": {
+        "decision": "fail",
+        "grounding": "fail",
+        "note": "The request is ambiguous and should have triggered clarification; instead the response assumes a recommendation task and presents substantive paper claims, with some unsupported tradeoff and architecture details.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "fail",
+        "grounding": "fail",
+        "grounding_issues": [
+          "The user request \"attention paper\" is ambiguous and does not identify a specific paper or research task. The expected behavior was to recognize ambiguity, request clarification, and not present research claims or citations before resolving it. The answer instead silently assumed a recommendation intent and produced four detailed paper summaries with specific claims, violating the expected behavior. Hence decision = fail and task_fulfillment = fail. Additionally, several ancillary details in the summaries (bidirectional encoding, decoder LM, unidirectional attention, sparse-attention tradeoff, quadratic cost, fine-tuning tradeoff) are not supported by the cited spans, so grounding = fail.",
+          "Citation ev_1d621919718ca361 says BERT uses self-attention to \"unify\" single-text and text-pair tasks; the answer adds the unsupported claim that BERT \"bidirectionally encode[s] text\" — not stated in the cited passage.</item>\n<item>Citation ev_df9905f582fb729a discusses expressiveness of Transformer self-attention for p(x) modeling; the answer adds unsupported details that GPT-2 is a \"Transformer (self-attention) decoder LM\" and that it has \"unidirectional (left-to-right) attention\" — neither stated in the cited span.</item>\n<item>Citation ev_38e0df75f5c1dc48 mentions alternating dense and locally banded sparse attention and scaling from 125M to 175B parameters; the answer adds the unsupported claim that GPT-3 is a \"sparse-attention scaling study\" with \"sparse-attention locality limits long-range dependencies\" as a tradeoff — the tradeoff is not in the cited passage.</item>\n<item>The \"quadratic cost in sequence length\" tradeoff for the Transformer (paper 1) is not supported by any cited evidence.</item>\n<item>For BERT, the claimed tradeoff \"Strong bidirectional context vs. need for task-specific fine-tuning\" is not in the cited passage; \"task-specific fine-tuning\" is unsupported.</item>\n</grounding_issues>"
+        ],
+        "overall": "fail",
+        "rationale": "",
+        "task_fulfillment": "fail"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_731cd947eef1"
+    },
+    {
+      "attempt": 3,
+      "case_id": "gpt5_architecture_boundary_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "pass",
+        "note": "Clearly states the five-paper corpus has no GPT-5 architecture source, avoids inferring GPT-5 details from predecessor papers, and labels predecessor material as context only.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The response correctly identifies the corpus boundary (no GPT-5 paper in the 5-paper corpus) and only provides predecessor/foundational context with proper citations. All substantive claims are grounded in the cited evidence. The response does not fabricate any GPT-5 facts, clearly separates verified coverage from unavailable facts, and recommends additional corpus — all matching expected behavior. BERT and Adam citations have minor inventory-only usage (their spans aren't used for substantive claims), but no falsifiable claim is unsupported.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_live_chat_93043cbabba4"
+    }
+  ],
+  "dataset_id": "harness_golden_seed",
+  "dimension_agreement": {
+    "decision": {
+      "case_count": 4,
+      "matched_count": 4
+    },
+    "grounding": {
+      "case_count": 4,
+      "matched_count": 4
+    },
+    "overall": {
+      "case_count": 4,
+      "matched_count": 4
+    },
+    "task_fulfillment": {
+      "case_count": 4,
+      "matched_count": 4
+    }
+  },
+  "disagreement_count": 0,
+  "false_failure_count": 0,
+  "false_pass_count": 0,
+  "full_agreement_count": 4,
+  "judge": {
+    "api_base_url": "https://api.minimaxi.com/v1",
+    "api_style": "openai-compatible",
+    "has_api_key": true,
+    "model": "MiniMax-M3",
+    "prompt_version": "llm-judge/v5",
+    "provider": "minimax",
+    "scope": "llm"
+  },
+  "overall_agreement_count": 4,
+  "schema_version": "harness-judge-agreement/v1",
+  "source_baseline": "golden-v2-live-2026-07-11",
+  "technical_error_count": 0
+}

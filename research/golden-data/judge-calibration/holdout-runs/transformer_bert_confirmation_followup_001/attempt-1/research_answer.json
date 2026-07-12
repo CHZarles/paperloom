@@ -1,0 +1,34 @@
+{
+  "answer_id": "answer_live_chat_3c0b4f837eae",
+  "answer_type": "comparison_matrix",
+  "cited_claim_ids": [
+    "C1_arch_transformer",
+    "C2_arch_bert",
+    "C3_mask_transformer",
+    "C4_mask_bert",
+    "C5_obj_transformer",
+    "C6_obj_bert"
+  ],
+  "cited_evidence_ids": [
+    "ev_7b31c6915e3d43d3",
+    "ev_2c62e46d83f5d96f",
+    "ev_7f19acb3f716bc64",
+    "ev_71ef1901f3139ae8",
+    "ev_5a465492abf3009b",
+    "ev_0f82af3db4559191",
+    "ev_80e066e1a3177125",
+    "ev_944a542df0f94975",
+    "ev_9c9a9e4f55a8193d"
+  ],
+  "fields": {},
+  "markdown": "### Comparison: Original Transformer vs. BERT\n\n| Dimension | Original Transformer (Vaswani et al., 2017) | BERT (Devlin et al., 2018) |\n|---|---|---|\n| **(1) Architecture role** | **Encoder-decoder.** A stack of N=6 encoder layers plus a stack of N=6 decoder layers; the decoder adds a third sub-layer performing multi-head attention over the encoder stack's output, used for sequence transduction (machine translation). | **Encoder-only.** \"Bidirectional Encoder Representations from Transformers\": stacks Transformer encoder layers only to produce contextual representations for downstream tasks; there is no decoder. |\n| **(2) Directionality / attention masking** | **Auto-regressive / causal in the decoder.** Decoder self-attention masks out (sets to -inf before softmax) all positions to the right of position i, so each position depends only on known outputs at positions < i. Encoder self-attention is unmasked, but the model as a whole is left-to-right. | **Fully bidirectional (no causal mask).** Self-attention has no left/right restriction; every token attends to the entire input sequence, fusing left and right context. |\n| **(3) Pre-training / training objective** | **Supervised training from scratch on labeled translation data** (WMT 2014 EN-DE / EN-FR) with a standard sequence-to-sequence cross-entropy loss over target tokens. No pre-training stage; the Transformer is the architecture that BERT later builds on. | **Self-supervised pre-training on unlabeled text** with two objectives: (a) **Masked Language Modeling (MLM)** - predict the original vocabulary id of randomly masked tokens from full bidirectional context; (b) **Next Sentence Prediction (NSP)** - binary IsNext/NotNext classification of sentence pairs. The pre-trained encoder is then fine-tuned on downstream tasks. |\n\n**Key takeaway.** BERT keeps the Transformer's encoder block but drops the decoder, removes the decoder's causal mask to enable true bidirectionality, and replaces supervised translation training with two self-supervised pre-training objectives (MLM + NSP) explicitly designed to overcome the unidirectionality imposed by the original Transformer's decoder.",
+  "outcome": "answered",
+  "question_id": "live_chat_3c0b4f837eae",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_3c0b4f837eae"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "3x2 comparison of the original Transformer (Vaswani et al., 2017) and BERT (Devlin et al., 2018) along architecture role, attention directionality/masking, and training/pretraining objective, grounded in primary-source evidence spans from both papers.",
+  "verification_id": "verification_live_chat_3c0b4f837eae"
+}

@@ -1,0 +1,183 @@
+schema_version: harness-human-labels/v1
+dataset_id: harness_golden_seed
+source_baseline: golden-v2-live-2026-07-11
+
+# This is a blind holdout sheet. Review only the answer and cited evidence.
+# Do not consult old scorer results or LLM-judge output while annotating.
+# Read research/golden-data/judge-calibration/REVIEW_GUIDE.md first.
+#
+# Dimension values:
+#   decision: pass | fail
+#   task_fulfillment: pass | fail
+#   grounding: pass | fail | not_applicable
+#   overall: pass | fail
+#
+# Overall is pass only when every applicable dimension passes. If a run is
+# genuinely unclear, leave it as unlabeled and explain why in note.
+# Artifact paths are relative to the repository root.
+
+labels:
+  - case_id: transformer_adam_params_001
+    attempt: 1
+    run_id: run_live_chat_e14469c7ef18
+    review:
+      user_request: "Transformer original paper used Adam with what beta1, beta2, and epsilon?"
+      expected_behavior:
+        - "Gives the exact Transformer training values: beta1 = 0.9, beta2 = 0.98, and epsilon = 1e-9."
+        - "Does not substitute Adam's generic recommended defaults for the paper-specific settings."
+        - "Material claims are supported by cited passages from Attention Is All You Need."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/transformer_adam_params_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/transformer_adam_params_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: fail
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "Evidence exists in the corpus for the exact Adam values, but the response abstains with no citations and does not answer beta1, beta2, or epsilon."
+
+  - case_id: transformer_to_bert_genealogy_001
+    attempt: 1
+    run_id: run_live_chat_bfd4ff883d07
+    review:
+      user_request: "Show the direct technical lineage from Attention Is All You Need to BERT and explain the cited relationship."
+      expected_behavior:
+        - "Establishes the direct relationship through BERT's use of a bidirectional Transformer encoder."
+        - "Explains the cited relationship without inventing unsupported influence or genealogy claims."
+        - "Material claims are supported by cited BERT passages."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/transformer_to_bert_genealogy_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/transformer_to_bert_genealogy_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "It identifies the core BERT-to-Transformer encoder relationship, but overextends into unsupported inherited components and deviations such as segment embeddings, corpus details, and positional-embedding inheritance."
+
+  - case_id: adam_beta2_conflict_001
+    attempt: 1
+    run_id: run_live_chat_7a5bb0785774
+    review:
+      user_request: "Some sources say Adam beta2 is 0.999, but the Transformer paper used 0.98. Resolve this conflict."
+      expected_behavior:
+        - "Distinguishes Adam's recommended default beta2 = 0.999 from the Transformer's experiment-specific beta2 = 0.98."
+        - "Explains that a generic default and a paper-specific setting are not contradictory."
+        - "Material claims are supported by cited passages from both Adam and Attention Is All You Need."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/adam_beta2_conflict_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/adam_beta2_conflict_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "It correctly distinguishes Adam's default beta2=0.999 from the Transformer beta2=0.98, but adds unsupported rationale and tuning claims about why 0.98 was useful and chosen with the learning-rate schedule."
+
+  - case_id: transformer_optimizer_reproduction_001
+    attempt: 1
+    run_id: run_live_chat_3032d4455f59
+    review:
+      user_request: "Build the optimizer portion of a strict reproduction checklist for Attention Is All You Need: give the optimizer, beta1, beta2, and epsilon exactly as used in the paper, without substituting generic Adam defaults."
+      expected_behavior:
+        - "Provides a strict checklist containing Adam, beta1 = 0.9, beta2 = 0.98, and epsilon = 1e-9."
+        - "Does not replace the paper-specific settings with generic Adam defaults."
+        - "Material claims are supported by cited passages from Attention Is All You Need."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/transformer_optimizer_reproduction_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/transformer_optimizer_reproduction_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: fail
+      overall: fail
+      note: "The requested optimizer checklist values are correct, but extra claims about generic Adam defaults and the warmup learning-rate schedule are not supported by the cited Transformer passage."
+
+  - case_id: gpt3_to_transformer_multihop_001
+    attempt: 1
+    run_id: run_live_chat_257cfe464634
+    review:
+      user_request: "Using only the available papers, build the two-hop architecture chain from GPT-3 through GPT-2 to Attention Is All You Need. State what each hop establishes and do not invent a direct GPT-3-to-Transformer citation."
+      expected_behavior:
+        - "Establishes GPT-3 to GPT-2 and GPT-2 to the Transformer architecture as two separate supported hops."
+        - "States what each hop establishes and does not claim a direct GPT-3-to-Transformer citation."
+        - "Material claims are supported by the corresponding GPT-3 and GPT-2 passages."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/gpt3_to_transformer_multihop_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/gpt3_to_transformer_multihop_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: fail
+      overall: fail
+      note: "The two-hop chain is correctly answered, but the response overstates GPT-3 to GPT-2 as wholesale model and training-pipeline reuse; the cited text says same model/architecture and similar pre-training with exceptions."
+
+  - case_id: bert_choice_followup_001
+    attempt: 1
+    run_id: run_live_chat_ed5dd7cd3d93
+    review:
+      user_request: "The second."
+      conversation:
+        - role: user
+          content: "Help me choose one paper to understand bidirectional Transformer encoders."
+        - role: assistant
+          content: "Choose one: (1) Attention Is All You Need, (2) BERT, or (3) GPT-2."
+        - role: user
+          content: "The second."
+      expected_behavior:
+        - "Resolves 'The second' to BERT using the preceding conversation instead of asking the user to repeat the choice."
+        - "Explains that BERT uses a bidirectional Transformer encoder."
+        - "Material claims are supported by cited BERT passages."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/bert_choice_followup_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/bert_choice_followup_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: fail
+      overall: fail
+      note: "It correctly resolves 'The second' to BERT and gives a useful explanation, but material claims such as no causal mask, full-sequence attention, stacked encoder layers, and the GPT-2 contrast are not fully supported by the cited passages."
+
+  - case_id: transformer_bert_confirmation_followup_001
+    attempt: 1
+    run_id: run_live_chat_3c0b4f837eae
+    review:
+      user_request: "Yes, that is my choice."
+      conversation:
+        - role: user
+          content: "Compare the original Transformer with BERT."
+        - role: assistant
+          content: "Should I compare architecture role, directionality, and training objective?"
+        - role: user
+          content: "Yes, that is my choice."
+      expected_behavior:
+        - "Treats the final message as confirmation and resumes the comparison without asking another redundant clarification."
+        - "Compares the original Transformer and BERT across architecture role, directionality, and training objective."
+        - "Material claims are supported by cited passages from both papers."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/transformer_bert_confirmation_followup_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/transformer_bert_confirmation_followup_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "It resumes the comparison, but materially misstates the original Transformer as a whole as left-to-right and frames BERT as removing the decoder's causal mask; several training-objective details are also unsupported by the cited passages."
+
+  - case_id: adam_constraint_refinement_followup_001
+    attempt: 1
+    run_id: run_live_chat_50ba2e59aacf
+    review:
+      user_request: "The Transformer value."
+      conversation:
+        - role: user
+          content: "Give me Adam beta2."
+        - role: assistant
+          content: "Do you mean Adam's recommended default or the value used by the Transformer paper?"
+        - role: user
+          content: "The Transformer value."
+      expected_behavior:
+        - "Resolves the refinement to the Transformer paper's beta2 value rather than the generic Adam default."
+        - "Answers beta2 = 0.98 and does not substitute beta2 = 0.999."
+        - "Material claims are supported by cited passages from Attention Is All You Need."
+      answer_path: "research/golden-data/judge-calibration/holdout-runs/adam_constraint_refinement_followup_001/attempt-1/research_answer.json"
+      evidence_path: "research/golden-data/judge-calibration/holdout-runs/adam_constraint_refinement_followup_001/attempt-1/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: pass
+      overall: pass
+      note: "Correctly resolves the follow-up to the Transformer paper's beta2 value, answers 0.98, and cites a passage that directly supports the claim."

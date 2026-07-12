@@ -23,5 +23,3 @@ python3 -m harness_py agent-run --out /tmp/paismart-golden-v2-live
 ```
 
 `validate` is deterministic scorer validation. `audit` verifies parser coverage. `agent-run` evaluates the real MiniMax-backed harness. Their failures are reported separately.
-
-The Seed-60 files are planning documents, not executable cases.

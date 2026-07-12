@@ -1,0 +1,21 @@
+{
+  "answer_id": "answer_live_chat_50ba2e59aacf",
+  "answer_type": "exact_fact",
+  "cited_claim_ids": [
+    "c1"
+  ],
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {},
+  "markdown": "**Adam β2 (Transformer paper):** **0.98**\n\nFrom *Attention Is All You Need* (Vaswani et al., 2017), Section **5.3 Optimizer**:\n\n> \"We used the Adam optimizer with β1 = 0.9, **β2 = 0.98** and ε = 10^-9.\"",
+  "outcome": "answered",
+  "question_id": "live_chat_50ba2e59aacf",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_50ba2e59aacf"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Attention Is All You Need uses Adam β2 = 0.98 (Section 5.3 Optimizer).",
+  "verification_id": "verification_live_chat_50ba2e59aacf"
+}

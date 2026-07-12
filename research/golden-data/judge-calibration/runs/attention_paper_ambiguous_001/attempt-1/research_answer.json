@@ -1,0 +1,28 @@
+{
+  "answer_id": "answer_live_chat_731cd947eef1",
+  "answer_type": "paper_recommendation_list",
+  "cited_claim_ids": [
+    "c1",
+    "c2",
+    "c3",
+    "c4",
+    "c5"
+  ],
+  "cited_evidence_ids": [
+    "ev_7b31c6915e3d43d3",
+    "ev_1d621919718ca361",
+    "ev_df9905f582fb729a",
+    "ev_38e0df75f5c1dc48"
+  ],
+  "fields": {},
+  "markdown": "### Recommended attention-mechanism papers (corpus filter: self-attention / transformer attention)\n\n**Coverage assumption:** \"Attention paper\" = any in-corpus paper whose central architecture is self-attention or transformer attention.\n\n1. **Attention Is All You Need** — *attention_is_all_you_need_2017* (Vaswani et al., NeurIPS 2017)\n   - Core contribution: Introduces the **Transformer**, built *solely* on attention mechanisms; drops recurrence and convolutions; achieves 28.4 BLEU on WMT 2014 En→De.\n   - Tradeoff: Higher parallelism and quality vs. quadratic cost in sequence length.\n\n2. **BERT: Pre-training of Deep Bidirectional Transformers** — *bert_2018* (Devlin et al., NAACL 2018)\n   - Core contribution: Uses Transformer's **self-attention** to bidirectionally encode text and unify single-text and text-pair tasks via cross attention.\n   - Tradeoff: Strong bidirectional context vs. need for task-specific fine-tuning.\n\n3. **Language Models are Unsupervised Multitask Learners (GPT-2)** — *gpt2_2019* (Radford et al., OpenAI 2019)\n   - Core contribution: Scales a **Transformer (self-attention) decoder** LM, exploiting its expressiveness for conditional p(x) modeling.\n   - Tradeoff: Strong generative few-shot behavior vs. unidirectional (left-to-right) attention.\n\n4. **Language Models are Few-Shot Learners (GPT-3)** — *gpt3_2020* (Brown et al., NeurIPS 2020)\n   - Core contribution: Scales Transformers to 175B parameters using **alternating dense and locally banded sparse attention** patterns.\n   - Tradeoff: Few-shot in-context learning at scale vs. sparse-attention locality limits long-range dependencies.",
+  "outcome": "answered",
+  "question_id": "live_chat_731cd947eef1",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_731cd947eef1"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Four corpus papers recommended on attention: the original Transformer, BERT's bidirectional self-attention, GPT-2's Transformer LM, and GPT-3's sparse-attention scaling study.",
+  "verification_id": "verification_live_chat_731cd947eef1"
+}

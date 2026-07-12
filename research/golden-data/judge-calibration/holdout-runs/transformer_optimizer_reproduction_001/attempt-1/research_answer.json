@@ -1,0 +1,24 @@
+{
+  "answer_id": "answer_live_chat_3032d4455f59",
+  "answer_type": "reproduction_protocol",
+  "cited_claim_ids": [
+    "c1_optimizer_name",
+    "c2_beta1",
+    "c3_beta2",
+    "c4_epsilon"
+  ],
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {},
+  "markdown": "## Reproduction Checklist — Optimizer Hyperparameters\n\n**Paper:** Attention Is All You Need (Vaswani et al., 2017), §5.3 Optimizer, p. 7\n\n| Hyperparameter | Value (from paper) | Generic Adam default | Match? |\n|---|---|---|---|\n| Optimizer | Adam | Adam | ✓ |\n| β1 | 0.9 | 0.9 | ✓ |\n| β2 | 0.98 | 0.999 | ✗ (use paper value) |\n| ε | 1e-9 | 1e-8 | ✗ (use paper value) |\n\n**Direct quote (§5.3 Optimizer, p. 7):**\n> \"We used the Adam optimizer [20] with β1 = 0.9, β2 = 0.98 and ε = 10^-9.\"\n\n**Notes for strict reproduction:**\n- β2 and ε must be set to the paper's values (0.98 and 1e-9), not the generic Adam defaults (0.999 and 1e-8).\n- The paper additionally specifies a custom learning-rate schedule (warmup_steps = 4000, lr = d_model^{-0.5}) in the same section; verify that any reproduction stack implements this schedule alongside the β/ε values above.\n- Source: primary paper only (Vaswani et al. 2017, §5.3).",
+  "outcome": "answered",
+  "question_id": "live_chat_3032d4455f59",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_3032d4455f59"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Reproduction checklist item (Vaswani et al. 2017, §5.3 Optimizer, p. 7): optimizer = Adam; β1 = 0.9; β2 = 0.98; ε = 1e-9.",
+  "verification_id": "verification_live_chat_3032d4455f59"
+}

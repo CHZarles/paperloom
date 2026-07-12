@@ -1,0 +1,119 @@
+{
+  "items": [
+    {
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "supports_claim_ids": [],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_668e1f7f3b701941",
+      "evidence_quality": "verified",
+      "location": "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+      "location_ref": "reading_element_ff1d8830cd7544d0a166daf8466cd287",
+      "matched_anchor_id": "bert_masked_lm_pretraining",
+      "page": 4,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.1 Pre-training BERT",
+      "source_kind": "reading_element",
+      "span_text": "In order to train a deep bidirectional representation, we simply mask some percentage of the input tokens at random, and then predict those masked tokens. We refer to this procedure as a “masked LM” (MLM), although it is often referred to as a Cloze task in the literature (Taylor, 1953). In this case, the final hidden vectors corresponding to the mask tokens are fed into an output softmax over the vocabulary, as in a standard LM. In all of our experiments, we mask 15% of all WordPiece tokens in each sequence at random. In contrast to denoising auto-encoders (Vincent et al., 2008), we only predict the masked words rather than reconstructing the entire input.",
+      "supports_claim_ids": [
+        "c3_mlm_objective"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_9c9a9e4f55a8193d",
+      "evidence_quality": "verified",
+      "location": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+      "location_ref": "reading_element_3d4803f42a3f44c6b3898d3f357e7ae9",
+      "matched_anchor_id": null,
+      "page": 4,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.1 Pre-training BERT",
+      "source_kind": "reading_element",
+      "span_text": "Task #2: Next Sentence Prediction (NSP) Many important downstream tasks such as Question Answering (QA) and Natural Language Inference (NLI) are based on understanding the relationship between two sentences, which is not directly captured by language modeling. In order to train a model that understands sentence relationships, we pre-train for a binarized next sentence prediction task that can be trivially generated from any monolingual corpus. Specifically, when choosing the sentences A and B for each pretraining example, 50% of the time B is the actual next sentence that follows A (labeled as IsNext), and 50% of the time it is a random sentence from the corpus (labeled as NotNext). As we show in Figure 1, C is used for next sentence prediction (NSP).<sup>5</sup> Despite its simplicity, we demonstrate in Section 5.1 that pre-training towards this task is very beneficial to both QA and NLI. 6",
+      "supports_claim_ids": [
+        "c4_nsp_objective"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_b5cb6101ea792641",
+      "evidence_quality": "verified",
+      "location": "reading_element_a4af756e2cc640849125cb36cb7579d8",
+      "location_ref": "reading_element_a4af756e2cc640849125cb36cb7579d8",
+      "matched_anchor_id": null,
+      "page": 2,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "1 Introduction",
+      "source_kind": "reading_element",
+      "span_text": "• We demonstrate the importance of bidirectional pre-training for language representations. Unlike Radford et al. (2018), which uses unidirectional language models for pre-training, BERT uses masked language models to enable pretrained deep bidirectional representations. This is also in contrast to Peters et al. (2018a), which uses a shallow concatenation of independently trained left-to-right and right-to-left LMs.",
+      "supports_claim_ids": [
+        "c2_bidirectional_pre_training"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_80e066e1a3177125",
+      "evidence_quality": "verified",
+      "location": "reading_element_f21a88ef26644d24a92bf0cf6b351925",
+      "location_ref": "reading_element_f21a88ef26644d24a92bf0cf6b351925",
+      "matched_anchor_id": null,
+      "page": 1,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "1 Introduction",
+      "source_kind": "reading_element",
+      "span_text": "We argue that current techniques restrict the power of the pre-trained representations, especially for the fine-tuning approaches. The major limitation is that standard language models are unidirectional, and this limits the choice of architectures that can be used during pre-training. For example, in OpenAI GPT, the authors use a left-toright architecture, where every token can only attend to previous tokens in the self-attention layers of the Transformer (Vaswani et al., 2017). Such restrictions are sub-optimal for sentence-level tasks, and could be very harmful when applying finetuning based approaches to token-level tasks such as question answering, where it is crucial to incorporate context from both directions.",
+      "supports_claim_ids": [
+        "c1_unidirectional_limit"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_ed5dd7cd3d93",
+  "missing_evidence": [],
+  "question_id": "live_chat_ed5dd7cd3d93",
+  "rejected_items": []
+}

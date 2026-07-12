@@ -1,0 +1,167 @@
+{
+  "items": [
+    {
+      "authors": [
+        "Diederik P. Kingma",
+        "Jimmy Ba"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_adam_2014",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "adam_2014",
+      "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Adam: A Method for Stochastic Optimization",
+      "supports_claim_ids": [],
+      "title": "Adam: A Method for Stochastic Optimization",
+      "venue": "ICLR",
+      "year": 2014
+    },
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "supports_claim_ids": [],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "list",
+      "evidence_id": "ev_25fa64ee50482ccf",
+      "evidence_quality": "verified",
+      "location": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+      "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+      "matched_anchor_id": "adam_default_beta2_span",
+      "page": 2,
+      "paper_id": "adam_2014",
+      "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "unsectioned",
+      "source_kind": "reading_element",
+      "span_text": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ { 1 } ^ { t } and \\beta _ { 2 } ^ { t }\nwe denote \\beta _ { 1 } and \\beta _ { 2 } to the power t .\nRequire: \\alpha \\mathrm { : } Stepsize\nRequire: \\beta _ { 1 } , \\bar { \\beta _ { 2 } } \\overset { - } { \\in } [ 0 , 1 ) : Exponential decay rates for the moment estimates\nRequire: f ( \\theta ) { \\mathrm { : } } Stochastic objective function with parameters θ\nRequire: \\theta _ { 0 } \\colon Initial parameter vector\nm _ { 0 } \\gets 0 (Initialize 1 ^ { \\mathrm { s t } } moment vector)\nv _ { 0 } 0 (Initialize 2 ^ { \\mathrm { n d } } moment vector)\nt \\gets 0 (Initialize timestep)\nwhile \\theta _ { t } not converged do\nt \\gets t + 1\ng _ { t } \\gets \\nabla _ { \\theta } f _ { t } ( \\theta _ { t - 1 } ) (Get gradients w.r.t. stochastic objective at timestep t)\nm _ { t } \\gets \\beta _ { 1 } \\cdot m _ { t - 1 } \\dot { + } \\left( 1 \\bar { - } \\beta _ { 1 } \\right) \\cdot g _ { t } (Update biased first moment estimate)\nv _ { t } \\beta _ { 2 } \\cdot v _ { t - 1 } + ( 1 - \\beta _ { 2 } ) \\cdot g _ { t } ^ { 2 } (Update biased second raw moment estimate)\n\\widehat { m } _ { t } \\gets m _ { t } / ( 1 - \\beta _ { 1 } ^ { t } ) (Compute bias-corrected first moment estimate)\n\\widehat { v } _ { t } \\gets v _ { t } / ( 1 - \\beta _ { 2 } ^ { t } ) (Compute bias-corrected second raw moment estimate)\n\\theta _ { t } \\theta _ { t - 1 } - \\alpha \\cdot \\widehat { m } _ { t } / ( \\sqrt { v _ { t } } + \\epsilon ) (Update parameters)\nend while\nreturn { \\underline { { \\theta _ { t } } } } (Resulting parameters)",
+      "supports_claim_ids": [
+        "C1",
+        "C5"
+      ],
+      "title": "Adam: A Method for Stochastic Optimization"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_c478868f3b1b547e",
+      "evidence_quality": "verified",
+      "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+      "matched_anchor_id": "transformer_adam_training_params_span",
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.3 Optimizer",
+      "source_kind": "reading_element",
+      "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+      "supports_claim_ids": [
+        "C2",
+        "C5"
+      ],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "formula",
+      "evidence_id": "ev_e205545aecef3fc3",
+      "evidence_quality": "verified",
+      "location": "reading_element_476961f4924c482bb6a81d89bd4c9026",
+      "location_ref": "reading_element_476961f4924c482bb6a81d89bd4c9026",
+      "matched_anchor_id": null,
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.3 Optimizer",
+      "source_kind": "reading_element",
+      "span_text": "$$\nl r a t e = d _ { \\mathrm { m o d e l } } ^ { - 0 . 5 } \\cdot \\mathrm { m i n } ( s t e p _ { - } n u m ^ { - 0 . 5 } , s t e p _ { - } n u m \\cdot w a r m u p _ { - } s t e p s ^ { - 1 . 5 } )\\tag{3}\n$$",
+      "supports_claim_ids": [
+        "C3"
+      ],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_9f0ad4e5c9243e9e",
+      "evidence_quality": "verified",
+      "location": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+      "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+      "matched_anchor_id": null,
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "5.2 Hardware and Schedule",
+      "source_kind": "reading_element",
+      "span_text": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+      "supports_claim_ids": [
+        "C4"
+      ],
+      "title": "Attention Is All You Need"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_7a5bb0785774",
+  "missing_evidence": [],
+  "question_id": "live_chat_7a5bb0785774",
+  "rejected_items": []
+}

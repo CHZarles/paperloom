@@ -1,0 +1,35 @@
+{
+  "answer_id": "answer_live_chat_e65d6f637327",
+  "answer_type": "exact_fact",
+  "cited_claim_ids": [
+    "c1_arch_role",
+    "c2_name_expansion",
+    "c3_bidir_mechanism",
+    "c4_stack_depth",
+    "c5_attention_mask",
+    "c6_no_decoder"
+  ],
+  "cited_evidence_ids": [
+    "ev_3540835408466c6e",
+    "ev_2c75c5a0daa399bd",
+    "ev_bdb5cc5caf5772fe",
+    "ev_f189c6c5f4214d2e",
+    "ev_0f82af3db4559191"
+  ],
+  "fields": {
+    "architectural_role": "encoder-only (multi-layer bidirectional Transformer encoder; no decoder)",
+    "bidirectional_context_mechanism": "Masked Language Model (MLM) pre-training objective",
+    "self_attention_masking_scheme": "full bidirectional self-attention (no causal mask)",
+    "stack_depth": "BERT_BASE: L=12, H=768, A=12, 110M parameters; BERT_LARGE: L=24, H=1024, A=16, 340M parameters"
+  },
+  "markdown": "## Architectural Role: Encoder-only\n\nBERT uses the Transformer **encoder only** — it does **not** use a Transformer decoder. Section 3 of the BERT paper states verbatim:\n\n> \"BERT's model architecture is a **multi-layer bidirectional Transformer encoder** based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.\"\n\nThis is reinforced by BERT's own name expansion (Abstract / Introduction): **B**idirectional **E**ncoder **R**epresentations from **T**ransformers. No decoder stack is described or instantiated anywhere in the architecture section.\n\n## Supporting Details\n\n| Aspect | Value | Evidence |\n|---|---|---|\n| Architectural role | Multi-layer bidirectional Transformer **encoder** (Vaswani et al., 2017); no decoder | §3, Model Architecture |\n| Bidirectionality mechanism | Masked Language Model (MLM) pre-training objective (Cloze-style) | §1, Introduction |\n| Self-attention masking | Full / bidirectional self-attention (no causal mask), in contrast to GPT's left-only constrained self-attention | §3 |\n| Stack depth | BERT_BASE: L=12, H=768, A=12, 110M params; BERT_LARGE: L=24, H=1024, A=16, 340M params | §3 |\n| Decoder used? | **No** | §3 (none referenced) |\n\n## Direct Quoted Evidence\n\n1. \"BERT's model architecture is a **multi-layer bidirectional Transformer encoder** based on the original implementation described in Vaswani et al. (2017)…\" — §3.\n2. \"the **BERT Transformer uses bidirectional self-attention**, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left.\" — §3.\n3. \"the MLM objective enables the representation to fuse the left and the right context, which allows us to **pretrain a deep bidirectional Transformer**.\" — §1.",
+  "outcome": "answered",
+  "question_id": "live_chat_e65d6f637327",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_e65d6f637327"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "BERT uses the Transformer as an encoder only (multi-layer bidirectional Transformer encoder), with no decoder, based on the original Vaswani et al. (2017) implementation.",
+  "verification_id": "verification_live_chat_e65d6f637327"
+}

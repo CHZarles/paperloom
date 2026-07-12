@@ -160,6 +160,15 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 "submit_stage_result",
                 16,
             )
+            MiniMaxChatModel(provider, timeout_seconds=5).complete_required_tool(
+                [{"role": "user", "content": "judge"}],
+                [{
+                    "type": "function",
+                    "function": {"name": "submit_judgment", "parameters": {"type": "object"}},
+                }],
+                "submit_judgment",
+                16,
+            )
         finally:
             server.shutdown()
             server.server_close()
@@ -168,7 +177,19 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual("Bearer secret", captured["authorization"])
         self.assertEqual({"type": "adaptive"}, captured["bodies"][0]["thinking"])
         self.assertEqual({"type": "disabled"}, captured["bodies"][1]["thinking"])
-        self.assertNotIn("tool_choice", captured["bodies"][0])
+        self.assertEqual({"type": "disabled"}, captured["bodies"][2]["thinking"])
+        self.assertEqual(
+            {"type": "function", "function": {"name": "search_paper_candidates"}},
+            captured["bodies"][0]["tool_choice"],
+        )
+        self.assertEqual(
+            {"type": "function", "function": {"name": "submit_stage_result"}},
+            captured["bodies"][1]["tool_choice"],
+        )
+        self.assertEqual(
+            {"type": "function", "function": {"name": "submit_judgment"}},
+            captured["bodies"][2]["tool_choice"],
+        )
         self.assertEqual(
             ["search_paper_candidates", "read_locations"],
             [tool["function"]["name"] for tool in captured["bodies"][0]["tools"]],

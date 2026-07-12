@@ -1,0 +1,188 @@
+{
+  "items": [
+    {
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Attention Is All You Need",
+      "supports_claim_ids": [],
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "supports_claim_ids": [],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    },
+    {
+      "authors": [
+        "Alec Radford"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt2_2019",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "gpt2_2019",
+      "paper_version": "OpenAI technical report PDF (2019-02)",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Language Models are Unsupervised Multitask Learners",
+      "supports_claim_ids": [],
+      "title": "Language Models are Unsupervised Multitask Learners",
+      "venue": "OpenAI technical report",
+      "year": 2019
+    },
+    {
+      "authors": [
+        "Tom B. Brown"
+      ],
+      "citeable": false,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt3_2020",
+      "evidence_quality": "metadata_verified",
+      "location": "paper_candidate",
+      "page": "metadata",
+      "paper_id": "gpt3_2020",
+      "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "paper_identity_resolution",
+      "section": "paper_metadata",
+      "span_text": "Language Models are Few-Shot Learners",
+      "supports_claim_ids": [],
+      "title": "Language Models are Few-Shot Learners",
+      "venue": "NeurIPS",
+      "year": 2020
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_7b31c6915e3d43d3",
+      "evidence_quality": "verified",
+      "location": "reading_element_d3f857764d464d7d931296ec82a0de85",
+      "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+      "matched_anchor_id": "transformer_encoder_decoder_architecture",
+      "page": 1,
+      "paper_id": "attention_is_all_you_need_2017",
+      "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "Abstract",
+      "source_kind": "reading_element",
+      "span_text": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. Our model achieves 28.4 BLEU on the WMT 2014 Englishto-German translation task, improving over the existing best results, including ensembles, by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model establishes a new single-model state-of-the-art BLEU score of 41.8 after training for 3.5 days on eight GPUs, a small fraction of the training costs of the best models from the literature. We show that the Transformer generalizes well to other tasks by applying it successfully to English constituency parsing both with large and limited training data.",
+      "supports_claim_ids": [
+        "c1",
+        "c5"
+      ],
+      "title": "Attention Is All You Need"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_1d621919718ca361",
+      "evidence_quality": "verified",
+      "location": "reading_element_8fa7535d2fb14c5888f24b31b6629bbb",
+      "location_ref": "reading_element_8fa7535d2fb14c5888f24b31b6629bbb",
+      "matched_anchor_id": null,
+      "page": 5,
+      "paper_id": "bert_2018",
+      "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "3.2 Fine-tuning BERT",
+      "source_kind": "reading_element",
+      "span_text": "Fine-tuning is straightforward since the selfattention mechanism in the Transformer allows BERT to model many downstream tasks— whether they involve single text or text pairs—by swapping out the appropriate inputs and outputs. For applications involving text pairs, a common pattern is to independently encode text pairs before applying bidirectional cross attention, such as Parikh et al. (2016); Seo et al. (2017). BERT instead uses the self-attention mechanism to unify these two stages, as encoding a concatenated text pair with self-attention effectively includes bidirectional cross attention between two sentences.",
+      "supports_claim_ids": [
+        "c2",
+        "c5"
+      ],
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_df9905f582fb729a",
+      "evidence_quality": "verified",
+      "location": "reading_element_abfb59f443384600b2390b9a01acef75",
+      "location_ref": "reading_element_abfb59f443384600b2390b9a01acef75",
+      "matched_anchor_id": null,
+      "page": 2,
+      "paper_id": "gpt2_2019",
+      "paper_version": "OpenAI technical report PDF (2019-02)",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "2. Approach",
+      "source_kind": "reading_element",
+      "span_text": "This approach allows for tractable sampling from and estimation of $p ( x )$ as well as any conditionals of the form $p ( s _ { n - k } , . . . , s _ { n } \\vert s _ { 1 } , . . . , s _ { n - k - 1 } )$ . In recent years, there have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).",
+      "supports_claim_ids": [
+        "c3"
+      ],
+      "title": "Language Models are Unsupervised Multitask Learners"
+    },
+    {
+      "bbox_or_cell_ref": null,
+      "element_type": "paragraph",
+      "evidence_id": "ev_38e0df75f5c1dc48",
+      "evidence_quality": "verified",
+      "location": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+      "location_ref": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+      "matched_anchor_id": "gpt3_uses_gpt2_architecture",
+      "page": 8,
+      "paper_id": "gpt3_2020",
+      "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+      "refutes_claim_ids": [],
+      "relevance_score": 1.0,
+      "retrieval_strategy": "source_quote_reading",
+      "section": "2.1 Model and Architectures",
+      "source_kind": "reading_element",
+      "span_text": "We use the same model and architecture as $\\mathrm { G P T } { - } 2 \\ \\mathrm { [ R W C ^ { + } 1 9 ] }$ , including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19]. To study the dependence of ML performance on model size, we train 8 different sizes of model, ranging over three orders of magnitude from 125 million parameters to 175 billion parameters, with the last being the model we call GPT-3. Previous work $[ \\mathrm { K M H ^ { + } 2 0 } ]$ suggests that with enough training data, scaling of validation loss should be approximately a smooth power law as a function of size; training models of many different sizes allows us to test this hypothesis both for validation loss and for downstream language tasks.",
+      "supports_claim_ids": [
+        "c4"
+      ],
+      "title": "Language Models are Few-Shot Learners"
+    }
+  ],
+  "ledger_id": "ledger_live_chat_731cd947eef1",
+  "missing_evidence": [],
+  "question_id": "live_chat_731cd947eef1",
+  "rejected_items": []
+}

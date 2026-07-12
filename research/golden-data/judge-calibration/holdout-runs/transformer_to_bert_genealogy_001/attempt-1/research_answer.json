@@ -1,0 +1,31 @@
+{
+  "answer_id": "answer_live_chat_bfd4ff883d07",
+  "answer_type": "citation_genealogy",
+  "cited_claim_ids": [
+    "c1",
+    "c2",
+    "c3",
+    "c4",
+    "c5",
+    "c6"
+  ],
+  "cited_evidence_ids": [
+    "ev_3540835408466c6e",
+    "ev_80e066e1a3177125",
+    "ev_bdb5cc5caf5772fe",
+    "ev_0f82af3db4559191",
+    "ev_8911e7674ee45f0d",
+    "ev_499103108ff29656"
+  ],
+  "fields": {},
+  "markdown": "## Lineage: Vaswani et al. (2017) → BERT (2018)\n\n**Type:** Direct citation + architectural inheritance.\n\n### Edge 1 — Architectural inheritance (BERT §3)\nBERT states that its model is \"a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library\" and that \"our implementation is almost identical to the original\" (ev_3540835408466c6e). It therefore omits an exhaustive background and redirects readers to Vaswani et al. (2017) for the base primitive.\n\n**Components BERT inherits from Vaswani et al. (2017):**\n- Multi-layer encoder stack (decoder discarded).\n- Multi-head scaled dot-product self-attention.\n- Position-wise feed-forward sublayers.\n- Residual connections + layer normalization.\n- Positional embeddings (ev_8911e7674ee45f0d shows the Transformer source offering learned positional embeddings as an option).\n\n### Edge 2 — Conceptual debt framing (BERT §1)\nBERT cites Vaswani et al. (2017) a second time when motivating bidirectionality: \"in OpenAI GPT, the authors use a left-to-right architecture, where every token can only attend to previous tokens in the self-attention layers of the Transformer (Vaswani et al., 2017)\" (ev_80e066e1a3177125). The same citation is invoked to contrast GPT's constrained self-attention against BERT's \"bidirectional self-attention\" (ev_bdb5cc5caf5772fe). Thus BERT frames Vaswani et al. (2017) as the source of the very self-attention layer it modifies.\n\n### Deviations and extensions relative to Vaswani et al. (2017)\n- **Decoder dropped:** only the encoder stack is reused.\n- **Bidirectional attention mask:** replaces GPT-style left-to-only masking over the same primitive.\n- **Masked Language Model (MLM)** pre-training objective (ev_0f82af3db4559191), inspired by Cloze (Taylor, 1953), replacing left-to-right LM.\n- **Next Sentence Prediction (NSP)** auxiliary objective.\n- **Segment/token embeddings** added on top of token + positional embeddings.\n- **Corpus:** Wikipedia + BookCorpus (sequence lengths up to 512, with 90% of steps at length 128 to manage quadratic attention cost — ev_499103108ff29656).\n\n### Summary of the cited relationship\nBERT's relationship to \"Attention Is All You Need\" is a **direct citation of inheritance**: the encoder primitive is reused essentially unchanged, the decoder is discarded, and the cited primitive is then re-masked bidirectionally and combined with MLM/NSP pre-training. The Transformer paper supplies the architectural substrate; BERT supplies the bidirectional pre-training framing layered on top of it.",
+  "outcome": "answered",
+  "question_id": "live_chat_bfd4ff883d07",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_bfd4ff883d07"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "BERT directly inherits the Transformer encoder of Vaswani et al. (2017) 'almost identically' and explicitly cites it as the source of its self-attention primitive, then extends it with bidirectional context (MLM), NSP, and segment embeddings.",
+  "verification_id": "verification_live_chat_bfd4ff883d07"
+}

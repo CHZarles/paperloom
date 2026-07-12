@@ -1,0 +1,30 @@
+{
+  "answer_id": "answer_live_chat_a1c234fbe7b3",
+  "answer_type": "comparison_matrix",
+  "cited_claim_ids": [
+    "c1_arch_transformer",
+    "c2_arch_dir_bert",
+    "c3_dir_transformer",
+    "c4_obj_transformer",
+    "c5_obj_mlm_bert",
+    "c6_obj_nsp_bert"
+  ],
+  "cited_evidence_ids": [
+    "ev_12722a3120bf0362",
+    "ev_5a465492abf3009b",
+    "ev_3540835408466c6e",
+    "ev_0f82af3db4559191",
+    "ev_45a55f2597027de7"
+  ],
+  "fields": {},
+  "markdown": "## Transformer vs. BERT — Comparison Matrix\n\n| Dimension | Original Transformer (Vaswani et al., 2017) | BERT (Devlin et al., 2018) |\n|---|---|---|\n| **Architecture role** | Encoder–decoder: encoder maps input tokens to representations z; decoder auto-regressively generates output symbols one at a time [ev_12722a3120bf0362]. | Encoder-only: a multi-layer bidirectional Transformer encoder, reusing the original Transformer encoder implementation [ev_3540835408466c6e]. |\n| **Directionality (masking)** | Decoder uses masked self-attention to prevent leftward information flow, preserving the auto-regressive property (unidirectional, left-to-right in the decoder) [ev_5a465492abf3009b]. | Bidirectional: the MLM objective removes the unidirectionality constraint and fuses left and right context at every layer [ev_0f82af3db4559191]. |\n| **Training objective** | Supervised sequence transduction / machine translation: cross-entropy over target tokens generated auto-regressively from the encoder output [ev_12722a3120bf0362]. | Self-supervised pre-training with two objectives: (1) Masked Language Modeling — predict masked tokens from full bidirectional context, with a mixed masking strategy [ev_0f82af3db4559191, ev_45a55f2597027de7]; (2) Next Sentence Prediction (NSP). Followed by task-specific fine-tuning. |\n\n### Key contrasts\n- **Architecture:** The original Transformer is a full encoder-decoder for seq2seq generation; BERT drops the decoder and keeps only the Transformer encoder stack.\n- **Directionality:** The original Transformer preserves left-to-right generation via masked self-attention in the decoder; BERT is designed to be deeply bidirectional by predicting masked tokens from both sides.\n- **Objective:** The original Transformer is trained end-to-end for translation (seq2seq LM cross-entropy); BERT is pre-trained with MLM + NSP on plain text and then fine-tuned, decoupling representation learning from a specific generative task.",
+  "outcome": "answered",
+  "question_id": "live_chat_a1c234fbe7b3",
+  "reasoning_artifact_ids": [
+    "reasoning_live_chat_a1c234fbe7b3"
+  ],
+  "sections": [],
+  "status": "COMPLETED",
+  "summary": "Comparison of the original Transformer (Vaswani et al., 2017) and BERT (Devlin et al., 2018) across architecture, directionality, and training objective, citing 5 corpus evidence items.",
+  "verification_id": "verification_live_chat_a1c234fbe7b3"
+}
