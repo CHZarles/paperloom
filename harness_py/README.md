@@ -1,81 +1,44 @@
 # Python Research Harness
 
-This package is the lightweight exploration harness for paper RAG.
+This package owns PaiSmart's model-orchestrated paper research turn. The default runtime uses the
+OpenAI Agents SDK with MiniMax, request-scoped conversation memory, guarded corpus tools, and
+deterministic final-answer and citation validation. The hand-written `legacy` runtime remains only as
+a rollback option.
+
+Start with [ONBOARDING.md](ONBOARDING.md) for the architecture, one-turn execution flow, state
+authority, tool authorization, eval capture, extension points, and debugging guide.
+
+Golden-data structure and test commands live in
+[`research/golden-data/README.md`](../research/golden-data/README.md).
+
+## Layout
 
 ```text
-request-scoped OpenAI Agents SDK session
-+ one model-driven tool loop
-+ 22 optional research skills
-+ corpus tools
-+ deterministic citation validation
+core/             shared models, contracts, statuses, errors
+corpus/           corpus loading and evidence-producing reading tools
+orchestration/    conversation state and runtime-neutral turn boundary
+  agents/         default OpenAI Agents SDK runtime
+  legacy/         rollback hand-written loop and direct MiniMax client
+evaluation/       Golden fixtures, audit, scoring, judge, eval recorder
+transport/        provider configuration and Java-facing HTTP service
+tests/            Python unit and integration tests
+cli.py            command-line composition root
 ```
 
-The public runtime is `LiveResearchChatHarness.run_turn(...)`. Golden agent runs and terminal chat
-use that same runtime. `agents_sdk` is the default; `legacy` remains available as a rollback flag.
+## Quick Start
 
-Install the pinned Python dependencies first:
+Run from the repository root:
 
 ```bash
 python3 -m venv .venv-harness
 .venv-harness/bin/python -m pip install -r harness_py/requirements.lock
+
+.venv-harness/bin/python -m harness_py validate
+.venv-harness/bin/python -m harness_py audit --out /tmp/paismart-anchor-audit.json
+.venv-harness/bin/python -m unittest discover -s harness_py/tests
 ```
 
-## Runtime
-
-The model receives the complete stored user/assistant history, the current message, and previously
-cited evidence. In one continuous loop it may answer directly, clarify, load skills, search, read,
-continue researching, partially answer, or abstain. There is no fixed stage pipeline and no
-ReAct-round limit.
-
-Corpus tools:
-
-```text
-search_paper_candidates
-find_papers_by_identity
-find_reading_locations
-read_locations
-get_citation_edges       # when available
-```
-
-Control tools:
-
-```text
-get_research_skill
-submit_research_answer
-```
-
-Paper-content claims cite `[[evidence_id]]`. Python validates citation identity before accepting the
-answer and returns citation errors to the same loop for repair.
-
-## Conversation
-
-`ConversationState` persists messages, selected papers, cited evidence, and the last run reference.
-It does not persist another copy of the complete tool trace. The newest user message may continue
-or replace the prior topic without a separate context state machine.
-
-In `chat-shell`:
-
-```text
-/history
-/state
-/clear
-/new
-/save
-/exit
-```
-
-`/clear` and `/new` reset model-visible context.
-
-## Commands
-
-Validate authored golden behavior without calling the model:
-
-```bash
-python3 -m harness_py validate
-python3 -m harness_py audit
-```
-
-Run selected golden cases through MiniMax:
+Run one live Golden case:
 
 ```bash
 .venv-harness/bin/python -m harness_py agent-run \
@@ -85,56 +48,29 @@ Run selected golden cases through MiniMax:
   --out /tmp/paismart-agent-run
 ```
 
-Open terminal chat over papers in the product database:
-
-```bash
-.venv-harness/bin/python -m harness_py chat-shell \
-  --runtime agents_sdk \
-  --limit 30 \
-  --state /tmp/paismart-chat-state.json \
-  --out /tmp/paismart-chat-runs
-```
-
-Run the internal service used by the Java application:
+Run the internal service used by Java:
 
 ```bash
 export MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1
 export MINIMAX_API_KEY=...
 export MINIMAX_MODEL=MiniMax-M3
+
 .venv-harness/bin/python -m harness_py serve \
   --runtime agents_sdk \
   --host 127.0.0.1 \
   --port 8091
 ```
 
-Java calls `/v1/research/stream` over internal HTTP and consumes an NDJSON stream containing model,
-tool, evidence, and terminal-result events. Java owns authentication, Redis generation state,
-reconnection, permissions, and usage settlement. The Python harness does not access Redis and has no
-overall execution deadline. `/v1/research/turn` remains available for local synchronous diagnostics.
+Java calls `/v1/research/stream` and consumes NDJSON progress plus one terminal result. Python does
+not own authentication, Redis state, reconnect behavior, permissions, or usage settlement.
 
-Progress events are derived from model-call lifecycle, tool arguments, and tool results. They do not
-use an additional LLM summarization call and do not expose chain-of-thought.
+## Eval Capture
 
-`--limit` caps papers loaded from the product database. `--state` persists conversation context.
-`--out` writes optional evidence, skill, ReAct trace, citation-validation, and answer artifacts.
+Set `EVAL_DUMP_DIR` or pass `--eval-dump`. Each execution writes only:
 
-Set `EVAL_DUMP_DIR` or pass `--eval-dump` to capture offline evaluation data. Each execution writes
-one `<run_id>/events.jsonl` plus one atomic `<run_id>/result.json`. The live harness never reads
-these files; RL, cache, provider, and tool-process analyses remain offline.
-
-## Evaluation
-
-Golden scoring checks observable outcome, retrieval, structured content, and citations. It does not
-grade skill choice, tool sequence, tool count, or exact prose. `judge-calibrate` runs the separate
-LLM-as-judge agreement check against fixed human labels.
-
-Focused verification:
-
-```bash
-python3 -m unittest \
-  harness_py.tests.test_agents_model \
-  harness_py.tests.test_agents_tools \
-  harness_py.tests.test_agents_runtime \
-  harness_py.tests.test_service \
-  harness_py.tests.test_eval_recorder
+```text
+<eval-dir>/<run_id>/events.jsonl
+<eval-dir>/<run_id>/result.json
 ```
+
+The runtime never reads or analyzes these files. Evaluation research remains offline.
