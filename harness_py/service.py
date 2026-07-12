@@ -23,17 +23,20 @@ class ResearchHarnessService:
         max_completion_tokens: int = 3000,
         corpus_limit: int = 1000,
         runtime_name: str = "",
+        provider=None,
+        harness=None,
+        corpus_store=None,
     ):
-        self.provider = EnvProviderConfigStore().load_active_provider("llm")
+        self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
         self.runtime_name = runtime_name or os.getenv("RESEARCH_HARNESS_RUNTIME", "agents_sdk")
-        self.harness = LiveResearchChatHarness(
+        self.harness = harness or LiveResearchChatHarness(
             build_harness_runtime(
                 self.provider,
                 self.runtime_name,
                 max_completion_tokens=max_completion_tokens,
             ),
         )
-        self.corpus_store = DockerMySqlProductCorpusStore()
+        self.corpus_store = corpus_store or DockerMySqlProductCorpusStore()
         self.corpus_limit = max(1, corpus_limit)
 
     def run_turn(self, request: JsonMap) -> JsonMap:
