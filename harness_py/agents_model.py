@@ -68,6 +68,24 @@ class MiniMaxAgentsModel(OpenAIChatCompletionsModel):
     async def close(self) -> None:
         await self._client.close()
 
+    async def get_response(self, *args, **kwargs):
+        try:
+            return await super().get_response(*args, **kwargs)
+        except Exception as error:
+            context = _ACTIVE_CONTEXT.get()
+            recorder = context.turn.eval_recorder if context else None
+            if context and recorder:
+                recorder.append(
+                    kind="model.error",
+                    operation_id=context.current_model_call_id,
+                    attempt=context.current_transport_attempt(),
+                    payload={
+                        "error_type": type(error).__name__,
+                        "message": str(error),
+                    },
+                )
+            raise
+
     async def _record_request(self, request: httpx.Request) -> None:
         context = _ACTIVE_CONTEXT.get()
         recorder = context.turn.eval_recorder if context else None

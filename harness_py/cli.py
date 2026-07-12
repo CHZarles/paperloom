@@ -152,8 +152,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({
             "out": str(out),
             "provider": provider.public_diagnostics(),
+            "runtime": args.runtime,
+            "eval_capture_failed_count": harness.eval_capture_failures,
             "score_report": report,
         }, indent=2, sort_keys=True))
+        if args.eval_dump and harness.eval_capture_failures:
+            return 2
         return 0 if report["failed_count"] == 0 else 1
     if args.command == "chat":
         dataset = DockerMySqlProductCorpusStore().load_dataset(

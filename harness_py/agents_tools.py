@@ -94,11 +94,6 @@ def _invoke_domain(
     name: str,
     arguments: JsonMap,
 ) -> str:
-    context.emit_progress({
-        "type": "tool_started",
-        "tool": name,
-        "input": _progress_input(name, arguments),
-    })
     started = perf_counter()
     before = context.state_snapshot()
     recorder = context.turn.eval_recorder
@@ -113,6 +108,11 @@ def _invoke_domain(
                 "arguments": arguments,
             },
         )
+    context.emit_progress({
+        "type": "tool_started",
+        "tool": name,
+        "input": _progress_input(name, arguments),
+    })
     if name == "get_research_skill":
         skill_id = str(arguments.get("skill_id") or "")
         internal = context.skills.get(skill_id)
@@ -122,6 +122,7 @@ def _invoke_domain(
         internal = context.corpus.call(name, arguments).payload
     visible = child_map(model_facing_payload(internal))
     context.trace.append(_trace_item(ToolCall(tool_context.tool_call_id, name, arguments), visible))
+    _record_eval_tool(context, tool_context, name, arguments, internal, visible, before)
     context.emit_progress({
         "type": "tool_completed",
         "tool": name,
@@ -132,7 +133,6 @@ def _invoke_domain(
         "evidenceIds": _progress_evidence_ids(visible),
     })
     context.check_cancelled()
-    _record_eval_tool(context, tool_context, name, arguments, internal, visible, before)
     return json.dumps(visible, ensure_ascii=False)
 
 

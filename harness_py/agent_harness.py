@@ -146,6 +146,7 @@ class ResearchAgentHarness:
                     trace.append(_trace_item(final_calls[0], payload))
                     messages.append(_tool_message(final_calls[0], payload))
                     continue
+                trace.append(_trace_item(final_calls[0], {"accepted": True}))
                 return _build_run(
                     case_id=case_id,
                     final=final,

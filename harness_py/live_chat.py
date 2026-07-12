@@ -35,6 +35,7 @@ class LiveResearchChatHarness:
         self.eval_dump_dir = Path(eval_dump_dir or os.getenv("EVAL_DUMP_DIR", "")) if (
             eval_dump_dir or os.getenv("EVAL_DUMP_DIR")
         ) else None
+        self.eval_capture_failures = 0
 
     def run_question(self, dataset: GoldenDataset, question: str) -> JsonMap:
         run, _ = self.run_turn(dataset, ConversationState.new("transient_live_chat"), question)
@@ -42,9 +43,12 @@ class LiveResearchChatHarness:
 
     def run_case(self, dataset: GoldenDataset, case: JsonMap) -> JsonMap:
         state = conversation_state_for_case(dataset, case)
-        run, _ = self.run_turn(dataset, state, case_question(case))
-        run["case_id"] = str(case["id"])
-        run["question_id"] = str(case["id"])
+        run, _ = self.run_turn(
+            dataset,
+            state,
+            case_question(case),
+            case_id_override=str(case["id"]),
+        )
         return run
 
     def run_turn(
@@ -54,11 +58,12 @@ class LiveResearchChatHarness:
         user_message: str,
         progress_listener: Callable[[JsonMap], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
+        case_id_override: str = "",
     ) -> tuple[JsonMap, ConversationState]:
         if not user_message.strip():
             raise ValueError("user_message is required")
         scoped = _dataset_for_scope(dataset, state.effective_scope_paper_ids(dataset))
-        case_id = _live_case_id(scoped, state, user_message)
+        case_id = case_id_override or _live_case_id(scoped, state, user_message)
         run_id = new_run_id()
         recorder = self._open_recorder(run_id)
         if recorder:
@@ -103,7 +108,7 @@ class LiveResearchChatHarness:
                     operation_id="run",
                     payload={"error_type": type(error).__name__, "message": str(error)},
                 )
-                recorder.finish({
+                self._finish_recorder(recorder, {
                     "run_id": run_id,
                     "status": "CANCELLED",
                     "error_type": type(error).__name__,
@@ -117,7 +122,7 @@ class LiveResearchChatHarness:
                     operation_id="run",
                     payload={"error_type": type(error).__name__, "message": str(error)},
                 )
-                recorder.finish({
+                self._finish_recorder(recorder, {
                     "run_id": run_id,
                     "status": "CANCELLED",
                     "error_type": type(error).__name__,
@@ -132,8 +137,7 @@ class LiveResearchChatHarness:
                     payload={"error_type": type(error).__name__, "message": str(error)},
                 )
             run = _technical_failure_run(run_id, case_id, user_message, str(error))
-        if recorder:
-            recorder.finish(run)
+        self._finish_recorder(recorder, run)
         return run, state.updated_from_run(scoped, run, user_message)
 
     def _open_recorder(self, run_id: str) -> EvalRecorder | None:
@@ -142,8 +146,14 @@ class LiveResearchChatHarness:
         try:
             return EvalRecorder(self.eval_dump_dir, run_id)
         except Exception as error:
+            self.eval_capture_failures += 1
             logging.getLogger(__name__).error("eval capture open failed: %s", error)
             return None
+
+    def _finish_recorder(self, recorder: EvalRecorder | None, result: JsonMap) -> None:
+        if recorder and not recorder.finish(result):
+            self.eval_capture_failures += 1
+            logging.getLogger(__name__).error("eval capture failed for run_id=%s", recorder.run_id)
 
 
 def _live_case_id(dataset: GoldenDataset, state: ConversationState, question: str) -> str:
