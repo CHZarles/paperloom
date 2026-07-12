@@ -65,6 +65,9 @@ class MiniMaxAgentsModel(OpenAIChatCompletionsModel):
             extra_body=extra_body,
         )
 
+    async def close(self) -> None:
+        await self._client.close()
+
     async def _record_request(self, request: httpx.Request) -> None:
         context = _ACTIVE_CONTEXT.get()
         recorder = context.turn.eval_recorder if context else None
