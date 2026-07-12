@@ -1,0 +1,2 @@
+# Install with: python3 -m pip install -r harness_py/requirements.lock
+openai-agents==0.18.2
