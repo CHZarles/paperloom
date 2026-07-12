@@ -32,9 +32,8 @@ class LiveResearchChatHarness:
             if isinstance(runtime_or_model, ChatModel)
             else runtime_or_model
         )
-        self.eval_dump_dir = Path(eval_dump_dir or os.getenv("EVAL_DUMP_DIR", "")) if (
-            eval_dump_dir or os.getenv("EVAL_DUMP_DIR")
-        ) else None
+        eval_dump_dir = eval_dump_dir or os.getenv("EVAL_DUMP_DIR")
+        self.eval_dump_dir = Path(eval_dump_dir) if eval_dump_dir else None
         self.eval_capture_failures = 0
 
     def run_question(self, dataset: GoldenDataset, question: str) -> JsonMap:
@@ -62,6 +61,7 @@ class LiveResearchChatHarness:
     ) -> tuple[JsonMap, ConversationState]:
         if not user_message.strip():
             raise ValueError("user_message is required")
+        # 每一轮只看调用方授权的论文范围，不能依赖模型自行约束。
         scoped = _dataset_for_scope(dataset, state.effective_scope_paper_ids(dataset))
         case_id = case_id_override or _live_case_id(scoped, state, user_message)
         run_id = new_run_id()
@@ -101,21 +101,7 @@ class LiveResearchChatHarness:
                 eval_recorder=recorder,
             ))
             run = result.run
-        except HarnessCancelled as error:
-            if recorder:
-                recorder.append(
-                    kind="run.error",
-                    operation_id="run",
-                    payload={"error_type": type(error).__name__, "message": str(error)},
-                )
-                self._finish_recorder(recorder, {
-                    "run_id": run_id,
-                    "status": "CANCELLED",
-                    "error_type": type(error).__name__,
-                    "message": str(error),
-                })
-            raise
-        except (BrokenPipeError, ConnectionResetError) as error:
+        except (HarnessCancelled, BrokenPipeError, ConnectionResetError) as error:
             if recorder:
                 recorder.append(
                     kind="run.error",
@@ -146,6 +132,7 @@ class LiveResearchChatHarness:
         try:
             return EvalRecorder(self.eval_dump_dir, run_id)
         except Exception as error:
+            # 评测数据落盘失败不能改变主回答，只通过计数和日志暴露。
             self.eval_capture_failures += 1
             logging.getLogger(__name__).error("eval capture open failed: %s", error)
             return None

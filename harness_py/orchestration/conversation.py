@@ -33,17 +33,18 @@ class ConversationState:
 
     @classmethod
     def from_dict(cls, value: JsonMap) -> ConversationState:
+        messages = [
+            message
+            for item in as_list(value.get("message_history"))
+            if (message := _message_item(child_map(item)))
+        ]
         return cls(
             conversation_id=str(value.get("conversation_id") or "live_conversation"),
             turn_index=int(value.get("turn_index") or 0),
             scope_paper_ids=_strings(value.get("scope_paper_ids")),
             selected_paper_ids=_strings(value.get("selected_paper_ids")),
             selected_evidence_ids=_strings(value.get("selected_evidence_ids")),
-            message_history=[
-                _message_item(child_map(item))
-                for item in as_list(value.get("message_history"))
-                if _message_item(child_map(item))
-            ],
+            message_history=messages,
             evidence_items_by_id={
                 str(key): child_map(item)
                 for key, item in child_map(value.get("evidence_items_by_id")).items()
@@ -123,14 +124,16 @@ class ConversationState:
             for item in as_list(child_map(run.get("evidence_ledger")).get("items"))
             if child_map(item).get("evidence_id")
         }
+        # 只让已验证的证据进入下一轮记忆，运行轨迹不回灌给模型。
+        known_evidence = {**self.evidence_items_by_id, **ledger_items}
         cited_ids = _validated_ids(
             as_list(answer.get("cited_evidence_ids")),
-            {**self.evidence_items_by_id, **ledger_items},
+            known_evidence,
         )
         selected_evidence_ids = cited_ids or self.selected_evidence_ids
         cited_papers = _validated_ids(
             [
-                child_map({**self.evidence_items_by_id, **ledger_items}.get(evidence_id)).get("paper_id")
+                child_map(known_evidence.get(evidence_id)).get("paper_id")
                 for evidence_id in cited_ids
             ],
             dataset.paper_records_by_id,
@@ -157,7 +160,7 @@ class ConversationState:
                     "cited_evidence_ids": cited_ids,
                 },
             ],
-            evidence_items_by_id={**self.evidence_items_by_id, **ledger_items},
+            evidence_items_by_id=known_evidence,
             tool_traces=self.tool_traces,
             last_run_id=run_id,
             last_answer_summary=str(answer.get("summary") or ""),

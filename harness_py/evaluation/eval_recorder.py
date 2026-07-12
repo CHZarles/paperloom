@@ -26,6 +26,7 @@ class EvalRecorder:
         self.result_path = self.run_dir / "result.json"
         self._handle = self.events_path.open("x", encoding="utf-8")
         os.chmod(self.events_path, 0o600)
+        # 锁同时保护去重集合和序号，确保并发工具事件不重不漏。
         self._lock = threading.Lock()
         self._seen: set[str] = set()
         self._sequence = 0
@@ -69,6 +70,7 @@ class EvalRecorder:
             try:
                 self._handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
                 self._handle.flush()
+                # 逐条刷盘比批量缓存慢，但这里优先保证进程异常时的数据完整性。
                 os.fsync(self._handle.fileno())
             except Exception as error:
                 self._fail(error)
@@ -91,6 +93,7 @@ class EvalRecorder:
             }
             temp = self.run_dir / ".result.json.tmp"
             try:
+                # 先完整写临时文件，再原子替换，读者不会看到半份结果。
                 with temp.open("x", encoding="utf-8") as handle:
                     os.chmod(temp, 0o600)
                     json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))

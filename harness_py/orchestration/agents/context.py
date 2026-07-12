@@ -34,6 +34,7 @@ class ResearchRunContext:
 
     def __post_init__(self) -> None:
         self.corpus = ReadingCorpusTools(self.turn.dataset)
+        # 上一轮已经引用过的论文和位置可直接用于追问，其余仍走工具授权链。
         self.corpus.authorized_paper_ids.update(
             paper_id
             for paper_id in self.turn.research_memory.selected_paper_ids

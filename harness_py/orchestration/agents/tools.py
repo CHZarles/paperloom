@@ -163,6 +163,7 @@ def _invoke_final(
     tool_context: ToolContext[ResearchRunContext],
     draft: JsonMap,
 ) -> str:
+    # 最终提交必须独占一步，避免同批工具调用在答案确定后继续改变证据状态。
     siblings = context.tool_call_groups.get(tool_context.tool_call_id, (FINAL_TOOL_NAME,))
     validation_error = ""
     if len(siblings) != 1:
