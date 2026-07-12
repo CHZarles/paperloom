@@ -1,6 +1,18 @@
 # OpenAI Agents SDK Harness Migration With Minimal Eval Capture
 
-**Status:** Planning only. This document does not modify runtime code.
+**Status:** Implemented on 2026-07-13. Agents SDK is the default runtime; the legacy runtime remains
+available through the rollback flag.
+
+**Implementation result:**
+
+- OpenAI Agents SDK 0.18.2 now owns the model/tool loop and request-scoped Session behavior.
+- MiniMax-M3 runs through the Chat Completions adapter with adaptive thinking, required tool choice,
+  serial local tool execution, provider retries, and a text-response continuation nudge.
+- Existing JSON, NDJSON, run-artifact, citation, evidence, and research-memory contracts remain
+  direct runtime outputs rather than eval-file projections.
+- Optional EVAL_DUMP_DIR capture writes one events.jsonl and one atomic result.json per execution.
+- The committed clean-tree verification is 67 passing Python tests, 15 deterministic Golden hard
+  passes, 7 passing anchor audits, and one live MiniMax Agents SDK hard-passing smoke case.
 
 **Goal:** Replace the hand-written Python ReAct orchestration with the OpenAI Agents SDK while
 preserving current research behavior and keeping transcript memory separate from research memory.
