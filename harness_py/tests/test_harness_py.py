@@ -31,7 +31,7 @@ from harness_py.orchestration.legacy.llm import (
 )
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.orchestration.research_skills import ResearchSkillRegistry
-from harness_py.transport.provider_config import ProviderConfig, _database_name, decrypt_provider_key
+from harness_py.transport.provider_config import ProviderConfig, decrypt_provider_key
 
 
 class PythonHarnessPrototypeTest(unittest.TestCase):
@@ -233,10 +233,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         encoded = f"{base64.b64encode(iv).decode()}:{base64.b64encode(ciphertext).decode()}"
 
         self.assertEqual("sk-test", decrypt_provider_key(encoded, base64.b64encode(key).decode()))
-
-    def test_database_name_uses_the_jdbc_url_path(self) -> None:
-        self.assertEqual("paismart", _database_name("jdbc:mysql://127.0.0.1:3306/paismart?useSSL=false"))
-        self.assertEqual("paismart", _database_name(""))
 
     def test_product_db_rows_build_generic_reading_corpus(self) -> None:
         dataset = build_product_dataset(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -194,7 +195,10 @@ def _read_env_file(path: Path) -> dict[str, str]:
 
 
 def _database_name(jdbc_url: str) -> str:
-    parsed = urlparse(jdbc_url.removeprefix("jdbc:"))
+    match = re.search(r"jdbc:mysql://[^/]+/([^?]+)", jdbc_url)
+    if match:
+        return match.group(1)
+    parsed = urlparse(jdbc_url.replace("jdbc:", "", 1))
     return parsed.path.lstrip("/") or "paismart"
 
 
