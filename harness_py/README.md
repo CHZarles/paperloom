@@ -1,37 +1,35 @@
-# Python Research Harness
+# Python 研究 Harness
 
-This package owns PaiSmart's model-orchestrated paper research turn. The default runtime uses the
-OpenAI Agents SDK with MiniMax, request-scoped conversation memory, guarded corpus tools, and
-deterministic final-answer and citation validation. The hand-written `legacy` runtime remains only as
-a rollback option.
+这个包负责 PaiSmart 的论文研究回合。默认运行时基于 OpenAI Agents SDK 和 MiniMax，使用
+请求级会话记忆、受控的语料工具，以及确定性的最终答案和引用校验。手写的 `legacy`
+运行时只作为回滚方案保留。
 
-The implementation deliberately favors small standard-library helpers and explicit state over new
-framework layers. Prompts, command defaults, endpoint paths, and artifact paths are treated as
-behavioral contracts during refactoring.
+代码尽量使用小型标准库函数和显式状态，不额外堆框架。重构时，提示词、命令默认值、
+接口路径和产物路径都视为行为契约，不随可读性调整一起修改。
 
-Start with [ONBOARDING.md](ONBOARDING.md) for the architecture, one-turn execution flow, state
-authority, tool authorization, eval capture, extension points, and debugging guide.
+先阅读 [ONBOARDING.md](ONBOARDING.md)。其中介绍了整体架构、单回合执行流程、状态归属、
+工具授权、评测数据保存、扩展位置和排查方法。
 
-Golden-data structure and test commands live in
-[`research/golden-data/README.md`](../research/golden-data/README.md).
+Golden Data 的结构和测试命令见
+[`research/golden-data/README.md`](../research/golden-data/README.md)。
 
-## Layout
+## 目录结构
 
 ```text
-core/             shared models, contracts, statuses, errors
-corpus/           corpus loading and evidence-producing reading tools
-orchestration/    conversation state and runtime-neutral turn boundary
-  agents/         default OpenAI Agents SDK runtime
-  legacy/         rollback hand-written loop and direct MiniMax client
-evaluation/       Golden fixtures, audit, scoring, judge, eval recorder
-transport/        provider configuration and Java-facing HTTP service
-tests/            Python unit and integration tests
-cli.py            command-line composition root
+core/             公共模型、契约、状态和错误
+corpus/           语料加载，以及生成证据的阅读工具
+orchestration/    会话状态和与运行时无关的回合边界
+  agents/         默认的 OpenAI Agents SDK 运行时
+  legacy/         手写工具循环和 MiniMax 直连客户端，仅用于回滚
+evaluation/       Golden fixture、审计、评分、judge 和评测数据记录
+transport/        模型供应商配置和供 Java 调用的 HTTP 服务
+tests/            Python 单元测试和集成测试
+cli.py            命令行入口及依赖组装
 ```
 
-## Quick Start
+## 快速开始
 
-Run from the repository root:
+在仓库根目录运行：
 
 ```bash
 python3 -m venv .venv-harness
@@ -42,7 +40,7 @@ python3 -m venv .venv-harness
 .venv-harness/bin/python -m unittest discover -s harness_py/tests
 ```
 
-Run one live Golden case:
+运行一条真实的 Golden Case：
 
 ```bash
 .venv-harness/bin/python -m harness_py agent-run \
@@ -52,7 +50,7 @@ Run one live Golden case:
   --out /tmp/paismart-agent-run
 ```
 
-Run the internal service used by Java:
+启动供 Java 调用的内部服务：
 
 ```bash
 export MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1
@@ -65,16 +63,16 @@ export MINIMAX_MODEL=MiniMax-M3
   --port 8091
 ```
 
-Java calls `/v1/research/stream` and consumes NDJSON progress plus one terminal result. Python does
-not own authentication, Redis state, reconnect behavior, permissions, or usage settlement.
+Java 调用 `/v1/research/stream`，接收 NDJSON 进度事件和一个最终结果。身份认证、Redis
+状态、断线重连、权限和用量结算不由 Python Harness 负责。
 
-## Eval Capture
+## 评测数据保存
 
-Set `EVAL_DUMP_DIR` or pass `--eval-dump`. Each execution writes only:
+设置 `EVAL_DUMP_DIR`，或者传入 `--eval-dump`。每次执行只写入：
 
 ```text
 <eval-dir>/<run_id>/events.jsonl
 <eval-dir>/<run_id>/result.json
 ```
 
-The runtime never reads or analyzes these files. Evaluation research remains offline.
+运行时不会读取或分析这些文件。所有评测研究都在线下完成。
