@@ -49,9 +49,9 @@ class BehaviorScorer:
         }
         criteria = [str(item) for item in as_list(case.get("review"))]
         criteria.extend(
-            str(child_map(claim).get("text"))
-            for claim in as_list(case_expect(case).get("claims"))
-            if child_map(claim).get("text")
+            str(claim.get("text"))
+            for raw_claim in as_list(case_expect(case).get("claims"))
+            if (claim := child_map(raw_claim)).get("text")
         )
         return CaseScore(
             case_id=str(case.get("id") or ""),
@@ -91,19 +91,21 @@ class BehaviorScorer:
         evidence, errors = _validated_evidence(dataset, run)
         paper_ids = {str(item.get("paper_id")) for item in evidence if item.get("paper_id")}
         anchor_ids = {str(item.get("matched_anchor_id")) for item in evidence if item.get("matched_anchor_id")}
-        for paper_id in as_list(child_map(expectation.get("papers")).get("required")):
+        expected_papers = child_map(expectation.get("papers"))
+        expected_evidence = child_map(expectation.get("evidence"))
+        for paper_id in as_list(expected_papers.get("required")):
             if paper_id not in paper_ids:
                 errors.append(f"REQUIRED_PAPER_MISSING:{paper_id}")
-        for paper_id in as_list(child_map(expectation.get("papers")).get("forbidden")):
+        for paper_id in as_list(expected_papers.get("forbidden")):
             if paper_id in paper_ids:
                 errors.append(f"FORBIDDEN_PAPER_ACCEPTED:{paper_id}")
-        for anchor_id in as_list(child_map(expectation.get("evidence")).get("required")):
+        for anchor_id in as_list(expected_evidence.get("required")):
             if anchor_id not in anchor_ids:
                 errors.append(f"REQUIRED_ANCHOR_MISSING:{anchor_id}")
-        for anchor_id in as_list(child_map(expectation.get("evidence")).get("forbidden")):
+        for anchor_id in as_list(expected_evidence.get("forbidden")):
             if anchor_id in anchor_ids:
                 errors.append(f"FORBIDDEN_ANCHOR_ACCEPTED:{anchor_id}")
-        configured = bool(child_map(expectation.get("papers")) or child_map(expectation.get("evidence")))
+        configured = bool(expected_papers or expected_evidence)
         return _dimension(errors, configured or bool(errors))
 
     def _score_content(self, case: JsonMap, run: JsonMap) -> DimensionScore:
@@ -161,12 +163,12 @@ def _dimension(errors: list[str], configured: bool = True) -> DimensionScore:
 
 def _accepted_evidence(run: JsonMap) -> list[JsonMap]:
     return [
-        child_map(item)
-        for item in as_list(child_map(run.get("evidence_ledger")).get("items"))
-        if child_map(item).get("evidence_id")
-        and child_map(item).get("citeable") is not False
-        and child_map(item).get("evidence_quality") != "rejected"
-        and child_map(item).get("element_type") != "paper_candidate"
+        item
+        for raw_item in as_list(child_map(run.get("evidence_ledger")).get("items"))
+        if (item := child_map(raw_item)).get("evidence_id")
+        and item.get("citeable") is not False
+        and item.get("evidence_quality") != "rejected"
+        and item.get("element_type") != "paper_candidate"
     ]
 
 
@@ -201,12 +203,12 @@ def _actual_outcome(run: JsonMap) -> str:
         status_values.append(run.get("result_status"))
     if ExecutionStatus.FAILED_TECHNICAL.value in status_values:
         return "technical_failure"
-    result_status = (
-        {"result_status": run.get("result_status")}
-        if "result_status" in run else
-        {}
+    status_error = (
+        execution_status_error(run.get("status"), answer.get("status"), run.get("result_status"))
+        if "result_status" in run
+        else execution_status_error(run.get("status"), answer.get("status"))
     )
-    if execution_status_error(run.get("status"), answer.get("status"), **result_status):
+    if status_error:
         return "invalid"
     if "outcome" not in answer or answer.get("outcome") is None:
         return "missing"
@@ -215,9 +217,7 @@ def _actual_outcome(run: JsonMap) -> str:
         return "invalid"
     if research_outcome_error(answer.get("status"), answer.get("outcome")):
         return "invalid"
-    if explicit:
-        return explicit
-    return "invalid"
+    return explicit
 
 
 def _scalar_string(value: Any) -> str:

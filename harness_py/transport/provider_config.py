@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import os
-import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -100,11 +99,13 @@ class DockerMySqlProviderConfigStore(ProviderConfigStore):
         active = next((row for row in rows if _truthy(row["active"])), None)
         if active is None:
             raise RuntimeError(f"no active provider row found for scope={scope}")
-        api_key = decrypt_provider_key(active["api_key_ciphertext"], self._secret_key())
+        secret_key = self._secret_key()
+        # 数据库是配置源，密钥只在进程内解密，诊断输出永远不返回明文。
+        api_key = decrypt_provider_key(active["api_key_ciphertext"], secret_key)
         if not api_key and scope == "embedding" and active["provider_code"] == "minimax":
-            shared = next((row for row in self._query_provider_rows(db_name, user, password, "llm")
-                           if row["provider_code"] == "minimax"), None)
-            api_key = decrypt_provider_key(shared["api_key_ciphertext"], self._secret_key()) if shared else ""
+            llm_rows = self._query_provider_rows(db_name, user, password, "llm")
+            shared = next((row for row in llm_rows if row["provider_code"] == "minimax"), None)
+            api_key = decrypt_provider_key(shared["api_key_ciphertext"], secret_key) if shared else ""
         if not api_key:
             raise RuntimeError(f"active provider {active['provider_code']} for scope={scope} has no API key")
         return ProviderConfig(
@@ -193,10 +194,7 @@ def _read_env_file(path: Path) -> dict[str, str]:
 
 
 def _database_name(jdbc_url: str) -> str:
-    match = re.search(r"jdbc:mysql://[^/]+/([^?]+)", jdbc_url)
-    if match:
-        return match.group(1)
-    parsed = urlparse(jdbc_url.replace("jdbc:", "", 1))
+    parsed = urlparse(jdbc_url.removeprefix("jdbc:"))
     return parsed.path.lstrip("/") or "paismart"
 
 

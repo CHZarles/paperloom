@@ -91,6 +91,7 @@ class ResearchAgentHarness:
         total_tokens = 0
         model_latency_ms = 0
 
+        # 旧运行时只保留一条连续工具循环，最终答案由同一套确定性校验收口。
         while True:
             _raise_if_cancelled(should_cancel)
             _emit_progress(progress_listener, {
@@ -134,7 +135,7 @@ class ResearchAgentHarness:
 
             messages.append(_assistant_tool_message(response))
             final_calls = [call for call in response.tool_calls if call.name == _FINAL_TOOL]
-            if final_calls and len(response.tool_calls) == 1 and len(final_calls) == 1:
+            if final_calls and len(response.tool_calls) == 1:
                 final = child_map(final_calls[0].arguments)
                 validation_error = _answer_validation_error(
                     final,
@@ -194,14 +195,15 @@ class ResearchAgentHarness:
                     payload = model_facing_payload(corpus.call(call.name, call.arguments).payload)
                 trace.append(_trace_item(call, payload))
                 messages.append(_tool_message(call, payload))
+                visible = child_map(payload)
                 _emit_progress(progress_listener, {
                     "type": "tool_completed",
                     "tool": call.name,
-                    "status": "success" if "error" not in child_map(payload) else "failed",
+                    "status": "success" if "error" not in visible else "failed",
                     "durationMs": round((perf_counter() - tool_started) * 1000),
                     "input": _progress_input(call.name, call.arguments),
-                    "output": _progress_output(call.name, child_map(payload)),
-                    "evidenceIds": _progress_evidence_ids(child_map(payload)),
+                    "output": _progress_output(call.name, visible),
+                    "evidenceIds": _progress_evidence_ids(visible),
                 })
 
     @staticmethod
@@ -222,12 +224,12 @@ class ResearchAgentHarness:
 
 def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
     return (
-            "You are a paper-research agent operating in one continuous ReAct loop. Trust the conversation history: "
-            "decide whether to answer directly, ask one useful clarification, research, continue searching, combine "
-            "research skills, or abstain. There is no fixed stage sequence and no research-round limit.\n\n"
-            "Keep ordinary conversation natural and concise. For a greeting, respond briefly. If a recommendation "
-            "request is missing only its topic, use outcome=needs_clarification and ask only what topic to focus on; "
-            "do not demand optional purpose, venue, year, or paper-type constraints.\n\n"
+        "You are a paper-research agent operating in one continuous ReAct loop. Trust the conversation history: "
+        "decide whether to answer directly, ask one useful clarification, research, continue searching, combine "
+        "research skills, or abstain. There is no fixed stage sequence and no research-round limit.\n\n"
+        "Keep ordinary conversation natural and concise. For a greeting, respond briefly. If a recommendation "
+        "request is missing only its topic, use outcome=needs_clarification and ask only what topic to focus on; "
+        "do not demand optional purpose, venue, year, or paper-type constraints.\n\n"
             "Paper cards and identity results are authoritative for corpus metadata such as paper count, title, author, "
             "year, venue, and identifiers. Answer corpus inventory and filtering questions directly from those results "
             "without paper-content citations. Before submitting any corpus count, list, or metadata-filter answer, you must "
@@ -248,8 +250,8 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
             "user should see in markdown. Use needs_clarification only for a genuinely blocking question. Use partial or "
             "abstained when the corpus cannot fully support the request. Do not expose internal skills, tool names, "
             "schemas, statuses, reasoning traces, evidence-id syntax, or validation rules in the user-facing answer.\n\n"
-            "AVAILABLE RESEARCH SKILLS\n"
-            f"{skills.catalog()}"
+        "AVAILABLE RESEARCH SKILLS\n"
+        f"{skills.catalog()}"
     )
 
 
@@ -504,9 +506,10 @@ def _progress_input(tool_name: str, arguments: JsonMap) -> JsonMap:
             "limit": arguments.get("top_k"),
         }
     if tool_name == "read_locations":
+        location_refs = as_list(arguments.get("location_refs"))
         return {
-            "locationRefs": as_list(arguments.get("location_refs")),
-            "locationCount": len(as_list(arguments.get("location_refs"))),
+            "locationRefs": location_refs,
+            "locationCount": len(location_refs),
         }
     if tool_name == "get_citation_edges":
         return {"paperId": arguments.get("paper_id")}
