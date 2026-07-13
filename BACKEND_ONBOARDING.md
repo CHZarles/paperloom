@@ -1,4 +1,4 @@
-# 派聪明（PaiSmart）后端新成员上手指南
+# Folio（PaperLoom）后端新成员上手指南
 
 > 由 `/understand --language zh` 知识图谱自动生成 · 2026-06-07 · commit `59ec5224`
 >
@@ -10,7 +10,7 @@
 
 ## 1. 项目全景（后端视角）
 
-**派聪明（PaiSmart）** 是一套企业级 AI 知识库管理系统。**后端**是这套系统的「重活」承担者：
+**Folio（PaperLoom）** 是一套企业级 AI 知识库管理系统。**后端**是这套系统的「重活」承担者：
 
 - **运行时**：Spring Boot 3.4.2 / Java 17 / Maven
 - **持久化**：MySQL 8.0 + JPA/Hibernate + Spring Data
@@ -24,8 +24,8 @@
 - **支付**：微信支付（Recharge 充值）
 - **可观测性**：Logback（业务 / 性能 / 聊天 / 错误四类日志）+ Spring Boot Actuator
 
-**包名约定**：`com.yizhaoqi.smartpai`（Maven 坐标 `com.yizhaoqi:SmartPAI`）
-**入口主类**：`src/main/java/com/yizhaoqi/smartpai/SmartPaiApplication.java`
+**包名约定**：`io.github.chzarles.paperloom`（Maven 坐标 `io.github.chzarles:paperloom-server`）
+**入口主类**：`src/main/java/io/github/chzarles/paperloom/PaperLoomApplication.java`
 **配置入口**：`src/main/resources/application.yml` + profile 文件（`dev` / `docker` / `prod` / `test`）
 
 ---
@@ -99,7 +99,7 @@
 | #   | 标题                         | 关键文件                                                                                                                                                                                                                          | 教学点                                                                            |
 | --- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | 1   | 项目全景                     | `README.md`, `CLAUDE.md`                                                                                                                                                                                                          | —                                                                                 |
-| 2   | 后端启动入口                 | `src/main/java/com/yizhaoqi/smartpai/SmartPaiApplication.java`                                                                                                                                                                    | —                                                                                 |
+| 2   | 后端启动入口                 | `src/main/java/io/github/chzarles/paperloom/PaperLoomApplication.java`                                                                                                                                                                    | —                                                                                 |
 | 3   | 文档上传与 Kafka 异步流水线  | `controller/UploadController.java`, `consumer/FileProcessingConsumer.java`, `config/KafkaConfig.java`                                                                                                                             | **Spring Kafka @KafkaListener**：topic → 普通方法，消息偏移、并发、重试由容器托管 |
 | 4   | 解析、切块与向量化           | `service/ParseService.java`, `service/VectorizationService.java`, `client/EmbeddingClient.java`, `model/FileUpload.java`, `model/ChunkInfo.java`                                                                                  | —                                                                                 |
 | 5   | Elasticsearch 存储与混合检索 | `config/EsConfig.java`, `service/ElasticsearchService.java`, `service/HybridSearchService.java`, `entity/EsDocument.java`                                                                                                         | **Hybrid Search**：稀疏 + 稠密双索引融合                                          |
@@ -193,7 +193,7 @@
 | 23     | `utils/JwtUtils.java`                                                                                                                                              | **JWT 签发 / 解析 / 刷新 / 失效**                                      |
 | 22     | `resources/application.yml`                                                                                                                                        | Spring Boot 主配置                                                     |
 | 20     | `config/KafkaConfig.java`                                                                                                                                          | Kafka 生产者/消费者配置                                                |
-| 19     | `SmartPaiApplication.java`                                                                                                                                         | Spring Boot 启动类                                                     |
+| 19     | `PaperLoomApplication.java`                                                                                                                                         | Spring Boot 启动类                                                     |
 | 19     | `utils/LogUtils.java`                                                                                                                                              | 业务/性能/聊天日志工具                                                 |
 | 17     | `config/LoggingInterceptor.java`                                                                                                                                   | HTTP 请求日志拦截器                                                    |
 | 16     | `consumer/FileProcessingConsumer.java`                                                                                                                             | Kafka 消费者，驱动解析与向量化                                         |
@@ -208,7 +208,7 @@
 | —      | `config/RedisConfig.java`                                                                                                                                          | Redis 客户端                                                           |
 | —      | `config/WebConfig.java`                                                                                                                                            | Web MVC 配置（CORS / 拦截器）                                          |
 | —      | `config/WebClientConfig.java`                                                                                                                                      | WebClient（DeepSeek 流式调用）                                         |
-| —      | `config/OrgTagInitializer.java`, `AdminUserInitializer.java`, `BootstrapKnowledgeInitializer.java`                                                                 | 启动期初始化                                                           |
+| —      | `config/OrgTagInitializer.java`, `AdminUserInitializer.java`, `BootstrapPaperInitializer.java`                                                                 | 启动期初始化                                                           |
 | —      | `config/AppAuthProperties.java`, `AiProperties.java`, `RateLimitProperties.java`, `UsageQuotaProperties.java`                                                      | `@ConfigurationProperties`                                             |
 | —      | `config/ProductionConfigValidator.java`                                                                                                                            | 生产环境配置校验                                                       |
 | —      | `config/DotenvEnvironmentPostProcessor.java`                                                                                                                       | 加载 `.env` 到 Spring Environment                                      |
@@ -221,7 +221,7 @@
 | —      | `resources/META-INF/spring.factories`                                                                                                                              | Spring Boot SPI                                                        |
 | —      | `resources/static/test.html`                                                                                                                                       | API 测试页                                                             |
 | —      | `src/test/resources/application-test.yml`, `application.yml`, `mockito-extensions/org.mockito.plugins.MockMaker`                                                   | 测试基座                                                               |
-| —      | `src/test/java/com/yizhaoqi/smartpai/{service, util, SmartPaiApplicationTests}.java`                                                                               | JUnit 单测                                                             |
+| —      | `src/test/java/io/github/chzarles/paperloom/{service, util, PaperLoomApplicationTests}.java`                                                                               | JUnit 单测                                                             |
 | —      | `test/dto/TestResponse.java`, `test/{TestEntity, TestEntityRepository, TransactionTestService, TransactionTestController}.java`                                    | 事务测试基座                                                           |
 
 ### 5.5 数据库与模式层（12 个节点）
@@ -258,7 +258,7 @@
 
 | 文件                                                                                         | 风险点                                                                  |
 | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `config/BootstrapKnowledgeInitializer.java`                                                  | 启动时把 `docs/paismart.pdf` 自动入库，开箱即用；改这里会影响所有新部署 |
+| `config/BootstrapPaperInitializer.java`                                                  | 启动时把 `data/2412.08972.pdf` 自动入库，开箱即用；改这里会影响所有新部署 |
 | `config/OrgTagAuthorizationFilter.java`                                                      | 多租户权限核心，改之前必须画清「资源 → 标签 → 用户」链路                |
 | `service/ChatHandler.java`（fan-out 41）                                                     | **RAG 主链路**，**改之前先跑 `ChatHandlerRetrievalPolicyTest`**         |
 | `service/UserService.java`                                                                   | 注册策略、邀请码、组织标签循环检测                                      |
@@ -274,7 +274,7 @@
 
 1. **准备 `.env`** — 复制 `.env.example` 到 `.env`，填好 MySQL/Redis/Kafka/MinIO/ES/JWT_SECRET_KEY（用 `openssl rand -base64 32` 生成）。
 2. **拉起基础服务** — `cd docs && docker-compose up -d`（或 `./infra.sh start`）。
-3. **启动后端** — `mvn spring-boot:run`（或 IDE 跑 `SmartPaiApplication`），首次启动会触发 `BootstrapKnowledgeInitializer` 把 `docs/paismart.pdf` 自动入库。
+3. **启动后端** — `mvn spring-boot:run`（或 IDE 跑 `PaperLoomApplication`），首次启动会触发 `BootstrapPaperInitializer` 把 `data/2412.08972.pdf` 自动入库。
 4. **健康检查** — `curl http://localhost:8080/api/v1/health`（或 `actuator/health`）。
 5. **联调 RAG** — 借助 `src/main/resources/static/test.html` 走一遍「注册 → 登录 → 上传 PDF → 聊天问问题 → 看引用」。
 
@@ -282,7 +282,7 @@
 
 ## 8. 推荐学习资源（后端优先）
 
-- **20 集 YouTube 教程文案**（`youtube_scripts/01-20-*.md`）— 一集对应一个 PaiSmart 后端模块：
+- **20 集 YouTube 教程文案**（`youtube_scripts/01-20-*.md`）— 一集对应一个 PaperLoom 后端模块：
   - 01 Spring Boot 骨架
   - 02 JPA 实体
   - 03 JWT 认证
@@ -328,7 +328,7 @@
 ## 附录：后端知识图谱统计
 
 - **后端相关节点**：176（4 个 layer 的 file-level + 部署配置中后端相关部分）
-- **核心 Java 包**：`com.yizhaoqi.smartpai.{client, config, consumer, controller, entity, exception, handler, model, repository, service, test, utils}`
+- **核心 Java 包**：`io.github.chzarles.paperloom.{client, config, consumer, controller, entity, exception, handler, model, repository, service, test, utils}`
 - **总文件数**：710（其中后端 Java 约 90 + 资源 5 + 测试 5 = 约 100 个）
 - **git commit**：`59ec52246bb387206bd2da2fda4f2d32c3122121`
 

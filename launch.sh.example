@@ -53,7 +53,7 @@ export JAVA_HOME=/usr/lib/jvm/java-17
 export PATH=$JAVA_HOME/bin:$PATH
 export MVN_HOME=/root/soft/apache-maven-3.9.11
 
-JAR_NAME="SmartPAI-0.0.1-SNAPSHOT.jar"
+JAR_NAME="paperloom-server-0.1.0-SNAPSHOT.jar"
 
 # 部署
 function start() {

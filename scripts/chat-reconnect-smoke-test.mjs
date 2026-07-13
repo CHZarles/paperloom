@@ -4,9 +4,9 @@ const DEFAULTS = {
   apiBase: 'http://127.0.0.1:8081/api/v1',
   wsBase: 'ws://127.0.0.1:8081/chat',
   username: 'admin',
-  password: 'PaiSmart2026!',
+  password: process.env.PAPERLOOM_SMOKE_PASSWORD ?? process.env.ADMIN_BOOTSTRAP_PASSWORD ?? '',
   prompt:
-    '请用6个编号小节介绍派聪明的企业知识库与RAG工作流，每节控制在80字左右，最后补3条实施建议。',
+    '请用6个编号小节介绍 Folio 的研究论文阅读与证据检索工作流，每节控制在80字左右，最后补3条实施建议。',
   disconnectAfterChunks: 10,
   disconnectDelayMs: 50,
   activeCheckDelayMs: 800,
@@ -283,6 +283,11 @@ async function main() {
   }
 
   const config = parseArgs(process.argv.slice(2));
+  if (!config.password) {
+    throw new Error(
+      'missing password: pass --password or set PAPERLOOM_SMOKE_PASSWORD/ADMIN_BOOTSTRAP_PASSWORD'
+    );
+  }
   logStep('config', {
     apiBase: config.apiBase,
     wsBase: config.wsBase,

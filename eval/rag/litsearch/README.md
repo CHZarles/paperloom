@@ -63,7 +63,7 @@ Download and merge a small real corpus sample:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchDatasetServerDownloader \
+  io.github.chzarles.paperloom.eval.LitSearchDatasetServerDownloader \
   --config corpus_clean \
   --output-dir eval/rag/litsearch/raw \
   --filename-format 'litsearch-corpus-clean-page-%05d.json' \
@@ -74,7 +74,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --retry-delay-millis 1500
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchCorpusJsonlWriter \
+  io.github.chzarles.paperloom.eval.LitSearchCorpusJsonlWriter \
   --output eval/rag/litsearch/generated/litsearch-corpus-clean-sample-20.jsonl \
   eval/rag/litsearch/raw/litsearch-corpus-clean-page-00000.json \
   eval/rag/litsearch/raw/litsearch-corpus-clean-page-00010.json
@@ -89,7 +89,7 @@ run:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchDatasetServerDownloader \
+  io.github.chzarles.paperloom.eval.LitSearchDatasetServerDownloader \
   --config corpus_clean \
   --output-dir eval/rag/litsearch/raw \
   --filename-format 'litsearch-corpus-clean-page-%05d.json' \
@@ -101,7 +101,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --page-delay-millis 4000
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchCorpusJsonlWriter \
+  io.github.chzarles.paperloom.eval.LitSearchCorpusJsonlWriter \
   --output eval/rag/litsearch/generated/litsearch-corpus-clean-full.jsonl \
   $(for offset in $(seq 0 100 64100); do printf 'eval/rag/litsearch/raw/litsearch-corpus-clean-page-%05d.json ' "$offset"; done)
 ```
@@ -156,7 +156,7 @@ Verify local dataset-server raw-page coverage before merging or resuming the JSO
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchCorpusCoverageVerifier \
+  io.github.chzarles.paperloom.eval.LitSearchCorpusCoverageVerifier \
   --input-dir eval/rag/litsearch/raw \
   --filename-format 'litsearch-corpus-clean-page-%05d.json' \
   --start-offset 0 \
@@ -256,7 +256,7 @@ mvn -q -DskipTests test-compile
 # Prefer a dedicated eval database user id and private rows; the scoring CLI can then scope
 # retrieval to imported benchmark paper ids.
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchPaperLoomImportCli \
+  io.github.chzarles.paperloom.eval.LitSearchPaperLoomImportCli \
   --corpus eval/rag/litsearch/generated/litsearch-corpus-clean-sample-20.jsonl \
   --user-id <eval-user-db-id> \
   --org-tag eval-litsearch \
@@ -272,11 +272,11 @@ imports, use `--start-offset` with `--limit` so the job is restartable:
 
 ```bash
 # From the repository root, so `.env` is loaded from the same place as the local backend.
-cd /home/charles/PaiSmart
+cd /home/charles/PaperLoom
 
-java -cp "/home/charles/PaiSmart/.worktrees/adaptive-source-set-rag/target/test-classes:/home/charles/PaiSmart/.worktrees/adaptive-source-set-rag/target/classes:$(cat /home/charles/PaiSmart/.worktrees/adaptive-source-set-rag/target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchPaperLoomImportCli \
-  --corpus /home/charles/PaiSmart/.worktrees/adaptive-source-set-rag/eval/rag/litsearch/generated/litsearch-corpus-clean-full.jsonl \
+java -cp "/home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/target/test-classes:/home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/target/classes:$(cat /home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/target/test-classpath.txt)" \
+  io.github.chzarles.paperloom.eval.LitSearchPaperLoomImportCli \
+  --corpus /home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/eval/rag/litsearch/generated/litsearch-corpus-clean-full.jsonl \
   --user-id eval-litsearch-user \
   --org-tag eval-litsearch \
   --public true \
@@ -293,7 +293,7 @@ sample-specific split names such as `full-window-smoke`.
 For the full import, prefer the unattended wrapper instead of manually advancing offsets:
 
 ```bash
-cd /home/charles/PaiSmart
+cd /home/charles/PaperLoom
 .worktrees/adaptive-source-set-rag/scripts/litsearch-full-pipeline.sh start --interval-seconds 120
 ```
 
@@ -302,12 +302,12 @@ papers are present, then starts the full service-backed LitSearch benchmark. Use
 command to avoid reading long logs:
 
 ```bash
-cd /home/charles/PaiSmart
+cd /home/charles/PaperLoom
 .worktrees/adaptive-source-set-rag/scripts/litsearch-full-pipeline.sh summary
 ```
 
 The wrapper may also be launched from the worktree; child Spring CLIs change back to
-`/home/charles/PaiSmart` before startup so the repo-root `.env` is used for MySQL, Elasticsearch,
+`/home/charles/PaperLoom` before startup so the repo-root `.env` is used for MySQL, Elasticsearch,
 and model-provider encryption settings.
 
 Current local import-tool validation:
@@ -335,7 +335,7 @@ through the Spring-backed CLI:
 ```bash
 # Use the same Spring profile and service credentials as the local backend.
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.ServiceBackedLitSearchBenchmarkCli \
+  io.github.chzarles.paperloom.eval.ServiceBackedLitSearchBenchmarkCli \
   --gold eval/rag/litsearch/generated/litsearch-full-query.jsonl \
   --retrieved eval/rag/litsearch/generated/service-backed-litsearch-sample-20-retrieved.jsonl \
   --harness-id current-evidence-ledger \
@@ -433,7 +433,7 @@ Then score the output and refresh the generated cheatsheet:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchRetrievalScoreCli \
+  io.github.chzarles.paperloom.eval.LitSearchRetrievalScoreCli \
   --gold eval/rag/litsearch/generated/litsearch-full-query.jsonl \
   --retrieved eval/rag/litsearch/generated/<harness>-retrieved.jsonl \
   --run-id 2026-06-23T220000Z-current-evidence-ledger-litsearch-full \
@@ -454,7 +454,7 @@ target RAG method.
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchKeywordBaselineCli \
+  io.github.chzarles.paperloom.eval.LitSearchKeywordBaselineCli \
   --gold eval/rag/litsearch/generated/litsearch-full-query.jsonl \
   --corpus eval/rag/litsearch/generated/litsearch-corpus-clean-full.jsonl \
   --retrieved eval/rag/litsearch/generated/keyword-only-baseline-full-retrieved.jsonl \
@@ -479,7 +479,7 @@ adds small title/abstract phrase bonuses. On LitSearch Full it improves the keyw
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.LitSearchFacetPaperBaselineCli \
+  io.github.chzarles.paperloom.eval.LitSearchFacetPaperBaselineCli \
   --gold eval/rag/litsearch/generated/litsearch-full-query.jsonl \
   --corpus eval/rag/litsearch/generated/litsearch-corpus-clean-full.jsonl \
   --retrieved eval/rag/litsearch/generated/facet-paper-baseline-full-retrieved.jsonl \

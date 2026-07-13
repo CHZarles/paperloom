@@ -88,20 +88,20 @@ the wrong conversation may be locked with the wrong evidence universe.
 
 ## Original Evidence In Code (Before Fix)
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ChatHandler.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ChatHandler.java`
   - `getOrCreateConversationId()` read `user:{userId}:current_conversation`.
   - `processMessage()` did not receive an explicit `conversationId` from `ChatRequest`.
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ConversationService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ConversationService.java`
   - `switchCurrentConversation()` overwrites `user:{userId}:current_conversation`.
 
-- `src/main/java/com/yizhaoqi/smartpai/handler/ChatWebSocketHandler.java`
+- `src/main/java/io/github/chzarles/paperloom/handler/ChatWebSocketHandler.java`
   - Structured WebSocket messages parsed `message` and `referenceFocus`, but not `conversationId`.
 
 - `frontend/src/views/chat/modules/input-box.vue`
   - The outgoing WebSocket payload sent `type`, `message`, and `referenceFocus`, but not `conversationId`.
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ChatGenerationStateService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ChatGenerationStateService.java`
   - Active generation was tracked by `chat:user:{userId}:active_generation`, so stop/resume behavior
     was also per user rather than per tab or per conversation.
 
@@ -111,22 +111,22 @@ the wrong conversation may be locked with the wrong evidence universe.
 
 ## Implementation Evidence
 
-- `src/main/java/com/yizhaoqi/smartpai/handler/ChatWebSocketHandler.java`
+- `src/main/java/io/github/chzarles/paperloom/handler/ChatWebSocketHandler.java`
   - Parses `conversationId` from structured WebSocket messages.
   - Rejects structured chat messages that contain `message` but omit `conversationId`.
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ChatHandler.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ChatHandler.java`
   - Carries `conversationId` on `ChatRequest`.
   - Uses explicit `conversationId` when present and does not read the Redis current-conversation key
     in that path.
   - Creates generation state with the requester `clientId`.
   - Resolves stop-without-generation by requester `clientId` when available.
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ConversationService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ConversationService.java`
   - Exposes `requireActiveOwnedConversationSession(userId, conversationId)` for explicit target
     validation.
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ChatGenerationStateService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ChatGenerationStateService.java`
   - Stores active generation keys per user and per requester client.
 
 - `frontend/src/views/chat/modules/input-box.vue`

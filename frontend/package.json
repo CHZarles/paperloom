@@ -4,18 +4,19 @@
   "version": "1.3.13",
   "description": "Folio research paper workbench",
   "author": {
-    "name": "Folio",
-    "url": "https://github.com/itwanger/PaiSmart.git"
+    "name": "Charles",
+    "url": "https://github.com/CHZarles"
   },
   "license": "MIT",
-  "homepage": "https://github.com/itwanger/PaiSmart.git",
+  "homepage": "https://github.com/CHZarles/paperloom",
   "repository": {
-    "url": "https://github.com/itwanger/PaiSmart.git"
+    "type": "git",
+    "url": "git+https://github.com/CHZarles/paperloom.git"
   },
   "bugs": {
-    "url": "https://github.com/itwanger/PaiSmart/issues"
+    "url": "https://github.com/CHZarles/paperloom/issues"
   },
-  "keywords": ["ai", "rag", "llm", "chat", "itwanger", "folio"],
+  "keywords": ["ai", "rag", "llm", "research-papers", "evidence", "folio", "paperloom"],
   "engines": {
     "node": ">=18.20.0",
     "pnpm": ">=8.7.0"
@@ -114,5 +115,5 @@
     "commit-msg": "pnpm sa git-commit-verify",
     "pre-commit": "cd frontend && pnpm typecheck && pnpm lint && git diff --exit-code"
   },
-  "website": "https://github.com/itwanger/PaiSmart.git"
+  "website": "https://github.com/CHZarles/paperloom"
 }

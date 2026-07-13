@@ -148,7 +148,7 @@ product_smoke() {
   prepare_classpath
   echo "runDir=$run_dir"
   run_cmd java -cp "$(classpath_literal)" \
-    com.yizhaoqi.smartpai.eval.RagLiveBenchmarkCli \
+    io.github.chzarles.paperloom.eval.RagLiveBenchmarkCli \
     --dataset eval/rag/product-rescue-smoke.jsonl \
     --runs-root eval/rag/runs \
     --registry eval/rag/harnesses.yaml \
@@ -173,7 +173,7 @@ qasper_dev_200() {
   prepare_classpath
   echo "runDir=$run_dir"
   run_cmd java -cp "$(classpath_literal)" \
-    com.yizhaoqi.smartpai.eval.ServiceBackedPageWindowBenchmarkCli \
+    io.github.chzarles.paperloom.eval.ServiceBackedPageWindowBenchmarkCli \
     --cases "$cases" \
     --runs-root eval/rag/runs \
     --registry eval/rag/harnesses.yaml \
@@ -201,7 +201,7 @@ pdf_parser_smoke() {
   prepare_classpath
   echo "runDir=$run_dir"
   run_cmd java -cp "$(classpath_literal)" \
-    com.yizhaoqi.smartpai.eval.ProductPdfParserSmokeCli \
+    io.github.chzarles.paperloom.eval.ProductPdfParserSmokeCli \
     --manifest eval/rag/pdf-parser/product-pdf-smoke-manifest.jsonl \
     --runs-root eval/rag/runs \
     --harness-id "$harness_id" \

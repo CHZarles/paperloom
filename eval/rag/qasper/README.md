@@ -75,8 +75,8 @@ Suggested PaperLoom import mapping for service-backed eval:
 The service-backed import bridge is:
 
 ```text
-src/test/java/com/yizhaoqi/smartpai/eval/QasperPaperLoomImporter.java
-src/test/java/com/yizhaoqi/smartpai/eval/QasperPaperLoomImportCli.java
+src/test/java/io/github/chzarles/paperloom/eval/QasperPaperLoomImporter.java
+src/test/java/io/github/chzarles/paperloom/eval/QasperPaperLoomImportCli.java
 ```
 
 It reads generated paragraph chunks, imports `paperId=qasper:<arxivId>` into PaperLoom MySQL and
@@ -184,7 +184,7 @@ Rebuild commands:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.QasperPageWindowDatasetWriter \
+  io.github.chzarles.paperloom.eval.QasperPageWindowDatasetWriter \
   --qasper-json eval/rag/qasper/raw/extracted/qasper-dev-v0.3.json \
   --rag-cases-output eval/rag/qasper/generated/qasper-dev-50-rag-cases.jsonl \
   --chunks-output eval/rag/qasper/generated/qasper-dev-50-paragraph-chunks.jsonl \
@@ -192,7 +192,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --max-cases 50
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocatorBenchmarkCli \
+  io.github.chzarles.paperloom.eval.PaperPageLocatorBenchmarkCli \
   --cases eval/rag/qasper/generated/qasper-dev-50-page-cases.jsonl \
   --rag-cases eval/rag/qasper/generated/qasper-dev-50-rag-cases.jsonl \
   --chunks eval/rag/qasper/generated/qasper-dev-50-paragraph-chunks.jsonl \
@@ -207,7 +207,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --top-k 3
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocatorBenchmarkCli \
+  io.github.chzarles.paperloom.eval.PaperPageLocatorBenchmarkCli \
   --cases eval/rag/qasper/generated/qasper-dev-50-page-cases.jsonl \
   --rag-cases eval/rag/qasper/generated/qasper-dev-50-rag-cases.jsonl \
   --chunks eval/rag/qasper/generated/qasper-dev-50-paragraph-chunks.jsonl \
@@ -222,7 +222,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --top-k 3
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.QasperPageWindowDatasetWriter \
+  io.github.chzarles.paperloom.eval.QasperPageWindowDatasetWriter \
   --qasper-json eval/rag/qasper/raw/extracted/qasper-dev-v0.3.json \
   --rag-cases-output eval/rag/qasper/generated/qasper-dev-200-rag-cases.jsonl \
   --chunks-output eval/rag/qasper/generated/qasper-dev-200-paragraph-chunks.jsonl \
@@ -230,7 +230,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --max-cases 200
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocatorBenchmarkCli \
+  io.github.chzarles.paperloom.eval.PaperPageLocatorBenchmarkCli \
   --cases eval/rag/qasper/generated/qasper-dev-200-page-cases.jsonl \
   --rag-cases eval/rag/qasper/generated/qasper-dev-200-rag-cases.jsonl \
   --chunks eval/rag/qasper/generated/qasper-dev-200-paragraph-chunks.jsonl \
@@ -249,7 +249,7 @@ Service-backed import and run:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.QasperPaperLoomImportCli \
+  io.github.chzarles.paperloom.eval.QasperPaperLoomImportCli \
   --chunks eval/rag/qasper/generated/qasper-dev-200-paragraph-chunks.jsonl \
   --rag-cases eval/rag/qasper/generated/qasper-dev-200-rag-cases.jsonl \
   --cases-output eval/rag/qasper/generated/qasper-dev-200-service-cases.jsonl \
@@ -259,7 +259,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --eval-split dev
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.ServiceBackedPageWindowBenchmarkCli \
+  io.github.chzarles.paperloom.eval.ServiceBackedPageWindowBenchmarkCli \
   --cases eval/rag/qasper/generated/qasper-dev-200-service-cases.jsonl \
   --harness-id service-backed-page-window \
   --dataset-id qasper-dev-200 \
@@ -269,7 +269,7 @@ java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
   --top-k 3
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.ServiceBackedPageWindowBenchmarkCli \
+  io.github.chzarles.paperloom.eval.ServiceBackedPageWindowBenchmarkCli \
   --cases eval/rag/qasper/generated/qasper-dev-200-service-cases.jsonl \
   --harness-id service-backed-scoped-page-window \
   --dataset-id qasper-dev-200 \

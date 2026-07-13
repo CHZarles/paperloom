@@ -108,7 +108,7 @@ figure captions. Generating FIGURE locations for those would create noisy coordi
 Regression coverage was added in:
 
 ```text
-src/test/java/com/yizhaoqi/smartpai/paper/parser/MinerUOutputMapperTest.java
+src/test/java/io/github/chzarles/paperloom/paper/parser/MinerUOutputMapperTest.java
 ```
 
 The regression fixture mirrors current MinerU output:

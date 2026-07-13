@@ -43,7 +43,7 @@ updated `target/classes`, but the running backend still returned:
 content-disposition: inline; filename*=UTF-8''hw4_finalproject-page-1.pdf
 ```
 
-Checking `strings target/classes/com/yizhaoqi/smartpai/controller/DocumentController.class` showed the new class no longer contained the filename/content-disposition string, so the mismatch was runtime state, not source code.
+Checking `strings target/classes/io/github/chzarles/paperloom/controller/DocumentController.class` showed the new class no longer contained the filename/content-disposition string, so the mismatch was runtime state, not source code.
 
 The backend had to be restarted for this change to take effect.
 
@@ -98,7 +98,7 @@ The fallback path was changed from `window.open(...)` to `router.push(...)` so o
 
 ### 4. Remove `Content-Disposition` from backend page preview
 
-Updated `src/main/java/com/yizhaoqi/smartpai/controller/DocumentController.java` so `/api/v1/documents/page-preview` returns the PDF bytes without:
+Updated `src/main/java/io/github/chzarles/paperloom/controller/DocumentController.java` so `/api/v1/documents/page-preview` returns the PDF bytes without:
 
 ```text
 Content-Disposition
@@ -149,8 +149,8 @@ The file body was valid PDF:
 Backend response was checked with:
 
 ```bash
-curl -sS -D /tmp/paismart-page-preview.headers \
-  -o /tmp/paismart-page-preview.pdf \
+curl -sS -D /tmp/paperloom-page-preview.headers \
+  -o /tmp/paperloom-page-preview.pdf \
   -H 'Accept: application/pdf' \
   -H "Authorization: Bearer <token>" \
   'http://localhost:9527/proxy-default/documents/page-preview?fileMd5=4bf9fa2add53bc1405679afa5d4dbe3c&pageNumber=1'

@@ -1,0 +1,12 @@
+package io.github.chzarles.paperloom.service;
+
+public enum ProductStopReason {
+    COMPLETED,
+    MAX_REACT_ROUNDS,
+    TOOL_FAILED,
+    ANSWER_SCHEMA_INVALID,
+    CITATION_VALIDATION_FAILED,
+    REFERENCE_PERSISTENCE_FAILED,
+    MEMORY_UPDATE_FAILED,
+    TRACE_WRITE_FAILED
+}

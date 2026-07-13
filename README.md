@@ -2,6 +2,10 @@
 
 PaperLoom is an evidence-grounded RAG workbench for reading research paper PDFs.
 
+The user-facing application is branded **Folio**. PaperLoom is the repository, backend platform,
+runtime, and engineering name. See [the naming contract](docs/architecture/naming.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md) for provenance and ownership details.
+
 It helps users upload papers, process them asynchronously with a self-hosted MinerU parser sidecar, persist parser artifacts and structured evidence, retrieve page-aware chunks, ask questions over indexed papers, and reopen the exact evidence references used in previous answers.
 
 ## Current Positioning

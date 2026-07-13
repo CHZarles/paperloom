@@ -3,7 +3,8 @@ set -euo pipefail
 
 TARGET_ROWS=64183
 DEFAULT_INTERVAL_SECONDS=60
-MAIN_ROOT="${PAPERLOOM_MAIN_ROOT:-/home/charles/PaiSmart}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MAIN_ROOT="${PAPERLOOM_MAIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
 WT="${PAPERLOOM_WORKTREE:-$MAIN_ROOT/.worktrees/adaptive-source-set-rag}"
 IMPORT_SCRIPT="$WT/scripts/litsearch-full-import.sh"
 BENCHMARK_SCRIPT="$WT/scripts/litsearch-full-benchmark.sh"

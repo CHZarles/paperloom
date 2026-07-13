@@ -1,1 +1,1 @@
-{"id":"paismart_pdf_smoke","path":"docs/paismart.pdf","expectedMinChunks":1,"expectedMinPages":1,"expectedParser":"mineru-or-configured","requiresTableOrFigure":false}
+{"id":"paperloom_pdf_smoke","path":"data/2412.08972.pdf","expectedMinChunks":1,"expectedMinPages":1,"expectedParser":"mineru-or-configured","requiresTableOrFigure":false}

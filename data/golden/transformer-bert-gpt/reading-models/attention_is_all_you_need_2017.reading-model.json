@@ -3,7 +3,7 @@
   "pack_id" : "transformer-bert-gpt",
   "paper_id" : "attention_is_all_you_need_2017",
   "model_version" : "rm_golden_attention_is_all_you_need_2017",
-  "source_pdf_path" : "/home/charles/PaiSmart/data/golden/transformer-bert-gpt/pdfs/attention_is_all_you_need_2017.pdf",
+  "source_pdf_path" : "data/golden/transformer-bert-gpt/pdfs/attention_is_all_you_need_2017.pdf",
   "source_pdf_sha256" : "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
   "pdf_page_count" : 15,
   "parser_name" : "MinerU",

@@ -8,7 +8,8 @@ COMMAND="${1:-start}"
 PORT="${SERVER_PORT:-8081}"
 PID_FILE="${PAPERLOOM_BACKEND_PID_FILE:-.runtime/backend-${PORT}.pid}"
 LOG_FILE="${PAPERLOOM_BACKEND_LOG_FILE:-.runtime/logs/backend-${PORT}.log}"
-JAR="${PAPERLOOM_BACKEND_JAR:-target/SmartPAI-0.0.1-SNAPSHOT.jar}"
+JAR="${PAPERLOOM_BACKEND_JAR:-target/paperloom-server-0.1.0-SNAPSHOT.jar}"
+MYSQL_CONTAINER="${PAPERLOOM_MYSQL_CONTAINER:-paperloom-mysql}"
 PROBE_URL="http://127.0.0.1:${PORT}/api/v1/users/me"
 
 load_env() {
@@ -27,7 +28,7 @@ load_env() {
 
 apply_local_ports() {
   local mysql_port
-  mysql_port="$(docker port pai_smart_mysql 3306/tcp 2>/dev/null | sed -n '1s/.*://p')"
+  mysql_port="$(docker port "$MYSQL_CONTAINER" 3306/tcp 2>/dev/null | sed -n '1s/.*://p')"
   if [[ -n "$mysql_port" && "${SPRING_DATASOURCE_URL:-}" == jdbc:mysql://localhost:3306/* ]]; then
     export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL/jdbc:mysql:\/\/localhost:3306\//jdbc:mysql:\/\/localhost:${mysql_port}\/}"
   fi

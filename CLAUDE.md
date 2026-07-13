@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PaperLoom is an evidence-grounded RAG workbench for structured research paper reading. The repository directory and some legacy physical database names still use PaiSmart/file terminology, but the product story, public API, and frontend contract should be paper-centered.
+PaperLoom is an evidence-grounded RAG workbench for structured research paper reading. The repository directory and some legacy physical database names still use PaperLoom/file terminology, but the product story, public API, and frontend contract should be paper-centered.
 
 PaperLoom supports PDF paper upload, asynchronous parsing/indexing, page-aware chunk retrieval, source-grounded chat, persistent evidence references, and basic editable paper metadata. It should not be described as a generic enterprise knowledge-base assistant.
 
@@ -81,8 +81,8 @@ pnpm preview
 
 ### Backend Structure
 ```
-`src/main/java/com/yizhaoqi/smartpai/
-├── SmartPaiApplication.java      # Main application entry
+src/main/java/io/github/chzarles/paperloom/
+├── PaperLoomApplication.java      # Main application entry
 ├── client/                       # External API clients (DeepSeek, Embedding)
 ├── config/                       # Configuration classes (Security, JWT, etc.)
 ├── consumer/                     # Kafka consumers for async processing
@@ -94,7 +94,7 @@ pnpm preview
 ├── repository/                   # Data access layer
 ├── service/                      # Business logic layer
 └── utils/                        # Utility classes
-````
+```
 
 ### Frontend Structure
 ```

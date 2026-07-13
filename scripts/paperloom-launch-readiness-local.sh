@@ -9,7 +9,7 @@ ENV_FILE="${PAPERLOOM_ENV_FILE:-.env}"
 OVERLAY_ENV_FILE="${PAPERLOOM_LAUNCH_ENV_FILE:-.runtime/product-launch.env}"
 RUN_ID="${PAPERLOOM_LAUNCH_RUN_ID:-$(date -u +%Y-%m-%d-product-launch-readiness-local-%H%M%S)}"
 TIMEOUT_SECONDS="${PAPERLOOM_LAUNCH_TIMEOUT_SECONDS:-5}"
-MYSQL_CONTAINER="${PAPERLOOM_MYSQL_CONTAINER:-pai_smart_mysql}"
+MYSQL_CONTAINER="${PAPERLOOM_MYSQL_CONTAINER:-paperloom-mysql}"
 
 usage() {
   cat <<'EOF'
@@ -140,5 +140,5 @@ fi
 
 mvn -q -DskipTests test-compile exec:java \
   -Dexec.classpathScope=test \
-  -Dexec.mainClass=com.yizhaoqi.smartpai.eval.ProductLaunchReadinessCli \
+  -Dexec.mainClass=io.github.chzarles.paperloom.eval.ProductLaunchReadinessCli \
   -Dexec.args="--run-id ${RUN_ID} --timeout-seconds ${TIMEOUT_SECONDS} --env ${ENV_FILE}"

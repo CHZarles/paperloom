@@ -123,7 +123,7 @@ Important product requirement:
 - Redis generation state is short-lived and must not be the only source of historical citation
   recovery.
 - Product storage contains only product PDF papers after eval cleanup. Benchmark corpora use the
-  eval-native `paperloom_eval` schema, not `paismart.file_upload` or product chunk tables.
+  eval-native `paperloom_eval` schema, not `paperloom.file_upload` or product chunk tables.
 
 Confirmed new storage target:
 

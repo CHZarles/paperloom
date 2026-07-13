@@ -35,7 +35,7 @@ active runtime first.
 Current case:
 
 ```json
-{"id":"paismart_pdf_smoke","path":"docs/paismart.pdf","expectedMinChunks":1,"expectedMinPages":1,"expectedParser":"mineru-or-configured","requiresTableOrFigure":false}
+{"id":"paperloom_pdf_smoke","path":"data/2412.08972.pdf","expectedMinChunks":1,"expectedMinPages":1,"expectedParser":"mineru-or-configured","requiresTableOrFigure":false}
 ```
 
 Useful fields:
@@ -70,7 +70,7 @@ Run the smoke:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.ProductPdfParserSmokeCli \
+  io.github.chzarles.paperloom.eval.ProductPdfParserSmokeCli \
   --manifest eval/rag/pdf-parser/product-pdf-smoke-manifest.jsonl \
   --runs-root eval/rag/runs
 ```
@@ -79,7 +79,7 @@ Run the 30-PDF launch parser gate:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.ProductPdfParserSmokeCli \
+  io.github.chzarles.paperloom.eval.ProductPdfParserSmokeCli \
   --manifest eval/rag/pdf-parser/product-pdf-launch-30-manifest.jsonl \
   --runs-root eval/rag/runs
 ```

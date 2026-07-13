@@ -1,0 +1,26 @@
+package io.github.chzarles.paperloom.eval.repository;
+
+import io.github.chzarles.paperloom.eval.model.EvalChunk;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+public interface EvalChunkRepository extends JpaRepository<EvalChunk, Long> {
+
+    List<EvalChunk> findByCorpusAndPaperIdOrderByChunkIdAsc(String corpus, String paperId);
+
+    List<EvalChunk> findByCorpusAndPaperIdAndPageNumberBetweenOrderByPageNumberAscChunkIdAsc(
+            String corpus,
+            String paperId,
+            Integer startPage,
+            Integer endPage
+    );
+
+    List<EvalChunk> findByCorpusAndPaperIdIn(String corpus, List<String> paperIds);
+
+    long countByCorpusAndSplit(String corpus, String split);
+
+    @Transactional
+    void deleteByCorpusAndPaperId(String corpus, String paperId);
+}

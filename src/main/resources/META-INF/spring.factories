@@ -1,2 +1,2 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
-com.yizhaoqi.smartpai.config.DotenvEnvironmentPostProcessor
+io.github.chzarles.paperloom.config.DotenvEnvironmentPostProcessor

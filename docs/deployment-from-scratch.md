@@ -1,4 +1,4 @@
-# PaiSmart 从零部署到启动
+# PaperLoom 从零部署到启动
 
 这份文档按“先起基础服务，再起后端，最后起前端”的顺序写。目标不是讲原理，而是让你照着执行就能把项目跑起来。
 
@@ -16,14 +16,14 @@
 ## 2. 先拉代码
 
 ```bash
-git clone <你的仓库地址> PaiSmart
-cd PaiSmart
+git clone <你的仓库地址> PaperLoom
+cd PaperLoom
 ```
 
 如果你已经有代码，就直接进入项目根目录：
 
 ```bash
-cd /home/charles/PaiSmart
+cd /home/charles/PaperLoom
 ```
 
 ## 3. 准备根目录 `.env`
@@ -38,9 +38,9 @@ cp .env.example .env
 
 - `SPRING_PROFILES_ACTIVE=dev`
 - `SERVER_PORT=8081`
-- `SPRING_DATASOURCE_URL=jdbc:mysql://localhost:23306/PaiSmart?...`
+- `SPRING_DATASOURCE_URL=jdbc:mysql://localhost:23306/paperloom?...`
 - `SPRING_DATASOURCE_USERNAME=root`
-- `SPRING_DATASOURCE_PASSWORD=PaiSmart2025`
+- `SPRING_DATASOURCE_PASSWORD=<set-a-strong-secret>`
 - `MINIO_ENDPOINT=http://localhost:19000`
 - `SPRING_KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:29092`
 - `ELASTICSEARCH_HOST=localhost`
@@ -48,7 +48,7 @@ cp .env.example .env
 - `ELASTICSEARCH_SCHEME=http`
 - `ADMIN_BOOTSTRAP_ENABLED=true`
 - `ADMIN_BOOTSTRAP_USERNAME=admin`
-- `ADMIN_BOOTSTRAP_PASSWORD=PaismartAdmin2025!`
+- `ADMIN_BOOTSTRAP_PASSWORD=<set-a-different-strong-secret>`
 - `MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1`
 - `MINIMAX_API_KEY=<研究 Harness 使用的 API Key>`
 - `MINIMAX_MODEL=MiniMax-M3`
@@ -95,7 +95,7 @@ docker compose --env-file .env -f docs/docker-compose.yaml up -d
 docker compose --env-file ../.env up -d
 ```
 
-如果你的环境只有旧命令，就先升级 Docker Compose，或者临时把 `docs/docker-compose.yaml` 顶部的 `name: pai_smart` 去掉再执行。
+如果你的环境只有旧命令，就先升级 Docker Compose，或者临时把 `docs/docker-compose.yaml` 顶部的 `name: paperloom` 去掉再执行。
 
 如果你的环境升级不了，也可以试：
 
@@ -165,7 +165,7 @@ mvn spring-boot:run
 
 ```bash
 mvn clean package -DskipTests
-java -jar target/SmartPAI-0.0.1-SNAPSHOT.jar
+java -jar target/paperloom-server-0.1.0-SNAPSHOT.jar
 ```
 
 ### 5.1 后端启动成功的判断
@@ -214,7 +214,7 @@ http://localhost:9527
 1. Docker 依赖容器都在运行
 2. 后端 `8081` 能访问
 3. 前端页面能打开
-4. 用 `admin / PaismartAdmin2025!` 登录
+4. Use `admin` and the password configured in `ADMIN_BOOTSTRAP_PASSWORD` to log in.
 
 如果你是在 WSL 里启动，Windows 侧不需要再单独起一套项目。直接在 Windows 浏览器里打开这些地址就行：
 
@@ -243,7 +243,7 @@ docker-compose up -d
 
 - 用 `docker compose up -d`
 - 或升级 Docker Compose 到 v2
-- 或删掉 `docs/docker-compose.yaml` 顶层的 `name: pai_smart`
+- 或删掉 `docs/docker-compose.yaml` 顶层的 `name: paperloom`
 
 ### 8.3 后端连不上数据库
 

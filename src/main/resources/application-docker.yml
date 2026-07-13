@@ -2,11 +2,13 @@ server:
   port: ${SERVER_PORT:8081}
 
 spring:
+  application:
+    name: paperloom
   # docker profile 用于容器化启动；基础设施地址建议统一走 `.env`
   jackson:
     time-zone: ${APP_TIMEZONE:Asia/Shanghai}
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/PaiSmart?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/paperloom?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -162,7 +164,7 @@ logging:
     org.springframework.web: ${LOG_LEVEL_WEB:DEBUG}
     org.springframework.boot.autoconfigure.web.servlet: ${LOG_LEVEL_AUTOCONFIG:DEBUG}
     org.springframework.security: ${LOG_LEVEL_SECURITY:DEBUG}
-    com.yizhaoqi.smartpai: ${LOG_LEVEL_APP:DEBUG}
+    io.github.chzarles.paperloom: ${LOG_LEVEL_APP:DEBUG}
     io.minio: ${LOG_LEVEL_MINIO:DEBUG}
 
 deepseek:
@@ -182,7 +184,7 @@ embedding:
 ai:
   prompt:
     rules: |
-      你是 PaperLoom 论文阅读助手，须遵守：
+      你是 Folio 论文阅读助手，须遵守：
       1. 仅用简体中文作答。
       2. 回答需先给结论，再给基于论文片段的依据。
       3. 引用标记只使用紧凑锚点，例如 [1]、[2]；不要把论文名、页码、chunk、score 或 References 列表塞进引用标记。正文可以写论文标题、方法名、数据集和推荐理由。

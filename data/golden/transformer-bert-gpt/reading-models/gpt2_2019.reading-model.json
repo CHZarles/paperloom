@@ -3,7 +3,7 @@
   "pack_id" : "transformer-bert-gpt",
   "paper_id" : "gpt2_2019",
   "model_version" : "rm_golden_gpt2_2019",
-  "source_pdf_path" : "/home/charles/PaiSmart/data/golden/transformer-bert-gpt/pdfs/gpt2_2019.pdf",
+  "source_pdf_path" : "data/golden/transformer-bert-gpt/pdfs/gpt2_2019.pdf",
   "source_pdf_sha256" : "d9d852e2894556e73f53cb22b7c605a9643d6f0b19bf604b429ed6192fa24f4e",
   "pdf_page_count" : 24,
   "parser_name" : "MinerU",

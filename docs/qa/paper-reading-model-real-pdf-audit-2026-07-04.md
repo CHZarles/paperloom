@@ -36,7 +36,7 @@ retrieval, or chat-answering product path.
 ## Environment
 
 - Date: 2026-07-04 CST
-- Workspace: `/home/charles/PaiSmart`
+- Workspace: `/home/charles/PaperLoom`
 - Java: 21.0.11, Spring Boot 3.4.2
 - Test profile: `test`
 - Test database: H2 in MySQL mode
@@ -78,7 +78,7 @@ target/paper-reading-model-structured-locations-audit/summary.jsonl
 
 The disabled-by-default real PDF smoke test remains available for the narrower builder-only path:
 
-- `src/test/java/com/yizhaoqi/smartpai/service/PaperReadingModelDataPdfSmokeTest.java`
+- `src/test/java/io/github/chzarles/paperloom/service/PaperReadingModelDataPdfSmokeTest.java`
 
 ## Validated Invariants
 

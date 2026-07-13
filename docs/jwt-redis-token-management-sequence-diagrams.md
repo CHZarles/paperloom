@@ -1,6 +1,6 @@
 # JWT / Redis Token 管理时序图（严格贴合当前代码）
 
-> 说明：本文档只基于 `src/main/java/com/yizhaoqi/smartpai/service/TokenCacheService.java` 的**现状**编写。  
+> 说明：本文档只基于 `src/main/java/io/github/chzarles/paperloom/service/TokenCacheService.java` 的**现状**编写。  
 > 只画**当前代码确实做了的事**，不把“可能存在于别的类里”的能力误写进来。
 
 ## 1. 当前类已经实现了什么

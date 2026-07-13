@@ -1,8 +1,8 @@
-# PaiSmart 分块策略优化计划
+# PaperLoom 分块策略优化计划
 
 ## 背景
 
-当前 PaiSmart 的知识库入库链路是：
+当前 PaperLoom 的知识库入库链路是：
 
 ```text
 上传完成
@@ -58,11 +58,11 @@
 
 ### 改动范围
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ParseService.java`
-- `src/main/java/com/yizhaoqi/smartpai/repository/DocumentVectorRepository.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/VectorizationService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ParseService.java`
+- `src/main/java/io/github/chzarles/paperloom/repository/DocumentVectorRepository.java`
+- `src/main/java/io/github/chzarles/paperloom/service/VectorizationService.java`
 - `src/main/resources/application*.yml`
-- `src/test/java/com/yizhaoqi/smartpai/service/*ParseService*Test.java`
+- `src/test/java/io/github/chzarles/paperloom/service/*ParseService*Test.java`
 
 ### 任务
 
@@ -121,7 +121,7 @@ file:
 ### 建议结构
 
 ```text
-src/main/java/com/yizhaoqi/smartpai/service/chunk/
+src/main/java/io/github/chzarles/paperloom/service/chunk/
   ChunkingProperties.java
   DocumentChunker.java
   ChunkCandidate.java

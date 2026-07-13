@@ -2,10 +2,11 @@
 set -euo pipefail
 
 TARGET_ROWS=64183
-MAIN_ROOT="${PAPERLOOM_MAIN_ROOT:-/home/charles/PaiSmart}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MAIN_ROOT="${PAPERLOOM_MAIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
 WT="${PAPERLOOM_WORKTREE:-$MAIN_ROOT/.worktrees/adaptive-source-set-rag}"
 ENV_FILE="${PAPERLOOM_ENV_FILE:-$MAIN_ROOT/.env}"
-MYSQL_CONTAINER="${PAPERLOOM_MYSQL_CONTAINER:-pai_smart_mysql}"
+MYSQL_CONTAINER="${PAPERLOOM_MYSQL_CONTAINER:-paperloom-mysql}"
 TARGET_DIR="$WT/target"
 LOG="$TARGET_DIR/litsearch-full-benchmark.log"
 PIDFILE="$TARGET_DIR/litsearch-full-benchmark.pid"
@@ -116,7 +117,7 @@ user = env.get("SPRING_DATASOURCE_USERNAME", "root")
 password = env.get("SPRING_DATASOURCE_PASSWORD", "")
 url = env.get("SPRING_DATASOURCE_URL", "")
 match = re.search(r"jdbc:mysql://([^/:?]+)(?::(\d+))?/([^?]+)", url)
-db = match.group(3) if match else "PaiSmart"
+db = match.group(3) if match else "paperloom"
 query = (
     "select p.split, count(distinct p.id) as papers, count(c.id) as chunks "
     "from paperloom_eval.eval_papers p "
@@ -223,7 +224,7 @@ start_benchmark() {
 
     cd "$MAIN_ROOT"
     java -cp "$CP" \
-      com.yizhaoqi.smartpai.eval.ServiceBackedLitSearchBenchmarkCli \
+      io.github.chzarles.paperloom.eval.ServiceBackedLitSearchBenchmarkCli \
       --gold "$GOLD" \
       --retrieved "$RETRIEVED" \
       --runs-root "$RUNS_ROOT" \

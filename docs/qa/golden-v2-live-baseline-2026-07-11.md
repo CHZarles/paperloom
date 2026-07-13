@@ -20,7 +20,7 @@ show whether a failure was persistent.
 Artifacts:
 
 ```text
-/tmp/paismart-golden-live-20260711-cases
+/tmp/paperloom-golden-live-20260711-cases
 ```
 
 ## Headline Result

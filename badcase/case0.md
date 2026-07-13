@@ -1,4 +1,4 @@
-charles@DESKTOP-L39GC67:~/PaiSmart$ python3 -m harness_py chat-shell \
+charles@DESKTOP-L39GC67:~/PaperLoom$ python3 -m harness_py chat-shell \
  --state /tmp/state0711.json --state-out /tmp/state0711.json \
  --out /tmp/runs0711
 {

@@ -3,11 +3,13 @@ server:
   address: 0.0.0.0
 
 spring:
+  application:
+    name: paperloom
   # dev 用于本地源码启动，优先读取 `.env` 中的同名变量。
   jackson:
     time-zone: ${APP_TIMEZONE:Asia/Shanghai}
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/PaiSmart?useSSL=false&serverTimezone=Asia/Shanghai}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/paperloom?useSSL=false&serverTimezone=Asia/Shanghai}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -172,7 +174,7 @@ logging:
     org.springframework.web: ${LOG_LEVEL_WEB:DEBUG}
     org.springframework.boot.autoconfigure.web.servlet: ${LOG_LEVEL_AUTOCONFIG:DEBUG}
     org.springframework.security: ${LOG_LEVEL_SECURITY:DEBUG}
-    com.yizhaoqi.smartpai: ${LOG_LEVEL_APP:DEBUG}
+    io.github.chzarles.paperloom: ${LOG_LEVEL_APP:DEBUG}
     io.minio: ${LOG_LEVEL_MINIO:DEBUG}
 
 deepseek:

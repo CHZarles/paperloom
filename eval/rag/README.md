@@ -26,17 +26,17 @@ pending cross-product.
 The current offline method prototype is a page-index locator under test scope:
 
 ```text
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageDocument.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageIndexBuilder.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageLocator.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageLocatorQueryPlanner.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageLocatorTool.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageWindow.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageInspection.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperEvidenceHitScorer.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageLocatorScorer.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageWindowScorer.java
-src/test/java/com/yizhaoqi/smartpai/eval/PaperPageLocatorBenchmarkCli.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageDocument.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageIndexBuilder.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageLocator.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageLocatorQueryPlanner.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageLocatorTool.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageWindow.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageInspection.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperEvidenceHitScorer.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageLocatorScorer.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageWindowScorer.java
+src/test/java/io/github/chzarles/paperloom/eval/PaperPageLocatorBenchmarkCli.java
 ```
 
 It groups chunk-level evidence into page documents, ranks page windows, expands same-paper neighbor
@@ -56,11 +56,11 @@ or library inventory behavior.
 The first service-backed bridge is now available without changing chat behavior:
 
 ```text
-src/main/java/com/yizhaoqi/smartpai/service/PaperPageWindowService.java
-src/main/java/com/yizhaoqi/smartpai/repository/PaperTextChunkRepository.java
-src/test/java/com/yizhaoqi/smartpai/eval/ServiceBackedPageWindowHarness.java
-src/test/java/com/yizhaoqi/smartpai/eval/ServiceBackedPageWindowBenchmarkRunner.java
-src/test/java/com/yizhaoqi/smartpai/eval/ServiceBackedPageWindowBenchmarkCli.java
+src/main/java/io/github/chzarles/paperloom/service/PaperPageWindowService.java
+src/main/java/io/github/chzarles/paperloom/repository/PaperTextChunkRepository.java
+src/test/java/io/github/chzarles/paperloom/eval/ServiceBackedPageWindowHarness.java
+src/test/java/io/github/chzarles/paperloom/eval/ServiceBackedPageWindowBenchmarkRunner.java
+src/test/java/io/github/chzarles/paperloom/eval/ServiceBackedPageWindowBenchmarkCli.java
 ```
 
 It reads MySQL `paper_text_chunks` by `paperId` and page range, then returns ledger-ready
@@ -161,7 +161,7 @@ full parquet route and full-score commands are documented in `litsearch/README.m
 For the current service-backed full run, use the unattended wrapper from the repository root:
 
 ```bash
-cd /home/charles/PaiSmart
+cd /home/charles/PaperLoom
 .worktrees/adaptive-source-set-rag/scripts/litsearch-full-pipeline.sh summary
 ```
 
@@ -247,7 +247,7 @@ debugging. Run preflight before the slower 30-PDF seed:
 ```bash
 mvn -q -DskipTests test-compile exec:java \
   -Dexec.classpathScope=test \
-  -Dexec.mainClass=com.yizhaoqi.smartpai.eval.ProductLaunchRuntimePreflightCli
+  -Dexec.mainClass=io.github.chzarles.paperloom.eval.ProductLaunchRuntimePreflightCli
 ```
 
 `ProductLaunchReadinessCli` is the top-level launch wrapper. It runs the five launch gates in order,
@@ -259,7 +259,7 @@ child gate artifact, rolls up the blocking child run's failed case IDs and failu
 ```bash
 mvn -q -DskipTests test-compile exec:java \
   -Dexec.classpathScope=test \
-  -Dexec.mainClass=com.yizhaoqi.smartpai.eval.ProductLaunchReadinessCli
+  -Dexec.mainClass=io.github.chzarles.paperloom.eval.ProductLaunchReadinessCli
 ```
 
 `ProductPdfLaunchDataSeedCli` is the front-to-back live driver for building the launch dataset. It
@@ -271,7 +271,7 @@ usage present, and `actualChunkCount > 0`.
 ```bash
 mvn -q -DskipTests test-compile exec:java \
   -Dexec.classpathScope=test \
-  -Dexec.mainClass=com.yizhaoqi.smartpai.eval.ProductPdfLaunchDataSeedCli
+  -Dexec.mainClass=io.github.chzarles.paperloom.eval.ProductPdfLaunchDataSeedCli
 ```
 
 `ProductReadingLiveLaunchSmokeCli` is the front-to-back live driver for producing Product Reading
@@ -439,7 +439,7 @@ Service-backed scoped paper-QA slice:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.ServiceBackedPageWindowBenchmarkCli \
+  io.github.chzarles.paperloom.eval.ServiceBackedPageWindowBenchmarkCli \
   --cases eval/rag/product-rescue-paper-qa.jsonl \
   --harness-id service-backed-page-window \
   --dataset-id product-rescue-paper-qa \

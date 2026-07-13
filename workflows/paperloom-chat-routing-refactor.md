@@ -460,11 +460,11 @@ Recommended first test targets:
 
 These files are expected first-change hotspots:
 
-- `src/main/java/com/yizhaoqi/smartpai/service/PaperAnswerService.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/EvidencePlanner.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/EvidenceToolExecutor.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/PaperRetrievalService.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/HybridSearchService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/PaperAnswerService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/EvidencePlanner.java`
+- `src/main/java/io/github/chzarles/paperloom/service/EvidenceToolExecutor.java`
+- `src/main/java/io/github/chzarles/paperloom/service/PaperRetrievalService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/HybridSearchService.java`
 
 Existing tests that currently expect fallback pseudo-answers must be rewritten. A test that asserts
 `fallbackUsed=true` after quota failure is now asserting the wrong product behavior unless it belongs
@@ -474,25 +474,25 @@ to an eval-only benchmark metric that is explicitly measuring historical behavio
 
 Likely create:
 
-- `src/main/java/com/yizhaoqi/smartpai/service/TaskRouter.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/TaskRoutingRequest.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/TaskRoutingResult.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/TaskDecision.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/TaskRoutingFailure.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/TaskType.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/TaskOperation.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/PaperLibraryStatusService.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/ProductPaperCorpus.java`
+- `src/main/java/io/github/chzarles/paperloom/service/TaskRouter.java`
+- `src/main/java/io/github/chzarles/paperloom/service/TaskRoutingRequest.java`
+- `src/main/java/io/github/chzarles/paperloom/service/TaskRoutingResult.java`
+- `src/main/java/io/github/chzarles/paperloom/service/TaskDecision.java`
+- `src/main/java/io/github/chzarles/paperloom/service/TaskRoutingFailure.java`
+- `src/main/java/io/github/chzarles/paperloom/service/TaskType.java`
+- `src/main/java/io/github/chzarles/paperloom/service/TaskOperation.java`
+- `src/main/java/io/github/chzarles/paperloom/service/PaperLibraryStatusService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/ProductPaperCorpus.java`
 
 Likely modify:
 
-- `src/main/java/com/yizhaoqi/smartpai/service/ChatHandler.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/PaperAnswerService.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/EvidencePlanner.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/EvidenceToolExecutor.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/PaperRetrievalService.java`
-- `src/main/java/com/yizhaoqi/smartpai/service/HybridSearchService.java`
-- `src/test/java/com/yizhaoqi/smartpai/service/*`
+- `src/main/java/io/github/chzarles/paperloom/service/ChatHandler.java`
+- `src/main/java/io/github/chzarles/paperloom/service/PaperAnswerService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/EvidencePlanner.java`
+- `src/main/java/io/github/chzarles/paperloom/service/EvidenceToolExecutor.java`
+- `src/main/java/io/github/chzarles/paperloom/service/PaperRetrievalService.java`
+- `src/main/java/io/github/chzarles/paperloom/service/HybridSearchService.java`
+- `src/test/java/io/github/chzarles/paperloom/service/*`
 
 ## Decisions
 

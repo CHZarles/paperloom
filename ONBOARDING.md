@@ -1,4 +1,4 @@
-# 派聪明（PaiSmart）新成员上手指南
+# Folio（PaperLoom）新成员上手指南
 
 > 由 `/.understand-anything/knowledge-graph.json` 自动生成 · 2026-06-07 · commit `59ec5224`
 >
@@ -8,7 +8,7 @@
 
 ## 1. 项目全景
 
-**派聪明（PaiSmart）** 是一套**企业级 AI 知识库管理系统**。核心是 **RAG（Retrieval-Augmented Generation）** 流水线：把企业内部的 PDF/Word 等异构文档解析、切片、向量化，落到 Elasticsearch 中按语义检索，再喂给 LLM（DeepSeek / 自定义 Provider）做带引用的回答。
+**Folio（PaperLoom）** 是一套**企业级 AI 知识库管理系统**。核心是 **RAG（Retrieval-Augmented Generation）** 流水线：把企业内部的 PDF/Word 等异构文档解析、切片、向量化，落到 Elasticsearch 中按语义检索，再喂给 LLM（DeepSeek / 自定义 Provider）做带引用的回答。
 
 - **后端**：Spring Boot 3.4.2（Java 17）+ Spring Data JPA + Spring Security + Spring WebFlux/WebSocket
 - **前端**：Vue 3 + TypeScript + Vite + Naive UI + Pinia + vue-router + UnoCSS
@@ -17,8 +17,8 @@
 - **多租户**：通过**组织标签（OrgTag）** 实现企业 / 部门 / 团队的数据隔离
 - **业务亮点**：文档上传与异步处理、WebSocket 实时流式聊天、微信支付充值、邀请码注册、JWT + 组织标签鉴权、限流配额、可观测性
 
-**版本**：1.3.13（前端 package.json）/ `0.0.1-SNAPSHOT`（后端 pom.xml）
-**仓库**：https://github.com/itwanger/PaiSmart.git
+**版本**：1.3.13（前端 package.json）/ `0.1.0-SNAPSHOT`（后端 pom.xml）
+**仓库**：https://github.com/CHZarles/paperloom
 **入口文档**：
 - [README.md](../README.md) — 项目介绍、架构、跑起来的步骤
 - [CLAUDE.md](../CLAUDE.md) — Claude Code 协作约定（开发准则、运行命令、测试流程）
@@ -64,7 +64,7 @@
 | # | 标题 | 关键文件 | 教学点 |
 |---|---|---|---|
 | 1 | 项目全景 | `README.md`, `CLAUDE.md` | — |
-| 2 | 后端启动入口 | `src/main/java/com/yizhaoqi/smartpai/SmartPaiApplication.java` | — |
+| 2 | 后端启动入口 | `src/main/java/io/github/chzarles/paperloom/PaperLoomApplication.java` | — |
 | 3 | 文档上传与 Kafka 异步流水线 | `controller/UploadController.java`, `consumer/FileProcessingConsumer.java`, `config/KafkaConfig.java` | **Spring Kafka @KafkaListener**：topic → 普通方法，消息偏移、并发、重试由容器托管 |
 | 4 | 解析、切块与向量化 | `service/ParseService.java`, `service/VectorizationService.java`, `client/EmbeddingClient.java`, `model/FileUpload.java`, `model/ChunkInfo.java` | — |
 | 5 | Elasticsearch 存储与混合检索 | `config/EsConfig.java`, `service/ElasticsearchService.java`, `service/HybridSearchService.java`, `entity/EsDocument.java` | **Hybrid Search**：稀疏 + 稠密双索引融合 |
@@ -117,7 +117,7 @@
 | 23 | `utils/JwtUtils.java` | **JWT 签发 / 解析 / 刷新 / 失效** |
 | 22 | `resources/application.yml` | Spring Boot 主配置 |
 | 20 | `config/KafkaConfig.java` | Kafka 生产者/消费者配置 |
-| 19 | `SmartPaiApplication.java` | Spring Boot 启动类 |
+| 19 | `PaperLoomApplication.java` | Spring Boot 启动类 |
 | 19 | `utils/LogUtils.java` | 业务/性能/聊天日志工具 |
 
 ### 5.5 数据库与模式层（12 个节点）
@@ -177,7 +177,7 @@
 
 | 文件 | 复杂度 | 风险点 |
 |---|---|---|
-| `config/BootstrapKnowledgeInitializer.java` | complex | 启动时把 `docs/paismart.pdf` 自动入库，开箱即用；改这里会影响所有新部署 |
+| `config/BootstrapPaperInitializer.java` | complex | 启动时把 `data/2412.08972.pdf` 自动入库，开箱即用；改这里会影响所有新部署 |
 | `config/OrgTagAuthorizationFilter.java` | complex | 多租户权限核心，改之前必须画清资源 → 标签 → 用户的链路 |
 | `service/ChatHandler.java`（fan-out 41） | 全仓业务核心 | RAG 主链路，**改之前先跑 `ChatHandlerRetrievalPolicyTest`** |
 | `service/UserService.java` | complex | 注册策略、邀请码、组织标签循环检测 |
@@ -193,7 +193,7 @@
 
 1. **准备 `.env`** — 复制 `.env.example` 到 `.env`，填好 MySQL / Redis / Kafka / MinIO / ES / JWT 密钥。
 2. **拉起基础服务** — `cd docs && docker-compose up -d`（或 `./infra.sh start`）。
-3. **启动后端** — `mvn spring-boot:run`（或 IDE 跑 `SmartPaiApplication`），首次启动会触发 `BootstrapKnowledgeInitializer` 把 `docs/paismart.pdf` 自动入库。
+3. **启动后端** — `mvn spring-boot:run`（或 IDE 跑 `PaperLoomApplication`），首次启动会触发 `BootstrapPaperInitializer` 把 `data/2412.08972.pdf` 自动入库。
 4. **启动前端** — `cd frontend && pnpm install && pnpm dev`，浏览器开 `http://localhost:9527`（或 8081，详见 `frontend/.env.test`）。
 5. **测试 RAG 链路** — 注册账号 → 知识库页上传一个 PDF → 聊天页问一个与 PDF 相关的问题 → 应该看到「引用」标签能跳到 PDF 原文片段。
 
@@ -201,7 +201,7 @@
 
 ## 9. 推荐学习资源（项目自带）
 
-- **20 集 YouTube 教程文案**（`youtube_scripts/01-20-*.md`）— 从 Spring Boot 骨架、JPA 实体、JWT、Spring Security、MinIO、Tika、Embedding、Elasticsearch、Kafka、WebSocket+DeepSeek、OrgTag 多租户、混合检索、限流、会话、ReAct Agent、LLM Router、微信支付、邀请码、消息反馈、可观测性 — 一集对应一个 PaiSmart 代码模块。
+- **20 集 YouTube 教程文案**（`youtube_scripts/01-20-*.md`）— 从 Spring Boot 骨架、JPA 实体、JWT、Spring Security、MinIO、Tika、Embedding、Elasticsearch、Kafka、WebSocket+DeepSeek、OrgTag 多租户、混合检索、限流、会话、ReAct Agent、LLM Router、微信支付、邀请码、消息反馈、可观测性 — 一集对应一个 PaperLoom 代码模块。
 - **JWT 系列讲义**（`handouts/jwt-series/ep01-07-*.md`）— 7 集 JWT 教程：Cookie → Session → JWT → 存储 → XSS → CSRF → 双 Token。
 - **架构 wiki**（`.qoder/repowiki/zh/content/`）— 中文架构文档：项目概述、后端架构（API/安全/实时通信/数据库/核心模块）、前端架构（状态/路由/组件/项目结构）、数据模型、API 参考、RAG 系统实现、部署指南、故障排除、技术面试文档。
 

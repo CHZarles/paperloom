@@ -8,23 +8,31 @@
         <version>3.4.2</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.yizhaoqi</groupId>
-    <artifactId>SmartPAI</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>SmartPAI</name>
-    <description>SmartPAI</description>
-    <url/>
+    <groupId>io.github.chzarles</groupId>
+    <artifactId>paperloom-server</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>PaperLoom Server</name>
+    <description>Evidence-grounded research paper retrieval and reading backend for Folio</description>
+    <url>https://github.com/CHZarles/paperloom</url>
     <licenses>
-        <license/>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
     </licenses>
     <developers>
-        <developer/>
+        <developer>
+            <id>chzarles</id>
+            <name>Charles</name>
+            <url>https://github.com/CHZarles</url>
+        </developer>
     </developers>
     <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
+        <connection>scm:git:https://github.com/CHZarles/paperloom.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/CHZarles/paperloom.git</developerConnection>
+        <tag>HEAD</tag>
+        <url>https://github.com/CHZarles/paperloom</url>
     </scm>
     <properties>
         <java.version>17</java.version>

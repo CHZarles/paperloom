@@ -54,7 +54,7 @@ Example service-backed run shape:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.ServiceBackedPageWindowBenchmarkCli \
+  io.github.chzarles.paperloom.eval.ServiceBackedPageWindowBenchmarkCli \
   --cases eval/rag/qasper/generated/qasper-dev-200-rag-cases.jsonl \
   --harness-id service-backed-page-window \
   --dataset-id qasper-dev-200 \
@@ -231,13 +231,13 @@ After compiling test classes:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocationCaseGenerator \
+  io.github.chzarles.paperloom.eval.PaperPageLocationCaseGenerator \
   --rag-cases eval/rag/product-rescue-smoke.jsonl \
   --chunks eval/rag/page-location/generated/product-rescue-smoke-chunks.jsonl \
   --output eval/rag/page-location/generated/product-rescue-smoke-page-cases.jsonl
 
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocatorBenchmarkCli \
+  io.github.chzarles.paperloom.eval.PaperPageLocatorBenchmarkCli \
   --cases eval/rag/page-location/generated/product-rescue-smoke-page-cases.jsonl \
   --chunks eval/rag/page-location/generated/product-rescue-smoke-chunks.jsonl \
   --retrieved eval/rag/page-location/generated/product-rescue-smoke-page-retrieved.jsonl \
@@ -253,7 +253,7 @@ Curated exact-page run:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocatorBenchmarkCli \
+  io.github.chzarles.paperloom.eval.PaperPageLocatorBenchmarkCli \
   --cases eval/rag/page-location/product-rescue-curated-page-cases.jsonl \
   --chunks eval/rag/page-location/generated/product-rescue-smoke-chunks.jsonl \
   --retrieved eval/rag/page-location/generated/product-rescue-curated-page-retrieved-planned.jsonl \
@@ -270,7 +270,7 @@ Evidence-hit run over matching RAG cases:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocatorBenchmarkCli \
+  io.github.chzarles.paperloom.eval.PaperPageLocatorBenchmarkCli \
   --cases eval/rag/page-location/generated/product-rescue-smoke-page-cases.jsonl \
   --rag-cases eval/rag/product-rescue-smoke.jsonl \
   --chunks eval/rag/page-location/generated/product-rescue-smoke-chunks.jsonl \

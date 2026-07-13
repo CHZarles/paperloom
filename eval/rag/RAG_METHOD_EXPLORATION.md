@@ -61,7 +61,7 @@ chunk-level evidence selection.
 ## Offline Page-Index Prototype
 
 The repo now has a test-scoped page-index prototype under
-`src/test/java/com/yizhaoqi/smartpai/eval/`:
+`src/test/java/io/github/chzarles/paperloom/eval/`:
 
 | Class | Role |
 |---|---|
@@ -96,7 +96,7 @@ Run shape:
 
 ```bash
 java -cp "target/test-classes:target/classes:$(cat target/test-classpath.txt)" \
-  com.yizhaoqi.smartpai.eval.PaperPageLocatorBenchmarkCli \
+  io.github.chzarles.paperloom.eval.PaperPageLocatorBenchmarkCli \
   --cases eval/rag/page-location/<cases>.jsonl \
   --rag-cases eval/rag/<rag-cases>.jsonl \
   --chunks eval/rag/page-location/<chunks>.jsonl \
