@@ -29,7 +29,8 @@ Authored data is split into:
 
 Runtime stages, skill choice, tool sequence, tool count, and exact prose are deliberately not Golden
 expectations. Every authored evidence anchor requires a positive parseable `page`; audit and runtime
-matching enforce the same page constraint. Case IDs, expectations, paradigm labels, and authored
+matching call the same helpers in `harness_py/corpus/pages.py`, so a readability refactor must not
+change one side independently. Case IDs, expectations, paradigm labels, and authored
 anchor quality signals are never exposed to the model.
 
 ## Expanded Corpus Assets

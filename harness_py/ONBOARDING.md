@@ -249,6 +249,17 @@ One live Golden case with eval capture:
   --out /tmp/paismart-agent-run
 ```
 
+## Maintenance Style
+
+This package follows a deletion-first, Ponytail-style maintenance rule:
+
+- Reuse an existing helper before adding an abstraction or dependency.
+- Centralize only behavior that is already exactly duplicated. `corpus/pages.py` is the shared source for page parsing and normalized anchor matching; CLI helpers share unchanged defaults and artifact writing.
+- Treat agent prompts, command defaults, HTTP endpoint paths, provider URL handling, and artifact paths as behavior. Do not rewrite them as part of a readability refactor.
+- Keep Chinese comments sparse and purposeful. They explain trust boundaries, state authority, data-integrity choices, and cancellation behavior rather than narrating obvious Python.
+- Preserve data-loss prevention, authorization checks, final-answer validation, and eval-journal durability even when a shorter implementation exists.
+- Prefer a small local variable over repeated parsing, and prefer deletion over a new class or interface.
+
 ## Design Guardrails
 
 - Keep `HarnessRuntime` small. Runtime implementations should consume `TurnExecutionInput` and return a normalized run.
@@ -258,4 +269,3 @@ One live Golden case with eval capture:
 - Keep Java responsible for authentication, Redis state, reconnect behavior, permissions, cancellation ownership, and usage settlement.
 - Keep the legacy runtime working as a rollback path, but put new orchestration behavior into the Agents SDK runtime first.
 - Prefer extending existing data shapes and tools over adding orchestration abstractions with no current caller.
-

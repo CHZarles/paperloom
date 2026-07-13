@@ -5,6 +5,10 @@ OpenAI Agents SDK with MiniMax, request-scoped conversation memory, guarded corp
 deterministic final-answer and citation validation. The hand-written `legacy` runtime remains only as
 a rollback option.
 
+The implementation deliberately favors small standard-library helpers and explicit state over new
+framework layers. Prompts, command defaults, endpoint paths, and artifact paths are treated as
+behavioral contracts during refactoring.
+
 Start with [ONBOARDING.md](ONBOARDING.md) for the architecture, one-turn execution flow, state
 authority, tool authorization, eval capture, extension points, and debugging guide.
 
