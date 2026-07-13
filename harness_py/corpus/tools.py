@@ -7,7 +7,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..core.models import GoldenDataset, JsonMap, as_list, child_map
-from .pages import parse_positive_page
+from .pages import (
+    contains_normalized_phrase as _contains_normalized_phrase,
+    normalize_text as _normalize,
+    page_matches as _page_matches,
+)
 
 
 SEARCH_ELEMENT_TYPES = (
@@ -281,6 +285,7 @@ class ReadingCorpusTools:
         matches.sort(key=lambda item: (-item[0], -(_optional_int(child_map(item[2].get("identity")).get("year")) or 0), item[1]))
         page = matches[offset:offset + limit]
         cards = [_paper_card(paper_id, record) for _, paper_id, record in page]
+        # 只有先向模型公开的论文，后续才允许检索正文位置。
         self.authorized_paper_ids.update(str(card["paper_id"]) for card in cards)
         returned_through = offset + len(cards)
         return {
@@ -391,6 +396,7 @@ class ReadingCorpusTools:
                 continue
             seen.add(document.evidence_id())
             item = document.to_evidence_item()
+            # 只有真正读取过的位置才会生成可引用 evidence_id。
             self.observations_by_evidence_id[item["evidence_id"]] = item
             items.append(item)
         missing = [ref for ref in location_refs if ref not in self.documents_by_location]
@@ -440,6 +446,8 @@ def _build_documents(dataset: GoldenDataset) -> list[ReadingDocument]:
             if not text:
                 continue
             location = str(element_map.get("locationRef") or element_map.get("readingElementId") or element_map.get("id"))
+            element_type = str(element_map.get("elementType") or "reading_element").lower()
+            source_object_id = str(element_map.get("sourceObjectId") or "") or None
             doc = ReadingDocument(
                 paper_id=paper_id,
                 title=title,
@@ -449,17 +457,14 @@ def _build_documents(dataset: GoldenDataset) -> list[ReadingDocument]:
                 page=element_map.get("pageNumber"),
                 section=str(element_map.get("sectionTitle") or ""),
                 text=text,
-                source_kind=str(element_map.get("elementType") or "reading_element").lower(),
+                source_kind=element_type,
                 original_filename=original_filename,
                 bbox_json=str(element_map.get("bboxJson") or "") or None,
                 parser_name=str(element_map.get("parserName") or model.get("parser_name") or "") or None,
                 parser_version=str(element_map.get("parserVersion") or model.get("parser_version") or "") or None,
-                table_id=(str(element_map.get("sourceObjectId") or "") or None)
-                if str(element_map.get("elementType") or "").lower() == "table" else None,
-                figure_id=(str(element_map.get("sourceObjectId") or "") or None)
-                if str(element_map.get("elementType") or "").lower() in {"figure", "chart"} else None,
-                formula_id=(str(element_map.get("sourceObjectId") or "") or None)
-                if str(element_map.get("elementType") or "").lower() == "formula" else None,
+                table_id=source_object_id if element_type == "table" else None,
+                figure_id=source_object_id if element_type in {"figure", "chart"} else None,
+                formula_id=source_object_id if element_type == "formula" else None,
                 page_screenshot_available=bool(element_map.get("pageScreenshotAvailable")),
                 pdf_evidence_available=bool(element_map.get("pdfEvidenceAvailable")),
                 table_screenshot_available=bool(element_map.get("tableScreenshotAvailable")),
@@ -539,18 +544,6 @@ def _match_anchor(document: ReadingDocument, anchors: list[JsonMap]) -> str | No
     return None
 
 
-def _page_matches(anchor_page: Any, document_page: Any) -> bool:
-    parsed_anchor_page = parse_positive_page(anchor_page)
-    parsed_document_page = parse_positive_page(document_page)
-    return parsed_anchor_page is not None and parsed_document_page == parsed_anchor_page
-
-
-def _contains_normalized_phrase(normalized_text: str, normalized_quote: str) -> bool:
-    if not normalized_text or not normalized_quote:
-        return False
-    return f" {normalized_quote} " in f" {normalized_text} "
-
-
 def _paper_card(paper_id: str, record: JsonMap) -> JsonMap:
     identity = child_map(record.get("identity"))
     abstract = str(record.get("abstract") or "").strip()
@@ -588,7 +581,8 @@ def _paper_relevance(query_tokens: set[str], query: str, paper_id: str, record: 
         + _score_tokens(query_tokens, set(_tokens(abstract)))
         + _score_tokens(query_tokens, set(_tokens(metadata)))
     )
-    if _normalize(query) and _normalize(query) in _normalize(" ".join([title, abstract, metadata])):
+    normalized_query = _normalize(query)
+    if normalized_query and normalized_query in _normalize(" ".join([title, abstract, metadata])):
         score += 2.0
     return score
 
@@ -701,16 +695,16 @@ def _score_tokens(query_tokens: set[str], text_tokens: set[str]) -> float:
     if not query_tokens:
         return 0.0
     overlap = query_tokens & text_tokens
-    return len(overlap) / max(len(query_tokens), 1)
+    return len(overlap) / len(query_tokens)
 
 
 def _section_hint_score(query: str, section: str, text: str) -> float:
     normalized_section = _normalize(section)
     normalized_lead = _normalize(text[:500])
     hints = [
-        _normalize(item)
+        hint
         for item in re.split(r"[/|>]", query)
-        if _normalize(item)
+        if (hint := _normalize(item))
     ]
     if not hints:
         return 0.0
@@ -727,11 +721,5 @@ def _section_hint_score(query: str, section: str, text: str) -> float:
                 0.5 * _score_tokens(set(_tokens(hint)), set(_tokens(section))),
             )
     return best
-
-
-def _normalize(value: str) -> str:
-    return " ".join(_tokens(value))
-
-
 def json_tool_content(result: ToolResult) -> str:
     return json.dumps(result.payload, ensure_ascii=False, sort_keys=True)

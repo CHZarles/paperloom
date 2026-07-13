@@ -317,8 +317,10 @@ order by a.paper_id, a.page_number, a.id
 def _reading_element(row: JsonMap, visual_assets: JsonMap | None = None) -> JsonMap:
     visual_assets = visual_assets or {}
     page_number = row.get("pageNumber")
-    table_id = row.get("sourceObjectId") if str(row.get("elementType") or "").lower() == "table" else None
-    figure_id = row.get("sourceObjectId") if str(row.get("elementType") or "").lower() in {"figure", "chart"} else None
+    element_type = str(row.get("elementType") or "").lower()
+    source_object_id = row.get("sourceObjectId")
+    table_id = source_object_id if element_type == "table" else None
+    figure_id = source_object_id if element_type in {"figure", "chart"} else None
     page_screenshots = set(as_list(visual_assets.get("pageScreenshots")))
     table_screenshots = set(as_list(visual_assets.get("tableScreenshots")))
     figure_screenshots = set(as_list(visual_assets.get("figureScreenshots")))
@@ -369,9 +371,9 @@ def _visual_assets_by_paper(rows: list[JsonMap]) -> dict[str, JsonMap]:
         asset_type = str(row.get("asset_type") or "")
         if asset_type == "PAGE_SCREENSHOT" and row.get("page_number") is not None:
             item["pageScreenshots"].append(row.get("page_number"))
-        if asset_type == "TABLE_CROP" and row.get("table_id"):
+        elif asset_type == "TABLE_CROP" and row.get("table_id"):
             item["tableScreenshots"].append(row.get("table_id"))
-        if asset_type in {"FIGURE_CROP", "CHART_CROP"} and row.get("figure_id"):
+        elif asset_type in {"FIGURE_CROP", "CHART_CROP"} and row.get("figure_id"):
             item["figureScreenshots"].append(row.get("figure_id"))
     return result
 

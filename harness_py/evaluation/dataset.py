@@ -52,7 +52,7 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
 
     _validate_packs(packs)
     _validate_cases(cases, packs)
-    paper_records = _normalized_paper_records(root, packs)
+    paper_records = _normalized_paper_records(packs)
     anchors = _normalized_anchors(packs)
     citation_edges = [edge for pack in packs for edge in as_list(pack.get("citation_edges"))]
     warnings: list[str] = []
@@ -88,12 +88,9 @@ def _validate_packs(packs: list[JsonMap]) -> None:
         pack_ids.add(pack_id)
         if not str(pack.get("data_dir") or "").strip():
             raise ValueError(f"paper pack {pack_id} is missing data_dir")
-        local_papers = {
-            str(child_map(paper).get("id"))
-            for paper in as_list(pack.get("papers"))
-            if child_map(paper).get("id")
-        }
-        if len(local_papers) != len(as_list(pack.get("papers"))):
+        papers = [child_map(paper) for paper in as_list(pack.get("papers"))]
+        local_papers = {str(paper.get("id")) for paper in papers if paper.get("id")}
+        if len(local_papers) != len(papers):
             raise ValueError(f"paper pack {pack_id} has missing or duplicate paper ids")
         overlap = paper_ids & local_papers
         if overlap:
@@ -110,6 +107,7 @@ def _validate_packs(packs: list[JsonMap]) -> None:
                 raise ValueError(f"anchor {anchor_id} references unknown paper {paper_id}")
             if not str(anchor.get("quote") or "").strip():
                 raise ValueError(f"anchor {anchor_id} is missing quote")
+            # 作者标注和运行时匹配必须共享同一个正页码约束。
             if parse_positive_page(anchor.get("page")) is None:
                 raise ValueError(f"anchor {anchor_id} requires a positive parseable page")
             anchor_ids.add(anchor_id)
@@ -180,7 +178,7 @@ def _validate_cases(cases: list[JsonMap], packs: list[JsonMap]) -> None:
                     raise ValueError(f"case {case_id} claim references unknown anchor {anchor_id}")
 
 
-def _normalized_paper_records(root: Path, packs: list[JsonMap]) -> dict[str, JsonMap]:
+def _normalized_paper_records(packs: list[JsonMap]) -> dict[str, JsonMap]:
     records: dict[str, JsonMap] = {}
     for pack in packs:
         data_dir = str(pack["data_dir"])
@@ -271,19 +269,6 @@ def _load_reading_models(root: Path, paper_records: dict[str, JsonMap], warnings
             warnings.append(f"paper {paper_id} reading model paper_id mismatch: {model.get('paper_id')}")
         models[paper_id] = model
     return models
-
-
-def _index_by_id(items: Any, id_field: str) -> dict[str, JsonMap]:
-    indexed: dict[str, JsonMap] = {}
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        item_id = item.get(id_field)
-        if item_id:
-            indexed[str(item_id)] = item
-    return indexed
-
-
 def _find_repo_root(path: Path) -> Path:
     current = path.resolve()
     if current.is_file():

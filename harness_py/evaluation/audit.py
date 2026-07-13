@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import re
-
 from ..core.models import GoldenDataset, JsonMap, as_list, child_map
-from ..corpus.pages import parse_positive_page
+from ..corpus.pages import contains_normalized_phrase, normalize_text, page_matches
 
 
 def audit_dataset(dataset: GoldenDataset) -> JsonMap:
@@ -13,7 +11,7 @@ def audit_dataset(dataset: GoldenDataset) -> JsonMap:
         paper_id = str(anchor.get("paper_id") or "")
         page = child_map(anchor.get("element")).get("page")
         quote = str(child_map(anchor.get("selector")).get("exact_text") or "")
-        normalized_quote = _normalize(quote)
+        normalized_quote = normalize_text(quote)
         matched_refs = _unique_location_refs(
             document
             for document in documents.get(paper_id, [])
@@ -58,15 +56,9 @@ def _documents_by_paper(dataset: GoldenDataset) -> dict[str, list[JsonMap]]:
 def _matches_anchor(normalized_quote: str, anchor_page: object, document: JsonMap) -> bool:
     if not normalized_quote:
         return False
-    if not _page_matches(anchor_page, document.get("page")):
+    if not page_matches(anchor_page, document.get("page")):
         return False
-    return _contains_normalized_phrase(_normalize(str(document.get("text") or "")), normalized_quote)
-
-
-def _page_matches(anchor_page: object, document_page: object) -> bool:
-    parsed_anchor_page = parse_positive_page(anchor_page)
-    parsed_document_page = parse_positive_page(document_page)
-    return parsed_anchor_page is not None and parsed_document_page == parsed_anchor_page
+    return contains_normalized_phrase(normalize_text(str(document.get("text") or "")), normalized_quote)
 
 
 def _location_ref(item: JsonMap) -> str:
@@ -75,14 +67,6 @@ def _location_ref(item: JsonMap) -> str:
         if isinstance(value, str) and value.strip():
             return value
     return ""
-
-
-def _contains_normalized_phrase(normalized_text: str, normalized_quote: str) -> bool:
-    if not normalized_text or not normalized_quote:
-        return False
-    if normalized_text == normalized_quote:
-        return True
-    return f" {normalized_quote} " in f" {normalized_text} "
 
 
 def _unique_location_refs(documents) -> list[str]:
@@ -103,7 +87,3 @@ def _status_for_matches(matched_refs: list[str]) -> str:
     if matched_refs:
         return "ambiguous"
     return "not_found"
-
-
-def _normalize(value: str) -> str:
-    return " ".join(re.findall(r"[a-zA-Z0-9_]+", value.casefold()))
