@@ -307,7 +307,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         )
         parameters = definition["function"]["parameters"]["properties"]
 
-        self.assertEqual(10, len(result["locations"]))
+        self.assertEqual(12, len(result["locations"]))
         self.assertLessEqual(len(result["locations"][0]["preview"]), 500)
         self.assertNotIn("evidence_id", result["locations"][0])
         self.assertEqual({}, tools.observations_by_evidence_id)
@@ -320,7 +320,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         read = tools.read_locations({"location_refs": [result["locations"][0]["location_ref"]]})
         evidence_id = read["items"][0]["evidence_id"]
         self.assertGreater(len(tools.observations_by_evidence_id[evidence_id]["span_text"]), 500)
-        self.assertEqual(10, parameters["top_k"]["maximum"])
+        self.assertEqual(20, parameters["top_k"]["maximum"])
         self.assertIn("paragraph", parameters["element_types"]["items"]["enum"])
         self.assertIn("table", parameters["element_types"]["items"]["enum"])
 

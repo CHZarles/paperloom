@@ -26,10 +26,12 @@ SEARCH_ELEMENT_TYPES = (
     "formula",
     "aside",
 )
-SEARCH_RESULT_LIMIT = 10
+SEARCH_RESULT_LIMIT = 20
 SEARCH_SNIPPET_CHARS = 500
 PAPER_RESULT_LIMIT = 100
 MODEL_REDACTED_FIELDS = {"matched_anchor_id", "evidence_anchor_id"}
+BROAD_QUERY_MIN_TOKENS = 6
+BROAD_QUERY_BASE_CANDIDATES = 12
 
 
 @dataclass(frozen=True)
@@ -357,6 +359,8 @@ class ReadingCorpusTools:
                 continue
             document_tokens = set(_tokens(" ".join([document.section, document.text])))
             score = _score_tokens(query_tokens, document_tokens) if query_tokens else 1.0
+            if query_tokens:
+                score += _section_title_score(query_tokens, document.section)
             if score > 0 and element_types and document.element_type in element_types:
                 score += 0.25
             if section_tokens:
@@ -366,7 +370,10 @@ class ReadingCorpusTools:
             if score > 0:
                 scored.append((score, document))
         scored.sort(key=lambda item: item[0], reverse=True)
-        selected = _diverse_documents(scored, paper_id_list, top_k)
+        broad_query = len(query_tokens) >= BROAD_QUERY_MIN_TOKENS
+        # 多主题查询多返回几条候选，避免模型只看到第一个表面相似的段落。
+        candidate_count = max(top_k, BROAD_QUERY_BASE_CANDIDATES) if broad_query else top_k
+        selected = _diverse_documents(scored, paper_id_list, candidate_count)
         locations = [document.to_location_candidate() for document in selected]
         self.disclosed_location_refs.update(str(item["location_ref"]) for item in locations)
         return {
@@ -721,5 +728,12 @@ def _section_hint_score(query: str, section: str, text: str) -> float:
                 0.5 * _score_tokens(set(_tokens(hint)), set(_tokens(section))),
             )
     return best
+
+
+def _section_title_score(query_tokens: set[str], section: str) -> float:
+    section_tokens = {token for token in _tokens(section) if not token.isdigit()}
+    if not section_tokens:
+        return 0.0
+    return 0.5 * len(query_tokens & section_tokens) / len(section_tokens)
 def json_tool_content(result: ToolResult) -> str:
     return json.dumps(result.payload, ensure_ascii=False, sort_keys=True)

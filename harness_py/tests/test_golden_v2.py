@@ -204,6 +204,23 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(set(self.dataset.anchors_by_id), set(tagged), tagged)
         self.assertTrue(all(len(location_refs) == 1 for location_refs in tagged.values()), tagged)
 
+    def test_broad_location_search_keeps_deeper_candidates_from_relevant_sections(self) -> None:
+        from harness_py.corpus.tools import ReadingCorpusTools
+
+        tools = ReadingCorpusTools(self.dataset)
+        tools.search_paper_candidates({"paper_ids": ["bert_2018"], "limit": 1})
+
+        result = tools.find_reading_locations({
+            "paper_ids": ["bert_2018"],
+            "query_text": "bidirectional encoder masked language model next sentence prediction pre-training",
+            "top_k": 8,
+        })
+        location_refs = [item["location_ref"] for item in result["locations"]]
+
+        self.assertGreater(len(result["locations"]), 8)
+        self.assertIn("reading_element_ff1d8830cd7544d0a166daf8466cd287", location_refs)
+        self.assertLess(location_refs.index("reading_element_ff1d8830cd7544d0a166daf8466cd287"), 12)
+
     def test_audit_reports_ambiguous_when_multiple_elements_match_the_same_anchor(self) -> None:
         from harness_py.evaluation.audit import audit_dataset
 
