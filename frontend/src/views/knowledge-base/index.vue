@@ -27,7 +27,7 @@ function normalizeLibraryView(value: unknown): 'papers' | 'collections' {
 const libraryView = ref<'papers' | 'collections'>(normalizeLibraryView(route.query.view));
 const libraryViewOptions = [
   { label: 'Papers', value: 'papers' },
-  { label: 'Collections', value: 'collections' }
+  { label: 'Paper Sets', value: 'collections' }
 ] as const;
 
 function handleLibraryViewUpdate(value: 'papers' | 'collections') {

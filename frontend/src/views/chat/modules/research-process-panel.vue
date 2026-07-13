@@ -65,7 +65,7 @@ function eventDetail(event: Api.Chat.ResearchProgressEvent) {
     const count = Number(output.resultCount || 0);
     return type === 'tool_completed'
       ? `${count} paper${count === 1 ? '' : 's'} returned${query ? ` for “${query}”` : ''}`
-      : query || 'Searching the authorized paper collection';
+      : query || 'Searching the authorized paper set';
   }
   if (event.tool === 'find_reading_locations') {
     const query = String(input.query || '').trim();

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import SessionScopePicker from './session-scope-picker.vue';
+
 const props = withDefaults(
   defineProps<{
     variant?: 'dock' | 'hero';
@@ -20,6 +22,10 @@ const {
   referenceFocus,
   wsData
 } = storeToRefs(chatStore);
+const sourceScopeUpdating = ref(false);
+const canEditSourceScope = computed(() => {
+  return props.variant === 'hero' && list.value.length === 0 && !currentScope.value?.scopeLocked;
+});
 
 function buildWsErrorMessage(data: Record<string, any>) {
   if (data.code === 429) {
@@ -78,6 +84,9 @@ const sendDisabled = computed(() => {
     return false;
   }
   if (isRateLimited.value) {
+    return true;
+  }
+  if (sourceScopeUpdating.value) {
     return true;
   }
   return !input.value.message || ['CLOSED', 'CONNECTING'].includes(connectionStatus.value);
@@ -459,6 +468,9 @@ watch(wsData, val => {
 });
 
 const handleSend = async (messageOverride?: string) => {
+  if (sourceScopeUpdating.value) {
+    return;
+  }
   if (isRateLimited.value) {
     window.$message?.warning(`当前发送受限，${cooldownText.value}`);
     return;
@@ -607,10 +619,17 @@ onUnmounted(() => {
       </NButton>
     </div>
     <div
-      class="mx-auto mt-1.5 w-full flex items-center justify-between px-1"
+      class="chat-input-footer mx-auto mt-1.5 w-full flex items-center justify-between gap-3 px-1"
       :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
     >
-      <div class="flex items-center gap-2">
+      <SessionScopePicker
+        v-if="props.variant === 'hero'"
+        :conversation-id="conversationId"
+        :scope="currentScope"
+        :disabled="!canEditSourceScope"
+        @update:busy="sourceScopeUpdating = $event"
+      />
+      <div class="flex items-center gap-2" :class="props.variant === 'hero' ? 'ml-auto' : ''">
         <div class="flex items-center gap-1">
           <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
           <span class="chat-input-muted text-11px">{{ connectionText }}</span>
@@ -639,6 +658,17 @@ onUnmounted(() => {
 
 .chat-input-muted {
   color: var(--color-text-muted);
+}
+
+@media (max-width: 640px) {
+  .chat-input-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chat-input-footer > :last-child {
+    margin-left: 0;
+  }
 }
 
 .search-scope-hint {

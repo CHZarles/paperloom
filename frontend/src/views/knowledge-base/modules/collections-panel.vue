@@ -69,7 +69,7 @@ const pagedDetailPaperIds = computed(() => {
   const start = (detailPaperPage.value - 1) * DETAIL_PAGE_SIZE;
   return paperIds.slice(start, start + DETAIL_PAGE_SIZE);
 });
-const formTitle = computed(() => (formMode.value === 'create' ? 'Create Collection' : 'Edit Collection'));
+const formTitle = computed(() => (formMode.value === 'create' ? 'Create Paper Set' : 'Edit Paper Set'));
 const canSubmitForm = computed(() => {
   if (!formModel.value.name.trim() || formLoading.value) return false;
   if (formModel.value.visibility === 'ORG') return Boolean(formModel.value.orgTag?.trim());
@@ -233,7 +233,7 @@ async function submitForm() {
 
   if (requestResult.error) return;
 
-  window.$message?.success(formMode.value === 'create' ? 'Collection created' : 'Collection updated');
+  window.$message?.success(formMode.value === 'create' ? 'Paper set created' : 'Paper set updated');
   formVisible.value = false;
   if (requestResult.data?.id) {
     selectedCollectionId.value = requestResult.data.id;
@@ -247,7 +247,7 @@ async function removeCollection(collection: Api.PaperCollection.Item) {
   const { error } = await deletePaperCollection(collection.id);
   if (error) return;
 
-  window.$message?.success('Collection deleted');
+  window.$message?.success('Paper set deleted');
   if (selectedCollectionId.value === collection.id) {
     clearDetailSelection();
   }
@@ -258,7 +258,7 @@ async function startSession(collection: Api.PaperCollection.Item) {
   if (startingCollectionId.value) return;
 
   if (!collection.searchablePaperCount) {
-    window.$message?.warning('No searchable papers in this collection');
+    window.$message?.warning('No searchable papers in this paper set');
     return;
   }
 
@@ -276,10 +276,10 @@ async function startSession(collection: Api.PaperCollection.Item) {
   }
 
   if (ok) {
-    window.$message?.success('Scoped session created');
+    window.$message?.success('Query started');
     await router.push({ name: 'chat' });
   } else {
-    window.$message?.error('Failed to create scoped session');
+    window.$message?.error('Failed to start query');
   }
 }
 
@@ -393,7 +393,7 @@ watch(
     <div class="collections-toolbar">
       <div class="collections-toolbar__summary">
         <strong>{{ collections.length }}</strong>
-        <span>collections</span>
+        <span>paper sets</span>
       </div>
       <div class="collections-toolbar__actions">
         <NButton size="small" secondary :loading="collectionsLoading" @click="loadCollections">
@@ -406,7 +406,7 @@ watch(
           <template #icon>
             <icon-lucide:plus class="text-icon" />
           </template>
-          New Collection
+          New Paper Set
         </NButton>
       </div>
     </div>
@@ -417,14 +417,14 @@ watch(
           <icon-lucide:library />
         </div>
         <div class="collections-empty-state__copy">
-          <h2>No collections yet</h2>
-          <p>Create a reusable paper set, then start a scoped reading session from it.</p>
+          <h2>No paper sets yet</h2>
+          <p>Create a reusable group of papers for new research queries.</p>
         </div>
         <NButton type="primary" secondary @click="openCreateForm">
           <template #icon>
             <icon-lucide:plus class="text-icon" />
           </template>
-          New Collection
+          New Paper Set
         </NButton>
       </div>
 
@@ -476,7 +476,7 @@ watch(
                     Delete
                   </NButton>
                 </template>
-                Delete this collection?
+                Delete this paper set?
               </NPopconfirm>
             </div>
           </article>
@@ -484,7 +484,7 @@ watch(
 
         <aside class="collection-detail">
           <NSpin :show="detailLoading">
-            <NEmpty v-if="!selectedCollection || !detail" description="Select a collection" class="collections-empty" />
+            <NEmpty v-if="!selectedCollection || !detail" description="Select a paper set" class="collections-empty" />
 
             <template v-else>
               <header class="collection-detail__header">
@@ -530,7 +530,7 @@ watch(
               </div>
 
               <div v-if="!detail.paperIds.length" class="collection-detail__empty">
-                <NEmpty description="No papers in this collection" />
+                <NEmpty description="No papers in this paper set" />
               </div>
 
               <div v-else class="collection-paper-list">
@@ -569,7 +569,7 @@ watch(
     <NModal v-model:show="formVisible" preset="dialog" :title="formTitle" :show-icon="false" class="w-560px!">
       <NForm :model="formModel" label-placement="top" :show-feedback="false">
         <NFormItem label="Name">
-          <NInput v-model:value="formModel.name" maxlength="120" show-count placeholder="Collection name" />
+          <NInput v-model:value="formModel.name" maxlength="120" show-count placeholder="Paper set name" />
         </NFormItem>
         <NFormItem label="Description">
           <NInput

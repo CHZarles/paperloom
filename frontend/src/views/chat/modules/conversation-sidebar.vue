@@ -89,7 +89,9 @@ function handleCollapse() {
 }
 
 async function handleNewChat() {
-  await chatStore.createNewSession();
+  const createdConversationId = await chatStore.createNewSession();
+  if (!createdConversationId) return;
+  await chatStore.loadSessions({ silent: true });
 
   if (route.name !== 'chat') {
     await router.push({ name: 'chat' });

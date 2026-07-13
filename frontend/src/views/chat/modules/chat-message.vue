@@ -212,7 +212,7 @@ function progressEventDetail(event: Api.Chat.ResearchProgressEvent) {
     const count = Number(output.resultCount || 0);
     return eventType === 'tool_completed'
       ? `${count} paper${count === 1 ? '' : 's'} returned${query ? ` for “${query}”` : ''}`
-      : query || 'Searching the selected paper collection';
+      : query || 'Searching the selected paper set';
   }
   if (event.tool === 'find_reading_locations') {
     const query = String(input.query || '').trim();

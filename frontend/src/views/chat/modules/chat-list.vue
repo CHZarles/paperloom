@@ -56,7 +56,6 @@ const emit = defineEmits<{
 }>();
 
 const chatStore = useChatStore();
-const router = useRouter();
 const { list, sessionId, conversationId } = storeToRefs(chatStore);
 
 const loading = ref(false);
@@ -104,43 +103,6 @@ onMounted(() => {
 });
 
 const showEmpty = computed(() => !loading.value && list.value.length === 0);
-const promptSuggestions = [
-  {
-    key: 'summarize',
-    label: 'Summarize',
-    prompt: 'Summarize the main claims across my searchable papers'
-  },
-  {
-    key: 'compare',
-    label: 'Compare',
-    prompt: 'Compare methods, experiments, and limitations across the most relevant papers'
-  },
-  {
-    key: 'evidence',
-    label: 'Find evidence',
-    prompt: 'Find the strongest paper evidence for this question: '
-  },
-  {
-    key: 'tables',
-    label: 'Tables / figures',
-    prompt: 'Find tables or figures that support the strongest result'
-  },
-  {
-    key: 'scope',
-    label: 'Choose sources',
-    prompt: '',
-    route: { name: 'knowledge-base', query: { view: 'collections' } }
-  }
-];
-
-function applySuggestion(action: (typeof promptSuggestions)[number]) {
-  if ('route' in action && action.route) {
-    router.push(action.route);
-    return;
-  }
-  chatStore.input.message = action.prompt;
-}
-
 function handleRetry(index: number) {
   const message = getRetrievalQueryFallback(index).trim();
   if (!message) {
@@ -157,22 +119,6 @@ function handleRetry(index: number) {
         <h1 class="welcome-title">What should we read?</h1>
         <div class="welcome-input">
           <InputBox variant="hero" />
-        </div>
-        <div class="welcome-suggestions" aria-label="Quick actions">
-          <button
-            v-for="action in promptSuggestions"
-            :key="action.key"
-            type="button"
-            class="welcome-suggestion"
-            @click="applySuggestion(action)"
-          >
-            <icon-lucide:file-text v-if="action.key === 'summarize'" class="welcome-suggestion__icon" />
-            <icon-lucide:git-compare-arrows v-else-if="action.key === 'compare'" class="welcome-suggestion__icon" />
-            <icon-lucide:search-check v-else-if="action.key === 'evidence'" class="welcome-suggestion__icon" />
-            <icon-lucide:table-2 v-else-if="action.key === 'tables'" class="welcome-suggestion__icon" />
-            <icon-lucide:library v-else class="welcome-suggestion__icon" />
-            <span>{{ action.label }}</span>
-          </button>
         </div>
       </div>
 
@@ -234,8 +180,7 @@ function handleRetry(index: number) {
 }
 
 .welcome-title,
-.welcome-input,
-.welcome-suggestions {
+.welcome-input {
   position: relative;
   z-index: 1;
 }
@@ -253,50 +198,6 @@ function handleRetry(index: number) {
   width: min(960px, 100%);
 }
 
-.welcome-suggestions {
-  display: flex;
-  width: min(960px, 100%);
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 9px;
-}
-
-.welcome-suggestion {
-  display: inline-flex;
-  min-height: 36px;
-  max-width: min(100%, 180px);
-  align-items: center;
-  gap: 7px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 0 13px;
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.25;
-  text-align: left;
-  transition:
-    border-color 0.16s ease,
-    background 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease;
-}
-
-.welcome-suggestion:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
-  background: var(--color-surface);
-  color: var(--color-text);
-  transform: translateY(-1px);
-}
-
-.welcome-suggestion__icon {
-  flex: 0 0 auto;
-  color: #b7791f;
-  font-size: 15px;
-}
-
 .chat-message-stack {
   width: min(1120px, 100%);
   margin: 0 auto;
@@ -309,8 +210,7 @@ function handleRetry(index: number) {
     padding: 26px 14px 46px;
   }
 
-  .welcome-title,
-  .welcome-suggestions {
+  .welcome-title {
     justify-content: center;
   }
 
@@ -318,10 +218,6 @@ function handleRetry(index: number) {
     font-size: 38px;
   }
 
-  .welcome-suggestion {
-    width: 100%;
-    max-width: 100%;
-  }
 
   .chat-message-stack {
     padding: 18px 16px 28px;
