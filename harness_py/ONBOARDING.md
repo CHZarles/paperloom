@@ -1,17 +1,15 @@
-# Harness Onboarding
+# Harness 上手指南
 
-This guide is the ownership map for the Python research harness. The shortest useful mental model
-is: Java supplies an authorized paper scope and conversation history; Python runs one model-driven
-research turn; deterministic code validates the submitted answer and returns the answer, evidence,
-usage, and updated research memory.
+这份文档是 Python 研究 Harness 的代码地图。先记住一个最小模型：Java 提供已经授权的
+论文范围和会话历史；Python 执行一个由模型驱动的研究回合；确定性代码校验模型提交的
+答案，然后返回答案、证据、用量和更新后的研究记忆。
 
-The harness is intentionally centered on model orchestration. Golden-data analysis and LLM-judge
-work are offline concerns. Runtime eval capture only persists an ordered, deduplicated journal and a
-terminal result; the live path never reads those files back.
+Harness 的核心职责是模型编排。Golden Data 分析和 LLM Judge 都在线下完成。运行时只在
+需要时保存有序、去重的事件日志和最终结果，线上流程不会再读取这些文件。
 
-## Start Here
+## 从这里开始
 
-Run commands from the repository root, `/home/charles/PaiSmart`:
+在仓库根目录 `/home/charles/PaiSmart` 运行：
 
 ```bash
 python3 -m venv .venv-harness
@@ -22,207 +20,204 @@ python3 -m venv .venv-harness
 .venv-harness/bin/python -m unittest discover -s harness_py/tests
 ```
 
-Read these files in order:
+建议按这个顺序读代码：
 
-1. `orchestration/live_chat.py`: request-level wrapper and the boundary between a turn and stored conversation state.
-2. `orchestration/runtime.py`: the small runtime interface and runtime selection.
-3. `orchestration/agents/runtime.py`: construction and execution of the OpenAI Agents SDK loop.
-4. `orchestration/agents/tools.py`: tool dispatch, progress events, answer validation, and eval events.
-5. `corpus/tools.py`: the paper discovery and evidence authorization state machine.
-6. `orchestration/conversation.py`: the durable conversation state accepted and returned by the harness.
-7. `transport/service.py`: the internal HTTP contract used by Java.
+1. `orchestration/live_chat.py`：请求级包装器，也是单回合与持久会话状态之间的边界。
+2. `orchestration/runtime.py`：很小的运行时接口，以及运行时选择逻辑。
+3. `orchestration/agents/runtime.py`：OpenAI Agents SDK 工具循环的组装和执行。
+4. `orchestration/agents/tools.py`：工具分发、进度事件、答案校验和评测事件。
+5. `corpus/tools.py`：论文发现和证据授权状态机。
+6. `orchestration/conversation.py`：Harness 接收并返回的持久会话状态。
+7. `transport/service.py`：Java 使用的内部 HTTP 契约。
 
-## Directory Map
+## 目录地图
 
 ```text
 harness_py/
-  core/                    shared data shapes, contracts, statuses, errors
-  corpus/                  corpus loading, parsing, retrieval, evidence creation
-  orchestration/           conversation state and runtime-neutral turn orchestration
-    agents/                default OpenAI Agents SDK implementation
-    legacy/                rollback hand-written loop and direct MiniMax client
-  evaluation/              Golden loading, fixtures, audits, scoring, judge, eval recorder
-  transport/               provider configuration and internal HTTP service
-  tests/                   unit and integration tests
-  cli.py                   command-line composition root
-  __main__.py              `python -m harness_py` entry point
-  README.md                short package entry point
-  ONBOARDING.md            this ownership guide
+  core/                    公共数据结构、契约、状态和错误
+  corpus/                  语料加载、解析、检索和证据生成
+  orchestration/           会话状态和与运行时无关的回合编排
+    agents/                默认的 OpenAI Agents SDK 实现
+    legacy/                手写工具循环和 MiniMax 直连客户端，仅用于回滚
+  evaluation/              Golden 加载、fixture、审计、评分、judge 和评测记录
+  transport/               模型供应商配置和内部 HTTP 服务
+  tests/                   单元测试和集成测试
+  cli.py                   命令行入口及依赖组装
+  __main__.py              `python -m harness_py` 入口
+  README.md                包的简短入口文档
+  ONBOARDING.md            当前这份代码地图
 ```
 
-The dependency direction to preserve is:
+应当维持下面的依赖方向：
 
 ```text
 transport/cli -> orchestration -> corpus/core
 evaluation   -> orchestration/corpus/core
 ```
 
-`LiveResearchChatHarness.run_case()` and `EvalRecorder` are the two deliberate evaluation hooks in
-the live path. Do not let scoring, judging, calibration, or offline analysis enter the runtime loop.
+线上路径只保留两个明确的评测挂点：`LiveResearchChatHarness.run_case()` 和
+`EvalRecorder`。评分、Judge、校准和线下分析都不要塞进运行时工具循环。
 
-## Public Entry Points
+## 公共入口
 
-| Entry point | Owner | Purpose |
+| 入口 | 所属模块 | 用途 |
 | --- | --- | --- |
-| `python3 -m harness_py` | `cli.py` | Local validation, Golden runs, chat, service, judge calibration |
-| `LiveResearchChatHarness.run_turn()` | `orchestration/live_chat.py` | Canonical one-turn API |
-| `HarnessRuntime.run_turn()` | `orchestration/runtime.py` | Runtime seam implemented by Agents SDK and legacy runtimes |
-| `ResearchHarnessService.run_job()` | `transport/service.py` | Java-facing request adapter |
-| `/v1/research/stream` | `transport/service.py` | NDJSON progress and terminal response |
-| `/v1/research/turn` | `transport/service.py` | Synchronous local diagnostic endpoint |
+| `python3 -m harness_py` | `cli.py` | 本地校验、Golden 运行、聊天、服务和 Judge 校准 |
+| `LiveResearchChatHarness.run_turn()` | `orchestration/live_chat.py` | 标准的单回合 API |
+| `HarnessRuntime.run_turn()` | `orchestration/runtime.py` | Agents SDK 和 Legacy 运行时共同实现的边界 |
+| `ResearchHarnessService.run_job()` | `transport/service.py` | 面向 Java 的请求适配器 |
+| `/v1/research/stream` | `transport/service.py` | NDJSON 进度流和最终结果 |
+| `/v1/research/turn` | `transport/service.py` | 用于本地诊断的同步接口 |
 
-The default runtime is `agents_sdk`. `legacy` is a rollback path, not the design target.
+默认运行时是 `agents_sdk`。`legacy` 只用于回滚，不是后续设计的主方向。
 
-## One Turn, End To End
+## 一个回合如何执行
 
-1. `ResearchHarnessService` validates `conversation_id`, `user_message`, and the paper IDs already authorized by Java.
-2. `DockerMySqlProductCorpusStore` builds a request-scoped `GoldenDataset` for those papers.
-3. The request history and prior evidence become a `ConversationState`.
-4. `LiveResearchChatHarness` scopes the dataset, allocates a `run_id`, and optionally opens an `EvalRecorder`.
-5. The harness converts durable state into `TurnExecutionInput`: text history, selected papers, prior evidence, progress callback, cancellation check, and recorder.
-6. `AgentsSdkHarnessRuntime` creates a fresh `ResearchRunContext`, request-backed SDK session, agent, tools, and model adapter.
-7. The model chooses its own research path. There is no fixed stage pipeline and no harness-defined ReAct round limit.
-8. Tool calls mutate only request-scoped authorization and evidence state in `ReadingCorpusTools`.
-9. The model must finish with `submit_research_answer` as the only tool call in that model step.
-10. Python validates the draft against evidence actually read during this or a previous turn. Invalid drafts return a tool error to the same model loop for repair.
-11. The accepted draft is normalized into the harness run artifact, then `ConversationState.updated_from_run()` keeps only conversation text and cited evidence needed by a later turn.
-12. The service maps the run into the Java response and emits the final NDJSON result.
+1. `ResearchHarnessService` 校验 `conversation_id`、`user_message` 和 Java 已经授权的论文 ID。
+2. `DockerMySqlProductCorpusStore` 为这些论文构造请求级 `GoldenDataset`。
+3. 请求中的历史消息和旧证据转换为 `ConversationState`。
+4. `LiveResearchChatHarness` 缩小数据集范围，生成 `run_id`，并按需打开 `EvalRecorder`。
+5. Harness 将持久状态转换为 `TurnExecutionInput`，其中包含文本历史、已选论文、旧证据、进度回调、取消检查和记录器。
+6. `AgentsSdkHarnessRuntime` 创建新的 `ResearchRunContext`、请求级 SDK Session、Agent、工具和模型适配器。
+7. 模型自己决定研究路径。Harness 不规定固定阶段，也不限制 ReAct 回合数。
+8. 工具调用只能修改当前请求里的授权状态和证据状态。
+9. 模型结束时，当前模型步骤只能调用一次 `submit_research_answer`，不能混入其他工具。
+10. Python 根据本轮或旧回合真正读取过的证据校验草稿。校验失败会作为工具错误返回同一个模型循环，让模型修正。
+11. 通过校验的草稿被整理为 Harness Run 产物；`ConversationState.updated_from_run()` 只保留后续回合需要的会话文本和已引用证据。
+12. 服务层把 Run 转换为 Java 响应，并发送最后一条 NDJSON 结果。
 
-## State Authority
+## 状态归属
 
-Three state objects have different jobs. Keeping them distinct prevents most memory bugs.
+三个状态对象各管一件事。不要把它们混在一起。
 
-| State | Lifetime | Authority |
+| 状态 | 生命周期 | 负责内容 |
 | --- | --- | --- |
-| `ConversationState` | Across turns | User/assistant messages, selected papers, cited evidence, last run reference |
-| `RequestBackedSession` | One run | Agents SDK view of request-provided text history plus current input |
-| `ResearchRunContext` | One run | Tool authorization, newly read evidence, trace, progress, token and latency counters |
+| `ConversationState` | 跨回合 | 用户/助手消息、已选论文、已引用证据、上次 Run 引用 |
+| `RequestBackedSession` | 单次运行 | Agents SDK 看到的请求历史和当前输入 |
+| `ResearchRunContext` | 单次运行 | 工具授权、新读取的证据、轨迹、进度、Token 和延迟统计 |
 
-Important rules:
+需要守住这些规则：
 
-- Java or the CLI owns persistence of `ConversationState`; the Agents SDK session is never an independent memory store.
-- Only user and assistant text is replayed as chat history. Full tool traces are not copied into later prompts.
-- Prior cited evidence is passed separately as compact evidence cards and pre-authorizes its paper and location for follow-up turns.
-- `ConversationState.updated_from_run()` advances memory only from the accepted run artifact.
-- Resetting a conversation must clear history, selected papers, selected evidence, and the last run reference together.
+- `ConversationState` 由 Java 或 CLI 持久化；Agents SDK Session 不是另一套独立记忆库。
+- 下一轮只回放用户和助手文本，不把完整工具轨迹重新放进提示词。
+- 旧证据单独以精简证据卡传入，并为追问预授权对应的论文和位置。
+- `ConversationState.updated_from_run()` 只能根据已经接受的 Run 产物推进记忆。
+- 重置会话时，要一起清空历史、已选论文、已选证据和上次 Run 引用。
 
-## Tool Authorization
+## 工具授权
 
-`ReadingCorpusTools` enforces a disclosure ladder so the model cannot invent internal identifiers:
+`ReadingCorpusTools` 使用逐级公开的授权链，模型不能凭空编造内部 ID：
 
 ```text
 search_paper_candidates / find_papers_by_identity
-  -> authorizes returned paper IDs
+  -> 授权本次返回的 paper ID
 find_reading_locations
-  -> accepts only authorized paper IDs and discloses location refs
+  -> 只接受已授权的 paper ID，并公开 location ref
 read_locations
-  -> accepts only disclosed location refs and creates citeable evidence IDs
+  -> 只接受已公开的 location ref，并生成可引用的 evidence ID
 submit_research_answer
-  -> accepts only evidence IDs present in prior memory or this run
+  -> 只接受旧记忆或本轮中真实存在的 evidence ID
 ```
 
-`get_citation_edges` is available only when the dataset contains citation edges. It requires an
-authorized paper and authorizes connected papers for subsequent navigation. Search cards, location
-previews, and graph edges are navigation metadata; only `read_locations` creates paper-content
-evidence.
+只有数据集包含引用边时，才会提供 `get_citation_edges`。它要求起始论文已经授权，并会把
+相连论文加入后续导航范围。论文卡片、位置预览和图边都只是导航信息；只有
+`read_locations` 会产生能够支持论文内容声明的证据。
 
-## Final Answer Contract
+## 最终答案契约
 
-The final tool schema is defined by `_final_answer_tool()` in `orchestration/legacy/harness.py` and
-is shared by both runtimes. Validation is also shared through `_answer_validation_error()`.
+最终工具 Schema 定义在 `orchestration/legacy/harness.py` 的 `_final_answer_tool()` 中，两个
+运行时共用。校验逻辑同样共用 `_answer_validation_error()`。
 
-An answer is accepted only when:
+答案只有满足以下条件才会被接受：
 
-- `submit_research_answer` is the sole tool call in the final model step;
-- its structure and status/outcome combination are valid;
-- cited evidence IDs exist in prior memory or the current run;
-- paper-content claims use the required `[[evidence_id]]` citation syntax;
-- citations and the evidence ledger are internally consistent.
+- 最后一个模型步骤只能调用 `submit_research_answer`；
+- 结构以及 status/outcome 组合合法；
+- 引用的 evidence ID 存在于旧记忆或当前回合；
+- 论文内容声明使用规定的 `[[evidence_id]]` 格式；
+- 引用和 evidence ledger 内部一致。
 
-The MiniMax adapter converts a text-only model response into an internal continuation tool call. This
-keeps the SDK loop alive and instructs the model to finish through the required submission tool.
+如果 MiniMax 只返回普通文本，模型适配器会把它转换为内部继续工具调用。SDK 循环因此
+不会提前结束，而是要求模型最终通过规定的提交工具完成回合。
 
-## Eval Capture
+## 评测数据保存
 
-Eval capture is deliberately simple and write-only from the runtime's perspective. Enable it with
-`--eval-dump DIR` or `EVAL_DUMP_DIR=DIR`.
+从运行时角度看，评测记录只写不读。使用 `--eval-dump DIR` 或
+`EVAL_DUMP_DIR=DIR` 开启：
 
 ```text
-DIR/<run_id>/events.jsonl   append-only ordered events
-DIR/<run_id>/result.json   atomic terminal result
+DIR/<run_id>/events.jsonl   只追加的有序事件
+DIR/<run_id>/result.json    原子写入的最终结果
 ```
 
-`EvalRecorder` gives every event a stable ID, rejects duplicate IDs, assigns a monotonically
-increasing sequence, flushes each JSONL record, and atomically renames the terminal result. Recorded
-events include model requests/responses, tool start/completion/error, answer validation, and run
-start/error. Authorization headers and API keys are not recorded.
+`EvalRecorder` 为每个事件生成稳定 ID，拒绝重复 ID，分配单调递增序号，每条 JSONL 都会
+立即刷盘，最终结果通过原子重命名落盘。记录内容包括模型请求/响应、工具开始/完成/错误、
+答案校验以及 Run 开始/错误。Authorization Header 和 API Key 不会写入文件。
 
-Capture failure does not change the model result, but it increments `eval_capture_failures`. A CLI
-`agent-run` requested with `--eval-dump` exits with code 2 if capture failed. All interpretation,
-aggregation, reward construction, and research analysis belongs in offline code outside the live
-orchestration path.
+保存失败不会改变模型结果，但会增加 `eval_capture_failures`。如果 `agent-run` 显式传入
+`--eval-dump` 且保存失败，CLI 以状态码 2 退出。解释、聚合、Reward 构造和研究分析都
+应在线下完成，不要继续扩展线上编排路径。
 
-## Golden Evaluation
+## Golden 评测
 
-The Golden path has four separate layers:
+Golden 路径分为四层：
 
-| Layer | Module | Model call? | Question answered |
+| 层级 | 模块 | 是否调用模型 | 回答的问题 |
 | --- | --- | --- | --- |
-| Fixture validation | `evaluation/golden_fixture.py`, `evaluation/scoring.py` | No | Are authored expectations and scoring internally coherent? |
-| Anchor audit | `evaluation/audit.py` | No | Do authored page/anchor expectations match parsed corpus content? |
-| Live execution | `LiveResearchChatHarness.run_case()` | Yes | Does the real runtime satisfy observable Golden behavior? |
-| Judge calibration | `evaluation/judge.py` | Yes | Does the judge agree with fixed human labels on qualitative criteria? |
+| Fixture 校验 | `evaluation/golden_fixture.py`、`evaluation/scoring.py` | 否 | 人工预期和评分逻辑是否自洽？ |
+| Anchor 审计 | `evaluation/audit.py` | 否 | 人工页码/Anchor 是否能匹配解析后的语料？ |
+| 真实执行 | `LiveResearchChatHarness.run_case()` | 是 | 真实运行时是否满足可观察的 Golden 行为？ |
+| Judge 校准 | `evaluation/judge.py` | 是 | Judge 对定性标准的判断是否与固定人工标签一致？ |
 
-Golden expectations cover observable outcome, retrieval, structured facts, and grounding. They do
-not prescribe skill choice, tool order, tool count, or exact prose. See
-`research/golden-data/README.md` for the runbook and manifest split.
+Golden 预期只约束可观察的结果、检索、结构化事实和 Grounding，不约束 Skill 选择、工具
+顺序、工具次数或逐字措辞。Manifest 的划分和完整运行手册见
+`research/golden-data/README.md`。
 
-## Where To Change Things
+## 修改入口
 
-| Goal | Start here | Usually also touch |
+| 要做的事 | 先看这里 | 通常还要修改 |
 | --- | --- | --- |
-| Change the agent instructions | `orchestration/legacy/harness.py` | Golden live cases |
-| Add or change a corpus tool | `corpus/tools.py` | `orchestration/agents/tools.py`, tool tests |
-| Add a research skill | `orchestration/research_skills.py` | skill count/registry tests |
-| Change final-answer validation | `orchestration/legacy/harness.py` | Agents tool tests, Golden scoring |
-| Change conversation memory | `orchestration/conversation.py` | service and follow-up tests |
-| Change MiniMax/SDK transport | `orchestration/agents/model.py` | model adapter tests |
-| Add a runtime | `orchestration/runtime.py` | `cli.py`, service runtime option |
-| Change product DB loading | `corpus/product_db_dataset.py` | corpus summary and service tests |
-| Change Java HTTP contract | `transport/service.py` | Java caller and service tests |
-| Add Golden data | `research/golden-data/` | deterministic validation, audit, selected live run |
-| Change scoring | `evaluation/scoring.py` | fixture and scorer tests, never live orchestration |
+| 修改 Agent 指令 | `orchestration/legacy/harness.py` | 真实 Golden Case |
+| 增加或修改语料工具 | `corpus/tools.py` | `orchestration/agents/tools.py`、工具测试 |
+| 增加 Research Skill | `orchestration/research_skills.py` | Skill 数量和注册测试 |
+| 修改最终答案校验 | `orchestration/legacy/harness.py` | Agents 工具测试、Golden 评分 |
+| 修改会话记忆 | `orchestration/conversation.py` | 服务测试和追问测试 |
+| 修改 MiniMax/SDK 传输 | `orchestration/agents/model.py` | 模型适配器测试 |
+| 增加运行时 | `orchestration/runtime.py` | `cli.py`、服务运行时选项 |
+| 修改产品库加载 | `corpus/product_db_dataset.py` | 语料摘要和服务测试 |
+| 修改 Java HTTP 契约 | `transport/service.py` | Java 调用方和服务测试 |
+| 增加 Golden Data | `research/golden-data/` | 确定性校验、审计、选定的真实运行 |
+| 修改评分 | `evaluation/scoring.py` | Fixture 和 Scorer 测试，不要改线上编排 |
 
-## Debugging Order
+## 排查顺序
 
-When a run is wrong, inspect it in this order:
+发现 Run 不对时，按下面的顺序看：
 
-1. Confirm Java or CLI supplied the intended `scope.paper_ids`, history, and prior evidence.
-2. Inspect `ConversationState` and the request-scoped dataset before blaming the model.
-3. Inspect `react_trace` for tool arguments and model-visible tool results.
-4. Inspect `evidence_ledger` and `citation_validation` for deterministic rejection reasons.
-5. Inspect `diagnostics.finish_reason`, model-call count, usage, and latency.
-6. If enabled, inspect `events.jsonl` by `sequence`, then compare it with `result.json`.
-7. Reproduce against one Golden case with repeated `--case-id` flags before running a whole manifest.
+1. 确认 Java 或 CLI 传入了正确的 `scope.paper_ids`、历史消息和旧证据。
+2. 先检查 `ConversationState` 和请求级数据集，不要上来就归因于模型。
+3. 查看 `react_trace` 中的工具参数和模型实际看到的工具结果。
+4. 查看 `evidence_ledger` 和 `citation_validation` 中的确定性拒绝原因。
+5. 查看 `diagnostics.finish_reason`、模型调用次数、用量和延迟。
+6. 如果开启了评测记录，按 `sequence` 检查 `events.jsonl`，再与 `result.json` 对照。
+7. 先用重复的 `--case-id` 复现一条 Golden Case，再决定是否跑完整 Manifest。
 
-Common failure boundaries:
+常见错误边界：
 
-- `paper_not_authorized_for_reading`: the model skipped paper discovery or identity resolution.
-- `location_not_disclosed_for_reading`: the model skipped location search or reused an unknown ref.
-- final validation error: the draft cited an unread ID, used invalid syntax, or submitted final alongside another tool.
-- `FAILED_TECHNICAL`: provider, transport, SDK, or unexpected runtime failure; inspect diagnostics and eval events.
-- correct hard score but questionable prose: run the separately calibrated judge rather than adding runtime heuristics.
+- `paper_not_authorized_for_reading`：模型跳过了论文搜索或身份解析。
+- `location_not_disclosed_for_reading`：模型跳过了位置搜索，或者复用了未知 Location Ref。
+- 最终校验错误：草稿引用了未读取的 ID、格式错误，或把最终提交与其他工具放在同一步。
+- `FAILED_TECHNICAL`：模型供应商、网络传输、SDK 或运行时异常；查看 diagnostics 和评测事件。
+- 硬评分正确但文字质量可疑：运行单独校准的 Judge，不要向运行时添加临时启发式规则。
 
-## Verification Commands
+## 验证命令
 
-Stable deterministic Golden validation and anchor audit:
+稳定 Golden Data 的确定性校验和 Anchor 审计：
 
 ```bash
 .venv-harness/bin/python -m harness_py validate
 .venv-harness/bin/python -m harness_py audit --out /tmp/paismart-anchor-audit.json
 ```
 
-Focused orchestration tests:
+编排相关的重点测试：
 
 ```bash
 .venv-harness/bin/python -m unittest \
@@ -233,13 +228,13 @@ Focused orchestration tests:
   harness_py.tests.test_eval_recorder
 ```
 
-All Python tests:
+全部 Python 测试：
 
 ```bash
 .venv-harness/bin/python -m unittest discover -s harness_py/tests
 ```
 
-One live Golden case with eval capture:
+运行一条真实 Golden Case，并保存评测记录：
 
 ```bash
 .venv-harness/bin/python -m harness_py agent-run \
@@ -249,23 +244,23 @@ One live Golden case with eval capture:
   --out /tmp/paismart-agent-run
 ```
 
-## Maintenance Style
+## 维护风格
 
-This package follows a deletion-first, Ponytail-style maintenance rule:
+这个包采用删除优先的 Ponytail 风格：
 
-- Reuse an existing helper before adding an abstraction or dependency.
-- Centralize only behavior that is already exactly duplicated. `corpus/pages.py` is the shared source for page parsing and normalized anchor matching; CLI helpers share unchanged defaults and artifact writing.
-- Treat agent prompts, command defaults, HTTP endpoint paths, provider URL handling, and artifact paths as behavior. Do not rewrite them as part of a readability refactor.
-- Keep Chinese comments sparse and purposeful. They explain trust boundaries, state authority, data-integrity choices, and cancellation behavior rather than narrating obvious Python.
-- Preserve data-loss prevention, authorization checks, final-answer validation, and eval-journal durability even when a shorter implementation exists.
-- Prefer a small local variable over repeated parsing, and prefer deletion over a new class or interface.
+- 先复用已有函数，再考虑增加抽象或依赖。
+- 只有完全相同的行为才集中处理。`corpus/pages.py` 是页码解析和标准化 Anchor 匹配的唯一来源；CLI 公共函数集中维护不变的默认值和产物写入。
+- Agent 提示词、命令默认值、HTTP 接口路径、模型供应商 URL 处理和产物路径都属于行为。不要在可读性重构中顺手改动。
+- 中文注释只解释信任边界、状态归属、数据完整性和取消逻辑，不复述显而易见的 Python。
+- 即使能少写几行，也不能删除防止数据丢失的处理、授权检查、最终答案校验和评测日志持久化。
+- 重复解析优先改成一个清楚的局部变量；能够删除时，不要增加新类或新接口。
 
-## Design Guardrails
+## 设计约束
 
-- Keep `HarnessRuntime` small. Runtime implementations should consume `TurnExecutionInput` and return a normalized run.
-- Keep model choice in the model loop. Do not reintroduce a fixed intent/retrieval/claim pipeline around it.
-- Keep deterministic enforcement at trust boundaries: scope, tool authorization, final answer, citations, and persistence.
-- Keep eval persistence append-only and analysis-free. New research fields should normally be derived offline.
-- Keep Java responsible for authentication, Redis state, reconnect behavior, permissions, cancellation ownership, and usage settlement.
-- Keep the legacy runtime working as a rollback path, but put new orchestration behavior into the Agents SDK runtime first.
-- Prefer extending existing data shapes and tools over adding orchestration abstractions with no current caller.
+- 保持 `HarnessRuntime` 足够小。运行时只接收 `TurnExecutionInput`，返回标准化 Run。
+- 让模型在工具循环中做选择，不要重新引入固定的 Intent/Retrieval/Claim 流水线。
+- 在信任边界使用确定性校验：论文范围、工具授权、最终答案、引用和持久化。
+- 评测记录只追加、不分析。新的研究字段通常应在线下派生。
+- 身份认证、Redis 状态、断线重连、权限、取消责任和用量结算继续由 Java 负责。
+- 保持 Legacy 运行时可用于回滚，但新的编排行为优先实现到 Agents SDK 运行时。
+- 优先扩展已有数据结构和工具，不要为尚不存在的调用方增加编排抽象。
