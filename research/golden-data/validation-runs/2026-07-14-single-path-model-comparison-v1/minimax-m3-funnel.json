@@ -1143,7 +1143,7 @@
   "completed_case_count": 29,
   "eval_dump": null,
   "hard_pass_rate": 0.5862068965517241,
-  "manifest": "/home/charles/PaiSmart/research/golden-data/manifest-expanded.yaml",
+  "manifest": "/path/to/paperloom/research/golden-data/manifest-expanded.yaml",
   "read_conversion": 0.6585365853658537,
   "read_hit_count": 27,
   "required_anchor_count": 48,

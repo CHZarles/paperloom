@@ -1,7 +1,7 @@
 {
   "schema_version": "harness-saved-query-replay/v1",
-  "manifest": "/home/charles/PaiSmart/research/golden-data/manifest-expanded.yaml",
-  "runs": "/home/charles/PaiSmart/research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1",
+  "manifest": "/path/to/paperloom/research/golden-data/manifest-expanded.yaml",
+  "runs": "/path/to/paperloom/research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1",
   "candidate_hits": 29,
   "candidate_required": 32,
   "candidate_recall": 0.90625,

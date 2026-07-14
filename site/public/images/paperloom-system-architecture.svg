@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100" role="img" aria-labelledby="title description">
+  <title id="title">PaperLoom live system architecture</title>
+  <desc id="description">The current product path from Folio through the Java product boundary to the Python Agents SDK harness, its authorized MySQL corpus projection, in-memory BM25 tools, evidence validation, model provider, and the separate Reading Model ingestion lane using MinerU, MySQL, and MinIO.</desc>
+  <defs>
+    <marker id="arrow-end" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#66766f"/>
+    </marker>
+    <marker id="arrow-start" viewBox="0 0 10 10" refX="1.4" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 10 0 L 0 5 L 10 10 z" fill="#66766f"/>
+    </marker>
+    <style>
+      .canvas { fill: #f7f8f5; }
+      .boundary-experience { fill: #f1f3f1; stroke: #b7c1be; stroke-width: 1.5; }
+      .boundary-java { fill: #eef2f8; stroke: #aebed8; stroke-width: 1.5; }
+      .boundary-python { fill: #edf5f1; stroke: #afc8bc; stroke-width: 1.5; }
+      .ingestion { fill: #fbf8ef; stroke: #d8c7a7; stroke-width: 1.5; }
+      .control-panel { fill: #ffffff; stroke: #aebed8; stroke-width: 1.5; }
+      .node { fill: #ffffff; stroke: #8c9995; stroke-width: 2; }
+      .node-dark { fill: #18212b; stroke: #18212b; stroke-width: 2; }
+      .node-blue { fill: #e8eef9; stroke: #2356d8; stroke-width: 2.5; }
+      .node-green { fill: #e7f1ec; stroke: #327a63; stroke-width: 2.5; }
+      .node-red { fill: #f8ece9; stroke: #d94b40; stroke-width: 2.5; }
+      .node-gold { fill: #fff7e7; stroke: #b6781f; stroke-width: 2.5; }
+      .edge { fill: none; stroke: #66766f; stroke-width: 2.3; marker-end: url(#arrow-end); }
+      .edge-both { fill: none; stroke: #66766f; stroke-width: 2.3; marker-start: url(#arrow-start); marker-end: url(#arrow-end); }
+      .edge-data { fill: none; stroke: #b6781f; stroke-width: 2.3; marker-end: url(#arrow-end); }
+      .title { fill: #18212b; font: 700 28px Arial, "Droid Sans Fallback", sans-serif; }
+      .subtitle { fill: #4c5962; font: 15px Arial, "Droid Sans Fallback", sans-serif; }
+      .kicker { fill: #327a63; font: 700 14px "IBM Plex Mono", Consolas, monospace; }
+      .group { fill: #4c5962; font: 700 14px "IBM Plex Mono", Consolas, "Droid Sans Fallback", sans-serif; }
+      .node-title { fill: #18212b; font: 700 17px Arial, "Droid Sans Fallback", sans-serif; }
+      .node-title-light { fill: #ffffff; font: 700 17px Arial, "Droid Sans Fallback", sans-serif; }
+      .node-copy { fill: #4c5962; font: 13px Arial, "Droid Sans Fallback", sans-serif; }
+      .node-copy-light { fill: #dce6e1; font: 13px Arial, "Droid Sans Fallback", sans-serif; }
+      .mono { fill: #18212b; font: 700 13px "IBM Plex Mono", Consolas, "Droid Sans Fallback", sans-serif; }
+      .edge-label { fill: #4c5962; font: 700 12px "IBM Plex Mono", Consolas, "Droid Sans Fallback", sans-serif; }
+      .responsibility { fill: #18212b; font: 700 15px Arial, "Droid Sans Fallback", sans-serif; }
+      .responsibility-copy { fill: #4c5962; font: 13px Arial, "Droid Sans Fallback", sans-serif; }
+      .bullet { fill: #2356d8; }
+      .bullet-green { fill: #327a63; }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1800" height="1100"/>
+  <text class="kicker" x="40" y="40">PAPERLOOM / VERIFIED LIVE PATH</text>
+  <text class="title" x="40" y="76">Evidence-bounded agentic RAG over an authorized Reading Model</text>
+  <text class="subtitle" x="40" y="102">Current assistant answers use Java product controls, a Python Agents SDK loop, direct MySQL corpus loading, and in-memory lexical retrieval.</text>
+
+  <rect class="boundary-experience" x="30" y="125" width="170" height="615" rx="6"/>
+  <rect class="boundary-java" x="220" y="125" width="780" height="615" rx="6"/>
+  <rect class="boundary-python" x="1020" y="125" width="750" height="615" rx="6"/>
+  <text class="group" x="115" y="154" text-anchor="middle">EXPERIENCE</text>
+  <text class="group" x="610" y="154" text-anchor="middle">JAVA / SPRING SERVICES</text>
+  <text class="group" x="1395" y="154" text-anchor="middle">HARNESS_PY / AGENTS SDK</text>
+
+  <rect class="node-dark" x="50" y="190" width="130" height="94" rx="5"/>
+  <text class="node-title-light" x="115" y="225" text-anchor="middle">Folio</text>
+  <text class="node-copy-light" x="115" y="250" text-anchor="middle">research UI</text>
+  <text class="node-copy-light" x="115" y="269" text-anchor="middle">evidence reopen</text>
+
+  <rect class="node-blue" x="250" y="190" width="180" height="94" rx="5"/>
+  <text class="node-title" x="340" y="225" text-anchor="middle">ChatHandler</text>
+  <text class="node-copy" x="340" y="250" text-anchor="middle">scope + stream entry</text>
+
+  <rect class="node-blue" x="465" y="190" width="265" height="94" rx="5"/>
+  <text class="node-title" x="597.5" y="218" text-anchor="middle">ProductReading</text>
+  <text class="node-title" x="597.5" y="240" text-anchor="middle">ConversationService</text>
+  <text class="node-copy" x="597.5" y="266" text-anchor="middle">history + research memory</text>
+
+  <rect class="node-blue" x="770" y="190" width="200" height="94" rx="5"/>
+  <text class="node-title" x="870" y="218" text-anchor="middle">PythonResearch</text>
+  <text class="node-title" x="870" y="240" text-anchor="middle">HarnessClient</text>
+  <text class="node-copy" x="870" y="266" text-anchor="middle">quota + NDJSON client</text>
+
+  <rect class="node-green" x="1050" y="190" width="220" height="94" rx="5"/>
+  <text class="mono" x="1160" y="225" text-anchor="middle">POST</text>
+  <text class="node-title" x="1160" y="249" text-anchor="middle">/v1/research/stream</text>
+  <text class="node-copy" x="1160" y="269" text-anchor="middle">authorized request boundary</text>
+
+  <rect class="node-green" x="1410" y="190" width="260" height="94" rx="5"/>
+  <text class="node-title" x="1540" y="218" text-anchor="middle">ResearchHarness</text>
+  <text class="node-title" x="1540" y="240" text-anchor="middle">Service</text>
+  <text class="node-copy" x="1540" y="266" text-anchor="middle">scope check + run assembly</text>
+
+  <path class="edge" d="M 180 237 L 250 237"/>
+  <path class="edge" d="M 430 237 L 465 237"/>
+  <path class="edge" d="M 730 237 L 770 237"/>
+  <path class="edge-both" d="M 970 237 L 1050 237"/>
+  <path class="edge" d="M 1270 237 L 1410 237"/>
+  <text class="edge-label" x="1010" y="320" text-anchor="middle">AUTHORIZED TURN + STREAMED RESULT</text>
+
+  <rect class="control-panel" x="250" y="415" width="720" height="270" rx="5"/>
+  <text class="group" x="280" y="448">JAVA-OWNED STATE / 模型不可自行改变</text>
+
+  <circle class="bullet" cx="285" cy="486" r="5"/>
+  <text class="responsibility" x="302" y="491">Permission and locked paper scope</text>
+  <text class="responsibility-copy" x="302" y="512">Java supplies the exact paper IDs for every turn.</text>
+
+  <circle class="bullet" cx="285" cy="536" r="5"/>
+  <text class="responsibility" x="302" y="541">Quota, cancellation, API and WebSocket integration</text>
+  <text class="responsibility-copy" x="302" y="562">Usage is reserved before the internal research request.</text>
+
+  <circle class="bullet" cx="285" cy="586" r="5"/>
+  <text class="responsibility" x="302" y="591">Durable conversation and research memory</text>
+  <text class="responsibility-copy" x="302" y="612">The SDK Session is request-local, not a second source of truth.</text>
+
+  <circle class="bullet" cx="285" cy="636" r="5"/>
+  <text class="responsibility" x="302" y="641">Reference persistence and evidence reopening</text>
+  <text class="responsibility-copy" x="302" y="662">Accepted citations become durable product mappings.</text>
+
+  <rect class="node-gold" x="1050" y="440" width="300" height="125" rx="5"/>
+  <text class="node-title" x="1200" y="466" text-anchor="middle">DockerMySql</text>
+  <text class="node-title" x="1200" y="488" text-anchor="middle">ProductCorpusStore</text>
+  <text class="node-copy" x="1200" y="512" text-anchor="middle">metadata + current ready model</text>
+  <text class="node-copy" x="1200" y="533" text-anchor="middle">Reading Elements + asset availability</text>
+  <text class="node-copy" x="1200" y="554" text-anchor="middle">request-local Python memory</text>
+
+  <rect class="node-green" x="1410" y="440" width="260" height="125" rx="5"/>
+  <text class="node-title" x="1540" y="477" text-anchor="middle">Agents SDK Runner</text>
+  <text class="node-copy" x="1540" y="503" text-anchor="middle">one Context + Agent + Session</text>
+  <text class="node-copy" x="1540" y="524" text-anchor="middle">serial tool-state transitions</text>
+  <text class="node-copy" x="1540" y="545" text-anchor="middle">accepted final tool output</text>
+
+  <rect class="node-green" x="1050" y="610" width="300" height="100" rx="5"/>
+  <text class="node-title" x="1200" y="640" text-anchor="middle">ReadingCorpusTools</text>
+  <text class="node-copy" x="1200" y="663" text-anchor="middle">search · identity · find locations</text>
+  <text class="node-copy" x="1200" y="684" text-anchor="middle">BM25 · read_locations · evidence state</text>
+
+  <rect class="node-red" x="1410" y="610" width="260" height="100" rx="5"/>
+  <text class="node-title" x="1540" y="647" text-anchor="middle">provider_agents_model</text>
+  <text class="node-copy" x="1540" y="673" text-anchor="middle">OpenAI-compatible API</text>
+  <text class="node-copy" x="1540" y="694" text-anchor="middle">tool calls, not final free text</text>
+
+  <path class="edge" d="M 1540 284 L 1540 440"/>
+  <path class="edge-both" d="M 1350 660 L 1380 660 L 1380 502.5 L 1410 502.5"/>
+  <path class="edge-both" d="M 1540 565 L 1540 610"/>
+  <path class="edge-both" d="M 1200 565 L 1200 610"/>
+  <text class="edge-label" x="1385" y="590" text-anchor="end">TOOL CALLS / RESULTS</text>
+
+  <rect class="ingestion" x="30" y="790" width="1740" height="260" rx="6"/>
+  <text class="group" x="60" y="822">READING MODEL INGESTION / 与 Research Turn 分离的构建链路</text>
+
+  <rect class="node-dark" x="60" y="870" width="180" height="90" rx="5"/>
+  <text class="node-title-light" x="150" y="905" text-anchor="middle">Research PDF</text>
+  <text class="node-copy-light" x="150" y="932" text-anchor="middle">product paper</text>
+
+  <rect class="node-red" x="300" y="870" width="200" height="90" rx="5"/>
+  <text class="node-title" x="400" y="905" text-anchor="middle">MinerU</text>
+  <text class="node-copy" x="400" y="932" text-anchor="middle">parser + raw artifacts</text>
+
+  <rect class="node-blue" x="560" y="855" width="300" height="120" rx="5"/>
+  <text class="node-title" x="710" y="893" text-anchor="middle">PaperReadingModelBuilder</text>
+  <text class="node-copy" x="710" y="920" text-anchor="middle">pages · sections · typed elements</text>
+  <text class="node-copy" x="710" y="941" text-anchor="middle">locations · relations · provenance</text>
+  <text class="node-copy" x="710" y="962" text-anchor="middle">diagnostics · visual links</text>
+
+  <rect class="node-gold" x="1050" y="850" width="300" height="110" rx="5"/>
+  <text class="node-title" x="1200" y="885" text-anchor="middle">MySQL</text>
+  <text class="node-copy" x="1200" y="911" text-anchor="middle">canonical Reading Model</text>
+  <text class="node-copy" x="1200" y="932" text-anchor="middle">product state + references</text>
+
+  <rect class="node-gold" x="1410" y="870" width="260" height="90" rx="5"/>
+  <text class="node-title" x="1540" y="905" text-anchor="middle">MinIO</text>
+  <text class="node-copy" x="1540" y="932" text-anchor="middle">PDF · artifacts · screenshots · crops</text>
+
+  <path class="edge" d="M 240 915 L 300 915"/>
+  <path class="edge" d="M 500 915 L 560 915"/>
+  <path class="edge-data" d="M 860 915 L 960 915 L 960 905 L 1050 905"/>
+  <path class="edge-data" d="M 860 915 L 930 915 L 930 1010 L 1375 1010 L 1375 915 L 1410 915"/>
+  <path class="edge-data" d="M 1200 850 L 1200 780 L 1010 780 L 1010 502 L 1050 502"/>
+  <text class="edge-label" x="1100" y="770" text-anchor="middle">DIRECT AUTHORIZED MYSQL LOAD</text>
+
+  <text class="subtitle" x="40" y="1080">Current assistant retrieval is in-memory BM25 over the authorized MySQL projection. Only components that produce current assistant evidence are shown.</text>
+</svg>

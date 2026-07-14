@@ -253,17 +253,17 @@ wx:
     # true 表示开启微信支付
     enable: ${WX_PAY_ENABLE:false}
     #应用id（小程序id）
-    appId: ${WX_PAY_APP_ID:ww1****3e3}
+    appId: ${WX_PAY_APP_ID:}
     #商户号
-    merchantId: ${WX_PAY_MERCHANT_ID:162****72}
+    merchantId: ${WX_PAY_MERCHANT_ID:}
     #商户API私钥
-    privateKey: ${WX_PAY_PRIVATE_KEY:cert/apiclient_key.pem}
+    privateKey: ${WX_PAY_PRIVATE_KEY:}
     #商户证书序列号
     # openssl x509 -in apiclient_cert.pem -noout -serial
-    merchantSerialNumber: ${WX_PAY_MERCHANT_SERIAL_NUMBER:228065B**********F17C37A}
+    merchantSerialNumber: ${WX_PAY_MERCHANT_SERIAL_NUMBER:}
     #商户APIv3密钥
-    apiV3Key: ${WX_PAY_API_V3_KEY:Pai******1}
+    apiV3Key: ${WX_PAY_API_V3_KEY:}
     #支付通知地址
-    payNotifyUrl: ${WX_PAY_NOTIFY_URL:https://smart.paicoding.com/api/v1/recharge/pay-callback}
+    payNotifyUrl: ${WX_PAY_NOTIFY_URL:}
     #退款通知地址
-    refundNotifyUrl: ${WX_PAY_REFUND_NOTIFY_URL:https://smart.paicoding.com/api/v1/recharge/refund-callback}
+    refundNotifyUrl: ${WX_PAY_REFUND_NOTIFY_URL:}

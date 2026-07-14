@@ -161,7 +161,7 @@ full parquet route and full-score commands are documented in `litsearch/README.m
 For the current service-backed full run, use the unattended wrapper from the repository root:
 
 ```bash
-cd /home/charles/PaperLoom
+cd /path/to/paperloom
 .worktrees/adaptive-source-set-rag/scripts/litsearch-full-pipeline.sh summary
 ```
 

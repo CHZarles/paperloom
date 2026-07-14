@@ -10,16 +10,11 @@ matches="$(rg -n -i --hidden \
   -g '!target/**' \
   -g '!frontend/node_modules/**' \
   -g '!frontend/dist/**' \
-  -g '!harness_py/**' \
   -g '!.venv-harness/**' \
   -g '!.qoder/**' \
+  -g '!.superpowers/**' \
+  -g '!.worktrees/**' \
   -g '!frontend/.understand-anything/**' \
-  -g '!docs/archive/**' \
-  -g '!docs/superpowers/**' \
-  -g '!youtube_scripts/**' \
-  -g '!handouts/**' \
-  -g '!THIRD_PARTY_NOTICES.md' \
-  -g '!AGENTS.md.old' \
   -g '!.env' \
   -g '!scripts/check-legacy-identity.sh' \
   '(PaiSmart|SmartPAI|smartpai|pai_smart|pai-smart|yizhaoqi|派聪明)' . || true)"

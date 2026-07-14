@@ -1,5 +1,8 @@
 # PaperLoom RAG Eval Cheatsheet
 
+The current interpretation and promotion boundary are recorded in
+[`RETRIEVAL_STRATEGY_DECISION.md`](RETRIEVAL_STRATEGY_DECISION.md).
+
 Last updated: 2026-06-28T19:18:09Z
 
 | Harness | Benchmark | Tier | Cases | Primary | Quality | Run |

@@ -1,8 +1,10 @@
 # Harness Golden Data Schema
 
-The canonical behavior-first v2 design is:
+The canonical behavior-first v2 design is summarized by:
 
-- `docs/superpowers/specs/2026-07-11-behavior-first-golden-data-design.md`
+- `docs/adr/0011-use-evidence-first-golden-cases-for-harness-eval.md`
+- `docs/adr/0012-build-golden-schema-runtime-as-offline-eval-first.md`
+- `research/golden-data/README.md`
 
 The executable examples are:
 

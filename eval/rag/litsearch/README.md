@@ -272,11 +272,11 @@ imports, use `--start-offset` with `--limit` so the job is restartable:
 
 ```bash
 # From the repository root, so `.env` is loaded from the same place as the local backend.
-cd /home/charles/PaperLoom
+cd /path/to/paperloom
 
-java -cp "/home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/target/test-classes:/home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/target/classes:$(cat /home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/target/test-classpath.txt)" \
+java -cp "/path/to/paperloom/.worktrees/adaptive-source-set-rag/target/test-classes:/path/to/paperloom/.worktrees/adaptive-source-set-rag/target/classes:$(cat /path/to/paperloom/.worktrees/adaptive-source-set-rag/target/test-classpath.txt)" \
   io.github.chzarles.paperloom.eval.LitSearchPaperLoomImportCli \
-  --corpus /home/charles/PaperLoom/.worktrees/adaptive-source-set-rag/eval/rag/litsearch/generated/litsearch-corpus-clean-full.jsonl \
+  --corpus /path/to/paperloom/.worktrees/adaptive-source-set-rag/eval/rag/litsearch/generated/litsearch-corpus-clean-full.jsonl \
   --user-id eval-litsearch-user \
   --org-tag eval-litsearch \
   --public true \
@@ -293,7 +293,7 @@ sample-specific split names such as `full-window-smoke`.
 For the full import, prefer the unattended wrapper instead of manually advancing offsets:
 
 ```bash
-cd /home/charles/PaperLoom
+cd /path/to/paperloom
 .worktrees/adaptive-source-set-rag/scripts/litsearch-full-pipeline.sh start --interval-seconds 120
 ```
 
@@ -302,12 +302,12 @@ papers are present, then starts the full service-backed LitSearch benchmark. Use
 command to avoid reading long logs:
 
 ```bash
-cd /home/charles/PaperLoom
+cd /path/to/paperloom
 .worktrees/adaptive-source-set-rag/scripts/litsearch-full-pipeline.sh summary
 ```
 
 The wrapper may also be launched from the worktree; child Spring CLIs change back to
-`/home/charles/PaperLoom` before startup so the repo-root `.env` is used for MySQL, Elasticsearch,
+`/path/to/paperloom` before startup so the repo-root `.env` is used for MySQL, Elasticsearch,
 and model-provider encryption settings.
 
 Current local import-tool validation:

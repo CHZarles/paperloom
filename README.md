@@ -1,221 +1,185 @@
 # PaperLoom
 
-PaperLoom is an evidence-grounded RAG workbench for reading research paper PDFs.
+**PaperLoom is an evidence-bounded agentic RAG workbench for reading research-paper PDFs.**
 
-The user-facing application is branded **Folio**. PaperLoom is the repository, backend platform,
-runtime, and engineering name. See [the naming contract](docs/architecture/naming.md) and
-[third-party notices](THIRD_PARTY_NOTICES.md) for provenance and ownership details.
+The user-facing application is called **Folio**. It turns a paper into a page-aware Reading Model,
+lets a tool-using research agent navigate only the papers authorized for the conversation, and keeps
+the resulting citations reopenable after the model run has ended.
 
-It helps users upload papers, process them asynchronously with a self-hosted MinerU parser sidecar, persist parser artifacts and structured evidence, retrieve page-aware chunks, ask questions over indexed papers, and reopen the exact evidence references used in previous answers.
+[Project site](https://chzarles.github.io/paperloom/) · [Documentation](docs/README.md) ·
+[中文介绍](README.zh-CN.md)
 
-## Current Positioning
+## Why PaperLoom
 
-PaperLoom is not a generic enterprise knowledge-base assistant. The product subject is the research paper:
+Most RAG demos optimize the path from a query to plausible text. PaperLoom treats the path from a
+claim back to its source as part of the product contract:
 
-- PDF paper upload
-- asynchronous MinerU parsing and indexing
-- parser artifact persistence for audit/debug
-- reading-order text and page-aware chunk storage
-- page screenshot assets
-- table extraction and table-aware retrieval
-- figure/chart extraction with screenshot evidence
-- formula extraction as source evidence
-- agentic multi-query retrieval for paper intents such as experiments, methods, limitations, and summaries
-- Elasticsearch hybrid retrieval
-- source-grounded chat answers
-- persistent reference mappings in MySQL
-- paper library with basic editable metadata
-- organization/public/private access control
+- PDF content is retained as ordered pages, sections, typed reading elements, locations, and visual
+  assets;
+- Java fixes the permission, paper-scope, quota, conversation, and persistence boundaries before
+  research begins;
+- Python runs one agent loop over an authorized MySQL projection of the Reading Model;
+- candidate previews are navigation only; citeable evidence exists only after an exact location is
+  read;
+- final submission is checked against the evidence ledger before it becomes a product answer;
+- historical references remain connected to the paper location that supported the claim.
 
-The current system supports a research-paper RAG story:
+This repository is also an engineering record. ADRs and selected experiment reports preserve the
+decisions, failed approaches, costs, and measurements that changed the system.
 
-> PaperLoom supports PDF paper upload, asynchronous MinerU parsing/indexing, parser artifact persistence, table/figure/formula-aware evidence extraction, page-aware chunk retrieval, source-grounded chat, and persistent evidence references.
+## Current Runtime
 
-The implementation persists parser artifacts, extracted paper tables, figures, formulas, page screenshots, and crop screenshots. Text, table, figure/chart caption, and formula evidence are stored as structured metadata in MySQL and enter the existing chunk/embedding/Elasticsearch flow through `sourceKind=TEXT|TABLE|FIGURE|CHART|FORMULA`.
+[![Rendered PaperLoom system architecture](site/public/images/paperloom-system-architecture.png)](site/public/images/paperloom-system-architecture.svg)
 
-## What It Does Not Claim Yet
+The live research path is:
 
-The current codebase does not claim automatic research understanding features such as:
+```text
+ChatHandler
+-> ProductReadingConversationService
+-> PythonResearchHarnessClient
+-> POST /v1/research/stream
+-> ResearchHarnessService
+-> OpenAI Agents SDK Runner
+```
 
-- automatic title/author/venue/DOI extraction from arbitrary PDFs
-- claim/method/experiment/limitation extraction
-- citation graph construction
-- coordinate-level PDF highlighting
-- fully structured multi-paper comparison
-- image-content retrieval and multimodal embedding
+Java supplies the locked paper IDs. Python loads those papers directly from MySQL, builds an
+in-memory corpus, and exposes metadata discovery, identity resolution, location search, exact
+reading, optional research guidance, and validated final submission as tools.
 
-Those can be added later, but they are not part of the current MVP contract.
+Current location retrieval is lexical: BM25 over Reading Element text plus passage, lead, section,
+exact-phrase, adjacent-paragraph, and coverage heuristics. **Vector retrieval is not part of the
+current assistant path.** It is a future, evaluation-gated extension rather than a present
+capability claim.
+
+## Reading Model
+
+PaperLoom does not make raw parser output or a search index its durable paper representation. The
+Reading Model records:
+
+- model version, readiness, parser provenance, counts, and diagnostics;
+- physical pages and readable sections with source spans;
+- canonical typed elements such as headings, paragraphs, lists, tables, figures, charts, formulas,
+  footnotes, asides, and code;
+- stable page, section, table, and figure locations;
+- PDF page screenshots and table, figure, or chart crops.
+
+The live Python projection is deliberately narrower than the complete model: it currently loads
+paper metadata, the current ready model, `paper_reading_elements`, and visual-asset availability.
+See [Reading Model and Agent Tools](docs/architecture/reading-model-and-agent-tools.md).
+
+## Agent Tool Protocol
+
+The agent cannot jump directly from a scoped paper ID to a citation. The current authorization
+ladder is:
+
+```text
+Java-authorized paper scope
+-> disclosed paper candidate or resolved identity
+-> disclosed reading location
+-> exact location read
+-> Evidence ID created
+-> final answer validated against known evidence
+```
+
+`read_locations` is the only content tool that creates citeable evidence.
+`submit_research_answer` must be the only tool call in the final step.
 
 ## Architecture
 
-- Backend: Spring Boot
-- Frontend: Vue 3 + TypeScript
-- Persistence: MySQL
-- Cache/session/transient generation state: Redis
-- Retrieval: Elasticsearch
-- Async processing: Kafka
-- Object storage: MinIO
-- PDF parsing/chunking: self-hosted MinerU sidecar, mapped into PaperLoom's internal parser model
-- Screenshot assets: PDFBox page rendering + MinerU bbox crop
+| Area | Current responsibility |
+| --- | --- |
+| Folio | Vue 3 research workbench, paper selection, progress, conversations, and evidence reopening |
+| Java product boundary | Authentication, authorization, locked source scope, quota, cancellation, durable conversations, and reference mappings |
+| Python research boundary | Corpus projection, Agents SDK loop, tool execution, BM25 retrieval, evidence ledger, citation checks, and final submission |
+| MySQL | Product papers, Reading Models, conversations, and durable reference data; direct source for the live harness corpus |
+| MinIO | Original PDFs, parser artifacts, page screenshots, and crop assets |
+| Model provider | Configurable OpenAI-compatible model used by the Agents SDK runtime |
 
-## Core Workflow
+The repository still contains independent indexing and search infrastructure, but it does not
+contribute evidence to current assistant answers and is intentionally absent from the live-path
+architecture.
 
-1. A user uploads a PDF paper through `/api/v1/papers/upload/*`.
-2. PaperLoom stores upload metadata in MySQL and the PDF in MinIO.
-3. Kafka triggers asynchronous paper processing.
-4. The backend submits the PDF to a self-hosted MinerU parser sidecar and downloads the result artifacts.
-5. PaperLoom persists MinerU artifacts such as result zip, `content_list.json`, `middle.json`, and Markdown output in MinIO with MySQL metadata.
-6. PaperLoom maps MinerU output into reading-order text, tables, figures/charts, formulas, page evidence, and chunk provenance.
-7. PDFBox renders page screenshots and crops table/figure screenshots using MinerU bbox data when available.
-8. Text/table/figure/formula chunks are embedded and indexed into the same Elasticsearch `paper_chunks` index.
-9. Chat retrieval uses query planning, expanded paper-intent queries, hybrid search, and evidence reranking to construct source-grounded answers.
-10. Assistant messages persist their reference mappings in MySQL, so historical citations can be reopened without relying on Redis.
+## Evaluation
 
-Parser artifacts are not searched. They exist so the parser stage is auditable, debuggable, and credible as a research-system component.
+PaperLoom records both outcomes and observable research behavior. Optional per-run capture stores
+ordered model, tool, authorization, evidence, validation, token, latency, and failure events. Golden
+Cases define required and forbidden papers or evidence, expected facts, claim obligations, outcome,
+citation policy, trace obligations, and human or judge labels.
 
-## API Shape
+That data can support retrieval tuning, tool-policy analysis, provider routing, judge calibration,
+future dense retriever or reranker training, and teacher-student distillation from strong APIs to a
+local model. Distillation targets accepted answers and observable tool trajectories, not hidden
+chain-of-thought. See [Evaluation System](docs/evaluation/README.md).
 
-The public PaperLoom API uses paper terminology:
+## Quick Start
 
-- `paperId`: stable paper identifier, currently the PDF content hash
-- `paperTitle`: display title, defaulting to the uploaded filename unless edited
-- `originalFilename`: uploaded PDF filename
-- `isPublic`: public visibility flag
-- `uploadStatus`: upload/merge state
-- `processingStatus`: parse/vectorization/indexing state such as `MINERU_RUNNING`, `MAPPING_STRUCTURED_CONTENT`, `RENDERING_VISUAL_ASSETS`, `CHUNKING`, `EMBEDDING`, `INDEXING`, `COMPLETED`, or `FAILED`
-- `parserArtifact.available`: whether MinerU parser artifacts were persisted
-- `tableAsset.tableCount`: number of extracted paper tables
-- `figureAsset.figureCount`: number of extracted figures/charts
-- `formulaAsset.formulaCount`: number of extracted formulas
-- `visualAsset.pageScreenshotCount`: number of persisted PDF page screenshots
-- `visualAsset.tableCropCount`: number of persisted table crop screenshots
-- `visualAsset.figureCropCount`: number of persisted figure/chart crop screenshots
-
-Common endpoints:
-
-- `GET /api/v1/papers?scope=accessible`
-- `POST /api/v1/papers/upload/chunk`
-- `POST /api/v1/papers/upload/merge`
-- `GET /api/v1/papers/upload/status?paperId=...`
-- `GET /api/v1/papers/{paperId}/preview`
-- `GET /api/v1/papers/{paperId}/download`
-- `GET /api/v1/papers/{paperId}/parser-artifact`
-- `GET /api/v1/papers/{paperId}/tables`
-- `GET /api/v1/papers/{paperId}/tables/{tableId}`
-- `GET /api/v1/papers/{paperId}/tables/{tableId}/screenshot`
-- `GET /api/v1/papers/{paperId}/figures`
-- `GET /api/v1/papers/{paperId}/figures/{figureId}`
-- `GET /api/v1/papers/{paperId}/figures/{figureId}/screenshot`
-- `GET /api/v1/papers/{paperId}/formulas`
-- `GET /api/v1/papers/{paperId}/formulas/{formulaId}`
-- `GET /api/v1/papers/{paperId}/pages/{pageNumber}/screenshot`
-- `DELETE /api/v1/papers/{paperId}`
-- `POST /api/v1/papers/{paperId}/reindex`
-- `POST /api/v1/papers/{paperId}/vectorization/retry`
-- `PATCH /api/v1/papers/{paperId}/metadata`
-- `GET /api/v1/papers/search/hybrid?query=...&topK=...`
-- `GET /api/v1/papers/reference-detail?conversationRecordId=...&referenceNumber=...`
-
-## Local Development
-
-Backend is usually run from the IDE with hot deployment. After Java changes, prefer compiling instead of restarting:
+Requirements: Java 17, Maven 3.8+, Node.js 18.20+, pnpm 8.7+, Python 3.11+, Docker Compose v2,
+and a separately installed MinerU service for real PDF ingestion.
 
 ```bash
-mvn -q -DskipTests compile
+cp .env.example .env
+# Fill the required database, storage, JWT, internal-service, and model credentials.
+
+docker compose --env-file .env -f docs/docker-compose.yaml up -d
+
+python3 -m venv .venv-harness
+.venv-harness/bin/pip install -r harness_py/requirements.lock
+scripts/paperloom-start-harness.sh start
+
+mvn spring-boot:run
 ```
 
-Run targeted backend tests:
+In another terminal:
 
 ```bash
-mvn -q -Dtest=MinerUOutputMapperTest,PaperQueryPlannerTest,PaperChunkBuilderTest,ParseServiceStructuredParserTest,PaperVisualAssetServiceTest,EsMappingContractTest,ChatHandlerReferenceEvidenceTest test
+cd frontend
+corepack pnpm install
+corepack pnpm dev
 ```
 
-Frontend typecheck:
+Folio is normally available at `http://localhost:9527`; the backend listens on
+`http://localhost:8081`. The complete setup and first-paper check are in the
+[Quick Start](docs/getting-started/quick-start.md).
+
+## Verification
 
 ```bash
-cd frontend && pnpm typecheck
+mvn test
+
+.venv-harness/bin/python -m unittest discover -s harness_py/tests
+
+cd frontend
+pnpm typecheck
+pnpm test:e2e
+
+cd ../site
+npm ci
+npm run docs:build
 ```
 
-The local frontend development target is usually:
+## Project Status
 
-```text
-http://localhost:9527
-```
+PaperLoom is an active engineering project, not a finished hosted service. Its current contract is
+research-paper PDF ingestion, an inspectable Reading Model, authorized agentic retrieval, and
+evidence-grounded research chat.
 
-## Persistence Rule
+It does not yet claim general-purpose document ingestion, reliable coordinate-level highlighting,
+automatic citation-graph construction, dense or multimodal retrieval in the live assistant, or
+perfect metadata extraction for every PDF.
 
-Redis is used for cache, current session state, and short-lived streaming generation state. Persistent chat history and evidence references must live in MySQL.
+## Documentation
 
-For source evidence, the durable path is:
+- [Documentation index](docs/README.md)
+- [Architecture overview](docs/architecture/overview.md)
+- [Reading Model and agent tools](docs/architecture/reading-model-and-agent-tools.md)
+- [Evidence and citation model](docs/architecture/evidence-and-citations.md)
+- [Evaluation system](docs/evaluation/README.md)
+- [Engineering evolution](docs/engineering-evolution/README.md)
+- [Architecture decisions](docs/adr/)
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
 
-```text
-Conversation.referenceMappingsJson -> /api/v1/papers/reference-detail -> paper/page/chunk/table/figure/formula evidence
-```
+## License
 
-## MinerU Parser Sidecar
-
-PaperLoom self-hosts MinerU as its primary parser backend. The default local configuration is:
-
-```yaml
-paper:
-  parsing:
-    provider: mineru
-    mineru:
-      base-url: http://localhost:8000
-      health-path: /health
-      timeout-seconds: 900
-      poll-interval-seconds: 3
-      file-field-name: files
-      backend: pipeline
-      parse-method: auto
-      return-md: true
-      return-content-list: true
-      return-middle-json: true
-      response-format-zip: true
-```
-
-The backend talks to MinerU through `MinerUParserClient`, maps result files through `MinerUOutputMapper`, and persists parser artifacts through `PaperParserArtifactService`.
-
-MinerU availability is treated as part of the parser contract. If the sidecar is not reachable at `paper.parsing.mineru.base-url`, paper processing fails with a clear pipeline error instead of silently falling back to a weaker parser. This keeps the UI honest: `Tables: 0` should mean MinerU ran and extracted no tables, not that the MinerU service was missing.
-
-OpenDataLoader parser code may remain in the repository as a local fallback implementation behind an explicit `paper.parsing.provider=opendataloader` / `PAPER_PARSING_PROVIDER=opendataloader`, but the PaperLoom product story and default parser path are MinerU-based. Use that fallback only when you are intentionally testing text-only parsing.
-
-### Cost And License Note
-
-PaperLoom does not depend on a paid parser SaaS for its main workflow. Self-hosted MinerU does not introduce per-page parser API fees. The practical costs are compute, memory, disk, object storage, and operation.
-
-The hosted MinerU API is not required for PaperLoom. It may be useful for experiments, but rate limits make it a poor default dependency for a reproducible open-source demo.
-
-README attribution should be kept with the upstream project:
-
-- MinerU GitHub: https://github.com/opendatalab/MinerU
-- MinerU docs: https://opendatalab.github.io/MinerU/
-- MinerU output files: https://opendatalab.github.io/MinerU/reference/output_files/
-- MinerU API limit page: https://mineru.net/apiManage/limit
-
-MinerU's upstream license should be reviewed before redistribution or commercial use. The implementation is designed as a sidecar integration so PaperLoom can document attribution clearly and keep parser replacement possible.
-
-## Parser Artifacts, Evidence, And Screenshots
-
-During `parseAndSave()` the backend persists:
-
-- MinerU parser artifacts in MinIO under `paper-parser-artifacts/{paperId}/mineru/*`
-- parser artifact metadata in MySQL table `paper_parser_artifacts`
-- extracted table metadata/text/Markdown in MySQL table `paper_tables`
-- extracted figure/chart metadata and captions in MySQL table `paper_figures`
-- extracted formulas and surrounding context in MySQL table `paper_formulas`
-- text/table/figure/formula evidence as searchable chunks in `paper_text_chunks`
-- page screenshots, table crop screenshots, and figure crop screenshots in MinIO
-- screenshot metadata in MySQL table `paper_visual_assets`
-
-`estimateEmbeddingUsage()` intentionally has no parser-artifact/table/figure/formula/screenshot side effects. Reindex clears old parser artifacts, tables, figures, formulas, visual assets, chunks, and ES docs before rebuilding. Deleting the final paper record removes the PDF, parser artifacts, page screenshots, table/figure crops, and related metadata.
-
-Table, figure, chart, and formula retrieval deliberately reuse the existing hybrid search pipeline. There is no second table or figure index in the current version.
-
-## Agentic Paper Retrieval
-
-PaperLoom does not treat raw user text as the only retrieval query. `PaperQueryPlanner` detects coarse paper-reading intents such as experiment results, methods, limitations, summaries, and general questions.
-
-For questions such as `有实验数据吗` or `我说论文实验数据`, the planner expands the query into English paper terms such as `experiment results`, `evaluation results`, `accuracy`, `benchmark`, `dataset`, `table`, and `chart`. `PaperRetrievalService` runs multi-query hybrid retrieval, deduplicates evidence, and reranks table/chart/figure evidence above generic text for experiment-result intent.
-
-The chat layer must not claim `当前论文库中没有相关内容` after a single raw-query miss. No-hit responses should only say that PaperLoom could not find enough reliable paper evidence after expanded retrieval attempts.
+PaperLoom is licensed under the [Apache License 2.0](LICENSE). Third-party components and assets
+retain their own licenses; see [Third-Party Notices](THIRD_PARTY_NOTICES.md).

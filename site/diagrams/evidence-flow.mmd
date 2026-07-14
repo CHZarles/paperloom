@@ -1,0 +1,42 @@
+flowchart TB
+    subgraph ROW1["ReadingCorpusTools: paper and location state"]
+        direction LR
+        SCOPE["scope.paper_ids<br/>ResearchHarnessService loads only these papers"]:::control
+        DISCOVER["search_paper_candidates<br/>or find_papers_by_identity"]:::tool
+        PAPERS["authorized_paper_ids<br/>returned paper IDs"]:::state
+        LOCATE["find_reading_locations<br/>BM25 over request-local Reading Documents"]:::tool
+        LOCATIONS["disclosed_location_refs<br/>returned location_ref values"]:::state
+
+        SCOPE --> DISCOVER
+        DISCOVER -->|unique or returned papers| PAPERS
+        PAPERS -->|required| LOCATE
+        LOCATE -->|preview + location_ref| LOCATIONS
+    end
+
+    subgraph ROW2["ReadingCorpusTools + submit_research_answer"]
+        direction RL
+        READ["read_locations<br/>requires disclosed_location_refs<br/>exact retained span"]:::tool
+        EVIDENCE["observations_by_evidence_id<br/>Evidence ID + provenance"]:::evidence
+        SUBMIT["submit_research_answer<br/>outcome + markdown + fields"]:::tool
+        VALIDATE["answer_validation_error<br/>evaluate_evidence_coverage"]:::control
+        ACCEPTED["accepted draft<br/>tools_to_final_output ends Runner"]:::answer
+        REFERENCES["ChatHandler referenceMappings<br/>persisted with the conversation"]:::source
+
+        READ -->|create| EVIDENCE
+        EVIDENCE -->|known IDs only| SUBMIT
+        SUBMIT --> VALIDATE
+        VALIDATE -->|accepted| ACCEPTED
+        ACCEPTED --> REFERENCES
+    end
+
+    LOCATIONS ~~~ READ
+
+    classDef source fill:#18212b,color:#ffffff,stroke:#18212b,stroke-width:2px;
+    classDef control fill:#f8ece9,color:#18212b,stroke:#d94b40,stroke-width:2px;
+    classDef tool fill:#e8eef9,color:#18212b,stroke:#2356d8,stroke-width:2px;
+    classDef state fill:#fff7e7,color:#18212b,stroke:#b6781f,stroke-width:2px;
+    classDef evidence fill:#e7f1ec,color:#18212b,stroke:#327a63,stroke-width:2px;
+    classDef answer fill:#18212b,color:#ffffff,stroke:#18212b,stroke-width:2px;
+
+    style ROW1 fill:#eef2f8,stroke:#aebed8,stroke-width:1px
+    style ROW2 fill:#edf5f1,stroke:#afc8bc,stroke-width:1px

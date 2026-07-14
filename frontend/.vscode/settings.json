@@ -15,5 +15,5 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "unocss.root": ["./"],
   "vue.server.hybridMode": true,
-  "cSpell.words": ["defu", "itwanger", "methodurl", "sider"]
+  "cSpell.words": ["defu", "methodurl", "sider"]
 }

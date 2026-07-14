@@ -1156,7 +1156,7 @@
   "completed_case_count": 30,
   "eval_dump": "/tmp/paperloom-gpt55-single-restored-full-eval-20260714",
   "hard_pass_rate": 0.4666666666666667,
-  "manifest": "/home/charles/PaiSmart/research/golden-data/manifest-expanded.yaml",
+  "manifest": "/path/to/paperloom/research/golden-data/manifest-expanded.yaml",
   "read_conversion": 0.6590909090909091,
   "read_hit_count": 29,
   "required_anchor_count": 48,

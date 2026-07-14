@@ -1,254 +1,86 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file gives coding agents a compact entry point. Public product and engineering documentation
+lives under [`docs/`](docs/README.md); do not duplicate those documents here.
 
-## Project Overview
+## Project Contract
 
-PaperLoom is an evidence-grounded RAG workbench for structured research paper reading. The repository directory and some legacy physical database names still use PaperLoom/file terminology, but the product story, public API, and frontend contract should be paper-centered.
+PaperLoom is an evidence-grounded research-paper RAG system. Folio is its user-facing application.
+The product subject is research-paper PDFs, not a general enterprise document assistant.
 
-PaperLoom supports PDF paper upload, asynchronous parsing/indexing, page-aware chunk retrieval, source-grounded chat, persistent evidence references, and basic editable paper metadata. It should not be described as a generic enterprise knowledge-base assistant.
+Core invariants:
 
-Product PaperLoom is PDF-only. Structured benchmark corpora such as LitSearch and QASPER must not be
-stored in product tables or product Elasticsearch indices. They belong in an eval data domain such as
-the `paperloom_eval` MySQL schema and eval-only ES indices, and benchmark harnesses must select that
-corpus explicitly.
+- Product papers and evaluation corpora remain separate data domains.
+- Paper identity and conversation source scope are explicit.
+- Unresolved semantic routing fails closed instead of silently entering paper QA.
+- Search candidates are not automatically answer evidence.
+- Durable conversations and historical reference mappings live in MySQL, not only Redis.
+- Search chunks are derived from the current Paper Reading Model.
+- Historical references cannot bypass current authorization.
 
-## Development Environment Setup
+Read these before changing shared behavior:
 
-### Prerequisites
-- Java 17
-- Maven 3.8.6+
-- Node.js 18.20.0+
-- pnpm 8.7.0+
-- MySQL 8.0
-- Elasticsearch 8.10.0
-- MinIO 8.5.12
-- Kafka 3.2.1
-- Redis 7.0.11
-- Docker (optional for services)
+1. [`docs/architecture/overview.md`](docs/architecture/overview.md)
+2. [`docs/reference/product-requirements.md`](docs/reference/product-requirements.md)
+3. [`docs/reference/domain-language.md`](docs/reference/domain-language.md)
+4. [`docs/adr/`](docs/adr/)
 
-### Quick Start with Docker
+## Development Commands
+
+Backend:
+
 ```bash
-# Start all services
-cd docs && docker-compose up -d
-
-# Backend
-mvn spring-boot:run
-
-# Frontend
-cd frontend && pnpm install && pnpm dev
-```
-
-## Common Development Commands
-
-### Backend (Spring Boot)
-```bash
-# Run application
-mvn spring-boot:run
-
-# Build
-mvn clean package
-
-# Test
+mvn -q -DskipTests compile
 mvn test
-
-# Run with specific profile
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
+mvn -Dtest=PaperReadingModelBuilderTest test
 ```
 
-### Frontend (Vue 3 + TypeScript)
+Research harness:
+
 ```bash
-# Install dependencies
-cd frontend && pnpm install
+.venv-harness/bin/python -m unittest discover -s harness_py/tests
+.venv-harness/bin/python -m harness_py --help
+```
 
-# Development server
-pnpm dev
+Frontend:
 
-# Build for production
-pnpm build
-
-# Type checking
+```bash
+cd frontend
 pnpm typecheck
-
-# Linting
 pnpm lint
-
-# Preview build
-pnpm preview
+pnpm test:e2e
 ```
 
-## Architecture Overview
+Project site:
 
-### Backend Structure
-```
-src/main/java/io/github/chzarles/paperloom/
-├── PaperLoomApplication.java      # Main application entry
-├── client/                       # External API clients (DeepSeek, Embedding)
-├── config/                       # Configuration classes (Security, JWT, etc.)
-├── consumer/                     # Kafka consumers for async processing
-├── controller/                   # REST API endpoints
-├── entity/                       # JPA entities
-├── exception/                    # Custom exceptions
-├── handler/                      # WebSocket handlers
-├── model/                        # Domain models
-├── repository/                   # Data access layer
-├── service/                      # Business logic layer
-└── utils/                        # Utility classes
-```
-
-### Frontend Structure
-```
-frontend/src/
-├── assets/                       # Static assets (SVG, images)
-├── components/                   # Reusable Vue components
-├── layouts/                      # Page layouts
-├── router/                       # Vue Router configuration
-├── service/                      # API integration
-├── store/                        # Pinia state management
-├── views/                        # Page components
-└── utils/                        # Utility functions
-```
-
-## Key Components
-
-### Core Services
-- **PaperController / PaperUploadController / PaperSearchController**: Paper library, PDF upload, preview, metadata, evidence reference, and search APIs
-- **PaperService**: Handles paper deletion, access lists, preview, metadata updates, and indexing retries
-- **ElasticsearchService**: Manages paper chunk indexing and search
-- **VectorizationService**: Converts text to embeddings using AI models
-- **ChatHandler**: Processes AI chat interactions with RAG
-- **UserService**: User authentication and management
-- **ConversationService**: Chat history, session management, and MySQL-backed reference evidence recovery
-
-### AI Integration
-- **DeepSeek API**: Primary LLM for chat responses
-- **Embedding API**: Text-embedding-v4 for paper chunk vectorization
-- **RAG Pipeline**: Paper PDF → page-aware chunk → embedding → hybrid retrieval → source-grounded response
-
-### Multi-tenant Architecture
-- **Organization Tags**: Supports multi-tenant isolation
-- **Permission System**: Public/private/organization-scoped paper access control
-- **User-Organization Mapping**: Flexible user-to-org relationships
-
-## Configuration Files
-
-### Backend Configuration
-- `application.yml`: Main configuration with database, Redis, Kafka, AI services
-- `application-dev.yml`: Development-specific settings
-- `application-docker.yml`: Docker deployment settings
-
-### Frontend Configuration
-- `vite.config.ts`: Vite build configuration
-- `tsconfig.json`: TypeScript configuration
-- `pnpm-workspace.yaml`: Workspace configuration for monorepo
-
-## Database Schema
-
-The application uses MySQL as the primary database with JPA/Hibernate for ORM. Key entities include:
-- `User`: User accounts and authentication
-- `Paper`: PDF paper upload metadata, processing status, visibility, and editable paper metadata
-- `PaperTextChunk`: page-aware paper chunks
-- `Conversation`: Chat history and persisted reference mappings
-- `OrganizationTag`: Multi-tenant organization structure
-- `ChunkInfo`: legacy physical table/entity name for upload chunks
-
-Benchmark/eval records are not product `Paper` rows. Eval storage uses separate eval-native tables
-and indices, not `is_eval`-style columns in product tables.
-
-## External Dependencies
-
-### Services
-- **Elasticsearch 8.10.0**: Paper chunk search and vector storage
-- **Kafka 3.2.1**: Message queue for async file processing
-- **Redis 7.0.11**: Caching and session management
-- **MinIO 8.5.12**: File storage service
-- **MySQL 8.0**: Primary database
-
-### AI Services
-- **DeepSeek API**: LLM for generating responses
-- **DashScope Embedding**: Text-embedding-v4 for paper chunk vectorization
-
-## Development Workflow
-
-### Adding New Features
-1. Backend: Create entity → repository → service → controller
-2. Frontend: Create API service → store module → Vue component → router configuration
-3. Update database schema if needed (JPA auto-generates DDL)
-4. Test with both unit and integration tests
-
-### API Development
-- Follow RESTful conventions
-- Use proper HTTP status codes
-- Implement authentication/authorization via JWT
-- Add request validation and error handling
-
-### Frontend Development
-- Use Vue 3 Composition API with TypeScript
-- Follow established component patterns in `/src/components/`
-- Use Pinia for state management
-- Implement proper TypeScript types for API responses
-
-## Testing
-
-### Backend Testing
 ```bash
-# Run all tests
-mvn test
-
-# Run specific test class
-mvn test -Dtest=UserServiceTest
-
-# Run with coverage
-mvn clean verify
+cd site
+npm ci
+npm run docs:build
 ```
 
-### Frontend Testing
-```bash
-# Type checking
-pnpm typecheck
+The normal local targets are backend `http://localhost:8081`, frontend
+`http://localhost:9527`, research harness `http://127.0.0.1:8091`, and MinerU
+`http://127.0.0.1:8000`.
 
-# Linting
-pnpm lint
+## Change Discipline
 
-# Build verification
-pnpm build
-```
+- Follow existing module boundaries before introducing new abstractions.
+- Keep edits scoped to the requested behavior.
+- Do not revert unrelated user changes in a dirty worktree.
+- Add tests in proportion to behavior risk.
+- Use structured parsers and typed contracts instead of ad hoc string handling.
+- Do not add static phrase matching as a production semantic router.
+- Do not add silent parser, retrieval, or answer fallbacks that make failure look successful.
+- Verify user-facing workflows in a browser when practical.
 
-## Deployment
+## Documentation Discipline
 
-### Docker Deployment
-```bash
-# Build backend
-mvn clean package
+- Current guides explain current behavior.
+- ADRs record accepted decisions.
+- Engineering-evolution records preserve consequential changes and verified experiments.
+- Generated wikis, raw agent plans, personal runtime paths, and temporary debugging notes do not
+  belong in public documentation.
+- Quality, latency, cost, and benchmark claims must retain their measurement context.
 
-# Build frontend
-cd frontend && pnpm build
-
-# Start services
-cd docs && docker-compose up -d
-```
-
-### Environment Variables
-Key configuration variables that should be set in production:
-- `JWT_SECRET_KEY`: JWT signing secret
-- `DEEPSEEK_API_KEY`: DeepSeek API credentials
-- `EMBEDDING_API_KEY`: Embedding service API key
-- Database credentials and service URLs
-
-## Security Considerations
-
-- JWT-based authentication with Spring Security
-- Role-based access control (admin/user)
-- Organization-level data isolation
-- File upload validation and size limits
-- CORS configuration for frontend integration
-- Input validation and sanitization
-
-## Performance Considerations
-
-- Elasticsearch for efficient paper chunk search
-- Redis caching for frequently accessed data
-- Kafka for asynchronous file processing
-- PDF chunking for large paper processing
-- Vector embeddings for semantic search
-- Connection pooling for database and external services
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for public contribution expectations.

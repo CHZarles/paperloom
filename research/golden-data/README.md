@@ -4,7 +4,7 @@
 并在明确要求时保存原始、有序的评测事件。评分、审计、Judge 校准、结果对比和研究分析
 都在这里或其他线下工具中完成。
 
-下面的命令都应在仓库根目录 `/home/charles/PaperLoom` 运行。
+下面的命令都应在仓库根目录 `/path/to/paperloom` 运行。
 
 ## Manifest
 
@@ -30,17 +30,49 @@ Anchor 和预期行为稳定后，再考虑提升到稳定回归集。
 重构不能只改其中一边。Case ID、预期、Paradigm 标签和人工 Anchor 质量信号都不会暴露
 给模型。
 
+本轮 Reading Model 对齐、检索恢复和错误方案复盘见
+[`2026-07-13-reading-model-retrieval-practice.md`](2026-07-13-reading-model-retrieval-practice.md)。
+Candidate 恢复后的下一阶段编排方案见
+[`Golden Data 与 Harness 演化`](../../site/practice/evaluation/golden-data-harness-evolution.md)。
+两份文档分别记录“已经验证了什么”和“如何实现下一阶段”，实际状态以方案顶部和实施结果为准。
+面向工程分享的完整故事见
+[`从 16/32 到 29/32，却只多过了 1 个 Case`](../../site/practice/evaluation/golden-data-harness-evolution.md)。
+
 ## 扩展语料资产
 
 `llm-agent-evaluation` Pack 的生成资产放在
-`research/golden-data/corpora/llm-agent-evaluation/`，保证研究工作区能够自包含。使用下面的
-命令重建固定版本的 PDF、抽取文本、Reading Model 和资产清单：
+`research/golden-data/corpora/llm-agent-evaluation/`，保证研究工作区能够自包含。构建脚本只做
+离线编排，正式内容链固定为：
+
+```text
+PDF -> MinerU -> MinerUOutputMapper -> PaperReadingModelBuilder -> Export
+```
+
+其中 `content_list` 生成 canonical Reading Element，`middle.json` 的 `preproc_blocks` 生成物理
+`PaperPage`。跨页段落不会被拆成多个 canonical element，也不会用页码 fallback 修补。
+
+先生成 staging 资产：
 
 ```bash
 python3 research/golden-data/build_llm_agent_assets.py
 ```
 
-重建后必须再跑确定性校验和审计。构建脚本执行成功，不代表生成数据已经有效。
+全部论文完成后，重新校验现有 staging，不重复调用 MinerU：
+
+```bash
+python3 research/golden-data/build_llm_agent_assets.py --validate-staging
+```
+
+只有 9 篇论文的结构和新增 22 个物理页 Anchor Gate 全部通过后才发布：
+
+```bash
+python3 research/golden-data/build_llm_agent_assets.py \
+  --validate-staging \
+  --publish
+```
+
+重建和发布后仍必须再跑确定性校验与完整 Anchor 审计。构建脚本执行成功，不代表模型检索
+和真实 Agent 行为已经有效。
 
 ## 1. 确定性 Fixture 校验
 
@@ -102,6 +134,35 @@ expanded: anchor_count=29, passed_count=29, failed_count=0
 修改 Anchor、页码、解析器输出、语料资产路径或重新生成 Reading Model 后，应运行这一层。
 Fixture 校验通过不代表 Anchor 审计也会通过。
 
+### 保存查询重放
+
+使用上一次真实 MiniMax Run 保存的 `find_reading_locations` 参数，离线重放当前检索器：
+
+```bash
+.venv-harness/bin/python research/golden-data/replay_saved_queries.py \
+  --out /tmp/paperloom-expanded-saved-query-replay.json
+```
+
+它不调用模型，只统计 15 个新增 Case 的 Required Anchor 是否进入候选。当前结果为
+`29/32`，高于发布 Gate `21/32`。这一层用于区分“模型没有继续读”与“检索器根本没有返回”。
+
+### Evidence Funnel 报告
+
+对一次已经保存的 `agent-run` 结果，离线拆分 Candidate、Read、Cited、Outcome 和 Technical
+Failure：
+
+```bash
+.venv-harness/bin/python research/golden-data/analyze_evidence_funnel.py \
+  --runs /tmp/paperloom-expanded-live \
+  --eval-dump /tmp/paperloom-expanded-eval \
+  --out /tmp/paperloom-evidence-funnel.json \
+  --markdown-out /tmp/paperloom-evidence-funnel.md
+```
+
+脚本使用保存的 `find_reading_locations` 参数对当前冻结语料离线重放 Candidate，再根据 Run 中
+真实保存的 evidence span 和 citation 统计 Read / Cited。它不调用模型，不修改 Runtime，也不把
+Anchor 暴露给线上工具。`--case-id` 可以重复使用，只分析少量焦点 Case。
+
 ## 3. 真实 Agents SDK 执行
 
 `agent-run` 通过 MiniMax 和默认 OpenAI Agents SDK 运行真实的
@@ -120,7 +181,6 @@ python3 -m venv .venv-harness
 ```bash
 .venv-harness/bin/python -m harness_py agent-run \
   --case-id transformer_adam_params_001 \
-  --runtime agents_sdk \
   --out /tmp/paperloom-stable-live
 ```
 
@@ -132,7 +192,6 @@ python3 -m venv .venv-harness
   agent-run \
   --case-id agentbench_environment_inventory_001 \
   --case-id gaia_dataset_gap_001 \
-  --runtime agents_sdk \
   --eval-dump /tmp/paperloom-expanded-eval \
   --out /tmp/paperloom-expanded-live
 ```

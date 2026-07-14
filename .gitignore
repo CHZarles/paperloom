@@ -96,4 +96,14 @@ src/main/resources/cert
 .understand-anything/
 .claude/
 .superpowers/
+.qoder/
+.venv-harness/
+.classpath
+.factorypath
+.project
+.settings/
+frontend/test-results/
+site/node_modules/
+site/.vitepress/cache/
+site/.vitepress/dist/
 youtube_scripts/jwt-mini-lab/
