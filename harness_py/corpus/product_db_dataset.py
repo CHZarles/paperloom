@@ -41,7 +41,7 @@ class DockerMySqlProductCorpusStore:
         self,
         env_path: str | Path = ".env",
         container_env: str = "HARNESS_MYSQL_CONTAINER",
-        default_container: str = "pai_smart_mysql",
+        default_container: str = "paperloom-mysql",
         command_runner: CommandRunner | None = None,
     ):
         provider_store = DockerMySqlProviderConfigStore(

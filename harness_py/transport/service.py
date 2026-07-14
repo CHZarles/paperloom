@@ -22,17 +22,15 @@ class ResearchHarnessService:
         *,
         max_completion_tokens: int = 3000,
         corpus_limit: int = 1000,
-        runtime_name: str = "",
         provider=None,
         harness=None,
         corpus_store=None,
     ):
         self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
-        self.runtime_name = runtime_name or os.getenv("RESEARCH_HARNESS_RUNTIME", "agents_sdk")
+        self.runtime_name = "agents_sdk"
         self.harness = harness or LiveResearchChatHarness(
             build_harness_runtime(
                 self.provider,
-                self.runtime_name,
                 max_completion_tokens=max_completion_tokens,
             ),
         )
@@ -83,17 +81,15 @@ def serve(
     internal_token: str = "",
     max_completion_tokens: int = 3000,
     corpus_limit: int = 1000,
-    runtime_name: str = "",
 ) -> None:
     service = ResearchHarnessService(
         max_completion_tokens=max_completion_tokens,
         corpus_limit=corpus_limit,
-        runtime_name=runtime_name,
     )
     token = internal_token or os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "PaiSmartResearchHarness/1"
+        server_version = "PaperLoomResearchHarness/1"
 
         def do_GET(self) -> None:
             if self.path != "/health":

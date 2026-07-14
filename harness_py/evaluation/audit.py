@@ -12,11 +12,20 @@ def audit_dataset(dataset: GoldenDataset) -> JsonMap:
         page = child_map(anchor.get("element")).get("page")
         quote = str(child_map(anchor.get("selector")).get("exact_text") or "")
         normalized_quote = normalize_text(quote)
-        matched_refs = _unique_location_refs(
+        paper_documents = documents.get(paper_id, [])
+        element_matches = [
             document
-            for document in documents.get(paper_id, [])
-            if _matches_anchor(normalized_quote, page, document)
-        )
+            for document in paper_documents
+            if document.get("surface_kind") == "reading_element"
+            and _matches_anchor(normalized_quote, page, document)
+        ]
+        page_matches = [
+            document
+            for document in paper_documents
+            if document.get("surface_kind") == "page"
+            and _matches_anchor(normalized_quote, page, document)
+        ]
+        matched_refs = _unique_location_refs(element_matches or page_matches)
         status = _status_for_matches(matched_refs)
         results.append({
             "anchor_id": anchor_id,
@@ -49,6 +58,33 @@ def _documents_by_paper(dataset: GoldenDataset) -> dict[str, list[JsonMap]]:
                 "page": item.get("pageNumber"),
                 "location_ref": location_ref,
                 "text": text,
+                "surface_kind": "reading_element",
+            })
+        diagnostics = child_map(model.get("diagnostics"))
+        if int(diagnostics.get("pagesBuiltFromPhysicalProjection") or 0) <= 0:
+            continue
+        page_locations: dict[str, JsonMap] = {}
+        for raw_location in as_list(model.get("locations")):
+            location = child_map(raw_location)
+            page_number = location.get("pageNumber")
+            if (
+                str(location.get("locationType") or "").upper() == "PAGE"
+                and page_number is not None
+            ):
+                page_locations[str(page_number)] = location
+        for raw in as_list(model.get("pages")):
+            item = child_map(raw)
+            text = str(item.get("pageText") or "")
+            page_number = item.get("pageNumber")
+            if not text or page_number is None:
+                continue
+            location = page_locations.get(str(page_number), {})
+            location_ref = str(location.get("locationRef") or f"{paper_id}:page:{page_number}")
+            result.setdefault(paper_id, []).append({
+                "page": page_number,
+                "location_ref": location_ref,
+                "text": text,
+                "surface_kind": "page",
             })
     return result
 

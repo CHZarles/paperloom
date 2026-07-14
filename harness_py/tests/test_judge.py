@@ -17,7 +17,6 @@ from harness_py.evaluation.judge import (
     evaluate_calibration,
     load_calibration_cases,
 )
-from harness_py.orchestration.legacy.llm import ChatModel, ChatTurn, ToolCall
 
 
 LABELS_PATH = Path("research/golden-data/human-labels.yaml")
@@ -75,7 +74,7 @@ class LLMJudgeTest(unittest.TestCase):
         self.case = load_calibration_cases(LABELS_PATH).cases[0]
 
     def test_judge_uses_one_required_tool_call_and_derives_overall(self) -> None:
-        model = _QueueChatModel([_judgment_arguments("pass", "pass", "pass")])
+        model = _QueueJudgeModel([_judgment_arguments("pass", "pass", "pass")])
 
         verdict = LLMJudge(model, max_tokens=700).judge(self.case)
 
@@ -83,51 +82,39 @@ class LLMJudgeTest(unittest.TestCase):
         self.assertEqual("Synthetic judge rationale.", verdict.rationale)
         self.assertEqual([], verdict.grounding_issues)
         self.assertEqual(1, len(model.calls))
-        self.assertEqual("submit_judgment", model.calls[0]["required_tool_name"])
+        self.assertEqual("submit_judgment", model.calls[0]["tool"]["function"]["name"])
         prompt_packet = json.loads(model.calls[0]["messages"][-1]["content"])
         self.assertEqual(self.case.case_id, prompt_packet["case_id"])
         self.assertNotIn("judgment", prompt_packet)
         self.assertNotIn(self.case.human.note, model.calls[0]["messages"][-1]["content"])
 
     def test_judge_rejects_missing_wrong_or_invalid_tool_results(self) -> None:
-        turns = [
-            ChatTurn(content="pass"),
-            ChatTurn(content="", tool_calls=[ToolCall("wrong", "other_tool", {})]),
-            ChatTurn(
-                content="",
-                tool_calls=[ToolCall(
-                    "invalid",
-                    "submit_judgment",
-                    _judgment_arguments("maybe", "pass", "pass"),
-                )],
-            ),
-            ChatTurn(
-                content="",
-                tool_calls=[ToolCall(
-                    "inconsistent_grounding",
-                    "submit_judgment",
-                    {
-                        **_judgment_arguments("pass", "pass", "pass"),
-                        "grounding_issues": ["An unsupported factual clause."],
-                    },
-                )],
-            ),
+        tool_call_sets = [
+            [],
+            [{"name": "other_tool", "arguments": {}}],
+            [{
+                "name": "submit_judgment",
+                "arguments": _judgment_arguments("maybe", "pass", "pass"),
+            }],
+            [{
+                "name": "submit_judgment",
+                "arguments": {
+                    **_judgment_arguments("pass", "pass", "pass"),
+                    "grounding_issues": ["An unsupported factual clause."],
+                },
+            }],
         ]
 
-        for turn in turns:
-            with self.subTest(turn=turn), self.assertRaises(JudgeProtocolError):
-                LLMJudge(_StaticChatModel(turn)).judge(self.case)
+        for tool_calls in tool_call_sets:
+            with self.subTest(tool_calls=tool_calls), self.assertRaises(JudgeProtocolError):
+                LLMJudge(_StaticJudgeModel(tool_calls)).judge(self.case)
 
     def test_judge_accepts_an_omitted_optional_rationale(self) -> None:
         arguments = _judgment_arguments("pass", "pass", "pass")
         arguments.pop("rationale")
-        turn = ChatTurn(content="", tool_calls=[ToolCall(
-            "no_rationale",
-            "submit_judgment",
-            arguments,
-        )])
+        tool_calls = [{"name": "submit_judgment", "arguments": arguments}]
 
-        verdict = LLMJudge(_StaticChatModel(turn)).judge(self.case)
+        verdict = LLMJudge(_StaticJudgeModel(tool_calls)).judge(self.case)
 
         self.assertEqual("", verdict.rationale)
 
@@ -189,7 +176,7 @@ class AgreementReportTest(unittest.TestCase):
             )
             for case in calibration.cases
         ]
-        model = _QueueChatModel(responses)
+        model = _QueueJudgeModel(responses)
 
         class StubProvider:
             def public_diagnostics(self):
@@ -232,31 +219,29 @@ def _verdict(decision: str, task: str, grounding: str) -> JudgeVerdict:
     return JudgeVerdict.from_dict(_judgment_arguments(decision, task, grounding))
 
 
-class _QueueChatModel(ChatModel):
+class _QueueJudgeModel:
     def __init__(self, arguments: list[dict]) -> None:
         self.arguments = deque(arguments)
         self.calls: list[dict] = []
 
-    def complete_required_tool(self, messages, tools, required_tool_name, max_tokens):
+    def complete_judgment(self, messages, tool, max_tokens):
         self.calls.append({
             "messages": messages,
-            "tools": tools,
-            "required_tool_name": required_tool_name,
+            "tool": tool,
             "max_tokens": max_tokens,
         })
-        return ChatTurn(content="", tool_calls=[ToolCall(
-            id=f"judge_{len(self.calls)}",
-            name="submit_judgment",
-            arguments=self.arguments.popleft(),
-        )])
+        return [{
+            "name": "submit_judgment",
+            "arguments": self.arguments.popleft(),
+        }]
 
 
-class _StaticChatModel(ChatModel):
-    def __init__(self, turn: ChatTurn) -> None:
-        self.turn = turn
+class _StaticJudgeModel:
+    def __init__(self, tool_calls: list[dict]) -> None:
+        self.tool_calls = tool_calls
 
-    def complete_required_tool(self, messages, tools, required_tool_name, max_tokens):
-        return self.turn
+    def complete_judgment(self, messages, tool, max_tokens):
+        return self.tool_calls
 
 
 class _SequenceJudge:

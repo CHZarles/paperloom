@@ -1,3 +1,9 @@
+"""跨回合、可序列化的产品会话状态。
+
+OpenAI Agents SDK Session 只负责当前 Run 的消息读写；这个 ``ConversationState`` 才是 Java
+或 CLI 应保存并在下一轮传回的长期状态。
+"""
+
 from __future__ import annotations
 
 import json
@@ -9,6 +15,8 @@ from ..core.models import GoldenDataset, JsonMap, as_list, child_map
 
 @dataclass(frozen=True)
 class ConversationState:
+    """一个研究对话在多次请求之间需要保留的最小状态。"""
+
     conversation_id: str
     turn_index: int = 0
     scope_paper_ids: list[str] = field(default_factory=list)
@@ -78,6 +86,8 @@ class ConversationState:
         return scoped or sorted(known)
 
     def model_messages(self) -> list[JsonMap]:
+        """只返回可以重新交给模型的用户/助手文本历史。"""
+
         return [
             {"role": item["role"], "content": item["content"]}
             for item in self.message_history
@@ -117,6 +127,12 @@ class ConversationState:
         run: JsonMap,
         user_message: str,
     ) -> ConversationState:
+        """仅根据已经接受的 Run 生成下一轮状态。
+
+        核心原则是“答案引用什么，下一轮才记住什么”。本轮搜索过但没有进入已接受答案的
+        临时论文和位置，不会自动升级为长期会话事实。
+        """
+
         answer = child_map(run.get("research_answer"))
         run_id = str(run.get("run_id") or "")
         ledger_items = {

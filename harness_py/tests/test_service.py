@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import unittest
 
+from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
+from harness_py.orchestration.runtime import TurnExecutionResult
 from harness_py.transport.service import ResearchHarnessService
 from harness_py.tests import test_harness_py as _harness_tests
 
@@ -19,11 +21,16 @@ class ServiceTest(unittest.TestCase):
             def public_diagnostics(self):
                 return {"provider": "test"}
 
+        class FixtureRuntime:
+            def run_turn(self, turn):
+                run = GoldenFixtureHarness().run_case(turn.dataset, turn.dataset.cases[0])
+                run["run_id"] = turn.run_id
+                return TurnExecutionResult(run=run)
+
         service = ResearchHarnessService(
             provider=Provider(),
-            harness=LiveResearchChatHarness(_harness_tests._ReactFixtureModel()),
+            harness=LiveResearchChatHarness(FixtureRuntime()),
             corpus_store=CorpusStore(),
-            runtime_name="legacy",
         )
 
         response = service.run_turn({

@@ -1,3 +1,10 @@
+"""OpenAI-compatible Provider 到 Agents SDK ``Model`` 的适配层。
+
+Agents SDK 不要求底层一定是 OpenAI 托管模型；只要实现 SDK 的 Model 契约即可。本项目的
+MiniMax 使用 Chat Completions；Codex/OpenAI 类 Provider 可以使用 Responses API。两条路径
+共享请求观测和“纯文本响应继续走工具协议”的兼容逻辑。
+"""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +14,12 @@ from typing import Any, Iterator
 from uuid import uuid4
 
 import httpx
-from agents import ItemHelpers, ModelSettings, OpenAIChatCompletionsModel
+from agents import (
+    ItemHelpers,
+    ModelSettings,
+    OpenAIChatCompletionsModel,
+    OpenAIResponsesModel,
+)
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseFunctionToolCall
 
@@ -16,7 +28,7 @@ from .context import ResearchRunContext
 
 
 _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(
-    "paismart_agents_context",
+    "paperloom_agents_context",
     default=None,
 )
 TEXT_NUDGE_TOOL_NAME = "_continue_research_turn"
@@ -24,6 +36,12 @@ TEXT_NUDGE_TOOL_NAME = "_continue_research_turn"
 
 @contextmanager
 def bind_research_context(context: ResearchRunContext) -> Iterator[None]:
+    """让底层 HTTP hooks 能取得当前 Run Context。
+
+    ``ContextVar`` 会跟随 async 调用链传播，但不同并发任务之间相互隔离，适合把请求级状态
+    传到 httpx event hook，而无需修改 SDK 的 ``get_response`` 方法签名。
+    """
+
     token = _ACTIVE_CONTEXT.set(context)
     try:
         yield
@@ -31,42 +49,10 @@ def bind_research_context(context: ResearchRunContext) -> Iterator[None]:
         _ACTIVE_CONTEXT.reset(token)
 
 
-class MiniMaxAgentsModel(OpenAIChatCompletionsModel):
-    """Agents SDK Chat Completions adapter configured for the active MiniMax provider."""
+class _ObservedOpenAIModel:
+    """共享 OpenAI-compatible 模型的记录、关闭和工具协议兼容逻辑。"""
 
-    def __init__(
-        self,
-        provider: ProviderConfig,
-        *,
-        timeout_seconds: int = 90,
-        max_attempts: int = 2,
-    ) -> None:
-        self.provider = provider
-        http_client = httpx.AsyncClient(event_hooks={
-            "request": [self._record_request],
-            "response": [self._record_response],
-        })
-        client = AsyncOpenAI(
-            api_key=provider.api_key,
-            base_url=provider.api_base_url.rstrip("/") + "/",
-            timeout=timeout_seconds,
-            max_retries=max(0, max_attempts - 1),
-            http_client=http_client,
-        )
-        super().__init__(model=provider.model, openai_client=client)
-
-    def research_settings(self, max_completion_tokens: int) -> ModelSettings:
-        extra_body = None
-        if self.provider.model.casefold() == "minimax-m3":
-            extra_body = {"thinking": {"type": "adaptive"}}
-        return ModelSettings(
-            temperature=0.0,
-            top_p=1.0,
-            max_tokens=max_completion_tokens,
-            tool_choice="required",
-            parallel_tool_calls=True,
-            extra_body=extra_body,
-        )
+    provider: ProviderConfig
 
     async def close(self) -> None:
         await self._client.close()
@@ -88,8 +74,10 @@ class MiniMaxAgentsModel(OpenAIChatCompletionsModel):
                     },
                 )
             raise
+
         if any(getattr(item, "type", "") == "function_call" for item in response.output):
             return response
+
         text = "\n".join(
             value
             for value in (ItemHelpers.extract_text(item) for item in response.output)
@@ -140,7 +128,96 @@ class MiniMaxAgentsModel(OpenAIChatCompletionsModel):
         )
 
 
+class MiniMaxAgentsModel(_ObservedOpenAIModel, OpenAIChatCompletionsModel):
+    """Agents SDK Chat Completions Model for the current MiniMax Provider."""
+
+    def __init__(
+        self,
+        provider: ProviderConfig,
+        *,
+        timeout_seconds: int = 90,
+        max_attempts: int = 2,
+    ) -> None:
+        self.provider = provider
+
+        client = _client(self, provider, timeout_seconds, max_attempts)
+
+        # 父类负责把 SDK Model 输入翻译成 Chat Completions 请求，再把响应翻译回 SDK item。
+        super().__init__(model=provider.model, openai_client=client)
+
+    def research_settings(self, max_completion_tokens: int) -> ModelSettings:
+        """返回适合研究工具循环的供应商设置。"""
+
+        extra_body = None
+        if self.provider.model.casefold() == "minimax-m3":
+            # 这是 MiniMax 特有参数，所以留在 Model 适配层，不扩散到 Runtime 和业务工具。
+            extra_body = {"thinking": {"type": "adaptive"}}
+        return ModelSettings(
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=max_completion_tokens,
+            # 每一步必须产生工具调用；最终用户答案也通过 submit_research_answer 工具提交。
+            tool_choice="required",
+            # 允许模型一次规划多个工具；Runtime 会为了授权状态一致性将实际执行串行化。
+            parallel_tool_calls=True,
+            extra_body=extra_body,
+        )
+
+
+
+class OpenAIResponsesAgentsModel(_ObservedOpenAIModel, OpenAIResponsesModel):
+    """Agents SDK Responses API model for GPT/Codex-compatible Providers."""
+
+    def __init__(
+        self,
+        provider: ProviderConfig,
+        *,
+        timeout_seconds: int = 90,
+        max_attempts: int = 2,
+    ) -> None:
+        self.provider = provider
+        client = _client(self, provider, timeout_seconds, max_attempts)
+        super().__init__(model=provider.model, openai_client=client)
+
+    def research_settings(self, max_completion_tokens: int) -> ModelSettings:
+        return ModelSettings(
+            max_tokens=max_completion_tokens,
+            tool_choice="required",
+            parallel_tool_calls=True,
+            store=False,
+        )
+
+
+def provider_agents_model(provider: ProviderConfig):
+    """Create the SDK model matching the Provider's declared wire API."""
+
+    if provider.api_style.casefold() in {"responses", "openai-responses"}:
+        return OpenAIResponsesAgentsModel(provider)
+    return MiniMaxAgentsModel(provider)
+
+
+def _client(
+    owner: _ObservedOpenAIModel,
+    provider: ProviderConfig,
+    timeout_seconds: int,
+    max_attempts: int,
+) -> AsyncOpenAI:
+    http_client = httpx.AsyncClient(event_hooks={
+        "request": [owner._record_request],
+        "response": [owner._record_response],
+    })
+    return AsyncOpenAI(
+        api_key=provider.api_key,
+        base_url=provider.api_base_url.rstrip("/") + "/",
+        timeout=timeout_seconds,
+        max_retries=max(0, max_attempts - 1),
+        http_client=http_client,
+    )
+
+
 def _safe_headers(headers: httpx.Headers) -> dict[str, str]:
+    """删除认证和 Cookie，避免诊断数据泄露密钥。"""
+
     blocked = {"authorization", "cookie", "set-cookie", "x-api-key"}
     return {
         key: value
@@ -150,6 +227,8 @@ def _safe_headers(headers: httpx.Headers) -> dict[str, str]:
 
 
 def _json_or_text(value: str) -> Any:
+    """优先以 JSON 保存传输正文；不是 JSON 时保留原始文本。"""
+
     try:
         return json.loads(value)
     except json.JSONDecodeError:

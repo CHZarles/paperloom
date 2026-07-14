@@ -86,7 +86,7 @@ class DockerMySqlProviderConfigStore(ProviderConfigStore):
         self,
         env_path: str | Path = ".env",
         container_env: str = "HARNESS_MYSQL_CONTAINER",
-        default_container: str = "pai_smart_mysql",
+        default_container: str = "paperloom-mysql",
     ):
         self.env_path = Path(env_path)
         self.container = os.getenv(container_env, default_container)
@@ -199,7 +199,7 @@ def _database_name(jdbc_url: str) -> str:
     if match:
         return match.group(1)
     parsed = urlparse(jdbc_url.replace("jdbc:", "", 1))
-    return parsed.path.lstrip("/") or "paismart"
+    return parsed.path.lstrip("/") or "paperloom"
 
 
 def _mysql_quote(value: str) -> str:

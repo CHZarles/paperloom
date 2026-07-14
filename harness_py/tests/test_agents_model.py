@@ -11,7 +11,12 @@ from agents import FunctionTool, ModelTracing
 
 from harness_py.evaluation.eval_recorder import EvalRecorder
 from harness_py.orchestration.agents.context import ResearchRunContext
-from harness_py.orchestration.agents.model import MiniMaxAgentsModel, bind_research_context
+from harness_py.orchestration.agents.model import (
+    MiniMaxAgentsModel,
+    OpenAIResponsesAgentsModel,
+    bind_research_context,
+    provider_agents_model,
+)
 from harness_py.orchestration.memory import ResearchMemory
 from harness_py.orchestration.runtime import TurnExecutionInput
 from harness_py.transport.provider_config import ProviderConfig
@@ -19,6 +24,23 @@ from harness_py.tests import test_harness_py as _harness_tests
 
 
 class AgentsModelTest(unittest.TestCase):
+    def test_provider_factory_selects_responses_api_for_codex_provider(self) -> None:
+        model = provider_agents_model(ProviderConfig(
+            scope="llm",
+            provider="codex",
+            api_style="responses",
+            api_base_url="https://example.invalid/v1",
+            model="gpt-5.3-codex-spark",
+            api_key="test-key",
+        ))
+        try:
+            self.assertIsInstance(model, OpenAIResponsesAgentsModel)
+            settings = model.research_settings(2048)
+            self.assertEqual("required", settings.tool_choice)
+            self.assertEqual(2048, settings.max_tokens)
+        finally:
+            asyncio.run(model.close())
+
     def test_minimax_adapter_preserves_required_tool_and_thinking_settings(self) -> None:
         captured: dict = {}
 

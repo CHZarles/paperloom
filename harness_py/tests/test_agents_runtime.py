@@ -50,7 +50,6 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertTrue(result["capture_ok"])
         self.assertEqual(run["run_id"], result["result"]["run_id"])
 
-
 class _ScriptedAgentsModel(Model):
     def __init__(self) -> None:
         self.call_count = 0

@@ -90,7 +90,11 @@ class BehaviorScorer:
         expectation = case_expect(case)
         evidence, errors = _validated_evidence(dataset, run)
         paper_ids = {str(item.get("paper_id")) for item in evidence if item.get("paper_id")}
-        anchor_ids = {str(item.get("matched_anchor_id")) for item in evidence if item.get("matched_anchor_id")}
+        anchor_ids = {
+            anchor_id
+            for item in evidence
+            for anchor_id in _matched_anchor_ids(item)
+        }
         expected_papers = child_map(expectation.get("papers"))
         expected_evidence = child_map(expectation.get("evidence"))
         for paper_id in as_list(expected_papers.get("required")):
@@ -147,7 +151,7 @@ class BehaviorScorer:
                 anchor_evidence = {
                     evidence_id
                     for evidence_id, item in evidence_by_id.items()
-                    if item.get("matched_anchor_id") == anchor_id
+                    if anchor_id in _matched_anchor_ids(item)
                 }
                 if not (anchor_evidence & cited):
                     errors.append(f"REQUIRED_ANCHOR_NOT_CITED:{anchor_id}")
@@ -176,24 +180,40 @@ def _validated_evidence(dataset: GoldenDataset, run: JsonMap) -> tuple[list[Json
     evidence: list[JsonMap] = []
     errors: list[str] = []
     for item in _accepted_evidence(run):
-        anchor_id = str(item.get("matched_anchor_id") or "")
-        if not anchor_id:
+        anchor_ids = _matched_anchor_ids(item)
+        if not anchor_ids:
             evidence.append(item)
             continue
-        anchor = dataset.anchors_by_id.get(anchor_id)
-        if anchor is None:
-            errors.append(f"UNKNOWN_MATCHED_ANCHOR:{anchor_id}")
-            continue
-        expected_paper_id = str(anchor.get("paper_id") or "")
         actual_paper_id = str(item.get("paper_id") or "")
-        if actual_paper_id != expected_paper_id:
-            errors.append(
-                f"MATCHED_ANCHOR_PAPER_MISMATCH:{anchor_id}:"
-                f"expected={expected_paper_id}:actual={actual_paper_id}"
-            )
-            continue
-        evidence.append(item)
+        valid = True
+        for anchor_id in anchor_ids:
+            anchor = dataset.anchors_by_id.get(anchor_id)
+            if anchor is None:
+                errors.append(f"UNKNOWN_MATCHED_ANCHOR:{anchor_id}")
+                valid = False
+                continue
+            expected_paper_id = str(anchor.get("paper_id") or "")
+            if actual_paper_id != expected_paper_id:
+                errors.append(
+                    f"MATCHED_ANCHOR_PAPER_MISMATCH:{anchor_id}:"
+                    f"expected={expected_paper_id}:actual={actual_paper_id}"
+                )
+                valid = False
+        if valid:
+            evidence.append(item)
     return evidence, errors
+
+
+def _matched_anchor_ids(item: JsonMap) -> set[str]:
+    matched = {
+        str(anchor_id)
+        for anchor_id in as_list(item.get("matched_anchor_ids"))
+        if anchor_id
+    }
+    singular = str(item.get("matched_anchor_id") or "")
+    if singular:
+        matched.add(singular)
+    return matched
 
 
 def _actual_outcome(run: JsonMap) -> str:

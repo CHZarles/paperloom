@@ -1,3 +1,9 @@
+"""产品编排层与具体 Agent 实现之间的最小运行时契约。
+
+上层只认识 ``HarnessRuntime.run_turn``，具体 Agents SDK 细节不会扩散到产品编排层。新能力
+通常应扩展 Agent、Tool 或 Context，而不是不断扩大这个接口。
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,13 +11,11 @@ from typing import TYPE_CHECKING, Callable, Protocol
 from uuid import uuid4
 
 from ..core.models import GoldenDataset, JsonMap
-from .legacy.harness import ResearchAgentHarness
 from .memory import ResearchMemory
 
 if TYPE_CHECKING:
     from ..evaluation.eval_recorder import EvalRecorder
     from ..transport.provider_config import ProviderConfig
-    from .legacy.llm import ChatModel
 
 
 ProgressListener = Callable[[JsonMap], None]
@@ -24,6 +28,11 @@ def new_run_id() -> str:
 
 @dataclass(frozen=True)
 class TurnExecutionInput:
+    """执行一个研究回合所需的全部输入。
+
+    该对象冻结后交给 Runtime；本轮可变状态由 ResearchRunContext 另行创建。
+    """
+
     dataset: GoldenDataset
     case_id: str
     run_id: str
@@ -37,53 +46,28 @@ class TurnExecutionInput:
 
 @dataclass(frozen=True)
 class TurnExecutionResult:
+    """Runtime 的统一返回值，当前只包含标准化 Harness Run。"""
+
     run: JsonMap
 
 
 class HarnessRuntime(Protocol):
+    """所有研究运行时必须实现的唯一方法。"""
+
     def run_turn(self, turn: TurnExecutionInput) -> TurnExecutionResult:
         ...
 
 
-class LegacyHarnessRuntime:
-    """Compatibility adapter around the hand-written ReAct loop."""
-
-    def __init__(self, model: ChatModel, max_completion_tokens: int = 3000):
-        self.agent = ResearchAgentHarness(model, max_completion_tokens=max_completion_tokens)
-
-    def run_turn(self, turn: TurnExecutionInput) -> TurnExecutionResult:
-        run = self.agent.run_turn(
-            turn.dataset,
-            case_id=turn.case_id,
-            question=turn.question,
-            conversation_messages=turn.conversation_messages,
-            prior_evidence=turn.research_memory.evidence_items_by_id,
-            selected_paper_ids=turn.research_memory.selected_paper_ids,
-            progress_listener=turn.progress_listener,
-            should_cancel=turn.should_cancel,
-        )
-        run["run_id"] = turn.run_id
-        return TurnExecutionResult(run=run)
-
-
 def build_harness_runtime(
     provider: ProviderConfig,
-    runtime_name: str,
     *,
     max_completion_tokens: int = 3000,
 ) -> HarnessRuntime:
-    if runtime_name == "legacy":
-        from .legacy.llm import MiniMaxChatModel
+    """Construct the only production runtime: OpenAI Agents SDK."""
 
-        return LegacyHarnessRuntime(
-            MiniMaxChatModel(provider, temperature=0.0, top_p=1.0),
-            max_completion_tokens=max_completion_tokens,
-        )
-    if runtime_name == "agents_sdk":
-        from .agents.runtime import AgentsSdkHarnessRuntime
+    from .agents.runtime import AgentsSdkHarnessRuntime
 
-        return AgentsSdkHarnessRuntime(
-            provider,
-            max_completion_tokens=max_completion_tokens,
-        )
-    raise ValueError(f"unknown harness runtime: {runtime_name}")
+    return AgentsSdkHarnessRuntime(
+        provider,
+        max_completion_tokens=max_completion_tokens,
+    )

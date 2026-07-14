@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from ..core.models import JsonMap, as_list, child_map
-from ..orchestration.legacy.llm import ChatModel
+from .judge_model import JudgeModel
 
 
 HUMAN_LABEL_SCHEMA_VERSION = "harness-human-labels/v1"
@@ -156,12 +156,12 @@ class JudgeVerdict:
 
 
 class LLMJudge:
-    def __init__(self, model: ChatModel, max_tokens: int = 1200):
+    def __init__(self, model: JudgeModel, max_tokens: int = 1200):
         self.model = model
         self.max_tokens = max_tokens
 
     def judge(self, case: CalibrationCase) -> JudgeVerdict:
-        turn = self.model.complete_required_tool(
+        tool_calls = self.model.complete_judgment(
             [
                 {"role": "system", "content": _judge_system_prompt()},
                 {
@@ -169,18 +169,18 @@ class LLMJudge:
                     "content": json.dumps(case.judge_packet(), ensure_ascii=False, sort_keys=True),
                 },
             ],
-            [_judgment_tool()],
-            "submit_judgment",
+            _judgment_tool(),
             self.max_tokens,
         )
-        if len(turn.tool_calls) != 1:
+        if len(tool_calls) != 1:
             raise JudgeProtocolError("judge must return exactly one submit_judgment tool call")
-        tool_call = turn.tool_calls[0]
-        if tool_call.name != "submit_judgment":
+        tool_call = child_map(tool_calls[0])
+        name = str(tool_call.get("name") or "")
+        if name != "submit_judgment":
             raise JudgeProtocolError(
-                f"judge returned tool {tool_call.name!r}; expected 'submit_judgment'"
+                f"judge returned tool {name!r}; expected 'submit_judgment'"
             )
-        return JudgeVerdict.from_dict(tool_call.arguments)
+        return JudgeVerdict.from_dict(child_map(tool_call.get("arguments")))
 
 
 def load_calibration_cases(

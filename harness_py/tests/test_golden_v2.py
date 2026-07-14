@@ -105,8 +105,24 @@ class GoldenV2Test(unittest.TestCase):
         self.assertTrue(all(item["status"] == "pass" for item in report["anchors"]))
         self.assertTrue(all(len(item["matched_location_refs"]) == 1 for item in report["anchors"]), report)
 
+    def test_anchor_normalization_ignores_parser_inline_markup(self) -> None:
+        from harness_py.corpus.pages import contains_normalized_phrase, normalize_text
+
+        text = normalize_text("Using <sup>GAIA</sup>’s methodology, we devise 466 questions")
+        quote = normalize_text("Using GAIA's methodology, we devise 466 questions")
+
+        self.assertTrue(contains_normalized_phrase(text, quote))
+
+    def test_anchor_normalization_repairs_parser_line_end_word_splits(self) -> None:
+        from harness_py.corpus.pages import contains_normalized_phrase, normalize_text
+
+        text = normalize_text("2,294 software engi- neering problems from GitHub")
+        quote = normalize_text("2,294 software engineering problems from GitHub")
+
+        self.assertTrue(contains_normalized_phrase(text, quote))
+
     def test_runtime_anchor_matcher_rejects_partial_overlap_unrelated_passage(self) -> None:
-        from harness_py.corpus.tools import ReadingDocument, _match_anchor
+        from harness_py.corpus.tools import ReadingDocument, _match_anchors
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         document = ReadingDocument(
@@ -121,10 +137,10 @@ class GoldenV2Test(unittest.TestCase):
             source_kind="reading_element",
         )
 
-        self.assertIsNone(_match_anchor(document, [anchor]))
+        self.assertEqual((), _match_anchors(document, [anchor]))
 
     def test_runtime_anchor_matcher_requires_exact_quote_on_the_authored_page(self) -> None:
-        from harness_py.corpus.tools import ReadingDocument, _match_anchor
+        from harness_py.corpus.tools import ReadingDocument, _match_anchors
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         quote = anchor["selector"]["exact_text"]
@@ -142,12 +158,66 @@ class GoldenV2Test(unittest.TestCase):
                 source_kind="reading_element",
             )
 
-        self.assertIsNone(_match_anchor(document(None, quote), [anchor]))
-        self.assertIsNone(_match_anchor(document(6, quote), [anchor]))
+        self.assertEqual((), _match_anchors(document(None, quote), [anchor]))
+        self.assertEqual((), _match_anchors(document(6, quote), [anchor]))
         self.assertEqual(
-            "transformer_adam_training_params_span",
-            _match_anchor(document(7, f"Setup: {quote.upper()}."), [anchor]),
+            ("transformer_adam_training_params_span",),
+            _match_anchors(document(7, f"Setup: {quote.upper()}."), [anchor]),
         )
+
+    def test_runtime_anchor_matcher_keeps_multiple_anchors_in_one_element(self) -> None:
+        from harness_py.corpus.tools import ReadingDocument, _match_anchors
+
+        anchors = [{
+            "anchor_id": anchor_id,
+            "element": {"page": 1},
+            "selector": {"exact_text": quote},
+        } for anchor_id, quote in [
+            ("summary_limit", "focus on the final success rate"),
+            ("progress_metric", "fine-grained progress rate metric"),
+        ]]
+        document = ReadingDocument(
+            paper_id="agentboard_2024",
+            title="AgentBoard",
+            paper_version="fixture",
+            location_ref="agentboard_abstract",
+            element_type="paragraph",
+            page=1,
+            section="Abstract",
+            text=(
+                "Current frameworks focus on the final success rate. "
+                "AgentBoard offers a fine-grained progress rate metric."
+            ),
+            source_kind="reading_element",
+        )
+
+        self.assertEqual(
+            ("summary_limit", "progress_metric"),
+            _match_anchors(document, anchors),
+        )
+
+    def test_scorer_accepts_multiple_required_anchors_from_one_evidence_item(self) -> None:
+        case = deepcopy(next(
+            case for case in self.dataset.cases
+            if case["id"] == "transformer_bert_confirmation_followup_001"
+        ))
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        anchor_ids = {
+            "bert_transformer_encoder_background",
+            "bert_masked_lm_pretraining",
+        }
+        items = run["evidence_ledger"]["items"]
+        bert_items = [item for item in items if item.get("matched_anchor_id") in anchor_ids]
+        self.assertEqual(2, len(bert_items))
+        retained, removed = bert_items
+        retained["matched_anchor_ids"] = sorted(anchor_ids)
+        items.remove(removed)
+        cited = run["research_answer"]["cited_evidence_ids"]
+        cited.remove(removed["evidence_id"])
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
 
     def test_loader_rejects_an_anchor_without_a_positive_parseable_page(self) -> None:
         manifest = deepcopy(self.dataset.manifest)
@@ -185,41 +255,162 @@ class GoldenV2Test(unittest.TestCase):
 
         tagged: dict[str, list[str]] = {}
         for document in ReadingCorpusTools(self.dataset).documents:
-            if not document.matched_anchor_id:
+            if not document.matched_anchor_ids:
                 continue
-            anchor = self.dataset.anchors_by_id[document.matched_anchor_id]
-            anchor_page = anchor["element"]["page"]
-            normalized_quote = _normalize(anchor["selector"]["exact_text"])
-            normalized_text = _normalize(document.text)
+            for anchor_id in document.matched_anchor_ids:
+                anchor = self.dataset.anchors_by_id[anchor_id]
+                anchor_page = anchor["element"]["page"]
+                normalized_quote = _normalize(anchor["selector"]["exact_text"])
+                normalized_text = _normalize(document.text)
 
-            self.assertIsNotNone(document.page, document.location_ref)
-            self.assertEqual(str(anchor_page), str(document.page), document.location_ref)
-            self.assertIn(
-                f" {normalized_quote} ",
-                f" {normalized_text} ",
-                document.location_ref,
-            )
-            tagged.setdefault(document.matched_anchor_id, []).append(document.location_ref)
+                self.assertIsNotNone(document.page, document.location_ref)
+                self.assertEqual(str(anchor_page), str(document.page), document.location_ref)
+                self.assertIn(
+                    f" {normalized_quote} ",
+                    f" {normalized_text} ",
+                    document.location_ref,
+                )
+                tagged.setdefault(anchor_id, []).append(document.location_ref)
 
         self.assertEqual(set(self.dataset.anchors_by_id), set(tagged), tagged)
         self.assertTrue(all(len(location_refs) == 1 for location_refs in tagged.values()), tagged)
 
-    def test_broad_location_search_keeps_deeper_candidates_from_relevant_sections(self) -> None:
+    def test_physical_page_projection_grounds_a_cross_page_semantic_element(self) -> None:
+        from harness_py.corpus.tools import ReadingCorpusTools
+
+        paper_id = "bert_2018"
+        anchor_id = "cross_page_anchor"
+        model = {
+            "paper_id": paper_id,
+            "model_version": "physical-pages-v1",
+            "diagnostics": {
+                "pagesBuiltFromPhysicalProjection": 2,
+                "pagesBuiltFromSemanticProjection": 0,
+            },
+            "reading_elements": [{
+                "readingElementId": "semantic-paragraph",
+                "elementType": "PARAGRAPH",
+                "pageNumber": 1,
+                "sectionTitle": "Implementation",
+                "searchableText": (
+                    "The paragraph starts on page one and continues with scripts "
+                    "that reset the environment to a deterministic initial state."
+                ),
+            }],
+            "pages": [{
+                "pageNumber": 1,
+                "pageText": "The paragraph starts on page one",
+                "parserName": "MinerU",
+                "parserVersion": "fixture",
+            }, {
+                "pageNumber": 2,
+                "pageText": (
+                    "and continues with scripts that reset the environment "
+                    "to a deterministic initial state."
+                ),
+                "parserName": "MinerU",
+                "parserVersion": "fixture",
+            }],
+            "locations": [{
+                "locationRef": "page-ref-1",
+                "locationType": "PAGE",
+                "pageNumber": 1,
+            }, {
+                "locationRef": "page-ref-2",
+                "locationType": "PAGE",
+                "pageNumber": 2,
+            }],
+        }
+        anchor = {
+            "anchor_id": anchor_id,
+            "paper_id": paper_id,
+            "element": {"page": 2},
+            "selector": {
+                "exact_text": "reset the environment to a deterministic initial state",
+            },
+        }
+        dataset = replace(
+            self.dataset,
+            reading_models_by_paper_id={paper_id: model},
+            anchors_by_id={anchor_id: anchor},
+        )
+        tools = ReadingCorpusTools(dataset)
+        tools.search_paper_candidates({"paper_ids": [paper_id], "limit": 1})
+
+        result = tools.find_reading_locations({
+            "paper_ids": [paper_id],
+            "query_text": "scripts reset environment deterministic initial state",
+            "top_k": 8,
+        })
+
+        self.assertIn("page-ref-2", [item["location_ref"] for item in result["locations"]])
+        grounded = tools.documents_by_location["page-ref-2"]
+        self.assertEqual((anchor_id,), grounded.matched_anchor_ids)
+        self.assertEqual(2, grounded.page)
+
+    def test_expanded_multi_paper_query_keeps_both_human_gap_anchors(self) -> None:
+        from harness_py.corpus.tools import ReadingCorpusTools
+
+        dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
+        tools = ReadingCorpusTools(dataset)
+        paper_ids = ["gaia_2024", "webarena_2024"]
+        tools.authorized_paper_ids.update(paper_ids)
+
+        result = tools.find_reading_locations({
+            "element_types": ["paragraph", "table"],
+            "paper_ids": paper_ids,
+            "query_text": "human performance gap",
+            "top_k": 8,
+        })
+        matched = {
+            anchor_id
+            for item in result["locations"]
+            for anchor_id in tools.documents_by_location[
+                item["location_ref"]
+            ].matched_anchor_ids
+        }
+
+        self.assertTrue({
+            "gaia_human_gpt4_gap",
+            "webarena_gpt4_human_gap",
+        }.issubset(matched), matched)
+
+    def test_multifacet_location_search_keeps_architecture_and_training_candidates(self) -> None:
         from harness_py.corpus.tools import ReadingCorpusTools
 
         tools = ReadingCorpusTools(self.dataset)
-        tools.search_paper_candidates({"paper_ids": ["bert_2018"], "limit": 1})
+        tools.search_paper_candidates({
+            "paper_ids": ["attention_is_all_you_need_2017", "bert_2018"],
+            "limit": 2,
+        })
 
-        result = tools.find_reading_locations({
+        bert_result = tools.find_reading_locations({
             "paper_ids": ["bert_2018"],
-            "query_text": "bidirectional encoder masked language model next sentence prediction pre-training",
+            "query_text": (
+                "pre-training masked language model next sentence prediction "
+                "encoder-only bidirectional"
+            ),
             "top_k": 8,
         })
-        location_refs = [item["location_ref"] for item in result["locations"]]
+        bert_locations = [item["location_ref"] for item in bert_result["locations"]]
 
-        self.assertGreater(len(result["locations"]), 8)
-        self.assertIn("reading_element_ff1d8830cd7544d0a166daf8466cd287", location_refs)
-        self.assertLess(location_refs.index("reading_element_ff1d8830cd7544d0a166daf8466cd287"), 12)
+        comparison_result = tools.find_reading_locations({
+            "paper_ids": ["attention_is_all_you_need_2017", "bert_2018"],
+            "query_text": (
+                "encoder decoder bidirectional masked language model next sentence "
+                "prediction training objective"
+            ),
+            "element_types": ["paragraph", "heading", "table"],
+            "top_k": 20,
+        })
+        comparison_locations = [item["location_ref"] for item in comparison_result["locations"]]
+
+        self.assertEqual(12, len(bert_locations))
+        self.assertIn("reading_element_ff1d8830cd7544d0a166daf8466cd287", bert_locations)
+        self.assertEqual(20, len(comparison_locations))
+        self.assertIn("reading_element_d3f857764d464d7d931296ec82a0de85", comparison_locations)
+        self.assertIn("reading_element_3f7beee8c6f3400d81fdce44c3bae795", comparison_locations)
+        self.assertIn("reading_element_ff1d8830cd7544d0a166daf8466cd287", comparison_locations)
 
     def test_audit_reports_ambiguous_when_multiple_elements_match_the_same_anchor(self) -> None:
         from harness_py.evaluation.audit import audit_dataset

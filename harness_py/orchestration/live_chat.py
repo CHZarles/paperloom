@@ -1,3 +1,9 @@
+"""面向产品的一回合研究编排器。
+
+这层位于 HTTP/CLI 与具体 Agent Runtime 之间：它负责范围裁剪、输入组装、异常收口和
+ConversationState 更新，但不参与模型如何选择工具。
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -14,24 +20,18 @@ from ..core.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stab
 from ..evaluation.eval_recorder import EvalRecorder
 from ..evaluation.golden_case import case_question, conversation_state_for_case
 from .memory import ResearchMemory
-from .runtime import HarnessRuntime, LegacyHarnessRuntime, TurnExecutionInput, new_run_id
-from .legacy.llm import ChatModel
+from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
 
 
 class LiveResearchChatHarness:
-    """Conversation wrapper around the same skill-guided ReAct agent used by golden cases."""
+    """把无状态 Runtime 包装成可连续对话的产品接口。"""
 
     def __init__(
         self,
-        runtime_or_model: HarnessRuntime | ChatModel,
-        max_completion_tokens: int = 3000,
+        runtime: HarnessRuntime,
         eval_dump_dir: str | Path | None = None,
     ):
-        self.runtime: HarnessRuntime = (
-            LegacyHarnessRuntime(runtime_or_model, max_completion_tokens=max_completion_tokens)
-            if isinstance(runtime_or_model, ChatModel)
-            else runtime_or_model
-        )
+        self.runtime = runtime
         eval_dump_dir = eval_dump_dir or os.getenv("EVAL_DUMP_DIR")
         self.eval_dump_dir = Path(eval_dump_dir) if eval_dump_dir else None
         self.eval_capture_failures = 0
@@ -59,10 +59,14 @@ class LiveResearchChatHarness:
         should_cancel: Callable[[], bool] | None = None,
         case_id_override: str = "",
     ) -> tuple[JsonMap, ConversationState]:
+        """执行一轮用户消息，返回 Run 和下一轮要持久化的状态。"""
+
         if not user_message.strip():
             raise ValueError("user_message is required")
         # 每一轮只看调用方授权的论文范围，不能依赖模型自行约束。
         scoped = _dataset_for_scope(dataset, state.effective_scope_paper_ids(dataset))
+
+        # case_id 用于结果内部关联；run_id 则标识这一次真实执行。
         case_id = case_id_override or _live_case_id(scoped, state, user_message)
         run_id = new_run_id()
         recorder = self._open_recorder(run_id)
@@ -85,6 +89,7 @@ class LiveResearchChatHarness:
                 },
             )
         try:
+            # Runtime 看不到完整 ConversationState，只接收执行所需的最小投影。
             result = self.runtime.run_turn(TurnExecutionInput(
                 dataset=scoped,
                 case_id=case_id,
@@ -116,6 +121,7 @@ class LiveResearchChatHarness:
                 })
             raise
         except Exception as error:
+            # 普通技术异常被收敛成 FAILED_TECHNICAL Run，调用方仍能得到稳定响应结构。
             if recorder:
                 recorder.append(
                     kind="run.error",
@@ -124,6 +130,8 @@ class LiveResearchChatHarness:
                 )
             run = _technical_failure_run(run_id, case_id, user_message, str(error))
         self._finish_recorder(recorder, run)
+
+        # 只有已经形成 Run 的结果才能推进跨回合记忆；临时 Context 不会被直接持久化。
         return run, state.updated_from_run(scoped, run, user_message)
 
     def _open_recorder(self, run_id: str) -> EvalRecorder | None:

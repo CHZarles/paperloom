@@ -12,9 +12,9 @@ from .evaluation.audit import audit_dataset
 from .evaluation.dataset import load_dataset
 from .evaluation.golden_fixture import GoldenFixtureHarness
 from .evaluation.judge import LLMJudge, evaluate_calibration, load_calibration_cases
+from .evaluation.judge_model import MiniMaxJudgeModel
 from .evaluation.scoring import BehaviorScorer
 from .orchestration.conversation import ConversationState
-from .orchestration.legacy.llm import MiniMaxChatModel
 from .orchestration.live_chat import LiveResearchChatHarness
 from .orchestration.runtime import build_harness_runtime
 from .transport.provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
@@ -53,11 +53,6 @@ def main(argv: list[str] | None = None) -> int:
     serve_parser.add_argument("--internal-token", default="")
     serve_parser.add_argument("--max-tokens", type=int, default=3000)
     serve_parser.add_argument("--corpus-limit", type=int, default=1000)
-    serve_parser.add_argument(
-        "--runtime",
-        choices=["agents_sdk", "legacy"],
-        default=os.getenv("RESEARCH_HARNESS_RUNTIME", "agents_sdk"),
-    )
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
         help="Compare one LLM judge with fixed human-labelled harness runs.",
@@ -104,7 +99,6 @@ def main(argv: list[str] | None = None) -> int:
         cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
         provider, harness = _live_harness(
             args.provider_source,
-            args.runtime,
             args.max_tokens,
             args.eval_dump,
         )
@@ -117,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({
             "out": str(out),
             "provider": provider.public_diagnostics(),
-            "runtime": args.runtime,
+            "runtime": "agents_sdk",
             "eval_capture_failed_count": harness.eval_capture_failures,
             "score_report": report,
         }, indent=2, sort_keys=True))
@@ -132,7 +126,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         provider, harness = _live_harness(
             args.provider_source,
-            args.runtime,
             args.max_tokens,
             args.eval_dump,
         )
@@ -174,7 +167,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         provider, harness = _live_harness(
             args.provider_source,
-            args.runtime,
             args.max_tokens,
             args.eval_dump,
         )
@@ -202,7 +194,6 @@ def main(argv: list[str] | None = None) -> int:
             internal_token=args.internal_token,
             max_completion_tokens=args.max_tokens,
             corpus_limit=args.corpus_limit,
-            runtime_name=args.runtime,
         )
         return 0
     if args.command == "judge-calibrate":
@@ -236,9 +227,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
-    # 三个实时命令共享同一组运行时开关，集中维护可避免默认值悄悄分叉。
     parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    parser.add_argument("--runtime", choices=["agents_sdk", "legacy"], default="agents_sdk")
     parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
     parser.add_argument("--max-tokens", type=int, default=3000)
 
@@ -350,28 +339,20 @@ def _terminal_state_summary(state: ConversationState) -> dict:
 
 def _live_harness(
     provider_source: str,
-    runtime_name: str,
     max_completion_tokens: int,
     eval_dump: str,
 ):
     provider = _provider(provider_source)
     runtime = build_harness_runtime(
         provider,
-        runtime_name,
         max_completion_tokens=max_completion_tokens,
     )
     return provider, LiveResearchChatHarness(runtime, eval_dump_dir=eval_dump or None)
 
 
-def _live_model(provider_source: str):
-    """Legacy helper retained for callers that still construct the hand-written runtime."""
-    provider = _provider(provider_source)
-    return provider, MiniMaxChatModel(provider, temperature=0.0, top_p=1.0)
-
-
 def _judge_model(provider_source: str):
     provider = _provider(provider_source)
-    return provider, MiniMaxChatModel(provider, temperature=0.0, top_p=1.0)
+    return provider, MiniMaxJudgeModel(provider)
 
 
 def _provider(provider_source: str):

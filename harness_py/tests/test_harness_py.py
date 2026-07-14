@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import json
 import base64
-import threading
 import tempfile
 import unittest
 from copy import deepcopy
 from dataclasses import replace
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,17 +19,9 @@ from harness_py.evaluation.dataset import load_dataset
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
 from harness_py.evaluation.scoring import BehaviorScorer, _scalar_string
 from harness_py.orchestration.conversation import ConversationState
-from harness_py.orchestration.legacy.harness import ResearchAgentHarness, _answer_validation_error
-from harness_py.orchestration.legacy.llm import (
-    ChatModel,
-    ChatTurn,
-    MiniMaxChatModel,
-    ToolCall,
-    _normalize_structured_arguments,
-)
-from harness_py.orchestration.live_chat import LiveResearchChatHarness
+from harness_py.orchestration.research_contract import answer_validation_error
 from harness_py.orchestration.research_skills import ResearchSkillRegistry
-from harness_py.transport.provider_config import ProviderConfig, decrypt_provider_key
+from harness_py.transport.provider_config import decrypt_provider_key
 
 
 class PythonHarnessPrototypeTest(unittest.TestCase):
@@ -67,36 +57,24 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         )
         self.assertEqual("42", run["research_answer"]["fields"]["answer"])
 
+    def test_model_payload_redacts_all_golden_anchor_tags(self) -> None:
+        from harness_py.corpus.tools import model_facing_payload
+
+        payload = model_facing_payload({
+            "evidence_id": "ev_1",
+            "matched_anchor_id": "anchor_a",
+            "matched_anchor_ids": ["anchor_a", "anchor_b"],
+            "span_text": "Visible evidence.",
+        })
+
+        self.assertEqual({"evidence_id": "ev_1", "span_text": "Visible evidence."}, payload)
+
     def test_structural_scorer_normalizes_equivalent_power_of_ten_notation(self) -> None:
         self.assertEqual(_scalar_string("1e-9"), _scalar_string("10^-9"))
         self.assertEqual(_scalar_string("1e-9"), _scalar_string("10 ^ { - 9 }"))
 
-    def test_agent_harness_executes_tools_and_scores_synthetic_case(self) -> None:
-        dataset = self._synthetic_dataset()
-        case = dataset.cases[0]
-
-        run = ResearchAgentHarness(_ReactFixtureModel()).run_case(dataset, case)
-        score = BehaviorScorer().score_case(dataset, case, run)
-
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual(4, run["diagnostics"]["tool_call_count"])
-        self.assertIn(
-            "synthetic_anchor",
-            {item.get("matched_anchor_id") for item in run["evidence_ledger"]["items"]},
-        )
-        self.assertEqual("COMPLETED", run["research_answer"]["status"])
-
-    def test_agent_harness_downgrades_supported_claim_without_tool_evidence(self) -> None:
-        dataset = self._synthetic_dataset()
-        case = dataset.cases[0]
-
-        run = ResearchAgentHarness(_ReactNoEvidenceModel()).run_case(dataset, case)
-
-        self.assertEqual("INCOMPLETE_PRECISE", run["research_answer"]["status"])
-        self.assertEqual("abstained", run["research_answer"]["outcome"])
-
     def test_metadata_answer_does_not_require_paper_content_citation(self) -> None:
-        error = _answer_validation_error(
+        error = answer_validation_error(
             {"outcome": "answered", "markdown": "There are five papers."},
             {},
             used_paper_evidence=False,
@@ -105,126 +83,13 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual("", error)
 
     def test_answer_after_reading_paper_evidence_still_requires_citation(self) -> None:
-        error = _answer_validation_error(
+        error = answer_validation_error(
             {"outcome": "answered", "markdown": "The paper proposes a new method."},
             {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
             used_paper_evidence=True,
         )
 
         self.assertIn("paper-content evidence was read", error)
-
-    def test_minimax_client_sends_openai_compatible_tool_request(self) -> None:
-        captured = {"bodies": []}
-
-        class Handler(BaseHTTPRequestHandler):
-            def do_POST(self):  # noqa: N802
-                length = int(self.headers["Content-Length"])
-                captured["path"] = self.path
-                captured["authorization"] = self.headers.get("Authorization")
-                captured["body"] = json.loads(self.rfile.read(length).decode("utf-8"))
-                captured["bodies"].append(captured["body"])
-                body = {
-                    "choices": [{
-                        "message": {
-                            "content": "",
-                            "tool_calls": [{
-                                "id": "call_1",
-                                "type": "function",
-                                "function": {
-                                    "name": "search_paper_candidates",
-                                    "arguments": "{\"query_text\":\"synthetic\"}",
-                                },
-                            }],
-                        }
-                    }]
-                }
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(body).encode("utf-8"))
-
-            def log_message(self, *_args):
-                return
-
-        server = HTTPServer(("127.0.0.1", 0), Handler)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        try:
-            provider = ProviderConfig(
-                scope="llm",
-                provider="minimax",
-                api_style="openai-compatible",
-                api_base_url=f"http://127.0.0.1:{server.server_port}/v1",
-                model="MiniMax-M3",
-                api_key="secret",
-            )
-            turn = MiniMaxChatModel(provider, timeout_seconds=5).complete_required_tool(
-                [{"role": "user", "content": "hi"}],
-                [
-                    {"type": "function", "function": {"name": "search_paper_candidates", "parameters": {"type": "object"}}},
-                    {"type": "function", "function": {"name": "read_locations", "parameters": {"type": "object"}}},
-                ],
-                "search_paper_candidates",
-                16,
-            )
-            MiniMaxChatModel(provider, timeout_seconds=5).complete_required_tool(
-                [{"role": "user", "content": "submit"}],
-                [{
-                    "type": "function",
-                    "function": {"name": "submit_claims", "parameters": {"type": "object"}},
-                }],
-                "submit_claims",
-                16,
-            )
-
-            MiniMaxChatModel(provider, timeout_seconds=5).complete_required_tool(
-                [{"role": "user", "content": "judge"}],
-                [{
-                    "type": "function",
-                    "function": {"name": "submit_judgment", "parameters": {"type": "object"}},
-                }],
-                "submit_judgment",
-                16,
-            )
-        finally:
-            server.shutdown()
-            server.server_close()
-
-        self.assertEqual("/v1/chat/completions", captured["path"])
-        self.assertEqual("Bearer secret", captured["authorization"])
-        self.assertEqual({"type": "adaptive"}, captured["bodies"][0]["thinking"])
-        self.assertEqual({"type": "disabled"}, captured["bodies"][1]["thinking"])
-        self.assertEqual({"type": "disabled"}, captured["bodies"][2]["thinking"])
-        self.assertEqual(
-            {"type": "function", "function": {"name": "search_paper_candidates"}},
-            captured["bodies"][0]["tool_choice"],
-        )
-        self.assertEqual(
-            {"type": "function", "function": {"name": "submit_claims"}},
-            captured["bodies"][1]["tool_choice"],
-        )
-        self.assertEqual(
-            {"type": "function", "function": {"name": "submit_judgment"}},
-            captured["bodies"][2]["tool_choice"],
-        )
-        self.assertEqual(
-            ["search_paper_candidates", "read_locations"],
-            [tool["function"]["name"] for tool in captured["bodies"][0]["tools"]],
-        )
-        self.assertEqual("search_paper_candidates", turn.tool_calls[0].name)
-        self.assertEqual({"query_text": "synthetic"}, turn.tool_calls[0].arguments)
-
-    def test_minimax_structured_text_wrappers_decode_objects_and_scalars(self) -> None:
-        self.assertEqual(
-            {
-                "claim_id": "claim_1",
-                "field_values": [{"name": "beta1", "value": "0.9"}],
-            },
-            _normalize_structured_arguments({
-                "claim_id": {"$text": "claim_1"},
-                "field_values": {"$text": '[{"name":"beta1","value":"0.9"}]'},
-            }),
-        )
 
     def test_provider_key_decrypts_java_secret_crypto_format(self) -> None:
         key = AESGCM.generate_key(bit_length=128)
@@ -290,7 +155,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 "locationRef": f"paper_live:p1:el{index}",
                 "elementType": "paragraph",
                 "pageNumber": 1,
-                "searchableText": long_text,
+                "searchableText": f"{long_text} candidate {index}",
             } for index in range(12)],
         )
         tools = ReadingCorpusTools(dataset)
@@ -323,6 +188,38 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual(20, parameters["top_k"]["maximum"])
         self.assertIn("paragraph", parameters["element_types"]["items"]["enum"])
         self.assertIn("table", parameters["element_types"]["items"]["enum"])
+
+    def test_location_search_deduplicates_identical_text_on_the_same_page(self) -> None:
+        dataset = build_product_dataset(
+            paper_rows=[{
+                "paper_id": "paper_live",
+                "title": "Live Paper",
+                "model_version": "rm_live",
+                "model_status": "READING_MODEL_READY",
+            }],
+            element_rows=[{
+                "paper_id": "paper_live",
+                "model_version": "rm_live",
+                "readingElementId": f"el_{index}",
+                "locationRef": f"paper_live:p1:el{index}",
+                "elementType": "figure" if index else "image",
+                "pageNumber": 1,
+                "sectionTitle": "Architecture",
+                "searchableText": "Figure 1: The model architecture.",
+            } for index in range(2)],
+        )
+        tools = ReadingCorpusTools(dataset)
+        tools.search_paper_candidates({"paper_ids": ["paper_live"], "limit": 1})
+
+        result = tools.find_reading_locations({
+            "query_text": "model architecture",
+            "paper_ids": ["paper_live"],
+            "top_k": 2,
+        })
+
+        self.assertEqual(1, len(result["locations"]))
+        self.assertEqual(1, result["matched_count"])
+        self.assertEqual("complete", result["coverage"])
 
     def test_candidate_search_reports_complete_or_truncated_coverage(self) -> None:
         dataset = build_product_dataset(
@@ -380,96 +277,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertNotIn("get_citation_edges", {
             item["function"]["name"] for item in tools.definitions()
         })
-
-    def test_live_chat_harness_reuses_agent_trace_shape_without_golden_case(self) -> None:
-        dataset = self._synthetic_dataset()
-
-        run = LiveResearchChatHarness(_ReactFixtureModel()).run_question(dataset, "What is the synthetic answer?")
-
-        self.assertEqual("COMPLETED", run["research_answer"]["status"])
-        self.assertTrue(run["case_id"].startswith("live_chat_"))
-        self.assertIn("evidence_ledger", run)
-        self.assertIn("citation_validation", run)
-        self.assertIn("react_trace", run)
-
-    def test_live_conversation_harness_carries_memory_across_turns(self) -> None:
-        dataset = self._synthetic_dataset()
-        model = _ReactFixtureModel()
-        harness = LiveResearchChatHarness(model)
-        state = ConversationState.new("conversation_test")
-
-        first_run, state = harness.run_turn(dataset, state, "What is the synthetic answer?")
-        second_run, state = harness.run_turn(dataset, state, "Use the same evidence again.")
-
-        self.assertEqual("COMPLETED", first_run["research_answer"]["status"])
-        self.assertEqual("COMPLETED", second_run["research_answer"]["status"])
-        self.assertEqual(2, state.turn_index)
-        self.assertEqual(["synthetic_paper"], state.selected_paper_ids)
-        self.assertEqual(1, len(state.selected_evidence_ids))
-        self.assertEqual(
-            first_run["research_answer"]["cited_evidence_ids"],
-            second_run["research_answer"]["cited_evidence_ids"],
-        )
-        self.assertEqual(4, len(state.message_history))
-
-    def test_live_chat_direct_greeting_bypasses_research(self) -> None:
-        dataset = self._synthetic_dataset()
-        harness = LiveResearchChatHarness(_ReactFixtureModel())
-        state = ConversationState.new("direct_greeting")
-
-        run, state = harness.run_turn(dataset, state, "hi")
-
-        self.assertEqual("COMPLETED", run["research_answer"]["status"])
-        self.assertEqual("conversation", run["research_answer"]["answer_type"])
-        self.assertNotIn("stage_trace", run)
-        self.assertEqual(0, run["diagnostics"]["tool_call_count"])
-
-        run, state = harness.run_turn(dataset, state, "Recommend me some important paper")
-
-        self.assertEqual("NEEDS_CLARIFICATION", run["research_answer"]["status"])
-        self.assertEqual(0, run["diagnostics"]["tool_call_count"])
-        self.assertIn("What topic", run["research_answer"]["markdown"])
-
-        run, state = harness.run_turn(dataset, state, "What does RLHF mean?")
-
-        self.assertEqual("COMPLETED", run["research_answer"]["status"])
-        self.assertEqual("RLHF means Reinforcement Learning from Human Feedback.", run["research_answer"]["markdown"])
-        self.assertEqual(6, len(state.message_history))
-
-    def test_live_chat_visible_choice_resolves_from_history(self) -> None:
-        dataset = self._synthetic_dataset()
-        model = _ReactFixtureModel()
-        harness = LiveResearchChatHarness(model)
-        state = replace(
-            ConversationState.new("recommendation_choice"),
-            message_history=[{
-                "role": "assistant",
-                "turn_index": 1,
-                "content": (
-                    "Which kind of papers should I recommend?\n\n"
-                    "1. Comparison papers\n2. Reproduction papers\n3. Systematic-review papers"
-                ),
-            }],
-        )
-
-        run, state = harness.run_turn(dataset, state, "the third")
-
-        self.assertEqual("COMPLETED", run["research_answer"]["status"])
-        self.assertIn("context_specific_brainstorming", run["skills_used"])
-        self.assertNotIn("I'll treat", run["research_answer"]["markdown"])
-        self.assertEqual(4, run["diagnostics"]["tool_call_count"])
-        self.assertIn(
-            "find_papers_by_identity",
-            [
-                call["tool_name"] for call in run["react_trace"]
-            ],
-        )
-        self.assertIn(
-            "find_reading_locations",
-            [
-                call["tool_name"] for call in run["react_trace"]
-            ],
-        )
 
     def test_conversation_state_round_trips_to_json(self) -> None:
         state = ConversationState.new("round_trip", ["paper_a"])
@@ -622,9 +429,9 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "must_not_exist"
             with patch(
-                "harness_py.cli._live_model",
+                "harness_py.cli._live_harness",
                 return_value=(StubProvider(), object()),
-            ) as live_model, patch("builtins.print"):
+            ) as live_harness, patch("builtins.print"):
                 code = main([
                     "--manifest",
                     "research/golden-data/manifest.yaml",
@@ -636,7 +443,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 ])
 
             self.assertNotEqual(0, code)
-            live_model.assert_not_called()
+            live_harness.assert_not_called()
             self.assertFalse(out.exists())
 
     def test_chat_shell_keeps_terminal_session_state(self) -> None:
@@ -743,367 +550,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 }
             },
         )
-
-
-class _ReactFixtureModel(ChatModel):
-    def complete(self, messages, tools, max_tokens):
-        question = next(
-            (
-                str(item.get("content") or "")
-                for item in reversed(messages)
-                if item.get("role") == "user"
-                and not str(item.get("content") or "").startswith("Finish this turn")
-            ),
-            "",
-        )
-        normalized = question.casefold()
-        tool_results = {
-            str(item.get("name") or ""): json.loads(str(item.get("content") or "{}"))
-            for item in messages
-            if item.get("role") == "tool"
-        }
-        prior_evidence = next(
-            (
-                json.loads(str(item.get("content") or "").split("\n", 1)[1])
-                for item in messages
-                if item.get("role") == "system"
-                and str(item.get("content") or "").startswith("Previously cited evidence")
-            ),
-            [],
-        )
-
-        if normalized == "hi":
-            return _react_tool_turn("submit_research_answer", {
-                "outcome": "answered",
-                "markdown": "Hi. What would you like to research?",
-                "fields": {},
-            })
-        if "recommend" in normalized and "important paper" in normalized:
-            return _react_tool_turn("submit_research_answer", {
-                "outcome": "needs_clarification",
-                "markdown": "Sure. What topic should the paper recommendations focus on?",
-                "fields": {},
-            })
-        if normalized.startswith("what does rlhf mean"):
-            return _react_tool_turn("submit_research_answer", {
-                "outcome": "answered",
-                "markdown": "RLHF means Reinforcement Learning from Human Feedback.",
-                "fields": {},
-            })
-
-        recommendation = "the third" in normalized
-        skill_id = "context_specific_brainstorming" if recommendation else "precision_fact_extraction"
-        if "get_research_skill" not in tool_results:
-            return _react_tool_turn("get_research_skill", {"skill_id": skill_id})
-
-        if prior_evidence:
-            evidence_id = str(prior_evidence[0]["evidence_id"])
-            return _react_tool_turn("submit_research_answer", {
-                "outcome": "answered",
-                "markdown": f"The structured value is 42. [[{evidence_id}]]",
-                "fields": {"answer": "42"},
-            })
-        if "find_papers_by_identity" not in tool_results:
-            return _react_tool_turn("find_papers_by_identity", {"paper_id": "synthetic_paper"})
-        if "find_reading_locations" not in tool_results:
-            return _react_tool_turn("find_reading_locations", {
-                "paper_ids": ["synthetic_paper"],
-                "query_text": "structured value",
-                "top_k": 3,
-            })
-        if "read_locations" not in tool_results:
-            location = tool_results["find_reading_locations"]["locations"][0]["location_ref"]
-            return _react_tool_turn("read_locations", {"location_refs": [location]})
-        evidence_id = str(tool_results["read_locations"]["items"][0]["evidence_id"])
-        if recommendation:
-            return _react_tool_turn("submit_research_answer", {
-                "outcome": "answered",
-                "markdown": f"Synthetic Paper is the matching recommendation. [[{evidence_id}]]",
-                "fields": {},
-            })
-        return _react_tool_turn("submit_research_answer", {
-            "outcome": "answered",
-            "markdown": f"The structured value is 42. [[{evidence_id}]]",
-            "fields": {"answer": "42"},
-        })
-
-
-class _ReactNoEvidenceModel(ChatModel):
-    def complete(self, messages, tools, max_tokens):
-        return _react_tool_turn("submit_research_answer", {
-            "outcome": "abstained",
-            "markdown": "The current corpus does not contain enough evidence to answer this request.",
-            "fields": {},
-        })
-
-
-def _react_tool_turn(name: str, arguments: dict) -> ChatTurn:
-    return ChatTurn(
-        content="",
-        tool_calls=[ToolCall(id=f"call_{name}", name=name, arguments=arguments)],
-    )
-
-
-class _ActionFirstRecommendationModel(ChatModel):
-    def __init__(self) -> None:
-        self.request_payloads: list[dict] = []
-
-    def complete(self, messages, tools, max_tokens):
-        system = str(messages[0].get("content") or "")
-        if "TURN_ROUTING" in system:
-            payload = json.loads(messages[-1]["content"])
-            self.request_payloads.append(payload)
-            user_message = str(payload["user_message"]).strip().casefold()
-            if user_message == "hi":
-                arguments = {
-                    "action": "answer",
-                    "context_mode": "continue",
-                    "message": "Hi. What would you like to research?",
-                    "effective_request": "",
-                    "paradigm": "",
-                }
-            elif user_message.startswith("what does rlhf mean"):
-                arguments = {
-                    "action": "answer",
-                    "context_mode": "continue",
-                    "message": "RLHF means Reinforcement Learning from Human Feedback.",
-                    "effective_request": "",
-                    "paradigm": "",
-                }
-            elif "important paper" in user_message:
-                arguments = {
-                    "action": "clarify",
-                    "context_mode": "continue",
-                    "message": "Sure. What topic are you interested in?",
-                    "effective_request": "Recommend important papers.",
-                    "paradigm": "",
-                }
-            else:
-                arguments = {
-                    "action": "research",
-                    "context_mode": "continue",
-                    "message": "",
-                    "effective_request": "Recommend systematic-review papers from the current corpus.",
-                    "paradigm": "context_specific_brainstorming",
-                }
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id="turn_action",
-                name="submit_turn_action",
-                arguments=arguments,
-            )])
-        if "RESEARCH_TASK_PLANNING" in system:
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id="research_task",
-                name="submit_turn_decision",
-                arguments={
-                    "route": "research",
-                    "effective_goal": "Recommend systematic-review papers from the current corpus.",
-                    "task": {"verb": "recommend", "object": "papers"},
-                    "constraints": {"paper_type": "systematic_review"},
-                    "primary_paradigm": "context_specific_brainstorming",
-                    "answer_shape": "constraint_filter",
-                    "obligations": [{
-                        "id": "recommendation",
-                        "description": "Select and justify one paper matching the requested paper type.",
-                        "kind": "recommendation",
-                        "paper_scope": [],
-                        "required": True,
-                        "answer_field": "",
-                    }],
-                    "assumption": "Use broad corpus coverage within the selected paper type.",
-                    "blocking_reason": None,
-                    "direct_reply": "",
-                    "pending_interaction": {
-                        "interaction_id": "",
-                        "kind": "none",
-                        "question": "",
-                        "options": [],
-                    },
-                    "paper_references": [],
-                    "requested_aspects": ["systematic review"],
-                    "requires_corpus_observation": True,
-                    "required_evidence_types": ["metadata", "paragraph"],
-                    "required_capabilities": ["candidate_retrieval", "evidence_retrieval"],
-                    "confidence": 1.0,
-                },
-            )])
-        if "TURN_DECISION" in system:
-            payload = json.loads(messages[-1]["content"])
-            self.request_payloads.append(payload)
-            user_message = str(payload["user_message"]).strip().casefold()
-            context = payload["conversation_context"]
-            if user_message == "hi":
-                arguments = {
-                    "route": "direct",
-                    "effective_goal": "",
-                    "task": {},
-                    "constraints": {},
-                    "primary_paradigm": "",
-                    "answer_shape": "conversation",
-                    "obligations": [],
-                    "assumption": "",
-                    "blocking_reason": None,
-                    "direct_reply": "Hi. What would you like to research?",
-                    "pending_interaction": {
-                        "interaction_id": "",
-                        "kind": "none",
-                        "question": "",
-                        "options": [],
-                    },
-                    "paper_references": [],
-                    "requested_aspects": [],
-                    "requires_corpus_observation": False,
-                    "required_evidence_types": [],
-                    "required_capabilities": [],
-                    "confidence": 1.0,
-                }
-            elif context.get("pending_interaction"):
-                arguments = {
-                    "route": "research",
-                    "effective_goal": "Recommend systematic-review papers from the current corpus.",
-                    "task": {"verb": "recommend", "object": "papers"},
-                    "constraints": {"paper_type": "systematic_review"},
-                    "primary_paradigm": "context_specific_brainstorming",
-                    "answer_shape": "constraint_filter",
-                    "obligations": [{
-                        "id": "recommendation",
-                        "description": "Select and justify one paper matching the requested paper type.",
-                        "kind": "recommendation",
-                        "paper_scope": [],
-                        "required": True,
-                        "answer_field": "",
-                    }],
-                    "assumption": "Use broad corpus coverage within the selected paper type.",
-                    "blocking_reason": None,
-                    "direct_reply": "",
-                    "pending_interaction": {
-                        "interaction_id": "",
-                        "kind": "none",
-                        "question": "",
-                        "options": [],
-                    },
-                    "paper_references": [],
-                    "requested_aspects": ["systematic review"],
-                    "requires_corpus_observation": True,
-                    "required_evidence_types": ["metadata", "paragraph"],
-                    "required_capabilities": ["candidate_retrieval", "evidence_retrieval"],
-                    "confidence": 1.0,
-                }
-            else:
-                arguments = {
-                    "route": "clarify",
-                    "effective_goal": "Recommend important papers after the user supplies a topic or goal.",
-                    "task": {"verb": "recommend", "object": "papers"},
-                    "constraints": {},
-                    "primary_paradigm": "ambiguity_resolution",
-                    "answer_shape": "ambiguity_clarification",
-                    "obligations": [],
-                    "assumption": "",
-                    "blocking_reason": "A recommendation topic or goal is missing.",
-                    "direct_reply": "Sure. What topic are you interested in, and are you looking for an overview, benchmarks, or methods?",
-                    "pending_interaction": {
-                        "interaction_id": "recommendation_topic",
-                        "kind": "free_text",
-                        "question": "What topic are you interested in, and are you looking for an overview, benchmarks, or methods?",
-                        "options": [],
-                    },
-                    "paper_references": [],
-                    "requested_aspects": [],
-                    "requires_corpus_observation": False,
-                    "required_evidence_types": [],
-                    "required_capabilities": [],
-                    "confidence": 1.0,
-                }
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id="turn_decision",
-                name="submit_turn_decision",
-                arguments=arguments,
-            )])
-        if "EVIDENCE_QUERY_PLANNING" in system:
-            payload = json.loads(messages[-1]["content"])
-            self.request_payloads.append(payload)
-            existing = [
-                item for item in payload.get("existing_state", {}).get("evidence", [])
-                if item.get("citeable") is not False
-            ]
-            if existing:
-                return _recommendation_plan(reuse_evidence=[{
-                    "obligation_id": "recommendation_selection",
-                    "evidence_ids": [existing[0]["evidence_id"]],
-                }])
-            return _recommendation_plan()
-        if "ATOMIC_CLAIM_CONSTRUCTION" in system:
-            payload = json.loads(messages[-1]["content"])
-            self.request_payloads.append(payload)
-            evidence_id = next(
-                item["evidence_id"]
-                for item in payload["evidence"]
-                if item.get("citeable") is not False
-            )
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id="submit_recommendation_claim",
-                name="submit_claims",
-                arguments={
-                    "claims": [{
-                        "claim_id": "recommendation_claim",
-                        "role": "recommendation",
-                        "text": "Synthetic Paper is relevant because it reports the requested structured result.",
-                        "obligation_ids": ["recommendation_selection"],
-                        "evidence_ids": [evidence_id],
-                        "field_values": [],
-                    }],
-                    "summary": "Constructed one bounded recommendation.",
-                },
-            )])
-        if "ATOMIC_CLAIM_VERIFICATION" in system:
-            payload = json.loads(messages[-1]["content"])
-            self.request_payloads.append(payload)
-            claim = payload["claims"][0]
-            return ChatTurn(content="", tool_calls=[ToolCall(
-                id="verify_recommendation_claim",
-                name="submit_claim_verdicts",
-                arguments={
-                    "verdicts": [{
-                        "claim_id": claim["claim_id"],
-                        "verdict": "keep",
-                        "verified_text": claim["text"],
-                        "evidence_ids": claim["evidence_ids"],
-                        "field_values": [],
-                        "reason": "The recommendation rationale is directly supported.",
-                    }],
-                    "summary": "Recommendation verified.",
-                },
-            )])
-        raise AssertionError(f"unexpected model prompt: {system[:80]}")
-
-
-def _recommendation_plan(reuse_evidence: list[dict] | None = None) -> ChatTurn:
-    return ChatTurn(content="", tool_calls=[ToolCall(
-        id="submit_recommendation_plan",
-        name="submit_retrieval_queries",
-        arguments={
-            "paper_targets": [] if reuse_evidence else [{
-                "target_id": "candidate_pool",
-                "paper_id": "",
-                "title": "",
-                "arxiv_id": "",
-                "discovery_query": "synthetic",
-                "browse_all": False,
-                "coverage_obligation_ids": [],
-            }],
-            "evidence_queries": [] if reuse_evidence else [{
-                "query_id": "recommendation_evidence",
-                "obligation_ids": ["recommendation_selection"],
-                "target_ids": ["candidate_pool"],
-                "query_text": "structured value",
-                "section_query": "",
-                "element_types": ["paragraph"],
-                "top_k": 3,
-            }],
-            "reuse_evidence": reuse_evidence or [],
-            "summary": "Planned one bounded recommendation retrieval round.",
-        },
-    )])
 
 
 class _ShellFakeHarness:

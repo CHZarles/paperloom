@@ -3,16 +3,13 @@
 from .evaluation.dataset import load_dataset
 from .evaluation.golden_fixture import GoldenFixtureHarness
 from .evaluation.scoring import BehaviorScorer
-from .orchestration.legacy.harness import ResearchAgentHarness
 from .orchestration.live_chat import LiveResearchChatHarness
-from .orchestration.runtime import HarnessRuntime, LegacyHarnessRuntime
+from .orchestration.runtime import HarnessRuntime
 
 __all__ = [
     "BehaviorScorer",
     "GoldenFixtureHarness",
     "HarnessRuntime",
-    "LegacyHarnessRuntime",
     "LiveResearchChatHarness",
-    "ResearchAgentHarness",
     "load_dataset",
 ]
