@@ -52,7 +52,7 @@ function goToChat() {
     <div class="global-header-actions h-full flex-y-center justify-end gap-2 px-5">
       <NButton
         size="small"
-        secondary
+        quaternary
         aria-label="返回 Chat"
         title="返回 Chat"
         class="chatbot-back-button"
@@ -71,11 +71,6 @@ function goToChat() {
         :lang-options="appStore.localeOptions"
         @change-lang="appStore.changeLocale"
       />
-      <ThemeSchemaSwitch
-        :theme-schema="themeStore.themeScheme"
-        :is-dark="themeStore.darkMode"
-        @switch="themeStore.toggleThemeScheme"
-      />
       <ThemeButton v-if="isDev" />
       <UserAvatar />
     </div>
@@ -84,14 +79,40 @@ function goToChat() {
 
 <style scoped>
 .chatbot-back-button {
-  --n-border-color: var(--color-border);
-  --n-color: var(--color-card-band);
-  --n-color-hover: var(--color-card-band-pressed);
-  --n-color-pressed: #dfdfdd;
-  --n-text-color: var(--color-text-muted);
-  --n-text-color-hover: var(--color-text);
-  --n-text-color-pressed: var(--color-text);
+  --n-border: none !important;
+  --n-border-hover: none !important;
+  --n-border-pressed: none !important;
+  --n-border-focus: none !important;
+  --n-border-color: transparent !important;
+  --n-border-color-hover: transparent !important;
+  --n-border-color-pressed: transparent !important;
+  --n-border-color-focus: transparent !important;
+  --n-color: transparent !important;
+  --n-color-hover: #f1f2f4 !important;
+  --n-color-pressed: #e8e9eb !important;
+  --n-color-focus: #f1f2f4 !important;
+  --n-text-color: var(--color-text-muted) !important;
+  --n-text-color-hover: var(--color-text) !important;
+  --n-text-color-pressed: var(--color-text) !important;
+  --n-text-color-focus: var(--color-text) !important;
+  --n-ripple-color: transparent !important;
   font-weight: 600;
+}
+
+.chatbot-back-button:focus,
+.chatbot-back-button:focus-visible,
+.chatbot-back-button:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.chatbot-back-button :deep(.n-button__border),
+.chatbot-back-button :deep(.n-button__state-border) {
+  border: 0 !important;
+}
+
+.chatbot-back-button :deep(.n-base-wave) {
+  display: none !important;
 }
 
 .global-header-shell {

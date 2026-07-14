@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { themeSchemaRecord } from '@/constants/app';
 import { useThemeStore } from '@/store/modules/theme';
-import { $t } from '@/locales';
 import SettingItem from '../components/setting-item.vue';
 
 defineOptions({
@@ -10,16 +8,6 @@ defineOptions({
 });
 
 const themeStore = useThemeStore();
-
-const icons: Record<UnionKey.ThemeScheme, string> = {
-  light: 'lucide:sun',
-  dark: 'lucide:moon',
-  auto: 'lucide:circle-dot'
-};
-
-function handleSegmentChange(value: string | number) {
-  themeStore.setThemeScheme(value as UnionKey.ThemeScheme);
-}
 
 function handleGrayscaleChange(value: boolean) {
   themeStore.setGrayscale(value);
@@ -33,22 +21,7 @@ const showSiderInverted = computed(() => !themeStore.darkMode && themeStore.layo
 </script>
 
 <template>
-  <NDivider>{{ $t('theme.themeSchema.title') }}</NDivider>
   <div class="flex-col-stretch gap-16px">
-    <div class="i-flex-center">
-      <NTabs
-        :key="themeStore.themeScheme"
-        type="segment"
-        size="small"
-        class="relative w-214px"
-        :value="themeStore.themeScheme"
-        @update:value="handleSegmentChange"
-      >
-        <NTab v-for="(_, key) in themeSchemaRecord" :key="key" :name="key">
-          <SvgIcon :icon="icons[key]" class="h-23px text-icon-small" />
-        </NTab>
-      </NTabs>
-    </div>
     <Transition name="sider-inverted">
       <SettingItem v-if="showSiderInverted" :label="$t('theme.sider.inverted')">
         <NSwitch v-model:value="themeStore.sider.inverted" />

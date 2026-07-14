@@ -32,7 +32,6 @@ declare module "@elegant-router/types" {
     "recharge": "/recharge";
     "recharge-manage": "/recharge-manage";
     "usage-monitor": "/usage-monitor";
-    "user": "/user";
   };
 
   /**
@@ -79,7 +78,6 @@ declare module "@elegant-router/types" {
     | "recharge"
     | "recharge-manage"
     | "usage-monitor"
-    | "user"
   >;
 
   /**
@@ -111,7 +109,6 @@ declare module "@elegant-router/types" {
     | "recharge-manage"
     | "recharge"
     | "usage-monitor"
-    | "user"
   >;
 
   /**

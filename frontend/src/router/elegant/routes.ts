@@ -186,17 +186,5 @@ export const generatedRoutes: GeneratedRoute[] = [
       order: 6,
       hideInMenu: true
     }
-  },
-  {
-    name: 'user',
-    path: '/user',
-    component: 'layout.base$view.user',
-    meta: {
-      title: 'user',
-      i18nKey: 'route.user',
-      icon: 'lucide:users',
-      roles: ['ADMIN'],
-      hideInMenu: true
-    }
   }
 ];

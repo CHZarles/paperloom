@@ -57,6 +57,46 @@ const latestMessage = computed(() => {
 let generationStatusTimer: number | null = null;
 let lastStreamContentLength = 0;
 let lastStreamContentChangedAt = 0;
+let streamFlushTimer: number | null = null;
+const STREAM_FLUSH_INTERVAL_MS = 75;
+const MAX_RESEARCH_EVENTS = 200;
+const pendingStreamChunks = new Map<Api.Chat.Message, string>();
+const researchEventSequences = new WeakMap<Api.Chat.Message, Set<number>>();
+
+function flushPendingStreamChunks(targetAssistant?: Api.Chat.Message) {
+  const entries = targetAssistant
+    ? ([[targetAssistant, pendingStreamChunks.get(targetAssistant) || '']] as const)
+    : Array.from(pendingStreamChunks.entries());
+
+  entries.forEach(([assistant, chunk]) => {
+    if (!chunk) return;
+    pendingStreamChunks.delete(assistant);
+    assistant.content += chunk;
+    lastStreamContentLength = assistant.content.length;
+    lastStreamContentChangedAt = Date.now();
+  });
+
+  if (pendingStreamChunks.size === 0 && streamFlushTimer !== null) {
+    window.clearTimeout(streamFlushTimer);
+    streamFlushTimer = null;
+  }
+}
+
+function scheduleStreamFlush() {
+  if (streamFlushTimer !== null) return;
+  streamFlushTimer = window.setTimeout(() => {
+    streamFlushTimer = null;
+    flushPendingStreamChunks();
+  }, STREAM_FLUSH_INTERVAL_MS);
+}
+
+function discardPendingStreamChunks(assistant: Api.Chat.Message) {
+  pendingStreamChunks.delete(assistant);
+  if (pendingStreamChunks.size === 0 && streamFlushTimer !== null) {
+    window.clearTimeout(streamFlushTimer);
+    streamFlushTimer = null;
+  }
+}
 
 const CHAT_ROUTES = new Set<Api.Chat.Route>([
   'SMALLTALK',
@@ -148,12 +188,8 @@ const searchScopeHint = computed(() => {
 
   const isSnapshot = scope.scopeMode === 'SOURCE_SET_SNAPSHOT';
   const label = isSnapshot ? scope.sourceLabel || 'Selected papers' : scope.sourceLabel || 'All readable papers';
-  const count =
-    typeof scope.sourcePaperCount === 'number'
-      ? scope.sourcePaperCount
-      : isSnapshot
-        ? scope.paperIds?.length
-        : undefined;
+  let count = scope.sourcePaperCount;
+  if (typeof count !== 'number') count = isSnapshot ? scope.paperIds?.length : undefined;
   const countText = typeof count === 'number' ? ` · ${count.toLocaleString()} papers` : '';
   const statusText = scope.scopeStatus === 'DEGRADED' ? ' · limited availability' : '';
   return `Search scope: ${label}${countText}${statusText}`;
@@ -198,7 +234,6 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
 
   if (payload.conversationId) {
     chatStore.loadConversationScope(payload.conversationId).catch(() => {});
-    chatStore.loadSessions({ silent: true }).catch(() => {});
   }
   if (!startedAssistant.timestamp && timestamp) {
     startedAssistant.timestamp = timestamp;
@@ -206,6 +241,7 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
 }
 
 function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  flushPendingStreamChunks(assistant);
   if (payload.status === 'finished' && assistant.status !== 'error') {
     assistant.status = 'finished';
   } else if (payload.status === 'failed') {
@@ -234,9 +270,11 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   assistant.route = normalizeChatRoute(payload.diagnostics?.route) || assistant.route;
   markExecutingToolsAsSuccess(assistant);
   stopGenerationStatusMonitor();
+  chatStore.loadSessionIndex({ silent: true }).catch(() => {});
 }
 
 function handleStopPayload(assistant: Api.Chat.Message) {
+  flushPendingStreamChunks(assistant);
   if (assistant.status !== 'error') {
     assistant.status = 'finished';
   }
@@ -245,6 +283,7 @@ function handleStopPayload(assistant: Api.Chat.Message) {
 }
 
 function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  discardPendingStreamChunks(assistant);
   if (Number(payload.code) === 429) {
     chatStore.startRateLimitCountdown(Number(payload.retryAfterSeconds || 0));
   }
@@ -264,9 +303,10 @@ function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string,
 
 function handleChunkPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
   assistant.status = 'loading';
-  assistant.content += payload.chunk;
-  lastStreamContentLength = assistant.content.length;
-  lastStreamContentChangedAt = Date.now();
+  const chunk = typeof payload.chunk === 'string' ? payload.chunk : '';
+  if (!chunk) return;
+  pendingStreamChunks.set(assistant, `${pendingStreamChunks.get(assistant) || ''}${chunk}`);
+  scheduleStreamFlush();
 }
 
 function stopGenerationStatusMonitor() {
@@ -404,11 +444,27 @@ function handleResearchProgressPayload(assistant: Api.Chat.Message, payload: Rec
   assistant.status = 'loading';
   const event = payload as Api.Chat.ResearchProgressEvent;
   const sequence = Number(event.sequence || 0);
-  const existing = assistant.researchEvents || [];
-  if (sequence > 0 && existing.some(item => Number(item.sequence || 0) === sequence)) {
-    return;
+  let knownSequences = researchEventSequences.get(assistant);
+  if (!knownSequences) {
+    knownSequences = new Set(
+      (assistant.researchEvents || []).map(item => Number(item.sequence || 0)).filter(item => item > 0)
+    );
+    researchEventSequences.set(assistant, knownSequences);
   }
-  assistant.researchEvents = [...existing, event];
+  if (sequence > 0) {
+    if (knownSequences.has(sequence)) return;
+    knownSequences.add(sequence);
+  }
+
+  assistant.researchEvents ||= [];
+  assistant.researchEvents.push(event);
+  if (assistant.researchEvents.length > MAX_RESEARCH_EVENTS) {
+    const removed = assistant.researchEvents.splice(0, assistant.researchEvents.length - MAX_RESEARCH_EVENTS);
+    removed.forEach(item => {
+      const removedSequence = Number(item.sequence || 0);
+      if (removedSequence > 0) knownSequences?.delete(removedSequence);
+    });
+  }
 }
 
 watch(wsData, val => {
@@ -435,7 +491,6 @@ watch(wsData, val => {
     handleCompletionPayload(assistant, payload);
     return;
   }
-
 
   if (payload.type === 'research_progress') {
     handleResearchProgressPayload(assistant, payload);
@@ -495,7 +550,9 @@ const handleSend = async (messageOverride?: string) => {
       })
     );
 
-    list.value[list.value.length - 1].status = 'finished';
+    const assistant = list.value[list.value.length - 1];
+    flushPendingStreamChunks(assistant);
+    assistant.status = 'finished';
     if (!latestMessage.value.content) list.value.pop();
     return;
   }
@@ -571,16 +628,13 @@ const handShortcut = (e: KeyboardEvent) => {
 };
 
 onUnmounted(() => {
+  flushPendingStreamChunks();
   stopGenerationStatusMonitor();
 });
 </script>
 
 <template>
   <div class="chat-input-wrap" :class="props.variant === 'hero' ? 'chat-input-wrap--hero' : 'chat-input-wrap--dock'">
-    <div
-      v-if="props.variant === 'dock'"
-      class="pointer-events-none absolute inset-x-0 h-6 from-[var(--color-bg)]/95 to-transparent bg-gradient-to-t -top-6 dark:from-[var(--color-bg)]/95"
-    />
     <div v-if="props.variant === 'dock' && searchScopeHint" class="search-scope-hint mx-auto w-full px-1">
       {{ searchScopeHint }}
     </div>
@@ -638,7 +692,6 @@ onUnmounted(() => {
           {{ cooldownText }}
         </span>
       </div>
-      <span v-if="props.variant !== 'hero'" class="chat-input-muted text-11px">Folio</span>
     </div>
   </div>
 </template>
@@ -654,6 +707,15 @@ onUnmounted(() => {
 
 .chat-input-textarea {
   color: var(--color-text);
+  line-height: 1.55;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.chat-input-textarea:focus,
+.chat-input-textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .chat-input-muted {
@@ -697,9 +759,9 @@ onUnmounted(() => {
   max-width: 100%;
   align-items: center;
   gap: 6px;
-  border: 1px solid color-mix(in srgb, #b7791f 35%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-citation) 38%, var(--color-border));
   border-radius: 999px;
-  background: color-mix(in srgb, #f6d58a 18%, var(--color-surface));
+  background: var(--color-citation-soft-bg);
   padding: 3px 7px;
   color: var(--color-text);
   font-size: 12px;
@@ -715,7 +777,7 @@ onUnmounted(() => {
 
 .scope-chip__icon {
   flex: 0 0 auto;
-  color: #a96c10;
+  color: var(--color-citation);
 }
 
 .scope-chip button {
@@ -733,6 +795,12 @@ onUnmounted(() => {
 .scope-chip button:hover {
   color: var(--color-text);
 }
+
+.scope-chip button:focus,
+.scope-chip button:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
 </style>
 
 <style scoped>
@@ -742,8 +810,8 @@ onUnmounted(() => {
 }
 
 .chat-input-wrap--dock {
-  background: var(--color-bg);
-  padding: 8px 16px 12px;
+  background: #fff;
+  padding: 8px 16px max(12px, env(safe-area-inset-bottom));
 }
 
 .chat-input-wrap--hero {
@@ -763,32 +831,45 @@ onUnmounted(() => {
 }
 
 .chat-input-shell {
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  background: var(--color-surface) !important;
-  box-shadow:
-    0 18px 42px rgb(15 23 42 / 8%),
-    0 1px 0 rgb(255 255 255 / 70%) inset;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease;
+  max-width: 960px !important;
+  min-height: 68px;
+  border-radius: 24px;
+  background: #f5f5f5 !important;
+  padding: 14px 16px;
+  transition: background-color 0.18s ease;
 }
 
 .chat-input-shell:focus-within {
-  border-color: var(--color-primary);
-  box-shadow:
-    0 22px 56px rgb(15 23 42 / 12%),
-    0 0 0 3px var(--color-primary-soft-bg);
+  background: #f1f2f4 !important;
 }
 
-.dark .chat-input-wrap--dock {
-  background: var(--color-bg);
+.chat-input-shell :deep(.n-button:focus),
+.chat-input-shell :deep(.n-button:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
-.dark .chat-input-shell {
-  border-color: var(--color-border);
-  background: var(--color-surface) !important;
-  box-shadow: none;
+.chat-input-shell :deep(.n-button__state-border) {
+  border: 0 !important;
+}
+
+.chat-input-shell :deep(.n-base-wave) {
+  display: none !important;
+}
+
+.chat-input-footer {
+  max-width: 960px !important;
+}
+
+@media (max-width: 640px) {
+  .chat-input-wrap--dock {
+    padding-inline: 12px;
+  }
+
+  .chat-input-shell {
+    min-height: 58px;
+    border-radius: 20px;
+    padding: 10px 12px;
+  }
 }
 </style>

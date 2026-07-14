@@ -696,16 +696,16 @@ function buildAvatarFill(seed: string) {
   height: min(830px, calc(100vh - 92px));
   grid-template-columns: 260px minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid rgba(52, 50, 45, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
-  background: #f8f8f7;
-  box-shadow: 0 18px 68px rgba(52, 50, 45, 0.14);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card-soft);
 }
 
 .settings-nav {
   min-width: 0;
-  border-right: 1px solid #e5e4e1;
-  background: #f0f0f0;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-bg);
   padding: 16px 10px;
 }
 
@@ -716,7 +716,7 @@ function buildAvatarFill(seed: string) {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #34322d;
+  color: var(--color-text);
   cursor: pointer;
   text-align: left;
 }
@@ -739,10 +739,10 @@ function buildAvatarFill(seed: string) {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
   border-radius: 8px;
-  background: #f6f8fa;
+  background: var(--color-surface-elevated);
   box-shadow:
-    0 1px 0 rgb(255 255 255 / 90%) inset,
-    0 1px 2px rgb(15 23 42 / 8%);
+    0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent) inset,
+    var(--shadow-card);
   gap: 1px;
   padding: 5px;
 }
@@ -769,19 +769,19 @@ function buildAvatarFill(seed: string) {
 }
 
 .account-copy strong {
-  color: #34322d;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 680;
 }
 
 .account-copy small {
-  color: #858481;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
 .settings-nav__label {
   margin: 18px 10px 7px;
-  color: #858481;
+  color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 680;
 }
@@ -803,7 +803,7 @@ function buildAvatarFill(seed: string) {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-  color: #858481;
+  color: var(--color-text-muted);
 }
 
 .settings-nav__item span {
@@ -815,7 +815,8 @@ function buildAvatarFill(seed: string) {
 
 .settings-nav__item:hover,
 .settings-nav__item--active {
-  background: #dfdfdd;
+  background: var(--color-primary-soft-bg);
+  color: var(--color-primary);
 }
 
 .settings-main {
@@ -837,13 +838,13 @@ function buildAvatarFill(seed: string) {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #858481;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .settings-close:hover {
-  background: #efefed;
-  color: #34322d;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
 }
 
 .settings-section {
@@ -857,7 +858,7 @@ function buildAvatarFill(seed: string) {
 
 .settings-section h1 {
   margin: 0;
-  color: #34322d;
+  color: var(--color-text);
   font-size: 22px;
   font-weight: 680;
   letter-spacing: 0;
@@ -867,7 +868,7 @@ function buildAvatarFill(seed: string) {
 .settings-rule {
   height: 1px;
   margin: 23px 0 24px;
-  background: #e5e4e1;
+  background: var(--color-border);
 }
 
 .settings-row {
@@ -876,17 +877,17 @@ function buildAvatarFill(seed: string) {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  border-bottom: 1px solid #ecebe8;
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .settings-row label {
-  color: #34322d;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 620;
 }
 
 .settings-row strong {
-  color: #858481;
+  color: var(--color-text-muted);
   font-size: 13px;
   font-weight: 560;
   text-align: right;
@@ -900,7 +901,7 @@ function buildAvatarFill(seed: string) {
 
 .quota-panel {
   min-width: 0;
-  border-bottom: 1px solid #ecebe8;
+  border-bottom: 1px solid var(--color-border-soft);
   padding: 0 0 18px;
 }
 
@@ -923,7 +924,7 @@ function buildAvatarFill(seed: string) {
 }
 
 .quota-panel__head strong {
-  color: #34322d;
+  color: var(--color-text);
   font-size: 20px;
   line-height: 1;
 }
@@ -937,9 +938,9 @@ function buildAvatarFill(seed: string) {
 
 .quota-panel__metrics span {
   min-width: 0;
-  border: 1px solid #ecebe8;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface-alt);
   color: var(--color-text);
   font-size: 13px;
   font-weight: 700;
@@ -956,7 +957,7 @@ function buildAvatarFill(seed: string) {
 
 .section-count {
   margin-bottom: 12px;
-  color: #858481;
+  color: var(--color-text-muted);
   font-weight: 620;
 }
 
@@ -972,7 +973,7 @@ function buildAvatarFill(seed: string) {
   min-width: 0;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface-alt);
   color: var(--color-text);
   cursor: pointer;
   padding: 11px 12px;
@@ -1015,7 +1016,7 @@ function buildAvatarFill(seed: string) {
 }
 
 .settings-section :deep(.n-data-table) {
-  --n-td-color: #fff !important;
+  --n-td-color: var(--color-surface) !important;
   --n-th-color: var(--color-card-band) !important;
   --n-border-color: var(--color-border) !important;
   border: 1px solid var(--color-border);
@@ -1035,7 +1036,7 @@ function buildAvatarFill(seed: string) {
 }
 
 .settings-section :deep(.n-data-table-td) {
-  background: #fff;
+  background: var(--color-surface);
   padding: 10px 10px;
   vertical-align: middle;
 }
@@ -1066,7 +1067,7 @@ function buildAvatarFill(seed: string) {
     gap: 4px;
     overflow-x: auto;
     border-right: 0;
-    border-bottom: 1px solid #e5e4e1;
+    border-bottom: 1px solid var(--color-border);
     padding: 8px 44px 8px 8px;
     scrollbar-width: none;
   }

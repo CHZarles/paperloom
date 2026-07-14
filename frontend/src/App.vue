@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { NConfigProvider, darkTheme } from 'naive-ui';
-import type { WatermarkProps } from 'naive-ui';
+import { NConfigProvider } from 'naive-ui';
+import type { GlobalThemeOverrides, WatermarkProps } from 'naive-ui';
 import { useAppStore } from './store/modules/app';
 import { useThemeStore } from './store/modules/theme';
 import { naiveDateLocales, naiveLocales } from './locales/naive';
@@ -15,7 +15,7 @@ const appStore = useAppStore();
 const themeStore = useThemeStore();
 const route = useRoute();
 
-const naiveDarkTheme = computed(() => (themeStore.darkMode ? darkTheme : undefined));
+const naiveThemeOverrides = computed<GlobalThemeOverrides>(() => themeStore.naiveTheme);
 
 const naiveLocale = computed(() => {
   return naiveLocales[appStore.locale];
@@ -46,8 +46,7 @@ const watermarkProps = computed<WatermarkProps>(() => {
 
 <template>
   <NConfigProvider
-    :theme="naiveDarkTheme"
-    :theme-overrides="themeStore.naiveTheme"
+    :theme-overrides="naiveThemeOverrides"
     :locale="naiveLocale"
     :date-locale="naiveDateLocale"
     class="h-full"

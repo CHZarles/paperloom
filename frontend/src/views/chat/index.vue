@@ -12,9 +12,13 @@ import ResearchProcessPanel from './modules/research-process-panel.vue';
 const route = useRoute();
 const showReferenceEvidence = computed(() => route.query.evidence === 'reference');
 const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth <= 960 : false);
+let chatNavigationNarrow = typeof window !== 'undefined' ? window.innerWidth <= 960 : false;
 const chatStore = useChatStore();
-const { connectionStatus, list } = storeToRefs(chatStore);
+const { connectionStatus, conversationId, currentScope, list, sessions } = storeToRefs(chatStore);
 const referencePanelVisible = ref(false);
+const referencePanelRef = ref<HTMLElement | null>(null);
+const reviewOverlayMode = ref(typeof window !== 'undefined' ? window.innerWidth < 1200 : false);
+let reviewReturnFocus: HTMLElement | null = null;
 const activeReviewTab = ref<'process' | 'evidence'>('evidence');
 const processMessage = ref<Api.Chat.Message | null>(null);
 const settingsVisible = ref(false);
@@ -29,6 +33,10 @@ type ReferencePanelPayload = Partial<Omit<Api.Chat.ReferenceEvidence, 'paperId' 
 const referencePayload = ref<ReferencePanelPayload | null>(null);
 
 const showDockInput = computed(() => list.value.length > 0);
+const currentSessionTitle = computed(
+  () => sessions.value.find(session => session.conversationId === conversationId.value)?.title || 'New research'
+);
+const currentSourceLabel = computed(() => currentScope.value?.sourceLabel || 'All readable papers');
 const referenceEvidenceKey = computed(() => {
   if (!referencePayload.value) {
     return 'empty-reference';
@@ -62,12 +70,56 @@ function closeReferencePanel() {
   referencePanelVisible.value = false;
 }
 
+function handleReviewPanelKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeReferencePanel();
+    return;
+  }
+  if (event.key !== 'Tab' || !reviewOverlayMode.value || !referencePanelRef.value) return;
+
+  const focusable = Array.from(
+    referencePanelRef.value.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  );
+  if (!focusable.length) {
+    event.preventDefault();
+    referencePanelRef.value.focus();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+watch(referencePanelVisible, async visible => {
+  if (visible) {
+    reviewReturnFocus = document.activeElement as HTMLElement | null;
+    await nextTick();
+    if (reviewOverlayMode.value) referencePanelRef.value?.focus();
+    return;
+  }
+  reviewReturnFocus?.focus();
+  reviewReturnFocus = null;
+});
+
 function handleRetryMessage(message: string) {
   inputBoxRef.value?.sendMessage(message);
 }
 
 function syncSidebarForViewport() {
-  sidebarCollapsed.value = window.innerWidth <= 960;
+  const nextNavigationNarrow = window.innerWidth <= 960;
+  if (nextNavigationNarrow !== chatNavigationNarrow) sidebarCollapsed.value = nextNavigationNarrow;
+  chatNavigationNarrow = nextNavigationNarrow;
+  reviewOverlayMode.value = window.innerWidth < 1200;
 }
 
 onMounted(() => {
@@ -103,7 +155,8 @@ onBeforeUnmount(() => {
           <icon-lucide:panel-left-open class="text-18px" />
         </button>
         <div class="min-w-0 flex-1">
-          <div class="topbar-title">Folio</div>
+          <div class="topbar-title">{{ currentSessionTitle }}</div>
+          <div class="topbar-subtitle">{{ currentSourceLabel }}</div>
         </div>
         <div class="connection-pill" :class="`connection-pill--${connectionStatus}`">
           <span />
@@ -129,13 +182,28 @@ onBeforeUnmount(() => {
           <InputBox v-if="showDockInput" ref="inputBoxRef" />
         </div>
 
-        <aside v-if="referencePanelVisible" class="reference-panel">
+        <div
+          v-if="referencePanelVisible && reviewOverlayMode"
+          class="review-panel-mask"
+          aria-hidden="true"
+          @click="closeReferencePanel"
+        />
+        <aside
+          v-if="referencePanelVisible"
+          ref="referencePanelRef"
+          class="reference-panel"
+          :role="reviewOverlayMode ? 'dialog' : 'complementary'"
+          :aria-modal="reviewOverlayMode ? 'true' : undefined"
+          aria-label="Research review"
+          tabindex="-1"
+          @keydown="handleReviewPanelKeydown"
+        >
           <div class="reference-panel__header">
             <div>
               <div class="reference-panel__title">Research Review</div>
               <div class="reference-panel__subtitle">Review retrieval activity and cited paper evidence</div>
             </div>
-            <NButton quaternary circle size="small" @click="closeReferencePanel">
+            <NButton quaternary circle size="small" aria-label="Close research review" @click="closeReferencePanel">
               <template #icon>
                 <icon-lucide:x />
               </template>
@@ -295,6 +363,16 @@ onBeforeUnmount(() => {
   line-height: 1.05;
 }
 
+.topbar-subtitle {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--chat-text-muted);
+  font-size: 11px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .connection-pill {
   display: inline-flex;
   align-items: center;
@@ -349,13 +427,17 @@ onBeforeUnmount(() => {
 
 .reference-panel {
   display: flex;
-  width: min(860px, 48vw);
-  min-width: 560px;
+  width: clamp(420px, 36vw, 620px);
+  min-width: 420px;
   flex-shrink: 0;
   flex-direction: column;
   overflow: hidden;
   border-left: 1px solid var(--chat-line);
   background: var(--color-bg);
+}
+
+.review-panel-mask {
+  display: none;
 }
 
 .reference-panel__header {
@@ -423,7 +505,7 @@ onBeforeUnmount(() => {
 
 .review-mode-switch button.is-active {
   background: var(--color-surface);
-  box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+  box-shadow: var(--shadow-card);
   color: var(--chat-accent);
 }
 
@@ -516,14 +598,51 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1199px) {
+  .review-panel-mask {
+    position: fixed;
+    inset: 58px 0 0;
+    z-index: 19;
+    display: block;
+    background: color-mix(in srgb, var(--color-text) 18%, transparent);
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1199px) {
+  .reference-panel {
+    position: fixed;
+    inset: 58px 0 0 auto;
+    z-index: 20;
+    width: min(100vw, 560px);
+    min-width: 0;
+    box-shadow: var(--shadow-card-soft);
+  }
+}
+
+@media (max-width: 767px) {
   .connection-pill {
     display: none;
   }
 
   .reference-panel {
-    inset: 58px 0 0;
+    inset: auto 0 0;
     width: 100vw;
+    height: min(78vh, 720px);
+    border-top: 1px solid var(--chat-line);
+    border-left: 0;
+    border-radius: 8px 8px 0 0;
+    box-shadow: var(--shadow-card-soft);
+  }
+
+  .reference-panel::before {
+    width: 42px;
+    height: 4px;
+    flex: 0 0 auto;
+    align-self: center;
+    margin-top: 7px;
+    border-radius: 999px;
+    background: var(--color-border);
+    content: '';
   }
 }
 </style>

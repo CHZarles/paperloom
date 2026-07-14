@@ -12,14 +12,11 @@ export function setupLoading() {
     localStg.set('themeColor', themeColor);
   }
 
-  const darkMode = localStg.get('darkMode') || false;
+  localStg.set('darkMode', false);
+  toggleHtmlClass(DARK_CLASS).remove();
   const { r, g, b } = getRgb(themeColor);
 
   const primaryColor = `--primary-color: ${r} ${g} ${b}`;
-
-  if (darkMode) {
-    toggleHtmlClass(DARK_CLASS).add();
-  }
 
   const loadingClasses = [
     'left-0 top-0',

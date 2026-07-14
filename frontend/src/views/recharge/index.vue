@@ -162,7 +162,7 @@ const checkPayStatus = async () => {
         window.$message?.success('充值成功！');
         showPayModal.value = false;
         // 刷新用户信息
-        await authStore.initUserInfo();
+        await authStore.refreshUserInfo();
         // 刷新订单列表
         getOrders();
       } else if (data.status === 'NOT_PAY' || data.status === 'PAYING') {

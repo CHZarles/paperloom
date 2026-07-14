@@ -112,7 +112,7 @@ async function updateScope(value: string | number | null) {
   if (!ok) return;
 
   if (props.conversationId) {
-    await chatStore.loadSessions({ silent: true });
+    await chatStore.loadSessionIndex({ silent: true });
   }
   emit('updated');
 }

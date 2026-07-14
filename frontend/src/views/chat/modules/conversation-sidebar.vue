@@ -48,7 +48,7 @@ const avatarStyle = computed(() => ({
 }));
 
 onMounted(() => {
-  chatStore.loadSessions();
+  chatStore.loadSessions({ loadDetails: route.name === 'chat' });
   syncSessionOverflow();
   window.addEventListener('resize', syncSessionOverflow);
 
@@ -91,7 +91,7 @@ function handleCollapse() {
 async function handleNewChat() {
   const createdConversationId = await chatStore.createNewSession();
   if (!createdConversationId) return;
-  await chatStore.loadSessions({ silent: true });
+  await chatStore.loadSessionIndex({ silent: true });
 
   if (route.name !== 'chat') {
     await router.push({ name: 'chat' });
@@ -99,7 +99,7 @@ async function handleNewChat() {
 }
 
 async function handleSelect(cid: string) {
-  await chatStore.switchSession(cid);
+  await chatStore.switchSession(cid, { loadDetails: route.name === 'chat' });
 
   if (route.name !== 'chat') {
     await router.push({ name: 'chat' });
@@ -356,7 +356,7 @@ function formatDate(dateStr?: string) {
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
-  background: color-mix(in srgb, var(--color-surface) 88%, #eef1ec);
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-bg));
   transition:
     width 0.2s ease,
     min-width 0.2s ease;
@@ -380,14 +380,7 @@ function formatDate(dateStr?: string) {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-primary);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
   font-size: 15px;
   font-weight: 720;
   letter-spacing: 0;
@@ -405,7 +398,7 @@ function formatDate(dateStr?: string) {
 
 .new-chat-button {
   height: 38px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   font-weight: 720;
 }
 
@@ -416,7 +409,7 @@ function formatDate(dateStr?: string) {
   align-items: center;
   gap: 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
@@ -431,8 +424,8 @@ function formatDate(dateStr?: string) {
 
 .library-button:hover,
 .library-button--active {
-  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-primary) 12%);
-  color: var(--color-primary);
+  background: var(--color-research-soft-bg);
+  color: var(--color-research);
 }
 
 .library-button__icon {
@@ -460,14 +453,7 @@ function formatDate(dateStr?: string) {
   justify-content: space-between;
   padding: 14px 14px 6px;
   color: var(--color-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
   font-size: 12px;
   font-weight: 680;
   letter-spacing: 0;
@@ -476,7 +462,7 @@ function formatDate(dateStr?: string) {
 .archive-toggle {
   border: 0;
   background: transparent;
-  color: var(--color-primary);
+  color: var(--color-research);
   cursor: pointer;
   font-size: 12px;
   font-weight: 650;
@@ -515,7 +501,7 @@ function formatDate(dateStr?: string) {
 
 .session-scroll--overflowing:hover {
   scrollbar-width: thin;
-  scrollbar-color: rgba(38, 54, 74, 0.28) transparent;
+  scrollbar-color: color-mix(in srgb, var(--color-text-muted) 38%, transparent) transparent;
 }
 
 .session-scroll--overflowing:hover::-webkit-scrollbar {
@@ -536,11 +522,11 @@ function formatDate(dateStr?: string) {
 }
 
 .session-scroll--overflowing:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(38, 54, 74, 0.28);
+  background-color: color-mix(in srgb, var(--color-text-muted) 38%, transparent);
 }
 
 .session-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(38, 54, 74, 0.42);
+  background-color: color-mix(in srgb, var(--color-text-muted) 54%, transparent);
 }
 
 .session-item {
@@ -551,7 +537,7 @@ function formatDate(dateStr?: string) {
   gap: 9px;
   margin: 1px 2px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 8px 9px;
   color: var(--color-text);
   transition:
@@ -564,8 +550,8 @@ function formatDate(dateStr?: string) {
 }
 
 .session-item--active {
-  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-primary) 12%);
-  color: var(--color-primary);
+  background: #2e3a3730;
+  color: var(--color-research);
   font-weight: 600;
 }
 
@@ -580,14 +566,7 @@ function formatDate(dateStr?: string) {
 .session-date {
   margin-top: 1px;
   color: var(--color-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-utility);
   font-size: 11px;
 }
 
@@ -635,10 +614,10 @@ function formatDate(dateStr?: string) {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
   border-radius: 7px;
-  background: #f6f8fa;
+  background: var(--color-surface-elevated);
   box-shadow:
-    0 1px 0 rgb(255 255 255 / 90%) inset,
-    0 1px 2px rgb(15 23 42 / 8%);
+    0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent) inset,
+    var(--shadow-card);
   gap: 1px;
   padding: 4px;
 }
@@ -669,14 +648,7 @@ function formatDate(dateStr?: string) {
 .account-copy small {
   overflow: hidden;
   color: var(--color-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
   font-size: 11px;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -734,7 +706,7 @@ function formatDate(dateStr?: string) {
 
 .dark .chat-sidebar {
   border-right-color: color-mix(in srgb, var(--color-border) 80%, transparent);
-  background: color-mix(in srgb, var(--color-bg) 88%, #111827);
+  background: color-mix(in srgb, var(--color-surface) 72%, var(--color-bg));
 }
 
 .dark .sidebar-section-header,
@@ -751,20 +723,20 @@ function formatDate(dateStr?: string) {
 }
 
 .dark .session-item--active {
-  background: var(--color-primary-soft-bg);
+  background: #2e3a3730;
   color: var(--color-text);
 }
 
 .dark .session-scroll--overflowing:hover {
-  scrollbar-color: var(--color-primary) transparent;
+  scrollbar-color: color-mix(in srgb, var(--color-primary) 58%, transparent) transparent;
 }
 
 .dark .session-scroll--overflowing:hover::-webkit-scrollbar-thumb {
-  background-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 58%, transparent);
 }
 
 .dark .session-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 74%, transparent);
 }
 
 .dark .sidebar-footer {
@@ -791,7 +763,7 @@ function formatDate(dateStr?: string) {
 }
 
 .dark .avatar-identicon {
-  background: #161b22;
-  box-shadow: none;
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-card);
 }
 </style>

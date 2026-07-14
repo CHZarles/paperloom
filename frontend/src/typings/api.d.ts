@@ -896,6 +896,7 @@ declare namespace Api {
       conversationId: string;
       title: string;
       status: 'ACTIVE' | 'ARCHIVED';
+      current?: boolean;
       scopeMode?: ScopeMode;
       scopeLocked?: boolean;
       scopeStatus?: ScopeStatus;

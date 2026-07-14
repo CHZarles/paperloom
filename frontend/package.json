@@ -22,9 +22,10 @@
     "pnpm": ">=8.7.0"
   },
   "scripts": {
-    "build": "vite build --mode prod",
+    "build": "vite build --mode prod && node scripts/check-frontend-bundle-budget.mjs",
     "build:test": "vite build --mode test",
     "cleanup": "sa cleanup",
+    "check:bundle": "node scripts/check-frontend-bundle-budget.mjs",
     "commit": "sa git-commit -l=zh-cn",
     "commit:en": "sa git-commit",
     "dev": "vite --mode test",

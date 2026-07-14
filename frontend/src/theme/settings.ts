@@ -1,11 +1,11 @@
 /** Default theme settings */
 export const themeSettings: App.Theme.ThemeSetting = {
-  themeScheme: 'auto',
+  themeScheme: 'light',
   grayscale: false,
   colourWeakness: false,
   recommendColor: true,
-  themeColor: '#1a1a19',
-  otherColor: { info: '#5e5e5b', success: '#168039', warning: '#b7791f', error: '#d92d20' },
+  themeColor: '#202522',
+  otherColor: { info: '#16786e', success: '#168039', warning: '#b7791f', error: '#d92d20' },
   isInfoFollowPrimary: true,
   resetCacheStrategy: 'close',
   layout: { mode: 'vertical', scrollMode: 'content', reverseHorizontalMix: false },
@@ -27,17 +27,16 @@ export const themeSettings: App.Theme.ThemeSetting = {
     light: {
       colors: {
         container: 'rgb(255, 255, 255)',
-        layout: 'rgb(247, 247, 245)',
-        inverted: 'rgb(240, 240, 240)',
-        'base-text': 'rgb(52, 50, 45)'
+        layout: 'rgb(246, 248, 247)',
+        inverted: 'rgb(240, 243, 241)',
+        'base-text': 'rgb(32, 37, 34)'
       },
       boxShadow: {
-        header: '0 1px 0 rgb(229, 228, 225, 0.85)',
-        sider: '1px 0 0 0 rgb(229, 228, 225, 0.85)',
-        tab: '0 1px 0 rgb(229, 228, 225, 0.85)'
+        header: '0 1px 0 rgb(220, 227, 223, 0.88)',
+        sider: '1px 0 0 0 rgb(220, 227, 223, 0.88)',
+        tab: '0 1px 0 rgb(220, 227, 223, 0.88)'
       }
-    },
-    dark: { colors: { container: 'rgb(22, 26, 33)', layout: 'rgb(16, 19, 24)', 'base-text': 'rgb(237, 233, 223)' } }
+    }
   }
 };
 
@@ -46,4 +45,7 @@ export const themeSettings: App.Theme.ThemeSetting = {
  *
  * If publish new version, use `overrideThemeSettings` to override certain theme settings
  */
-export const overrideThemeSettings: Partial<App.Theme.ThemeSetting> = {};
+export const overrideThemeSettings: Partial<App.Theme.ThemeSetting> = {
+  themeScheme: 'light',
+  tokens: themeSettings.tokens
+};

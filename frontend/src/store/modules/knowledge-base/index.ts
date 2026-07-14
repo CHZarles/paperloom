@@ -3,6 +3,27 @@ import { REQUEST_ID_KEY } from '~/packages/axios/src';
 import { nanoid } from '~/packages/utils/src';
 
 const maxConcurrentChunksPerFile = 4;
+const maxConcurrentChunkUploads = 4;
+let activeChunkUploads = 0;
+const chunkUploadWaiters: Array<() => void> = [];
+
+function acquireChunkUploadSlot() {
+  return new Promise<() => void>(resolve => {
+    const acquire = () => {
+      activeChunkUploads += 1;
+      let released = false;
+      resolve(() => {
+        if (released) return;
+        released = true;
+        activeChunkUploads -= 1;
+        chunkUploadWaiters.shift()?.();
+      });
+    };
+
+    if (activeChunkUploads < maxConcurrentChunkUploads) acquire();
+    else chunkUploadWaiters.push(acquire);
+  });
+}
 
 export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () => {
   const tasks = ref<Api.Paper.UploadTask[]>([]);
@@ -22,26 +43,33 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
     const requestId = nanoid();
     task.requestIds ??= [];
     task.requestIds.push(requestId);
-    const { error, data } = await request<Api.Paper.Progress>({
-      url: '/papers/upload/chunk',
-      method: 'POST',
-      data: {
-        file: chunk,
-        paperId: task.paperId,
-        chunkIndex,
-        totalSize: task.totalSize,
-        paperTitle: task.paperTitle,
-        orgTag: task.orgTag,
-        isPublic: task.isPublic ?? false
-      },
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        [REQUEST_ID_KEY]: requestId
-      },
-      timeout: 10 * 60 * 1000
-    });
+    const releaseUploadSlot = await acquireChunkUploadSlot();
+    let response;
+    try {
+      response = await request<Api.Paper.Progress>({
+        url: '/papers/upload/chunk',
+        method: 'POST',
+        data: {
+          file: chunk,
+          paperId: task.paperId,
+          chunkIndex,
+          totalSize: task.totalSize,
+          paperTitle: task.paperTitle,
+          orgTag: task.orgTag,
+          isPublic: task.isPublic ?? false
+        },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          [REQUEST_ID_KEY]: requestId
+        },
+        timeout: 10 * 60 * 1000
+      });
+    } finally {
+      task.requestIds = task.requestIds.filter(id => id !== requestId);
+      releaseUploadSlot();
+    }
 
-    task.requestIds = task.requestIds.filter(id => id !== requestId);
+    const { error, data } = response!;
 
     if (error) return false;
 

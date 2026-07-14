@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue';
 import { NScrollbar } from 'naive-ui';
-import { VueMarkdownItProvider } from '@/vendor/vue-markdown-shiki';
-import ChatMessage from './chat-message.vue';
 import InputBox from './input-box.vue';
+
+const ChatMessage = defineAsyncComponent(() => import('./chat-message.vue'));
+const MarkdownProvider = defineAsyncComponent(() =>
+  import('@/vendor/vue-markdown-shiki').then(module => module.VueMarkdownItProvider)
+);
 
 defineOptions({
   name: 'ChatList'
@@ -56,20 +60,82 @@ const emit = defineEmits<{
 }>();
 
 const chatStore = useChatStore();
-const { list, sessionId, conversationId } = storeToRefs(chatStore);
+const { conversationId, hasOlderMessages, list, messagesLoadingOlder, sessionId } = storeToRefs(chatStore);
 
 const loading = ref(false);
 const scrollbarRef = ref<InstanceType<typeof NScrollbar>>();
+const scrollContainer = shallowRef<HTMLElement | null>(null);
+const isFollowingBottom = ref(true);
+let scrollFrame: number | null = null;
+let preservingScroll = false;
+const hasRichMarkdown = computed(() =>
+  list.value.some(
+    item =>
+      item.role === 'assistant' &&
+      Boolean(item.content) &&
+      item.status !== 'error' &&
+      !['pending', 'loading'].includes(item.status || '')
+  )
+);
 
-watch(() => [...list.value], scrollToBottom);
+watch(
+  () => [list.value.length, list.value.at(-1)?.content.length || 0],
+  () => {
+    if (!preservingScroll) requestScrollToBottom();
+  },
+  { flush: 'post' }
+);
 
-function scrollToBottom() {
-  setTimeout(() => {
-    scrollbarRef.value?.scrollBy({
-      top: 999999999999999,
+watch(conversationId, () => {
+  isFollowingBottom.value = true;
+  requestScrollToBottom(true);
+});
+
+function requestScrollToBottom(force = false) {
+  if ((!force && !isFollowingBottom.value) || scrollFrame !== null) return;
+  scrollFrame = window.requestAnimationFrame(() => {
+    scrollFrame = null;
+    nextTick(() => {
+      scrollbarRef.value?.scrollTo({
+        top: Number.MAX_SAFE_INTEGER,
+        behavior: 'auto'
+      });
+    });
+  });
+}
+
+function handleScroll(event: Event) {
+  const target = event.target as HTMLElement | null;
+  if (!target) return;
+  scrollContainer.value = target;
+  if (preservingScroll) return;
+  isFollowingBottom.value = target.scrollHeight - target.scrollTop - target.clientHeight < 120;
+}
+
+function jumpToLatest() {
+  isFollowingBottom.value = true;
+  requestScrollToBottom(true);
+}
+
+async function handleLoadOlderMessages() {
+  const container = scrollContainer.value;
+  const previousHeight = container?.scrollHeight || 0;
+  const previousTop = container?.scrollTop || 0;
+  preservingScroll = true;
+  const loaded = await chatStore.loadOlderMessages();
+  await nextTick();
+  if (loaded && container) {
+    scrollbarRef.value?.scrollTo({
+      top: previousTop + Math.max(0, container.scrollHeight - previousHeight),
       behavior: 'auto'
     });
-  }, 100);
+  }
+  window.requestAnimationFrame(() => {
+    preservingScroll = false;
+    if (container) {
+      isFollowingBottom.value = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+    }
+  });
 }
 
 function getRetrievalQueryFallback(index: number) {
@@ -89,7 +155,7 @@ async function loadCurrentConversationIfNeeded() {
   loading.value = true;
   const targetConversationId = conversationId.value;
   try {
-    await chatStore.loadMessages(targetConversationId);
+    await chatStore.loadConversationDetails(targetConversationId);
   } finally {
     if (targetConversationId === conversationId.value) {
       loading.value = false;
@@ -98,17 +164,28 @@ async function loadCurrentConversationIfNeeded() {
 }
 
 onMounted(() => {
-  chatStore.scrollToBottom = scrollToBottom;
   loadCurrentConversationIfNeeded();
 });
 
+onBeforeUnmount(() => {
+  if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame);
+});
+
 const showEmpty = computed(() => !loading.value && list.value.length === 0);
+
 function handleRetry(index: number) {
   const message = getRetrievalQueryFallback(index).trim();
   if (!message) {
     return;
   }
   emit('retryMessage', message);
+}
+
+function messageKey(item: Api.Chat.Message, index: number) {
+  if (item.conversationRecordId) return `${item.conversationRecordId}:${item.role}`;
+  if (item.generationId) return `${item.generationId}:${item.role}`;
+  if (item.timestamp) return `${item.timestamp}:${item.role}`;
+  return `${item.role}:${index}`;
 }
 </script>
 
@@ -122,13 +199,21 @@ function handleRetry(index: number) {
         </div>
       </div>
 
-      <NScrollbar v-else ref="scrollbarRef" class="flex-1">
+      <NScrollbar v-else ref="scrollbarRef" class="flex-1" @scroll="handleScroll">
         <NSpin :show="loading">
           <div class="chat-message-stack">
-            <VueMarkdownItProvider>
+            <div v-if="hasOlderMessages" class="history-loader">
+              <NButton quaternary size="small" :loading="messagesLoadingOlder" @click="handleLoadOlderMessages">
+                <template #icon>
+                  <icon-lucide:history />
+                </template>
+                Load earlier messages
+              </NButton>
+            </div>
+            <component :is="hasRichMarkdown ? MarkdownProvider : 'div'">
               <ChatMessage
                 v-for="(item, index) in list"
-                :key="index"
+                :key="messageKey(item, index)"
                 :msg="item"
                 :session-id="sessionId"
                 :retrieval-query-fallback="getRetrievalQueryFallback(index)"
@@ -137,20 +222,57 @@ function handleRetry(index: number) {
                 @open-process="emit('openProcess', $event)"
                 @retry="handleRetry(index)"
               />
-            </VueMarkdownItProvider>
+            </component>
           </div>
         </NSpin>
       </NScrollbar>
+      <button
+        v-if="!isFollowingBottom"
+        type="button"
+        class="jump-to-latest"
+        aria-label="Jump to latest"
+        @click="jumpToLatest"
+      >
+        <icon-lucide:arrow-down />
+      </button>
     </div>
   </Suspense>
 </template>
 
 <style scoped lang="scss">
 .chat-list-shell {
+  position: relative;
   display: flex;
   min-height: 0;
   flex: 1 1 0;
   flex-direction: column;
+}
+
+.history-loader {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 14px;
+}
+
+.jump-to-latest {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.jump-to-latest:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .welcome-panel {
@@ -169,14 +291,13 @@ function handleRetry(index: number) {
 
 .welcome-panel::before {
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgb(33 48 74 / 4%) 1px, transparent 1px),
-    linear-gradient(180deg, rgb(33 48 74 / 4%) 1px, transparent 1px);
-  background-size: 48px 48px;
+  inset: auto 50% 18%;
+  width: min(640px, 78vw);
+  height: 1px;
+  background: var(--color-border-soft);
   content: '';
-  mask-image: radial-gradient(circle at center, black 0%, black 44%, transparent 76%);
   pointer-events: none;
+  transform: translateX(-50%);
 }
 
 .welcome-title,
@@ -189,9 +310,9 @@ function handleRetry(index: number) {
   margin: 0;
   max-width: 960px;
   color: var(--color-text);
-  font-size: clamp(38px, 6vw, 72px);
-  font-weight: 760;
-  line-height: 0.98;
+  font-size: 44px;
+  font-weight: 680;
+  line-height: 1.08;
 }
 
 .welcome-input {
@@ -199,7 +320,7 @@ function handleRetry(index: number) {
 }
 
 .chat-message-stack {
-  width: min(1120px, 100%);
+  width: min(var(--reading-width), 100%);
   margin: 0 auto;
   padding: 26px 24px 36px;
 }
@@ -215,9 +336,8 @@ function handleRetry(index: number) {
   }
 
   .welcome-title {
-    font-size: 38px;
+    font-size: 32px;
   }
-
 
   .chat-message-stack {
     padding: 18px 16px 28px;

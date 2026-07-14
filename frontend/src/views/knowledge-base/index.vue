@@ -1,22 +1,27 @@
 <script setup lang="tsx">
+import { defineAsyncComponent } from 'vue';
 import type { UploadFileInfo } from 'naive-ui';
-import { NButton, NEllipsis, NModal, NPopconfirm, NProgress, NUpload } from 'naive-ui';
+import { NButton, NDropdown, NEllipsis, NModal, NProgress, NUpload } from 'naive-ui';
 import type { FlatResponseData } from '@sa/axios';
 import { uploadAccept } from '@/constants/common';
 import { getUploadFileValidationError } from '@/store/modules/knowledge-base/upload-validation';
 import { UploadStatus } from '@/enum';
 import SvgIcon from '@/components/custom/svg-icon.vue';
-import FilePreview from '@/components/custom/file-preview.vue';
 import ConversationSidebar from '@/views/chat/modules/conversation-sidebar.vue';
 import SettingsPanel from '@/views/personal-center/modules/settings-panel.vue';
 import UploadDialog from './modules/upload-dialog.vue';
 import SearchDialog from './modules/search-dialog.vue';
 import CollectionsPanel from './modules/collections-panel.vue';
+import PaperMobileList from './modules/paper-mobile-list.vue';
+
+const FilePreview = defineAsyncComponent(() => import('@/components/custom/file-preview.vue'));
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-const sidebarCollapsed = ref(false);
+const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth < 960 : false);
+const isMobileLibrary = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+let libraryNavigationNarrow = typeof window !== 'undefined' ? window.innerWidth < 960 : false;
 const settingsVisible = ref(false);
 const settingsModalHostStyle = { width: 'min(1480px, calc(100vw - 32px))' };
 
@@ -148,6 +153,34 @@ function canManageFile(row: Api.Paper.UploadTask) {
   return authStore.isAdmin || String(row.userId) === String(authStore.userInfo.id);
 }
 
+function paperRowMenuOptions(row: Api.Paper.UploadTask) {
+  return [
+    { label: 'Extracted tables', key: 'tables', disabled: !Number(row.tableAsset?.tableCount || 0) },
+    {
+      label: 'Parser JSON',
+      key: 'parser',
+      disabled: !canManageFile(row) || !row.parserArtifact?.available
+    },
+    ...(canRetryVectorization(row) ? [{ label: 'Retry indexing', key: 'retry' }] : []),
+    ...(canManageFile(row) ? [{ label: 'Delete paper', key: 'delete' }] : [])
+  ];
+}
+
+function handlePaperRowMenuAction(key: string | number, row: Api.Paper.UploadTask) {
+  if (key === 'tables') handleOpenTables(row);
+  if (key === 'parser') handleOpenParserArtifact(row);
+  if (key === 'retry') handleRetryVectorization(row);
+  if (key !== 'delete') return;
+
+  window.$dialog?.warning({
+    title: 'Delete paper?',
+    content: row.originalFilename,
+    positiveText: 'Delete',
+    negativeText: 'Cancel',
+    onPositiveClick: () => handleDelete(row.paperId)
+  });
+}
+
 function renderIcon(originalFilename: string) {
   const ext = getFileExt(originalFilename);
   if (ext) {
@@ -178,14 +211,14 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
   columns: () => [
     {
       key: 'originalFilename',
-      title: 'Paper / 文件',
-      width: 320,
+      title: 'Paper',
+      width: 280,
       render: row => (
         <div class="library-file-cell">
           <button
             class="library-file-cell__icon"
             type="button"
-            title="预览 PDF"
+            title="Preview PDF"
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {renderIcon(row.originalFilename)}
@@ -195,7 +228,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
               <button
                 type="button"
                 class="library-file-cell__name"
-                title="预览 PDF"
+                title="Preview PDF"
                 onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
               >
                 {row.originalFilename}
@@ -207,9 +240,9 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
                 class="library-digest-chip"
                 onClick={() => {
                   navigator.clipboard.writeText(row.paperId);
-                  window.$message?.success('MD5已复制');
+                  window.$message?.success('Paper ID copied');
                 }}
-                title="点击复制MD5"
+                title="Copy paper ID"
               >
                 {row.paperId.substring(0, 8)}
               </button>
@@ -227,23 +260,23 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
     },
     {
       key: 'estimatedEmbeddingTokens',
-      title: 'Index Budget / 索引',
-      width: 270,
+      title: 'Index',
+      width: 240,
       render: row => renderIndexUsage(row)
     },
     {
       key: 'status',
-      title: 'Pipeline / 状态',
-      width: 132,
+      title: 'Status',
+      width: 120,
       render: row => renderPipelineStatus(row)
     },
     {
       key: 'orgTagName',
-      title: 'Scope / 权限',
-      width: 160,
+      title: 'Scope',
+      width: 130,
       render: row => (
         <div class="library-scope-stack">
-          <span class="library-scope-chip">{row.orgTagName || '未分类'}</span>
+          <span class="library-scope-chip">{row.orgTagName || 'Uncategorized'}</span>
           {row.isPublic ? (
             <span class="library-visibility library-visibility--public">Public</span>
           ) : (
@@ -254,8 +287,8 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
     },
     {
       key: 'createdAt',
-      title: 'Imported',
-      width: 108,
+      title: 'Updated',
+      width: 96,
       render: row => (
         <div class="library-date-cell">
           <span>{dayjs(row.createdAt).format('YYYY-MM-DD')}</span>
@@ -265,8 +298,8 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
     },
     {
       key: 'operate',
-      title: 'Actions / 操作',
-      width: 260,
+      title: 'Actions',
+      width: 170,
       render: row => (
         <div class="library-action-group">
           {canManageFile(row) ? renderResumeUploadButton(row) : null}
@@ -277,44 +310,19 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
             {{
-              icon: () => <SvgIcon icon="lucide:eye" class="text-14px" />,
-              default: () => '预览'
+              icon: () => <span class="icon-lucide-eye text-14px" />,
+              default: () => 'Preview'
             }}
           </NButton>
-          <NButton secondary size="small" disabled={!row.tableAsset?.tableCount} onClick={() => handleOpenTables(row)}>
-            {{
-              icon: () => <SvgIcon icon="lucide:table-2" class="text-14px" />,
-              default: () => 'Tables'
-            }}
-          </NButton>
-          {canManageFile(row) ? (
-            <NButton
-              secondary
-              size="small"
-              disabled={!row.parserArtifact?.available}
-              onClick={() => handleOpenParserArtifact(row)}
-            >
-              {{
-                icon: () => <SvgIcon icon="lucide:file-json" class="text-14px" />,
-                default: () => 'Parser JSON'
-              }}
+          <NDropdown
+            trigger="click"
+            options={paperRowMenuOptions(row)}
+            onSelect={key => handlePaperRowMenuAction(key, row)}
+          >
+            <NButton quaternary circle size="small">
+              {{ icon: () => <span class="icon-lucide-ellipsis text-14px" /> }}
             </NButton>
-          ) : null}
-          {canManageFile(row) ? (
-            <NPopconfirm onPositiveClick={() => handleDelete(row.paperId)}>
-              {{
-                default: () => '确认删除当前文件吗？',
-                trigger: () => (
-                  <NButton type="error" secondary size="small">
-                    {{
-                      icon: () => <SvgIcon icon="lucide:trash-2" class="text-14px" />,
-                      default: () => '删除'
-                    }}
-                  </NButton>
-                )
-              }}
-            </NPopconfirm>
-          ) : null}
+          </NDropdown>
         </div>
       )
     }
@@ -372,7 +380,16 @@ const libraryStats = computed(() => {
   ];
 });
 
+function syncLibraryViewport() {
+  isMobileLibrary.value = window.innerWidth < 768;
+  const nextNavigationNarrow = window.innerWidth < 960;
+  if (nextNavigationNarrow !== libraryNavigationNarrow) sidebarCollapsed.value = nextNavigationNarrow;
+  libraryNavigationNarrow = nextNavigationNarrow;
+}
+
 onMounted(async () => {
+  syncLibraryViewport();
+  window.addEventListener('resize', syncLibraryViewport);
   await getList();
 });
 
@@ -466,6 +483,15 @@ async function handlePaperLibrarySearchReset() {
   await getList();
 }
 
+async function handleMobilePageUpdate(page: number) {
+  updateSearchParams({
+    page,
+    size: Number(mobilePagination.value.pageSize || 10),
+    query: activePaperLibraryQuery.value
+  });
+  await getList();
+}
+
 async function handleDelete(paperId: string) {
   const index = tasks.value.findIndex(task => task.paperId === paperId);
   const task = index !== -1 ? tasks.value[index] : null;
@@ -486,7 +512,7 @@ async function handleDelete(paperId: string) {
     if (index !== -1) {
       tasks.value.splice(index, 1);
     }
-    window.$message?.success('删除成功');
+    window.$message?.success('Paper deleted');
     await getData();
   }
 }
@@ -497,7 +523,7 @@ async function handleOpenParserArtifact(row: Api.Paper.UploadTask) {
   });
 
   if (error || !parserArtifact?.downloadUrl) {
-    window.$message?.error(error?.message || 'Parser JSON 不存在');
+    window.$message?.error(error?.message || 'Parser JSON is unavailable');
     return;
   }
 
@@ -516,7 +542,7 @@ async function handleOpenTables(row: Api.Paper.UploadTask) {
 
   tableModalLoading.value = false;
   if (error) {
-    window.$message?.error(error.message || '表格列表加载失败');
+    window.$message?.error(error.message || 'Could not load extracted tables');
     return;
   }
   tableModalRows.value = tables || [];
@@ -624,6 +650,8 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
   const figureCount = Number(row.figureAsset?.figureCount || 0);
   const formulaCount = Number(row.formulaAsset?.formulaCount || 0);
   const pageCount = Number(row.visualAsset?.pageScreenshotCount || 0);
+  const totalAssets = tableCount + figureCount + formulaCount + pageCount;
+  const assetTitle = `Tables ${tableCount} · Figures ${figureCount} · Formulas ${formulaCount} · Pages ${pageCount}`;
   const warningText = formatAssetWarnings(row.assetWarnings);
   return (
     <div class="library-asset-strip">
@@ -631,10 +659,9 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
       <span class={parserSaved ? 'library-asset-pill library-asset-pill--ok' : 'library-asset-pill'}>
         Parser: {parserSaved ? 'saved' : 'missing'}
       </span>
-      <span class="library-asset-pill">Tables: {tableCount}</span>
-      <span class="library-asset-pill">Figures: {figureCount}</span>
-      <span class="library-asset-pill">Formulas: {formulaCount}</span>
-      <span class="library-asset-pill">Pages: {pageCount}</span>
+      <span class="library-asset-pill" title={assetTitle}>
+        Assets: {totalAssets}
+      </span>
       {warningText ? (
         <span class="library-asset-pill library-asset-pill--warning" title={warningText}>
           Warnings: {row.assetWarnings?.length || 0}
@@ -739,7 +766,7 @@ async function handleRetryVectorization(row: Api.Paper.UploadTask) {
   row.processingErrorMessage = null;
   row.actualEmbeddingTokens = undefined;
   row.actualChunkCount = undefined;
-  window.$message?.success('已提交异步向量化重试任务');
+  window.$message?.success('Indexing retry queued');
   await getList();
 }
 
@@ -771,7 +798,7 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
         {canRetryVectorization(row) ? (
           <div>
             <NButton size="tiny" secondary onClick={() => handleRetryVectorization(row)}>
-              重试向量化
+              Retry indexing
             </NButton>
           </div>
         ) : null}
@@ -787,12 +814,12 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
           <span>failed</span>
         </div>
         <NEllipsis tooltip lineClamp={2} style="color: var(--color-error)">
-          {row.processingErrorMessage || '请检查 Embedding 额度或稍后重试'}
+          {row.processingErrorMessage || 'Check the embedding quota or retry later'}
         </NEllipsis>
         {canRetryVectorization(row) ? (
           <div>
             <NButton size="tiny" type="error" secondary onClick={() => handleRetryVectorization(row)}>
-              重试向量化
+              Retry indexing
             </NButton>
           </div>
         ) : null}
@@ -810,7 +837,7 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
         <div class="library-index-line__meta">retry writeback</div>
         <div>
           <NButton size="tiny" secondary onClick={() => handleRetryVectorization(row)}>
-            重试向量化
+            Retry indexing
           </NButton>
         </div>
       </div>
@@ -859,6 +886,7 @@ watch(
 );
 
 onUnmounted(() => {
+  window.removeEventListener('resize', syncLibraryViewport);
   clearVectorizationPolling();
 });
 
@@ -869,8 +897,8 @@ function renderResumeUploadButton(row: Api.Paper.UploadTask) {
       return (
         <NButton type="primary" size="small" secondary onClick={() => resumeUpload(row)}>
           {{
-            icon: () => <SvgIcon icon="lucide:upload" class="text-14px" />,
-            default: () => '续传'
+            icon: () => <span class="icon-lucide-upload text-14px" />,
+            default: () => 'Resume'
           }}
         </NButton>
       );
@@ -884,8 +912,8 @@ function renderResumeUploadButton(row: Api.Paper.UploadTask) {
       >
         <NButton type="primary" size="small" secondary>
           {{
-            icon: () => <SvgIcon icon="lucide:upload" class="text-14px" />,
-            default: () => '续传'
+            icon: () => <span class="icon-lucide-upload text-14px" />,
+            default: () => 'Resume'
           }}
         </NButton>
       </NUpload>
@@ -923,7 +951,7 @@ async function onBeforeUpload(
   }
   const md5 = await calculateMD5(file);
   if (md5 !== row.paperId) {
-    window.$message?.error('两次上传的文件不一致');
+    window.$message?.error('The selected file does not match the interrupted upload');
     return false;
   }
   loading.value = true;
@@ -947,6 +975,7 @@ async function onBeforeUpload(
 
 <template>
   <div class="paper-library-shell">
+    <div v-if="!sidebarCollapsed" class="paper-library-sidebar-mask" @click="sidebarCollapsed = true" />
     <ConversationSidebar
       v-model:collapsed="sidebarCollapsed"
       class="paper-library-sidebar"
@@ -960,7 +989,7 @@ async function onBeforeUpload(
             v-show="sidebarCollapsed"
             type="button"
             class="library-sidebar-open"
-            aria-label="展开对话列表"
+            aria-label="Open navigation"
             @click="sidebarCollapsed = false"
           >
             <icon-lucide:panel-left-open class="text-18px" />
@@ -988,6 +1017,7 @@ async function onBeforeUpload(
               v-model:columns="columnChecks"
               :addable="false"
               :loading="loading"
+              compact
               @refresh="getList"
             >
               <template #prefix>
@@ -1023,7 +1053,7 @@ async function onBeforeUpload(
                     <template #icon>
                       <icon-lucide:search-check class="text-icon" />
                     </template>
-                    检索文献库
+                    Evidence search
                   </NButton>
                 </div>
               </template>
@@ -1032,7 +1062,7 @@ async function onBeforeUpload(
                   <template #icon>
                     <icon-lucide:upload class="text-icon" />
                   </template>
-                  上传文献
+                  Upload
                 </NButton>
               </template>
             </TableHeaderOperation>
@@ -1048,11 +1078,34 @@ async function onBeforeUpload(
             </div>
           </div>
 
+          <PaperMobileList
+            v-if="isMobileLibrary"
+            :rows="tableTasks"
+            :can-manage="canManageFile"
+            @preview="row => handleFilePreview(row.originalFilename, row.paperId)"
+            @tables="handleOpenTables"
+            @parser="handleOpenParserArtifact"
+            @retry="handleRetryVectorization"
+            @delete="handleDelete"
+          />
+          <NPagination
+            v-if="
+              isMobileLibrary &&
+              Number(mobilePagination.itemCount || 0) > Number(mobilePagination.pageSize || 10)
+            "
+            class="library-mobile-pagination"
+            :page="Number(mobilePagination.page || 1)"
+            :page-size="Number(mobilePagination.pageSize || 10)"
+            :item-count="Number(mobilePagination.itemCount || 0)"
+            :page-slot="5"
+            @update:page="handleMobilePageUpdate"
+          />
           <NDataTable
+            v-else
             :columns="columns"
             :data="tableTasks"
             size="small"
-            :scroll-x="1280"
+            :scroll-x="1080"
             :loading="loading"
             remote
             :row-key="row => row.id"
@@ -1113,6 +1166,7 @@ async function onBeforeUpload(
     <NModal v-model:show="previewVisible" class="document-preview-modal" :auto-focus="false">
       <div class="document-preview-modal-shell">
         <FilePreview
+          v-if="previewVisible"
           :paper-title="previewPaperTitle"
           :paper-id="previewPaperId"
           :visible="previewVisible"
@@ -1141,6 +1195,15 @@ async function onBeforeUpload(
   height: 100%;
 }
 
+.paper-library-sidebar-mask {
+  display: none;
+}
+
+.library-mobile-pagination {
+  justify-content: center;
+  margin-top: 16px;
+}
+
 .settings-modal-host {
   width: min(1480px, calc(100vw - 32px));
 }
@@ -1166,7 +1229,7 @@ async function onBeforeUpload(
 
 .paper-library-card > .n-card__content {
   background: var(--color-bg);
-  padding: 18px 24px 28px;
+  padding: 20px 24px 28px;
 }
 
 .library-topbar {
@@ -1175,7 +1238,7 @@ async function onBeforeUpload(
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
-  margin-bottom: 34px;
+  margin-bottom: 24px;
   background: var(--color-bg);
   padding: 0;
 }
@@ -1226,7 +1289,7 @@ async function onBeforeUpload(
   margin: 0 0 2px;
   color: var(--color-text);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 620;
   letter-spacing: 0;
   line-height: 1.1;
 }
@@ -1269,7 +1332,7 @@ async function onBeforeUpload(
   margin-bottom: 22px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-bg);
+  background: var(--color-surface);
   overflow: hidden;
 }
 
@@ -1327,7 +1390,7 @@ async function onBeforeUpload(
   --n-th-text-color: var(--color-primary) !important;
   --n-td-text-color: var(--color-text) !important;
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   overflow: hidden;
 }
 
@@ -1408,8 +1471,9 @@ async function onBeforeUpload(
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
-  font: inherit;
-  font-weight: 700;
+  font-family: var(--font-reading);
+  font-size: 14px;
+  font-weight: 650;
   line-height: 1.45;
   text-align: left;
 }
@@ -1424,6 +1488,14 @@ async function onBeforeUpload(
   color: var(--color-text-muted);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.library-digest-chip,
+.library-size-cell,
+.library-index-line__top,
+.library-date-cell {
+  font-family: var(--font-utility);
+  font-variant-numeric: tabular-nums;
 }
 
 .library-file-cell__meta--stacked,
@@ -1824,12 +1896,36 @@ async function onBeforeUpload(
   }
 }
 
+@media (max-width: 959px) {
+  .paper-library-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: 276px !important;
+    min-width: 276px !important;
+    transform: translateX(0);
+  }
+
+  .paper-library-sidebar.w-0 {
+    transform: translateX(-100%);
+  }
+
+  .paper-library-sidebar-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: block;
+    background: color-mix(in srgb, var(--color-text) 18%, transparent);
+  }
+}
+
 @media (max-width: 640px) {
   .library-topbar {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
-    padding: 14px;
+    margin-bottom: 18px;
+    padding: 0;
   }
 
   .library-title-block,
@@ -1843,6 +1939,10 @@ async function onBeforeUpload(
 
   .library-toolbar {
     justify-content: flex-start;
+  }
+
+  .library-toolbar .n-space {
+    width: 100%;
   }
 
   .paper-library-card .n-card__content {

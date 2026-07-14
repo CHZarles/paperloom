@@ -789,18 +789,18 @@ function referenceNumber(marker: unknown) {
 }
 
 .reading-row__status {
-  color: color-mix(in srgb, var(--color-text-muted) 86%, #8a5a12);
+  color: color-mix(in srgb, var(--color-text-muted) 78%, var(--color-citation));
 }
 
 .reading-pill {
   display: inline-flex;
   max-width: 100%;
   align-items: center;
-  border: 1px solid color-mix(in srgb, #3f7d5a 36%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-success) 42%, var(--color-border));
   border-radius: 999px;
-  background: color-mix(in srgb, #9bd3b0 16%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-success) 13%, var(--color-surface));
   padding: 2px 7px;
-  color: #2f6848;
+  color: var(--color-success);
   font-size: 11px;
   font-weight: 700;
   line-height: 15px;
@@ -809,7 +809,7 @@ function referenceNumber(marker: unknown) {
 
 .reading-quote {
   margin: 2px 0;
-  border-left: 3px solid color-mix(in srgb, #b7791f 45%, var(--color-border));
+  border-left: 3px solid color-mix(in srgb, var(--color-citation) 48%, var(--color-border));
   padding-left: 9px;
   color: var(--color-text);
   font-size: 13px;
@@ -823,11 +823,5 @@ function referenceNumber(marker: unknown) {
   color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.55;
-}
-
-.dark .reading-pill {
-  border-color: rgb(155 211 176 / 34%);
-  background: rgb(155 211 176 / 10%);
-  color: #9bd3b0;
 }
 </style>

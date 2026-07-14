@@ -169,7 +169,6 @@ const local: App.I18n.Schema = {
     'model-provider': '向量模型',
     'org-tag': '分类标签',
     'usage-monitor': '用量曲线',
-    user: '协作者',
     'personal-center': '个人档案',
     recharge: '余额充值',
     'recharge-manage': '充值管理'

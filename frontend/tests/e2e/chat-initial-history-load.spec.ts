@@ -49,6 +49,7 @@ test('chat page loads only the selected conversation history on entry', async ({
     conversationId: 'current-session',
     title: 'Current session',
     status: 'ACTIVE',
+    current: true,
     createdAt: '2026-07-01T08:00:00',
     updatedAt: '2026-07-01T09:00:00',
     scopeMode: 'AUTO_LIBRARY',
@@ -61,7 +62,8 @@ test('chat page loads only the selected conversation history on entry', async ({
     ...currentSession,
     id: 101,
     conversationId: 'other-session',
-    title: 'Other session'
+    title: 'Other session',
+    current: false
   };
   const unscopedHistory = [
     {
@@ -100,6 +102,7 @@ test('chat page loads only the selected conversation history on entry', async ({
 
   let unscopedConversationRequests = 0;
   let scopedConversationRequests = 0;
+  let currentSessionRequests = 0;
 
   await page.route('**/users/org-tags', route =>
     fulfillApi(route, {
@@ -118,7 +121,10 @@ test('chat page loads only the selected conversation history on entry', async ({
   );
   await page.route('**/chat/active-generation', route => fulfillApi(route, null));
   await page.route(/\/users\/conversations$/, route => fulfillApi(route, [currentSession, otherSession]));
-  await page.route(/\/users\/conversations\/current$/, route => fulfillApi(route, currentSession));
+  await page.route(/\/users\/conversations\/current$/, route => {
+    currentSessionRequests += 1;
+    return fulfillApi(route, currentSession);
+  });
   await page.route(/\/users\/conversations\/current-session\/switch$/, route => fulfillApi(route, {}));
   await page.route(/\/users\/conversations\/current-session\/scope$/, route =>
     fulfillApi(route, {
@@ -149,4 +155,5 @@ test('chat page loads only the selected conversation history on entry', async ({
   await expect(page.locator('.chat-conversation')).not.toContainText('Other session question');
   expect(unscopedConversationRequests).toBe(0);
   expect(scopedConversationRequests).toBe(1);
+  expect(currentSessionRequests).toBe(0);
 });

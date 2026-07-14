@@ -19,6 +19,15 @@ const CHAT_ROUTES = new Set<Api.Chat.Route>([
   'CLARIFY',
   'PAPER_QA'
 ]);
+const MAX_RETAINED_RESEARCH_EVENTS = 200;
+
+function boundResearchEvents(message: Api.Chat.Message) {
+  if (!message.researchEvents || message.researchEvents.length <= MAX_RETAINED_RESEARCH_EVENTS) return message;
+  return {
+    ...message,
+    researchEvents: message.researchEvents.slice(-MAX_RETAINED_RESEARCH_EVENTS)
+  };
+}
 
 function normalizeChatRoute(route: unknown): Api.Chat.Route | undefined {
   return typeof route === 'string' && CHAT_ROUTES.has(route as Api.Chat.Route) ? (route as Api.Chat.Route) : undefined;
@@ -35,6 +44,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const list = ref<Api.Chat.Message[]>([]);
   const sessions = ref<Api.Chat.ConversationSession[]>([]);
   const sessionsLoading = ref(false);
+  const hasOlderMessages = ref(false);
+  const messagesLoadingOlder = ref(false);
   const activeTab = ref<'active' | 'archived'>('active');
   const currentScope = ref<Api.Chat.ConversationScope | null>(null);
   const referenceFocus = ref<Api.Chat.Scope | null>(null);
@@ -50,6 +61,11 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const rateLimitRemainingSeconds = ref(0);
   let rateLimitTimer: ReturnType<typeof setInterval> | null = null;
   let scopedSessionCreationInFlight = false;
+  let sessionIndexInFlight: Promise<Api.Chat.ConversationSession[] | null> | null = null;
+  let loadedConversationDetailsId = '';
+  let conversationSelectionVersion = 0;
+  const conversationDetailsInFlight = new Map<string, Promise<void>>();
+  const HISTORY_RECORD_PAGE_SIZE = 15;
 
   function mapGenerationStatus(status?: Api.Chat.GenerationStatus): Api.Chat.Message['status'] {
     if (status === 'COMPLETED' || status === 'CANCELLED') {
@@ -120,7 +136,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
         assistant.readingStatePatch = snapshot.readingStatePatch;
       }
       if (snapshot.progressEvents) {
-        assistant.researchEvents = snapshot.progressEvents;
+        assistant.researchEvents = snapshot.progressEvents.slice(-MAX_RETAINED_RESEARCH_EVENTS);
       }
       return;
     }
@@ -145,7 +161,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       diagnostics: snapshot.diagnostics,
       readingArtifacts: snapshot.readingArtifacts,
       readingStatePatch: snapshot.readingStatePatch,
-      researchEvents: snapshot.progressEvents,
+      researchEvents: snapshot.progressEvents?.slice(-MAX_RETAINED_RESEARCH_EVENTS),
       route: normalizeChatRoute(snapshot.diagnostics?.route)
     });
   }
@@ -171,17 +187,18 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     if (targetConversationId && targetConversationId !== conversationId.value) {
       return false;
     }
+    const boundedMessages = messages.map(boundResearchEvents);
     if (
       !shouldApplyLoadedConversationMessages({
         currentMessages: list.value,
-        loadedMessages: messages,
+        loadedMessages: boundedMessages,
         targetConversationId
       })
     ) {
       return false;
     }
 
-    list.value = messages;
+    list.value = boundedMessages;
     return true;
   }
 
@@ -220,27 +237,62 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
 
   // ---- Session management ----
 
-  async function loadSessions(options: { silent?: boolean } = {}) {
+  async function fetchSessionIndex() {
+    if (sessionIndexInFlight) return sessionIndexInFlight;
+
+    sessionIndexInFlight = (async () => {
+      const { error, data } = await request<Api.Chat.ConversationSession[]>({
+        url: 'users/conversations'
+      });
+      if (error || !data) return null;
+      sessions.value = data;
+      return data;
+    })();
+
+    try {
+      return await sessionIndexInFlight;
+    } finally {
+      sessionIndexInFlight = null;
+    }
+  }
+
+  async function loadSessionIndex(options: { silent?: boolean } = {}) {
     const { silent = false } = options;
     if (!silent) sessionsLoading.value = true;
-    const { error, data } = await request<Api.Chat.ConversationSession[]>({
-      url: 'users/conversations'
-    });
-    if (!error && data) {
-      sessions.value = data;
+    try {
+      const data = await fetchSessionIndex();
+      if (!data) return [];
+
+      const currentActive = data.find(session => session.status === 'ACTIVE' && session.current);
+      const firstActive = data.find(session => session.status === 'ACTIVE');
       if (!conversationId.value) {
-        const currentSession = await fetchCurrentSession();
-        const currentActive = currentSession?.conversationId
-          ? data.find(s => s.status === 'ACTIVE' && s.conversationId === currentSession.conversationId)
-          : null;
-        const firstActive = data.find(s => s.status === 'ACTIVE');
-        const targetSession = currentActive || firstActive;
-        if (targetSession) {
-          await switchSession(targetSession.conversationId);
-        }
+        conversationId.value = currentActive?.conversationId || firstActive?.conversationId || '';
       }
+      return data;
+    } finally {
+      if (!silent) sessionsLoading.value = false;
     }
-    if (!silent) sessionsLoading.value = false;
+  }
+
+  async function loadSessions(options: { silent?: boolean; loadDetails?: boolean } = {}) {
+    const { silent = false, loadDetails = true } = options;
+    const selectionVersion = conversationSelectionVersion;
+    const data = await loadSessionIndex({ silent });
+    if (!data.length || selectionVersion !== conversationSelectionVersion) return;
+
+    const supportsCurrentMarker = data.some(session => Object.hasOwn(session, 'current'));
+    if (loadDetails && !supportsCurrentMarker) {
+      const currentSession = await fetchCurrentSession();
+      if (selectionVersion !== conversationSelectionVersion) return;
+      const currentActive = currentSession?.conversationId
+        ? data.find(session => session.status === 'ACTIVE' && session.conversationId === currentSession.conversationId)
+        : null;
+      if (currentActive) conversationId.value = currentActive.conversationId;
+    }
+
+    if (loadDetails && conversationId.value) {
+      await loadConversationDetails(conversationId.value);
+    }
   }
 
   async function fetchCurrentSession() {
@@ -291,7 +343,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (!createdConversationId) return false;
       const scoped = await updateConversationScope(createdConversationId, payload);
       if (scoped) {
-        await loadSessions();
+        await loadSessionIndex({ silent: true });
         return true;
       }
 
@@ -327,17 +379,21 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       method: 'POST'
     });
     if (!error && data) {
+      conversationSelectionVersion += 1;
       conversationId.value = data.conversationId;
       list.value = [];
+      hasOlderMessages.value = false;
+      loadedConversationDetailsId = '';
       referenceFocus.value = null;
-      await loadSessions();
       await loadConversationScope(data.conversationId);
     }
     return !error && data ? data.conversationId : '';
   }
 
-  async function switchSession(targetConversationId: string) {
+  async function switchSession(targetConversationId: string, options: { loadDetails?: boolean } = {}) {
+    const { loadDetails = true } = options;
     if (targetConversationId === conversationId.value) {
+      if (loadDetails) await loadConversationDetails(targetConversationId);
       return true;
     }
     const { error } = await request({
@@ -347,41 +403,110 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     if (error) {
       return false;
     }
+    conversationSelectionVersion += 1;
     conversationId.value = targetConversationId;
     list.value = [];
+    hasOlderMessages.value = false;
+    loadedConversationDetailsId = '';
     referenceFocus.value = null;
-    await loadConversationScope(targetConversationId);
-    await loadMessages(targetConversationId);
+    currentScope.value = null;
+    if (loadDetails) await loadConversationDetails(targetConversationId, { force: true });
     return true;
   }
 
-  async function loadMessages(targetConversationId?: string) {
+  async function loadMessages(targetConversationId?: string, options: { older?: boolean } = {}) {
     const cid = targetConversationId || conversationId.value;
     if (!cid) {
-      return;
+      return false;
     }
+    const { older = false } = options;
+    let beforeRecordId: number | undefined;
+    if (older) {
+      const recordIds = list.value
+        .map(message => message.conversationRecordId)
+        .filter((id): id is number => typeof id === 'number');
+      beforeRecordId = recordIds.length ? Math.min(...recordIds) : undefined;
+      if (!beforeRecordId) {
+        hasOlderMessages.value = false;
+        return false;
+      }
+      messagesLoadingOlder.value = true;
+    }
+
     const { error, data } = await request<Api.Chat.Message[]>({
       url: 'users/conversation',
-      params: { conversationId: cid }
+      params: {
+        conversationId: cid,
+        limit: HISTORY_RECORD_PAGE_SIZE,
+        ...(beforeRecordId ? { beforeRecordId } : {})
+      }
     });
-    if (!error && data) {
-      applyLoadedMessages(data, cid);
+    if (older) messagesLoadingOlder.value = false;
+    if (error || !data || cid !== conversationId.value) return false;
+
+    const boundedData = data.map(boundResearchEvents);
+    const fullPageMessageCount = HISTORY_RECORD_PAGE_SIZE * 2;
+    hasOlderMessages.value = boundedData.length >= fullPageMessageCount;
+    if (older) {
+      const existingKeys = new Set(list.value.map(messageIdentity));
+      const olderMessages = boundedData.filter(message => !existingKeys.has(messageIdentity(message)));
+      if (olderMessages.length) list.value = [...olderMessages, ...list.value];
+      return olderMessages.length > 0;
+    }
+    return applyLoadedMessages(boundedData, cid);
+  }
+
+  function messageIdentity(message: Api.Chat.Message) {
+    return [message.conversationRecordId || '', message.generationId || '', message.timestamp || '', message.role].join(
+      ':'
+    );
+  }
+
+  async function loadOlderMessages() {
+    if (!hasOlderMessages.value || messagesLoadingOlder.value) return false;
+    return loadMessages(conversationId.value, { older: true });
+  }
+
+  async function loadConversationDetails(targetConversationId: string, options: { force?: boolean } = {}) {
+    const { force = false } = options;
+    if (!force && loadedConversationDetailsId === targetConversationId) return;
+
+    const existing = conversationDetailsInFlight.get(targetConversationId);
+    if (existing) {
+      await existing;
+      return;
+    }
+
+    const pending = Promise.all([loadConversationScope(targetConversationId), loadMessages(targetConversationId)]).then(
+      () => {
+        if (conversationId.value === targetConversationId) loadedConversationDetailsId = targetConversationId;
+      }
+    );
+    conversationDetailsInFlight.set(targetConversationId, pending);
+    try {
+      await pending;
+    } finally {
+      conversationDetailsInFlight.delete(targetConversationId);
     }
   }
 
   async function archiveSession(targetConversationId: string) {
+    const archivingCurrentSession = targetConversationId === conversationId.value;
     const { error } = await request({
       url: `users/conversations/${targetConversationId}/archive`,
       method: 'PUT'
     });
     if (!error) {
-      await loadSessions();
-      if (targetConversationId === conversationId.value) {
+      if (archivingCurrentSession) {
+        conversationSelectionVersion += 1;
         list.value = [];
         conversationId.value = '';
         currentScope.value = null;
         referenceFocus.value = null;
+        hasOlderMessages.value = false;
+        loadedConversationDetailsId = '';
       }
+      await loadSessions();
     }
   }
 
@@ -407,10 +532,13 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
 
     sessions.value = sessions.value.filter(session => session.conversationId !== targetConversationId);
     if (deletingCurrentSession) {
+      conversationSelectionVersion += 1;
       conversationId.value = '';
       list.value = [];
       currentScope.value = null;
       referenceFocus.value = null;
+      hasOlderMessages.value = false;
+      loadedConversationDetailsId = '';
     }
     await loadSessions();
     return true;
@@ -543,6 +671,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     input.value = { message: '' };
     list.value = [];
     sessions.value = [];
+    hasOlderMessages.value = false;
+    loadedConversationDetailsId = '';
+    conversationDetailsInFlight.clear();
     wsClose(1000, 'auth-reset');
   }
 
@@ -574,7 +705,6 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
   });
 
-  const scrollToBottom = ref<null | (() => void)>(null);
   const isRateLimited = computed(() => rateLimitRemainingSeconds.value > 0);
   const connectionStatus = computed(() => {
     if (wsStatus.value === 'OPEN') {
@@ -592,6 +722,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     list,
     sessions,
     sessionsLoading,
+    hasOlderMessages,
+    messagesLoadingOlder,
     activeTab,
     currentScope,
     referenceFocus,
@@ -605,7 +737,6 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     wsOpen,
     wsClose,
     sessionId,
-    scrollToBottom,
     clearRateLimitCountdown,
     startRateLimitCountdown,
     handleAuthReset,
@@ -615,6 +746,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     applyLoadedMessages,
     syncGenerationAfterReconnect,
     loadSessions,
+    loadSessionIndex,
+    loadConversationDetails,
+    loadOlderMessages,
     loadConversationScope,
     updateConversationScope,
     createSessionFromScope,

@@ -6,6 +6,10 @@ defineOptions({
   name: 'TableColumnSetting'
 });
 
+defineProps<{
+  compact?: boolean;
+}>();
+
 const columns = defineModel<NaiveUI.TableColumnCheck[]>('columns', {
   required: true
 });
@@ -14,11 +18,11 @@ const columns = defineModel<NaiveUI.TableColumnCheck[]>('columns', {
 <template>
   <NPopover placement="bottom-end" trigger="click">
     <template #trigger>
-      <NButton size="small">
+      <NButton size="small" :circle="compact" :aria-label="$t('common.columnSetting')">
         <template #icon>
           <icon-material-symbols-tune-rounded class="text-icon" />
         </template>
-        {{ $t('common.columnSetting') }}
+        <template v-if="!compact">{{ $t('common.columnSetting') }}</template>
       </NButton>
     </template>
     <VueDraggable v-model="columns" :animation="150" filter=".none_draggable">

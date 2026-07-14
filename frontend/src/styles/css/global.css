@@ -16,25 +16,31 @@ html {
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Display', 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial,
-    sans-serif;
+  font-family: var(--font-interface);
 }
 
 ::selection {
-  background: rgba(38, 54, 74, 0.22);
+  background: var(--color-selection);
   color: var(--color-text);
 }
 
-.paper-serif {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+.dark {
+  scrollbar-color: color-mix(in srgb, var(--color-text-muted) 42%, transparent) transparent;
+}
+
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-research);
+  outline-offset: 2px;
+}
+
+.paper-serif,
+.reading-serif {
+  font-family: var(--font-reading);
+}
+
+.utility-text {
+  font-family: var(--font-utility);
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-console-page {
@@ -128,4 +134,15 @@ body {
 
 .admin-console-card .n-button--primary-type {
   box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

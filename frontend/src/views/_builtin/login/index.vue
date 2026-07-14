@@ -40,7 +40,7 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
 <template>
   <div class="login-page relative size-full flex-center">
     <NCard :bordered="false" class="relative z-4 w-auto card-wrapper">
-      <div :class="isRegisterModule ? 'login-panel login-panel--register' : 'login-panel'">
+      <div class="login-panel">
         <header class="login-header">
           <div class="login-brand">
             <div class="login-brand-mark">
@@ -55,12 +55,6 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
             </div>
           </div>
           <div class="login-tools">
-            <ThemeSchemaSwitch
-              :theme-schema="themeStore.themeScheme"
-              :show-tooltip="false"
-              class="text-20px lt-sm:text-18px"
-              @switch="themeStore.toggleThemeScheme"
-            />
             <LangSwitch
               v-if="themeStore.header.multilingual.visible"
               :lang="appStore.locale"
@@ -72,7 +66,6 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
         </header>
         <main class="pt-24px">
           <div v-if="!isRegisterModule" class="login-module-heading">
-            <span>[auth]</span>
             {{ $t(activeModule.label) }}
           </div>
           <div class="pt-24px">
@@ -92,10 +85,9 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
 }
 
 :deep(.card-wrapper) {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .login-header {
@@ -121,7 +113,7 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
   justify-content: center;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--color-card-band);
+  background: var(--color-research-soft-bg);
   box-shadow: var(--shadow-card);
 }
 
@@ -132,29 +124,15 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
   gap: 8px;
   margin: 0;
   color: var(--color-primary);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-reading);
   font-size: 30px;
   font-weight: 700;
   line-height: 1.05;
 }
 
 .login-brand-mode {
-  color: var(--color-accent);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  color: var(--color-research);
+  font-family: var(--font-interface);
   font-size: 13px;
   font-weight: 700;
 }
@@ -162,14 +140,7 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
 .login-brand-subtitle {
   margin-top: 7px;
   color: var(--color-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
   font-size: 12px;
 }
 
@@ -188,42 +159,17 @@ const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'regis
   border-bottom: 1px solid var(--color-border);
   color: var(--color-primary);
   padding-bottom: 6px;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
   font-size: 18px;
   font-weight: 700;
-}
-
-.login-module-heading span {
-  color: var(--color-warning);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 12px;
 }
 
 .login-panel {
   width: 400px;
 }
 
-.login-panel--register {
-  width: min(860px, calc(100vw - 72px));
-}
-
 @media (max-width: 640px) {
-  .login-panel,
-  .login-panel--register {
+  .login-panel {
     width: 300px;
   }
 

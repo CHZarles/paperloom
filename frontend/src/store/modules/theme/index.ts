@@ -1,6 +1,6 @@
 import { computed, effectScope, onScopeDispose, ref, toRefs, watch } from 'vue';
 import type { Ref } from 'vue';
-import { useEventListener, usePreferredColorScheme } from '@vueuse/core';
+import { useEventListener } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { getPaletteColorByNumber } from '@sa/color';
 import { localStg } from '@/utils/storage';
@@ -17,18 +17,12 @@ import {
 /** Theme store */
 export const useThemeStore = defineStore(SetupStoreId.Theme, () => {
   const scope = effectScope();
-  const osTheme = usePreferredColorScheme();
 
   /** Theme settings */
   const settings: Ref<App.Theme.ThemeSetting> = ref(initThemeSettings());
 
   /** Dark mode */
-  const darkMode = computed(() => {
-    if (settings.value.themeScheme === 'auto') {
-      return osTheme.value === 'dark';
-    }
-    return settings.value.themeScheme === 'dark';
-  });
+  const darkMode = computed(() => false);
 
   /** grayscale mode */
   const grayscaleMode = computed(() => settings.value.grayscale);
@@ -65,15 +59,6 @@ export const useThemeStore = defineStore(SetupStoreId.Theme, () => {
   }
 
   /**
-   * Set theme scheme
-   *
-   * @param themeScheme
-   */
-  function setThemeScheme(themeScheme: UnionKey.ThemeScheme) {
-    settings.value.themeScheme = themeScheme;
-  }
-
-  /**
    * Set grayscale value
    *
    * @param isGrayscale
@@ -89,19 +74,6 @@ export const useThemeStore = defineStore(SetupStoreId.Theme, () => {
    */
   function setColourWeakness(isColourWeakness: boolean) {
     settings.value.colourWeakness = isColourWeakness;
-  }
-
-  /** Toggle theme scheme */
-  function toggleThemeScheme() {
-    const themeSchemes: UnionKey.ThemeScheme[] = ['light', 'dark', 'auto'];
-
-    const index = themeSchemes.findIndex(item => item === settings.value.themeScheme);
-
-    const nextIndex = index === themeSchemes.length - 1 ? 0 : index + 1;
-
-    const nextThemeScheme = themeSchemes[nextIndex];
-
-    setThemeScheme(nextThemeScheme);
   }
 
   /**
@@ -212,8 +184,6 @@ export const useThemeStore = defineStore(SetupStoreId.Theme, () => {
     setGrayscale,
     setColourWeakness,
     resetStore,
-    setThemeScheme,
-    toggleThemeScheme,
     updateThemeColors,
     setThemeLayout,
     setLayoutReverseHorizontalMix

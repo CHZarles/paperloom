@@ -22,7 +22,7 @@ function closeSettings() {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: #fff;
+  background: var(--color-bg);
   color: var(--color-text);
   padding: 44px;
 }

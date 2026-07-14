@@ -20,7 +20,7 @@ type LoginToken = {
 const backendBaseURL = process.env.PAPERLOOM_E2E_API_BASE_URL || 'http://localhost:8081/api/v1';
 const storagePrefix = process.env.PAPERLOOM_E2E_STORAGE_PREFIX || 'CiteWeave_';
 
-const adminRoutes = ['user', 'org-tag', 'usage-monitor', 'invite-code', 'recharge', 'recharge-manage', 'chat-history'];
+const adminRoutes = ['org-tag', 'usage-monitor', 'invite-code', 'recharge', 'recharge-manage', 'chat-history'];
 
 function readRepoEnv() {
   const envPath = resolve(process.cwd(), '..', '.env');
@@ -180,7 +180,6 @@ test('admin management pages keep the Manus-style shell stable', async ({ page }
 test('management functions stay out of generated global navigation metadata', () => {
   const managementRouteNames = [
     'chat-history',
-    'user',
     'org-tag',
     'model-provider',
     'invite-code',
@@ -194,6 +193,37 @@ test('management functions stay out of generated global navigation metadata', ()
     .map(route => route.name);
 
   expect(exposedRoutes).toEqual([]);
+});
+
+test('user management is not exposed as a standalone route', () => {
+  expect(generatedRoutes.some(route => route.path === '/user')).toBe(false);
+});
+
+test('chat return button keeps a neutral focus treatment', async ({ page }) => {
+  await installLoginState(page, await login());
+  await page.goto('/#/model-provider');
+
+  const button = page.getByRole('button', { name: '返回 Chat' });
+  await button.focus();
+
+  const treatment = await button.evaluate(element => {
+    const wave = element.querySelector('.n-base-wave');
+    const style = getComputedStyle(element);
+
+    return {
+      outlineStyle: style.outlineStyle,
+      boxShadow: style.boxShadow,
+      border: style.getPropertyValue('--n-border').trim(),
+      focusBorder: style.getPropertyValue('--n-border-focus').trim(),
+      waveDisplay: wave ? getComputedStyle(wave).display : ''
+    };
+  });
+
+  expect(treatment.outlineStyle).toBe('none');
+  expect(treatment.boxShadow).toBe('none');
+  expect(treatment.border).toBe('none');
+  expect(treatment.focusBorder).toBe('none');
+  expect(treatment.waveDisplay).toBe('none');
 });
 
 test('global avatar exposes the management entry', async ({ page }) => {

@@ -1,4 +1,3 @@
-import SparkMD5 from 'spark-md5';
 import { $t } from '@/locales';
 
 /**
@@ -69,7 +68,8 @@ export function fileSize(size: number) {
   return `${(size / 1024 / 1024 / 1024).toFixed(2)}G`;
 }
 
-export async function calculateMD5(file: File): Promise<string> {
+async function calculateMD5OnMainThread(file: File): Promise<string> {
+  const { default: SparkMD5 } = await import('spark-md5');
   return new Promise((resolve, reject) => {
     const chunkSize = 5 * 1024 * 1024; // 5MB
     const spark = new SparkMD5.ArrayBuffer();
@@ -99,6 +99,32 @@ export async function calculateMD5(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('文件读取失败'));
     loadNext();
   });
+}
+
+export async function calculateMD5(file: File): Promise<string> {
+  if (typeof Worker === 'undefined') return calculateMD5OnMainThread(file);
+
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      const worker = new Worker(new URL('../workers/file-md5.worker.ts', import.meta.url), { type: 'module' });
+      const cleanup = () => worker.terminate();
+
+      worker.onmessage = (
+        event: MessageEvent<{ type: 'result'; hash: string } | { type: 'error'; message: string }>
+      ) => {
+        cleanup();
+        if (event.data.type === 'result') resolve(event.data.hash);
+        else reject(new Error(event.data.message));
+      };
+      worker.onerror = event => {
+        cleanup();
+        reject(new Error(event.message || 'File hashing worker failed'));
+      };
+      worker.postMessage({ file });
+    });
+  } catch {
+    return calculateMD5OnMainThread(file);
+  }
 }
 
 export function formatDate(date: string | number | null | undefined, format = 'YYYY-MM-DD HH:mm:ss') {

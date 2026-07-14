@@ -9,8 +9,24 @@ const props = defineProps<{
 
 const events = computed(() => props.message?.researchEvents || []);
 const legacyTools = computed(() => props.message?.toolEvents || []);
-const latestEvent = computed(() => events.value[events.value.length - 1]);
 const isRunning = computed(() => ['pending', 'loading'].includes(props.message?.status || ''));
+const MAX_VISIBLE_EVENTS = 100;
+
+interface PresentedEvent {
+  key: string | number;
+  title: string;
+  detail: string;
+  durationMs?: number;
+  state: string;
+  items: Array<{
+    key: string | number;
+    title: string;
+    text: string;
+    reference: string;
+  }>;
+}
+
+const presentationCache = new WeakMap<Api.Chat.ResearchProgressEvent, PresentedEvent>();
 
 function eventType(event: Api.Chat.ResearchProgressEvent) {
   return event.eventType || event.type;
@@ -110,6 +126,32 @@ function eventState(event: Api.Chat.ResearchProgressEvent) {
   return 'completed';
 }
 
+function presentEvent(event: Api.Chat.ResearchProgressEvent, index: number): PresentedEvent {
+  const cached = presentationCache.get(event);
+  if (cached) return cached;
+
+  const presented: PresentedEvent = {
+    key: event.sequence || `${event.type}:${event.timestamp}:${index}`,
+    title: eventTitle(event),
+    detail: eventDetail(event),
+    durationMs: event.durationMs,
+    state: eventState(event),
+    items: eventItems(event).map((item, itemIndex) => ({
+      key: item.evidenceId || item.locationRef || item.paperId || itemIndex,
+      title: itemTitle(item),
+      text: itemText(item),
+      reference: String(item.evidenceId || item.locationRef || '')
+    }))
+  };
+  presentationCache.set(event, presented);
+  return presented;
+}
+
+const presentedEvents = computed(() =>
+  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => presentEvent(event, index))
+);
+const latestPresentedEvent = computed(() => presentedEvents.value[presentedEvents.value.length - 1]);
+
 function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
   return toolLabel(event.tool, event.status === 'executing');
 }
@@ -121,38 +163,34 @@ function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
       <span class="research-process__status-dot" :class="{ 'is-running': isRunning }" />
       <div>
         <div class="research-process__status-title">
-          {{ latestEvent ? eventTitle(latestEvent) : isRunning ? 'Researching' : 'No process selected' }}
+          {{ latestPresentedEvent ? latestPresentedEvent.title : isRunning ? 'Researching' : 'No process selected' }}
         </div>
-        <div v-if="latestEvent && eventDetail(latestEvent)" class="research-process__status-detail">
-          {{ eventDetail(latestEvent) }}
+        <div v-if="latestPresentedEvent?.detail" class="research-process__status-detail">
+          {{ latestPresentedEvent.detail }}
         </div>
       </div>
     </div>
 
     <div v-if="events.length" class="research-process__timeline">
       <article
-        v-for="event in events"
-        :key="event.sequence || `${event.type}:${event.timestamp}`"
+        v-for="event in presentedEvents"
+        :key="event.key"
         class="research-process__event"
-        :class="`is-${eventState(event)}`"
+        :class="`is-${event.state}`"
       >
         <span class="research-process__marker" />
         <div class="research-process__event-body">
           <div class="research-process__event-heading">
-            <strong>{{ eventTitle(event) }}</strong>
+            <strong>{{ event.title }}</strong>
             <span v-if="event.durationMs">{{ event.durationMs }} ms</span>
           </div>
-          <div v-if="eventDetail(event)" class="research-process__event-detail">{{ eventDetail(event) }}</div>
-          <div v-if="eventItems(event).length" class="research-process__results">
-            <div
-              v-for="(item, index) in eventItems(event)"
-              :key="item.evidenceId || item.locationRef || item.paperId || index"
-              class="research-process__result"
-            >
-              <div v-if="itemTitle(item)" class="research-process__result-title">{{ itemTitle(item) }}</div>
-              <p v-if="itemText(item)" class="research-process__result-text">{{ itemText(item) }}</p>
-              <div v-if="item.evidenceId || item.locationRef" class="research-process__result-ref">
-                {{ item.evidenceId || item.locationRef }}
+          <div v-if="event.detail" class="research-process__event-detail">{{ event.detail }}</div>
+          <div v-if="event.items.length" class="research-process__results">
+            <div v-for="item in event.items" :key="item.key" class="research-process__result">
+              <div v-if="item.title" class="research-process__result-title">{{ item.title }}</div>
+              <p v-if="item.text" class="research-process__result-text">{{ item.text }}</p>
+              <div v-if="item.reference" class="research-process__result-ref">
+                {{ item.reference }}
               </div>
             </div>
           </div>

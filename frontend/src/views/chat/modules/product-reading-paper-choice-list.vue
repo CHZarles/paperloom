@@ -205,14 +205,8 @@ function findInPaper(item: Api.Chat.ReadingPaperChoiceItem) {
 }
 
 .paper-choice-tag--state {
-  border-color: color-mix(in srgb, #b7791f 35%, var(--color-border));
-  background: color-mix(in srgb, #f6d58a 18%, var(--color-surface));
-  color: #8a5a12;
-}
-
-.dark .paper-choice-tag--state {
-  border-color: rgb(246 213 138 / 32%);
-  background: rgb(246 213 138 / 11%);
-  color: #f1cf83;
+  border-color: color-mix(in srgb, var(--color-citation) 38%, var(--color-border));
+  background: var(--color-citation-soft-bg);
+  color: var(--color-citation);
 }
 </style>

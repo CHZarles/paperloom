@@ -28,12 +28,12 @@ assert.match(
   'loadSessions should only flip sessionsLoading off when not silent'
 );
 
-// The message-start handler should opt into the silent refresh so the sidebar
-// does not show its spinner while the user is actively chatting.
+// Completion should refresh only the session index, without reloading the
+// active transcript or toggling the sidebar spinner.
 assert.match(
   inputBoxSource,
-  /chatStore\.loadSessions\(\s*\{\s*silent:\s*true\s*\}\s*\)/,
-  'input-box message-start handler should refresh sessions silently'
+  /chatStore\.loadSessionIndex\(\s*\{\s*silent:\s*true\s*\}\s*\)/,
+  'input-box completion handler should refresh the session index silently'
 );
 
 // Sidebar should still drive the spinner from sessionsLoading (regression guard).

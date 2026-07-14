@@ -318,7 +318,9 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
   }
 
   async function onRouteSwitchWhenLoggedIn() {
-    await authStore.initUserInfo();
+    if (!authStore.userInfo.id) {
+      await authStore.initUserInfo();
+    }
   }
 
   async function onRouteSwitchWhenNotLoggedIn() {

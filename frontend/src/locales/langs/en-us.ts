@@ -169,7 +169,6 @@ const local: App.I18n.Schema = {
     'model-provider': 'Embedding Model',
     'org-tag': 'Taxonomy Tags',
     'usage-monitor': 'Usage Curves',
-    user: 'Collaborators',
     'personal-center': 'Research Profile',
     recharge: 'Recharge',
     'recharge-manage': 'Recharge Management'

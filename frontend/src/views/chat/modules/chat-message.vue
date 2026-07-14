@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { nextTick } from 'vue';
+import { defineAsyncComponent, nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
-import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
+import StreamingMarkdown from '@/components/custom/streaming-markdown.vue';
 import ProductReadingPaperChoiceList from './product-reading-paper-choice-list.vue';
+
+const VueMarkdownIt = defineAsyncComponent(() =>
+  import('@/vendor/vue-markdown-shiki').then(module => module.VueMarkdownIt)
+);
 defineOptions({ name: 'ChatMessage' });
 
 const props = defineProps<{
@@ -61,8 +65,6 @@ const emit = defineEmits<{
   (e: 'retry'): void;
 }>();
 
-const chatStore = useChatStore();
-
 function handleCopy(content: string) {
   navigator.clipboard.writeText(content);
   window.$message?.success('已复制');
@@ -114,18 +116,18 @@ async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad')
   window.$message?.success(rating === 'good' ? '已记录点赞反馈' : '已记录点踩反馈');
 }
 
-// 存储文件名和对应的事件处理
-const sourceFiles = ref<
-  Array<{
-    paperTitle: string;
-    originalFilename?: string | null;
-    id: string;
-    referenceNumber: number;
-    paperId?: string;
-    pageNumber?: number;
-    sourceQuoteRef?: string | null;
-  }>
->([]);
+type MessageSourceFile = {
+  paperTitle: string;
+  originalFilename?: string | null;
+  id: string;
+  referenceNumber: number;
+  paperId?: string;
+  pageNumber?: number;
+  sourceQuoteRef?: string | null;
+};
+
+// Stored citation identities drive the inline citation controls.
+const sourceFiles = ref<MessageSourceFile[]>([]);
 const assistantContentRef = ref<HTMLElement | null>(null);
 const activeReferenceNumber = ref<number | null>(null);
 // eslint-disable-next-line no-useless-escape
@@ -390,7 +392,6 @@ async function refreshEvidenceBlocks() {
 }
 
 const content = computed(() => {
-  chatStore.scrollToBottom?.();
   const rawContent = props.msg.content ?? '';
 
   // 只对助手消息处理来源链接
@@ -402,7 +403,7 @@ const content = computed(() => {
 });
 
 watch(
-  () => content.value,
+  () => (assistantIsGenerating.value ? '' : content.value),
   () => {
     refreshEvidenceBlocks();
   },
@@ -502,29 +503,8 @@ function handleContentClick(event: MouseEvent) {
     if (fileId) {
       const file = sourceFiles.value.find(f => f.id === fileId);
       if (file) {
-        activeReferenceNumber.value = file.referenceNumber;
-        if (!file.paperId && file.sourceQuoteRef && !props.msg.conversationRecordId) {
-          openReferenceEvidencePage({
-            paperTitle: file.paperTitle,
-            originalFilename: file.originalFilename,
-            pageNumber: file.pageNumber,
-            evidenceSnippet: file.paperTitle,
-            matchedChunkText: file.paperTitle,
-            referenceNumber: file.referenceNumber,
-            sourceQuoteRef: file.sourceQuoteRef
-          });
-          return;
-        }
         const contextAnchorText = extractContextAnchorText(sourceTarget);
-        handleSourceFileClick({
-          paperTitle: file.paperTitle,
-          originalFilename: file.originalFilename,
-          referenceNumber: file.referenceNumber,
-          paperId: file.paperId,
-          pageNumber: file.pageNumber,
-          sourceQuoteRef: file.sourceQuoteRef,
-          anchorText: contextAnchorText
-        });
+        openSourceFile(file, contextAnchorText);
       }
     }
   }
@@ -543,6 +523,38 @@ function handleContentKeydown(event: KeyboardEvent) {
 
   event.preventDefault();
   sourceTarget.click();
+}
+
+function syncActiveReferenceFromContent(target: EventTarget | null) {
+  const sourceTarget = (target as HTMLElement | null)?.closest<HTMLElement>('.source-file-link, .source-quote-link');
+  const referenceNumber = Number(sourceTarget?.dataset.referenceNumber || 0);
+  if (referenceNumber > 0) activeReferenceNumber.value = referenceNumber;
+}
+
+function openSourceFile(file: MessageSourceFile, anchorText = '') {
+  activeReferenceNumber.value = file.referenceNumber;
+  if (!file.paperId && file.sourceQuoteRef && !props.msg.conversationRecordId) {
+    openReferenceEvidencePage({
+      paperTitle: file.paperTitle,
+      originalFilename: file.originalFilename,
+      pageNumber: file.pageNumber,
+      evidenceSnippet: file.paperTitle,
+      matchedChunkText: file.paperTitle,
+      referenceNumber: file.referenceNumber,
+      sourceQuoteRef: file.sourceQuoteRef
+    });
+    return;
+  }
+
+  handleSourceFileClick({
+    paperTitle: file.paperTitle,
+    originalFilename: file.originalFilename,
+    referenceNumber: file.referenceNumber,
+    paperId: file.paperId,
+    pageNumber: file.pageNumber,
+    sourceQuoteRef: file.sourceQuoteRef,
+    anchorText
+  });
 }
 
 // 处理来源证据点击事件
@@ -742,15 +754,17 @@ async function handleSourceFileClick(fileInfo: {
           class="assistant-content message-content"
           @click="handleContentClick"
           @keydown="handleContentKeydown"
+          @mouseover="syncActiveReferenceFromContent($event.target)"
+          @focusin="syncActiveReferenceFromContent($event.target)"
         >
-          <VueMarkdownIt :content="content" />
+          <StreamingMarkdown v-if="assistantIsGenerating" :content="msg.content" />
+          <VueMarkdownIt v-else :content="content" />
         </div>
         <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
         <ProductReadingPaperChoiceList
           v-if="msg.role === 'assistant' && msg.productStateItems?.length && !hasReadingArtifacts"
           :items="msg.productStateItems"
         />
-        <NDivider v-if="showMessageActions" class="message-divider" />
         <div v-if="showMessageActions" class="message-actions">
           <NButton
             v-if="showResearchDetails"
@@ -818,11 +832,11 @@ async function handleSourceFileClick(fileInfo: {
   align-items: center;
   justify-content: center;
   margin: 0 2px;
-  border: 1px solid color-mix(in srgb, #b7791f 36%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-citation) 42%, var(--color-border));
   border-radius: 999px;
-  background: color-mix(in srgb, #f6d58a 22%, var(--color-surface));
-  box-shadow: 0 1px 0 rgb(146 91 10 / 8%);
-  color: #8a5a12;
+  background: var(--color-citation-soft-bg);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-citation) 12%, transparent);
+  color: var(--color-citation);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -836,24 +850,24 @@ async function handleSourceFileClick(fileInfo: {
     transform 0.16s ease;
 
   &:hover {
-    border-color: color-mix(in srgb, #b7791f 64%, var(--color-border));
-    background: color-mix(in srgb, #f6d58a 34%, var(--color-surface));
-    box-shadow: 0 2px 6px rgb(146 91 10 / 14%);
-    color: #6f4304;
+    border-color: color-mix(in srgb, var(--color-citation) 72%, var(--color-border));
+    background: color-mix(in srgb, var(--color-citation) 18%, var(--color-citation-soft-bg));
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--color-citation) 18%, transparent);
+    color: var(--color-citation-hover);
     text-decoration: none;
     transform: translateY(-1px);
   }
 
   &:focus-visible {
-    outline: 2px solid color-mix(in srgb, #d6a84f 58%, transparent);
+    outline: 2px solid color-mix(in srgb, var(--color-citation) 58%, transparent);
     outline-offset: 2px;
   }
 }
 
 :deep(.source-citation-chip--active) {
-  border-color: #b7791f;
-  background: color-mix(in srgb, #f2c464 46%, var(--color-surface));
-  color: #613a05;
+  border-color: var(--color-citation);
+  background: color-mix(in srgb, var(--color-citation) 24%, var(--color-citation-soft-bg));
+  color: var(--color-citation-hover);
 }
 
 :deep(.source-citation-chip--muted) {
@@ -864,32 +878,17 @@ async function handleSourceFileClick(fileInfo: {
   color: var(--color-text-muted);
 }
 
-.dark :deep(.source-citation-chip) {
-  border-color: rgb(246 213 138 / 34%);
-  background: rgb(246 213 138 / 12%);
-  color: #f1cf83;
-}
-
-.dark :deep(.source-citation-chip--active) {
-  border-color: rgb(246 213 138 / 72%);
-  background: rgb(246 213 138 / 20%);
-  color: #ffe4a3;
-}
-
-.dark :deep(.source-citation-chip--muted) {
-  border-color: var(--color-border);
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-}
-
 .message-block {
   display: flex;
   width: 100%;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--color-border-soft);
+  padding-bottom: 20px;
 }
 
 .message-block--user {
-  justify-content: flex-end;
+  justify-content: flex-start;
+  padding-left: 42px;
 }
 
 .message-block--assistant {
@@ -898,17 +897,19 @@ async function handleSourceFileClick(fileInfo: {
 
 .message-row {
   display: flex;
-  max-width: min(900px, 92%);
+  width: 100%;
+  max-width: 100%;
   align-items: flex-start;
   gap: 10px;
 }
 
 .message-block--assistant .message-row {
-  width: min(900px, 92%);
+  width: 100%;
   justify-content: flex-start;
 }
 
 .message-block--user .message-row {
+  width: min(var(--reading-prose-width), calc(100% - 42px));
   max-width: min(760px, 92%);
   justify-content: flex-end;
 }
@@ -923,11 +924,11 @@ async function handleSourceFileClick(fileInfo: {
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #f6f8fa;
+  background: var(--color-surface-elevated);
   box-shadow:
-    0 1px 0 rgb(255 255 255 / 86%) inset,
-    0 1px 2px rgb(15 23 42 / 8%);
-  color: #57606a;
+    0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent) inset,
+    var(--shadow-card);
+  color: var(--color-text-muted);
 }
 
 .message-avatar :deep(svg) {
@@ -950,7 +951,7 @@ async function handleSourceFileClick(fileInfo: {
 }
 
 .message-block--assistant .message-body {
-  width: min(760px, calc(100% - 42px));
+  width: min(var(--reading-prose-width), calc(100% - 42px));
   align-items: flex-start;
 }
 
@@ -979,38 +980,44 @@ async function handleSourceFileClick(fileInfo: {
   white-space: pre-wrap;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #f7f7f5;
+  background: var(--color-surface-alt);
   padding: 10px 13px;
 }
 
 .assistant-content {
   width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  padding: 13px 16px 4px;
-  box-shadow: var(--shadow-card);
+  border: 0;
+  background: transparent;
+  padding: 2px 0 0;
 }
 
 .assistant-content :deep(p) {
   margin: 0 0 12px;
 }
 
-.message-divider {
-  width: 100%;
-  margin: 2px 0 0 !important;
-  opacity: 0.55;
-}
-
 .message-actions {
   display: flex;
-  width: 100%;
+  width: auto;
   justify-content: flex-end;
   gap: 8px;
+  transition: opacity 0.16s ease;
 }
 
 .message-block--assistant .message-actions {
   justify-content: flex-start;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .message-actions {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .message-block:hover .message-actions,
+  .message-block:focus-within .message-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .dark .message-content {
@@ -1024,8 +1031,8 @@ async function handleSourceFileClick(fileInfo: {
 
 .dark .message-avatar {
   border-color: var(--color-border);
-  background: var(--color-surface-alt);
-  box-shadow: none;
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-card);
 }
 
 /* Override VuePress-style markdown theme variables inside chat responses
@@ -1041,7 +1048,7 @@ async function handleSourceFileClick(fileInfo: {
   --vp-c-divider: var(--color-border);
   --vp-c-border: var(--color-border);
   --vp-c-mute: var(--color-surface-alt);
-  --vp-c-mute-light: var(--color-surface-alt);
+  --vp-c-mute-light: var(--color-text-muted);
   --vp-c-mute-dark: var(--color-surface-alt);
   --vp-c-mute-darker: var(--color-surface-alt);
   --vp-c-brand: var(--color-primary);
@@ -1049,11 +1056,12 @@ async function handleSourceFileClick(fileInfo: {
   --vp-c-brand-dark: var(--color-primary-hover);
   --vp-c-brand-darker: var(--color-primary-hover);
   --vp-c-neutral: var(--color-text);
-  --vp-header-bg: var(--color-primary);
+  --vp-header-bg: var(--color-surface-elevated);
   --vp-code-block-bg: var(--color-surface-alt);
   --vp-code-block-color: var(--color-text);
   --vp-code-line-number-color: var(--color-text-muted);
   --vp-code-line-highlight-color: var(--color-primary-soft-bg);
+  background: transparent !important;
   font-family:
     system-ui,
     -apple-system,
@@ -1062,6 +1070,21 @@ async function handleSourceFileClick(fileInfo: {
     'PingFang SC',
     'Microsoft YaHei',
     sans-serif;
+}
+
+.assistant-content :deep(.vp-doc > body) {
+  background: transparent;
+}
+
+.assistant-content :deep(.vp-header) {
+  border: 1px solid var(--color-border-soft);
+  border-bottom: 0;
+}
+
+.assistant-content :deep(.vp-doc div[class*='language-']),
+.assistant-content :deep(.vp-doc pre) {
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-alt) !important;
 }
 
 .assistant-live-status {
@@ -1117,6 +1140,10 @@ async function handleSourceFileClick(fileInfo: {
 }
 
 @media (max-width: 640px) {
+  .message-block--user {
+    padding-left: 0;
+  }
+
   .message-row,
   .message-block--assistant .message-row {
     width: 100%;
@@ -1144,11 +1171,14 @@ async function handleSourceFileClick(fileInfo: {
     max-width: 100%;
   }
 
+  .message-row {
+    flex-wrap: wrap;
+  }
+
   .message-content,
   .message-error,
   .user-content,
   .assistant-content,
-  .message-divider,
   .message-actions {
     width: 100%;
     max-width: 100%;

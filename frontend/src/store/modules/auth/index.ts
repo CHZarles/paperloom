@@ -28,6 +28,10 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   };
 
   const userInfo: Api.Auth.UserInfo = reactive({ ...defaultUserInfo });
+  const USER_INFO_MAX_AGE_MS = 5 * 60 * 1000;
+  let userInfoLoadedAt = 0;
+  let userInfoInFlight: Promise<boolean> | null = null;
+  let userInfoRequestVersion = 0;
 
   const isAdmin = computed(() => userInfo.role === 'ADMIN');
 
@@ -48,6 +52,9 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     clearAuthStorage();
     token.value = '';
     Object.assign(userInfo, defaultUserInfo);
+    userInfoLoadedAt = 0;
+    userInfoRequestVersion += 1;
+    userInfoInFlight = null;
     useChatStore().handleAuthReset();
 
     if (!route.meta.constant) {
@@ -142,7 +149,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     localStg.set('refreshToken', loginToken.refreshToken);
 
     // 2. get user info
-    const pass = await getUserInfo();
+    const pass = await getUserInfo({ force: true });
 
     if (pass) {
       token.value = loginToken.token;
@@ -153,29 +160,42 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     return false;
   }
 
-  async function getUserInfo() {
-    const { data: info, error } = await fetchGetUserInfo();
+  async function getUserInfo(options: { force?: boolean } = {}) {
+    const { force = false } = options;
+    if (!force && userInfo.id && Date.now() - userInfoLoadedAt < USER_INFO_MAX_AGE_MS) return true;
+    if (userInfoInFlight) return userInfoInFlight;
 
-    if (!error) {
-      // update store
+    const requestVersion = userInfoRequestVersion;
+    const pending = (async () => {
+      const { data: info, error } = await fetchGetUserInfo();
+      if (error || requestVersion !== userInfoRequestVersion) return false;
       Object.assign(userInfo, info);
-
+      userInfoLoadedAt = Date.now();
       return true;
-    }
+    })();
+    userInfoInFlight = pending;
 
-    return false;
+    try {
+      return await pending;
+    } finally {
+      if (userInfoInFlight === pending) userInfoInFlight = null;
+    }
   }
 
-  async function initUserInfo() {
+  async function initUserInfo(options: { force?: boolean } = {}) {
     const hasToken = getToken();
 
     if (hasToken) {
-      const pass = await getUserInfo();
+      const pass = await getUserInfo(options);
 
       if (!pass) {
         resetStore();
       }
     }
+  }
+
+  async function refreshUserInfo() {
+    await initUserInfo({ force: true });
   }
 
   /** Set token (used for seamless token refresh) */
@@ -203,6 +223,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     login,
     logout,
     initUserInfo,
+    refreshUserInfo,
     setToken
   };
 });

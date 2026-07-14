@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue';
 import type { NScrollbar } from 'naive-ui';
-import { VueMarkdownItProvider } from '@/vendor/vue-markdown-shiki';
-import ChatMessage from '../chat/modules/chat-message.vue';
+
+const ChatMessage = defineAsyncComponent(() => import('../chat/modules/chat-message.vue'));
+const MarkdownProvider = defineAsyncComponent(() =>
+  import('@/vendor/vue-markdown-shiki').then(module => module.VueMarkdownItProvider)
+);
 
 defineOptions({
   name: 'ChatHistory'
@@ -96,11 +100,19 @@ async function getList() {
 
       <NScrollbar ref="scrollbarRef" class="chat-history-scroll">
         <NSpin :show="loading" class="h-full">
-          <VueMarkdownItProvider>
+          <component :is="list.length ? MarkdownProvider : 'div'">
             <div class="chat-history-list">
-              <ChatMessage v-for="(item, index) in list" :key="index" :msg="item" />
+              <ChatMessage
+                v-for="(item, index) in list"
+                :key="
+                  item.conversationRecordId
+                    ? `${item.conversationRecordId}:${item.role}`
+                    : `${item.timestamp}:${item.role}:${index}`
+                "
+                :msg="item"
+              />
             </div>
-          </VueMarkdownItProvider>
+          </component>
           <NEmpty v-if="!list.length" description="暂无数据" class="mt-60" />
         </NSpin>
       </NScrollbar>

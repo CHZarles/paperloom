@@ -10,9 +10,16 @@ interface Props {
   disabledDelete?: boolean;
   loading?: boolean;
   addable?: boolean;
+  compact?: boolean;
 }
 
-const { itemAlign = 'center', disabledDelete = true, loading = false, addable = true } = defineProps<Props>();
+const {
+  itemAlign = 'center',
+  disabledDelete = true,
+  loading = false,
+  addable = true,
+  compact = false
+} = defineProps<Props>();
 
 interface Emits {
   (e: 'add'): void;
@@ -61,13 +68,23 @@ function refresh() {
         {{ $t('common.confirmDelete') }}
       </NPopconfirm>
     </slot>
-    <NButton size="small" @click="refresh">
+    <NTooltip v-if="compact">
+      <template #trigger>
+        <NButton size="small" circle :aria-label="$t('common.refresh')" @click="refresh">
+          <template #icon>
+            <icon-material-symbols-refresh-rounded class="text-icon" :class="{ 'animate-spin': loading }" />
+          </template>
+        </NButton>
+      </template>
+      {{ $t('common.refresh') }}
+    </NTooltip>
+    <NButton v-else size="small" @click="refresh">
       <template #icon>
         <icon-material-symbols-refresh-rounded class="text-icon" :class="{ 'animate-spin': loading }" />
       </template>
       {{ $t('common.refresh') }}
     </NButton>
-    <TableColumnSetting v-model:columns="columns" />
+    <TableColumnSetting v-model:columns="columns" :compact="compact" />
     <slot name="suffix"></slot>
   </NSpace>
 </template>

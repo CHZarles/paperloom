@@ -550,12 +550,28 @@ test('regular users do not see or load admin settings content', async ({ page })
   expect(adminModuleRequests).toEqual([]);
 });
 
+test('authenticated navigation to the removed user route reaches not found', async ({ page }) => {
+  await installMockLoginState(page);
+
+  await page.goto('/#/user', { waitUntil: 'domcontentloaded' });
+
+  await expect
+    .poll(() =>
+      page
+        .locator('use')
+        .evaluateAll(elements =>
+          elements.map(element => element.getAttribute('href') || element.getAttribute('xlink:href'))
+        )
+    )
+    .toContain('#icon-local-not-found');
+  await expect(page.getByText('User Registry / 用户').first()).toHaveCount(0);
+});
+
 test('regular users cannot view admin pages through direct routes', async ({ page }) => {
   await installRegularUserState(page);
 
   const adminRoutes = [
     { path: '/chat-history', heading: 'Chat History' },
-    { path: '/user', heading: 'User Registry / 用户' },
     { path: '/org-tag', heading: 'Taxonomy Tags / 分类标签' },
     { path: '/model-provider', heading: 'Embedding Model / 向量模型' },
     { path: '/invite-code', heading: 'Invite Codes / 邀请码' },

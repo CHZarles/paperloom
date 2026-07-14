@@ -789,12 +789,12 @@ onBeforeUnmount(() => {
 .evidence-image-modal__region {
   position: absolute;
   z-index: 1;
-  border: 2px solid #d6a84f;
+  border: 2px solid var(--color-citation);
   border-radius: 5px;
-  background: rgb(214 168 79 / 18%);
+  background: color-mix(in srgb, var(--color-citation) 18%, transparent);
   box-shadow:
-    0 0 0 1px rgb(255 255 255 / 72%),
-    0 8px 24px rgb(106 72 9 / 20%);
+    0 0 0 1px color-mix(in srgb, var(--color-surface-elevated) 72%, transparent),
+    0 8px 24px color-mix(in srgb, var(--color-citation) 20%, transparent);
   pointer-events: none;
 }
 
