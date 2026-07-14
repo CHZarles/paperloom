@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_coding_benchmark_followup_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_e36ae33fb84ef621",
+    "ev_b2b0a04ebf3546ef",
+    "ev_4dac7c808ed1eb42",
+    "ev_cc589bd061af6a6d"
+  ],
+  "fields": {},
+  "markdown": "Choose **SWE-bench**.\n\nSince your priority is **coding agents**, SWE-bench is the best fit: it is explicitly an evaluation framework for real-world software engineering problems drawn from GitHub issues and pull requests, where a model edits a codebase to resolve an issue. [1] It also emphasizes large, complex codebases and issue descriptions that require software-engineering skills beyond traditional code-generation benchmarks. [2]\n\nThe other two are aimed elsewhere: **WebArena** focuses on agents performing tasks on the web in functional website environments, [3] while **GAIA** is a broader benchmark for general AI assistants involving reasoning, multimodality, web browsing, and tool use. [4]\n\n**Recommendation: use SWE-bench.**\n\nSources\n[1] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, ABSTRACT, p. 1\n[2] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 2.3 FEATURES OF SWE-BENCH, p. 3\n[3] WebArena: A Realistic Web Environment for Building Autonomous Agents, ABSTRACT, p. 1\n[4] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1",
+  "outcome": "answered",
+  "question_id": "coding_benchmark_followup_001",
+  "status": "COMPLETED",
+  "summary": "Choose **SWE-bench**.\n\nSince your priority is **coding agents**, SWE-bench is the best fit: it is explicitly an evaluation framework for real-world software engineering problems drawn from GitHub issues and pull requests, where a model edits a codebase to resolve an issue. [1] It also emphasizes large, complex codebases and issue descriptions that require software-engineering skills beyond traditi"
+}

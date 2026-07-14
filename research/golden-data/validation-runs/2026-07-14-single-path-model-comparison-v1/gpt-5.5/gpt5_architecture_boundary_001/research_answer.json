@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_gpt5_architecture_boundary_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "I don’t have supported architecture details for GPT-5 in the available corpus. The corpus search returned no papers matching “GPT-5 architecture details,” so I can’t responsibly state specifics such as parameter count, layer structure, attention variants, training data, MoE usage, or context length.\n\nIf you want, I can instead summarize **publicly known, source-grounded details** from any paper or report you provide, or compare documented architectures for earlier GPT-family/open models if they exist in the corpus.",
+  "outcome": "abstained",
+  "question_id": "gpt5_architecture_boundary_001",
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "I don’t have supported architecture details for GPT-5 in the available corpus. The corpus search returned no papers matching “GPT-5 architecture details,” so I can’t responsibly state specifics such as parameter count, layer structure, attention variants, training data, MoE usage, or context length.\n\nIf you want, I can instead summarize **publicly known, source-grounded details** from any paper or"
+}

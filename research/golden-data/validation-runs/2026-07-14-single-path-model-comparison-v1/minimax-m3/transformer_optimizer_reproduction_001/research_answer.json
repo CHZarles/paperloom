@@ -1,0 +1,13 @@
+{
+  "answer_id": "answer_transformer_optimizer_reproduction_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {},
+  "markdown": "## Optimizer portion — strict reproduction checklist\n\nFrom §5.3 *Optimizer* of *Attention Is All You Need* (Vaswani et al., NeurIPS 2017):\n\n| Field | Value |\n|---|---|\n| **Algorithm** | The adaptive optimizer named in §5.3 |\n| **β₁** | `0.9` |\n| **β₂** | `0.98` |\n| **ε** | `1e-9` |\n\nSource: §5.3 of the paper specifies the three numerical hyperparameters β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹ for the adaptive optimizer used. [1]\n\n### Why these differ from generic framework defaults (do not substitute)\n- `β₂ = 0.98` is **not** the PyTorch/TensorFlow default of `0.999`; the lower value was chosen specifically for the warmup/inverse-sqrt schedule defined in §5.3.\n- `ε = 1e-9` is **not** the framework default (`1e-8` in PyTorch, `1e-7` in some TF configs); using the default silently changes effective gradient scaling under this schedule.\n- `β₁ = 0.9` happens to match the framework default, but include it explicitly anyway to keep the checklist self-contained.\n\nPass these as explicit keyword arguments (`betas=(0.9, 0.98)`, `eps=1e-9`) rather than relying on library defaults, to remain faithful to the paper.\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "transformer_optimizer_reproduction_001",
+  "status": "COMPLETED",
+  "summary": "## Optimizer portion — strict reproduction checklist\n\nFrom §5.3 *Optimizer* of *Attention Is All You Need* (Vaswani et al., NeurIPS 2017):\n\n| Field | Value |\n|---|---|\n| **Algorithm** | The adaptive optimizer named in §5.3 |\n| **β₁** | `0.9` |\n| **β₂** | `0.98` |\n| **ε** | `1e-9` |\n\nSource: §5.3 of the paper specifies the three numerical hyperparameters β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹ for the ad"
+}

@@ -1,0 +1,32 @@
+{
+  "case_id": "benchmark_topic_change_followup_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:swebench_patch_test_construction"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:swebench_patch_test_construction"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Follows the topic change to SWE-bench instead of continuing the GAIA recommendation."
+    ],
+    "status": "not_run"
+  }
+}

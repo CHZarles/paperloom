@@ -1,0 +1,32 @@
+{
+  "case_id": "cross_benchmark_human_agent_gap_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:webarena_gpt4_human_gap"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:webarena_gpt4_human_gap"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Reports both gaps accurately and explains that the benchmarks use different tasks and evaluation settings."
+    ],
+    "status": "not_run"
+  }
+}

@@ -1,0 +1,246 @@
+{
+  "case_id": "corpus_paper_list_001",
+  "citation_validation": {
+    "cited_evidence_ids": [],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-14T02:54:38Z",
+  "diagnostics": {
+    "completion_tokens": 572,
+    "duration_ms": 7582,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 2,
+    "model_latency_ms": 7435,
+    "prompt_tokens": 5550,
+    "skills_used": [],
+    "tool_call_count": 1,
+    "total_tokens": 6122
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [],
+    "ledger_id": "ledger_corpus_paper_list_001",
+    "missing_evidence": [],
+    "question_id": "corpus_paper_list_001",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_corpus_paper_list_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "The current corpus contains 5 papers:\n\n1. **Language Models are Few-Shot Learners** — Tom B. Brown et al., NeurIPS 2020 (arXiv: 2005.14165)\n2. **Language Models are Unsupervised Multitask Learners** — Alec Radford et al., OpenAI technical report, 2019\n3. **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** — Jacob Devlin, Ming-Wei Chang et al., NAACL 2018 (arXiv: 1810.04805)\n4. **Attention Is All You Need** — Ashish Vaswani, Noam Shazeer et al., NeurIPS 2017 (arXiv: 1706.03762)\n5. **Adam: A Method for Stochastic Optimization** — Diederik P. Kingma, Jimmy Ba, ICLR 2014 (arXiv: 1412.6980)",
+    "outcome": "answered",
+    "question_id": "corpus_paper_list_001",
+    "status": "COMPLETED",
+    "summary": "The current corpus contains 5 papers:\n\n1. **Language Models are Few-Shot Learners** — Tom B. Brown et al., NeurIPS 2020 (arXiv: 2005.14165)\n2. **Language Models are Unsupervised Multitask Learners** — Alec Radford et al., OpenAI technical report, 2019\n3. **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** — Jacob Devlin, Ming-Wei Chang et al., NAACL 2018 (arXiv: 18"
+  },
+  "harness_id": "python_openai_agents_sdk_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": []
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "2005.14165",
+      "authors": [
+        "Tom B. Brown"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt3_2020",
+      "filename": null,
+      "paper_id": "gpt3_2020",
+      "preview": "",
+      "title": "Language Models are Few-Shot Learners",
+      "venue": "NeurIPS",
+      "year": 2020
+    },
+    {
+      "arxiv_id": null,
+      "authors": [
+        "Alec Radford"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt2_2019",
+      "filename": null,
+      "paper_id": "gpt2_2019",
+      "preview": "",
+      "title": "Language Models are Unsupervised Multitask Learners",
+      "venue": "OpenAI technical report",
+      "year": 2019
+    },
+    {
+      "arxiv_id": "1810.04805",
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "filename": null,
+      "paper_id": "bert_2018",
+      "preview": "",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    },
+    {
+      "arxiv_id": "1706.03762",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "filename": null,
+      "paper_id": "attention_is_all_you_need_2017",
+      "preview": "",
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "arxiv_id": "1412.6980",
+      "authors": [
+        "Diederik P. Kingma",
+        "Jimmy Ba"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_adam_2014",
+      "filename": null,
+      "paper_id": "adam_2014",
+      "preview": "",
+      "title": "Adam: A Method for Stochastic Optimization",
+      "venue": "ICLR",
+      "year": 2014
+    }
+  ],
+  "question_id": "corpus_paper_list_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "limit": 100,
+        "offset": 0,
+        "query_text": ""
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2005.14165",
+            "authors": [
+              "Tom B. Brown"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gpt3_2020",
+            "preview": "",
+            "title": "Language Models are Few-Shot Learners",
+            "venue": "NeurIPS",
+            "year": 2020
+          },
+          {
+            "arxiv_id": null,
+            "authors": [
+              "Alec Radford"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gpt2_2019",
+            "preview": "",
+            "title": "Language Models are Unsupervised Multitask Learners",
+            "venue": "OpenAI technical report",
+            "year": 2019
+          },
+          {
+            "arxiv_id": "1810.04805",
+            "authors": [
+              "Jacob Devlin",
+              "Ming-Wei Chang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "bert_2018",
+            "preview": "",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+            "venue": "NAACL",
+            "year": 2018
+          },
+          {
+            "arxiv_id": "1706.03762",
+            "authors": [
+              "Ashish Vaswani",
+              "Noam Shazeer"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "attention_is_all_you_need_2017",
+            "preview": "",
+            "title": "Attention Is All You Need",
+            "venue": "NeurIPS",
+            "year": 2017
+          },
+          {
+            "arxiv_id": "1412.6980",
+            "authors": [
+              "Diederik P. Kingma",
+              "Jimmy Ba"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "adam_2014",
+            "preview": "",
+            "title": "Adam: A Method for Stochastic Optimization",
+            "venue": "ICLR",
+            "year": 2014
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 5,
+        "next_offset": null,
+        "query_text": "",
+        "returned_count": 5
+      },
+      "tool_call_id": "call_019f5e8c2f2b77e0a0ebc87b",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "markdown": "The current corpus contains 5 papers:\n\n1. **Language Models are Few-Shot Learners** — Tom B. Brown et al., NeurIPS 2020 (arXiv: 2005.14165)\n2. **Language Models are Unsupervised Multitask Learners** — Alec Radford et al., OpenAI technical report, 2019\n3. **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** — Jacob Devlin, Ming-Wei Chang et al., NAACL 2018 (arXiv: 1810.04805)\n4. **Attention Is All You Need** — Ashish Vaswani, Noam Shazeer et al., NeurIPS 2017 (arXiv: 1706.03762)\n5. **Adam: A Method for Stochastic Optimization** — Diederik P. Kingma, Jimmy Ba, ICLR 2014 (arXiv: 1412.6980)",
+        "outcome": "answered"
+      },
+      "result": {
+        "accepted": true
+      },
+      "tool_call_id": "call_019f5e8c41cd72639dca9725",
+      "tool_name": "submit_research_answer"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_corpus_paper_list_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "The current corpus contains 5 papers:\n\n1. **Language Models are Few-Shot Learners** — Tom B. Brown et al., NeurIPS 2020 (arXiv: 2005.14165)\n2. **Language Models are Unsupervised Multitask Learners** — Alec Radford et al., OpenAI technical report, 2019\n3. **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** — Jacob Devlin, Ming-Wei Chang et al., NAACL 2018 (arXiv: 1810.04805)\n4. **Attention Is All You Need** — Ashish Vaswani, Noam Shazeer et al., NeurIPS 2017 (arXiv: 1706.03762)\n5. **Adam: A Method for Stochastic Optimization** — Diederik P. Kingma, Jimmy Ba, ICLR 2014 (arXiv: 1412.6980)",
+    "outcome": "answered",
+    "question_id": "corpus_paper_list_001",
+    "status": "COMPLETED",
+    "summary": "The current corpus contains 5 papers:\n\n1. **Language Models are Few-Shot Learners** — Tom B. Brown et al., NeurIPS 2020 (arXiv: 2005.14165)\n2. **Language Models are Unsupervised Multitask Learners** — Alec Radford et al., OpenAI technical report, 2019\n3. **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** — Jacob Devlin, Ming-Wei Chang et al., NAACL 2018 (arXiv: 18"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_54c7f95de948470ba6c3af628769edbc",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-14T02:54:30Z",
+  "status": "COMPLETED"
+}

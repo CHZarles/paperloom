@@ -1,0 +1,426 @@
+[
+  {
+    "arguments": {
+      "skill_id": "ambiguity_resolution"
+    },
+    "result": {
+      "answer_guidance": "Ask one concise, user-understandable clarification question.",
+      "evidence_standard": "Do not retrieve merely to hide a blocking ambiguity.",
+      "instructions": [
+        "Identify the single blocking ambiguity.",
+        "Ask one clear question that lets research proceed."
+      ],
+      "skill_id": "ambiguity_resolution",
+      "when_to_use": "Resolve a genuinely blocking identity, reference, relation, or constraint ambiguity."
+    },
+    "tool_call_id": "call_019f5eaf490e7fc1bbe1ad4b",
+    "tool_name": "get_research_skill"
+  },
+  {
+    "arguments": {
+      "limit": 100
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2308.03688",
+          "authors": [
+            "Xiao Liu",
+            "Hao Yu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentbench_2024",
+          "preview": "",
+          "title": "AgentBench: Evaluating LLMs as Agents",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2401.13178",
+          "authors": [
+            "Chang Ma",
+            "Junlei Zhang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentboard_2024",
+          "preview": "",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+          "venue": "NeurIPS Oral",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2311.12983",
+          "authors": [
+            "Gregoire Mialon",
+            "Clementine Fourrier"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gaia_2024",
+          "preview": "",
+          "title": "GAIA: a benchmark for General AI Assistants",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2309.10691",
+          "authors": [
+            "Xingyao Wang",
+            "Zihan Wang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "mint_2024",
+          "preview": "",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2310.06770",
+          "authors": [
+            "Carlos E. Jimenez",
+            "John Yang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "swebench_2024",
+          "preview": "",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2408.04682",
+          "authors": [
+            "Jiarui Lu",
+            "Thomas Holleis"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "toolsandbox_2024",
+          "preview": "",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2307.13854",
+          "authors": [
+            "Shuyan Zhou",
+            "Frank F. Xu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "webarena_2024",
+          "preview": "",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2210.03629",
+          "authors": [
+            "Shunyu Yao",
+            "Jeffrey Zhao"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "react_2023",
+          "preview": "",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+          "venue": "ICLR",
+          "year": 2023
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 9,
+      "next_offset": null,
+      "query_text": "",
+      "returned_count": 9
+    },
+    "tool_call_id": "call_019f5eaf490e7fc1bbe1ad53",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "swebench_2024"
+      ],
+      "query_text": "benchmark GitHub issues dataset construction evaluation",
+      "top_k": 8
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_95686aab12224f748b18e2b2be4bc28e",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "In the appendix, we provide more thorough details regarding the dataset construction process, evaluation pipeline, and characterization of the SWE-bench benchmark.",
+          "section": "APPENDIX",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popul",
+          "section": "ABSTRACT",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_d689cdb5319e487297a6bc2354dab50f",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "2.1 BENCHMARK CONSTRUCTION",
+          "section": "unsectioned",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_51db4123988d4cf78aeb1a06962ef641",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Traditional benchmarks in NLP typically involve only short input and output sequences and consider somewhat “contrived” problems created specifically for the benchmark. In contrast, SWE-bench’s realistic construction setting imbues the dataset with unique properties, which we discuss below.",
+          "section": "2.3 FEATURES OF SWE-BENCH",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9bdc62b54844406c9bca7021eb867354",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "In the real world, software engineering is not as simple. Fixing a bug might involve navigating a large repository, understanding the interplay between functions in different files, or spotting a small error in convoluted code. Inspired by this, we introduce SWE-bench, a benchmark that evaluates LMs in a realistic software engineering setting. As shown in Figure 1, models are tasked to resolve issues (typically a bug report or a feature request) submitted to popular GitHub repositories. Each tas",
+          "section": "1 INTRODUCTION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_5ffd84402f9e468aa90eec402bdd1c81",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "SWE-bench offers several advantages over existing LM programming benchmarks. These include, a realistic setting that utilizes user-submitted issues and solutions, diverse inputs featuring unique code problems from 12 repositories, a robust framework for execution-based evaluation, and the ability to continuously update the benchmark with new instances, requiring minimal human intervention.",
+          "section": "1 INTRODUCTION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8981c02eef31414dbfdd223756fa44b7",
+          "original_filename": null,
+          "page": 20,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "If a task instance fulfills these two criteria, then it is included in the evaluation dataset. Table 10 displays a summary of how many task instances were removed from consideration across the construction process and execution based validation steps. We save all finalized task instances to a single .json file that is open sourced and available for download.",
+          "section": "A.3 EXECUTION-BASED VALIDATION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d2df97cf12664d58a997b88bbac14a50",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We evaluate multiple state-of-the-art LMs on SWE-bench and find that they fail to solve all except the simplest issues. Using a BM25 retriever, Claude 2 is only able to resolve 1.96% of the issues.",
+          "section": "1 INTRODUCTION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8c7bf21a1d4b4513af88cd87b1f373dc",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "In addition to SWE-bench our contributions include the release of a training dataset, SWE-benchtrain, which is essential for advancing open model development in this challenging domain. This dataset comprises a collection of 19,000 non-testing task instances derived from 37 repositories. Utilizing SWE-bench-train, we release two fine-tuned models, SWE-Llama 7b and 13b, based on the CodeLlama (Roziere et al.\\` , 2023) model. We find that in some settings SWE-Llama 13b is competitive with Claude 2",
+          "section": "1 INTRODUCTION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e873ce3ef39d4086b6a791d223c6c9b3",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "SWE-bench is a benchmark featuring GitHub issues from popular repositories that report bugs or request new features, and pull requests that make changes to the repository to resolve these issues. The task is to generate a pull request that addresses a given issue and passes tests related to the issue.",
+          "section": "2 SWE-BENCH",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_9e139fadc0484191b69e77b14b8c7cbf",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "SWE-BENCH: CAN LANGUAGE MODELS RESOLVE REAL-WORLD GITHUB ISSUES?",
+          "section": "unsectioned",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bf4f9bc8e89f413ba6bce58e2930da50",
+          "original_filename": null,
+          "page": 41,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Possibly related to https://github.com/PyCQA/pylint/issues/3285",
+          "section": "Issue",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        }
+      ],
+      "matched_count": 141,
+      "query_text": "benchmark GitHub issues dataset construction evaluation",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_019f5eaf58517283ba65f6a6",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_c51e11392f594cb8b46795720b9c4229",
+        "reading_element_e873ce3ef39d4086b6a791d223c6c9b3",
+        "reading_element_5ffd84402f9e468aa90eec402bdd1c81"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":526.0,\"right\":767.0,\"top\":287.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":526.0,\"right\":767.0,\"top\":287.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_e36ae33fb84ef621",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "ABSTRACT",
+          "source_kind": "paragraph",
+          "span_text": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. Given a codebase along with a description of an issue to be resolved, a language model is tasked with editing the codebase to address the issue. Resolving issues in SWE-bench frequently requires understanding and coordinating changes across multiple functions, classes, and even files simultaneously, calling for models to interact with execution environments, process extremely long contexts and perform complex reasoning that goes far beyond traditional code generation tasks. Our evaluations show that both state-ofthe-art proprietary models and our fine-tuned model SWE-Llama can resolve only the simplest issues. The best-performing model, Claude 2, is able to solve a mere 1.96% of the issues. Advances on SWE-bench represent steps towards LMs that are more practical, intelligent, and autonomous.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":497.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":497.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_780959176307c67f",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_e873ce3ef39d4086b6a791d223c6c9b3",
+          "location_ref": "reading_element_e873ce3ef39d4086b6a791d223c6c9b3",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2 SWE-BENCH",
+          "source_kind": "paragraph",
+          "span_text": "SWE-bench is a benchmark featuring GitHub issues from popular repositories that report bugs or request new features, and pull requests that make changes to the repository to resolve these issues. The task is to generate a pull request that addresses a given issue and passes tests related to the issue.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":315.0,\"right\":826.0,\"top\":257.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":315.0,\"right\":826.0,\"top\":257.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_76c5b91db9e206f4",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_5ffd84402f9e468aa90eec402bdd1c81",
+          "location_ref": "reading_element_5ffd84402f9e468aa90eec402bdd1c81",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 INTRODUCTION",
+          "source_kind": "paragraph",
+          "span_text": "SWE-bench offers several advantages over existing LM programming benchmarks. These include, a realistic setting that utilizes user-submitted issues and solutions, diverse inputs featuring unique code problems from 12 repositories, a robust framework for execution-based evaluation, and the ability to continuously update the benchmark with new instances, requiring minimal human intervention.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_019f5eaf665971228e482eb9",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "For evaluating an agent that fixes GitHub issues, **SWE-bench** is the direct fit.\n\nSWE-bench is \"a benchmark featuring GitHub issues from popular repositories that report bugs or request new features, and pull requests that make changes to the repository to resolve these issues. The task is to generate a pull request that addresses a given issue and passes tests related to the issue.\" [[ev_780959176307c67f]]\n\nKey properties that match your use case:\n\n- **Real GitHub issues**: 2,294 problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. [[ev_e36ae33fb84ef621]]\n- **Realistic setting**: \"a realistic setting that utilizes user-submitted issues and solutions\" rather than contrived programming puzzles. [[ev_76c5b91db9e206f4]]\n- **Execution-based evaluation**: \"a robust framework for execution-based evaluation\" — the agent's patch is validated by running tests tied to the issue. [[ev_76c5b91db9e206f4]]\n- **Continuous updates**: \"the ability to continuously update the benchmark with new instances, requiring minimal human intervention.\" [[ev_76c5b91db9e206f4]]\n\nIf you need codebases beyond the original 12 Python repos or different filtering criteria (e.g., a human-verified subset), let me know and I can check what's available in the corpus.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_019f5eaf7dbb7da09bd6cf85",
+    "tool_name": "submit_research_answer"
+  }
+]

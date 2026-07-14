@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_transformer_to_bert_genealogy_001",
+  "answer_type": "association_influence_genealogy",
+  "cited_evidence_ids": [
+    "ev_7b31c6915e3d43d3",
+    "ev_7f19acb3f716bc64",
+    "ev_3540835408466c6e",
+    "ev_f189c6c5f4214d2e",
+    "ev_0f82af3db4559191"
+  ],
+  "fields": {},
+  "markdown": "**Direct technical lineage:**\n\n`Attention Is All You Need` → `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`\n\n**What is inherited:** *Attention Is All You Need* introduced the Transformer as “based solely on attention mechanisms,” dispensing with recurrence and convolutions entirely, and described the encoder as a stack of layers whose first sub-layer is multi-head self-attention followed by a position-wise feed-forward network with residual connections and layer normalization. [1] [2]\n\n**How BERT cites and uses it:** BERT states directly that its model architecture is “a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017),” and adds that its implementation is “almost identical to the original.” [3]\n\n**What BERT changes in that lineage:** BERT uses the Transformer encoder as the architectural base, but applies it to language representation pre-training: it defines BERT as “Bidirectional Encoder Representations from Transformers” and says it pretrains deep bidirectional representations by jointly conditioning on left and right context in all layers. [4] It further explains that masked language modeling enables the representation to fuse left and right context, allowing pretraining of a deep bidirectional Transformer. [5]\n\nSo the cited relationship is a **direct architecture-use relationship**: BERT is not merely thematically related to *Attention Is All You Need*; it explicitly bases its architecture on Vaswani et al.’s Transformer implementation, specifically using a bidirectional Transformer encoder and adding pre-training objectives for language representation.\n\nSources\n[1] Attention Is All You Need, Abstract, p. 1\n[2] Attention Is All You Need, 3.1 Encoder and Decoder Stacks, p. 3\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[4] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[5] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1",
+  "outcome": "answered",
+  "question_id": "transformer_to_bert_genealogy_001",
+  "status": "COMPLETED",
+  "summary": "**Direct technical lineage:**\n\n`Attention Is All You Need` → `BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding`\n\n**What is inherited:** *Attention Is All You Need* introduced the Transformer as “based solely on attention mechanisms,” dispensing with recurrence and convolutions entirely, and described the encoder as a stack of layers whose first sub-layer is multi-he"
+}

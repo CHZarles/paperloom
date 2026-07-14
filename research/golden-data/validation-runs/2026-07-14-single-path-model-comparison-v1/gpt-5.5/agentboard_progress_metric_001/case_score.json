@@ -1,0 +1,34 @@
+{
+  "case_id": "agentboard_progress_metric_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:agentboard_final_success_rate_limit",
+        "REQUIRED_ANCHOR_NOT_CITED:agentboard_progress_rate_metric"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:agentboard_final_success_rate_limit",
+        "REQUIRED_ANCHOR_MISSING:agentboard_progress_rate_metric"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Final success rate exposes little about intermediate behavior, while progress rate captures incremental task advancement."
+    ],
+    "status": "not_run"
+  }
+}

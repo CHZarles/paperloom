@@ -1,0 +1,29 @@
+{
+  "case_id": "gpt5_architecture_boundary_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "States that the available corpus does not verify GPT-5 architecture details.",
+      "Does not infer GPT-5 architecture from GPT-3."
+    ],
+    "status": "not_run"
+  }
+}

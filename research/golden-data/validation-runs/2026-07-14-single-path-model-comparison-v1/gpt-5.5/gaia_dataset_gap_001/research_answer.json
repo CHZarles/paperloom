@@ -1,0 +1,23 @@
+{
+  "answer_id": "answer_gaia_dataset_gap_001",
+  "answer_type": "data_benchmark_provenance",
+  "cited_evidence_ids": [
+    "ev_61bb2c7fa5a40252",
+    "ev_85d00a80d9c73fda",
+    "ev_cd6bb5f911234d42",
+    "ev_a4a558e9b514dd80",
+    "ev_d8c13921b995e8b4",
+    "ev_787d210d2c7478c4",
+    "ev_882aea63557875af",
+    "ev_d947de8b7fcb3be8",
+    "ev_37255905a4e7bfd1",
+    "ev_cc589bd061af6a6d",
+    "ev_1e2568ae84b71ffc"
+  ],
+  "fields": {},
+  "markdown": "GAIA was built as a set of **466 real-world assistant questions**, each paired with a **unique, factual answer** so that evaluation could be automatic and robust. The benchmark targets tasks requiring abilities such as reasoning, multimodality, web browsing, coding, and tool use; the authors include modalities such as PDFs, spreadsheets, images, video, and audio. [1] [2]\n\nConstruction followed a human-authored-and-validated pipeline:\n\n1. **Question creation:** annotators were given a seed set of GAIA questions created by the authors, then asked to create and answer new questions. [3] [4]\n2. **Difficulty labeling:** questions were grouped into three levels using the number of steps and tools used by annotators as a proxy. Level 1 generally requires no tools or at most one tool and no more than 5 steps; Level 2 roughly requires 5–10 steps and multiple tools; Level 3 targets near-perfect assistants, allowing arbitrarily long action sequences, any number of tools, and broad world access. [5] [6] [7] [8]\n3. **Validation for non-ambiguity:** two new independent annotators answered each question. If both new annotators and the original annotator agreed, the question was validated; if not, the question was fixed when possible and removed otherwise. The paper reports that 68% of questions were good as-is and estimates about two hours of annotator time per question including validation and repairs. [9]\n\nThe headline reported result was **92% for humans versus 15% for GPT-4 equipped with plugins**. [10] The paper notes that the GPT-4+plugins score should be treated as an **oracle-style** result because plugins were manually selected per question; the human score came from validation annotators. [11]\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, Level 3, p. 2\n[2] GAIA: a benchmark for General AI Assistants, 3.3 Composition of GAIA, p. 6\n[3] GAIA: a benchmark for General AI Assistants, D Extended description of our question design framework, p. 19\n[4] GAIA: a benchmark for General AI Assistants, D Extended description of our question design framework, p. 19\n[5] GAIA: a benchmark for General AI Assistants, 3.3 Composition of GAIA, p. 6\n[6] GAIA: a benchmark for General AI Assistants, 3.3 Composition of GAIA, p. 6\n[7] GAIA: a benchmark for General AI Assistants, 3.3 Composition of GAIA, p. 6\n[8] GAIA: a benchmark for General AI Assistants, 3.3 Composition of GAIA, p. 6\n[9] GAIA: a benchmark for General AI Assistants, 3.4 Building and extending GAIA, p. 7\n[10] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[11] GAIA: a benchmark for General AI Assistants, 4 LLMs results on GAIA, p. 8",
+  "outcome": "answered",
+  "question_id": "gaia_dataset_gap_001",
+  "status": "COMPLETED",
+  "summary": "GAIA was built as a set of **466 real-world assistant questions**, each paired with a **unique, factual answer** so that evaluation could be automatic and robust. The benchmark targets tasks requiring abilities such as reasoning, multimodality, web browsing, coding, and tool use; the authors include modalities such as PDFs, spreadsheets, images, video, and audio. [1] [2]\n\nConstruction followed a h"
+}

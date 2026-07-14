@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_benchmark_topic_change_followup_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_e36ae33fb84ef621",
+    "ev_780959176307c67f",
+    "ev_9b61f205b6a3914d"
+  ],
+  "fields": {},
+  "markdown": "Use **SWE-bench** for an agent that fixes GitHub issues.\n\nIt is built specifically around real GitHub issues and corresponding pull requests: the benchmark has **2,294 software engineering problems** from **12 popular Python repositories**, where the model receives a codebase plus an issue description and must edit the codebase to resolve it [1]. The task is explicitly to generate a pull request addressing the issue and passing related tests [2].\n\nFor scoring, SWE-bench applies the generated patch, runs the relevant unit/system tests, and reports the **percentage of task instances resolved** [3].\n\nSources\n[1] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, ABSTRACT, p. 1\n[2] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 2 SWE-BENCH, p. 2\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 2.2 TASK FORMULATION, p. 3",
+  "outcome": "answered",
+  "question_id": "benchmark_topic_change_followup_001",
+  "status": "COMPLETED",
+  "summary": "Use **SWE-bench** for an agent that fixes GitHub issues.\n\nIt is built specifically around real GitHub issues and corresponding pull requests: the benchmark has **2,294 software engineering problems** from **12 popular Python repositories**, where the model receives a codebase plus an issue description and must edit the codebase to resolve it [1]. The task is explicitly to generate a pull request a"
+}

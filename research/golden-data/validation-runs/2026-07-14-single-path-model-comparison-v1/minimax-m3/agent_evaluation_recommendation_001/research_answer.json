@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_agent_evaluation_recommendation_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_ed24f47ec1c2335f",
+    "ev_4dac7c808ed1eb42",
+    "ev_e36ae33fb84ef621",
+    "ev_4fc2df3e48e541f8"
+  ],
+  "fields": {},
+  "markdown": "## One benchmark per category (from this corpus)\n\n| Category | Recommended benchmark | Why it fits |\n|---|---|---|\n| General assistants | **GAIA** (Mialon et al., ICLR 2024) | Explicitly designed as \"a benchmark for General AI Assistants\" with questions requiring reasoning, multi-modality, web browsing, and tool-use. [1] |\n| Realistic web tasks | **WebArena** (Zhou et al., ICLR 2024) | \"A Realistic Web Environment for Building Autonomous Agents\" with fully functional websites across e-commerce, social forums, software development, and content management, plus a benchmark of long-horizon tasks emulating routine web activity. [2] |\n| Software engineering | **SWE-bench** (Jimenez et al., ICLR 2024) | 2,294 tasks drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories, requiring multi-file edits, long-context processing, and execution-based validation. [3] |\n| Policy-constrained tool-agent interaction | **τ-bench** (Yao et al., 2024) | Emulates dynamic conversations between a simulated user and a language agent \"provided with domain-specific API tools and policy guidelines,\" with evaluation against annotated database goal states and a pass^k reliability metric. [4] |\n\n### Notes on the picks\n\n- **GAIA** is the cleanest match for \"general assistants\" because its design target is explicitly general-assistant use cases (daily personal tasks, science, general knowledge) and its questions are conceptually simple for humans yet hard for LL\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, 1 Introduction, p. 1\n[2] WebArena: A Realistic Web Environment for Building Autonomous Agents, ABSTRACT, p. 1\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, ABSTRACT, p. 1\n[4] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, Abstract, p. 1",
+  "outcome": "answered",
+  "question_id": "agent_evaluation_recommendation_001",
+  "status": "COMPLETED",
+  "summary": "## One benchmark per category (from this corpus)\n\n| Category | Recommended benchmark | Why it fits |\n|---|---|---|\n| General assistants | **GAIA** (Mialon et al., ICLR 2024) | Explicitly designed as \"a benchmark for General AI Assistants\" with questions requiring reasoning, multi-modality, web browsing, and tool-use. [1] |\n| Realistic web tasks | **WebArena** (Zhou et al., ICLR 2024) | \"A Realisti"
+}

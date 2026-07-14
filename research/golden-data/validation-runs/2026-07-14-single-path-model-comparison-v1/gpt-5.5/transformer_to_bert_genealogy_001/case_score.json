@@ -1,0 +1,28 @@
+{
+  "case_id": "transformer_to_bert_genealogy_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "pass"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "BERT's direct relationship to Attention Is All You Need is that it uses a bidirectional Transformer encoder."
+    ],
+    "status": "not_run"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_adam_beta2_conflict_001",
+  "answer_type": "contradiction_resolution",
+  "cited_evidence_ids": [
+    "ev_25fa64ee50482ccf",
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {},
+  "markdown": "There is no real conflict — the two values live at different scopes, and the corpus confirms both.\n\n**The Adam default (0.999).** In Algorithm 1 of the Adam paper (Kingma & Ba, 2014, p. 2), the authors write: \"Good default settings for the tested machine learning problems are α = 0.001, β₁ = 0.9, β₂ = 0.999 and ε = 10⁻⁸.\" [1] So 0.999 is the algorithm's recommended default across the problems the authors tested.\n\n**The Transformer's choice (0.98).** In §5.3 \"Optimizer\" of the Transformer paper, Vaswani et al. state that they used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹. [2] So the Transformer does, in fact, override the default and use 0.98.\n\n**Adjudication.** The two claims are consistent once their scopes are distinguished:\n\n- 0.999 is Adam's *general default* — a safe starting point recommended in Algorithm 1 of the Adam paper. [1]\n- 0.98 is what the Transformer authors *chose* in §5.3 of Vaswani et al. 2017, deliberately overriding that default for their specific architecture and training setup. [2]\n\nSources that say \"0.999\" are paraphrasing the Adam paper's general default. Sources that say \"0.98\" are quoting the Transformer paper. Neither is wrong — they are answering different questions (default vs. specific choice). The apparent conflict dissolves once the scope of each value is made explicit.\n\nSources\n[1] Adam: A Method for Stochastic Optimization, unsectioned, p. 2\n[2] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "adam_beta2_conflict_001",
+  "status": "COMPLETED",
+  "summary": "There is no real conflict — the two values live at different scopes, and the corpus confirms both.\n\n**The Adam default (0.999).** In Algorithm 1 of the Adam paper (Kingma & Ba, 2014, p. 2), the authors write: \"Good default settings for the tested machine learning problems are α = 0.001, β₁ = 0.9, β₂ = 0.999 and ε = 10⁻⁸.\" [1] So 0.999 is the algorithm's recommended default across the problems the "
+}

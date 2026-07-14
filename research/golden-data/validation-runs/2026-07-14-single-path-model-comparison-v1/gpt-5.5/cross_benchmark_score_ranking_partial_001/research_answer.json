@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_cross_benchmark_score_ranking_partial_001",
+  "answer_type": "precision_fact_extraction",
+  "cited_evidence_ids": [
+    "ev_cc589bd061af6a6d",
+    "ev_33cde24765d84659",
+    "ev_8afa18ce5dcd1cd1"
+  ],
+  "fields": {},
+  "markdown": "Using higher reported model success percentage as “easier,” the ranking is:\n\n1. **GAIA** — **15%** for GPT-4 equipped with plugins [1]\n2. **WebArena** — **14.41%** end-to-end task success rate for the best GPT-4 agent [2]\n3. **SWE-bench** — **1.96%** resolved by the best-performing model, Claude 2, with BM25 retrieval [3]\n\nSo: **GAIA → WebArena → SWE-bench** from easiest to hardest.\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[2] WebArena: A Realistic Web Environment for Building Autonomous Agents, 1 INTRODUCTION, p. 2\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 5 RESULTS, p. 6",
+  "outcome": "answered",
+  "question_id": "cross_benchmark_score_ranking_partial_001",
+  "status": "COMPLETED",
+  "summary": "Using higher reported model success percentage as “easier,” the ranking is:\n\n1. **GAIA** — **15%** for GPT-4 equipped with plugins [1]\n2. **WebArena** — **14.41%** end-to-end task success rate for the best GPT-4 agent [2]\n3. **SWE-bench** — **1.96%** resolved by the best-performing model, Claude 2, with BM25 retrieval [3]\n\nSo: **GAIA → WebArena → SWE-bench** from easiest to hardest.\n\nSources\n[1] G"
+}

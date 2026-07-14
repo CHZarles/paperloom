@@ -1,0 +1,28 @@
+{
+  "case_id": "toolsandbox_constraint_selection_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "pass"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "ToolSandbox satisfies the combined stateful, on-policy, milestone-based, and insufficient-information constraints."
+    ],
+    "status": "not_run"
+  }
+}

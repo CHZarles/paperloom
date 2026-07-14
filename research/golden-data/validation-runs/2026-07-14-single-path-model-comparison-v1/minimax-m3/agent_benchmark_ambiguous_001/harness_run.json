@@ -1,0 +1,76 @@
+{
+  "case_id": "agent_benchmark_ambiguous_001",
+  "citation_validation": {
+    "cited_evidence_ids": [],
+    "corpus_tools_used": false,
+    "passed": true
+  },
+  "completed_at": "2026-07-14T03:07:34Z",
+  "diagnostics": {
+    "completion_tokens": 358,
+    "duration_ms": 8267,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 2,
+    "model_latency_ms": 7834,
+    "prompt_tokens": 5320,
+    "skills_used": [],
+    "tool_call_count": 0,
+    "total_tokens": 5678
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [],
+    "ledger_id": "ledger_agent_benchmark_ambiguous_001",
+    "missing_evidence": [],
+    "question_id": "agent_benchmark_ambiguous_001",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_agent_benchmark_ambiguous_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Could you clarify what you're looking for? For example:\n\n- **Surveys or benchmarks for evaluating AI agents** (e.g., agent capability benchmarks, tool-use benchmarks)?\n- **A specific agent benchmark paper** (if you have a name or authors in mind)?\n- **Something else entirely**?\n\nA bit more context will help me point you to the right material in the corpus.",
+    "outcome": "needs_clarification",
+    "question_id": "agent_benchmark_ambiguous_001",
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "Could you clarify what you're looking for? For example:\n\n- **Surveys or benchmarks for evaluating AI agents** (e.g., agent capability benchmarks, tool-use benchmarks)?\n- **A specific agent benchmark paper** (if you have a name or authors in mind)?\n- **Something else entirely**?\n\nA bit more context will help me point you to the right material in the corpus."
+  },
+  "harness_id": "python_openai_agents_sdk_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": []
+  },
+  "paper_candidates": [],
+  "question_id": "agent_benchmark_ambiguous_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "markdown": "Could you clarify what you're looking for? For example:\n\n- **Surveys or benchmarks for evaluating AI agents** (e.g., agent capability benchmarks, tool-use benchmarks)?\n- **A specific agent benchmark paper** (if you have a name or authors in mind)?\n- **Something else entirely**?\n\nA bit more context will help me point you to the right material in the corpus.",
+        "outcome": "needs_clarification"
+      },
+      "result": {
+        "accepted": true
+      },
+      "tool_call_id": "call_019f5e981a607e008c739927",
+      "tool_name": "submit_research_answer"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_agent_benchmark_ambiguous_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "Could you clarify what you're looking for? For example:\n\n- **Surveys or benchmarks for evaluating AI agents** (e.g., agent capability benchmarks, tool-use benchmarks)?\n- **A specific agent benchmark paper** (if you have a name or authors in mind)?\n- **Something else entirely**?\n\nA bit more context will help me point you to the right material in the corpus.",
+    "outcome": "needs_clarification",
+    "question_id": "agent_benchmark_ambiguous_001",
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "Could you clarify what you're looking for? For example:\n\n- **Surveys or benchmarks for evaluating AI agents** (e.g., agent capability benchmarks, tool-use benchmarks)?\n- **A specific agent benchmark paper** (if you have a name or authors in mind)?\n- **Something else entirely**?\n\nA bit more context will help me point you to the right material in the corpus."
+  },
+  "result_status": "NEEDS_CLARIFICATION",
+  "run_id": "run_cfba9f1bb8404a9a89fd2d82c619e805",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-14T03:07:26Z",
+  "status": "NEEDS_CLARIFICATION"
+}

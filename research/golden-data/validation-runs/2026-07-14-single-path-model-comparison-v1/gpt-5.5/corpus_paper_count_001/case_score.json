@@ -1,0 +1,29 @@
+{
+  "case_id": "corpus_paper_count_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "States that the current corpus contains exactly five papers.",
+      "Answers naturally without discussing citation rules or evidence identifiers."
+    ],
+    "status": "not_run"
+  }
+}

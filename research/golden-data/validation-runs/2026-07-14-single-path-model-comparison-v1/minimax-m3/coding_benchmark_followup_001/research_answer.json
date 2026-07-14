@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_coding_benchmark_followup_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_e36ae33fb84ef621",
+    "ev_a3801dde9fc14267",
+    "ev_9b61f205b6a3914d"
+  ],
+  "fields": {},
+  "markdown": "Pick **SWE-bench** for evaluating coding agents. It fits your stated target — software engineering — while the other two benchmarks target different capabilities (general assistant reasoning across diverse real-world tasks, and web-environment interaction).\n\nWhat SWE-bench actually tests, from the original paper:\n\n- The dataset contains **2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories**. [1]\n- Each task gives the model **an issue text description and a complete codebase**, and the model must produce an edit — represented as a patch file — that resolves the issue. [2]\n- Evaluation is execution-based: the generated patch is applied with `patch`, and the task's unit and system tests are run; **the metric is the percentage of task instances whose patch applies and whose tests all pass**. [3]\n- Resolving these issues \"frequently requires understanding and coordinating changes across multiple functions, classes, and even files simultaneously, calling for models to interact with execution environments, process extremely long contexts and perform complex reasoning that goes far beyond traditional code generation tasks.\" [1]\n\nIf you want to go further, I can pull the data-construction and harness details from the appendix, or look up follow-on variants in the corpus.\n\nSources\n[1] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, ABSTRACT, p. 1\n[2] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 2.2 TASK FORMULATION, p. 3\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 2.2 TASK FORMULATION, p. 3",
+  "outcome": "answered",
+  "question_id": "coding_benchmark_followup_001",
+  "status": "COMPLETED",
+  "summary": "Pick **SWE-bench** for evaluating coding agents. It fits your stated target — software engineering — while the other two benchmarks target different capabilities (general assistant reasoning across diverse real-world tasks, and web-environment interaction).\n\nWhat SWE-bench actually tests, from the original paper:\n\n- The dataset contains **2,294 software engineering problems drawn from real GitHub "
+}

@@ -1,0 +1,29 @@
+{
+  "case_id": "agentbench_environment_inventory_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_run"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "pass"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "AgentBench evaluates LLM agents in eight interactive environments.",
+      "The paper identifies weak long-term reasoning, decision-making, and instruction following as major obstacles."
+    ],
+    "status": "not_run"
+  }
+}

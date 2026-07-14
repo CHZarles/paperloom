@@ -1,0 +1,21 @@
+{
+  "answer_id": "answer_bert_vs_transformer_comparison_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_7b31c6915e3d43d3",
+    "ev_12722a3120bf0362",
+    "ev_3540835408466c6e",
+    "ev_f189c6c5f4214d2e",
+    "ev_1fa020e06b5649fa",
+    "ev_5a465492abf3009b",
+    "ev_0f82af3db4559191",
+    "ev_293b2260f8df0db9",
+    "ev_9c9a9e4f55a8193d"
+  ],
+  "fields": {},
+  "markdown": "| Dimension | Original Transformer (*Attention Is All You Need*) | BERT |\n|---|---|---|\n| **Architecture role** | A general **sequence transduction** architecture that replaces recurrence/convolutions with attention; it uses an **encoder–decoder** structure for tasks such as machine translation. [1] The encoder maps the input sequence to continuous representations, and the decoder generates the output sequence one symbol at a time. [2] | A **language representation** model built from a **multi-layer bidirectional Transformer encoder** based on the original Transformer implementation. [3] It is designed so the pretrained model can be fine-tuned with one additional output layer for tasks such as question answering and language inference. [4] |\n| **Directionality** | Mixed by component: the **encoder** self-attention lets each position attend to all positions in the previous encoder layer. [5] The **decoder** is autoregressive: it attends only up to the current position, using masking to block illegal future-position connections. [6] | Deeply **bidirectional**: BERT jointly conditions on both left and right context in all layers. [4] Its MLM objective lets representations fuse left and right context, unlike left-to-right language-model pretraining. [7] |\n| **Training objective** | For generation, the decoder output is converted into **predicted next-token probabilities**, and the model generates outputs autoregressively one element at a time. [8] [2] | Pretraining uses **masked language modeling**: randomly mask input tokens and predict the original vocabulary id from context. [7] BERT also uses **next sentence prediction**, a binary task where sentence B is either the true next sentence or a random sentence. [9] |\n\n**Bottom line:** the original Transformer is an encoder–decoder sequence transduction model with autoregressive decoding, whereas BERT repurposes the Transformer encoder as a bidirectional pretrained representation model trained with MLM plus NSP.\n\nSources\n[1] Attention Is All You Need, Abstract, p. 1\n[2] Attention Is All You Need, 3 Model Architecture, p. 2\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[4] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[5] Attention Is All You Need, 3.2.3 Applications of Attention in our Model, p. 5\n[6] Attention Is All You Need, 3.2.3 Applications of Attention in our Model, p. 5\n[7] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1\n[8] Attention Is All You Need, 3.4 Embeddings and Softmax, p. 5\n[9] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4",
+  "outcome": "answered",
+  "question_id": "bert_vs_transformer_comparison_001",
+  "status": "COMPLETED",
+  "summary": "| Dimension | Original Transformer (*Attention Is All You Need*) | BERT |\n|---|---|---|\n| **Architecture role** | A general **sequence transduction** architecture that replaces recurrence/convolutions with attention; it uses an **encoder–decoder** structure for tasks such as machine translation. [1] The encoder maps the input sequence to continuous representations, and the decoder generates the ou"
+}

@@ -1,0 +1,35 @@
+{
+  "case_id": "bert_vs_transformer_comparison_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:bert_masked_lm_pretraining"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:bert_masked_lm_pretraining"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Compares all three requested axes rather than producing two unrelated summaries.",
+      "The original Transformer is presented as an encoder-decoder architecture.",
+      "BERT uses a bidirectional Transformer encoder.",
+      "BERT is pre-trained with a masked language modeling objective."
+    ],
+    "status": "not_run"
+  }
+}

@@ -1,0 +1,850 @@
+{
+  "case_count": 30,
+  "dataset_id": "harness_golden_seed",
+  "failed_count": 0,
+  "passed_count": 30,
+  "schema_version": "harness-score-report/v2",
+  "scores": [
+    {
+      "case_id": "transformer_adam_params_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "attention_paper_ambiguous_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "gpt5_architecture_boundary_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "States that the available corpus does not verify GPT-5 architecture details.",
+          "Does not infer GPT-5 architecture from GPT-3."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "bert_transformer_role_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "bert_vs_transformer_comparison_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Compares all three requested axes rather than producing two unrelated summaries.",
+          "The original Transformer is presented as an encoder-decoder architecture.",
+          "BERT uses a bidirectional Transformer encoder.",
+          "BERT is pre-trained with a masked language modeling objective."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "transformer_to_bert_genealogy_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "BERT's direct relationship to Attention Is All You Need is that it uses a bidirectional Transformer encoder."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "adam_beta2_conflict_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Explains that a default recommendation and a paper-specific setting are not contradictory.",
+          "The Adam paper gives beta2 = 0.999 as a recommended default.",
+          "The Transformer paper used beta2 = 0.98 in its own training setup."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "transformer_optimizer_reproduction_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "gpt3_to_transformer_multihop_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "GPT-3 uses the same model and architecture family as GPT-2.",
+          "GPT-2 uses a Transformer-based architecture for its language models.",
+          "The supported chain is GPT-3 to GPT-2 to Attention Is All You Need; no direct GPT-3-to-Transformer citation is asserted."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "bert_choice_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "transformer_bert_confirmation_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "The comparison covers architecture role, directionality, and training objective."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "adam_constraint_refinement_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "corpus_paper_count_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "States that the current corpus contains exactly five papers.",
+          "Answers naturally without discussing citation rules or evidence identifiers."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Lists all five paper titles in the corpus.",
+          "Does not refuse merely because paper-card metadata is non-citeable."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Understands that 'them' refers to the five papers in the current corpus.",
+          "Lists all five paper titles after consulting corpus metadata."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "agentbench_environment_inventory_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "AgentBench evaluates LLM agents in eight interactive environments.",
+          "The paper identifies weak long-term reasoning, decision-making, and instruction following as major obstacles."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "gaia_dataset_gap_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Attributes the 92% and 15% figures to GAIA rather than treating them as general agent performance numbers."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "webarena_reproduction_protocol_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "pass"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Presents an executable checklist rather than a general summary of WebArena."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "swebench_instance_provenance_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "SWE-bench connects GitHub issues with merged pull-request solutions and evaluates generated patches against tests."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "agentboard_progress_metric_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Final success rate exposes little about intermediate behavior, while progress rate captures incremental task advancement."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "agent_benchmark_ambiguous_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Asks whether the user needs general-assistant, web, coding, multi-turn, or policy-constrained tool-agent evaluation.",
+          "Does not silently choose one benchmark or begin presenting research claims."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Uses aligned comparison axes and distinguishes MINT's feedback protocol from tau-bench's state and reliability evaluation."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "toolsandbox_constraint_selection_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "ToolSandbox satisfies the combined stateful, on-policy, milestone-based, and insufficient-information constraints."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "cross_benchmark_human_agent_gap_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Reports both gaps accurately and explains that the benchmarks use different tasks and evaluation settings."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "agent_evaluation_recommendation_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Maps GAIA, WebArena, SWE-bench, and tau-bench to the four requested scenarios with grounded reasons."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "react_to_agent_evaluation_genealogy_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "AgentBench describes ReAct as combining reasoning and actions for agent tasks.",
+          "tau-bench directly evaluates ReAct as a simple agent construction."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "mint_tau_apparent_conflict_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Does not invent a shared model, task distribution, or metric that would make the reported numbers directly comparable.",
+          "The findings are not contradictory because MINT measures gains from interaction support while tau-bench measures repeated-trial reliability in stateful tasks."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "coding_benchmark_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "cross_benchmark_score_ranking_partial_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Provides the reported figures but declines a strict difficulty ranking because the models, tasks, and metrics differ."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "benchmark_topic_change_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Follows the topic change to SWE-bench instead of continuing the GAIA recommendation."
+        ],
+        "status": "not_run"
+      }
+    }
+  ]
+}

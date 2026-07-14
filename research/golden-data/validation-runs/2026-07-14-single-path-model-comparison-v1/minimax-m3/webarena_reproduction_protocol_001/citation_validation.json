@@ -1,0 +1,22 @@
+{
+  "cited_evidence_ids": [
+    "ev_f9c0592b681916db",
+    "ev_3ffe88b420afbd8a",
+    "ev_5c3ab6f284ac6bc1",
+    "ev_62b9e433109cd044",
+    "ev_9cfc1aa567af9886",
+    "ev_c0d7a2112b9a15b9",
+    "ev_f6ae00288fb20b21",
+    "ev_a8201ee7a37cb3d8",
+    "ev_91c2601f5ce88ec5",
+    "ev_78021c275ff32a75",
+    "ev_da4691beacb71023",
+    "ev_dedb3d367ff6991d",
+    "ev_6b2e0f48ef8e277b",
+    "ev_d346fe000c6d22e7",
+    "ev_b770594113be5daf",
+    "ev_bb6e265f99e13f83"
+  ],
+  "corpus_tools_used": true,
+  "passed": true
+}

@@ -1,0 +1,32 @@
+{
+  "case_id": "transformer_bert_confirmation_followup_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:bert_masked_lm_pretraining"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:bert_masked_lm_pretraining"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "The comparison covers architecture role, directionality, and training objective."
+    ],
+    "status": "not_run"
+  }
+}

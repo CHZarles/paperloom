@@ -1,0 +1,28 @@
+{
+  "case_id": "transformer_optimizer_reproduction_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_run"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "FORBIDDEN_PAPER_ACCEPTED:adam_2014"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [],
+    "status": "not_required"
+  }
+}

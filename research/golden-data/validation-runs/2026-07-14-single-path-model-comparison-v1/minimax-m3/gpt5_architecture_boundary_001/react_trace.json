@@ -1,0 +1,142 @@
+[
+  {
+    "arguments": {
+      "limit": 20,
+      "query_text": "GPT-5 architecture"
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "GPT-5 architecture",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_019f5e838bc57c638dc206c5",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 20,
+      "query_text": "GPT-5"
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "GPT-5",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_019f5e8399ee7c91a4a8bbed",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 100,
+      "query_text": ""
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2005.14165",
+          "authors": [
+            "Tom B. Brown"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt3_2020",
+          "preview": "",
+          "title": "Language Models are Few-Shot Learners",
+          "venue": "NeurIPS",
+          "year": 2020
+        },
+        {
+          "arxiv_id": null,
+          "authors": [
+            "Alec Radford"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt2_2019",
+          "preview": "",
+          "title": "Language Models are Unsupervised Multitask Learners",
+          "venue": "OpenAI technical report",
+          "year": 2019
+        },
+        {
+          "arxiv_id": "1810.04805",
+          "authors": [
+            "Jacob Devlin",
+            "Ming-Wei Chang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "bert_2018",
+          "preview": "",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "venue": "NAACL",
+          "year": 2018
+        },
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        },
+        {
+          "arxiv_id": "1412.6980",
+          "authors": [
+            "Diederik P. Kingma",
+            "Jimmy Ba"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "adam_2014",
+          "preview": "",
+          "title": "Adam: A Method for Stochastic Optimization",
+          "venue": "ICLR",
+          "year": 2014
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 5,
+      "next_offset": null,
+      "query_text": "",
+      "returned_count": 5
+    },
+    "tool_call_id": "call_019f5e8399ee7c91a4a8bbf0",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "markdown": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a handful of foundational works — GPT-2, GPT-3, BERT, the original \"Attention Is All You Need,\" and Adam — and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can only describe the architecture of the GPT-family models that *are* present here (notably GPT-3's 175B-parameter decoder-only Transformer), which is a different model from GPT-5.",
+      "outcome": "partial"
+    },
+    "result": {
+      "accepted": false,
+      "error": "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization, Attention Is All You Need, BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+    },
+    "tool_call_id": "call_019f5e83dd2471d29979760a",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "markdown": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe the architecture of the GPT-family model that *is* present here, which is a different model from GPT-5.",
+      "outcome": "partial"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_019f5e83f79f72a3a42563e0",
+    "tool_name": "submit_research_answer"
+  }
+]

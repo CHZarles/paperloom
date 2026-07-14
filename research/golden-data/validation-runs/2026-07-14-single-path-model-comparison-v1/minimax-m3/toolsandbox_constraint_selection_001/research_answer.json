@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_toolsandbox_constraint_selection_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_529ce77994616fcb",
+    "ev_7d211a0e65af87a9",
+    "ev_f4d2a0c704b50f02",
+    "ev_70429b8b695ef590",
+    "ev_122fbef2c0216af8"
+  ],
+  "fields": {},
+  "markdown": "The benchmark is **ToolSandbox** (Lu, Holleis et al., 2024; arXiv:2408.04682). Its subtitle already names the first three traits — \"A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities\" — and its scenario taxonomy adds the fourth. Here is why it matches every criterion:\n\n- **Stateful tools.** Section 2.1 defines stateful tools as \"tools that inspects, depends on or manipulates world states,\" and lists examples such as cellular service (e.g., `send_message`) and WiFi (e.g., `search_stock`). [1]\n- **On-policy conversation.** Section 2.2 states that \"On-policy conversational roll-out is supported by an LLM (GPT-4o) powered user simulator and carefully calibrated prompting design,\" where the simulator terminates the dialog via an `end_conversation` tool. [2] The Introduction also calls out \"realistic, on-policy conversational evaluation to measure the agent's ability on implicit dialog state tracking.\"\n- **Intermediate milestones.** Section 1 advertises \"a human authored, milestone / minefield based system for intermediate and final execution evaluation.\" [3]\n- **Insufficient-information scenarios.** Section 3 defines an explicit \"Insufficient Information\" category for tasks where the agent cannot complete the work because a needed tool is withheld, and uses minefields to check whether the agent hallucinates tools or arguments instead of recognizing the gap. [4] Roughly 85% of ToolSandbox scenarios are tagged with at least one of the challenging categories — Multiple Tool Call, Multiple User Turn, State Dependency, or Insufficient Information. [5]\n\nIn short, ToolSandbox is the unique entry in the corpus whose design simultaneously couples stateful tool execution, an LLM-simulated on-policy user, milestone-based intermediate evaluation, and purpose-built insufficient-information scenarios.\n\nSources\n[1] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 2.1 Stateful, p. 3\n[2] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 2.2 Conversational, p. 4\n[3] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 1 Introduction, p. 3\n[4] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 3 Test Scenarios, p. 6\n[5] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 3 Test Scenarios, p. 6",
+  "outcome": "answered",
+  "question_id": "toolsandbox_constraint_selection_001",
+  "status": "COMPLETED",
+  "summary": "The benchmark is **ToolSandbox** (Lu, Holleis et al., 2024; arXiv:2408.04682). Its subtitle already names the first three traits — \"A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities\" — and its scenario taxonomy adds the fourth. Here is why it matches every criterion:\n\n- **Stateful tools.** Section 2.1 defines stateful tools as \"tools that inspects, depends "
+}

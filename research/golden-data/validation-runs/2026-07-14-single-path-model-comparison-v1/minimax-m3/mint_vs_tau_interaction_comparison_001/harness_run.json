@@ -1,0 +1,53 @@
+{
+  "case_id": "mint_vs_tau_interaction_comparison_001",
+  "citation_validation": {
+    "error": "technical_failure",
+    "passed": false
+  },
+  "completed_at": "2026-07-14T03:09:24Z",
+  "diagnostics": {
+    "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'bad_request_error', 'message': 'invalid params, invalid function arguments json string, tool_call_id: call_m8VnF67DRg7MD9nNndFiOYsF (2013)', 'http_code': '400'}, 'request_id': '06a4db63661b0b07a9e43f9ed6dda0ed'}",
+    "finish_reason": "react_runtime_failed",
+    "tool_call_count": 0
+  },
+  "evidence_ledger": {
+    "items": [],
+    "ledger_id": "ledger_mint_vs_tau_interaction_comparison_001",
+    "missing_evidence": [],
+    "question_id": "mint_vs_tau_interaction_comparison_001",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_mint_vs_tau_interaction_comparison_001",
+    "answer_type": "technical_failure",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "The research turn failed technically.",
+    "outcome": null,
+    "question_id": "mint_vs_tau_interaction_comparison_001",
+    "status": "FAILED_TECHNICAL",
+    "summary": "The research turn failed technically."
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {},
+  "paper_candidates": [],
+  "question_id": "mint_vs_tau_interaction_comparison_001",
+  "react_trace": [],
+  "research_answer": {
+    "answer_id": "answer_mint_vs_tau_interaction_comparison_001",
+    "answer_type": "technical_failure",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "The research turn failed technically.",
+    "outcome": null,
+    "question_id": "mint_vs_tau_interaction_comparison_001",
+    "status": "FAILED_TECHNICAL",
+    "summary": "The research turn failed technically."
+  },
+  "result_status": "FAILED_TECHNICAL",
+  "run_id": "run_1f21bc82ab544ff69666547e06bcae90",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-14T03:09:24Z",
+  "status": "FAILED_TECHNICAL"
+}

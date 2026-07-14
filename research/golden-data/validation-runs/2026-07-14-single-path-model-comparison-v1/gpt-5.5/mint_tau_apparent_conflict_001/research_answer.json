@@ -1,0 +1,18 @@
+{
+  "answer_id": "answer_mint_tau_apparent_conflict_001",
+  "answer_type": "contradiction_resolution",
+  "cited_evidence_ids": [
+    "ev_b802743d249043cc",
+    "ev_540173e000b7a95c",
+    "ev_bee8b0ba211e6933",
+    "ev_0e982539599ca2b0",
+    "ev_6186ffb95632dd99",
+    "ev_27e19b3cb44c16f7"
+  ],
+  "fields": {},
+  "markdown": "No—these findings are not necessarily contradictory.\n\nMINT is saying that, within its benchmark, models improve when given tool interaction and natural-language feedback: it focuses on tool-augmented task solving and leveraging feedback, and reports absolute gains of 1–8% per additional tool-use turn and 2–17% with natural-language feedback. [1] [2]\n\nτ-bench is asking a different question: whether an agent can solve the same underlying task reliably across multiple stochastic interaction trials while following domain policies and rules. [3] [4] On that metric, τ-bench finds that consistency drops sharply as the number of required successful trials increases; even the best reported GPT-4o function-calling agent has >60% average task success but <25% pass^8. [5]\n\nSo the two results can coexist: tools and feedback can raise average or per-turn task success in MINT, while τ-bench can still find that agents are unreliable when they must succeed repeatedly under conversational stochasticity, partial information, databases, policies, and compound requests. [2] [6]\n\nSources\n[1] MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback, 1 INTRODUCTION, p. 1\n[2] MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback, 1 INTRODUCTION, p. 2\n[3] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, 3 τ -bench: A benchmark for Tool-Agent-User Interaction, p. 4\n[4] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, 3 τ -bench: A benchmark for Tool-Agent-User Interaction, p. 5\n[5] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, 5.1 Main results, p. 7\n[6] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, 1 Introduction, p. 2",
+  "outcome": "answered",
+  "question_id": "mint_tau_apparent_conflict_001",
+  "status": "COMPLETED",
+  "summary": "No—these findings are not necessarily contradictory.\n\nMINT is saying that, within its benchmark, models improve when given tool interaction and natural-language feedback: it focuses on tool-augmented task solving and leveraging feedback, and reports absolute gains of 1–8% per additional tool-use turn and 2–17% with natural-language feedback. [1] [2]\n\nτ-bench is asking a different question: whether"
+}

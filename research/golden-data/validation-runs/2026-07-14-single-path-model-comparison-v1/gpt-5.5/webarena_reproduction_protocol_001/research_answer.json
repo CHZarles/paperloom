@@ -1,0 +1,24 @@
+{
+  "answer_id": "answer_webarena_reproduction_protocol_001",
+  "answer_type": "methodology_reproduction",
+  "cited_evidence_ids": [
+    "ev_4fff672000bc8992",
+    "ev_3ffe88b420afbd8a",
+    "ev_f6ae00288fb20b21",
+    "ev_a8201ee7a37cb3d8",
+    "ev_78021c275ff32a75",
+    "ev_a85023ec92bfa734",
+    "ev_91c2601f5ce88ec5",
+    "ev_4ac4362866c6f1ea",
+    "ev_b770594113be5daf",
+    "ev_bb6e265f99e13f83",
+    "ev_5b10f2fc05eef9a4",
+    "ev_6b2e0f48ef8e277b"
+  ],
+  "fields": {},
+  "markdown": "### WebArena reproduction checklist\n\n- **Stand up the domains:** run the self-hosted Dockerized WebArena sites: e-commerce/OneStopShop, GitLab, Reddit/social forum, online-store CMS, plus map and English Wikipedia utilities; the benchmark’s main website categories are e-commerce, social forum, collaborative development, and CMS. [1] [2]\n- **Use packaged, self-contained images:** each website is a separate Docker image containing the site code, database, dependencies, and pre-populated data; the images do not require external volume mounts. [3]\n- **Reset before state-changing cases:** for tasks that modify site data, stop and delete the running container for the relevant website, then restart it from the original image to restore the initial state; read-only information-gathering tasks may not require a reset. [4]\n- **Execute each task as a natural-language intent:** the agent acts from the current observation, intent, prior actions, and prior observations; each action transitions the deterministic web environment to a new state and observation. [5]\n- **Match the baseline interface if reproducing reported agents:** provide the current observation, intent, and previous action; use the accessibility tree with element IDs as the observation space, so actions can target elements by ID. [6]\n- **Evaluate outcome, not just trajectory:** each of the 812 examples has a metric for functional correctness. [7] For information-seeking tasks, compare the predicted answer with the annotated answer using the task’s scoring function: `exact_match`, `must_include`, or `fuzzy_match` with GPT-4-0613. [8] [9] [10] [11] For navigation and content/configuration tasks, use programmatic reward functions that inspect intermediate states such as databases and page status/content to check whether the intended outcome was achieved. [12]\n\nSources\n[1] WebArena: A Realistic Web Environment for Building Autonomous Agents, 2.2 WEBSITE SELECTION, p. 3\n[2] WebArena: A Realistic Web Environment for Building Autonomous Agents, 2.2 WEBSITE SELECTION, p. 3\n[3] WebArena: A Realistic Web Environment for Building Autonomous Agents, A.2 ENVIRONMENT DELIVERY AND RESET, p. 15\n[4] WebArena: A Realistic Web Environment for Building Autonomous Agents, A.2 ENVIRONMENT DELIVERY AND RESET, p. 15\n[5] WebArena: A Realistic Web Environment for Building Autonomous Agents, 2.1 CONTROLLING AGENTS THROUGH HIGH-LEVEL NATURAL LANGUAGE, p. 3\n[6] WebArena: A Realistic Web Environment for Building Autonomous Agents, 4 BASELINE WEB AGENTS, p. 7\n[7] WebArena: A Realistic Web Environment for Building Autonomous Agents, 3 BENCHMARK SUITE OF WEB-BASED TASKS, p. 5\n[8] WebArena: A Realistic Web Environment for Building Autonomous Agents, 3.2 EVALUATION ANNOTATION, p. 6\n[9] WebArena: A Realistic Web Environment for Building Autonomous Agents, 3.2 EVALUATION ANNOTATION, p. 6\n[10] WebArena: A Realistic Web Environment for Building Autonomous Agents, 3.2 EVALUATION ANNOTATION, p. 6\n[11] WebArena: A Realistic Web Environment for Building Autonomous Agents, 3.2 EVALUATION ANNOTATION, p. 6\n[12] WebArena: A Realistic Web Environment for Building Autonomous Agents, 3.2 EVALUATION ANNOTATION, p. 6",
+  "outcome": "answered",
+  "question_id": "webarena_reproduction_protocol_001",
+  "status": "COMPLETED",
+  "summary": "### WebArena reproduction checklist\n\n- **Stand up the domains:** run the self-hosted Dockerized WebArena sites: e-commerce/OneStopShop, GitLab, Reddit/social forum, online-store CMS, plus map and English Wikipedia utilities; the benchmark’s main website categories are e-commerce, social forum, collaborative development, and CMS. [1] [2]\n- **Use packaged, self-contained images:** each website is a "
+}

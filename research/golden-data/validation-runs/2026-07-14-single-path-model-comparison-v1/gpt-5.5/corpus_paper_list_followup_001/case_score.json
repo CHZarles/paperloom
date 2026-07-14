@@ -1,0 +1,29 @@
+{
+  "case_id": "corpus_paper_list_followup_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "Understands that 'them' refers to the five papers in the current corpus.",
+      "Lists all five paper titles after consulting corpus metadata."
+    ],
+    "status": "not_run"
+  }
+}

@@ -1,0 +1,2933 @@
+[
+  {
+    "arguments": {
+      "skill_id": "association_influence_genealogy"
+    },
+    "result": {
+      "answer_guidance": "Present an ordered lineage and explain each supported edge.",
+      "evidence_standard": "Use exact passages returned by read_locations for paper-content claims. Treat candidate metadata and location previews as navigation only, and state evidence gaps plainly.",
+      "instructions": [
+        "Resolve the papers in the lineage.",
+        "Use citation edges for navigation when available.",
+        "Read passages that establish the technical relationship."
+      ],
+      "skill_id": "association_influence_genealogy",
+      "when_to_use": "Trace citations, influences, or research lineage and explain supported relationships."
+    },
+    "tool_call_id": "call_ikgvauHGfeZGN7rtTJQ0YZBh",
+    "tool_name": "get_research_skill"
+  },
+  {
+    "arguments": {
+      "limit": 100,
+      "query_text": "ReAct reasoning acting language model agents evaluation benchmark agent-evaluation"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2210.03629",
+          "authors": [
+            "Shunyu Yao",
+            "Jeffrey Zhao"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "react_2023",
+          "preview": "",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+          "venue": "ICLR",
+          "year": 2023
+        },
+        {
+          "arxiv_id": "2401.13178",
+          "authors": [
+            "Chang Ma",
+            "Junlei Zhang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentboard_2024",
+          "preview": "",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+          "venue": "NeurIPS Oral",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2408.04682",
+          "authors": [
+            "Jiarui Lu",
+            "Thomas Holleis"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "toolsandbox_2024",
+          "preview": "",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2308.03688",
+          "authors": [
+            "Xiao Liu",
+            "Hao Yu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentbench_2024",
+          "preview": "",
+          "title": "AgentBench: Evaluating LLMs as Agents",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2311.12983",
+          "authors": [
+            "Gregoire Mialon",
+            "Clementine Fourrier"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gaia_2024",
+          "preview": "",
+          "title": "GAIA: a benchmark for General AI Assistants",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2309.10691",
+          "authors": [
+            "Xingyao Wang",
+            "Zihan Wang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "mint_2024",
+          "preview": "",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2310.06770",
+          "authors": [
+            "Carlos E. Jimenez",
+            "John Yang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "swebench_2024",
+          "preview": "",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2307.13854",
+          "authors": [
+            "Shuyan Zhou",
+            "Frank F. Xu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "webarena_2024",
+          "preview": "",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+          "venue": "ICLR",
+          "year": 2024
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 9,
+      "next_offset": null,
+      "query_text": "ReAct reasoning acting language model agents evaluation benchmark agent-evaluation",
+      "returned_count": 9
+    },
+    "tool_call_id": "call_gF0vO65uYtIy7aKt7uBnfmAP",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_id": "react_2023"
+    },
+    "result": {
+      "coverage": "complete",
+      "edges": [
+        {
+          "edge_type": "cites_react_reasoning_action_method",
+          "from_paper_id": "agentbench_2024",
+          "to_paper_id": "react_2023"
+        },
+        {
+          "edge_type": "evaluates_react_agent_construct",
+          "from_paper_id": "tau_bench_2024",
+          "to_paper_id": "react_2023"
+        }
+      ],
+      "papers": [
+        {
+          "arxiv_id": "2308.03688",
+          "authors": [
+            "Xiao Liu",
+            "Hao Yu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentbench_2024",
+          "preview": "",
+          "title": "AgentBench: Evaluating LLMs as Agents",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2210.03629",
+          "authors": [
+            "Shunyu Yao",
+            "Jeffrey Zhao"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "react_2023",
+          "preview": "",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+          "venue": "ICLR",
+          "year": 2023
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        }
+      ]
+    },
+    "tool_call_id": "call_m6lcejnMOTipOe2aMy0YR402",
+    "tool_name": "get_citation_edges"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "react_2023"
+      ],
+      "query_text": "ReAct interleaves reasoning traces and actions language model agents",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ea0dbdb875644e53b2cfa8cbde54dc51",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "In this work, we present ReAct, a general paradigm to combine reasoning and acting with language models for solving diverse language reasoning and decision making tasks (Figure 1). ReAct prompts LLMs to generate both verbal reasoning traces and actions pertaining to a task in an interleaved manner, which allows the model to perform dynamic reasoning to create, maintain, and adjust high-level plans for acting (reason to act), while also interact with the external environments (e.g. Wikipedia) to ",
+          "section": "1 INTRODUCTION",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_356826ecf3f846999a71c48a21ae8a26",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "While large language models (LLMs) have demonstrated impressive performance across tasks in language understanding and interactive decision making, their abilities for reasoning (e.g. chain-of-thought prompting) and acting (e.g. action plan generation) have primarily been studied as separate topics. In this paper, we explore the use of LLMs to generate both reasoning traces and task-specific actions in an interleaved manner, allowing for greater synergy between the two: reasoning traces help the",
+          "section": "ABSTRACT",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f5ff6220cf834bb598a1003dfd257d9e",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "We also test ReAct on two language-based interactive decision-making tasks, ALFWorld and WebShop, both of which feature complex environments that require agents to act over long horizons with sparse rewards, warranting the need for reasoning to act and explore effectively.",
+          "section": "4 DECISION MAKING TASKS",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_3aa7b8ff3da14e0e8075d0c7f76259ed",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "Finetuning Due to the challenge of manually annotating reasoning traces and actions at scale, we consider a bootstraping approach similar to Zelikman et al. (2022), using 3,000 trajectories with correct answers generated by ReAct (also for other baselines) to finetune smaller language models (PaLM-8/62B) to decode trajectories (all thoughts, actions, observations) conditioned on input questions/claims. More details are in Appendix B.1.",
+          "section": "3.2 METHODS",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bbe7bc19d7904d15a66e6f4c27c653e9",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "Since decision making and reasoning capabilities are integrated into a large language model, ReAct enjoys several unique features: A) Intuitive and easy to design: Designing ReAct prompts is straightforward as human annotators just type down their thoughts in language on top of their actions taken. No ad-hoc format choice, thought design, or example selection is used in this paper. We detail prompt design for each task in Sections 3 and 4. B) General and flexible: Due to the flexible thought spa",
+          "section": "2 REACT: SYNERGIZING REASONING + ACTING",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2137a612e09f47beb506464f5167bd32",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "However, as the language space L is unlimited, learning in this augmented action space is difficult and requires strong language priors. In this paper, we mainly focus on the setup where a frozen large language model, PaLM-540B (Chowdhery et al., 2022)1, is prompted with few-shot in-context examples to generate both domain-specific actions and free-form language thoughts for task solving (Figure 1 (1d), (2b)). Each in-context example is a human trajectory of actions, thoughts, and environment ob",
+          "section": "2 REACT: SYNERGIZING REASONING + ACTING",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_11a5a37c14d44006845afbaceed00b31",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "Recent results have hinted at the possibility of combining verbal reasoning with interactive decision making in autonomous systems. On one hand, properly prompted large language models (LLMs) have demonstrated emergent capabilities to carry out several steps of reasoning traces to derive answers from questions in arithmetic, commonsense, and symbolic reasoning tasks (Wei et al., 2022). However, this “chain-of-thought\" reasoning is a static black box, in that the model uses its own internal repre",
+          "section": "1 INTRODUCTION",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2887c36e5f1443079a48ccb43add6847",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "We conduct empirical evaluations of ReAct and state-of-the-art baselines on four diverse benchmarks: question answering (HotPotQA, Yang et al., 2018), fact verification (Fever, Thorne et al., 2018), text-based game (ALFWorld, Shridhar et al., 2020b), and webpage navigation (WebShop, Yao et al., 2022). For HotPotQA and Fever, with access to a Wikipedia API that the model can interact with, ReAct outperforms vanilla action generation models while being competitive with chain-ofthought reasoning (C",
+          "section": "1 INTRODUCTION",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_cc79f95cc0674541a26f56c056c1047a",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "Language model for reasoning Perhaps the most well-known work of using LLMs for reasoning is Chain-of-Thought (CoT) (Wei et al., 2022), which reveals the ability of LLMs to formulate their own “thinking procedure\" for problem solving. Several follow-up works have since been performed, including least-to-most prompting for solving complicated tasks (Zhou et al., 2022), zero-shot-CoT (Kojima et al., 2022), and reasoning with self-consistency (Wang et al., 2022a). Recently, (Madaan & Yazdanbakhsh, ",
+          "section": "5 RELATED WORK",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_1ec4962c1d2d467abd1ad2133bc566b8",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "Language model for decision making The strong capability of LLMs has enabled them to perform tasks beyond language generation, and it is becoming more popular to take advantage of LLMs as a policy model for decision making, especially in interactive environments. WebGPT (Nakano et al., 2021) uses an LM to interact with web browsers, navigate through web pages, and infer answers to complicated questions from ELI5 (Fan et al., 2019). In comparison to ReAct, WebGPT does not explicitly model the thi",
+          "section": "5 RELATED WORK",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ac8005b646924c6fae82966a9a6b8940",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "ReAct outperforms Act consistently Table 1 shows HotpotQA and Fever results using PaLM-540B as the base model with different prompting methods. We note that ReAct is better than Act on both tasks, demonstrating the value of reasoning to guide acting, especially for synthesizing the final answer, as shown in Figure 1 (1c-d). Fine-tuning results 3 also confirm the benefit of reasoning traces for more informed acting.",
+          "section": "3.3 RESULTS AND OBSERVATIONS",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_752db81a187d4afda21737bc3c793672",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "preview": "Published as a conference paper at ICLR 2023",
+          "section": "3.3 RESULTS AND OBSERVATIONS",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        }
+      ],
+      "matched_count": 134,
+      "query_text": "ReAct interleaves reasoning traces and actions language model agents",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_ggZ69TjLHM4J05kILifcWp4y",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "agentbench_2024"
+      ],
+      "query_text": "ReAct reasoning acting method agents citation baselines prompting",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_67b80d0e7e4a4f2a8018e06568b70f27",
+          "original_filename": null,
+          "page": 56,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "J.2.5 THE INFLUENCE OF CODE TUNING ON LLM ACTING AS AGENTS",
+          "section": "unsectioned",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "page",
+          "location_ref": "page_ref_b54068b97ef2430d9b89d59cb8ca96b5",
+          "original_filename": null,
+          "page": 18,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "J.1.2 Definition of Validity Analysis 45\nJ.1.3 Validity Analysis of Models 45\nJ.2 Findings 46\nJ.2.1 Instruction Following Matters 46\nJ.2.2 Consistency and Execution in Agent Planning 47\nJ.2.3 Understanding Task Completion: Distribution of Tokens and Rounds in\nCompleted Trajectories 54\nJ.2.4 Primary Cause of Task Limit Exceeded: The Models Tend to Repeat the\nPrevious Content 55\nJ.2.5 The Influence of Code Tuning on LLM Acting as Agents . 56\nJ.2.6 Self Correcting ability 56",
+          "section": "Table of Contents",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_278e348b2f5c4650a4d5ecd78f9e6cd7",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "The potential of Large Language Model (LLM) as agents has been widely acknowledged recently. Thus, there is an urgent need to quantitatively evaluate LLMs as agents on challenging tasks in interactive environments. We present AGENTBENCH, a multi-dimensional benchmark that consists of 8 distinct environments to assess LLM-as-Agent’s reasoning and decision-making abilities. Our extensive test over 29 API-based and open-sourced (OSS) LLMs shows that, while top commercial LLMs present a strong abili",
+          "section": "ABSTRACT",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_6ca9903914904571b3daf2b55c760377",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We choose two naive playing strategies as the baselines.",
+          "section": "E.1 DATASET DETAILS",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_47a203d44cf949ca8dc653009e9dbbcb",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Web Shopping (WS, WebShop (Yao et al., 2022)). Online shopping is a very practical and important part of modern life. Its trajectory, which comprises searching, viewing, and choosing desirable items on a real e-commerce website, requires autonomous agents’ strong reasoning and decision-making abilities. Webshop (Yao et al., 2022), a simulated online shopping environment, exactly serves such a purpose for evaluating language agents. While it is originally evaluated on specifically trained models,",
+          "section": "3.3 WEB-GROUNDED ENVIRONMENTS",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "footnote",
+          "location_ref": "reading_element_c1949f3af92d449ab9815dec7f21a8ab",
+          "original_filename": null,
+          "page": 39,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "<sup>5</sup>https://github.com/ysymyth/ReAct",
+          "section": "G.2 PROMPT EXAMPLE",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f750a5e2b2fc420381c4059d5939b24d",
+          "original_filename": null,
+          "page": 21,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Checking Pipeline. The checking method to judge the correctness of LLMs answer or operation.",
+          "section": "B.1 DATASET DETAILS",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_3923e1e4dd6142d4b83902f01b45d032",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We identify portions of agent task failures in different environments and LLMs, unveiling the insufficient abilities of long-term reasoning, decision-making, and instruction following in existing LLMs. Comparisons between different LLMs manifest that a proper strategy of introducing code training can help improve LLM-as-Agent. Alignment training over high-quality data (e.g., data generated by gpt-4) could also help improve LLM agents. In summary, our contributions are:",
+          "section": "1 INTRODUCTION",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_0b4a739f55ea4156910ecf76086d62f2",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• We introduce the concept of evaluating LLMs as agents and present AGENTBENCH, a comprehensive benchmark to standardize the evaluation. It defines eight distinct environments of 3 types based on real-world scenarios, offering a practical testbed for LLMs’ wide array of capabilities.",
+          "section": "1 INTRODUCTION",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bcb3a3fdab2e41df98b1db1e8e08ab51",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• We perform a thorough evaluation of 29 different LLMs using AGENTBENCH, uncovering a significant performance gap between leading API-based commercial LLMs and many OSS models that are no larger than 70B. We also quantitatively analyze the reasons for failures in existing LLM agents and highlight directions for improvement, such as improving instruction following, higher-quality alignment data. Also, we show that code training could be a double-edged sword, which improves some agent tasks while",
+          "section": "1 INTRODUCTION",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d9be94d5dc1848fc9b83831c57e6d9fc",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Since LLMs can generate high-quality codes (Chen et al., 2021), a very practical mission for LLM agents is to assist human interaction with computer interfaces. Here, we introduce three environments depending on coding and reasoning abilities as representatives in AGENTBENCH.",
+          "section": "3.1 CODE-GROUNDED ENVIRONMENTS",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2e429bbc050a4042a7b4dd868d8cbb2d",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "LLM-as-Agent. In pre-LLM era, text game environments such as TextWorld (Côté et al., 2019), Jericho (Hausknecht et al., 2020), and LIGHT (Urbanek et al., 2019) are dominant in language agent study which bases on BERT (Devlin et al., 2019) and reinforcement learning. With the advent of LLMs, the study of LLM agents begins to thrive (Huang et al., 2022), especially after Chain-of-Thought (Wei et al., 2022b) came out. ReAct (Yao et al., 2023b) is a pioneer work to combine CoT reasoning and actions ",
+          "section": "5 RELATED WORK",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        }
+      ],
+      "matched_count": 58,
+      "query_text": "ReAct reasoning acting method agents citation baselines prompting",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_WNcNycQXe69flph1kGSrbPqq",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "tau_bench_2024"
+      ],
+      "query_text": "ReAct agent construct benchmark evaluated ReAct",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_c18d6ca4977f4eafa592adae6ab19c5e",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "3 τ -bench: A benchmark for Tool-Agent-User Interaction",
+          "section": "unsectioned",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_012ad751c0d241e7ba90d06d5b40b2a7",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Existing benchmarks do not test language agents on their interaction with human users or ability to follow domain-specific rules, both of which are vital for deploying them in real world applications. We propose τ -bench, a benchmark emulating dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines. We employ an efficient and faithful evaluation process that compares the database state at the end of a ",
+          "section": "Abstract",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_66ded4fde4a1464e805d09b7ada5f838",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "τ -bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "section": "unsectioned",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_21d664cc8e7242658b2593323ad5f6d4",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "4 Benchmark Construction",
+          "section": "unsectioned",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8efc135742a843eeaf14964ec1ae8b0a",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "User simulation. We use a language model (gpt-4-0613) to simulate a human user interacting with the agent. The user state $s _ { u s e r }$ consists of an initial system prompt with the task instruction (Figure 2d) along with the entire conversation history between the user and the agent so far. The user cannot see the interaction history between the agent and API tools. The agent can interact with the user using any natural language message, $\\mathrm { e . g . , } a _ { u s e r }$ can be \"Your ",
+          "section": "3 τ -bench: A benchmark for Tool-Agent-User Interaction",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_623866ce67e349b7b598811936a7eb45",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "τ -airline. Here, the agent has to help users book, modify, or cancel flight reservations, or provide refunds. We construct 300 flights between 20 US cities with realistic durations and prices, and API tools to query direct or one-stop flights. The domain policy is more complex than τ -retail, with ad-hoc constraints about combining payment methods, checked bag allowance, flight changes and cancellations, etc. These constraints can also be over membership tier and cabin class specific, creating ",
+          "section": "4.1 Domains",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a824356a93484c6092260d2c15ee555d",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Method comparison. Figure 3 shows that natively supported function calling consistently outperforms text-formatted agent methods with the state-of-the-art models. For text-formatted agent methods, adding reasoning traces still consistently helps (compare ReAct vs. Act columns) as it helps bridge the gap between observations and actions that have unfamiliar formats. We have also experimented with adding a “think” function for function-calling agents, but it did not boost performance, perhaps beca",
+          "section": "5.1 Main results",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_121a98d8e0f8418eb62644f1565d2112",
+          "original_filename": null,
+          "page": 13,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "B Benchmark Construction",
+          "section": "unsectioned",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_259dd6c57f5b462f8eba5b5aa5785c10",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "We have presented τ -bench, a novel benchmark for evaluating the reliability of agents in interacting with humans and tools in dynamic and realistic settings. The benchmark leverages the latest advances in LMs to simulate users, allows for automated testing of agents and provides an assessment of an agent’s ability to follow domain-specific rules in a consistent manner. Our results show that even SOTA LMs are far from being reliable for use in real-world settings.",
+          "section": "6 Discussion",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "image",
+          "location_ref": "figure_ref_ad0f57e164fc4127a22f41ad66f0a519",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Figure 1: (a) In τ -bench, an agent interacts with database API tools and an LM-simulated user to complete tasks. The benchmark tests an agent’s ability to collate and convey all required information from/to users through multiple interactions, and solve complex issues on the fly while ensuring it follows guidelines laid out in a domain-specific policy document. (b) An example trajectory in τ -airline, where an agent needs to reject the user request (change a basic economy flight) following doma",
+          "section": "1 Introduction",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        }
+      ],
+      "matched_count": 88,
+      "query_text": "ReAct agent construct benchmark evaluated ReAct",
+      "returned_count": 10
+    },
+    "tool_call_id": "call_CqkYBqisX3OdOZsx8vyJdDtF",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "limit": 100,
+      "query_text": "ReAct",
+      "year_from": 2024
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "ReAct",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_RoM3dlVvwO75NfvVLKJtHot5",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 100,
+      "query_text": ""
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2308.03688",
+          "authors": [
+            "Xiao Liu",
+            "Hao Yu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentbench_2024",
+          "preview": "",
+          "title": "AgentBench: Evaluating LLMs as Agents",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2401.13178",
+          "authors": [
+            "Chang Ma",
+            "Junlei Zhang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentboard_2024",
+          "preview": "",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+          "venue": "NeurIPS Oral",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2311.12983",
+          "authors": [
+            "Gregoire Mialon",
+            "Clementine Fourrier"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gaia_2024",
+          "preview": "",
+          "title": "GAIA: a benchmark for General AI Assistants",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2309.10691",
+          "authors": [
+            "Xingyao Wang",
+            "Zihan Wang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "mint_2024",
+          "preview": "",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2310.06770",
+          "authors": [
+            "Carlos E. Jimenez",
+            "John Yang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "swebench_2024",
+          "preview": "",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2408.04682",
+          "authors": [
+            "Jiarui Lu",
+            "Thomas Holleis"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "toolsandbox_2024",
+          "preview": "",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2307.13854",
+          "authors": [
+            "Shuyan Zhou",
+            "Frank F. Xu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "webarena_2024",
+          "preview": "",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2210.03629",
+          "authors": [
+            "Shunyu Yao",
+            "Jeffrey Zhao"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "react_2023",
+          "preview": "",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+          "venue": "ICLR",
+          "year": 2023
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 9,
+      "next_offset": null,
+      "query_text": "",
+      "returned_count": 9
+    },
+    "tool_call_id": "call_N4SMytHrYdweKwQqsUnff0Tz",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "agentboard_2024",
+        "gaia_2024",
+        "mint_2024",
+        "swebench_2024",
+        "toolsandbox_2024",
+        "webarena_2024",
+        "agentbench_2024",
+        "tau_bench_2024"
+      ],
+      "query_text": "ReAct Yao 2023 reasoning acting act thoughts actions baseline",
+      "top_k": 20
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_dd8f9cfc3c904175aa0600010cc9fcbb",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "One popular alternative for our framework is to use ReAct (Yao et al., 2023) rather than Act, which uses interleaved thoughts in addition to actions to boost planning. However, our experiments on GPT-3.5-Turbo show inconsistent improvement of ReAct over performance of Act, as shown in Table 9. We hypothesized that this is due to we test long-term interactions of LLM Agents up to 30 interactions, and adding thoughts would pressure context length, thus leading to performance drop. Therefore, we us",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_808d6578c68f4828a10d22392336ecca",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "\\- Easy interpretability through conceptually simple tasks—non experts annotators exhibit a near perfect score—, associated reasoning trace, and few but highly curated questions. This is in contrast with aggregated benchmarks that can lack eficiency and reliability (Perlitz et al., 2023).",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_aedc3fc9e1f4447f97c7595755c043ce",
+          "original_filename": null,
+          "page": 33,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We manually curate the in-context example for the reasoning subset to include the characteristic for both multi-hop QA-style reasoning (e.g., HotpotQA) and mathematical reasoning (e.g., MATH, TheoremQA).",
+          "section": "F.5.3 REASONING TASK",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "page",
+          "location_ref": "page_ref_28f47312ef794c3cb54bd32950b82a06",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Figure 1: An interaction trajectory produced by evaluating gpt-3.5-turbo-0613 with MINT\non a mathematical reasoning task. The evaluated model’s outputs are in the blue boxes, and the\nfeedback by gpt-4-0613 in red, dotted ones. Some details are omitted for clarity.\n\nfollowing steps in each turn: (1) optionally express its reasoning process (“Thought:” in Fig. 1, sim-\nilar to Yao et al. 2022); (2) then either interact with tools by generating Python code and executing\nit through a Python interpret",
+          "section": "2.1 INTERACTION FRAMEWORK",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_dbc4d8bef4604ad486c418b7ac769d40",
+          "original_filename": null,
+          "page": 40,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Discussion. The baseline model’s inability to solve this issue can be directly attributed to a lack of an image input. We include this example to demonstrate that debugging real software issues may involve digesting images; this presents a whole separate body of understanding and reasoning-related challenges. Beyond the SWE-bench task, additional problems in software engineering, such as interpreting system design diagram, user interface specifications, and user feedback presents interesting vis",
+          "section": "Model Generated Patch",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_6b025ba46c3d4cc4ab4cd40ca9a1a0ac",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Table 9: A comparison between default prompting and ReAct prompting.\n| Baseline Score | ReAct Score | GPT-4o-2024-05-13 | 73.0 | 73.6 | Claude-3-Opus-20240229 | 69.2 | 69.3 | GPT-4-0125-Preview | 64.3 | 65.2 | Claude-3-Sonnet-20240229 | 63.8 | 63.7",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "page",
+          "location_ref": "page_ref_5c39e883847f4c9a9cb353ba3cccbc2d",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Figure 1: An example evaluation trajectory from TOOLSANDBOX. Some message contents and milestones were\ntruncated and streamlined for visual clarity. The Message Bus represents a full dialog history between the User, the\nAgent and the Execution Environment. The World State represents mutable database snapshots at a given turn. The\nMilestones represent predefined key events that need to happen in this trajectory. The light blue boxes represent the\nhuman authored scenario definition, including the ",
+          "section": "1 Introduction",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_1681b3147b3a4171ab53dc8961cfdd18",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "4 BASELINE WEB AGENTS",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_19ff10795b234c969796e92b7ab9551a",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Interaction. We place rule descriptions in the instruction prompt according to different game stages, and the LLM agent interacts and competes strategically with the baseline within the game logic environment. We give the LLM agent five chances to respond in the correct format. It will be immediately deemed defeated if it fails to output legal actions within the given number of attempts. At the same time, we encourage the model to output its reasoning process in CoT.",
+          "section": "E.1 DATASET DETAILS",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a824356a93484c6092260d2c15ee555d",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Method comparison. Figure 3 shows that natively supported function calling consistently outperforms text-formatted agent methods with the state-of-the-art models. For text-formatted agent methods, adding reasoning traces still consistently helps (compare ReAct vs. Act columns) as it helps bridge the gap between observations and actions that have unfamiliar formats. We have also experimented with adding a “think” function for function-calling agents, but it did not boost performance, perhaps beca",
+          "section": "5.1 Main results",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9af337139d904ea49ce7441460d79dfa",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "To solve complex tasks, large language models (LLMs) often require multiple rounds of interactions with the user, sometimes assisted by external tools. However, current evaluation protocols often emphasize benchmark performance with single-turn exchanges, neglecting the nuanced interactions among the user, LLMs, and external tools, while also underestimating the importance of natural language feedback from users. These oversights contribute to discrepancies between research benchmark evaluations",
+          "section": "ABSTRACT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popul",
+          "section": "ABSTRACT",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional web",
+          "section": "ABSTRACT",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_278e348b2f5c4650a4d5ecd78f9e6cd7",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "The potential of Large Language Model (LLM) as agents has been widely acknowledged recently. Thus, there is an urgent need to quantitatively evaluate LLMs as agents on challenging tasks in interactive environments. We present AGENTBENCH, a multi-dimensional benchmark that consists of 8 distinct environments to assess LLM-as-Agent’s reasoning and decision-making abilities. Our extensive test over 29 API-based and open-sourced (OSS) LLMs shows that, while top commercial LLMs present a strong abili",
+          "section": "ABSTRACT",
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_012ad751c0d241e7ba90d06d5b40b2a7",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Existing benchmarks do not test language agents on their interaction with human users or ability to follow domain-specific rules, both of which are vital for deploying them in real world applications. We propose τ -bench, a benchmark emulating dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines. We employ an efficient and faithful evaluation process that compares the database state at the end of a ",
+          "section": "Abstract",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_ff732e87b33a4be58c1072a6309fa8e6",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Table 9: Comparison of Act and ReAct framework using GPT-3.5-Turbo.\nTask Name | Act | ReAct | AlfWorld | 35.6/17.2 | 37.9/ 8.2 | PDDL | 25.0/5.0 | 17.1/ 3.3 | Tool-Query | 69.4/45.0 | 70.0/50.0 | Tool-Operation | 37.2/ 7.5 | 54.8/10.0",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_18d7f8bae9af4ded8c28251ee2bb22eb",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "\\- Non-gameability. Answering the questions requires successful completion of some number of steps, which cannot easily be brute forced due to their diversity. The possibility to check the reasoning trace, the accuracy required in the answers, their absence in plain text from the internet prevent a possible data contamination. In contrast, multiple choice answers (e.g., MMLU) make contamination assessment more dificult since a wrong reasoning trace can more easily get to the correct choice.",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_43fcc574c89c49fd897b07a802da2fe9",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "From eight datasets, we create an initial test set of 29,307 instances. All instances are initially designed for single-round evaluation without interaction, except for decision-making (ALFWorld). Similarly to Yao et al. (2022); Gao et al. (2023), we adapt reasoning tasks into multi-turn interaction tasks by augmented LLM with tools for problem-solving (§F.5.3). Through prompting (§F.5.2), we encourage LLMs to use the Python interpreter to test their generated code on the provided public test su",
+          "section": "2.2 REPURPOSING EXISTING DATASETS FOR MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_b7c076a3c37d4c2898c96a56aded8ac1",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Evaluation of LMs. Several recent works for evaluating LMs have either proposed a collection of mutually distinct tasks spanning across multiple domains (Hendrycks et al., 2021; Liang et al., 2022; Srivastava et al., 2023) or turned to the web as an interactive setting featuring tasks that require multiple steps to solve (Yao et al., 2022; Zhou et al., 2023; Deng et al., 2023; Liu et al., 2023d). There are several drawbacks with such a “potpourri” style setup. First, each task tends to narrowly ",
+          "section": "6 RELATED WORK",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_329b4610df1044029a09513d86e0ce71",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "From Table 9, we can see that, ReAct has minimal effect to Claude model family, and a small gain for GPT4 model family. This is likely due to the fact that, the baseline ToolSandbox setup, which allows the model to interact with execution environment, recover from error and confirm with simulated user already provides a reasoning process to the model through user and execution environment interactions, additional natural language reasoning would only provide marginal gains. While ReAct provide g",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        }
+      ],
+      "matched_count": 316,
+      "query_text": "ReAct Yao 2023 reasoning acting act thoughts actions baseline",
+      "returned_count": 20
+    },
+    "tool_call_id": "call_OVNw2U4jJX8Vx2W9ozh0qd8k",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "webarena_2024"
+      ],
+      "query_text": "ReAct baseline agent thought action Yao et al 2022",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_4ce5a312ba48413cb736085b749cfcbe",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We experiment with three LLMs using two prompting strategies, both with two examples in the context. In the first setting, we ask the LLM to directly predict the next action given the current observation, the intent and the previously performed action. In the second setting, with the same information, the model first performs chain-of-thought reasoning steps in the text before the action prediction (CoT, Wei et al. (2022); Yao et al. (2022b)). Before the examples, we provide a detailed overview ",
+          "section": "4 BASELINE WEB AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional web",
+          "section": "ABSTRACT",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_de85a3fe77f248069ec44e70a9fd34ab",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Benchmarks for Controlling Agents through Natural Language Controlling agents via natural language in the digital world have been studied in the literature (Branavan et al., 2009; Shi et al., 2017; Liu et al., 2018; Toyama et al., 2021; Deng et al., 2023; Li et al., 2020; Xu et al., 2021). However, the balance between functionality, authenticity, and support for environmental dynamics remains a challenge. Existing benchmarks often compromise these aspects, as shown in Table 4. Some works rely on",
+          "section": "6 RELATED WORK",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_30c4e4a7f9c44e9182299b806bee18bd",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "action sequences with reference action sequences, disregarding the functional correctness of the executions and possible alternative solutions (Puig et al., 2018; Jernite et al., 2019; Xu et al., 2021; Li et al., 2020; Deng et al., 2023). These limitations often result in a discrepancy between simulated environments and the real world, and can potentially impact the generalizability of AI agents to successfully understand, adapt, and operate within complex real-world situations.",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2f971a27e8f449f0ba1ccb41f1e9b365",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We introduce WebArena, a realistic and reproducible web environment designed to facilitate the development of autonomous agents capable of executing tasks (§2). An overview of WebArena is in Figure 1. Our environment comprises four fully operational, self-hosted web applications, each representing a distinct domain prevalent on the internet: online shopping, discussion forums, collaborative development, and business content management. Furthermore, WebArena incorporates several utility tools, su",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2ff6cd2b4fc84aef8bd929618cd4b119",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Interactive Decision-Making Agents Nakano et al. (2021) introduce WebGPT which searches the web and reads the search results to answer questions. Gur et al. (2023) propose a web agent that synthesizes Javascript code for the task executions. Adding a multi-modal dimension, Lee et al. (2023) and Shaw et al. (2023) develop agents that predict actions based on screenshots of web pages rather than relying on the text-based DOM trees. Performing tasks in interactive environments requires the agents t",
+          "section": "6 RELATED WORK",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_de811bf7695241039303a26a3785c3c2",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Current environments for evaluate agents tend to over-simplify real-world situations. As a result, the functionality of many environments is a limited version of their real-world counterparts, leading to a lack of task diversity (Shi et al., 2017; Anderson et al., 2018; Gordon et al., 2018; Misra et al., 2016; Shridhar et al., 2020; 2021; Yao et al., 2022a). In addition, these simplifications often lower the complexity of tasks as compared to their execution in the real world (Puig et al., 2018;",
+          "section": "WE BAR E N A: A REALISTIC WEB ENVIRONMENT FOR BUILDING AUTONOMOUS AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_0b0053dee8de434b8f57cdd39e4bd631",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Following previous work on navigation and operation in web and embodied environments (Shi et al., 2017; Liu et al., 2018), we design a compound action space that emulates the keyboard and mouse operations available on web pages. Figure 4 lists all the available actions categorized into three distinct groups. The first group includes element operations such as clicking, hovering, typing, and key combination pressing. The second comprises tab-related actions such as opening, closing, and switching",
+          "section": "2.4 ACTION SPACE",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_4cbaf3984c824eaa8ccb4c6dd572bbe9",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Building on these actions, WebArena provides agents with the flexibility to refer to elements for operation in different ways. An element can be selected by its on-screen coordinates, (x, y), or by a unique element ID that is prepended to each element. This ID is generated when traversing the Document Object Model (DOM) or accessibility tree. With element IDs, the element selection is transformed into an n-way classification problem, thereby eliminating any disambiguation efforts required from t",
+          "section": "2.4 ACTION SPACE",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_64486edb391441a6a9e052a2f1aa9f72",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Table 4: The comparison between our benchmark and existing benchmarks on grounding natural language instructions to concrete executions. Our benchmark is implemented in our fully interactable highly-realistic environment. It features diverse tasks humans may encounter in their daily routines. We design evaluation metrics to assess the functional correctness of task executions.\nBenchmark | Dynamic Interaction? | Realistic Environment? | Diverse Human Tasks? | Functional Correctness? | Mind2Web (D",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d5ac4d46424b4fce981cac5a84a2d771",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Along with WebArena, we release a ready-to-use benchmark with 812 long-horizon web-based tasks (§3). Each task is described as a high-level natural language intent, emulating the abstract language usage patterns typically employed by humans (Bisk et al., 2019). Two example intents are shown in the upper left of Figure 1. We focus on evaluating the functional correctness of these tasks, i.e., does the result of the execution actually achieve the desired goal (§3.2). For instance, to evaluate the ",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a904567ab278476a94d1cadbcfd5a91a",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "enabling the reuse of successful strategies from past experiments Zhou et al. (2022a); Wang et al.   \n(2023). More error analysis with examples can be found in Appendix A.10.",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        }
+      ],
+      "matched_count": 64,
+      "query_text": "ReAct baseline agent thought action Yao et al 2022",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_ezYjA73Qq9fhuSLoYNx0JSyN",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "mint_2024"
+      ],
+      "query_text": "Yao et al 2022 ReAct Thought action interaction framework",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2b6cebf4954f4f23a45927e5ed2ed097",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We modify in-context prompts from Yao et al. (2022) to construct these in-context examples. This is an example of clean type of tasks in ALFWorld.",
+          "section": "F.5.1 DECISION-MAKING",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "page",
+          "location_ref": "page_ref_28f47312ef794c3cb54bd32950b82a06",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Figure 1: An interaction trajectory produced by evaluating gpt-3.5-turbo-0613 with MINT\non a mathematical reasoning task. The evaluated model’s outputs are in the blue boxes, and the\nfeedback by gpt-4-0613 in red, dotted ones. Some details are omitted for clarity.\n\nfollowing steps in each turn: (1) optionally express its reasoning process (“Thought:” in Fig. 1, sim-\nilar to Yao et al. 2022); (2) then either interact with tools by generating Python code and executing\nit through a Python interpret",
+          "section": "2.1 INTERACTION FRAMEWORK",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9af337139d904ea49ce7441460d79dfa",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "To solve complex tasks, large language models (LLMs) often require multiple rounds of interactions with the user, sometimes assisted by external tools. However, current evaluation protocols often emphasize benchmark performance with single-turn exchanges, neglecting the nuanced interactions among the user, LLMs, and external tools, while also underestimating the importance of natural language feedback from users. These oversights contribute to discrepancies between research benchmark evaluations",
+          "section": "ABSTRACT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_43fcc574c89c49fd897b07a802da2fe9",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "From eight datasets, we create an initial test set of 29,307 instances. All instances are initially designed for single-round evaluation without interaction, except for decision-making (ALFWorld). Similarly to Yao et al. (2022); Gao et al. (2023), we adapt reasoning tasks into multi-turn interaction tasks by augmented LLM with tools for problem-solving (§F.5.3). Through prompting (§F.5.2), we encourage LLMs to use the Python interpreter to test their generated code on the provided public test su",
+          "section": "2.2 REPURPOSING EXISTING DATASETS FOR MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e7fa39f85bfe4cdaa2e55988fa0c3383",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Keeping instances that require multi-turn interaction. To better answer our research question “how LLM benefits from multi-turn interaction,” we only keep instances that are challenging and require multi-turn interaction. Since we allow LLM to propose solutions more than once, we filter out instances that a random guess baseline can do well, e.g., multiple-choice instances with $< ~ 4$ options. We then run gpt-3.5-turbo-0613 (OpenAI API) on the initial dataset and exclude instances finished with",
+          "section": "2.2 REPURPOSING EXISTING DATASETS FOR MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_72b900cff0df4d33aaf4caa05b687e54",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Interact with users. LLMs have demonstrated extensive potential in seamless interaction with human users and in assimilating real-time human feedback during inference processes (Fernande et al., 2023). According to recent studies, this collaborative synergy between humans and LLMs has been explored across various domains and applications, including sentence editing (Reid & Neubig, 2022; Schick et al., 2023c; Chen et al., 2023b), semantic parsing (Yan et al., 2023; Yao et al., 2019), code generat",
+          "section": "4.1 LLM IN INTERACTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_9d8892134e3e446c995ca79b73621468",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "MINT: EVALUATING LLMS IN MULTI-TURN INTER-ACTION WITH TOOLS AND LANGUAGE FEEDBACK",
+          "section": "unsectioned",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_679eafccd3a9488eb854986c559b092a",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "MINT aims to simulate real-world applications of LLMs, emphasizing user-LLM and LLM-tool interactions. In user-LLM collaborative problem-solving, a human user provides initial instruction and aims to obtain a correct solution with little effort to help the LLM. On the other hand, augmenting LLMs’ with tools can effectively improve LLMs’ task-solving capabilities (Mialon et al., 2023), suggesting the importance of LLM-tool interaction. We instruct the LLM (§F.4.1) to perform the following steps i",
+          "section": "2.1 INTERACTION FRAMEWORK",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7591f8695ff749b8b329b3dd34559f40",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Interact with tools. Engaging with external tools allows LLMs can lead to more accurate and reliable outputs (Peng et al., 2023; Gou et al., 2023; Qin et al., 2023a). LLMs can be connected with real-world Application Programming Interfaces (APIs), enabling them to actively engage with diverse external tools (Qin et al., 2023b; Parisi et al., 2022; Schick et al., 2023a; Tang et al., 2023; Patil et al., 2023; Song et al., 2023; Hao et al., 2023; Yuan et al., 2023). For example, LLMs can connect wi",
+          "section": "4.1 LLM IN INTERACTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ff7fa152f1e44b7b9c85c7f280ace026",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Evaluating LLMs in multi-turn interaction can be costly due to the need for iterative inference. For instance, HotpotQA (Yang et al., 2018) has 7,405 test examples. Evaluation with five turns requires at least $7 { , } 4 0 5 \\times 5 = 3 7 \\mathrm { K }$ LLM inference runs. Previous methods (Yao et al., 2022; Shinn et al., 2023) choose to evaluate on randomly drawn test examples, increasing the barriers to fair comparisons. We select diverse tasks from established datasets that requires multi-tu",
+          "section": "2.2 REPURPOSING EXISTING DATASETS FOR MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9b42a01d774b49339a79cbbd37caefd0",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We curate one in-context example for code generation and reasoning problems, and we follow Yao et al. (2022) to construct examples for each sub-type of decision-making (i.e., ALFWorld) tasks. For each task, we include one corresponding example for in-context learning. For simplicity, we only include a subset of prompts here. All prompts are released in our code repo.",
+          "section": "F.5 IN-CONTEXT EXAMPLE",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_5332fc130306492b9a60c3e70c0da020",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Existing work on interaction evaluation mostly focuses on a specific task or dimension, like task completion (Liu et al., 2023c), code generation (Yang et al., 2023a), human-LLM collaborative task solving (Lee et al., 2022b; Huang et al., 2023b; Fu et al., 2023), tool manipulation (Tang et al., 2023), and web nevigation (Zhou et al., 2023; Deng et al., 2023a). That is, they solely focus on interacting with either the environment or humans, often on a specific task, overlooking the fundamental im",
+          "section": "4.2 EVALUATING INTERACTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        }
+      ],
+      "matched_count": 89,
+      "query_text": "Yao et al 2022 ReAct Thought action interaction framework",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_TAfDclQz7BeMT1CTjAtqopkU",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "toolsandbox_2024"
+      ],
+      "query_text": "ReAct prompting baseline comparison natural language reasoning",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_6b025ba46c3d4cc4ab4cd40ca9a1a0ac",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Table 9: A comparison between default prompting and ReAct prompting.\n| Baseline Score | ReAct Score | GPT-4o-2024-05-13 | 73.0 | 73.6 | Claude-3-Opus-20240229 | 69.2 | 69.3 | GPT-4-0125-Preview | 64.3 | 65.2 | Claude-3-Sonnet-20240229 | 63.8 | 63.7",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f48a0d01709641fbacaeaf6629d76d00",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Recent large language models (LLMs) advancements sparked a growing research interest in tool assisted LLMs solving real-world challenges, which calls for comprehensive evaluation of tool-use capabilities. While previous works focused on either evaluating over stateless web services (RESTful API), based on a single turn user prompt, or an off-policy dialog trajectory, TOOLSANDBOX<sup>1</sup> includes stateful tool execution, implicit state dependencies between tools, a built-in user simulator sup",
+          "section": "Abstract",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_329b4610df1044029a09513d86e0ce71",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "From Table 9, we can see that, ReAct has minimal effect to Claude model family, and a small gain for GPT4 model family. This is likely due to the fact that, the baseline ToolSandbox setup, which allows the model to interact with execution environment, recover from error and confirm with simulated user already provides a reasoning process to the model through user and execution environment interactions, additional natural language reasoning would only provide marginal gains. While ReAct provide g",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table-231",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Caption: Table 9: A comparison between default prompting and ReAct prompting.\nBaseline Score ReAct Score GPT-4o-2024-05-13 73.0 73.6 Claude-3-Opus-20240229 69.2 69.3 GPT-4-0125-Preview 64.3 65.2 Claude-3-Sonnet-20240229 63.8 63.7",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_59670500583a4af0a8dcbcb4590f73de",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "We conducted additional experiments comparing the effect of ReAct prompting in tool use agents against the minimal prompting design presented in Figure 8, with 4 representative models shown below.",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_72943b32c2d34f198f8b4ab063af1dd3",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "When evaluating the models, all models use the same minimalist prompt shown in Figure 8 for comparison fairness. We do not include additional prompt engineering for the models, as we consider prompt engineering gains orthogonal to the innate model capability surfaced by simpler prompting. Table 5 shows the average similarity for each of the scenario categories described in Section 3. Additional prompting experiments can be found in Appendix 9.",
+          "section": "4 Evaluation Results",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_42fb534a383343aaa284b981da9bb9fb",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Conversational Conversational evaluation is crucial yet challenging when assessing a dialog policy, due to the interdependency between a user and said policy, as well as the ambiguous nature of natural language. To facilitate automated conversational evaluation, a common practice is to implement a simulated user (Zhang et al., 2024; Sekulic et al., 2024). However, BFCL and ToolEval only evaluate self-contained, unambiguous single-turn user queries, which is hardly realistic. API-Bank and ToolTal",
+          "section": "1 Introduction",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_894015477b7f46fe838d6759e113a46a",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "D.1 Prompting Experiment",
+          "section": "unsectioned",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_736a0b3ab6d44855a8374db4a40772b2",
+          "original_filename": null,
+          "page": 15,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Initially, the Agent role will receive a message from the User in natural language. The Agent could decide to prompt the User again for additional information, or decide to issue a tool call towards the Execution Environment. When issuing a tool call, the Agent selects the name of the tool from a list of available tools and provides necessary arguments, commonly expressed as JSON objects. These JSON objects are converted to executable Python code, see Figure 9, and sent to the Execution Environm",
+          "section": "A.5 Agent Role",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_4d71fdb199364a4b8095684c77141fa2",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Canonicalization Canonicalization refers to the process of transforming surface form representation commonly seen in a natural language query, to its corresponding canonical form, similar to IN-FORM dialog act in Schema Guided Dialog (Rastogi et al., 2020). This is particularly crucial when an API is less intelligent, and requires canonical form as argument. In some cases, canonicalization can be performed by the model itself, for example transforming 1B to 1\\_000\\_000\\_000, or \\$ to correspondi",
+          "section": "3 Test Scenarios",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_050e208f89954fef83016676a9fd59fe",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "D.2 Model Feature Comparison",
+          "section": "unsectioned",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_5fa5c86532124bfc8e588728d411042a",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "D.3 Turn Count Comparison",
+          "section": "unsectioned",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        }
+      ],
+      "matched_count": 38,
+      "query_text": "ReAct prompting baseline comparison natural language reasoning",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_OLli9C119rkikit6DsZMSkXF",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "agentboard_2024"
+      ],
+      "query_text": "ReAct Act framework ablation interleaved thoughts actions",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_dd8f9cfc3c904175aa0600010cc9fcbb",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "One popular alternative for our framework is to use ReAct (Yao et al., 2023) rather than Act, which uses interleaved thoughts in addition to actions to boost planning. However, our experiments on GPT-3.5-Turbo show inconsistent improvement of ReAct over performance of Act, as shown in Table 9. We hypothesized that this is due to we test long-term interactions of LLM Agents up to 30 interactions, and adding thoughts would pressure context length, thus leading to performance drop. Therefore, we us",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_707c13cd233d47998110fe6cb25f15a2",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Another major alternation is how to handle out of context length prompts during agent prompting. Here we provide ablation study on alternatives to our sliding window approach:",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c7dcb747b1a148cba318b65cea1303eb",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Evaluating Large Language Models (LLMs) as general-purpose agents is essential for understanding their capabilities and facilitating their integration into practical applications. However, the evaluation process presents substantial challenges. A primary obstacle is the benchmarking of agent performance across diverse scenarios within a unified framework, especially in maintaining partially-observable environments and ensuring multi-round interactions. Moreover, current evaluation frameworks mos",
+          "section": "Abstract",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_ff732e87b33a4be58c1072a6309fa8e6",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Table 9: Comparison of Act and ReAct framework using GPT-3.5-Turbo.\nTask Name | Act | ReAct | AlfWorld | 35.6/17.2 | 37.9/ 8.2 | PDDL | 25.0/5.0 | 17.1/ 3.3 | Tool-Query | 69.4/45.0 | 70.0/50.0 | Tool-Operation | 37.2/ 7.5 | 54.8/10.0",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_0eaf55f973c74e349a4140bde8f6cc8b",
+          "original_filename": null,
+          "page": 15,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "F Ablation Study of Agent Framework",
+          "section": "unsectioned",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table-129",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Caption: Table 9: Comparison of Act and ReAct framework using GPT-3.5-Turbo.\nTask Name Act ReAct AlfWorld 35.6/17.2 37.9/ 8.2 PDDL 25.0/5.0 17.1/ 3.3 Tool-Query 69.4/45.0 70.0/50.0 Tool-Operation 37.2/ 7.5 54.8/10.0",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_81ead1deceea4d07ae939eca423a38c7",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "2024) that could improve performances of agents. However, these frameworks often involve intricate design and not applicable to all LLMs. Therefore, we choose Act (Yao et al., 2023) as our framework, which requires minimal design and is applicable to most instruction-following LLMs.",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_80508d659d144ed49c5e380ca55f4c77",
+          "original_filename": null,
+          "page": 34,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "\\- actions (Type: array): Supported actions for current tool.",
+          "section": "Name: check\\_valid\\_actions()",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_fcac815d8ec143d5bb010db4f477fb47",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "The Unified Framework: AGENTBOARD unifies all tasks around a general framework where the agent receives observations $o _ { t }$ and performs actions $a _ { t } ,$ , causing deterministic state transitions $\\mathcal { T } : ( s _ { t } , a _ { t } )  s _ { t + 1 }$ based on real-world dynamics. A feedback function f is also defined in the environment to derive feedback from each interaction round $o _ { t } = f ( s _ { t } , a _ { t } )$ . This feedback includes: (1) list all valid actions when ",
+          "section": "2.1 A Unified Multi-Round Reflex Agent",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ff7fc69d8d7b4aa4bcd07f0eabb7455f",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "We aim to use a simplistic agent framework to showcase LLM basic agentic abilities. As shown in Figure 2, our agent makes decisions based on its memory of past perceptions, similar to how humans learn from experience and adapt. The implementation of the reflex agent assessed in this paper adopts an act-only prompting strategy in line with recent studies (Liu et al., 2023b; Zhou et al., 2023; Xu et al., 2023b), detailed in the right part of Figure 2, while other prompting strategies can be easily",
+          "section": "2.1 A Unified Multi-Round Reflex Agent",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a9db088883d54281b06ee15a53c826e2",
+          "original_filename": null,
+          "page": 34,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Description: Get supported actions for current tool.",
+          "section": "Name: check\\_valid\\_actions()",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_1a3c59fa14964a0e9ee45a225d06a982",
+          "original_filename": null,
+          "page": 15,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "15",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        }
+      ],
+      "matched_count": 52,
+      "query_text": "ReAct Act framework ablation interleaved thoughts actions",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_ffo0fJ8B2SNPTdbahAH0rnRU",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "mint_2024"
+      ],
+      "query_text": "Yao Shunyu ReAct Synergizing Reasoning and Acting in Language Models references",
+      "section_query": "References",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9b42a01d774b49339a79cbbd37caefd0",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We curate one in-context example for code generation and reasoning problems, and we follow Yao et al. (2022) to construct examples for each sub-type of decision-making (i.e., ALFWorld) tasks. For each task, we include one corresponding example for in-context learning. For simplicity, we only include a subset of prompts here. All prompts are released in our code repo.",
+          "section": "F.5 IN-CONTEXT EXAMPLE",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9af337139d904ea49ce7441460d79dfa",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "To solve complex tasks, large language models (LLMs) often require multiple rounds of interactions with the user, sometimes assisted by external tools. However, current evaluation protocols often emphasize benchmark performance with single-turn exchanges, neglecting the nuanced interactions among the user, LLMs, and external tools, while also underestimating the importance of natural language feedback from users. These oversights contribute to discrepancies between research benchmark evaluations",
+          "section": "ABSTRACT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_1edb1ec940b647de8c412f8fa7980a2d",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• All models benefit from tool interaction and natural language feedback, with absolute performance gains by 1–8% for each additional turn of tool use, and 2–17% with natural language feedback.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_983ae55e39904ce3889e6c9592fd7657",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We perform 1-shot learning on all tasks in MINT. We have two types of in-context examples for each task: (1) without feedback, and (2) with feedback. We show the in-context examples with the provided feedback below. When no feedback is provided to the LLM (i.e., without feedback in-context examples), we will remove all occurrences of “Expert feedback: ...” in the following examples.",
+          "section": "F.5 IN-CONTEXT EXAMPLE",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_2db6677249a4473494af56f5f14b1d05",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "REFERENCES",
+          "section": "unsectioned",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_947f76e4555a4237a379238bca555ff0",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We evaluate 4 closed- and 16 open-source LLMs with MINT. We measure LLMs’ tool-augmented task-solving capability by analyzing their performance from multi-turn tool use (§3.2). To assess the ability to leverage natural language feedback, we measure their performance upon natural language feedback by GPT-4 (§3.3). Our results show that:",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d674f0a4c8524e79aa76a823f5746ec1",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Better single-turn performance does not necessarily entail better multi-turn performance. For example, while Claude-2 outperforms its predecessor Claude-1 in single-turn evaluation, the latter benefit more from interaction and performs better with > 2 turns.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_aedc3fc9e1f4447f97c7595755c043ce",
+          "original_filename": null,
+          "page": 33,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We manually curate the in-context example for the reasoning subset to include the characteristic for both multi-hop QA-style reasoning (e.g., HotpotQA) and mathematical reasoning (e.g., MATH, TheoremQA).",
+          "section": "F.5.3 REASONING TASK",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c94b5a43159b42f1bfbfad93079069cc",
+          "original_filename": null,
+          "page": 33,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Published as a conference paper at ICLR 2024",
+          "section": "F.5.3 REASONING TASK",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_96453909466b47de92d858cf4d2de6c3",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Reasoning, including math reasoning (GSM8K, MATH, TheoremQA), multi-hop question answering (HotpotQA), and knowledge problem-solving (MMLU). We implicitly filter out knowledge-intensive questions that do not require multi-step reasoning in the next step.",
+          "section": "2.2 REPURPOSING EXISTING DATASETS FOR MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_146c84a8292d465c884b93f6a37263ba",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Code generation, including HumanEval and MBPP.",
+          "section": "2.2 REPURPOSING EXISTING DATASETS FOR MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a3dae02c199b4c32ba9dcb7ffb8c7cc2",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Inability to follow formatting instructions. We find that some models $( \\mathrm { e . g . }$ ., smaller CodeLLaMA and LLaMA, chat-bison-001) have trouble producing a parsable format as instructed, hindering task-solving (statistics can be found in Tab. A.7).",
+          "section": "3.5 MINT CAN HELP DETECT FAILURE PATTERNS OF EVALUATED LLMS",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        }
+      ],
+      "matched_count": 170,
+      "query_text": "Yao Shunyu ReAct Synergizing Reasoning and Acting in Language Models references",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_j8K4ZB1J0aMiZwiMSYq6eoid",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "webarena_2024"
+      ],
+      "query_text": "Yao Shunyu ReAct Synergizing Reasoning and Acting in Language Models references 2022b",
+      "section_query": "References",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional web",
+          "section": "ABSTRACT",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d6f64426ddb84e209abc385c8f8909e8",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We would like to thank Emmy Liu, Zhiruo Wang, Zhitong Guo for examining our annotations, Shunyu Yao for providing the raw Amazon product data in Webshop, Pengfei Liu, Zaid Sheikh and Aman Madaan for the helpful discussions. We are also grateful to the Center for AI Safety for providing computational resources. This material is partly based on research sponsored in part by the Air Force Research Laboratory under agreement number FA8750-19-2-0200. The U.S. Government is authorized to reproduce and",
+          "section": "ACKNOWLEDGEMENT",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_09476b1705214d5b9facdf53ac58ffae",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "REFERENCES",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_4ce5a312ba48413cb736085b749cfcbe",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We experiment with three LLMs using two prompting strategies, both with two examples in the context. In the first setting, we ask the LLM to directly predict the next action given the current observation, the intent and the previously performed action. In the second setting, with the same information, the model first performs chain-of-thought reasoning steps in the text before the action prediction (CoT, Wei et al. (2022); Yao et al. (2022b)). Before the examples, we provide a detailed overview ",
+          "section": "4 BASELINE WEB AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_485c90621f4648e19662c17777c95a10",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We use this benchmark to evaluate several agents that can follow NL command and perform webbased tasks (§4). These agents are implemented in a few-shot in-context learning fashion with powerful large language models (LLMs) such as GPT-4 and PALM-2. Experiment results show that the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%. We hypothesize that the limited performance of current LLMs stems from a lac",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c9df14e2d9904dcc978c52568956e0c9",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We hypothesize that these observed failures are related to the current pretraining and supervised fine-tuning on dialogues employed in GPT models Ouyang et al. (2022). These models are primarily trained to execute instructions given immediate observations (i.e.,, the dialogue history); thereby, they may exhibit a lack of explorations. Furthermore, in dialogue scenarios, subtle differences in NL expressions often have less impact on the overall conversation. As a result, models may tend to overlo",
+          "section": "A.10 ADDITIONAL ERROR ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_29e3efa62e364a818ea5154397509541",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Do models know when to stop? In our error analysis of the execution trajectories, we observe a prevalent error pattern of early stopping due to the model’s conclusion of unachievability. For instance, GPT-4 erroneously identifies 54.9% of feasible tasks as impossible. This issue primarily stems from the UA hint in the instruction, while this hint allows models to identify unachievable tasks, it also hinders performance on achievable tasks. To address this, we conduct an ablation study where we r",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bfa733703774457f9181b2060105b478",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Can a model maintain consistent performance across similar tasks? Tasks that originate from the same template usually follow similar reasoning and planning processes, even though their observations and executions will differ. We plot a histogram of per-template success rates for our models in Table 3. Of the 61 templates, GPT-4 manages to achieve a 100% task success rate on only four templates, while GPT-3.5 fails to achieve full task completion for any of the templates. In many cases, the model",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_87b967056d42468ba2d1bc1f63748608",
+          "original_filename": null,
+          "page": 17,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "The system message of the reasoning agent for both GPT-3.5 and GPT-4 is in Figure 7, and two examples are in Figure 8. The system message of the direct agent for GPT-3.5 is in Figure 9 and the two examples are in Figure 10. UA hint refers to the instruction of “ If you believe the task is",
+          "section": "A.9 THE PROMPTS OF THE BASELINE WEB AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_de85a3fe77f248069ec44e70a9fd34ab",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Benchmarks for Controlling Agents through Natural Language Controlling agents via natural language in the digital world have been studied in the literature (Branavan et al., 2009; Shi et al., 2017; Liu et al., 2018; Toyama et al., 2021; Deng et al., 2023; Li et al., 2020; Xu et al., 2021). However, the balance between functionality, authenticity, and support for environmental dynamics remains a challenge. Existing benchmarks often compromise these aspects, as shown in Table 4. Some works rely on",
+          "section": "6 RELATED WORK",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2ff6cd2b4fc84aef8bd929618cd4b119",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Interactive Decision-Making Agents Nakano et al. (2021) introduce WebGPT which searches the web and reads the search results to answer questions. Gur et al. (2023) propose a web agent that synthesizes Javascript code for the task executions. Adding a multi-modal dimension, Lee et al. (2023) and Shaw et al. (2023) develop agents that predict actions based on screenshots of web pages rather than relying on the text-based DOM trees. Performing tasks in interactive environments requires the agents t",
+          "section": "6 RELATED WORK",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "image",
+          "location_ref": "figure_ref_9961e9b6850b4a3db19b3cfd5ca40580",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Figure 2: A high-level task that can be fully executed in WebArena. Success requires sophisticated, long-term planning and reasoning. To accomplish the goal (top), an agent needs to (1) find Pittsburgh art museums on Wikipedia, (2) identify their locations on a map (while optimizing the itinerary), and (3) update the README file in the appropriate repository with the planned route.",
+          "section": "2 WE BAR E N A: WEBSITES AS AN ENVIRONMENT FOR AUTONOMOUS AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        }
+      ],
+      "matched_count": 103,
+      "query_text": "Yao Shunyu ReAct Synergizing Reasoning and Acting in Language Models references 2022b",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_cjY5W7NOkQhKpfL32TQsbTeJ",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "agentboard_2024"
+      ],
+      "query_text": "Yao ReAct Synergizing Reasoning and Acting in Language Models references",
+      "section_query": "References",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_dd8f9cfc3c904175aa0600010cc9fcbb",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "One popular alternative for our framework is to use ReAct (Yao et al., 2023) rather than Act, which uses interleaved thoughts in addition to actions to boost planning. However, our experiments on GPT-3.5-Turbo show inconsistent improvement of ReAct over performance of Act, as shown in Table 9. We hypothesized that this is due to we test long-term interactions of LLM Agents up to 30 interactions, and adding thoughts would pressure context length, thus leading to performance drop. Therefore, we us",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c7dcb747b1a148cba318b65cea1303eb",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Evaluating Large Language Models (LLMs) as general-purpose agents is essential for understanding their capabilities and facilitating their integration into practical applications. However, the evaluation process presents substantial challenges. A primary obstacle is the benchmarking of agent performance across diverse scenarios within a unified framework, especially in maintaining partially-observable environments and ensuring multi-round interactions. Moreover, current evaluation frameworks mos",
+          "section": "Abstract",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7a27c5db34e2493095ed608bd6f79414",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "General-purpose agents that can autonomously perceive and act in various environments are considered significant milestones in Artificial Intelligence (Russell and Norvig, 2005). Recent advancements in large language models (OpenAI, 2023; Touvron et al., 2023) have demonstrated emergent agent abilities that enable them to understand diverse environments and perform step-by-step planning through multi-round interactions (Yao et al., 2023; Song et al., 2023). These advanced abilities contribute to",
+          "section": "1 Introduction",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_3b6e36dab9c040f18413902e8a7c3500",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "References",
+          "section": "unsectioned",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ad3479692bd148d2a653ba842aa141cd",
+          "original_filename": null,
+          "page": 21,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Evaluating LLM’s capability as a generalist agent in web-based scenarios has become pivotal (Shi et al., 2017a; Deng et al., 2023). Web agent is expected to navigate the network efficiently and perform diverse tasks amidst highly dynamic, intricate, and multi-turn interactions. Based on the task categorization, we’ve pinpointed two tasks of high recognition and quality: the specific network task, WebShop (Yao et al., 2022), and the general network task, WebArena (Zhou et al., 2023). The latter p",
+          "section": "K.3 Details of Web-based Environments",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c17e40825c75462ab697afae4e1cad71",
+          "original_filename": null,
+          "page": 21,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "WebShop (WS) (Yao et al., 2022) is a network-based simulation environment for e-commerce experiences, featuring a website with 1.18 million actual products, each with distinct labels and attributes. In this environment, the agent is allowed to interact with the system through ‘search[QUERY]’ or ‘click[ELEMENT]’ actions to purchase products matching the instructions. This process necessitates that the model possesses reasoning and grounding abilities. Based on the original implementation method (",
+          "section": "K.3 Details of Web-based Environments",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_dc2b0bd8b78e4a4896af3342b72b1ebb",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Moreover, the inherent complexity in agent tasks characterized by multi-round interactions distinguishes them significantly from other language tasks. Due to this complexity, there is a pressing need to delve into the details and gain a deeper understanding of how models function during the process. Nonetheless, most current evaluations predominantly rely on the final success rate as their metric, which provides limited insights into these intricate processes (Liu et al., 2023a; Wang et al., 202",
+          "section": "1 Introduction",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_beffef784d2d4df79cdd661f41cce12f",
+          "original_filename": null,
+          "page": 20,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "AlfWorld (ALF) (Shridhar et al., 2021) are Household tasks that require models to explore rooms and use commonsense reasoning to perform tasks, Within AGENTBOARD, we evaluate a model’s ability to perform tasks in physical household settings, such as “put a pencil on the desk\". AlfWorld is categorized into six types, comprising a total of 134 environments.",
+          "section": "K.1 Details of Embodied Environments",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_ff732e87b33a4be58c1072a6309fa8e6",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Table 9: Comparison of Act and ReAct framework using GPT-3.5-Turbo.\nTask Name | Act | ReAct | AlfWorld | 35.6/17.2 | 37.9/ 8.2 | PDDL | 25.0/5.0 | 17.1/ 3.3 | Tool-Query | 69.4/45.0 | 70.0/50.0 | Tool-Operation | 37.2/ 7.5 | 54.8/10.0",
+          "section": "F Ablation Study of Agent Framework",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f5980dfe15ab4a51b36153033e40d918",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "LLM as Agent Traditional Reinforcement Learning offers general decision-making solutions but struggles with sample efficiency and generalization (Pourchot and Sigaud, 2019). In contrast, the emergent reasoning and instruction-following abilities of LLMs (Wei et al., 2022) enable them to excel as agents (Yao et al., 2023; Richards, 2023; Wang et al., 2023a). The primary method for employing LLMs as agents involves prompting them with task instructions and environmental context to generate actiona",
+          "section": "6 Related Work",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8fb8dc1829c14c66be23e6d9b094fe5e",
+          "original_filename": null,
+          "page": 14,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Paper writing Chang Ma and Junxian He finished introduction and methodology sections of the paper. Junlei Zhang and Chang Ma wrote the experiments section. Cheng Yang provided all the visualizations shown in the paper. Cheng Yang, Zhihao Zhu added results and analysis for their corresponding parts. Junxian He carefully reviewed and revised the paper and gave feedback for multiple rounds. Other authors help proofread and provide feedbacks.",
+          "section": "A Author Contributions",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_b6465691173e4c5c88d2e1cb3a2d6de5",
+          "original_filename": null,
+          "page": 14,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Experiments Chang Ma and Junlei Zhang co-lead the evaluation of the models. Zhihao Zhu conducted all the evaluations on web tasks. Cheng Yang conducted evaluation on tool tasks for several models and conducted experiments on analysis and visualization.",
+          "section": "A Author Contributions",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        }
+      ],
+      "matched_count": 194,
+      "query_text": "Yao ReAct Synergizing Reasoning and Acting in Language Models references",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_uYaqz1QJr0AWoVZl4b3DNVty",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "toolsandbox_2024"
+      ],
+      "query_text": "Yao ReAct Synergizing Reasoning and Acting in Language Models references",
+      "section_query": "References",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_329b4610df1044029a09513d86e0ce71",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "From Table 9, we can see that, ReAct has minimal effect to Claude model family, and a small gain for GPT4 model family. This is likely due to the fact that, the baseline ToolSandbox setup, which allows the model to interact with execution environment, recover from error and confirm with simulated user already provides a reasoning process to the model through user and execution environment interactions, additional natural language reasoning would only provide marginal gains. While ReAct provide g",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f48a0d01709641fbacaeaf6629d76d00",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Recent large language models (LLMs) advancements sparked a growing research interest in tool assisted LLMs solving real-world challenges, which calls for comprehensive evaluation of tool-use capabilities. While previous works focused on either evaluating over stateless web services (RESTful API), based on a single turn user prompt, or an off-policy dialog trajectory, TOOLSANDBOX<sup>1</sup> includes stateful tool execution, implicit state dependencies between tools, a built-in user simulator sup",
+          "section": "Abstract",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_6e5b410c8be7490687dc5317198d5458",
+          "original_filename": null,
+          "page": 11,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "References",
+          "section": "unsectioned",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_57e2ff23262844da990315824ce0d9ef",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "However, time related arguments in specific show to be really challenging to canonicalize and reason about. Models would frequently hallucinate timestamps (Figure 15), and incorrectly canonicalize relative date and time (Figure 14).",
+          "section": "4 Evaluation Results",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_038f4e803a61494ba46f890a83014016",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Recent advancements in Large Language Models (LLMs) brought forth new opportunities treating LLMs as autonomous agents, capable of observing real-world environments and deciding upcoming actions. Among which, tool-use agents (Schick et al., 2023; Qin et al., 2023a; Patil et al., 2023; Qin et al., 2024) follow human instructions and utilize real-world APIs to complete complex tasks. Contrary to prior approaches like dialog state tracking (Henderson et al., 2014; Budzianowski et al., 2018; Rastogi",
+          "section": "1 Introduction",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_820d81de92824cedb7474b927414b972",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Despite the paradigm shift towards a more simplified problem formulation, the stateful, conversational and interactive nature of task oriented dialog remains, and poses a significant challenge for systematic and accurate evaluation of tool-using LLMs. Existing benchmarks like the Berkeley Function Calling Leaderboard (BFCL) (Yan et al., 2024), ToolEval (Qin et al., 2024), API-Bank (Li et al., 2023), ToolTalk (Farn and Shin, 2023) and τ - bench (Yao et al., 2024) attempted to tackle some of these",
+          "section": "1 Introduction",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7f4af83e8a534112b53668e8bd6c2c86",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "State Dependency The State Dependency category shows an interesting trend where, larger models like GPT-4 (Achiam et al., 2023) and Claude-3-Opus perform significantly worse than mid to smaller sized models like GPT-3.5-Turbo and Claude-3-Sonnet. This is due to erroneous parallel tool calls in face of state dependency. As mentioned in Appendix A.6, the Execution Environment always surfaces race conditions when present. Larger models like GPT-4 and Claude-3-Opus are prune to issuing parallel tool",
+          "section": "4 Evaluation Results",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f7ac2520c56847d4bb6af086d3ffe07b",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Canonicalization Canonicalization remains a challenging category for all models, especially in tool assisted canonicalization. Larger models would tend to memorize world knowledge that is unlikely to change, like latitude longitude for famous geographical location, while smaller models are more keen on using tools.",
+          "section": "4 Evaluation Results",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_59670500583a4af0a8dcbcb4590f73de",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "We conducted additional experiments comparing the effect of ReAct prompting in tool use agents against the minimal prompting design presented in Figure 8, with 4 representative models shown below.",
+          "section": "D.1 Prompting Experiment",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_03981229b7bd43a3821bc3e2497e661f",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "In addition, models could take premature decisions in face of ambiguity, also leading to canonicalization errors. In Figure 16, multiple location entities were returned in the tool response, while the model simply chose the first one, without returning to the user for disambiguation.",
+          "section": "4 Evaluation Results",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_72943b32c2d34f198f8b4ab063af1dd3",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "When evaluating the models, all models use the same minimalist prompt shown in Figure 8 for comparison fairness. We do not include additional prompt engineering for the models, as we consider prompt engineering gains orthogonal to the innate model capability surfaced by simpler prompting. Table 5 shows the average similarity for each of the scenario categories described in Section 3. Additional prompting experiments can be found in Appendix 9.",
+          "section": "4 Evaluation Results",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_aab2b81f9a6640dfa4adb5b0541b3d50",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "preview": "Open Source Models There is a significant performance gap between proprietary and open source models, with the best performing open source model Hermes (interstellarninja et al.) lagging more than 20 points behind the second to last proprietary model Claude-3-Haiku (Anthropic, 2024).",
+          "section": "4 Evaluation Results",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        }
+      ],
+      "matched_count": 132,
+      "query_text": "Yao ReAct Synergizing Reasoning and Acting in Language Models references",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_2xvAYmQWgD2nBmxRHjSvaTfx",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_ea0dbdb875644e53b2cfa8cbde54dc51",
+        "reading_element_356826ecf3f846999a71c48a21ae8a26",
+        "reading_element_2e429bbc050a4042a7b4dd868d8cbb2d",
+        "reading_element_dd8f9cfc3c904175aa0600010cc9fcbb",
+        "table_ref_ff732e87b33a4be58c1072a6309fa8e6",
+        "reading_element_4ce5a312ba48413cb736085b749cfcbe",
+        "reading_element_679eafccd3a9488eb854986c559b092a",
+        "page_ref_28f47312ef794c3cb54bd32950b82a06",
+        "reading_element_9b42a01d774b49339a79cbbd37caefd0",
+        "reading_element_a824356a93484c6092260d2c15ee555d",
+        "reading_element_59670500583a4af0a8dcbcb4590f73de",
+        "reading_element_329b4610df1044029a09513d86e0ce71",
+        "table_ref_6b025ba46c3d4cc4ab4cd40ca9a1a0ac"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":925.0,\"right\":826.0,\"top\":840.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":925.0,\"right\":826.0,\"top\":840.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_fcdc4dae9876dfd2",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_ea0dbdb875644e53b2cfa8cbde54dc51",
+          "location_ref": "reading_element_ea0dbdb875644e53b2cfa8cbde54dc51",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 INTRODUCTION",
+          "source_kind": "paragraph",
+          "span_text": "In this work, we present ReAct, a general paradigm to combine reasoning and acting with language models for solving diverse language reasoning and decision making tasks (Figure 1). ReAct prompts LLMs to generate both verbal reasoning traces and actions pertaining to a task in an interleaved manner, which allows the model to perform dynamic reasoning to create, maintain, and adjust high-level plans for acting (reason to act), while also interact with the external environments (e.g. Wikipedia) to incorporate additional information into reasoning (act to reason).",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":611.0,\"right\":767.0,\"top\":330.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":611.0,\"right\":767.0,\"top\":330.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_77feded949396633",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_356826ecf3f846999a71c48a21ae8a26",
+          "location_ref": "reading_element_356826ecf3f846999a71c48a21ae8a26",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "react_2023",
+          "paper_version": "arXiv v3 / ICLR 2023 camera ready",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "ABSTRACT",
+          "source_kind": "paragraph",
+          "span_text": "While large language models (LLMs) have demonstrated impressive performance across tasks in language understanding and interactive decision making, their abilities for reasoning (e.g. chain-of-thought prompting) and acting (e.g. action plan generation) have primarily been studied as separate topics. In this paper, we explore the use of LLMs to generate both reasoning traces and task-specific actions in an interleaved manner, allowing for greater synergy between the two: reasoning traces help the model induce, track, and update action plans as well as handle exceptions, while actions allow it to interface with and gather additional information from external sources such as knowledge bases or environments. We apply our approach, named ReAct, to a diverse set of language and decision making tasks and demonstrate its effectiveness over state-of-the-art baselines in addition to improved human interpretability and trustworthiness. Concretely, on question answering (HotpotQA) and fact verification (Fever), ReAct overcomes prevalent issues of hallucination and error propagation in chain-of-thought reasoning by interacting with a simple Wikipedia API, and generating human-like task-solving trajectories that are more interpretable than baselines without reasoning traces. Furthermore, on two interactive decision making benchmarks (ALFWorld and WebShop), ReAct outperforms imitation and reinforcement learning methods by an absolute success rate of 34% and 10% respectively, while being prompted with only one or two in-context examples.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":9,\"left\":169.0,\"bottom\":469.0,\"right\":826.0,\"top\":286.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":9,\"left\":169.0,\"bottom\":469.0,\"right\":826.0,\"top\":286.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_fdb8949a0db0ff4f",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_2e429bbc050a4042a7b4dd868d8cbb2d",
+          "location_ref": "reading_element_2e429bbc050a4042a7b4dd868d8cbb2d",
+          "page": 9,
+          "page_screenshot_available": false,
+          "paper_id": "agentbench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5 RELATED WORK",
+          "source_kind": "paragraph",
+          "span_text": "LLM-as-Agent. In pre-LLM era, text game environments such as TextWorld (Côté et al., 2019), Jericho (Hausknecht et al., 2020), and LIGHT (Urbanek et al., 2019) are dominant in language agent study which bases on BERT (Devlin et al., 2019) and reinforcement learning. With the advent of LLMs, the study of LLM agents begins to thrive (Huang et al., 2022), especially after Chain-of-Thought (Wei et al., 2022b) came out. ReAct (Yao et al., 2023b) is a pioneer work to combine CoT reasoning and actions in agent tasks. Later, a multitude of advanced reasoning strategies (Kim et al., 2023; Shinn et al., 2023; Wang et al., 2023d; Liu et al., 2023; Yao et al., 2023a; Gu et al., 2023) and applications including frameworks (Richards, 2023; Nakajima, 2023; age, 2023) and multi-agents (Park et al., 2023; Hong et al., 2023; Wu et al., 2023) for LLM-as-Agent have emerged and arouse much public interest. Nevertheless, limited datasets and models and available on the topic, without a standard and comprehensive benchmark. AGENTBENCH presents the first systematic benchmark for evaluating LLM-as-Agent with a broad coverage of tasks and available LLMs. Additionally, it also initiates the idea of adopting agent tasks to measure LLM performance.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBench: Evaluating LLMs as Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":16,\"left\":169.0,\"bottom\":315.0,\"right\":826.0,\"top\":250.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":16,\"left\":169.0,\"bottom\":315.0,\"right\":826.0,\"top\":250.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_4785dcc31dfdc1ea",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_dd8f9cfc3c904175aa0600010cc9fcbb",
+          "location_ref": "reading_element_dd8f9cfc3c904175aa0600010cc9fcbb",
+          "page": 16,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "F Ablation Study of Agent Framework",
+          "source_kind": "paragraph",
+          "span_text": "One popular alternative for our framework is to use ReAct (Yao et al., 2023) rather than Act, which uses interleaved thoughts in addition to actions to boost planning. However, our experiments on GPT-3.5-Turbo show inconsistent improvement of ReAct over performance of Act, as shown in Table 9. We hypothesized that this is due to we test long-term interactions of LLM Agents up to 30 interactions, and adding thoughts would pressure context length, thus leading to performance drop. Therefore, we use Act rather than ReAct in our benchmark.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":16,\"left\":383.0,\"bottom\":210.0,\"right\":612.0,\"top\":145.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":16,\"left\":383.0,\"bottom\":210.0,\"right\":612.0,\"top\":145.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "table",
+          "evidence_id": "ev_128c5acf8802da88",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "table_ref_ff732e87b33a4be58c1072a6309fa8e6",
+          "location_ref": "table_ref_ff732e87b33a4be58c1072a6309fa8e6",
+          "page": 16,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "F Ablation Study of Agent Framework",
+          "source_kind": "table",
+          "span_text": "Table 9: Comparison of Act and ReAct framework using GPT-3.5-Turbo.\nTask Name | Act | ReAct | AlfWorld | 35.6/17.2 | 37.9/ 8.2 | PDDL | 25.0/5.0 | 17.1/ 3.3 | Tool-Query | 69.4/45.0 | 70.0/50.0 | Tool-Operation | 37.2/ 7.5 | 54.8/10.0",
+          "supports_claim_ids": [],
+          "table_id": "table-129",
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":925.0,\"right\":826.0,\"top\":813.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":925.0,\"right\":826.0,\"top\":813.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_a85023ec92bfa734",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_4ce5a312ba48413cb736085b749cfcbe",
+          "location_ref": "reading_element_4ce5a312ba48413cb736085b749cfcbe",
+          "page": 7,
+          "page_screenshot_available": false,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "4 BASELINE WEB AGENTS",
+          "source_kind": "paragraph",
+          "span_text": "We experiment with three LLMs using two prompting strategies, both with two examples in the context. In the first setting, we ask the LLM to directly predict the next action given the current observation, the intent and the previously performed action. In the second setting, with the same information, the model first performs chain-of-thought reasoning steps in the text before the action prediction (CoT, Wei et al. (2022); Yao et al. (2022b)). Before the examples, we provide a detailed overview of the browser environment, the allowed actions, and many rules. To make the model aware of the unachievable tasks, the instruction explicitly asks the agent to stop if it believes the task is impossible to perform. We refer to this directive as Unachievable hint, or UA hint. This introduction is largely identical to the guidelines we presented to human annotators to ensure a fair comparison. We use an accessibility tree with element IDs as the observation space. The agent can identify which element to interact with by the ID of the element. For instance, the agent can issue click [1582] to click the “Add to $\\mathrm { C a r t } ^ { \\tilde { \\prime } \\tilde { \\prime } }$ button with the ID of 1582. The full prompts can be found in Appendix A.9. The detailed configurations of each model can be found in Appendix A.6.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":861.0,\"right\":826.0,\"top\":787.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":861.0,\"right\":826.0,\"top\":787.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_7c30c02dcf913454",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_679eafccd3a9488eb854986c559b092a",
+          "location_ref": "reading_element_679eafccd3a9488eb854986c559b092a",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2.1 INTERACTION FRAMEWORK",
+          "source_kind": "paragraph",
+          "span_text": "MINT aims to simulate real-world applications of LLMs, emphasizing user-LLM and LLM-tool interactions. In user-LLM collaborative problem-solving, a human user provides initial instruction and aims to obtain a correct solution with little effort to help the LLM. On the other hand, augmenting LLMs’ with tools can effectively improve LLMs’ task-solving capabilities (Mialon et al., 2023), suggesting the importance of LLM-tool interaction. We instruct the LLM (§F.4.1) to perform the following steps in each turn: (1) optionally express its reasoning process (“Thought:” in Fig. 1, similar to Yao et al. 2022); (2) then either interact with tools by generating Python code and executing it through a Python interpreter (“Execute:” in Fig. 1), or proposing a solution to the user (“Propose Solution:” in Fig. 1). We adopt code as a unified tool interface due to its flexibility and performance, as demonstrated by Wang et al. (2024). In our implementation, the model is instructed to wrap their “Execute” and “Propose Solution” actions with pairs of <execute> and <solution> tags for ease of parsing. We standardize the prompts and in-context examples for different LLM variants (base vs. chat) and for task-solving and feedback providing, aiming for fair and reproducible comparisons (Appendix §F.4.1, §F.4.2, and §F.5). In what follows, we introduce three settings with increased interaction complexities to measure different aspects of multi-turn interaction.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "bbox_json": null,
+          "bbox_or_cell_ref": null,
+          "element_type": "page",
+          "evidence_id": "ev_e21fd79567abb68f",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "page_ref_28f47312ef794c3cb54bd32950b82a06",
+          "location_ref": "page_ref_28f47312ef794c3cb54bd32950b82a06",
+          "page": 3,
+          "page_screenshot_available": false,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2.1 INTERACTION FRAMEWORK",
+          "source_kind": "page",
+          "span_text": "Figure 1: An interaction trajectory produced by evaluating gpt-3.5-turbo-0613 with MINT\non a mathematical reasoning task. The evaluated model’s outputs are in the blue boxes, and the\nfeedback by gpt-4-0613 in red, dotted ones. Some details are omitted for clarity.\n\nfollowing steps in each turn: (1) optionally express its reasoning process (“Thought:” in Fig. 1, sim-\nilar to Yao et al. 2022); (2) then either interact with tools by generating Python code and executing\nit through a Python interpreter (“Execute:” in Fig. 1), or proposing a solution to the user (“Propose\nSolution:” in Fig. 1). We adopt code as a unified tool interface due to its flexibility and performance,\nas demonstrated by Wang et al. (2024). In our implementation, the model is instructed to wrap\ntheir “Execute” and “Propose Solution” actions with pairs of <execute> and <solution> tags\nfor ease of parsing. We standardize the prompts and in-context examples for different LLM vari-\nants (base vs. chat) and for task-solving and feedback providing, aiming for fair and reproducible\ncomparisons (Appendix §F.4.1, §F.4.2, and §F.5). In what follows, we introduce three settings with\nincreased interaction complexities to measure different aspects of multi-turn interaction.\n\nLLMs interacting with a lazy user. We consider the scenario where a user provides an initial\ninstruction and makes minimal efforts to guide the LLM toward the final solution. This setting\ncovers real-world problems that are “hard to solve directly, but easy to verify”: the user may not\nknow how to solve the problem or understand the reasoning process, but it is still possible for the\nuser to provide minimal feedback on the final outcome (e.g., “this is not what I want”). This will\nserve as a baseline for evaluating LLM’s ability to solve tool-augmented tasks and leverage natural\nlanguage feedback. The LLM is given two attempts to propose solutions for each problem, with a\nlimit on the number of interaction turns k (§3.1). Upon a proposed solution, MINT simulates users\nthat check the solution’s correctness with ground truths. When the first attempt is wrong, the user\nresponds “Your answer is wrong.” The interaction ends either after the LLM has made two attempts\nto propose a solution, or when a proposed solution is correct (5th turn of Fig. 1), or when the k-th\nturn of interaction is reached. We consider this as the case of Lazy User-LLM Interaction since\nthe simulated user provides at most one additional binary feedback during interaction. We follow\nstandard evaluation practice and use established evaluation metrics for each task in §2.2.\n\nLLMs interacting with a lazy user and tools. Under the lazy User-LLM interaction setting, we\nmeasure the LLM’s ability to solve tasks using tools by comparing their task-solving success rate",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":30,\"left\":169.0,\"bottom\":691.0,\"right\":826.0,\"top\":633.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":30,\"left\":169.0,\"bottom\":691.0,\"right\":826.0,\"top\":633.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_6a5c22529263c8ba",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_9b42a01d774b49339a79cbbd37caefd0",
+          "location_ref": "reading_element_9b42a01d774b49339a79cbbd37caefd0",
+          "page": 30,
+          "page_screenshot_available": false,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "F.5 IN-CONTEXT EXAMPLE",
+          "source_kind": "paragraph",
+          "span_text": "We curate one in-context example for code generation and reasoning problems, and we follow Yao et al. (2022) to construct examples for each sub-type of decision-making (i.e., ALFWorld) tasks. For each task, we include one corresponding example for in-context learning. For simplicity, we only include a subset of prompts here. All prompts are released in our code repo.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":526.0,\"right\":826.0,\"top\":441.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":526.0,\"right\":826.0,\"top\":441.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_230cf6aa4f815350",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_a824356a93484c6092260d2c15ee555d",
+          "location_ref": "reading_element_a824356a93484c6092260d2c15ee555d",
+          "page": 7,
+          "page_screenshot_available": false,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.1 Main results",
+          "source_kind": "paragraph",
+          "span_text": "Method comparison. Figure 3 shows that natively supported function calling consistently outperforms text-formatted agent methods with the state-of-the-art models. For text-formatted agent methods, adding reasoning traces still consistently helps (compare ReAct vs. Act columns) as it helps bridge the gap between observations and actions that have unfamiliar formats. We have also experimented with adding a “think” function for function-calling agents, but it did not boost performance, perhaps because most FC models have not been trained toward such reasoning.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":22,\"left\":507.0,\"bottom\":413.0,\"right\":884.0,\"top\":332.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":22,\"left\":507.0,\"bottom\":413.0,\"right\":884.0,\"top\":332.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_895044614a8a5a01",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_59670500583a4af0a8dcbcb4590f73de",
+          "location_ref": "reading_element_59670500583a4af0a8dcbcb4590f73de",
+          "page": 22,
+          "page_screenshot_available": false,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "D.1 Prompting Experiment",
+          "source_kind": "paragraph",
+          "span_text": "We conducted additional experiments comparing the effect of ReAct prompting in tool use agents against the minimal prompting design presented in Figure 8, with 4 representative models shown below.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":22,\"left\":507.0,\"bottom\":703.0,\"right\":887.0,\"top\":457.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":22,\"left\":507.0,\"bottom\":703.0,\"right\":887.0,\"top\":457.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_e0526ea538661d17",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_329b4610df1044029a09513d86e0ce71",
+          "location_ref": "reading_element_329b4610df1044029a09513d86e0ce71",
+          "page": 22,
+          "page_screenshot_available": false,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "D.1 Prompting Experiment",
+          "source_kind": "paragraph",
+          "span_text": "From Table 9, we can see that, ReAct has minimal effect to Claude model family, and a small gain for GPT4 model family. This is likely due to the fact that, the baseline ToolSandbox setup, which allows the model to interact with execution environment, recover from error and confirm with simulated user already provides a reasoning process to the model through user and execution environment interactions, additional natural language reasoning would only provide marginal gains. While ReAct provide gains in some cases, relative ranking between models still stands. This backs up our claim in Section 4, where we considered prompt engineering gains orthogonal to the innate model capability surfaced by simpler prompting.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":22,\"left\":514.0,\"bottom\":877.0,\"right\":878.0,\"top\":802.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":22,\"left\":514.0,\"bottom\":877.0,\"right\":878.0,\"top\":802.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "table",
+          "evidence_id": "ev_eb05cab21508322f",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "table_ref_6b025ba46c3d4cc4ab4cd40ca9a1a0ac",
+          "location_ref": "table_ref_6b025ba46c3d4cc4ab4cd40ca9a1a0ac",
+          "page": 22,
+          "page_screenshot_available": false,
+          "paper_id": "toolsandbox_2024",
+          "paper_version": "arXiv v2",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "D.1 Prompting Experiment",
+          "source_kind": "table",
+          "span_text": "Table 9: A comparison between default prompting and ReAct prompting.\n| Baseline Score | ReAct Score | GPT-4o-2024-05-13 | 73.0 | 73.6 | Claude-3-Opus-20240229 | 69.2 | 69.3 | GPT-4-0125-Preview | 64.3 | 65.2 | Claude-3-Sonnet-20240229 | 63.8 | 63.7",
+          "supports_claim_ids": [],
+          "table_id": "table-231",
+          "table_screenshot_available": false,
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_gqDhRNpUT6lN3KLeGQ1t7HVo",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "mint_2024",
+        "webarena_2024"
+      ],
+      "query_text": "ReAct: Synergizing Reasoning and Acting in Language Models",
+      "section_query": "References",
+      "top_k": 20
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_1edb1ec940b647de8c412f8fa7980a2d",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• All models benefit from tool interaction and natural language feedback, with absolute performance gains by 1–8% for each additional turn of tool use, and 2–17% with natural language feedback.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional web",
+          "section": "ABSTRACT",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9af337139d904ea49ce7441460d79dfa",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "To solve complex tasks, large language models (LLMs) often require multiple rounds of interactions with the user, sometimes assisted by external tools. However, current evaluation protocols often emphasize benchmark performance with single-turn exchanges, neglecting the nuanced interactions among the user, LLMs, and external tools, while also underestimating the importance of natural language feedback from users. These oversights contribute to discrepancies between research benchmark evaluations",
+          "section": "ABSTRACT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_947f76e4555a4237a379238bca555ff0",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We evaluate 4 closed- and 16 open-source LLMs with MINT. We measure LLMs’ tool-augmented task-solving capability by analyzing their performance from multi-turn tool use (§3.2). To assess the ability to leverage natural language feedback, we measure their performance upon natural language feedback by GPT-4 (§3.3). Our results show that:",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_485c90621f4648e19662c17777c95a10",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We use this benchmark to evaluate several agents that can follow NL command and perform webbased tasks (§4). These agents are implemented in a few-shot in-context learning fashion with powerful large language models (LLMs) such as GPT-4 and PALM-2. Experiment results show that the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%. We hypothesize that the limited performance of current LLMs stems from a lac",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d674f0a4c8524e79aa76a823f5746ec1",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Better single-turn performance does not necessarily entail better multi-turn performance. For example, while Claude-2 outperforms its predecessor Claude-1 in single-turn evaluation, the latter benefit more from interaction and performs better with > 2 turns.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c9df14e2d9904dcc978c52568956e0c9",
+          "original_filename": null,
+          "page": 22,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We hypothesize that these observed failures are related to the current pretraining and supervised fine-tuning on dialogues employed in GPT models Ouyang et al. (2022). These models are primarily trained to execute instructions given immediate observations (i.e.,, the dialogue history); thereby, they may exhibit a lack of explorations. Furthermore, in dialogue scenarios, subtle differences in NL expressions often have less impact on the overall conversation. As a result, models may tend to overlo",
+          "section": "A.10 ADDITIONAL ERROR ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_aedc3fc9e1f4447f97c7595755c043ce",
+          "original_filename": null,
+          "page": 33,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We manually curate the in-context example for the reasoning subset to include the characteristic for both multi-hop QA-style reasoning (e.g., HotpotQA) and mathematical reasoning (e.g., MATH, TheoremQA).",
+          "section": "F.5.3 REASONING TASK",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bfa733703774457f9181b2060105b478",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Can a model maintain consistent performance across similar tasks? Tasks that originate from the same template usually follow similar reasoning and planning processes, even though their observations and executions will differ. We plot a histogram of per-template success rates for our models in Table 3. Of the 61 templates, GPT-4 manages to achieve a 100% task success rate on only four templates, while GPT-3.5 fails to achieve full task completion for any of the templates. In many cases, the model",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9b42a01d774b49339a79cbbd37caefd0",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We curate one in-context example for code generation and reasoning problems, and we follow Yao et al. (2022) to construct examples for each sub-type of decision-making (i.e., ALFWorld) tasks. For each task, we include one corresponding example for in-context learning. For simplicity, we only include a subset of prompts here. All prompts are released in our code repo.",
+          "section": "F.5 IN-CONTEXT EXAMPLE",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_87b967056d42468ba2d1bc1f63748608",
+          "original_filename": null,
+          "page": 17,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "The system message of the reasoning agent for both GPT-3.5 and GPT-4 is in Figure 7, and two examples are in Figure 8. The system message of the direct agent for GPT-3.5 is in Figure 9 and the two examples are in Figure 10. UA hint refers to the instruction of “ If you believe the task is",
+          "section": "A.9 THE PROMPTS OF THE BASELINE WEB AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_96453909466b47de92d858cf4d2de6c3",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Reasoning, including math reasoning (GSM8K, MATH, TheoremQA), multi-hop question answering (HotpotQA), and knowledge problem-solving (MMLU). We implicitly filter out knowledge-intensive questions that do not require multi-step reasoning in the next step.",
+          "section": "2.2 REPURPOSING EXISTING DATASETS FOR MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "image",
+          "location_ref": "figure_ref_9961e9b6850b4a3db19b3cfd5ca40580",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Figure 2: A high-level task that can be fully executed in WebArena. Success requires sophisticated, long-term planning and reasoning. To accomplish the goal (top), an agent needs to (1) find Pittsburgh art museums on Wikipedia, (2) identify their locations on a map (while optimizing the itinerary), and (3) update the README file in the appropriate repository with the planned route.",
+          "section": "2 WE BAR E N A: WEBSITES AS AN ENVIRONMENT FOR AUTONOMOUS AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_983ae55e39904ce3889e6c9592fd7657",
+          "original_filename": null,
+          "page": 30,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We perform 1-shot learning on all tasks in MINT. We have two types of in-context examples for each task: (1) without feedback, and (2) with feedback. We show the in-context examples with the provided feedback below. When no feedback is provided to the LLM (i.e., without feedback in-context examples), we will remove all occurrences of “Expert feedback: ...” in the following examples.",
+          "section": "F.5 IN-CONTEXT EXAMPLE",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_29e3efa62e364a818ea5154397509541",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Do models know when to stop? In our error analysis of the execution trajectories, we observe a prevalent error pattern of early stopping due to the model’s conclusion of unachievability. For instance, GPT-4 erroneously identifies 54.9% of feasible tasks as impossible. This issue primarily stems from the UA hint in the instruction, while this hint allows models to identify unachievable tasks, it also hinders performance on achievable tasks. To address this, we conduct an ablation study where we r",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d5e7e59891a847bea09786a60073e953",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• On most LLMs we evaluated, models trained with supervised instruction fine-tuning (SIFT, Wei et al., 2022) and reinforcement learning from human feedback (RLHF, Ouyang et al., 2022a) perform worse in multi-turn settings regardless of the presence of language feedback. For example, SIFT hurts Codellama-34B’s multi-turn performance by 11.1% and 15.4% (w/ feedback), and RLHF negatively affects LLaMA-2-70B by 8.5% and 8.7%, respectively. Notable exceptions are Vicuna-7B and Lemur-70b-chat-v1, wher",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_cbadd71bd3c041cb8eb23a4e3e70b27d",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "In this work, we present MINT, an evaluation benchmark designed to evaluate LLM’s task-solving ability in multi-turn interaction by using tools and leveraging natural language feedback, which we simulate using GPT-4. We hope MINT can serve as a helpful resource to help track progress and incentivize future research in improving LLM’s multi-turn task-solving capabilities. We refer to $\\ S \\mathrm { A }$ for a discussion of limitations and future work.",
+          "section": "5 CONCLUSION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e1cd7dc0bfba4a5089f581778e8aa6b0",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "In this section, we discuss (1) how to evaluate multi-turn interaction (§2.1) with tool use and language feedback under different settings; (2) how we repurpose existing datasets for MINT evaluation (§2.2). We use Fig. 1 as a running example.",
+          "section": "2 MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_de85a3fe77f248069ec44e70a9fd34ab",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Benchmarks for Controlling Agents through Natural Language Controlling agents via natural language in the digital world have been studied in the literature (Branavan et al., 2009; Shi et al., 2017; Liu et al., 2018; Toyama et al., 2021; Deng et al., 2023; Li et al., 2020; Xu et al., 2021). However, the balance between functionality, authenticity, and support for environmental dynamics remains a challenge. Existing benchmarks often compromise these aspects, as shown in Table 4. Some works rely on",
+          "section": "6 RELATED WORK",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_872abef792cf4596bfd0c9f39f93b412",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We provide a benchmark with 812 test examples on grounding high-level natural language instructions to interactions in WebArena. Each example has a metric to evaluate the functional correctness of the task execution. In this section, we first formally define the task of controlling an autonomous agent through natural language. Then we introduce the annotation process of our benchmark.",
+          "section": "3 BENCHMARK SUITE OF WEB-BASED TASKS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        }
+      ],
+      "matched_count": 273,
+      "query_text": "ReAct: Synergizing Reasoning and Acting in Language Models",
+      "returned_count": 20
+    },
+    "tool_call_id": "call_14dtQODpnepZaQ2QCpzzXgkf",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "I found four directly verified ReAct → later agent-evaluation relationships in the corpus. I did **not** count papers merely because they are topically similar.\n\n**Baseline being traced.** ReAct is defined as a paradigm that prompts LLMs to generate “verbal reasoning traces and actions” in an interleaved manner, so the model can reason to act and act to reason through external environments. [[ev_fcdc4dae9876dfd2]]\n\n| Later paper | Directly verified relationship to ReAct | What the paper does with ReAct |\n|---|---|---|\n| **AgentBench: Evaluating LLMs as Agents** (2024) | **Positions ReAct as a predecessor in the LLM-agent line.** AgentBench states that “ReAct … is a pioneer work to combine CoT reasoning and actions in agent tasks,” then motivates AgentBench as a systematic benchmark for LLM-as-Agent evaluation. [[ev_fdb8949a0db0ff4f]] | Genealogical/related-work link, not a ReAct ablation in the cited passage. |\n| **AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents** (2024) | **Direct ablation/comparison against Act.** AgentBoard says ReAct is a popular alternative to its Act framework, because ReAct uses interleaved thoughts plus actions to boost planning; it reports inconsistent ReAct-vs-Act improvement and therefore uses Act rather than ReAct. [[ev_4785dcc31dfdc1ea]] | Empirically compares ReAct vs Act on GPT-3.5-Turbo; the table reports mixed task results for AlfWorld, PDDL, Tool-Query, and Tool-Operation. [[ev_128c5acf8802da88]] |\n| **τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains** (2024) | **Direct method comparison.** τ-bench compares ReAct vs Act for text-formatted agent methods and says adding reasoning traces “still consistently helps” by bridging unfamiliar observation/action formats. [[ev_230cf6aa4f815350]] | Evaluates ReAct-style reasoning traces as a text-formatted agent method; also distinguishes this from function-calling agents, where a “think” function did not boost performance. [[ev_230cf6aa4f815350]] |\n| **ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities** (2024) | **Direct prompting ablation.** ToolSandbox conducts additional experiments comparing ReAct prompting against its minimal prompting design for tool-use agents. [[ev_895044614a8a5a01]] | Finds ReAct has minimal effect for Claude models and small gains for GPT-4 models; the authors interpret this as showing additional natural-language reasoning provides only marginal gains in their setup, while model rankings remain stable. [[ev_e0526ea538661d17]] The table reports baseline vs ReAct scores for four models. [[ev_eb05cab21508322f]] |\n\n**Not counted as direct ReAct relationships:** I did not infer influence for other later agent-evaluation papers unless the text directly named or compared ReAct. In particular, references to generic chain-of-thought, reasoning traces, tool use, or multi-turn agent evaluation were not treated as ReAct influence without an explicit ReAct link.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_MESYFEWhsr7zC7maMlqBZTlg",
+    "tool_name": "submit_research_answer"
+  }
+]

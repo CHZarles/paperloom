@@ -1,0 +1,289 @@
+{
+  "case_id": "gpt5_architecture_boundary_001",
+  "citation_validation": {
+    "cited_evidence_ids": [],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-14T02:45:35Z",
+  "diagnostics": {
+    "completion_tokens": 1130,
+    "duration_ms": 32942,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 5,
+    "model_latency_ms": 32764,
+    "prompt_tokens": 16132,
+    "skills_used": [],
+    "tool_call_count": 3,
+    "total_tokens": 17262
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [],
+    "ledger_id": "ledger_gpt5_architecture_boundary_001",
+    "missing_evidence": [],
+    "question_id": "gpt5_architecture_boundary_001",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_gpt5_architecture_boundary_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe the architecture of the GPT-family model that *is* present here, which is a different model from GPT-5.",
+    "outcome": "partial",
+    "question_id": "gpt5_architecture_boundary_001",
+    "status": "INCOMPLETE_PRECISE",
+    "summary": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe t"
+  },
+  "harness_id": "python_openai_agents_sdk_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": []
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "2005.14165",
+      "authors": [
+        "Tom B. Brown"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt3_2020",
+      "filename": null,
+      "paper_id": "gpt3_2020",
+      "preview": "",
+      "title": "Language Models are Few-Shot Learners",
+      "venue": "NeurIPS",
+      "year": 2020
+    },
+    {
+      "arxiv_id": null,
+      "authors": [
+        "Alec Radford"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gpt2_2019",
+      "filename": null,
+      "paper_id": "gpt2_2019",
+      "preview": "",
+      "title": "Language Models are Unsupervised Multitask Learners",
+      "venue": "OpenAI technical report",
+      "year": 2019
+    },
+    {
+      "arxiv_id": "1810.04805",
+      "authors": [
+        "Jacob Devlin",
+        "Ming-Wei Chang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_bert_2018",
+      "filename": null,
+      "paper_id": "bert_2018",
+      "preview": "",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "venue": "NAACL",
+      "year": 2018
+    },
+    {
+      "arxiv_id": "1706.03762",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_attention_is_all_you_need_2017",
+      "filename": null,
+      "paper_id": "attention_is_all_you_need_2017",
+      "preview": "",
+      "title": "Attention Is All You Need",
+      "venue": "NeurIPS",
+      "year": 2017
+    },
+    {
+      "arxiv_id": "1412.6980",
+      "authors": [
+        "Diederik P. Kingma",
+        "Jimmy Ba"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_adam_2014",
+      "filename": null,
+      "paper_id": "adam_2014",
+      "preview": "",
+      "title": "Adam: A Method for Stochastic Optimization",
+      "venue": "ICLR",
+      "year": 2014
+    }
+  ],
+  "question_id": "gpt5_architecture_boundary_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "limit": 20,
+        "query_text": "GPT-5 architecture"
+      },
+      "result": {
+        "candidates": [],
+        "coverage": "complete",
+        "matched_count": 0,
+        "next_offset": null,
+        "query_text": "GPT-5 architecture",
+        "returned_count": 0
+      },
+      "tool_call_id": "call_019f5e838bc57c638dc206c5",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 20,
+        "query_text": "GPT-5"
+      },
+      "result": {
+        "candidates": [],
+        "coverage": "complete",
+        "matched_count": 0,
+        "next_offset": null,
+        "query_text": "GPT-5",
+        "returned_count": 0
+      },
+      "tool_call_id": "call_019f5e8399ee7c91a4a8bbed",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 100,
+        "query_text": ""
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2005.14165",
+            "authors": [
+              "Tom B. Brown"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gpt3_2020",
+            "preview": "",
+            "title": "Language Models are Few-Shot Learners",
+            "venue": "NeurIPS",
+            "year": 2020
+          },
+          {
+            "arxiv_id": null,
+            "authors": [
+              "Alec Radford"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gpt2_2019",
+            "preview": "",
+            "title": "Language Models are Unsupervised Multitask Learners",
+            "venue": "OpenAI technical report",
+            "year": 2019
+          },
+          {
+            "arxiv_id": "1810.04805",
+            "authors": [
+              "Jacob Devlin",
+              "Ming-Wei Chang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "bert_2018",
+            "preview": "",
+            "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+            "venue": "NAACL",
+            "year": 2018
+          },
+          {
+            "arxiv_id": "1706.03762",
+            "authors": [
+              "Ashish Vaswani",
+              "Noam Shazeer"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "attention_is_all_you_need_2017",
+            "preview": "",
+            "title": "Attention Is All You Need",
+            "venue": "NeurIPS",
+            "year": 2017
+          },
+          {
+            "arxiv_id": "1412.6980",
+            "authors": [
+              "Diederik P. Kingma",
+              "Jimmy Ba"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "adam_2014",
+            "preview": "",
+            "title": "Adam: A Method for Stochastic Optimization",
+            "venue": "ICLR",
+            "year": 2014
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 5,
+        "next_offset": null,
+        "query_text": "",
+        "returned_count": 5
+      },
+      "tool_call_id": "call_019f5e8399ee7c91a4a8bbf0",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "markdown": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a handful of foundational works — GPT-2, GPT-3, BERT, the original \"Attention Is All You Need,\" and Adam — and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can only describe the architecture of the GPT-family models that *are* present here (notably GPT-3's 175B-parameter decoder-only Transformer), which is a different model from GPT-5.",
+        "outcome": "partial"
+      },
+      "result": {
+        "accepted": false,
+        "error": "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization, Attention Is All You Need, BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+      },
+      "tool_call_id": "call_019f5e83dd2471d29979760a",
+      "tool_name": "submit_research_answer"
+    },
+    {
+      "arguments": {
+        "markdown": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe the architecture of the GPT-family model that *is* present here, which is a different model from GPT-5.",
+        "outcome": "partial"
+      },
+      "result": {
+        "accepted": true
+      },
+      "tool_call_id": "call_019f5e83f79f72a3a42563e0",
+      "tool_name": "submit_research_answer"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_gpt5_architecture_boundary_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe the architecture of the GPT-family model that *is* present here, which is a different model from GPT-5.",
+    "outcome": "partial",
+    "question_id": "gpt5_architecture_boundary_001",
+    "status": "INCOMPLETE_PRECISE",
+    "summary": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe t"
+  },
+  "result_status": "INCOMPLETE_PRECISE",
+  "run_id": "run_bd6420787db7426ba7a0c5a417d11312",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-14T02:45:02Z",
+  "status": "INCOMPLETE_PRECISE"
+}

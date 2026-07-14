@@ -1,7 +1,9 @@
-# 你现在只需要做什么
+# 当前状态
 
-7 个 Golden Contract 已经审核完成。现在只做第二步：盲审 30 组 Answer A / B。
-不需要改代码，也不需要改 Golden Data YAML。
+7 个 Golden Contract 和 30 组 Answer A / B 已经全部审核完成。标签在揭盲前已冻结，
+结果见 [`RESULTS.md`](RESULTS.md)。不需要再修改标签，也不需要改 Golden Data YAML。
+
+下面保留本轮盲审所使用的口径，供审计和复现。
 
 ## 审核顺序
 
@@ -24,7 +26,7 @@
 把结果写入 `answer-labels-template.yaml`。也可以在聊天中告诉 Codex 简化结果，例如
 "A 通过，B 失败，更喜欢 A，因为 B 漏了……"，由 Codex 代填完整字段。
 
-## 完成后
+## 冻结规则
 
 先冻结 `answer-labels-template.yaml`，再打开 `blind-map.json`。随后按模型恢复身份，计算人工通过率、
 A/B 偏好和评分器假阴性，用于区分评估机制问题、检索问题和模型推理问题。

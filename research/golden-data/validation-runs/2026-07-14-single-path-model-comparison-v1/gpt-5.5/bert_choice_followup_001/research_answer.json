@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_bert_choice_followup_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_f189c6c5f4214d2e",
+    "ev_3540835408466c6e",
+    "ev_0f82af3db4559191"
+  ],
+  "fields": {},
+  "markdown": "Great choice: read **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** by Jacob Devlin and Ming-Wei Chang (2018, NAACL; arXiv:1810.04805).\n\nWhy this is the right paper for your goal:\n\n- BERT is explicitly about **Bidirectional Encoder Representations from Transformers** and is designed to pretrain representations that condition on both left and right context in all layers. [1]\n- Its architecture is a **multi-layer bidirectional Transformer encoder**, so it directly targets your interest in bidirectional Transformer encoders. [2]\n- The key mechanism to focus on is **masked language modeling**: BERT masks input tokens and trains the model to predict them from context, which lets the representation use both left and right context. [3]\n\nSuggested reading path:\n\n1. **Abstract** — understand the high-level idea of bidirectional pretraining.\n2. **Introduction** — focus on why left-to-right language modeling is limited and why MLM enables bidirectionality.\n3. **Section 3: BERT** — read the model architecture description.\n4. **Section 3.1: Pre-training BERT** — read masked language modeling carefully; this is the core idea.\n5. Skim the experiments only after you understand the encoder and pretraining setup.\n\nA simple takeaway to keep in mind while reading: **BERT is not just “a Transformer”; it is a Transformer encoder trained so each token representation can use context from both directions.**\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 1 Introduction, p. 1",
+  "outcome": "answered",
+  "question_id": "bert_choice_followup_001",
+  "status": "COMPLETED",
+  "summary": "Great choice: read **BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** by Jacob Devlin and Ming-Wei Chang (2018, NAACL; arXiv:1810.04805).\n\nWhy this is the right paper for your goal:\n\n- BERT is explicitly about **Bidirectional Encoder Representations from Transformers** and is designed to pretrain representations that condition on both left and right context in all"
+}

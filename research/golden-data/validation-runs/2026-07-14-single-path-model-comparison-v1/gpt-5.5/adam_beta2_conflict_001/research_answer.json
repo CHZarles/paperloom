@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_adam_beta2_conflict_001",
+  "answer_type": "contradiction_resolution",
+  "cited_evidence_ids": [
+    "ev_25fa64ee50482ccf",
+    "ev_c478868f3b1b547e"
+  ],
+  "fields": {},
+  "markdown": "There isn’t a real conflict: the two numbers refer to different scopes.\n\n- **0.999** is the Adam paper’s stated **“good default”** for the tested machine-learning problems: it lists \\(\\alpha=0.001\\), \\(\\beta_1=0.9\\), \\(\\beta_2=0.999\\), and \\(\\epsilon=10^{-8}\\). [1]\n- **0.98** is the **specific hyperparameter choice used in the Transformer paper**: it says they used Adam with \\(\\beta_1=0.9\\), \\(\\beta_2=0.98\\), and \\(\\epsilon=10^{-9}\\). [2]\n\nSo: if someone asks for **Adam’s default \\(\\beta_2\\)**, answer **0.999**. If they ask for **the Transformer paper’s Adam \\(\\beta_2\\)**, answer **0.98**.\n\nSources\n[1] Adam: A Method for Stochastic Optimization, unsectioned, p. 2\n[2] Attention Is All You Need, 5.3 Optimizer, p. 7",
+  "outcome": "answered",
+  "question_id": "adam_beta2_conflict_001",
+  "status": "COMPLETED",
+  "summary": "There isn’t a real conflict: the two numbers refer to different scopes.\n\n- **0.999** is the Adam paper’s stated **“good default”** for the tested machine-learning problems: it lists \\(\\alpha=0.001\\), \\(\\beta_1=0.9\\), \\(\\beta_2=0.999\\), and \\(\\epsilon=10^{-8}\\). [1]\n- **0.98** is the **specific hyperparameter choice used in the Transformer paper**: it says they used Adam with \\(\\beta_1=0.9\\), \\(\\be"
+}

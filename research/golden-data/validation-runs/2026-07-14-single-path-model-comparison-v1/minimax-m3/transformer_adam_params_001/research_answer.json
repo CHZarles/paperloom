@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_transformer_adam_params_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e",
+    "ev_25fa64ee50482ccf"
+  ],
+  "fields": {},
+  "markdown": "In \"Attention Is All You Need\" (Section 5.3 Optimizer), the authors used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹. [1]\n\nFor context, the original Adam paper (Kingma & Ba, 2014) lists its good default settings as α = 0.001, β₁ = 0.9, β₂ = 0.999, and ε = 10⁻⁸. [2]\n\nComparing the two, the Transformer paper kept β₁ at the Adam default (0.9) but tuned β₂ down to 0.98 (rather than 0.999) and used a smaller ε (10⁻⁹ instead of 10⁻⁸).\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] Adam: A Method for Stochastic Optimization, unsectioned, p. 2",
+  "outcome": "answered",
+  "question_id": "transformer_adam_params_001",
+  "status": "COMPLETED",
+  "summary": "In \"Attention Is All You Need\" (Section 5.3 Optimizer), the authors used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹. [1]\n\nFor context, the original Adam paper (Kingma & Ba, 2014) lists its good default settings as α = 0.001, β₁ = 0.9, β₂ = 0.999, and ε = 10⁻⁸. [2]\n\nComparing the two, the Transformer paper kept β₁ at the Adam default (0.9) but tuned β₂ down to 0.98 (rather than 0.999"
+}

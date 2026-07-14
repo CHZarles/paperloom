@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_attention_paper_ambiguous_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_864830c4c01d4077",
+    "ev_22f6ddf08743ffc7"
+  ],
+  "fields": {},
+  "markdown": "Found the likely paper: **Attention Is All You Need** [1]\n\narXiv identifier shown in the paper: **1706.03762v7** [2]\n\nI can summarize it or explain the Transformer architecture if you want.\n\nSources\n[1] Attention Is All You Need, unsectioned, p. 1\n[2] Attention Is All You Need, Abstract, p. 1",
+  "outcome": "answered",
+  "question_id": "attention_paper_ambiguous_001",
+  "status": "COMPLETED",
+  "summary": "Found the likely paper: **Attention Is All You Need** [1]\n\narXiv identifier shown in the paper: **1706.03762v7** [2]\n\nI can summarize it or explain the Transformer architecture if you want.\n\nSources\n[1] Attention Is All You Need, unsectioned, p. 1\n[2] Attention Is All You Need, Abstract, p. 1"
+}

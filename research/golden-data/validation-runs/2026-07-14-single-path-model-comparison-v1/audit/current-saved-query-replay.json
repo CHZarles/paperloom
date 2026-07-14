@@ -1,0 +1,114 @@
+{
+  "schema_version": "harness-saved-query-replay/v1",
+  "manifest": "/home/charles/PaiSmart/research/golden-data/manifest-expanded.yaml",
+  "runs": "/home/charles/PaiSmart/research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1",
+  "candidate_hits": 29,
+  "candidate_required": 32,
+  "candidate_recall": 0.90625,
+  "cases": [
+    {
+      "case_id": "agentbench_environment_inventory_001",
+      "hits": 2,
+      "required": 2,
+      "missing": [],
+      "query_calls": 3
+    },
+    {
+      "case_id": "gaia_dataset_gap_001",
+      "hits": 2,
+      "required": 2,
+      "missing": [],
+      "query_calls": 11
+    },
+    {
+      "case_id": "webarena_reproduction_protocol_001",
+      "hits": 3,
+      "required": 3,
+      "missing": [],
+      "query_calls": 10
+    },
+    {
+      "case_id": "swebench_instance_provenance_001",
+      "hits": 1,
+      "required": 2,
+      "missing": [
+        "swebench_patch_test_construction"
+      ],
+      "query_calls": 18
+    },
+    {
+      "case_id": "agentboard_progress_metric_001",
+      "hits": 2,
+      "required": 2,
+      "missing": [],
+      "query_calls": 4
+    },
+    {
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "hits": 3,
+      "required": 3,
+      "missing": [],
+      "query_calls": 11
+    },
+    {
+      "case_id": "toolsandbox_constraint_selection_001",
+      "hits": 2,
+      "required": 2,
+      "missing": [],
+      "query_calls": 1
+    },
+    {
+      "case_id": "cross_benchmark_human_agent_gap_001",
+      "hits": 2,
+      "required": 2,
+      "missing": [],
+      "query_calls": 1
+    },
+    {
+      "case_id": "agent_evaluation_recommendation_001",
+      "hits": 4,
+      "required": 4,
+      "missing": [],
+      "query_calls": 5
+    },
+    {
+      "case_id": "react_to_agent_evaluation_genealogy_001",
+      "hits": 2,
+      "required": 3,
+      "missing": [
+        "react_interleaved_reasoning_actions"
+      ],
+      "query_calls": 2
+    },
+    {
+      "case_id": "mint_tau_apparent_conflict_001",
+      "hits": 2,
+      "required": 2,
+      "missing": [],
+      "query_calls": 3
+    },
+    {
+      "case_id": "coding_benchmark_followup_001",
+      "hits": 1,
+      "required": 1,
+      "missing": [],
+      "query_calls": 2
+    },
+    {
+      "case_id": "cross_benchmark_score_ranking_partial_001",
+      "hits": 3,
+      "required": 3,
+      "missing": [],
+      "query_calls": 5
+    },
+    {
+      "case_id": "benchmark_topic_change_followup_001",
+      "hits": 0,
+      "required": 1,
+      "missing": [
+        "swebench_patch_test_construction"
+      ],
+      "query_calls": 1
+    }
+  ]
+}

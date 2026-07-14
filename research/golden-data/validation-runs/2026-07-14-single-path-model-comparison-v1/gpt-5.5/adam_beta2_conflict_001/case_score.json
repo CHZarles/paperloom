@@ -1,0 +1,30 @@
+{
+  "case_id": "adam_beta2_conflict_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "pass"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "Explains that a default recommendation and a paper-specific setting are not contradictory.",
+      "The Adam paper gives beta2 = 0.999 as a recommended default.",
+      "The Transformer paper used beta2 = 0.98 in its own training setup."
+    ],
+    "status": "not_run"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "case_id": "cross_benchmark_score_ranking_partial_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:webarena_gpt4_human_gap",
+        "REQUIRED_ANCHOR_NOT_CITED:swebench_claude2_baseline"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [
+        "OUTCOME_MISMATCH:expected=partial:actual=answered"
+      ],
+      "status": "fail"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:webarena_gpt4_human_gap",
+        "REQUIRED_ANCHOR_MISSING:swebench_claude2_baseline"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Provides the reported figures but declines a strict difficulty ranking because the models, tasks, and metrics differ."
+    ],
+    "status": "not_run"
+  }
+}

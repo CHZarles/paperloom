@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_transformer_optimizer_reproduction_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_c478868f3b1b547e",
+    "ev_66f4291f24561cb7"
+  ],
+  "fields": {},
+  "markdown": "Optimizer checklist item for *Attention Is All You Need*:\n\n| Field | Value used in the paper |\n|---|---:|\n| Optimizer | Adam |\n| β1 | 0.9 |\n| β2 | 0.98 |\n| ε | 10^-9 |\n\nSection 5.3 specifies Adam with β1 = 0.9, β2 = 0.98, and ε = 10^-9 [1]. Adam is the algorithm named in the cited optimizer paper [2].\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] Adam: A Method for Stochastic Optimization, 2 ALGORITHM, p. 2",
+  "outcome": "answered",
+  "question_id": "transformer_optimizer_reproduction_001",
+  "status": "COMPLETED",
+  "summary": "Optimizer checklist item for *Attention Is All You Need*:\n\n| Field | Value used in the paper |\n|---|---:|\n| Optimizer | Adam |\n| β1 | 0.9 |\n| β2 | 0.98 |\n| ε | 10^-9 |\n\nSection 5.3 specifies Adam with β1 = 0.9, β2 = 0.98, and ε = 10^-9 [1]. Adam is the algorithm named in the cited optimizer paper [2].\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] Adam: A Method for Stochastic Opt"
+}

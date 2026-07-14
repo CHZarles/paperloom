@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_gpt3_to_transformer_multihop_001",
+  "answer_type": "association_influence_genealogy",
+  "cited_evidence_ids": [
+    "ev_38e0df75f5c1dc48",
+    "ev_4396b43fa54864c2",
+    "ev_7b31c6915e3d43d3",
+    "ev_2c62e46d83f5d96f"
+  ],
+  "fields": {},
+  "markdown": "**Two-hop architecture chain (available papers only):**\n\n1. **GPT-3 → GPT-2**  \n   This hop establishes that GPT-3 uses GPT-2’s model/architecture as its architectural basis: GPT-3 says it uses “the same model and architecture as GPT-2,” including GPT-2’s modified initialization, pre-normalization, and reversible tokenization, while adding alternating dense and locally banded sparse attention patterns in transformer layers. [1]\n\n2. **GPT-2 → *Attention Is All You Need***  \n   This hop establishes that GPT-2’s language-model architecture is Transformer-based: GPT-2 states, “We use a Transformer (Vaswani et al., 2017) based architecture for our LMs.” [2] The cited Transformer paper is the one that proposes “a new simple network architecture, the Transformer, based solely on attention mechanisms,” [3] and describes it as using stacked self-attention and point-wise fully connected layers. [4]\n\n**Resulting chain:**  \n**GPT-3** → uses GPT-2-style architecture → **GPT-2** → uses Transformer architecture from Vaswani et al. 2017 → ***Attention Is All You Need***.\n\nI am not treating this as a direct GPT-3-to-*Attention Is All You Need* citation; the supported architecture lineage here is the two-hop chain through GPT-2.\n\nSources\n[1] Language Models are Few-Shot Learners, 2.1 Model and Architectures, p. 8\n[2] Language Models are Unsupervised Multitask Learners, 2.3. Model, p. 4\n[3] Attention Is All You Need, Abstract, p. 1\n[4] Attention Is All You Need, 3 Model Architecture, p. 3",
+  "outcome": "answered",
+  "question_id": "gpt3_to_transformer_multihop_001",
+  "status": "COMPLETED",
+  "summary": "**Two-hop architecture chain (available papers only):**\n\n1. **GPT-3 → GPT-2**  \n   This hop establishes that GPT-3 uses GPT-2’s model/architecture as its architectural basis: GPT-3 says it uses “the same model and architecture as GPT-2,” including GPT-2’s modified initialization, pre-normalization, and reversible tokenization, while adding alternating dense and locally banded sparse attention patt"
+}

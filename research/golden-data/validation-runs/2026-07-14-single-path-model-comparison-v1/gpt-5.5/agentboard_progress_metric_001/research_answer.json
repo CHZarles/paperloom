@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_agentboard_progress_metric_001",
+  "answer_type": "precision_fact_extraction",
+  "cited_evidence_ids": [
+    "ev_db3683059c7c1b66",
+    "ev_433180485b8873f1",
+    "ev_61849f2e0017cad4",
+    "ev_06c508841246c0a8"
+  ],
+  "fields": {},
+  "markdown": "AgentBoard’s argument is that final success rate is too coarse for multi-turn agent tasks. These tasks involve complex intermediate behavior, but final success rate gives only limited insight into the process; in hard environments where many models have near-zero success, it can blur fine-grained differences and hide the mechanisms behind failures [1]. More specifically, a success/failure metric treats a near-complete trajectory and a barely-started trajectory as the same kind of failure, while existing reward scores are not standardized across settings [2].\n\nThe progress-rate metric adds a standardized, fine-grained measure of partial goal attainment: it tracks agents’ intermediate progress rather than only whether the whole task is completed [2]. AgentBoard frames it as tracking “minimal improvement” and intermediate progress across agents, which is useful for incremental improvements in agent capability [3]. Empirically, the paper says progress rate is more informative and discriminative: for example, Llama2-13b and Mistral-7b have similarly low success rates, 2.1% vs. 3.9%, but clearer progress-rate separation, 18.9% vs. 24.6% [4].\n\nIn short: final success rate answers “did it finish?”, while progress rate helps answer “how far did it get, and where can we distinguish models that mostly fail at the final step?”\n\nSources\n[1] AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents, 1 Introduction, p. 2\n[2] AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents, 2.2 Fine-grained Progress Rate, p. 4\n[3] AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents, 2 AGENTBOARD – Overview, p. 3\n[4] AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents, 4.2 Main Results, p. 7",
+  "outcome": "answered",
+  "question_id": "agentboard_progress_metric_001",
+  "status": "COMPLETED",
+  "summary": "AgentBoard’s argument is that final success rate is too coarse for multi-turn agent tasks. These tasks involve complex intermediate behavior, but final success rate gives only limited insight into the process; in hard environments where many models have near-zero success, it can blur fine-grained differences and hide the mechanisms behind failures [1]. More specifically, a success/failure metric t"
+}

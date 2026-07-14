@@ -1,0 +1,500 @@
+[
+  {
+    "arguments": {
+      "limit": 5,
+      "query_text": "Attention Is All You Need"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "Attention Is All You Need",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_function_byvdz2d47xmy_1",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 5,
+      "query_text": "BERT Bidirectional Encoder Representations"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1810.04805",
+          "authors": [
+            "Jacob Devlin",
+            "Ming-Wei Chang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "bert_2018",
+          "preview": "",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "venue": "NAACL",
+          "year": 2018
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "BERT Bidirectional Encoder Representations",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_function_byvdz2d47xmy_2",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_id": "bert_2018"
+    },
+    "result": {
+      "coverage": "complete",
+      "edges": [
+        {
+          "edge_type": "uses_transformer_encoder",
+          "from_paper_id": "bert_2018",
+          "to_paper_id": "attention_is_all_you_need_2017"
+        }
+      ],
+      "papers": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        },
+        {
+          "arxiv_id": "1810.04805",
+          "authors": [
+            "Jacob Devlin",
+            "Ming-Wei Chang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "bert_2018",
+          "preview": "",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "venue": "NAACL",
+          "year": 2018
+        }
+      ]
+    },
+    "tool_call_id": "call_function_gusj7fj5p1ox_1",
+    "tool_name": "get_citation_edges"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph"
+      ],
+      "paper_ids": [
+        "bert_2018",
+        "attention_is_all_you_need_2017"
+      ],
+      "query_text": "Transformer encoder attention architecture",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "bert_2018",
+          "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+          "preview": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotat",
+          "section": "3 BERT",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_463b8111c0174c7abaa6e8cc4d7c0c54",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "• The encoder contains self-attention layers. In a self-attention layer all of the keys, values and queries come from the same place, in this case, the output of the previous layer in the encoder. Each position in the encoder can attend to all positions in the previous layer of the encoder.",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_77d5a6b6448342a5890727eadedba8bc",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "bert_2018",
+          "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+          "preview": "A distinctive feature of BERT is its unified architecture across different tasks. There is minimal difference between the pre-trained architecture and the final downstream architecture.",
+          "section": "3 BERT",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f2d7a84201a845b8b51808e7604eb518",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "• In \"encoder-decoder attention\" layers, the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder. This allows every position in the decoder to attend over all positions in the input sequence. This mimics the typical encoder-decoder attention mechanisms in sequence-to-sequence models such as [38, 2, 9].",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_aa69509b4243455da15d24dbfae670a7",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1, respectively.",
+          "section": "3 Model Architecture",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9c5d46ed3d9a417c8df70cadfe9e4e71",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "The Transformer uses multi-head attention in three different ways:",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d563522355f14815be4d996c15c3115e",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "bert_2018",
+          "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+          "preview": "In this work, we denote the number of layers (i.e., Transformer blocks) as L, the hidden size as H, and the number of self-attention heads as A.<sup>3</sup> We primarily report results on two model sizes: BERT<sub>BASE</sub> (L=12, H=768, A=12, Total Parameters=110M) and BERT<sub>LARGE</sub> (L=24, H=1024, A=16, Total Parameters=340M).",
+          "section": "3 BERT",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Decoder: The decoder is also composed of a stack of $N = 6$ identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. Similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This ma",
+          "section": "3.1 Encoder and Decoder Stacks",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Encoder: The encoder is composed of a stack of $N = 6$ identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, positionwise fully connected feed-forward network. We employ a residual connection [11] around each of the two sub-layers, followed by layer normalization [1]. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself. To facilitate th",
+          "section": "3.1 Encoder and Decoder Stacks",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d1cfd781ff3645b4839ecb0fec45510e",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "In this work, we presented the Transformer, the first sequence transduction model based entirely on attention, replacing the recurrent layers most commonly used in encoder-decoder architectures with multi-headed self-attention.",
+          "section": "7 Conclusion",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "figure",
+          "location_ref": "figure-31",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Figure 1: The Transformer - model architecture.",
+          "section": "3 Model Architecture",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8ce331533bf74537a2761e8614d427e6",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "In this work we propose the Transformer, a model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output. The Transformer allows for significantly more parallelization and can reach a new state of the art in translation quality after being trained for as little as twelve hours on eight P100 GPUs.",
+          "section": "1 Introduction",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "matched_count": 112,
+      "query_text": "Transformer encoder attention architecture",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_function_gusj7fj5p1ox_2",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+        "reading_element_d563522355f14815be4d996c15c3115e",
+        "reading_element_77d5a6b6448342a5890727eadedba8bc",
+        "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+        "reading_element_9c5d46ed3d9a417c8df70cadfe9e4e71",
+        "reading_element_463b8111c0174c7abaa6e8cc4d7c0c54",
+        "reading_element_8ce331533bf74537a2761e8614d427e6"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":3,\"left\":509.0,\"bottom\":623.0,\"right\":887.0,\"top\":445.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":3,\"left\":509.0,\"bottom\":623.0,\"right\":887.0,\"top\":445.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_3540835408466c6e",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+          "location_ref": "reading_element_3f7beee8c6f3400d81fdce44c3bae795",
+          "page": 3,
+          "page_screenshot_available": false,
+          "paper_id": "bert_2018",
+          "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3 BERT",
+          "source_kind": "paragraph",
+          "span_text": "Model Architecture BERT’s model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library.<sup>1</sup> Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017) as well as excellent guides such as “The Annotated Transformer.”<sup>2</sup>",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":3,\"left\":509.0,\"bottom\":736.0,\"right\":887.0,\"top\":624.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":3,\"left\":509.0,\"bottom\":736.0,\"right\":887.0,\"top\":624.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_2c75c5a0daa399bd",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_d563522355f14815be4d996c15c3115e",
+          "location_ref": "reading_element_d563522355f14815be4d996c15c3115e",
+          "page": 3,
+          "page_screenshot_available": false,
+          "paper_id": "bert_2018",
+          "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3 BERT",
+          "source_kind": "paragraph",
+          "span_text": "In this work, we denote the number of layers (i.e., Transformer blocks) as L, the hidden size as H, and the number of self-attention heads as A.<sup>3</sup> We primarily report results on two model sizes: BERT<sub>BASE</sub> (L=12, H=768, A=12, Total Parameters=110M) and BERT<sub>LARGE</sub> (L=24, H=1024, A=16, Total Parameters=340M).",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":3,\"left\":114.0,\"bottom\":910.0,\"right\":490.0,\"top\":878.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":3,\"left\":114.0,\"bottom\":910.0,\"right\":490.0,\"top\":878.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_60b594a9a9dd207c",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_77d5a6b6448342a5890727eadedba8bc",
+          "location_ref": "reading_element_77d5a6b6448342a5890727eadedba8bc",
+          "page": 3,
+          "page_screenshot_available": false,
+          "paper_id": "bert_2018",
+          "paper_version": "arXiv v2 (2019-05-24) / NAACL 2019",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3 BERT",
+          "source_kind": "paragraph",
+          "span_text": "A distinctive feature of BERT is its unified architecture across different tasks. There is minimal difference between the pre-trained architecture and the final downstream architecture.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":3,\"left\":169.0,\"bottom\":732.0,\"right\":826.0,\"top\":632.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":3,\"left\":169.0,\"bottom\":732.0,\"right\":826.0,\"top\":632.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_7f19acb3f716bc64",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+          "location_ref": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+          "page": 3,
+          "page_screenshot_available": false,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3.1 Encoder and Decoder Stacks",
+          "source_kind": "paragraph",
+          "span_text": "Encoder: The encoder is composed of a stack of $N = 6$ identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, positionwise fully connected feed-forward network. We employ a residual connection [11] around each of the two sub-layers, followed by layer normalization [1]. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself. To facilitate these residual connections, all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $d _ { \\mathrm { m o d e l } } = 5 1 2$",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Attention Is All You Need"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":5,\"left\":169.0,\"bottom\":391.0,\"right\":611.0,\"top\":376.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":5,\"left\":169.0,\"bottom\":391.0,\"right\":611.0,\"top\":376.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_8f7105b665ec59e3",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_9c5d46ed3d9a417c8df70cadfe9e4e71",
+          "location_ref": "reading_element_9c5d46ed3d9a417c8df70cadfe9e4e71",
+          "page": 5,
+          "page_screenshot_available": false,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "source_kind": "paragraph",
+          "span_text": "The Transformer uses multi-head attention in three different ways:",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Attention Is All You Need"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":5,\"left\":215.0,\"bottom\":532.0,\"right\":825.0,\"top\":477.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":5,\"left\":215.0,\"bottom\":532.0,\"right\":825.0,\"top\":477.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_1fa020e06b5649fa",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_463b8111c0174c7abaa6e8cc4d7c0c54",
+          "location_ref": "reading_element_463b8111c0174c7abaa6e8cc4d7c0c54",
+          "page": 5,
+          "page_screenshot_available": false,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "source_kind": "paragraph",
+          "span_text": "• The encoder contains self-attention layers. In a self-attention layer all of the keys, values and queries come from the same place, in this case, the output of the previous layer in the encoder. Each position in the encoder can attend to all positions in the previous layer of the encoder.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Attention Is All You Need"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":435.0,\"right\":826.0,\"top\":377.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":435.0,\"right\":826.0,\"top\":377.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_121685d0b2f2d560",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_8ce331533bf74537a2761e8614d427e6",
+          "location_ref": "reading_element_8ce331533bf74537a2761e8614d427e6",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 Introduction",
+          "source_kind": "paragraph",
+          "span_text": "In this work we propose the Transformer, a model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output. The Transformer allows for significantly more parallelization and can reach a new state of the art in translation quality after being trained for as little as twelve hours on eight P100 GPUs.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_dm4qjjnp13eh_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "## Direct Technical Lineage: \"Attention Is All You Need\" → BERT\n\n### The Cited Relationship\n\nThe corpus records a direct citation edge between the two papers: **BERT `uses_transformer_encoder` → \"Attention Is All You Need\" (Vaswani et al., 2017)**. The relationship is explicit and architectural — BERT's own text states:\n\n> \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017) and released in the tensor2tensor library. Because the use of Transformers has become common and our implementation is almost identical to the original, we will omit an exhaustive background description of the model architecture and refer readers to Vaswani et al. (2017)…\" [[ev_3540835408466c6e]]\n\nThis is the cornerstone citation: BERT declares itself to be a near-verbatim re-use of the Vaswani et al. (2017) encoder stack, and the authors deliberately defer the architectural description to the earlier paper.\n\n### What Was Directly Inherited\n\nBERT reuses the encoder half of the Transformer. The inherited technical components are:\n\n1. **Stacked encoder layers with two sub-layers each** — the Transformer specifies:\n   > \"The encoder is composed of a stack of N = 6 identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, positionwise fully connected feed-forward network. We employ a residual connection… around each of the two sub-layers, followed by layer normalization.\" [[ev_7f19acb3f716bc64]]\n\n   BERT names these \"Transformer blocks\" and parameterizes them with the same vocabulary as the original: **L (layers), H (hidden size), A (self-attention heads)** [[ev_2c75c5a0daa399bd]].\n\n2. **Multi-head self-attention as the core mechanism** — the Transformer describes:\n   > \"The encoder contains self-attention layers. In a self-attention layer all of the keys, values and queries come from the same place, in this case, the output of the previous layer in the encoder. Each position in the encoder can attend to all positions in the previous layer of the encoder.\" [[ev_1fa020e06b5649fa]]\n\n   This is the foundation of BERT's \"bidirectional\" property: because the encoder's self-attention has no causal masking described, every position can attend to all others — the behavior BERT exploits by dropping the decoder and training with masked language modeling.\n\n3. **The \"eschew recurrence\" principle** — the original paper introduces the Transformer as:\n   > \"a model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output.\" [[ev_121685d0b2f2d560]]\n\n   BERT carries this principle forward — no recurrence, only stacked self-attention, with multi-head attention used \"in three different ways\" across the model [[ev_8f7105b665ec59e3]].\n\n### What BERT Reused vs. Changed\n\nThe corpus evidence shows BERT retains the encoder stack and only varies how the model is trained and applied. The \"unified architecture\" point is in BERT itself:\n\n> \"A distinctive feature of BERT is its unified architecture across different tasks. There is minimal difference between the pre-trained architecture and the final downstream architecture.\" [[ev_60b594a9a9dd207c]]\n\nIn other words, BERT reuses the Transformer encoder blocks essentially unchanged and modifies only the pre-training objective and task-specific input/output layers — a deliberate departure from the original's encoder-decoder translation setup.\n\n### Summary of the Lineage\n\n- **Vaswani et al. (2017)** contributes: stacked encoder layers, multi-head self-attention (K=V=Q from the previous layer), position-wise feed-forward sub-layers, residual connections, layer normalization, and the fixed-dimension hidden representation. [[ev_7f19acb3f716bc64]] [[ev_1fa020e06b5649fa]] [[ev_121685d0b2f2d560]] [[ev_8f7105b665ec59e3]]\n- **BERT (2018)** declares itself to be a \"multi-layer bidirectional Transformer encoder based on the original implementation\" of Vaswani et al. (2017), uses the same L/H/A parameterization, and explicitly refers the reader back to the earlier paper for architectural background. [[ev_3540835408466c6e]] [[ev_2c75c5a0daa399bd]]\n\nThe cited relationship is therefore: **BERT is a direct architectural descendant that retains the Transformer encoder stack essentially unchanged**, with the corpus graph edge `uses_transformer_encoder` and an in-paper pointer to Vaswani et al. (2017) as the architectural reference.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_function_yuqo7po5j7br_1",
+    "tool_name": "submit_research_answer"
+  }
+]

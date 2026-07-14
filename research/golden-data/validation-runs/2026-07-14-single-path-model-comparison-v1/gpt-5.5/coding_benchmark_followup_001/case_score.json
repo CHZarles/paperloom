@@ -1,0 +1,30 @@
+{
+  "case_id": "coding_benchmark_followup_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "FORBIDDEN_PAPER_ACCEPTED:gaia_2024",
+        "FORBIDDEN_PAPER_ACCEPTED:webarena_2024",
+        "FORBIDDEN_ANCHOR_ACCEPTED:gaia_question_construction"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [],
+    "status": "not_required"
+  }
+}

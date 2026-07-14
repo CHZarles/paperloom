@@ -1,0 +1,32 @@
+{
+  "case_id": "mint_vs_tau_interaction_comparison_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:mint_tools_feedback_protocol"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:mint_tools_feedback_protocol"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Uses aligned comparison axes and distinguishes MINT's feedback protocol from tau-bench's state and reliability evaluation."
+    ],
+    "status": "not_run"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "answer_id": "answer_agentbench_environment_inventory_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_e7d16a4bb7e115d8",
+    "ev_1aa5074858de7ba7",
+    "ev_73a4918d13a277b4",
+    "ev_ccd3d95fbd16f927",
+    "ev_c920f151681b7c6f",
+    "ev_24b63c0d4a00bdab",
+    "ev_1d0933365f2a9944",
+    "ev_2428d9f3b4669133",
+    "ev_0359e3a1bddc327b",
+    "ev_13f814f2fbd660f5",
+    "ev_2176a6fce96177cd"
+  ],
+  "fields": {},
+  "markdown": "AgentBench evaluates **LLMs acting as agents**: it is a multi-dimensional benchmark for testing LLM agents on challenging, interactive tasks, especially their **reasoning and decision-making abilities** [1]. The paper also says its environments are designed or reformulated so text-only LLMs can operate autonomously, and that AgentBench evaluates core abilities including **instruction following, coding, knowledge acquisition, logical reasoning, and commonsense grounding** [2].\n\nIt contains **8 distinct environments** [3]:\n- **Code-grounded:** Operating System, Database, Knowledge Graph [4]\n- **Game-grounded:** Digital Card Game, Lateral Thinking Puzzles, House-Holding [5]\n- **Web-grounded:** Web Shopping, Web Browsing [6]\n\nThe paper identifies the main weaknesses of current LLM agents as **poor long-term reasoning, decision-making, and instruction-following abilities** [1]. In its failure analysis, it says the predominant failure cause is **Task Limit Exceeded**, which reveals weak reasoning and decision-making; TLE means the agent fails after the maximum interaction rounds or starts repeating generations [7][8]. It also highlights **Invalid Format** errors—failure to follow format instructions—and **Invalid Action** errors—choosing actions outside the valid action space or with invalid parameters—as common weaknesses in particular environments [9][10][11].\n\nSources\n[1] AgentBench: Evaluating LLMs as Agents, ABSTRACT, p. 1\n[2] AgentBench: Evaluating LLMs as Agents, 1 INTRODUCTION, p. 2\n[3] AgentBench: Evaluating LLMs as Agents, 1 INTRODUCTION, p. 2\n[4] AgentBench: Evaluating LLMs as Agents, 1 INTRODUCTION, p. 2\n[5] AgentBench: Evaluating LLMs as Agents, 1 INTRODUCTION, p. 2\n[6] AgentBench: Evaluating LLMs as Agents, 1 INTRODUCTION, p. 2\n[7] AgentBench: Evaluating LLMs as Agents, 4.3 ANALYSIS, p. 8\n[8] AgentBench: Evaluating LLMs as Agents, 2 LLM-AS-AGENT: DEFINITION AND PRELIMINARY, p. 4\n[9] AgentBench: Evaluating LLMs as Agents, 2 LLM-AS-AGENT: DEFINITION AND PRELIMINARY, p. 4\n[10] AgentBench: Evaluating LLMs as Agents, 2 LLM-AS-AGENT: DEFINITION AND PRELIMINARY, p. 4\n[11] AgentBench: Evaluating LLMs as Agents, 4.3 ANALYSIS, p. 8",
+  "outcome": "answered",
+  "question_id": "agentbench_environment_inventory_001",
+  "status": "COMPLETED",
+  "summary": "AgentBench evaluates **LLMs acting as agents**: it is a multi-dimensional benchmark for testing LLM agents on challenging, interactive tasks, especially their **reasoning and decision-making abilities** [1]. The paper also says its environments are designed or reformulated so text-only LLMs can operate autonomously, and that AgentBench evaluates core abilities including **instruction following, co"
+}

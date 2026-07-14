@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_agent_benchmark_ambiguous_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_4fc2df3e48e541f8",
+    "ev_cc589bd061af6a6d",
+    "ev_d27a2d881433f64a"
+  ],
+  "fields": {},
+  "markdown": "Here are the agent-benchmark papers I found:\n\n| Benchmark | What it evaluates |\n|---|---|\n| **τ-bench** | Dynamic conversations between a simulated user and a language agent with domain-specific API tools and policy guidelines; it compares the final database state with an annotated goal state and reports reliability via pass^k. [1] |\n| **GAIA** | Real-world questions for general AI assistants requiring reasoning, multimodality, web browsing, and tool-use proficiency; it includes 466 questions and answers. [2] |\n| **ToolSandbox** | Stateful, conversational, interactive LLM tool use, including stateful tool execution, implicit dependencies between tools, a built-in user simulator, and milestone-based dynamic evaluation. [3] |\n\nQuick selection guide: use **τ-bench** for customer-service-style tool agents with policies, **ToolSandbox** for stateful conversational tool-use agents, and **GAIA** for broader general-assistant evaluation.\n\nSources\n[1] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, Abstract, p. 1\n[2] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[3] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, Abstract, p. 1",
+  "outcome": "answered",
+  "question_id": "agent_benchmark_ambiguous_001",
+  "status": "COMPLETED",
+  "summary": "Here are the agent-benchmark papers I found:\n\n| Benchmark | What it evaluates |\n|---|---|\n| **τ-bench** | Dynamic conversations between a simulated user and a language agent with domain-specific API tools and policy guidelines; it compares the final database state with an annotated goal state and reports reliability via pass^k. [1] |\n| **GAIA** | Real-world questions for general AI assistants requ"
+}

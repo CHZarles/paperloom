@@ -1,0 +1,36 @@
+{
+  "case_id": "webarena_reproduction_protocol_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_run"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:webarena_four_self_hosted_domains",
+        "REQUIRED_ANCHOR_NOT_CITED:webarena_deterministic_initial_state",
+        "REQUIRED_ANCHOR_NOT_CITED:webarena_functional_correctness_tasks"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:webarena_four_self_hosted_domains",
+        "REQUIRED_ANCHOR_MISSING:webarena_deterministic_initial_state",
+        "REQUIRED_ANCHOR_MISSING:webarena_functional_correctness_tasks"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Presents an executable checklist rather than a general summary of WebArena."
+    ],
+    "status": "not_run"
+  }
+}

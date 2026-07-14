@@ -1,0 +1,18 @@
+{
+  "answer_id": "answer_toolsandbox_constraint_selection_001",
+  "answer_type": "complex_constraint_combination",
+  "cited_evidence_ids": [
+    "ev_d27a2d881433f64a",
+    "ev_529ce77994616fcb",
+    "ev_7d211a0e65af87a9",
+    "ev_f4d2a0c704b50f02",
+    "ev_122fbef2c0216af8",
+    "ev_70429b8b695ef590"
+  ],
+  "fields": {},
+  "markdown": "The best fit is **ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities**.\n\nWhy it fits:\n\n- **Stateful tools:** ToolSandbox explicitly includes “stateful tool execution” and “implicit state dependencies between tools” [1]. The paper defines these as tools that “inspect, depend on or manipulate world states” [2].\n- **On-policy conversation:** It has “a built-in user simulator supporting on-policy conversational evaluation” [1], and the conversational section says on-policy rollout is supported by a GPT-4o-powered user simulator over possibly multiple conversation rounds [3].\n- **Intermediate milestones:** It uses “a dynamic evaluation strategy for intermediate and final milestones over an arbitrary trajectory” [1] and a “milestone / minefield based system for intermediate and final execution evaluation” [4].\n- **Insufficient-information scenarios:** The benchmark defines Insufficient Information as one of its challenging task categories [5]. In those scenarios, a needed tool is deliberately withheld so the agent must recognize it cannot complete the task rather than hallucinating tools or arguments [6].\n\nSo, ToolSandbox is the corpus benchmark that combines all four requested properties in one evaluation design.\n\nSources\n[1] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, Abstract, p. 1\n[2] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 2.1 Stateful, p. 3\n[3] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 2.2 Conversational, p. 4\n[4] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 1 Introduction, p. 3\n[5] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 3 Test Scenarios, p. 6\n[6] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, 3 Test Scenarios, p. 6",
+  "outcome": "answered",
+  "question_id": "toolsandbox_constraint_selection_001",
+  "status": "COMPLETED",
+  "summary": "The best fit is **ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities**.\n\nWhy it fits:\n\n- **Stateful tools:** ToolSandbox explicitly includes “stateful tool execution” and “implicit state dependencies between tools” [1]. The paper defines these as tools that “inspect, depend on or manipulate world states” [2].\n- **On-policy conversation:** It has"
+}

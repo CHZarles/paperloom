@@ -1,0 +1,1173 @@
+{
+  "candidate_hit_count": 44,
+  "candidate_recall": 0.9166666666666666,
+  "case_count": 30,
+  "cases": [
+    {
+      "answer_validation_attempts": 2,
+      "answer_validation_errors": [
+        "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+      ],
+      "answer_validation_rejections": 1,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 1,
+      "case_id": "transformer_adam_params_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 2,
+      "answer_validation_errors": [
+        "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Attention Is All You Need; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+      ],
+      "answer_validation_rejections": 1,
+      "candidate_hit_count": 0,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 1,
+      "case_id": "attention_paper_ambiguous_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "CITATIONS_FORBIDDEN"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [
+            "OUTCOME_MISMATCH:expected=needs_clarification:actual=answered"
+          ],
+          "status": "fail"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 0,
+      "stage": "cited_but_outcome_failed"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 0,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 0,
+      "case_id": "gpt5_architecture_boundary_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 0,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 1,
+      "case_id": "bert_transformer_role_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 2,
+      "case_id": "bert_vs_transformer_comparison_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [
+        "bert_masked_lm_pretraining"
+      ],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 3,
+      "stage": "candidate_missing"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 3,
+      "case_id": "transformer_to_bert_genealogy_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 2,
+      "case_id": "adam_beta2_conflict_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 3,
+      "answer_validation_errors": [
+        "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+      ],
+      "answer_validation_rejections": 2,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 2,
+      "case_id": "transformer_optimizer_reproduction_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "FORBIDDEN_PAPER_ACCEPTED:adam_2014"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "cited_but_content_failed"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 3,
+      "case_id": "gpt3_to_transformer_multihop_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 1,
+      "case_id": "bert_choice_followup_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 2,
+      "case_id": "transformer_bert_confirmation_followup_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [
+        "bert_masked_lm_pretraining"
+      ],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 3,
+      "stage": "candidate_missing"
+    },
+    {
+      "answer_validation_attempts": 2,
+      "answer_validation_errors": [
+        "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+      ],
+      "answer_validation_rejections": 1,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 1,
+      "case_id": "adam_constraint_refinement_followup_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 0,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 0,
+      "case_id": "corpus_paper_count_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 0,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 0,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 0,
+      "case_id": "corpus_paper_list_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 0,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 0,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 0,
+      "case_id": "corpus_paper_list_followup_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 0,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 5,
+      "case_id": "agentbench_environment_inventory_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 3,
+      "case_id": "gaia_dataset_gap_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [
+        "webarena_four_self_hosted_domains",
+        "webarena_functional_correctness_tasks"
+      ],
+      "candidate_query_count": 4,
+      "case_id": "webarena_reproduction_protocol_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_four_self_hosted_domains",
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_deterministic_initial_state",
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_functional_correctness_tasks"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:webarena_four_self_hosted_domains",
+            "REQUIRED_ANCHOR_MISSING:webarena_deterministic_initial_state",
+            "REQUIRED_ANCHOR_MISSING:webarena_functional_correctness_tasks"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [
+        "webarena_deterministic_initial_state"
+      ],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 3,
+      "stage": "candidate_missing"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [
+        "swebench_issue_pr_provenance",
+        "swebench_patch_test_construction"
+      ],
+      "candidate_query_count": 2,
+      "case_id": "swebench_instance_provenance_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_issue_pr_provenance",
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:swebench_issue_pr_provenance",
+            "REQUIRED_ANCHOR_MISSING:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "candidate_present_not_read"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [
+        "agentboard_final_success_rate_limit",
+        "agentboard_progress_rate_metric"
+      ],
+      "candidate_query_count": 1,
+      "case_id": "agentboard_progress_metric_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:agentboard_final_success_rate_limit",
+            "REQUIRED_ANCHOR_NOT_CITED:agentboard_progress_rate_metric"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:agentboard_final_success_rate_limit",
+            "REQUIRED_ANCHOR_MISSING:agentboard_progress_rate_metric"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "candidate_present_not_read"
+    },
+    {
+      "answer_validation_attempts": 3,
+      "answer_validation_errors": [
+        "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: GAIA: a benchmark for General AI Assistants, tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence",
+        "evidence coverage incomplete: the final answer cites only heading/navigation evidence for GAIA: a benchmark for General AI Assistants; read and cite substantive text, table, figure, or other content evidence"
+      ],
+      "answer_validation_rejections": 2,
+      "candidate_hit_count": 0,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 4,
+      "case_id": "agent_benchmark_ambiguous_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "CITATIONS_FORBIDDEN"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [
+            "OUTCOME_MISMATCH:expected=needs_clarification:actual=answered"
+          ],
+          "status": "fail"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 0,
+      "stage": "cited_but_outcome_failed"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 3,
+      "candidate_not_read_anchor_ids": [
+        "mint_tools_feedback_protocol"
+      ],
+      "candidate_query_count": 5,
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:mint_tools_feedback_protocol"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:mint_tools_feedback_protocol"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 3,
+      "stage": "candidate_present_not_read"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 1,
+      "case_id": "toolsandbox_constraint_selection_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "hard_pass"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [
+        "webarena_gpt4_human_gap"
+      ],
+      "candidate_query_count": 2,
+      "case_id": "cross_benchmark_human_agent_gap_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_gpt4_human_gap"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:webarena_gpt4_human_gap"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "candidate_present_not_read"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 4,
+      "candidate_not_read_anchor_ids": [
+        "swebench_patch_test_construction",
+        "webarena_four_self_hosted_domains"
+      ],
+      "candidate_query_count": 4,
+      "case_id": "agent_evaluation_recommendation_001",
+      "cited_hit_count": 2,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_four_self_hosted_domains",
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:webarena_four_self_hosted_domains",
+            "REQUIRED_ANCHOR_MISSING:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 4,
+      "stage": "candidate_present_not_read"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 13,
+      "case_id": "react_to_agent_evaluation_genealogy_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:react_interleaved_reasoning_actions",
+            "REQUIRED_ANCHOR_NOT_CITED:tau_react_baseline_relationship"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:tau_react_baseline_relationship"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [
+        "tau_react_baseline_relationship"
+      ],
+      "read_hit_count": 2,
+      "read_not_cited_anchor_ids": [
+        "react_interleaved_reasoning_actions"
+      ],
+      "required_anchor_count": 3,
+      "stage": "candidate_missing"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 2,
+      "candidate_not_read_anchor_ids": [
+        "mint_tools_feedback_gains",
+        "tau_passk_reliability"
+      ],
+      "candidate_query_count": 2,
+      "case_id": "mint_tau_apparent_conflict_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:mint_tools_feedback_gains",
+            "REQUIRED_ANCHOR_NOT_CITED:tau_passk_reliability"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:mint_tools_feedback_gains",
+            "REQUIRED_ANCHOR_MISSING:tau_passk_reliability"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 2,
+      "stage": "candidate_present_not_read"
+    },
+    {
+      "answer_validation_attempts": 3,
+      "answer_validation_errors": [
+        "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: GAIA: a benchmark for General AI Assistants, SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, WebArena: A Realistic Web Environment for Building Autonomous Agents; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence",
+        "evidence coverage incomplete: the final answer cites only heading/navigation evidence for GAIA: a benchmark for General AI Assistants; read and cite substantive text, table, figure, or other content evidence"
+      ],
+      "answer_validation_rejections": 2,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [],
+      "candidate_query_count": 4,
+      "case_id": "coding_benchmark_followup_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "FORBIDDEN_PAPER_ACCEPTED:gaia_2024",
+            "FORBIDDEN_PAPER_ACCEPTED:webarena_2024",
+            "FORBIDDEN_ANCHOR_ACCEPTED:gaia_question_construction"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "cited_but_content_failed"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 3,
+      "candidate_not_read_anchor_ids": [
+        "swebench_claude2_baseline",
+        "webarena_gpt4_human_gap"
+      ],
+      "candidate_query_count": 4,
+      "case_id": "cross_benchmark_score_ranking_partial_001",
+      "cited_hit_count": 1,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_gpt4_human_gap",
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_claude2_baseline"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [
+            "OUTCOME_MISMATCH:expected=partial:actual=answered"
+          ],
+          "status": "fail"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:webarena_gpt4_human_gap",
+            "REQUIRED_ANCHOR_MISSING:swebench_claude2_baseline"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 1,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 3,
+      "stage": "candidate_present_not_read"
+    },
+    {
+      "answer_validation_attempts": 1,
+      "answer_validation_errors": [],
+      "answer_validation_rejections": 0,
+      "candidate_hit_count": 1,
+      "candidate_not_read_anchor_ids": [
+        "swebench_patch_test_construction"
+      ],
+      "candidate_query_count": 1,
+      "case_id": "benchmark_topic_change_followup_001",
+      "cited_hit_count": 0,
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "missing_candidate_anchor_ids": [],
+      "read_hit_count": 0,
+      "read_not_cited_anchor_ids": [],
+      "required_anchor_count": 1,
+      "stage": "candidate_present_not_read"
+    }
+  ],
+  "cited_conversion": 0.9655172413793104,
+  "cited_hit_count": 28,
+  "completed_case_count": 30,
+  "eval_dump": "/tmp/paperloom-gpt55-single-restored-full-eval-20260714",
+  "hard_pass_rate": 0.4666666666666667,
+  "manifest": "/home/charles/PaiSmart/research/golden-data/manifest-expanded.yaml",
+  "read_conversion": 0.6590909090909091,
+  "read_hit_count": 29,
+  "required_anchor_count": 48,
+  "runs": "/tmp/paperloom-gpt55-single-restored-full-20260714",
+  "schema_version": "harness-evidence-funnel/v1",
+  "stage_counts": {
+    "candidate_missing": 4,
+    "candidate_present_not_read": 8,
+    "cited_but_content_failed": 2,
+    "cited_but_outcome_failed": 2,
+    "hard_pass": 14
+  },
+  "technical_error_count": 0
+}

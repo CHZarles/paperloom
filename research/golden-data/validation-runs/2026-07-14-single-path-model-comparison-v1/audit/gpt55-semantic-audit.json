@@ -1,0 +1,845 @@
+{
+  "case_count": 30,
+  "cases": [
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The two required evidence anchors directly support the key distinction between Adam's recommended default beta2=0.999 and the Transformer paper's training setting beta2=0.98. However, the case's intended review asks the assistant to explain these are not contradictory; no evidence span explicitly states the interpretive reconciliation that a general default and paper-specific override are compatible. This inference is reasonable from the supplied spans, but the exact-anchor requirement may be somewhat over-specific because equivalent spans from the optimizer/default sections would satisfy the user.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer only enforces outcome, required anchors/papers, and citations; it does not enforce the review text or claim content. A response can hard-pass while citing both anchors without actually resolving the conflict or explaining that a default recommendation and paper-specific setting are not contradictory. Missing structured facts are not treated as failure.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The target answer is fair and the required papers are necessary: resolving the user's conflict requires both the Adam default recommendation and the Transformer training hyperparameters. The expected outcome 'answered' is uniquely reasonable. The required anchors support the numerical claims, but the semantic reconciliation is inferential and the hard scorer under-enforces the intended contradiction-resolution behavior. Revise to broaden acceptable evidence where appropriate and add scoring checks for the actual resolution/claim semantics.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "adam_beta2_conflict_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_073941ff2bcc4204016a55cc32423881978a29675f24ba072b"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The target is semantically clear and the required Transformer optimizer span supports beta2 = 0.98, but the hard scorer does not enforce answer/review text and only checks facts when a non-empty fields object is emitted. A run could cite the required evidence from the Transformer paper and hard-pass while omitting or misstating the requested beta2 value in the actual answer, if no structured facts are provided.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The expected outcome is the uniquely reasonable response to the clarified follow-up: report the Transformer paper's Adam beta2 value, 0.98, supported by the Attention Is All You Need optimizer paragraph. Requiring the Transformer paper and forbidding the Adam default span are appropriate because the user explicitly disambiguated away from Adam's recommended default. The required evidence directly contains the value. However, deterministic scoring only partially covers the intended semantic behavior because the requested numeric fact is not guaranteed to be enforced unless structured facts are emitted.",
+        "recommended_action": "revise",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "adam_constraint_refinement_followup_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0c5e7ec82a33d263016a55cc84ca60819ab95a9b5169605bb6"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "content",
+            "detail": "The prompt 'agent benchmark' is very terse but reasonably ambiguous given the inventory contains multiple distinct agent benchmark papers spanning general assistants, web, coding, multi-turn, and tool-agent settings. A clarification response is the uniquely reasonable action.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer only enforces the needs_clarification outcome and forbidden citations. The review requirements that the assistant ask about specific benchmark categories and not present research claims are recorded but not enforced, so a generic or unhelpful clarification could hard-pass.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "This is a defensible ambiguity-resolution case: no particular paper is specified and citations/evidence are appropriately not required. However, scoring coverage is only partial because the hard scorer does not enforce the substantive clarification behavior described in the review, allowing semantically weak responses to pass.",
+        "recommended_action": "revise",
+        "required_evidence": "not_applicable",
+        "required_papers": "not_applicable",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "agent_benchmark_ambiguous_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_092eb45e7222f36b016a55cd09bbf0819a98eb253d6b760030"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The hard scorer enforces outcome, required papers, required anchors, and citations, but it does not enforce the actual recommendation text or the mapping of each benchmark to the four requested scenarios. A response could potentially hard-pass by citing all required evidence without clearly making the intended four recommendations.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The target is a fair and unambiguous recommendation task over the supplied inventory. GAIA is the uniquely apt benchmark for general assistants, WebArena for realistic web tasks, SWE-bench for software engineering, and tau-bench for policy-constrained tool-agent interaction. The required papers are necessary to support one recommendation per requested category, and the evidence spans directly substantiate the benchmark properties needed for those recommendations. Citations are appropriate. The only caveat is scorer coverage: deterministic checks do not fully verify the semantic recommendation/mapping content.",
+        "recommended_action": "keep",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "valid"
+      },
+      "case_id": "agent_evaluation_recommendation_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0a238e80df9509d1016a55cd51a828819aa09047355a1179a7"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces required evidence anchors and required paper coverage, but it does not enforce the claim text/review and only checks facts if a non-empty fields object is emitted. A run could hard-pass by citing the required AgentBench anchors without actually stating the requested environment count or weaknesses correctly.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The user request uniquely targets the AgentBench paper in the inventory and asks what it evaluates, the number of environments, and identified agent weaknesses. The expected answered outcome is appropriate. The required AgentBench paper is necessary and sufficient; the AgentBoard anchor is correctly forbidden as irrelevant. The two required evidence anchors directly support the requested answer: one states that AgentBench consists of 8 distinct environments assessing LLM-as-agent reasoning and decision-making, and the other states that poor long-term reasoning, decision-making, and instruction following are main obstacles. Requiring citations is appropriate for a provenance-style benchmark, though scoring coverage is only partial because semantic answer content is not deterministically enforced.",
+        "recommended_action": "keep",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "valid"
+      },
+      "case_id": "agentbench_environment_inventory_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0c2a76e015ed4cf5016a55ccc2c238819ab2f2b03d9b9ec085"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces the required AgentBoard evidence anchors and citations, which strongly constrain the answer, but it does not enforce the actual claim/review text; a run could hard-pass while citing the anchors without explicitly explaining the insufficiency of final success rate or what progress rate adds.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The user’s question uniquely targets AgentBoard’s stated critique of final success rate and its proposed progress-rate metric. The required AgentBoard paper is necessary and unambiguous, and the two required abstract spans directly support the expected answer: final success rate reveals little about the process/intermediate behavior, while progress rate captures incremental advancement. Forbidding AgentBench is reasonable because its environment-count fact is irrelevant. Citations are appropriately required. The only limitation is partial scorer coverage because semantic answer quality is not deterministically enforced beyond evidence/citation inclusion.",
+        "recommended_action": "keep",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "valid"
+      },
+      "case_id": "agentboard_progress_metric_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_057dc07a00e63d12016a55ccf95d50819a9093880dc490632d"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "questionable",
+        "issues": [
+          {
+            "category": "outcome",
+            "detail": "The query 'attention paper' is terse but, within the supplied inventory, it strongly and uniquely matches the target paper title 'Attention Is All You Need'. Treating it as needing clarification is defensible only if interpreting the phrase as generic, but the inventory contains a unique title match, and instructions say not to treat a paper title match as ambiguous when it uniquely identifies one inventory item.",
+            "severity": "major"
+          },
+          {
+            "category": "citation",
+            "detail": "Citations being forbidden is consistent with a needs_clarification outcome, but if the case were revised to expect an answer about the uniquely matched paper, citation requirements would need to change.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer only enforces exact outcome and required anchors/papers. Because claims/review are not enforced and fields can be omitted without failing, it may not verify that the response gives an appropriate clarification prompt or demonstrates correct ambiguity handling beyond the enum.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case is intended as ambiguity resolution, but the user's phrase appears to uniquely identify the inventory item 'Attention Is All You Need'. Under the audit instruction, a unique paper title match should not be treated as ambiguous. Thus the expected needs_clarification outcome is questionable rather than uniquely reasonable. No required papers or anchors are specified, which is appropriate for a clarification outcome, and citations forbidden is consistent with that outcome. However, scoring coverage is only partial because semantic clarification behavior is not deterministically enforced.",
+        "recommended_action": "revise",
+        "required_evidence": "not_applicable",
+        "required_papers": "not_applicable",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "attention_paper_ambiguous_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0235e6d8e6ec42b2016a55cb5a79c48195bc015e0e12934741"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces the SWE-bench evidence/citation and required paper, but does not enforce the review/claim text. A run could hard-pass while not actually following the topic change or while failing to recommend SWE-bench, as long as it cites the required SWE-bench anchor and matches the answered outcome.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The intended target is fair and unambiguous: after the user changes the topic from a general AI assistant to an agent that fixes GitHub issues, SWE-bench is the uniquely reasonable benchmark in the supplied inventory, and the required SWE-bench figure-caption evidence directly supports that it uses GitHub issues and evaluates generated patches against tests. Forbidding GAIA evidence is appropriate given the topic change. However, scoring coverage is only partial because the hard scorer does not enforce the semantic recommendation or the follow-up behavior described in the review.",
+        "recommended_action": "revise",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "benchmark_topic_change_followup_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0369f7cc400307c3016a55cdaa8f34819ba07c4ecdaacec8de"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces the required BERT evidence anchor and citation, but does not enforce the substantive answer/recommendation text and treats missing structured facts as not_run, so a run could hard-pass while not clearly explaining that BERT is the selected paper for bidirectional Transformer encoders.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The dialogue unambiguously resolves 'The second' to BERT, and the supplied BERT span directly supports the relevant fact that BERT uses a multi-layer bidirectional Transformer encoder. Requiring bert_2018 evidence and citation is fair and necessary. The only concern is scorer coverage: hard-pass can rely on citation/evidence presence without fully verifying the intended semantic response.",
+        "recommended_action": "revise",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "valid"
+      },
+      "case_id": "bert_choice_followup_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0d88fe45f830de01016a55cc5d15c08197a78c3208dae408bf"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer does not enforce the answer text/claim and checks facts only if a non-empty fields object is emitted, so a run could hard-pass by citing the required anchor from bert_2018 without explicitly stating that BERT uses the Transformer as an encoder.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The user asks whether BERT uses the Transformer as an encoder or decoder. Within the supplied inventory, the BERT paper is uniquely relevant and the provided span directly states that BERT’s architecture is a multi-layer bidirectional Transformer encoder, which supports the expected answered outcome and fact. Requiring citation to this evidence is fair. The only caveat is scorer under-enforcement of the semantic answer/facts, making scoring coverage partial rather than fully sufficient.",
+        "recommended_action": "keep",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "valid"
+      },
+      "case_id": "bert_transformer_role_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_03adfcf641db4847016a55cbbf7aa881939ecdc759737c2b52"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "content",
+            "detail": "The user asks for a comparison of the original Transformer and BERT across architecture role, directionality, and training objective, but the expected claims only cover the original Transformer's encoder-decoder architecture and BERT's encoder/directionality and MLM objective. They do not require evidence or claims for the original Transformer's directionality or training objective, so the target does not cover every requested comparison axis for both papers.",
+            "severity": "major"
+          },
+          {
+            "category": "evidence",
+            "detail": "The required Transformer anchor directly supports the encoder-decoder architecture claim, and the BERT anchors support BERT's bidirectional encoder and masked LM objective, but the required evidence set is incomplete for the requested comparison because it lacks anchors for the original Transformer's directionality and training objective.",
+            "severity": "major"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer enforces outcome, required papers, and required anchors, but it does not enforce the review/claim text and only checks structured facts if emitted. A response could hard-pass by citing the required anchors without actually presenting a coherent comparison across all requested axes.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case is based on the right two papers and the required spans support the listed claims, with appropriate citation requirements and exclusion of GPT-2. However, as a comparison question it is under-specified: the expected target fails to cover all requested axes for the original Transformer, and the deterministic scoring would not ensure the intended comparative answer is actually produced. Revise by adding required evidence and expected claims for the original Transformer's directionality and training objective, and strengthen scoring coverage if possible.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "bert_vs_transformer_comparison_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0ddcfefbf4bdba96016a55cbce14b08195a9e2c1686f39a9e8"
+    },
+    {
+      "audit": {
+        "citation_policy": "questionable",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The user asks to choose the coding benchmark among GAIA, WebArena, and SWE-bench. The required SWE-bench span directly supports that SWE-bench is a software engineering benchmark drawn from GitHub issues and PRs, so it is relevant. However, requiring this exact anchor is somewhat over-specific; the paper title alone uniquely identifies SWE-bench as the coding/software engineering option, and other SWE-bench evidence describing resolving GitHub issues or software engineering tasks would also suffice.",
+            "severity": "minor"
+          },
+          {
+            "category": "citation",
+            "detail": "Requiring a citation is defensible for a paper-grounded assistant, but the requested answer is a simple context-specific recommendation based on the benchmark names/options. A competent answer could fairly recommend SWE-bench with minimal or alternative citation evidence; exact citation to the specified anchor is over-constrained.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer enforces outcome, required paper, required anchor, and citation, but does not enforce the actual recommendation text or claim semantics. A run could hard-pass while citing the required evidence without clearly choosing SWE-bench for coding agents, and structured factual fields are not required.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The uniquely reasonable answer is to recommend SWE-bench because the user clarified they want the coding benchmark, and the required paper is appropriate while GAIA and WebArena are reasonably forbidden. The supplied SWE-bench anchor supports the recommendation. Still, the case is somewhat over-specific in requiring that exact evidence/citation rather than allowing equivalent SWE-bench support, and the deterministic scorer only partially covers the intended semantic behavior because it does not enforce that the response actually recommends SWE-bench.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "coding_benchmark_followup_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_03a907f91514f0f0016a55cd8af5e88198a305cf00a738c1e4"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The case asks for a corpus-level count and forbids citations, with no required papers or anchors. Under the hard scorer contract, only the outcome enum is enforced; claims/review are not enforced and facts are checked only if the answer emits non-empty fields. A response could hard-pass with outcome 'answered' while giving the wrong count or no count at all.",
+            "severity": "major"
+          },
+          {
+            "category": "content",
+            "detail": "The expected semantic answer of exactly five papers is directly supported by the supplied paper_inventory, but this support is metadata-level rather than evidence-span based. That is appropriate for the question, though it means there are no required evidence spans to assess.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The target answer is fair and unambiguous: the current paper_inventory contains five papers, and citations being forbidden is appropriate for a simple corpus metadata count. However, the deterministic scorer does not enforce the actual count or natural answer content, so the Golden case is under-specified/under-enforced as an evaluation target unless structured fact checking is made mandatory or the count is otherwise enforced.",
+        "recommended_action": "revise",
+        "required_evidence": "not_applicable",
+        "required_papers": "not_applicable",
+        "scoring_coverage": "insufficient",
+        "verdict": "questionable"
+      },
+      "case_id": "corpus_paper_count_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_025ecc4f51e5c2a9016a55cc98c8d081999f7610187d50ca5d"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The intended behavior is to list all five corpus paper titles, but the deterministic scorer only enforces the answered outcome and records review text offline. With no required papers, required anchors, or enforced facts, a response can hard-pass without listing any titles or demonstrating knowledge of the corpus contents.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case is a fair and unambiguous request: given the supplied inventory, the uniquely reasonable answer is to list the five paper titles, and forbidding citations is appropriate because the answer is based on corpus metadata rather than citeable evidence spans. However, the hard-scoring contract does not enforce the required list content, so the case is under-scored and should be revised to include enforceable structured facts or equivalent checks for all five titles.",
+        "recommended_action": "revise",
+        "required_evidence": "not_applicable",
+        "required_papers": "not_applicable",
+        "scoring_coverage": "insufficient",
+        "verdict": "questionable"
+      },
+      "case_id": "corpus_paper_list_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_001f3c8558e8a30b016a55cca5de2081989c49636eeaaf47d8"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The case expects the assistant to list all five corpus paper titles, but the hard scorer only enforces outcome and citation policy here. There are no required papers, required anchors, or enforced facts, and claims/review text is only recorded offline. A response could hard-pass with outcome 'answered' and no citations while omitting or mislisting the paper titles.",
+            "severity": "major"
+          },
+          {
+            "category": "evidence",
+            "detail": "For a corpus metadata/listing question, no paper evidence anchors are needed; the answer should be based on inventory metadata. This is acceptable semantically, but it leaves deterministic validation unable to verify the actual list content.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The target is substantively fair and unambiguous: after the prior turn states there are five papers, 'List all of them' refers to the five items in the supplied paper inventory, and citations are reasonably forbidden for a metadata listing. However, the deterministic scorer does not enforce that all five titles are present or correct, because there are no required papers/anchors/facts and review claims are not enforced. The case should be revised to add enforceable expected fields or another mechanism checking the five titles.",
+        "recommended_action": "revise",
+        "required_evidence": "not_applicable",
+        "required_papers": "not_applicable",
+        "scoring_coverage": "insufficient",
+        "verdict": "questionable"
+      },
+      "case_id": "corpus_paper_list_followup_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0222bcdbd9fc5976016a55ccb50ebc8191bcbe4188c4a75902"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The target task requires an actual comparison of the human-agent performance gaps and an explicit caveat that GAIA and WebArena percentages are not directly interchangeable, but the deterministic scorer only enforces outcome, required papers/anchors, and citations. A response could hard-pass while citing both anchors yet omit the gap calculation/comparison or fail to state the non-interchangeability caveat.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case is substantively fair and unambiguous: GAIA and WebArena are uniquely identified in the inventory, the expected answered outcome is appropriate, and the required anchors directly support the reported human and agent percentages needed to compute the gaps (92% vs 15% and 78.24% vs 14.41%). The same abstract spans also give enough context to distinguish the benchmark settings. Forbidding SWE-bench is reasonable because it is irrelevant to the requested comparison. However, scoring coverage is only partial because the hard scorer does not enforce the semantic comparison or the caveat about non-interchangeability, so the case should be revised to include enforced structured facts or checks for the gap values and caveat.",
+        "recommended_action": "revise",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "cross_benchmark_human_agent_gap_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_07ee68c8247d4580016a55cd3e239081998204eab9726940c1"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "questionable",
+        "issues": [
+          {
+            "category": "outcome",
+            "detail": "The user explicitly asks to rank the three benchmarks using only reported model success percentages. A uniquely reasonable answer could provide the percentage-based ordering (GAIA 15%, WebArena 14.41%, SWE-bench 1.96%) with a caveat that this is not a true cross-benchmark difficulty comparison. The expected 'partial' outcome/review that declines a strict ranking is defensible because models, tasks, and metrics differ, but it is not the only reasonable target given the wording.",
+            "severity": "major"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer enforces outcome, required anchors, and required papers/citations, but does not enforce the actual review text or claim semantics. A response could hard-pass by citing the anchors and choosing the expected outcome without demonstrating the intended caveat or correctly handling the requested ranking.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The required papers and evidence spans directly support the reported success percentages for GAIA, WebArena, and SWE-bench, and citations are appropriate. However, the expected behavior is somewhat overcautious relative to the prompt: since the user says to rank using only reported model success percentages, a caveated percentage-based ranking is a fair answer. The case should be revised to clarify whether the assistant must refuse a strict difficulty inference or provide a caveated ordering by reported percentages.",
+        "recommended_action": "revise",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "cross_benchmark_score_ranking_partial_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_05b573068ad2f2ca016a55cd986c208198b93e9189b0a1fd10"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The user asks to explain how GAIA was constructed, and the required GAIA construction anchor supports that the authors used GAIA's methodology to devise 466 questions and answers, plus the required facts include the question count. However, it is a very terse construction/provenance span; a fuller answer could reasonably cite other GAIA methodology evidence if present in the inventory. Requiring this exact abstract anchor may be somewhat over-specific.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer only enforces outcome, required anchors/papers, and citations. It does not enforce the review condition that the answer attributes the 92% and 15% figures to GAIA, nor does it require the structured facts if the answer emits no fields object. Thus a hard pass can occur without demonstrating the intended semantic behavior or including the expected numeric facts in structured form.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case is fundamentally aimed at a clear GAIA-specific question, and GAIA is the uniquely relevant required paper; WebArena is appropriately forbidden because its superficially similar human/GPT-4 gap is not responsive. The expected answered outcome and citation requirement are fair. The GAIA human-vs-GPT-4-with-plugins evidence directly supports the requested result, and the construction anchor supports the 466-question dataset fact, but the construction evidence is somewhat narrow/anchor-specific for an 'explain how constructed' prompt. More importantly, scoring coverage is only partial because hard-pass does not enforce the semantic attribution/review text or required facts when structured fields are omitted.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "gaia_dataset_gap_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0e58b738cf639826016a55ccd1569c819884ec81fe61e0f97e"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The two required anchors support the requested two-hop chain: GPT-3 uses the same model/architecture as GPT-2, and GPT-2 uses a Transformer-based architecture citing Vaswani et al. However, the GPT-2 anchor excerpt primarily establishes the Transformer-based architecture hop; if the intended hop specifically requires 'to Attention Is All You Need', the evidence relies on the Vaswani et al. citation embedded in the span and paper inventory/title mapping rather than an explicit anchor for the Attention paper itself. This is defensible but somewhat anchor-specific.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces only outcome, required anchors/papers, and citations, while claims/review text are not enforced and structured facts may be not_run if omitted. A response can hard-pass by citing the two anchors without actually stating the two-hop architecture chain, explaining each hop, or avoiding assertion of a direct GPT-3-to-Transformer citation.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case is substantively fair: the user asks for a two-hop chain using available papers, and the expected answer correctly requires GPT-3 2020 and GPT-2 2019 while forbidding the BERT distractor. The required anchors are mostly appropriate and directly support the claims, with only mild concern that the GPT-2-to-Attention hop is anchored through the in-span Vaswani reference rather than a separate Attention paper span. The main weakness is scorer coverage: hard pass does not ensure the answer actually constructs the chain or satisfies the 'do not invent direct citation' instruction.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "gpt3_to_transformer_multihop_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0a54fc571f7bbf91016a55cc4fbc708197acb09989606be5a0"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "content",
+            "detail": "The expected abstention is appropriate because the supplied inventory contains Transformer/BERT/GPT-2/GPT-3 papers but no GPT-5 source, and the review expectation correctly says not to infer GPT-5 architecture from GPT-3. However, because there are no anchor sources or required evidence, the case relies on review text to establish that the answer should explicitly state the corpus does not verify GPT-5 details.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces only the abstained outcome. It records but does not enforce the review claims, so an answer could hard-pass while abstaining for the wrong reason or while making unsupported GPT-5 architecture assertions alongside an abstention. Missing structured facts are not penalized.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "This is a fair knowledge-boundary target: a competent assistant restricted to the inventory should abstain from giving GPT-5 architecture details and avoid extrapolating from GPT-3. There are no required papers or evidence spans because citations are optional and abstention is the key behavior. Nonetheless, the hard scorer only checks the outcome enum, leaving the intended semantic behavior under-enforced; the case should be revised to enforce the refusal/uncertainty rationale and absence of unsupported GPT-5 architectural claims.",
+        "recommended_action": "revise",
+        "required_evidence": "not_applicable",
+        "required_papers": "not_applicable",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "gpt5_architecture_boundary_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0df3a61aef4c1387016a55cdcf1de0819bb2af9f3d395e209b"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The two required abstract spans directly support the reported MINT gains and tau-bench reliability result, and they are sufficient to motivate a non-contradiction answer at a high level. However, the exact MINT anchor selector appears to normalize hyphenated ranges as '1-8%' and '2-17%' while the supplied span text uses en dashes ('1–8%', '2–17%'), making exact-anchor enforcement potentially over-specific despite equivalent evidence.",
+            "severity": "minor"
+          },
+          {
+            "category": "evidence",
+            "detail": "The expected claim adds the interpretive distinction that MINT measures interaction-support gains while tau-bench measures repeated-trial reliability in stateful tasks. This is reasonably supported by the abstracts, but the stateful-task characterization relies on tau-bench's database/end-state and dynamic-conversation description rather than only the selected exact phrase 'pass^8 < 25% in retail'.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer requires anchors/papers/citations but does not enforce the review constraint or claim text. A response could cite both anchors yet still assert an invented shared model/task/metric or otherwise mishandle the contradiction analysis and hard-pass.",
+            "severity": "major"
+          },
+          {
+            "category": "scoring",
+            "detail": "Structured facts are checked only when emitted; omission of the fields object is not a hard-pass failure, so the scorer may not enforce the key numeric distinctions that ground the comparison.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The case is substantively fair: the user asks whether two reported findings are contradictory, and the uniquely reasonable answer from the supplied abstracts is that they are not directly contradictory because they concern different evaluation quantities/contexts. The required papers are necessary and the evidence anchors are mostly appropriate. Still, the evidence requirement is somewhat over-specific/fragile at the exact-text level, and the deterministic scorer under-enforces the semantic contradiction-resolution behavior, allowing hard passes that merely cite the right abstracts without making the intended comparison.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "mint_tau_apparent_conflict_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0d5ecf52fe3d8fcb016a55cd7b5784819a8ed2952e0414b943"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The required anchors support the main intended distinction between MINT's multi-turn tool/language-feedback setup and tau-bench's database end-state plus pass^k reliability evaluation, but they do not fully cover every requested comparison axis. In particular, tau-bench's interaction design and tool use are present in the full matched abstract span but not in the exact required selector, and MINT's environment-state treatment is not directly evidenced beyond the absence of such a state-based evaluation in the selected abstract text.",
+            "severity": "major"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer enforces outcome, required papers, and required anchors/citations, but does not enforce that the answer actually performs the requested axis-by-axis comparison or distinguishes MINT's feedback protocol from tau-bench's state and reliability evaluation. A response could hard-pass by citing the anchors without demonstrating the intended comparative reasoning.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The case is directionally fair: the user request clearly calls for an answered comparison using MINT and tau-bench, and the selected papers are the uniquely relevant required sources from the supplied inventory. The required tau-bench anchors directly support database end-state evaluation and pass^k reliability, while the MINT anchor supports multi-turn interaction with tools and language feedback. However, because the requested axes include interaction design, tool use, feedback, environment state, and reliability measurement, the required evidence is somewhat under-complete/over-specific: some axes are only covered by broader matched spans rather than the exact selectors, and MINT's environment-state comparison is not directly anchored. Scoring coverage is also only partial because semantic comparison content is not deterministically enforced.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0bcc956025d4e5e5016a55cd15b9a48198aa9b454fd7633e05"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "paper_scope",
+            "detail": "Requiring the foundation paper react_2023 is defensible for establishing what ReAct is, but the user asks to trace directly verified relationships from ReAct into later agent-evaluation papers. The direct later-paper relationships are supported by AgentBench and tau-bench spans; making the original ReAct paper mandatory may be over-specific rather than necessary.",
+            "severity": "minor"
+          },
+          {
+            "category": "evidence",
+            "detail": "The required ReAct abstract anchor supports the method pattern, but it is not itself evidence of a later evaluation paper's relationship to ReAct. Equivalent source evidence describing ReAct or later-paper citations would satisfy the user's tracing request, so this anchor requirement is somewhat over-constrained.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces outcome, required anchors, citations, and paper coverage, but does not enforce the actual claim/review text. A run could hard-pass by citing all required anchors without clearly articulating the intended genealogy relationships or respecting the 'do not infer influence' constraint.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case has a reasonable answered outcome and the two later-paper relationship anchors directly support the intended genealogy: AgentBench characterizes ReAct as combining CoT reasoning and actions in agent tasks, and tau-bench discusses experiments with agents built from simple constructs including ReAct. However, requiring the ReAct paper itself and its abstract as mandatory evidence is not strictly necessary for the user's request to trace direct relationships into later evaluation papers, and the hard scorer only partially covers the intended semantic behavior.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "questionable",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "react_to_agent_evaluation_genealogy_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0983b4ab00f53016016a55cd6405b481988657c65f47c2c4f1"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The required evidence supports the answer, but the first anchor is drawn from the abstract and establishes issue/PR provenance plus dataset scale, while the second figure caption more directly covers the full requested trace and evaluation. Requiring both exact anchors is somewhat over-specific because equivalent SWE-bench source evidence about GitHub issues, merged PR solutions, codebase snapshots, generated patches, and test evaluation would satisfy the user.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer enforces outcome, required paper, anchors, and citations, but does not enforce the expected claim/review text. A response could hard-pass by citing the required anchors without clearly explaining the creation trace and patch evaluation semantics.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The case is substantively fair: the user asks specifically about SWE-bench task provenance and patch evaluation, the uniquely relevant paper is swebench_2024, and react_2023 is properly forbidden as unrelated. The expected answered outcome is appropriate, and the two required anchors together directly support that SWE-bench instances come from GitHub issues and merged PR solutions and that generated patches are evaluated against real/resolving tests. However, the required evidence is somewhat exact-anchor dependent and could reject other equivalent source spans from the same paper. Scoring coverage is only partial because hard-pass does not enforce that the answer actually articulates the intended provenance/evaluation explanation beyond citing anchors.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "swebench_instance_provenance_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_05af7f319c118681016a55ccec2e308198af5f37dd07bbe29b"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The expected claim says ToolSandbox satisfies stateful, on-policy, milestone-based, and insufficient-information constraints, but the two required anchors do not fully and directly cover all axes. The first anchor covers stateful tool execution, implicit dependencies, on-policy conversational evaluation, and dynamic evaluation for intermediate/final milestones in its full span, but its selector exact_text omits the dynamic milestone clause. The second anchor covers insufficient-information as a challenge category, but not necessarily 'scenarios' beyond the category name. Together they are defensible, but the exact required evidence is over-specific/incompletely anchored for the milestone axis.",
+            "severity": "major"
+          },
+          {
+            "category": "paper_scope",
+            "detail": "Forbidding MINT and tau-bench is reasonable for selecting the unique benchmark, but a competent answer might briefly contrast them using corpus evidence. The user did not ask to avoid citing alternatives, so forbidden evidence is somewhat stricter than necessary.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer only enforces outcome, required anchors/citations, and at least one required-paper evidence item; it records but does not enforce the explanatory claim text. A run can hard-pass without explicitly choosing ToolSandbox or explaining all four requested constraints, as long as it cites the required anchors.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The uniquely reasonable answer appears to be ToolSandbox: the supplied abstract explicitly combines stateful tool execution, on-policy conversational evaluation, dynamic intermediate/final milestone evaluation, and includes Insufficient Information among complex tasks. Requiring toolsandbox_2024 is valid. However, the required evidence selectors are somewhat over-specific and one selector omits the milestone phrase needed for the user’s requested axes, while the deterministic scorer under-enforces the semantic answer/explanation. Revise anchors/scoring to cover every constraint explicitly and enforce the selected benchmark/explanation.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "toolsandbox_constraint_selection_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0153db07858b54f0016a55cd2e9510819a9eaa3654f9fb87a4"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The required anchor directly supports the requested Adam beta1, beta2, and epsilon values in the original Transformer paper, but requiring this exact anchor is somewhat over-specific: an equivalent span in the same optimizer section containing the same hyperparameters and formula context would also satisfy the user question.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The scorer checks facts only when a non-empty fields object is emitted; otherwise fact checking is not_run and does not fail hard_pass. Thus a run could hard-pass by citing the required anchor/paper with the correct outcome while omitting the structured beta1, beta2, and epsilon values, so deterministic coverage does not fully enforce the intended precision fact extraction.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case is substantively fair and answerable from the supplied inventory: the user uniquely refers to the original Transformer paper, the required paper is necessary, BERT/GPT3 are appropriate distractors, and the cited optimizer span directly contains beta1=0.9, beta2=0.98, and epsilon=1e-9. However, the evidence requirement is exact-anchor dependent despite possible equivalent source evidence, and the hard scorer under-enforces the semantic requirement to provide the parameter values because missing structured facts do not fail.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "transformer_adam_params_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0a9934d21e01a9de016a55caf310b8819684180a435169b7f0"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The required evidence does not cover every requested comparison axis. The Transformer anchor's selected text states that dominant prior sequence-transduction models include an encoder and decoder; it does not directly establish the original Transformer's own architecture role, directionality, or training objective. No required anchor supports the original Transformer's directionality/masking behavior or training objective/objective context in a way comparable to BERT's MLM evidence.",
+            "severity": "major"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer only requires the listed anchors/papers and citations, while claims/review text are not enforced and structured facts may be not_run if omitted. A run could hard-pass by citing the required anchors without actually comparing architecture role, directionality, and training objective.",
+            "severity": "major"
+          },
+          {
+            "category": "evidence",
+            "detail": "The BERT anchors adequately support BERT as a multi-layer bidirectional Transformer encoder and its masked-LM pretraining objective, but the combined evidence is asymmetric and insufficient for a full comparison with the original Transformer.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The outcome and required papers are reasonable for the user's confirmed comparison request, and citations are appropriately required. However, the specified required anchors are incomplete and partly unsupported for the intended axes: they do not directly substantiate the original Transformer's directionality or training objective, and the selected Transformer architecture evidence refers to dominant sequence transduction models rather than clearly to the Transformer itself. The case should be revised with anchors that directly support both models on all requested axes, and the scorer should better enforce the semantic comparison.",
+        "recommended_action": "revise",
+        "required_evidence": "invalid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "transformer_bert_confirmation_followup_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_051f698f61e8c4b1016a55cc6e328c819498c581c17c17e4f9"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer requires the correct paper/anchor citation, but it does not enforce the actual checklist text or facts when the answer omits a non-empty structured fields object; claims/review text are only recorded offline. A run could hard-pass by citing the required anchor without explicitly giving the optimizer, beta1, beta2, and epsilon.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The user asks for the optimizer settings used specifically in Attention Is All You Need and warns not to substitute generic Adam defaults. The expected answered outcome is uniquely reasonable from the supplied inventory. Requiring the Attention Is All You Need paper and the optimizer span is appropriate because that span directly states Adam with beta1=0.9, beta2=0.98, and epsilon=1e-9. Forbidding the Adam defaults and BERT background is also fair because they are distractors and would not answer the paper-specific reproduction question. The case itself is valid, though scorer coverage is only partial due to under-enforcement of the semantic answer/facts.",
+        "recommended_action": "keep",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "valid"
+      },
+      "case_id": "transformer_optimizer_reproduction_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_03defa60c649ea67016a55cc3f83708196983788607b128425"
+    },
+    {
+      "audit": {
+        "citation_policy": "valid",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "scoring",
+            "detail": "The deterministic scorer requires the BERT evidence anchor and citation, but does not enforce the actual explanatory claim text. A response could hard-pass by citing the anchor without clearly explaining the direct technical lineage from Attention Is All You Need to BERT.",
+            "severity": "major"
+          },
+          {
+            "category": "scoring",
+            "detail": "Structured facts are only checked when emitted; omission is not a hard failure, so the normalized fact that the architecture role is a bidirectional Transformer encoder is not guaranteed to be demonstrated.",
+            "severity": "minor"
+          }
+        ],
+        "rationale": "The target itself is fair and supported: the BERT paragraph directly states that BERT is a multi-layer bidirectional Transformer encoder based on the Transformer implementation described by Vaswani et al. (2017), which is sufficient to answer the lineage question using the required BERT paper and citation. However, scoring coverage is only partial because the hard scorer does not enforce that the answer actually explains the cited relationship or states the key architecture relationship, beyond including the required evidence/citation.",
+        "recommended_action": "revise",
+        "required_evidence": "valid",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "transformer_to_bert_genealogy_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_03c260608f575531016a55cc1fd648819182f5c3c81e7f3192"
+    },
+    {
+      "audit": {
+        "citation_policy": "questionable",
+        "expected_outcome": "valid",
+        "issues": [
+          {
+            "category": "evidence",
+            "detail": "The user asks for a reproduction checklist covering web domains, environment reset, task execution, and evaluation criterion. The required anchors support domains, reset, and evaluation criterion, but do not directly support task execution/procedure beyond saying tasks are released and focus on functional correctness. A checklist item about executing tasks would likely need evidence about action/observation setup, benchmark task running, gym APIs, or task definitions, none of which is required.",
+            "severity": "major"
+          },
+          {
+            "category": "citation",
+            "detail": "Requiring the exact functional-correctness abstract anchor may be over-specific; equivalent evidence elsewhere in the WebArena paper about evaluation or task success criteria could satisfy the user's request.",
+            "severity": "minor"
+          },
+          {
+            "category": "scoring",
+            "detail": "The hard scorer only enforces outcome, required anchors/papers/citations, and optional facts when emitted. It does not enforce that the response is an executable checklist or that it covers all requested axes, so a run can hard-pass without demonstrating the intended semantic behavior.",
+            "severity": "major"
+          }
+        ],
+        "rationale": "The case correctly targets WebArena and the expected answer action is reasonable: a concise reproduction checklist should cite WebArena and not GAIA. The three required spans support several important checklist elements, including four domains, deterministic reset, and functional-correctness evaluation. However, the evidence set is incomplete for the requested 'task execution' axis and somewhat exact-anchor-specific for evaluation. The deterministic scorer also under-enforces the checklist format and coverage, making this a defensible but questionable golden case rather than fully valid.",
+        "recommended_action": "revise",
+        "required_evidence": "questionable",
+        "required_papers": "valid",
+        "scoring_coverage": "partial",
+        "verdict": "questionable"
+      },
+      "case_id": "webarena_reproduction_protocol_001",
+      "model": "gpt-5.5",
+      "response_id": "resp_0e4b194b2046875a016a55ccdf4690819ab09846a2f45d4825"
+    }
+  ],
+  "expected_outcome_counts": {
+    "questionable": 2,
+    "valid": 28
+  },
+  "issue_counts": {
+    "major:content": 1,
+    "major:evidence": 5,
+    "major:outcome": 2,
+    "major:scoring": 22,
+    "minor:citation": 3,
+    "minor:content": 3,
+    "minor:evidence": 11,
+    "minor:paper_scope": 2,
+    "minor:scoring": 10
+  },
+  "model": "gpt-5.5",
+  "recommended_action_counts": {
+    "keep": 5,
+    "revise": 25
+  },
+  "required_evidence_counts": {
+    "invalid": 1,
+    "not_applicable": 6,
+    "questionable": 12,
+    "valid": 11
+  },
+  "schema_version": "paperloom-golden-semantic-audit/v1",
+  "scoring_coverage_counts": {
+    "insufficient": 3,
+    "partial": 27
+  },
+  "verdict_counts": {
+    "questionable": 24,
+    "valid": 6
+  }
+}

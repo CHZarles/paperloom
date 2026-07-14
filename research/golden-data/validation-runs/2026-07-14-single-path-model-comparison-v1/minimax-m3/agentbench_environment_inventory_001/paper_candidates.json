@@ -1,0 +1,19 @@
+[
+  {
+    "arxiv_id": "2308.03688",
+    "authors": [
+      "Xiao Liu",
+      "Hao Yu"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_agentbench_2024",
+    "filename": null,
+    "paper_id": "agentbench_2024",
+    "preview": "",
+    "title": "AgentBench: Evaluating LLMs as Agents",
+    "venue": "ICLR",
+    "year": 2024
+  }
+]

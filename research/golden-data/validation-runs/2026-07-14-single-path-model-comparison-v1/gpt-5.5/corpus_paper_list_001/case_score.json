@@ -1,0 +1,29 @@
+{
+  "case_id": "corpus_paper_list_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "Lists all five paper titles in the corpus.",
+      "Does not refuse merely because paper-card metadata is non-citeable."
+    ],
+    "status": "not_run"
+  }
+}

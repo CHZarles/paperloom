@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_gpt5_architecture_boundary_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe the architecture of the GPT-family model that *is* present here, which is a different model from GPT-5.",
+  "outcome": "partial",
+  "question_id": "gpt5_architecture_boundary_001",
+  "status": "INCOMPLETE_PRECISE",
+  "summary": "I can't answer that from the corpus available to me. The papers I can draw on are limited to a small set of foundational works, and none of them describe GPT-5's architecture.\n\nIf you can share a specific paper title, arXiv ID, or DOI that discusses GPT-5's design (for example, a system card, technical report, or comparison study), I can try to resolve it in the corpus. Otherwise, I can describe t"
+}

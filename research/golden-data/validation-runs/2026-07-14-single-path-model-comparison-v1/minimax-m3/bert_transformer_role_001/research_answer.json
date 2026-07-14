@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_bert_transformer_role_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_3540835408466c6e",
+    "ev_b9780defe349590a"
+  ],
+  "fields": {},
+  "markdown": "BERT uses the Transformer as an **encoder** — specifically, a multi-layer *bidirectional* Transformer encoder.\n\nFrom the paper's model architecture section:\n\n> \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017)...\" [1]\n\nA footnote in the paper clarifies the terminology that distinguishes the two configurations of the Transformer:\n\n> \"...the former is often referred to as a 'Transformer encoder' while the left-context-only version is referred to as a 'Transformer decoder' since it can be used for text generation.\" [2]\n\nSo while the original Transformer (Vaswani et al., 2017) contains both an encoder and a decoder, BERT adopts the **encoder** half, configured with *bidirectional* self-attention so that every token can attend to both left and right context.\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4",
+  "outcome": "answered",
+  "question_id": "bert_transformer_role_001",
+  "status": "COMPLETED",
+  "summary": "BERT uses the Transformer as an **encoder** — specifically, a multi-layer *bidirectional* Transformer encoder.\n\nFrom the paper's model architecture section:\n\n> \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017)...\" [1]\n\nA footnote in the paper clarifies the terminology that distinguishes the two conf"
+}

@@ -1,0 +1,270 @@
+{
+  "anchor_count": 29,
+  "anchors": [
+    {
+      "anchor_id": "adam_default_beta2_span",
+      "matched_location_refs": [
+        "reading_element_914db2da80ce4b6e865ccb31050c5d19"
+      ],
+      "page": 2,
+      "paper_id": "adam_2014",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "agentbench_eight_environments",
+      "matched_location_refs": [
+        "reading_element_278e348b2f5c4650a4d5ecd78f9e6cd7"
+      ],
+      "page": 1,
+      "paper_id": "agentbench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "agentbench_failure_obstacles",
+      "matched_location_refs": [
+        "reading_element_278e348b2f5c4650a4d5ecd78f9e6cd7"
+      ],
+      "page": 1,
+      "paper_id": "agentbench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "agentbench_react_pioneer_relationship",
+      "matched_location_refs": [
+        "reading_element_2e429bbc050a4042a7b4dd868d8cbb2d"
+      ],
+      "page": 9,
+      "paper_id": "agentbench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "agentboard_final_success_rate_limit",
+      "matched_location_refs": [
+        "reading_element_c7dcb747b1a148cba318b65cea1303eb"
+      ],
+      "page": 1,
+      "paper_id": "agentboard_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "agentboard_progress_rate_metric",
+      "matched_location_refs": [
+        "reading_element_c7dcb747b1a148cba318b65cea1303eb"
+      ],
+      "page": 1,
+      "paper_id": "agentboard_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "bert_masked_lm_pretraining",
+      "matched_location_refs": [
+        "reading_element_ff1d8830cd7544d0a166daf8466cd287"
+      ],
+      "page": 4,
+      "paper_id": "bert_2018",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "bert_transformer_encoder_background",
+      "matched_location_refs": [
+        "reading_element_3f7beee8c6f3400d81fdce44c3bae795"
+      ],
+      "page": 3,
+      "paper_id": "bert_2018",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "gaia_human_gpt4_gap",
+      "matched_location_refs": [
+        "reading_element_d407735b30444deb9aafa1aae4ff0b8d"
+      ],
+      "page": 1,
+      "paper_id": "gaia_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "gaia_question_construction",
+      "matched_location_refs": [
+        "reading_element_d407735b30444deb9aafa1aae4ff0b8d"
+      ],
+      "page": 1,
+      "paper_id": "gaia_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "gpt2_transformer_language_model",
+      "matched_location_refs": [
+        "reading_element_bc4586d5694d4ffdb9750798e26dec91"
+      ],
+      "page": 4,
+      "paper_id": "gpt2_2019",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "gpt3_uses_gpt2_architecture",
+      "matched_location_refs": [
+        "reading_element_de6cc6285cc74c3ab7cabb790e751434"
+      ],
+      "page": 8,
+      "paper_id": "gpt3_2020",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "mint_tools_feedback_gains",
+      "matched_location_refs": [
+        "reading_element_9af337139d904ea49ce7441460d79dfa"
+      ],
+      "page": 1,
+      "paper_id": "mint_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "mint_tools_feedback_protocol",
+      "matched_location_refs": [
+        "reading_element_9af337139d904ea49ce7441460d79dfa"
+      ],
+      "page": 1,
+      "paper_id": "mint_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "react_interleaved_reasoning_actions",
+      "matched_location_refs": [
+        "reading_element_356826ecf3f846999a71c48a21ae8a26"
+      ],
+      "page": 1,
+      "paper_id": "react_2023",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "swebench_claude2_baseline",
+      "matched_location_refs": [
+        "reading_element_c51e11392f594cb8b46795720b9c4229"
+      ],
+      "page": 1,
+      "paper_id": "swebench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "swebench_issue_pr_provenance",
+      "matched_location_refs": [
+        "reading_element_c51e11392f594cb8b46795720b9c4229"
+      ],
+      "page": 1,
+      "paper_id": "swebench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "swebench_patch_test_construction",
+      "matched_location_refs": [
+        "figure_ref_d5b1f9a41c5d439d8284341910ca140a"
+      ],
+      "page": 1,
+      "paper_id": "swebench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "tau_database_end_state_evaluation",
+      "matched_location_refs": [
+        "reading_element_012ad751c0d241e7ba90d06d5b40b2a7"
+      ],
+      "page": 1,
+      "paper_id": "tau_bench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "tau_passk_reliability",
+      "matched_location_refs": [
+        "reading_element_012ad751c0d241e7ba90d06d5b40b2a7"
+      ],
+      "page": 1,
+      "paper_id": "tau_bench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "tau_react_baseline_relationship",
+      "matched_location_refs": [
+        "reading_element_eeb6bc0ca094410d8c695b18df25af69"
+      ],
+      "page": 2,
+      "paper_id": "tau_bench_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "toolsandbox_challenge_categories",
+      "matched_location_refs": [
+        "reading_element_f48a0d01709641fbacaeaf6629d76d00"
+      ],
+      "page": 1,
+      "paper_id": "toolsandbox_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "toolsandbox_stateful_on_policy_design",
+      "matched_location_refs": [
+        "reading_element_f48a0d01709641fbacaeaf6629d76d00"
+      ],
+      "page": 1,
+      "paper_id": "toolsandbox_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "transformer_adam_training_params_span",
+      "matched_location_refs": [
+        "reading_element_260d1b8af78b454dbe0f610483436730"
+      ],
+      "page": 7,
+      "paper_id": "attention_is_all_you_need_2017",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "transformer_encoder_decoder_architecture",
+      "matched_location_refs": [
+        "reading_element_d3f857764d464d7d931296ec82a0de85"
+      ],
+      "page": 1,
+      "paper_id": "attention_is_all_you_need_2017",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "webarena_deterministic_initial_state",
+      "matched_location_refs": [
+        "page_ref_ec6246aae03a45a29aefce13dfbf69d5"
+      ],
+      "page": 4,
+      "paper_id": "webarena_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "webarena_four_self_hosted_domains",
+      "matched_location_refs": [
+        "reading_element_2f971a27e8f449f0ba1ccb41f1e9b365"
+      ],
+      "page": 2,
+      "paper_id": "webarena_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "webarena_functional_correctness_tasks",
+      "matched_location_refs": [
+        "reading_element_c4d05b901eb1459292b43c5c0b8ea878"
+      ],
+      "page": 1,
+      "paper_id": "webarena_2024",
+      "status": "pass"
+    },
+    {
+      "anchor_id": "webarena_gpt4_human_gap",
+      "matched_location_refs": [
+        "reading_element_c4d05b901eb1459292b43c5c0b8ea878"
+      ],
+      "page": 1,
+      "paper_id": "webarena_2024",
+      "status": "pass"
+    }
+  ],
+  "dataset_id": "harness_golden_seed",
+  "failed_count": 0,
+  "passed_count": 29,
+  "schema_version": "harness-anchor-audit/v1"
+}

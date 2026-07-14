@@ -1,0 +1,1000 @@
+[
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "GAIA benchmark"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2311.12983",
+          "authors": [
+            "Gregoire Mialon",
+            "Clementine Fourrier"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gaia_2024",
+          "preview": "",
+          "title": "GAIA: a benchmark for General AI Assistants",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2408.04682",
+          "authors": [
+            "Jiarui Lu",
+            "Thomas Holleis"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "toolsandbox_2024",
+          "preview": "",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+          "venue": "arXiv",
+          "year": 2024
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 3,
+      "next_offset": null,
+      "query_text": "GAIA benchmark",
+      "returned_count": 3
+    },
+    "tool_call_id": "call_function_cj9n9y1eazeg_1",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "WebArena benchmark"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2311.12983",
+          "authors": [
+            "Gregoire Mialon",
+            "Clementine Fourrier"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gaia_2024",
+          "preview": "",
+          "title": "GAIA: a benchmark for General AI Assistants",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2408.04682",
+          "authors": [
+            "Jiarui Lu",
+            "Thomas Holleis"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "toolsandbox_2024",
+          "preview": "",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2307.13854",
+          "authors": [
+            "Shuyan Zhou",
+            "Frank F. Xu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "webarena_2024",
+          "preview": "",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+          "venue": "ICLR",
+          "year": 2024
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 4,
+      "next_offset": null,
+      "query_text": "WebArena benchmark",
+      "returned_count": 4
+    },
+    "tool_call_id": "call_function_cj9n9y1eazeg_2",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "SWE-bench"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2310.06770",
+          "authors": [
+            "Carlos E. Jimenez",
+            "John Yang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "swebench_2024",
+          "preview": "",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 2,
+      "next_offset": null,
+      "query_text": "SWE-bench",
+      "returned_count": 2
+    },
+    "tool_call_id": "call_function_cj9n9y1eazeg_3",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "gaia_2024"
+      ],
+      "query_text": "human success rate model accuracy percentage",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d946ff9abb2e4098a11c3b526eb54194",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Our second principle is interpretability. The restricted number of highly curated questions makes the benchmark easier to use compared to aggregated ones (Perlitz et al., 2023). The conceptual simplicity of the task (human success rate is 92%) makes it easy for users to understand a model’s reasoning trace. For the Level 1 question from Figure 1, the reasoning trace will mostly consist in checking the correct website, and report the correct enrolment, which is simple to verify.",
+          "section": "3.1 A convenient yet challenging benchmark for general AI assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_5df5c46e85664a03b1201f0b49aa33ac",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Our third principle is robustness against memorization: <sup>GAIA</sup> aims to be less gameable than most current benchmarks. To complete a task, a system has to plan and successfully complete some number of steps since the resulting answer is absent by design in plain text from current pre-training data. A progress in accuracy reflects actual system progress. Due to their diversity and the size of the action space, these tasks cannot be brute-forced without cheating, for example by memorizing ",
+          "section": "3.1 A convenient yet challenging benchmark for general AI assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "footnote",
+          "location_ref": "reading_element_a39c2f7b51a0492c80bba477631e56aa",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "<sup>1</sup>GPT4 does 86.4% on MMLU. Human non-specialist accuracy on the benchmark is only 34.5% Expert-level human performance is estimated at 89.8%.",
+          "section": "1 Introduction",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d47f57e324494d34898c317ddfe9879d",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "In spite of being successful at tasks that are dificult for humans, the most capable LLMs do poorly on <sup>GAIA</sup>. Even equipped with tools, GPT4 does not exceed a 30% success rate for the easiest of our tasks, and 0% for the hardest. In the meantime, the average success rate for human respondents is 92%. Consequently, a system capable of solving <sup>GAIA</sup> can be assessed in the context of t-AGI,<sup>4</sup> noting that humans typically take between 6 minutes for the simplest question",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_66ccbc9291aa46b6a953d83a484a74b7",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Towards unified evaluation of generative models. Many <sup>GAIA</sup> tasks might be solved by calling modules that could yield errors e.g. an image classifier returning the wrong label. One could argue this makes evaluation ambiguous since it considers the system as a whole and does not attribute errors to sub-parts e.g. the web browsing or vision modules. However, the paradigm of coupling LLMs with external tools for every task beyond text understanding might not last. For example, future mode",
+          "section": "5 Discussion",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_b125bab863cd49c4883017bf7aae7b1b",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Partial versus full automation. While partial automation of a process still requires humans in the loop, full automation completely removes that need. Systems that respectively allow partial automation and full automation can be as close as a few percentage of error on a given task—the former would have say 1% and the latter 0%—, yet yield these two fundamentally diferent paradigms. Full automation is a goal that deep learning has been striving to achieve, without complete success to date: in sp",
+          "section": "5 Discussion",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7e948e2dde394974b37cda37d265f06c",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Evaluating LLMs with <sup>GAIA</sup> only requires the ability to prompt the model, i.e an API access. We use a prefix prompt before asking the model a question. To ease answer extraction, we specify a format in the prefix prompt, see Figure 2. We evaluate GPT4 (OpenAI, 2023) with and without plugins,<sup>6</sup> as well as AutoGPT <sup>7</sup> with GPT4 as backend. GPT4 currently requires to manually select plugins (see paragraph below). On the contrary, AutoGPT is able to do this selection aut",
+          "section": "4 LLMs results on GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7489999322394ecc82b66e753ffd1d00",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Validating questions. Most of the work associated with crafting questions consists in ensuring that they are unambiguous, i.e., there is a single correct answer. This property allows fast and factual evaluation, hence it is crucial to maintain it. Ambiguities can be subtle and rarely obvious to the creator of a question. For example, a question is ambiguous if it does not specify a version for a web page while the information needed to answer the question is diferent in other versions. We theref",
+          "section": "3.4 Building and extending GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_5fb0c4a73b954b94aff3e3105f8a1a66",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Large Language Models (LLMs) arguably open the way to general purpose systems. Indeed, the latest among them (OpenAI, 2023; Anthropic, 2023; Anil et al., 2023; Touvron et al., 2023) are fluent, knowledgeable, aligned to some extent with human preferences (Ouyang et al., 2022), and can be augmented (Mialon et al., 2023) with tools such as web browsers or code interpreters in a zero or few-shot setting (Brown et al., 2020). However, evaluating these systems is an open problem: given their emerging",
+          "section": "1 Introduction",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7eb5082ce09840f5ba6fe10d86238726",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "In search for more challenging benchmarks, current trend suggests to seek tasks that are ever more dificult for humans, and challenge LLMs with more intricate educational assessments, for example in STEM and Law, or target more complex realisations, such as writing a coherent book. But, tasks that are dificult for humans are not necessarily dificult for recent systems: the challenging MMLU or GSM8k benchmarks for example (Hendrycks et al., 2021; Cobbe et al., 2021) are already close to be solved",
+          "section": "1 Introduction",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_18d7f8bae9af4ded8c28251ee2bb22eb",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "\\- Non-gameability. Answering the questions requires successful completion of some number of steps, which cannot easily be brute forced due to their diversity. The possibility to check the reasoning trace, the accuracy required in the answers, their absence in plain text from the internet prevent a possible data contamination. In contrast, multiple choice answers (e.g., MMLU) make contamination assessment more dificult since a wrong reasoning trace can more easily get to the correct choice.",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_b4426916d85e450d95074ac6c24f9fd0",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "The discrepancy between GPT4 results without plugins and the others demonstrate that augmenting LLMs via tool APIs or access to the web improves answer accuracy, and unlock many new use cases, confirming the huge potential of this research direction. In particular, GPT4 + plugins exhibit behaviours such as backtracking or query refinement when the result is not satisfying, and relatively long plan execution. We provide examples of such behaviours in Appendix D.1. The discrepancy with humans sugg",
+          "section": "4 LLMs results on GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        }
+      ],
+      "matched_count": 28,
+      "query_text": "human success rate model accuracy percentage",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_function_1g2e2eq93pa6_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "webarena_2024"
+      ],
+      "query_text": "success rate accuracy percentage model performance",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bfa733703774457f9181b2060105b478",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Can a model maintain consistent performance across similar tasks? Tasks that originate from the same template usually follow similar reasoning and planning processes, even though their observations and executions will differ. We plot a histogram of per-template success rates for our models in Table 3. Of the 61 templates, GPT-4 manages to achieve a 100% task success rate on only four templates, while GPT-3.5 fails to achieve full task completion for any of the templates. In many cases, the model",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional web",
+          "section": "ABSTRACT",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_c2b4028fcade434c8d0c8bf91e32d376",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Table 2: The end-to-end task success rate (SR %) on WebArena with different prompting strategies. CoT: the model performs step-by-step reasoning before issuing the action. UA hint: ask the model to stop when encountering unachievable questions.\nCoT UA Hint | Model | SR | $\\mathbf { S R _ { A C } }$ | $\\mathbf { S R _ { U A } }$ | | TEXT-BISON-001 | 5.05 | 4.00 | 27.78 | X | GPT-3.5 | | 6.41 4.90 | 38.89 | | GPT-3.5 | 8.75 | 6.44 | 58.33 | | GPT-4 | 11.70 | 8.63 | 77.78 | X | X | GPT-3.5 | 5.10 |",
+          "section": "5 RESULTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c91d4a1062ae48a1a666f9a03358bab4",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "The main results are shown on the top of Table 2. GPT-4 (OpenAI, 2023) with CoT prompting achieves a modest end-to-end task success rate of 11.70%, which is significantly lower than the human performance of 78.24%. GPT-3.5 (OpenAI, 2022) with CoT prompting is only able to successfully perform 8.75% of the tasks. The explicit reasoning procedure is somewhat helpful, it brings 2.34% improvement over the version without it. Further, TEXT-BISON-001 (Anil et al., 2023) underperforms GPT-3.5, with a s",
+          "section": "5 RESULTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_5a9d1fd0260e488db7d46b471159fcf8",
+          "original_filename": null,
+          "page": 17,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "A.8 THE ACCURACY OF FUZZY MATCH FUNCTION",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_29e3efa62e364a818ea5154397509541",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Do models know when to stop? In our error analysis of the execution trajectories, we observe a prevalent error pattern of early stopping due to the model’s conclusion of unachievability. For instance, GPT-4 erroneously identifies 54.9% of feasible tasks as impossible. This issue primarily stems from the UA hint in the instruction, while this hint allows models to identify unachievable tasks, it also hinders performance on achievable tasks. To address this, we conduct an ablation study where we r",
+          "section": "5.1 ANALYSIS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_fae3477481454cb98185be0ce83aa1e8",
+          "original_filename": null,
+          "page": 17,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Table 5: The task success rate (SR %) of GPT-3.5-TURBO-16K-0613 with temperature 0.0.\nDataset | gpt-4-0613 | gpt-4-1106-preview | Date (900 examples) | 100 | 100 | Time duration (900 examples) | 100 | 100",
+          "section": "A.5 HUMAN PERFORMANCE",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_485c90621f4648e19662c17777c95a10",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We use this benchmark to evaluate several agents that can follow NL command and perform webbased tasks (§4). These agents are implemented in a few-shot in-context learning fashion with powerful large language models (LLMs) such as GPT-4 and PALM-2. Experiment results show that the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%. We hypothesize that the limited performance of current LLMs stems from a lac",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7ef56dc467fd4b01933ef308dc4acacd",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We present WebArena, a highly-realistic, standalone, and reproducible web environment designed for the development and testing of autonomous agents. WebArena includes fully functional web applications and organic data from popular domains. Additionally, we curate a comprehensive benchmark consisting of 812 examples that focus on mapping high-level natural language intents into concrete web interactions. We also offer outcome-based evaluation that programmatically validate the tasks success. Our ",
+          "section": "7 CONCLUSION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_19c19871cd3c416cb76e875a687d0629",
+          "original_filename": null,
+          "page": 17,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Table 6: The accuracy (%) of two versions of GPT-4 on judging if dates and time duration of different formats are equivalent.",
+          "section": "A.5 HUMAN PERFORMANCE",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_3727e2fe8b0d4811bf4a140559682263",
+          "original_filename": null,
+          "page": 16,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "A.5 HUMAN PERFORMANCE",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table-87",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Caption: Table 2: The end-to-end task success rate (SR %) on WebArena with different prompting strategies. CoT: the model performs step-by-step reasoning before issuing the action. UA hint: ask the model to stop when encountering unachievable questions.\nCoT UA Hint Model SR $\\mathbf { S R _ { A C } }$ $\\mathbf { S R _ { U A } }$ TEXT-BISON-001 5.05 4.00 27.78 X GPT-3.5 6.41 4.90 38.89 GPT-3.5 8.75 6.44 58.33 GPT-4 11.70 8.63 77.78 X X GPT-3.5 5.10 4.90 8.33 X GPT-3.5 6.16 6.06 8.33 X GPT-4 14.41",
+          "section": "5 RESULTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        }
+      ],
+      "matched_count": 32,
+      "query_text": "success rate accuracy percentage model performance",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_function_1g2e2eq93pa6_2",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "swebench_2024"
+      ],
+      "query_text": "success rate accuracy percentage model performance resolved",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_705f7e498abc46b89833dbb73e6580ad",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Patch Fix Rate. We present Table 14, which presents summary statistics of how many task instances each model generated patches for (out of 2294), how many of these patches applied successfully, and how many of the successfully applied patches required undergoing the patch fixing procedure introduced in Appendix A.4. We find that fixed patches tend to make up a smaller percentage of the SWE-Llama patches that successfully applied, suggesting that SWE-Llama’s fine tuning procedure has a positive e",
+          "section": "A.5 EVALUATION TEST SET CHARACTERIZATION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popul",
+          "section": "ABSTRACT",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9ca1ebc8f9d744b9807ac2a5d4d497a5",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Evaluation metrics. To evaluate a proposed solution, we apply the generated patch, using unix’s patch program, to the codebase and then execute the unit and system tests associated with the task instance. If the patch applies successfully and all of these tests pass we consider the proposed solution to have successfully resolved the issue. The metric for our benchmark is the percentage of task instances that are resolved. Additional technical details in Appendix A.4.",
+          "section": "2.2 TASK FORMULATION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_dd21ff703ee042d2a159c03ce3b20d3b",
+          "original_filename": null,
+          "page": 26,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "C.5 F2P, P2P RATE ANALYSIS",
+          "section": "unsectioned",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9d6ec0ee2aff4128b28b99b65e31f45b",
+          "original_filename": null,
+          "page": 46,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Discussion. Unlike the problem presented in Table 30, instead of an interactive python input, the model is given an error trace from a function invocation, where the steps to recreate the problem from a user’s standpoint is offered. In addition, the issue also provides a suggestion during the last line on a potential fix for the problem. Once again in the oracle setting, the model takes advantage of the natural language suggestion and localizes the change to a line that is semantically quite sim",
+          "section": "Setting",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7db057ec4d9041b788edebf9dcd26e07",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Difficulty differs across repositories. When breaking performance down by repository, all models trend similarly across different repositories as show in Figure 4. Despite this, the issues resolved by each model do not necessarily overlap extensively. For example, in the “oracle” setting Claude 2 and SWE-Llama 13b perform comparably, with each model resolving 110 and 91 instances respectively. Yet of these instances, Claude 2 only solves 42% of the instances solved by SWE-Llama.",
+          "section": "5 RESULTS",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e0cef139dc2e4449926ee1d451308c44",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Model input. A model is given an issue text description and a complete codebase. The model is then tasked to make an edit to the codebase to resolve the issue. In practice, we represent edits as patch files, which specify which lines in the codebase to modify in order to resolve the issue.",
+          "section": "2.2 TASK FORMULATION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a5338e605eca481095b50f40e87f448d",
+          "original_filename": null,
+          "page": 25,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We include a repository-by-repository breakdown of model performance in Table 19 that corresponds to Figure 4 in the main paper. As discussed, in the main paper, performance differs heavily across repositories.",
+          "section": "C.2 EVALUATION TEST SET",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We report results for models using different retrieval mechanisms and prompting styles, then provide some analysis and insight into model performance and difficulty. We summarize models’ performance using BM25 retrieval in Table 5. Across the board, models struggle significantly to resolve issues. The best performing model, Claude 2, is only able to resolve 1.96% of the issues.",
+          "section": "5 RESULTS",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ec87ee6a07ef4a5a9fa68a9d52a9a461",
+          "original_filename": null,
+          "page": 25,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Using the “oracle” retrieval method described in Section 4.1, we show the general performance results in Table 18. Naturally, providing only the files edited by the reference solution’s pull request, model performance improves compared to the noisier BM25 retrieval setting.",
+          "section": "C.1 RESULTS WITH “ORACLE” RETRIEVAL",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "chart",
+          "location_ref": "figure_ref_b462404bc2de48a6ad005105cdf287e5",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Figure 4: Resolution rate for three models across the 12 repositories represented in SWE-bench in the “Oracle” retrieval setting.",
+          "section": "4.3 MODELS",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_92b541a90e1241f99748d3a985bbb250",
+          "original_filename": null,
+          "page": 28,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Table 21: We present an extended temporal analysis in this table, showing the % resolved for task instances across models in the “Oracle” retrieval setting, separated by different cutoff dates. The Year column refers to the subset of tasks that were created during the specified calendar year. In the Total column, we list the number of tasks that fall within the given year. The 25% column is the same information for the subset that GPT-4 was evaluated on. The remaining model-specific columns cont",
+          "section": "C.5 F2P, P2P RATE ANALYSIS",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        }
+      ],
+      "matched_count": 135,
+      "query_text": "success rate accuracy percentage model performance resolved",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_function_1g2e2eq93pa6_3",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_d47f57e324494d34898c317ddfe9879d",
+        "reading_element_c91d4a1062ae48a1a666f9a03358bab4",
+        "reading_element_485c90621f4648e19662c17777c95a10",
+        "reading_element_395f2bdd944f4de286e130f3f7ccb8b1"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":3,\"left\":107.0,\"bottom\":377.0,\"right\":888.0,\"top\":148.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":3,\"left\":107.0,\"bottom\":377.0,\"right\":888.0,\"top\":148.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_4220267acf17bb3c",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_d47f57e324494d34898c317ddfe9879d",
+          "location_ref": "reading_element_d47f57e324494d34898c317ddfe9879d",
+          "page": 3,
+          "page_screenshot_available": false,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "Level 3",
+          "source_kind": "paragraph",
+          "span_text": "In spite of being successful at tasks that are dificult for humans, the most capable LLMs do poorly on <sup>GAIA</sup>. Even equipped with tools, GPT4 does not exceed a 30% success rate for the easiest of our tasks, and 0% for the hardest. In the meantime, the average success rate for human respondents is 92%. Consequently, a system capable of solving <sup>GAIA</sup> can be assessed in the context of t-AGI,<sup>4</sup> noting that humans typically take between 6 minutes for the simplest questions to 17 minutes for the most complex ones. From a related perspective, such system would arguably be a competent General AI within the framework recently proposed in Morris et al. (2023), which also appear to be the next milestone in AI research since ChatGPT (OpenAI, 2023) is one level below. This paper covers the composition of <sup>GAIA</sup>, its design choices, and explain how to craft questions and the associated challenges so that the community can further extend the benchmark to target emerging questions such as safety associated to tool use, or multi-modality. We also analyse the successes and shortcomings of some of the most capable assistants to date, illustrating the potential of augmenting LLMs. We release a developer set of 166 annotated questions and release the remaining 300 questions without annotations: the benchmark will be notably hosted as a leaderboard. We hope our methodology will help addressing the problem of open ended generation evaluation in NLP and beyond, and believe the successful resolution of <sup>GAIA</sup> would be an important milestone towards the next generation of AI systems.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":8,\"left\":169.0,\"bottom\":468.0,\"right\":467.0,\"top\":231.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":8,\"left\":169.0,\"bottom\":468.0,\"right\":467.0,\"top\":231.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_57966459e86942f2",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_c91d4a1062ae48a1a666f9a03358bab4",
+          "location_ref": "reading_element_c91d4a1062ae48a1a666f9a03358bab4",
+          "page": 8,
+          "page_screenshot_available": false,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5 RESULTS",
+          "source_kind": "paragraph",
+          "span_text": "The main results are shown on the top of Table 2. GPT-4 (OpenAI, 2023) with CoT prompting achieves a modest end-to-end task success rate of 11.70%, which is significantly lower than the human performance of 78.24%. GPT-3.5 (OpenAI, 2022) with CoT prompting is only able to successfully perform 8.75% of the tasks. The explicit reasoning procedure is somewhat helpful, it brings 2.34% improvement over the version without it. Further, TEXT-BISON-001 (Anil et al., 2023) underperforms GPT-3.5, with a success rate of 5.05%. These results underline the inherent challenges and complexities of executing tasks that span long horizons, particularly in realistic environments such as WebArena.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":840.0,\"right\":828.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":840.0,\"right\":828.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_33cde24765d84659",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_485c90621f4648e19662c17777c95a10",
+          "location_ref": "reading_element_485c90621f4648e19662c17777c95a10",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 INTRODUCTION",
+          "source_kind": "paragraph",
+          "span_text": "We use this benchmark to evaluate several agents that can follow NL command and perform webbased tasks (§4). These agents are implemented in a few-shot in-context learning fashion with powerful large language models (LLMs) such as GPT-4 and PALM-2. Experiment results show that the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%. We hypothesize that the limited performance of current LLMs stems from a lack of crucial capabilities such as active exploration and failure recovery to successfully perform complex tasks (§5.1). These outcomes underscore the necessity for further development towards robust and effective agents (LeCun, 2022) in WebArena.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_8afa18ce5dcd1cd1",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+          "location_ref": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+          "page": 6,
+          "page_screenshot_available": false,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5 RESULTS",
+          "source_kind": "paragraph",
+          "span_text": "We report results for models using different retrieval mechanisms and prompting styles, then provide some analysis and insight into model performance and difficulty. We summarize models’ performance using BM25 retrieval in Table 5. Across the board, models struggle significantly to resolve issues. The best performing model, Claude 2, is only able to resolve 1.96% of the issues.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_opkurwddp0pi_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "gaia_2024"
+      ],
+      "query_text": "Table results average overall GPT-4 success",
+      "top_k": 8
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_23563230e3ef43d79ff1f7d146d227c5",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Results. Our evaluation can be found in Figure 4, with more details in Table 4 (Appendix D.1). Our proposed levels of dificulty, loosely defined in terms of number of steps and number of diferent capabilities used, are correlated with the performance of current models, strengthening their validity. While humans excel at all levels, current best LLMs do poorly. Overall, <sup>GAIA</sup> allows to clearly rank capable assistants, while leaving a lot of room for improvement in the coming months and ",
+          "section": "4 LLMs results on GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_ca47dd494dc643b180f70015e4e9ddfe",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "4 LLMs results on GAIA",
+          "section": "unsectioned",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_85246d3ab4a2422295373c324cbef4ba",
+          "original_filename": null,
+          "page": 21,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "We provide the detailed scores of the diferent methods evaluated in Table 4.",
+          "section": "D.1 Extended evaluation",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_b8657bf0c47b48a6a1c957222eb91ed6",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Gr´egoire Mialon<sup>1</sup>, Cl´ementine Fourrier<sup>2</sup>, Craig Swift<sup>3</sup>, Thomas Wolf<sup>2</sup>, Yann LeCun<sup>1</sup>, Thomas Scialom<sup>4</sup>",
+          "section": "A Benchmark for General AI Assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_758598b0d1b1433aaadde60b0f811125",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "<sup>1</sup>FAIR, Meta, <sup>2</sup>HuggingFace, <sup>3</sup>AutoGPT, <sup>4</sup>GenAI, Meta",
+          "section": "A Benchmark for General AI Assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "We introduce <sup>GAIA</sup>, a benchmark for General AI Assistants that, if solved, would represent a milestone in AI research. <sup>GAIA</sup> proposes real-world questions that require a set of fundamental abilities such as reasoning, multi-modality handling, web browsing, and generally tool-use proficiency. <sup>GAIA</sup> questions are conceptually simple for humans yet challenging for most advanced AIs: we show that human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins. This",
+          "section": "A Benchmark for General AI Assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d47f57e324494d34898c317ddfe9879d",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "In spite of being successful at tasks that are dificult for humans, the most capable LLMs do poorly on <sup>GAIA</sup>. Even equipped with tools, GPT4 does not exceed a 30% success rate for the easiest of our tasks, and 0% for the hardest. In the meantime, the average success rate for human respondents is 92%. Consequently, a system capable of solving <sup>GAIA</sup> can be assessed in the context of t-AGI,<sup>4</sup> noting that humans typically take between 6 minutes for the simplest question",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_214f825c7adb489b9747b426d8625fa5",
+          "original_filename": null,
+          "page": 19,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "The annotators were also asked to answer the questions they created. We provide a typical example of annotated question in Table 1.",
+          "section": "D Extended description of our question design framework",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_89acd10249e74709b5adff3bcfb104b2",
+          "original_filename": null,
+          "page": 19,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Validation phase. After question creation, we ask two new independent annotators to answer the questions to check it is not ambiguous. We provide a typical annotator output for the validation phase in Table 2, as well as additional statistics on the validation phase of our protocol in Table 3. If the new annotators don’t fully agree with the original answer and there is no human error, the question is repaired if possible and removed otherwise.",
+          "section": "D Extended description of our question design framework",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_8581c3c93d9f4610a25c20baa9b2e02a",
+          "original_filename": null,
+          "page": 21,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Table 3 Statistics on the validation phase. 623 newly crafted questions were validated by two new annotators each. The statistics were computed on their 1246 annotations. \\*: a valid question is a question for which two annotators give the same answer as the question designer, or only one annotator gives the same answer as the question designer and the other made a mistake. \\*\\*: the human baseline is computed as the fraction of correct answers for all tentative on valid questions by the new ann",
+          "section": "D Extended description of our question design framework",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "footnote",
+          "location_ref": "reading_element_b1732859031e43edae124b1db7c9e387",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "<sup>7</sup>https://github.com/Significant-Gravitas/Auto-GPT, git hash of the AutoGPT version evaluated: ed172dec1947466cc0942abf75bb77b027cd433d.",
+          "section": "4 LLMs results on GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e63750b418634752b3c0ec54070dec01",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "AutoGPT4, which allows GPT4 to automatically use tools, ofer disappointing results for Level 2, and even Level 1 compared to GPT4 without plugins. This discrepancy might come from the way AutoGPT4 relies on the GPT4 API (prompt and generation parameters) and will require new evaluation in the near future. AutoGPT4 is also slow compared to other LLMs. Overall, the collaboration between a human and GPT4 with plugins seem to ofer the best ratio of score versus time needed so far.",
+          "section": "4 LLMs results on GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        }
+      ],
+      "matched_count": 45,
+      "query_text": "Table results average overall GPT-4 success",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_function_opt4fetbjzue_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+        "reading_element_a39c2f7b51a0492c80bba477631e56aa"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_cc589bd061af6a6d",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+          "location_ref": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "A Benchmark for General AI Assistants",
+          "source_kind": "paragraph",
+          "span_text": "We introduce <sup>GAIA</sup>, a benchmark for General AI Assistants that, if solved, would represent a milestone in AI research. <sup>GAIA</sup> proposes real-world questions that require a set of fundamental abilities such as reasoning, multi-modality handling, web browsing, and generally tool-use proficiency. <sup>GAIA</sup> questions are conceptually simple for humans yet challenging for most advanced AIs: we show that human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins. This notable performance disparity contrasts with the recent trend of LLMs outperforming humans on tasks requiring professional skills in e.g. law or chemistry. <sup>GAIA</sup>’s philosophy departs from the current trend in AI benchmarks suggesting to target tasks that are ever more dificult for humans. We posit that the advent of Artificial General Intelligence (AGI) hinges on a system’s capability to exhibit similar robustness as the average human does on such questions. Using <sup>GAIA</sup>’s methodology, we devise 466 questions and their answer. We release our questions while retaining answers to 300 of them to power a leader-board hereby accessible.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":109.0,\"bottom\":883.0,\"right\":885.0,\"top\":858.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":109.0,\"bottom\":883.0,\"right\":885.0,\"top\":858.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "footnote",
+          "evidence_id": "ev_eb049547e33020e9",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_a39c2f7b51a0492c80bba477631e56aa",
+          "location_ref": "reading_element_a39c2f7b51a0492c80bba477631e56aa",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 Introduction",
+          "source_kind": "footnote",
+          "span_text": "<sup>1</sup>GPT4 does 86.4% on MMLU. Human non-specialist accuracy on the benchmark is only 34.5% Expert-level human performance is estimated at 89.8%.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "GAIA: a benchmark for General AI Assistants"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_l3cod03ngshs_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "## Ranking from easiest → hardest (by best reported model success rate)\n\n| Rank | Benchmark | Best reported model | Success rate |\n|------|-----------|---------------------|--------------|\n| 1 (easiest) | **GAIA** | GPT-4 + plugins | **15%** overall |\n| 2 | **WebArena** | GPT-4 agent | **14.41%** end-to-end task success |\n| 3 (hardest) | **SWE-bench** | Claude 2 | **1.96%** resolved |\n\n### Supporting figures from each paper\n\n**GAIA** — Mialon et al. (2024): \"human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins.\" On a per-level basis, \"Even equipped with tools, GPT4 does not exceed a 30% success rate for the easiest of our tasks, and 0% for the hardest.\" [[ev_cc589bd061af6a6d]] [[ev_4220267acf17bb3c]]\n\n**WebArena** — Zhou et al. (2024): \"the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%.\" With plain CoT prompting, GPT-4 reaches 11.70% and GPT-3.5 reaches 8.75%. [[ev_33cde24765d84659]] [[ev_57966459e86942f2]]\n\n**SWE-bench** — Jimenez et al. (2024): \"The best performing model, Claude 2, is only able to resolve 1.96% of the issues\" (using BM25 retrieval on 2,294 GitHub issues). [[ev_8afa18ce5dcd1cd1]]\n\n### Note on comparability\nThese are not perfectly apples-to-apples: the three papers use different models, prompting/retrieval setups, and task formulations. The ranking above uses the **single best headline model success rate reported in each paper**, which is the closest like-for-like comparison available from the published numbers alone.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_function_u92re1dcn38a_1",
+    "tool_name": "submit_research_answer"
+  }
+]

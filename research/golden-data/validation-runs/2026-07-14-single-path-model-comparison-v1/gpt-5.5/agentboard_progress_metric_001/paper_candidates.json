@@ -1,0 +1,19 @@
+[
+  {
+    "arxiv_id": "2401.13178",
+    "authors": [
+      "Chang Ma",
+      "Junlei Zhang"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_agentboard_2024",
+    "filename": null,
+    "paper_id": "agentboard_2024",
+    "preview": "",
+    "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+    "venue": "NeurIPS Oral",
+    "year": 2024
+  }
+]

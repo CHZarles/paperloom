@@ -1,0 +1,30 @@
+{
+  "case_id": "attention_paper_ambiguous_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "CITATIONS_FORBIDDEN"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [
+        "OUTCOME_MISMATCH:expected=needs_clarification:actual=answered"
+      ],
+      "status": "fail"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [],
+    "status": "not_required"
+  }
+}

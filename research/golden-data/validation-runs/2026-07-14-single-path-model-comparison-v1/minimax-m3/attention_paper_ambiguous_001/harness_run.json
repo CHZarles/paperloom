@@ -1,0 +1,76 @@
+{
+  "case_id": "attention_paper_ambiguous_001",
+  "citation_validation": {
+    "cited_evidence_ids": [],
+    "corpus_tools_used": false,
+    "passed": true
+  },
+  "completed_at": "2026-07-14T02:45:02Z",
+  "diagnostics": {
+    "completion_tokens": 667,
+    "duration_ms": 12683,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 2,
+    "model_latency_ms": 12555,
+    "prompt_tokens": 5554,
+    "skills_used": [],
+    "tool_call_count": 0,
+    "total_tokens": 6221
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [],
+    "ledger_id": "ledger_attention_paper_ambiguous_001",
+    "missing_evidence": [],
+    "question_id": "attention_paper_ambiguous_001",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_attention_paper_ambiguous_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "I'd be happy to help you find an attention-related paper, but I need a bit more to go on. Could you clarify what you're looking for? For example:\n\n- **A specific paper** — e.g., the original \"Attention Is All You Need\" (Vaswani et al., 2017), or something more recent?\n- **A specific topic** — e.g., self-attention, cross-attention, sparse attention, efficient attention, linear attention, multi-head attention?\n- **A use case** — e.g., attention for NLP, vision transformers, long-context models, multimodal models?\n- **A survey or overview** of attention mechanisms?\n\nOnce I know which direction you want, I can search the corpus and pull the relevant details.",
+    "outcome": "needs_clarification",
+    "question_id": "attention_paper_ambiguous_001",
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "I'd be happy to help you find an attention-related paper, but I need a bit more to go on. Could you clarify what you're looking for? For example:\n\n- **A specific paper** — e.g., the original \"Attention Is All You Need\" (Vaswani et al., 2017), or something more recent?\n- **A specific topic** — e.g., self-attention, cross-attention, sparse attention, efficient attention, linear attention, multi-head"
+  },
+  "harness_id": "python_openai_agents_sdk_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": []
+  },
+  "paper_candidates": [],
+  "question_id": "attention_paper_ambiguous_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "markdown": "I'd be happy to help you find an attention-related paper, but I need a bit more to go on. Could you clarify what you're looking for? For example:\n\n- **A specific paper** — e.g., the original \"Attention Is All You Need\" (Vaswani et al., 2017), or something more recent?\n- **A specific topic** — e.g., self-attention, cross-attention, sparse attention, efficient attention, linear attention, multi-head attention?\n- **A use case** — e.g., attention for NLP, vision transformers, long-context models, multimodal models?\n- **A survey or overview** of attention mechanisms?\n\nOnce I know which direction you want, I can search the corpus and pull the relevant details.",
+        "outcome": "needs_clarification"
+      },
+      "result": {
+        "accepted": true
+      },
+      "tool_call_id": "call_019f5e8377137b318e58495a",
+      "tool_name": "submit_research_answer"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_attention_paper_ambiguous_001",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "I'd be happy to help you find an attention-related paper, but I need a bit more to go on. Could you clarify what you're looking for? For example:\n\n- **A specific paper** — e.g., the original \"Attention Is All You Need\" (Vaswani et al., 2017), or something more recent?\n- **A specific topic** — e.g., self-attention, cross-attention, sparse attention, efficient attention, linear attention, multi-head attention?\n- **A use case** — e.g., attention for NLP, vision transformers, long-context models, multimodal models?\n- **A survey or overview** of attention mechanisms?\n\nOnce I know which direction you want, I can search the corpus and pull the relevant details.",
+    "outcome": "needs_clarification",
+    "question_id": "attention_paper_ambiguous_001",
+    "status": "NEEDS_CLARIFICATION",
+    "summary": "I'd be happy to help you find an attention-related paper, but I need a bit more to go on. Could you clarify what you're looking for? For example:\n\n- **A specific paper** — e.g., the original \"Attention Is All You Need\" (Vaswani et al., 2017), or something more recent?\n- **A specific topic** — e.g., self-attention, cross-attention, sparse attention, efficient attention, linear attention, multi-head"
+  },
+  "result_status": "NEEDS_CLARIFICATION",
+  "run_id": "run_92dae7a4eb4744929558f8ea1b8d1490",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-14T02:44:49Z",
+  "status": "NEEDS_CLARIFICATION"
+}

@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_cross_benchmark_human_agent_gap_001",
+  "answer_type": "deep_comparison",
+  "cited_evidence_ids": [
+    "ev_cc589bd061af6a6d",
+    "ev_1e2568ae84b71ffc",
+    "ev_33cde24765d84659",
+    "ev_ae0699d4f1e6a5dd"
+  ],
+  "fields": {},
+  "markdown": "| Benchmark | Reported human performance | Reported agent performance | Human–agent gap | What the percentage means |\n|---|---:|---:|---:|---|\n| GAIA | 92% | 15% for GPT-4 equipped with plugins | **77 percentage points** | Accuracy on real-world questions requiring reasoning, multimodality, web browsing, and tool use; the paper notes the GPT-4+plugins score should be treated as an oracle because plugins were manually chosen by question [1] [2] |\n| WebArena | 78.24% | 14.41% for the best GPT-4 agent | **63.83 percentage points** | End-to-end task success rate for web-based tasks specified by natural-language commands; human performance was measured with five CS graduate students on one task from each of 170 templates [3] [4] |\n\n**Comparison:** both papers report large gaps between humans and agents, with GAIA’s headline gap larger: **77 pp vs. 63.83 pp**. But these percentages should not be treated as directly interchangeable: GAIA reports question-answering accuracy over factual, tool-using assistant questions, whereas WebArena reports end-to-end success at executing web tasks in a realistic web environment [1] [3]. So the safer reading is: *both benchmarks found substantial human-over-agent gaps under their own evaluation setups*, not that a point of GAIA accuracy equals a point of WebArena task-success rate.\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[2] GAIA: a benchmark for General AI Assistants, 4 LLMs results on GAIA, p. 8\n[3] WebArena: A Realistic Web Environment for Building Autonomous Agents, 1 INTRODUCTION, p. 2\n[4] WebArena: A Realistic Web Environment for Building Autonomous Agents, 3.2 EVALUATION ANNOTATION, p. 7",
+  "outcome": "answered",
+  "question_id": "cross_benchmark_human_agent_gap_001",
+  "status": "COMPLETED",
+  "summary": "| Benchmark | Reported human performance | Reported agent performance | Human–agent gap | What the percentage means |\n|---|---:|---:|---:|---|\n| GAIA | 92% | 15% for GPT-4 equipped with plugins | **77 percentage points** | Accuracy on real-world questions requiring reasoning, multimodality, web browsing, and tool use; the paper notes the GPT-4+plugins score should be treated as an oracle because p"
+}

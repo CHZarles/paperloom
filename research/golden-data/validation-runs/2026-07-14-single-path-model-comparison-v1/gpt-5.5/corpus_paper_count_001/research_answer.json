@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_corpus_paper_count_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "There are **5 papers** available in the current corpus.",
+  "outcome": "answered",
+  "question_id": "corpus_paper_count_001",
+  "status": "COMPLETED",
+  "summary": "There are **5 papers** available in the current corpus."
+}

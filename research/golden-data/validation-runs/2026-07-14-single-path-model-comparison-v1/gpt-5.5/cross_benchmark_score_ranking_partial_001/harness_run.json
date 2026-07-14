@@ -1,0 +1,1275 @@
+{
+  "case_id": "cross_benchmark_score_ranking_partial_001",
+  "citation_validation": {
+    "cited_evidence_ids": [
+      "ev_cc589bd061af6a6d",
+      "ev_33cde24765d84659",
+      "ev_8afa18ce5dcd1cd1"
+    ],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-14T06:24:16Z",
+  "diagnostics": {
+    "completion_tokens": 803,
+    "duration_ms": 39085,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 6,
+    "model_latency_ms": 37968,
+    "prompt_tokens": 46930,
+    "skills_used": [
+      "precision_fact_extraction"
+    ],
+    "tool_call_count": 9,
+    "total_tokens": 47733
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [
+      {
+        "bbox_json": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "element_type": "paragraph",
+        "evidence_id": "ev_cc589bd061af6a6d",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+        "location_ref": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+        "matched_anchor_id": "gaia_question_construction",
+        "matched_anchor_ids": [
+          "gaia_question_construction",
+          "gaia_human_gpt4_gap"
+        ],
+        "page": 1,
+        "page_screenshot_available": false,
+        "paper_id": "gaia_2024",
+        "paper_version": "arXiv v1 / ICLR 2024",
+        "parser_name": "MinerU",
+        "parser_version": "self-hosted",
+        "pdf_evidence_available": false,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "A Benchmark for General AI Assistants",
+        "source_kind": "paragraph",
+        "span_text": "We introduce <sup>GAIA</sup>, a benchmark for General AI Assistants that, if solved, would represent a milestone in AI research. <sup>GAIA</sup> proposes real-world questions that require a set of fundamental abilities such as reasoning, multi-modality handling, web browsing, and generally tool-use proficiency. <sup>GAIA</sup> questions are conceptually simple for humans yet challenging for most advanced AIs: we show that human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins. This notable performance disparity contrasts with the recent trend of LLMs outperforming humans on tasks requiring professional skills in e.g. law or chemistry. <sup>GAIA</sup>’s philosophy departs from the current trend in AI benchmarks suggesting to target tasks that are ever more dificult for humans. We posit that the advent of Artificial General Intelligence (AGI) hinges on a system’s capability to exhibit similar robustness as the average human does on such questions. Using <sup>GAIA</sup>’s methodology, we devise 466 questions and their answer. We release our questions while retaining answers to 300 of them to power a leader-board hereby accessible.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "GAIA: a benchmark for General AI Assistants"
+      },
+      {
+        "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":840.0,\"right\":828.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":840.0,\"right\":828.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "element_type": "paragraph",
+        "evidence_id": "ev_33cde24765d84659",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "reading_element_485c90621f4648e19662c17777c95a10",
+        "location_ref": "reading_element_485c90621f4648e19662c17777c95a10",
+        "matched_anchor_id": null,
+        "matched_anchor_ids": [],
+        "page": 2,
+        "page_screenshot_available": false,
+        "paper_id": "webarena_2024",
+        "paper_version": "arXiv v4 / ICLR 2024",
+        "parser_name": "MinerU",
+        "parser_version": "self-hosted",
+        "pdf_evidence_available": false,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "1 INTRODUCTION",
+        "source_kind": "paragraph",
+        "span_text": "We use this benchmark to evaluate several agents that can follow NL command and perform webbased tasks (§4). These agents are implemented in a few-shot in-context learning fashion with powerful large language models (LLMs) such as GPT-4 and PALM-2. Experiment results show that the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%. We hypothesize that the limited performance of current LLMs stems from a lack of crucial capabilities such as active exploration and failure recovery to successfully perform complex tasks (§5.1). These outcomes underscore the necessity for further development towards robust and effective agents (LeCun, 2022) in WebArena.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+      },
+      {
+        "bbox_json": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "bbox_or_cell_ref": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "element_type": "paragraph",
+        "evidence_id": "ev_8afa18ce5dcd1cd1",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+        "location_ref": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+        "matched_anchor_id": null,
+        "matched_anchor_ids": [],
+        "page": 6,
+        "page_screenshot_available": false,
+        "paper_id": "swebench_2024",
+        "paper_version": "arXiv v3 / ICLR 2024",
+        "parser_name": "MinerU",
+        "parser_version": "self-hosted",
+        "pdf_evidence_available": false,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5 RESULTS",
+        "source_kind": "paragraph",
+        "span_text": "We report results for models using different retrieval mechanisms and prompting styles, then provide some analysis and insight into model performance and difficulty. We summarize models’ performance using BM25 retrieval in Table 5. Across the board, models struggle significantly to resolve issues. The best performing model, Claude 2, is only able to resolve 1.96% of the issues.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+      },
+      {
+        "bbox_json": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":590.0,\"right\":826.0,\"top\":546.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "bbox_or_cell_ref": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":590.0,\"right\":826.0,\"top\":546.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+        "element_type": "paragraph",
+        "evidence_id": "ev_697d8c51f57e1aed",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "reading_element_5548597e9fec406a839675b70af0efc4",
+        "location_ref": "reading_element_5548597e9fec406a839675b70af0efc4",
+        "matched_anchor_id": null,
+        "matched_anchor_ids": [],
+        "page": 6,
+        "page_screenshot_available": false,
+        "paper_id": "swebench_2024",
+        "paper_version": "arXiv v3 / ICLR 2024",
+        "parser_name": "MinerU",
+        "parser_version": "self-hosted",
+        "pdf_evidence_available": false,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "5 RESULTS",
+        "source_kind": "paragraph",
+        "span_text": "To analyze the importance of the retriever to the overall system results, we present the “oracle” retrieval results in Appendix Table 18. There, Claude 2 is able to resolve 4.8% of issues using the “oracle” retriever. We further analyze the importance of context in the discussion below.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+      }
+    ],
+    "ledger_id": "ledger_cross_benchmark_score_ranking_partial_001",
+    "missing_evidence": [],
+    "question_id": "cross_benchmark_score_ranking_partial_001",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_cross_benchmark_score_ranking_partial_001",
+    "answer_type": "precision_fact_extraction",
+    "cited_evidence_ids": [
+      "ev_cc589bd061af6a6d",
+      "ev_33cde24765d84659",
+      "ev_8afa18ce5dcd1cd1"
+    ],
+    "fields": {},
+    "markdown": "Using higher reported model success percentage as “easier,” the ranking is:\n\n1. **GAIA** — **15%** for GPT-4 equipped with plugins [1]\n2. **WebArena** — **14.41%** end-to-end task success rate for the best GPT-4 agent [2]\n3. **SWE-bench** — **1.96%** resolved by the best-performing model, Claude 2, with BM25 retrieval [3]\n\nSo: **GAIA → WebArena → SWE-bench** from easiest to hardest.\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[2] WebArena: A Realistic Web Environment for Building Autonomous Agents, 1 INTRODUCTION, p. 2\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 5 RESULTS, p. 6",
+    "outcome": "answered",
+    "question_id": "cross_benchmark_score_ranking_partial_001",
+    "status": "COMPLETED",
+    "summary": "Using higher reported model success percentage as “easier,” the ranking is:\n\n1. **GAIA** — **15%** for GPT-4 equipped with plugins [1]\n2. **WebArena** — **14.41%** end-to-end task success rate for the best GPT-4 agent [2]\n3. **SWE-bench** — **1.96%** resolved by the best-performing model, Claude 2, with BM25 retrieval [3]\n\nSo: **GAIA → WebArena → SWE-bench** from easiest to hardest.\n\nSources\n[1] G"
+  },
+  "harness_id": "python_openai_agents_sdk_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_cc589bd061af6a6d",
+      "ev_33cde24765d84659",
+      "ev_8afa18ce5dcd1cd1"
+    ],
+    "selected_paper_ids": [
+      "gaia_2024",
+      "webarena_2024",
+      "swebench_2024"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "2311.12983",
+      "authors": [
+        "Gregoire Mialon",
+        "Clementine Fourrier"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gaia_2024",
+      "filename": null,
+      "paper_id": "gaia_2024",
+      "preview": "",
+      "title": "GAIA: a benchmark for General AI Assistants",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2406.12045",
+      "authors": [
+        "Shunyu Yao",
+        "Noah Shinn"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_tau_bench_2024",
+      "filename": null,
+      "paper_id": "tau_bench_2024",
+      "preview": "",
+      "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2408.04682",
+      "authors": [
+        "Jiarui Lu",
+        "Thomas Holleis"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_toolsandbox_2024",
+      "filename": null,
+      "paper_id": "toolsandbox_2024",
+      "preview": "",
+      "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2307.13854",
+      "authors": [
+        "Shuyan Zhou",
+        "Frank F. Xu"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_webarena_2024",
+      "filename": null,
+      "paper_id": "webarena_2024",
+      "preview": "",
+      "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2310.06770",
+      "authors": [
+        "Carlos E. Jimenez",
+        "John Yang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_swebench_2024",
+      "filename": null,
+      "paper_id": "swebench_2024",
+      "preview": "",
+      "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+      "venue": "ICLR",
+      "year": 2024
+    }
+  ],
+  "question_id": "cross_benchmark_score_ranking_partial_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "skill_id": "precision_fact_extraction"
+      },
+      "result": {
+        "answer_guidance": "Answer with the exact value and its source context.",
+        "evidence_standard": "Use exact passages returned by read_locations for paper-content claims. Treat candidate metadata and location previews as navigation only, and state evidence gaps plainly.",
+        "instructions": [
+          "Identify the requested fact slots and qualifiers.",
+          "Read the smallest passage that covers them.",
+          "Verify values, units, and source identity."
+        ],
+        "skill_id": "precision_fact_extraction",
+        "when_to_use": "Locate exact facts, values, parameters, roles, or definitions in source papers."
+      },
+      "tool_call_id": "call_RuJlKlb3LmXzLsdqI5FWILaU",
+      "tool_name": "get_research_skill"
+    },
+    {
+      "arguments": {
+        "limit": 10,
+        "query_text": "GAIA benchmark model success percentage"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 3,
+        "next_offset": null,
+        "query_text": "GAIA benchmark model success percentage",
+        "returned_count": 3
+      },
+      "tool_call_id": "call_udyDpy0MTYvJQDbyp33ppO23",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 10,
+        "query_text": "WebArena benchmark model success percentage"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2307.13854",
+            "authors": [
+              "Shuyan Zhou",
+              "Frank F. Xu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "webarena_2024",
+            "preview": "",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+            "venue": "ICLR",
+            "year": 2024
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 4,
+        "next_offset": null,
+        "query_text": "WebArena benchmark model success percentage",
+        "returned_count": 4
+      },
+      "tool_call_id": "call_iWR6tyVyn78pmbkoLQLEZH6R",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 10,
+        "query_text": "SWE-bench benchmark model success percentage"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2310.06770",
+            "authors": [
+              "Carlos E. Jimenez",
+              "John Yang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "swebench_2024",
+            "preview": "",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 4,
+        "next_offset": null,
+        "query_text": "SWE-bench benchmark model success percentage",
+        "returned_count": 4
+      },
+      "tool_call_id": "call_qgxKvHpnmBiDO0eHmpEXTe6L",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "gaia_2024"
+        ],
+        "query_text": "model success percentage GPT-4 accuracy human GAIA benchmark",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "footnote",
+            "location_ref": "reading_element_a39c2f7b51a0492c80bba477631e56aa",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "<sup>1</sup>GPT4 does 86.4% on MMLU. Human non-specialist accuracy on the benchmark is only 34.5% Expert-level human performance is estimated at 89.8%.",
+            "section": "1 Introduction",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d946ff9abb2e4098a11c3b526eb54194",
+            "original_filename": null,
+            "page": 4,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "Our second principle is interpretability. The restricted number of highly curated questions makes the benchmark easier to use compared to aggregated ones (Perlitz et al., 2023). The conceptual simplicity of the task (human success rate is 92%) makes it easy for users to understand a model’s reasoning trace. For the Level 1 question from Figure 1, the reasoning trace will mostly consist in checking the correct website, and report the correct enrolment, which is simple to verify.",
+            "section": "3.1 A convenient yet challenging benchmark for general AI assistants",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_5df5c46e85664a03b1201f0b49aa33ac",
+            "original_filename": null,
+            "page": 4,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "Our third principle is robustness against memorization: <sup>GAIA</sup> aims to be less gameable than most current benchmarks. To complete a task, a system has to plan and successfully complete some number of steps since the resulting answer is absent by design in plain text from current pre-training data. A progress in accuracy reflects actual system progress. Due to their diversity and the size of the action space, these tasks cannot be brute-forced without cheating, for example by memorizing ",
+            "section": "3.1 A convenient yet challenging benchmark for general AI assistants",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "We introduce <sup>GAIA</sup>, a benchmark for General AI Assistants that, if solved, would represent a milestone in AI research. <sup>GAIA</sup> proposes real-world questions that require a set of fundamental abilities such as reasoning, multi-modality handling, web browsing, and generally tool-use proficiency. <sup>GAIA</sup> questions are conceptually simple for humans yet challenging for most advanced AIs: we show that human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins. This",
+            "section": "A Benchmark for General AI Assistants",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_2546bc7380d440e58ef984682cc9bcf6",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "Date: November 23, 2023   \nCorrespondence: {gmialon,tscialom}@meta.com, clementine@huggingface.co   \nCode: https://huggingface.co/gaia-benchmark",
+            "section": "A Benchmark for General AI Assistants",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_b125bab863cd49c4883017bf7aae7b1b",
+            "original_filename": null,
+            "page": 10,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "Partial versus full automation. While partial automation of a process still requires humans in the loop, full automation completely removes that need. Systems that respectively allow partial automation and full automation can be as close as a few percentage of error on a given task—the former would have say 1% and the latter 0%—, yet yield these two fundamentally diferent paradigms. Full automation is a goal that deep learning has been striving to achieve, without complete success to date: in sp",
+            "section": "5 Discussion",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d47f57e324494d34898c317ddfe9879d",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "In spite of being successful at tasks that are dificult for humans, the most capable LLMs do poorly on <sup>GAIA</sup>. Even equipped with tools, GPT4 does not exceed a 30% success rate for the easiest of our tasks, and 0% for the hardest. In the meantime, the average success rate for human respondents is 92%. Consequently, a system capable of solving <sup>GAIA</sup> can be assessed in the context of t-AGI,<sup>4</sup> noting that humans typically take between 6 minutes for the simplest question",
+            "section": "Level 3",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "chart",
+            "location_ref": "figure_ref_0a6c8c42d7ec4cd7b6ac6dd0dc3277d5",
+            "original_filename": null,
+            "page": 8,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "LLMs, Human and Search engine scores and time to answer for GAIA Figure 4 Scores and time to answer per method and level. As stated in the main text, GPT4 + plugins score should be seen as an oracle since the plugins were chosen manually depending on the question. Human score refers to the score obtained by our annotators when validating the questions.",
+            "section": "4 LLMs results on GAIA",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_758598b0d1b1433aaadde60b0f811125",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "<sup>1</sup>FAIR, Meta, <sup>2</sup>HuggingFace, <sup>3</sup>AutoGPT, <sup>4</sup>GenAI, Meta",
+            "section": "A Benchmark for General AI Assistants",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "heading",
+            "location_ref": "reading_element_ca47dd494dc643b180f70015e4e9ddfe",
+            "original_filename": null,
+            "page": 8,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "4 LLMs results on GAIA",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_b8657bf0c47b48a6a1c957222eb91ed6",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "Gr´egoire Mialon<sup>1</sup>, Cl´ementine Fourrier<sup>2</sup>, Craig Swift<sup>3</sup>, Thomas Wolf<sup>2</sup>, Yann LeCun<sup>1</sup>, Thomas Scialom<sup>4</sup>",
+            "section": "A Benchmark for General AI Assistants",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "heading",
+            "location_ref": "reading_element_b6672769244f4dc8aeeddd163b549d08",
+            "original_filename": null,
+            "page": 7,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "3.4 Building and extending GAIA",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          }
+        ],
+        "matched_count": 98,
+        "query_text": "model success percentage GPT-4 accuracy human GAIA benchmark",
+        "returned_count": 12
+      },
+      "tool_call_id": "call_bnSi6JekgpHLh251Vbs1emFs",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "webarena_2024"
+        ],
+        "query_text": "success rate percentage best model autonomous agents WebArena",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_7ef56dc467fd4b01933ef308dc4acacd",
+            "original_filename": null,
+            "page": 9,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "We present WebArena, a highly-realistic, standalone, and reproducible web environment designed for the development and testing of autonomous agents. WebArena includes fully functional web applications and organic data from popular domains. Additionally, we curate a comprehensive benchmark consisting of 812 examples that focus on mapping high-level natural language intents into concrete web interactions. We also offer outcome-based evaluation that programmatically validate the tasks success. Our ",
+            "section": "7 CONCLUSION",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional web",
+            "section": "ABSTRACT",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "table",
+            "location_ref": "table_ref_c2b4028fcade434c8d0c8bf91e32d376",
+            "original_filename": null,
+            "page": 8,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Table 2: The end-to-end task success rate (SR %) on WebArena with different prompting strategies. CoT: the model performs step-by-step reasoning before issuing the action. UA hint: ask the model to stop when encountering unachievable questions.\nCoT UA Hint | Model | SR | $\\mathbf { S R _ { A C } }$ | $\\mathbf { S R _ { U A } }$ | | TEXT-BISON-001 | 5.05 | 4.00 | 27.78 | X | GPT-3.5 | | 6.41 4.90 | 38.89 | | GPT-3.5 | 8.75 | 6.44 | 58.33 | | GPT-4 | 11.70 | 8.63 | 77.78 | X | X | GPT-3.5 | 5.10 |",
+            "section": "5 RESULTS",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_2f971a27e8f449f0ba1ccb41f1e9b365",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "We introduce WebArena, a realistic and reproducible web environment designed to facilitate the development of autonomous agents capable of executing tasks (§2). An overview of WebArena is in Figure 1. Our environment comprises four fully operational, self-hosted web applications, each representing a distinct domain prevalent on the internet: online shopping, discussion forums, collaborative development, and business content management. Furthermore, WebArena incorporates several utility tools, su",
+            "section": "1 INTRODUCTION",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_d5ac4d46424b4fce981cac5a84a2d771",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Along with WebArena, we release a ready-to-use benchmark with 812 long-horizon web-based tasks (§3). Each task is described as a high-level natural language intent, emulating the abstract language usage patterns typically employed by humans (Bisk et al., 2019). Two example intents are shown in the upper left of Figure 1. We focus on evaluating the functional correctness of these tasks, i.e., does the result of the execution actually achieve the desired goal (§3.2). For instance, to evaluate the ",
+            "section": "1 INTRODUCTION",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_485c90621f4648e19662c17777c95a10",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "We use this benchmark to evaluate several agents that can follow NL command and perform webbased tasks (§4). These agents are implemented in a few-shot in-context learning fashion with powerful large language models (LLMs) such as GPT-4 and PALM-2. Experiment results show that the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%. We hypothesize that the limited performance of current LLMs stems from a lac",
+            "section": "1 INTRODUCTION",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "image",
+            "location_ref": "figure_ref_f91e789ede87482c80c13f653f8feb34",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Figure 1: WebArena is a standalone, self-hostable web environment for building autonomous agents. WebArena creates websites from four popular categories with functionality and data mimicking their real-world equivalents. To emulate human problem-solving, WebArena also embeds tools and knowledge resources as independent websites. WebArena introduces a benchmark on interpreting high-level realistic natural language command to concrete web-based interactions. We provide validators to programmatical",
+            "section": "1 INTRODUCTION",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "heading",
+            "location_ref": "reading_element_4f825e8832794f02805c89eecb234bdf",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "WE BAR E N A: A REALISTIC WEB ENVIRONMENT FOR BUILDING AUTONOMOUS AGENTS",
+            "section": "unsectioned",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "heading",
+            "location_ref": "reading_element_858510ff0623459f97b1688576d5c32a",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "2 WE BAR E N A: WEBSITES AS AN ENVIRONMENT FOR AUTONOMOUS AGENTS",
+            "section": "unsectioned",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_0929610374d741bcae55b5a8ab9456e3",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Autonomous agents that perform everyday tasks via human natural language commands could significantly augment human capabilities, improve efficiency, and increase accessibility. Nonetheless, to fully leverage the power of autonomous agents, it is crucial to understand their behavior within an environment that is both authentic and reproducible. This will allow measurement of the ability of agents on tasks that human users care about in a fair and consistent manner.",
+            "section": "1 INTRODUCTION",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_29e3efa62e364a818ea5154397509541",
+            "original_filename": null,
+            "page": 8,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Do models know when to stop? In our error analysis of the execution trajectories, we observe a prevalent error pattern of early stopping due to the model’s conclusion of unachievability. For instance, GPT-4 erroneously identifies 54.9% of feasible tasks as impossible. This issue primarily stems from the UA hint in the instruction, while this hint allows models to identify unachievable tasks, it also hinders performance on achievable tasks. To address this, we conduct an ablation study where we r",
+            "section": "5.1 ANALYSIS",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_bfa733703774457f9181b2060105b478",
+            "original_filename": null,
+            "page": 8,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Can a model maintain consistent performance across similar tasks? Tasks that originate from the same template usually follow similar reasoning and planning processes, even though their observations and executions will differ. We plot a histogram of per-template success rates for our models in Table 3. Of the 61 templates, GPT-4 manages to achieve a 100% task success rate on only four templates, while GPT-3.5 fails to achieve full task completion for any of the templates. In many cases, the model",
+            "section": "5.1 ANALYSIS",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          }
+        ],
+        "matched_count": 72,
+        "query_text": "success rate percentage best model autonomous agents WebArena",
+        "returned_count": 12
+      },
+      "tool_call_id": "call_UKT70ODdckdmmCUlr5Yd1V50",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "swebench_2024"
+        ],
+        "query_text": "model resolves percentage SWE-bench best model success rate",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "chart",
+            "location_ref": "figure_ref_b462404bc2de48a6ad005105cdf287e5",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Figure 4: Resolution rate for three models across the 12 repositories represented in SWE-bench in the “Oracle” retrieval setting.",
+            "section": "4.3 MODELS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popul",
+            "section": "ABSTRACT",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_705f7e498abc46b89833dbb73e6580ad",
+            "original_filename": null,
+            "page": 23,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Patch Fix Rate. We present Table 14, which presents summary statistics of how many task instances each model generated patches for (out of 2294), how many of these patches applied successfully, and how many of the successfully applied patches required undergoing the patch fixing procedure introduced in Appendix A.4. We find that fixed patches tend to make up a smaller percentage of the SWE-Llama patches that successfully applied, suggesting that SWE-Llama’s fine tuning procedure has a positive e",
+            "section": "A.5 EVALUATION TEST SET CHARACTERIZATION",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_8a88d70fe5894ee9aefbd24f1c237652",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Real-world software engineering tasks. Since each task instance in SWE-bench consists of a large and complex codebase and a description of a relevant issue, solving SWE-bench requires demonstrating sophisticated skills and knowledge possessed by experienced software engineers but are not commonly evaluated in traditional code generation benchmarks.",
+            "section": "2.3 FEATURES OF SWE-BENCH",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_9d6ec0ee2aff4128b28b99b65e31f45b",
+            "original_filename": null,
+            "page": 46,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Discussion. Unlike the problem presented in Table 30, instead of an interactive python input, the model is given an error trace from a function invocation, where the steps to recreate the problem from a user’s standpoint is offered. In addition, the issue also provides a suggestion during the last line on a potential fix for the problem. Once again in the oracle setting, the model takes advantage of the natural language suggestion and localizes the change to a line that is semantically quite sim",
+            "section": "Setting",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_fd9c6e8e8ab149ce959c24c2273bcdd5",
+            "original_filename": null,
+            "page": 27,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Generally, the cases where model generations pass some, but not all tests (“Breaking Resolved”, “Partially Resolved”, “Work in Progress”) cumulatively represent a smaller subset of problems relative to the other three categories. From manual inspection of several of these cases, it is clear that the model demonstrates some understanding of the task requirements. However, due to the baseline methods’ limited view of the codebase that does not include information such as inter-file dependencies an",
+            "section": "C.5 F2P, P2P RATE ANALYSIS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_51db4123988d4cf78aeb1a06962ef641",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Traditional benchmarks in NLP typically involve only short input and output sequences and consider somewhat “contrived” problems created specifically for the benchmark. In contrast, SWE-bench’s realistic construction setting imbues the dataset with unique properties, which we discuss below.",
+            "section": "2.3 FEATURES OF SWE-BENCH",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_634e652f3c9c4578978bc584e5a053e3",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Continually updatable. Our collection process can be easily applied to any Python repository on GitHub and requires minimal human intervention. Therefore, we can extend SWE-bench with a continual supply of new task instances and evaluate LMs on issues created after their training date, which ensures that the solution was not included in their training corpus.",
+            "section": "2.3 FEATURES OF SWE-BENCH",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_5c52e827bf254362bc0ef43c6ce20bf6",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Evaluating LMs on SWE-bench can be time-consuming and, depending on the model, require a costly amount of compute or API credits. Given that initial performance returns as presented in Section 5 are quite low, SWE-bench’s difficulty makes it useful for gauging LM progress in the long term, but potentially intimidating for initial systems that attempt to make progress in the short term.",
+            "section": "2.4 SWE-BENCH LITE",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_98dbb17380af433380bee9cc5b259509",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Published as a conference paper at ICLR 2024",
+            "section": "2.4 SWE-BENCH LITE",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_3fc6cb827ab846358aa0c4b41b4dc1f4",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Diverse long inputs. Issue descriptions are typically long and detailed (195 words on average), and codebases regularly contain many thousands of files. Solving SWE-bench requires identifying the relatively small number of lines that need to be edited to solve an issue amongst a sea of context.",
+            "section": "2.3 FEATURES OF SWE-BENCH",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_bc1f1e95f94e4204887bb2926dc9b4ff",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Robust evaluation. For each task instance, there is at least one fail-to-pass test which was used to test the reference solution, and 40% of instances have at least two fail-to-pass tests. These tests evaluate whether the model addressed the problem in the issue. In addition, a median of 51 additional tests run to check whether prior functionality is properly maintained.",
+            "section": "2.3 FEATURES OF SWE-BENCH",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "matched_count": 203,
+        "query_text": "model resolves percentage SWE-bench best model success rate",
+        "returned_count": 12
+      },
+      "tool_call_id": "call_v1THj1BhLilMYyifpTOxHCQR",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "swebench_2024"
+        ],
+        "query_text": "Claude 2 GPT-4 SWE-Llama resolve 1.96% 4.8% 0.36% Table resolution rate",
+        "section_query": "5 Results",
+        "top_k": 10
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "table",
+            "location_ref": "table_ref_a431d8bd7af0464299a441febb2c0930",
+            "original_filename": null,
+            "page": 5,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Table 2: Model resolve rates with BM25 retrieval, with different maximum context lengths.\nModel | Max. Content | 13k | 27k | 50k | Claude 2 | 1.96 | 1.87 | 1.22 | SWE-Llama 7b | 0.70 | 0.31 | 0.00 | SWE-Llama 13b | 0.70 | 0.48 | 0.00",
+            "section": "4.3 MODELS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popul",
+            "section": "ABSTRACT",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "table",
+            "location_ref": "table_ref_cc7896601a964964bb95e3a450d6e1ed",
+            "original_filename": null,
+            "page": 28,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Year | Total | 25% | Claude 2 | GPT-3.5 | GPT-4* | SWE-Llama 13b | SWE-Llama 7b | 2023 | 244 | 61 | 4.51 | 1.56 | 0.00 | 4.07 | 3.50 | 2022 | 395 | 117 | 4.05 | 0.85 | 3.42 | 2.80 | 2.46 | 2021 | 383 | 102 | 4.18 | 0.00 | 2.94 | 4.45 | 2.56 | 2020 | 427 | 109 | 5.15 | 0.71 | 0.00 | 3.96 | 3.43 | 2019 | 437 | 112 | 5.72 | 1.49 | 1.79 | 4.55 | 2.21 | 2018 | 165 | 37 | 5.45 | 0.00 | 0.00 | 3.57 | 2.94 | &lt; 2018 | 89 | 36 | 4.49 | 0.00 | 2.78 | 3.37 | 1.09",
+            "section": "C.5 F2P, P2P RATE ANALYSIS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_5548597e9fec406a839675b70af0efc4",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "To analyze the importance of the retriever to the overall system results, we present the “oracle” retrieval results in Appendix Table 18. There, Claude 2 is able to resolve 4.8% of issues using the “oracle” retriever. We further analyze the importance of context in the discussion below.",
+            "section": "5 RESULTS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "chart",
+            "location_ref": "figure_ref_b462404bc2de48a6ad005105cdf287e5",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Figure 4: Resolution rate for three models across the 12 repositories represented in SWE-bench in the “Oracle” retrieval setting.",
+            "section": "4.3 MODELS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "We report results for models using different retrieval mechanisms and prompting styles, then provide some analysis and insight into model performance and difficulty. We summarize models’ performance using BM25 retrieval in Table 5. Across the board, models struggle significantly to resolve issues. The best performing model, Claude 2, is only able to resolve 1.96% of the issues.",
+            "section": "5 RESULTS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "table",
+            "location_ref": "table_ref_c398e85a74194d1cb2f1fa50405f2a06",
+            "original_filename": null,
+            "page": 27,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Table 19: % Resolved for models per repository represented in SWE-bench.\nRepo | Claude 2 | ChatGPT-3.5 | GPT-4 | SWE-Llama 13b | SWE-Llama 7b | astropy/astropy | 3.23 | 0.00 | 0.00 | 1.06 | 3.16 | django/django | 6.15 | 1.32 | 2.50 | 5.19 | 4.00 | matplotlib/matplotlib | 3.05 | 3.33 | 0.00 | 3.12 | 1.11 | mwaskom/seaborn | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | pallets/flask | 0.00 | 0.00 | 0.00 | 9.09 | 0.00 | psf/requests | 15.91 | 2.33 | 8.33 | 13.64 | 18.18 | pydata/xarray | 6.90 | 0.00 | 0.00 |",
+            "section": "C.5 F2P, P2P RATE ANALYSIS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "table",
+            "location_ref": "table_ref_84f7c575ba8a4876b6333a79bf92dcf4",
+            "original_filename": null,
+            "page": 7,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Table 7: We compare performance on task instances from before and after 2023 in the “Oracle” retrieval setting. Most models show little difference in performance. <sup>∗</sup>Due to budget constraints, GPT-4 is evaluated on a 25% random subset of SWE-bench tasks, which may impact performance.\n| Claude 2 | ChatGPT-3.5 | GPT-4* | SWE-Llama 7b | SWE-Llama 13b | Before 2023 | 4.87 | 0.49 | 1.96 | 2.95 | 3.98 | After 2023 | 4.23 | 0.77 | 0.0 | 3.46 | 3.85",
+            "section": "5 RESULTS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_7db057ec4d9041b788edebf9dcd26e07",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Difficulty differs across repositories. When breaking performance down by repository, all models trend similarly across different repositories as show in Figure 4. Despite this, the issues resolved by each model do not necessarily overlap extensively. For example, in the “oracle” setting Claude 2 and SWE-Llama 13b perform comparably, with each model resolving 110 and 91 instances respectively. Yet of these instances, Claude 2 only solves 42% of the instances solved by SWE-Llama.",
+            "section": "5 RESULTS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_01fed49d20bc4df7ad48b63b10fb19ec",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "This may also be related to the presence of images in issues, which can be encoded into the issue markdown with embedded image links (i.e. ![image][https://...]). Some repositories naturally feature more instances with images; for example 32% of matplotlib and 10% of seaborn instances contain embedded images in their issue text compared to just 2% of all instances. Solving these instances may require multi-modal LMs or some kind of external tool use to process images.",
+            "section": "5 RESULTS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "reading_element_9b4cecf39e3f4a4d85760d8dc916cf81",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Difficulty correlates with context length. Chat models may be pre-trained on long sequences of code but are typically asked to generate shorter coder snippets with limited context provided to frame the question. As shown in Figure 5, we see that as total context length increases, Claude 2’s performance drops considerably; behavior that is also observed in other models. In our evaluation settings, models see a lot of code that may not be directly related to solving the issue at hand, and they see",
+            "section": "5 RESULTS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "table",
+            "location_ref": "table_ref_f43c7a0692fd4e60b45de651060034fc",
+            "original_filename": null,
+            "page": 5,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Table 4: We compare the different context lengths and proportion of the “oracle” retrieval setting covered. Models with shorter context lengths are thus inherently disadvantaged. Note that descriptions of token-lengths is a relative non-standard measure (e.g. Llama-tokenized sequences are 42% longer on average than the equivalent sequence tokenized for GPT-4).\n| ChatGPT-3.5 | GPT-4 | Claude 2 | SWE-Llama | Max. Tokens | 16,385 | 32,768 | 100,000 | ≥100,000 | % of Instances | 58.1% | 84.1% | 96.4",
+            "section": "4.3 MODELS",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "matched_count": 254,
+        "query_text": "Claude 2 GPT-4 SWE-Llama resolve 1.96% 4.8% 0.36% Table resolution rate",
+        "returned_count": 12
+      },
+      "tool_call_id": "call_YDhrP2cZB0CMvty8zDXzMF0c",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+          "reading_element_485c90621f4648e19662c17777c95a10",
+          "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+          "reading_element_5548597e9fec406a839675b70af0efc4"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_json": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "element_type": "paragraph",
+            "evidence_id": "ev_cc589bd061af6a6d",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+            "location_ref": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+            "page": 1,
+            "page_screenshot_available": false,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "parser_name": "MinerU",
+            "parser_version": "self-hosted",
+            "pdf_evidence_available": false,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "A Benchmark for General AI Assistants",
+            "source_kind": "paragraph",
+            "span_text": "We introduce <sup>GAIA</sup>, a benchmark for General AI Assistants that, if solved, would represent a milestone in AI research. <sup>GAIA</sup> proposes real-world questions that require a set of fundamental abilities such as reasoning, multi-modality handling, web browsing, and generally tool-use proficiency. <sup>GAIA</sup> questions are conceptually simple for humans yet challenging for most advanced AIs: we show that human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins. This notable performance disparity contrasts with the recent trend of LLMs outperforming humans on tasks requiring professional skills in e.g. law or chemistry. <sup>GAIA</sup>’s philosophy departs from the current trend in AI benchmarks suggesting to target tasks that are ever more dificult for humans. We posit that the advent of Artificial General Intelligence (AGI) hinges on a system’s capability to exhibit similar robustness as the average human does on such questions. Using <sup>GAIA</sup>’s methodology, we devise 466 questions and their answer. We release our questions while retaining answers to 300 of them to power a leader-board hereby accessible.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":840.0,\"right\":828.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":840.0,\"right\":828.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "element_type": "paragraph",
+            "evidence_id": "ev_33cde24765d84659",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "reading_element_485c90621f4648e19662c17777c95a10",
+            "location_ref": "reading_element_485c90621f4648e19662c17777c95a10",
+            "page": 2,
+            "page_screenshot_available": false,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "parser_name": "MinerU",
+            "parser_version": "self-hosted",
+            "pdf_evidence_available": false,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "1 INTRODUCTION",
+            "source_kind": "paragraph",
+            "span_text": "We use this benchmark to evaluate several agents that can follow NL command and perform webbased tasks (§4). These agents are implemented in a few-shot in-context learning fashion with powerful large language models (LLMs) such as GPT-4 and PALM-2. Experiment results show that the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%. We hypothesize that the limited performance of current LLMs stems from a lack of crucial capabilities such as active exploration and failure recovery to successfully perform complex tasks (§5.1). These outcomes underscore the necessity for further development towards robust and effective agents (LeCun, 2022) in WebArena.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "bbox_json": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "bbox_or_cell_ref": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":541.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "element_type": "paragraph",
+            "evidence_id": "ev_8afa18ce5dcd1cd1",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+            "location_ref": "reading_element_395f2bdd944f4de286e130f3f7ccb8b1",
+            "page": 6,
+            "page_screenshot_available": false,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "parser_name": "MinerU",
+            "parser_version": "self-hosted",
+            "pdf_evidence_available": false,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "5 RESULTS",
+            "source_kind": "paragraph",
+            "span_text": "We report results for models using different retrieval mechanisms and prompting styles, then provide some analysis and insight into model performance and difficulty. We summarize models’ performance using BM25 retrieval in Table 5. Across the board, models struggle significantly to resolve issues. The best performing model, Claude 2, is only able to resolve 1.96% of the issues.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "bbox_json": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":590.0,\"right\":826.0,\"top\":546.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "bbox_or_cell_ref": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":590.0,\"right\":826.0,\"top\":546.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+            "element_type": "paragraph",
+            "evidence_id": "ev_697d8c51f57e1aed",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "reading_element_5548597e9fec406a839675b70af0efc4",
+            "location_ref": "reading_element_5548597e9fec406a839675b70af0efc4",
+            "page": 6,
+            "page_screenshot_available": false,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "parser_name": "MinerU",
+            "parser_version": "self-hosted",
+            "pdf_evidence_available": false,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "5 RESULTS",
+            "source_kind": "paragraph",
+            "span_text": "To analyze the importance of the retriever to the overall system results, we present the “oracle” retrieval results in Appendix Table 18. There, Claude 2 is able to resolve 4.8% of issues using the “oracle” retriever. We further analyze the importance of context in the discussion below.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_vTTE4cHXWCzrfpDzI6pqdgbu",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "markdown": "Using higher reported model success percentage as “easier,” the ranking is:\n\n1. **GAIA** — **15%** for GPT-4 equipped with plugins [[ev_cc589bd061af6a6d]]\n2. **WebArena** — **14.41%** end-to-end task success rate for the best GPT-4 agent [[ev_33cde24765d84659]]\n3. **SWE-bench** — **1.96%** resolved by the best-performing model, Claude 2, with BM25 retrieval [[ev_8afa18ce5dcd1cd1]]\n\nSo: **GAIA → WebArena → SWE-bench** from easiest to hardest.",
+        "outcome": "answered"
+      },
+      "result": {
+        "accepted": true
+      },
+      "tool_call_id": "call_I5Sg8IFrLBxaRRLTswTpqLN8",
+      "tool_name": "submit_research_answer"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_cross_benchmark_score_ranking_partial_001",
+    "answer_type": "precision_fact_extraction",
+    "cited_evidence_ids": [
+      "ev_cc589bd061af6a6d",
+      "ev_33cde24765d84659",
+      "ev_8afa18ce5dcd1cd1"
+    ],
+    "fields": {},
+    "markdown": "Using higher reported model success percentage as “easier,” the ranking is:\n\n1. **GAIA** — **15%** for GPT-4 equipped with plugins [1]\n2. **WebArena** — **14.41%** end-to-end task success rate for the best GPT-4 agent [2]\n3. **SWE-bench** — **1.96%** resolved by the best-performing model, Claude 2, with BM25 retrieval [3]\n\nSo: **GAIA → WebArena → SWE-bench** from easiest to hardest.\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[2] WebArena: A Realistic Web Environment for Building Autonomous Agents, 1 INTRODUCTION, p. 2\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 5 RESULTS, p. 6",
+    "outcome": "answered",
+    "question_id": "cross_benchmark_score_ranking_partial_001",
+    "status": "COMPLETED",
+    "summary": "Using higher reported model success percentage as “easier,” the ranking is:\n\n1. **GAIA** — **15%** for GPT-4 equipped with plugins [1]\n2. **WebArena** — **14.41%** end-to-end task success rate for the best GPT-4 agent [2]\n3. **SWE-bench** — **1.96%** resolved by the best-performing model, Claude 2, with BM25 retrieval [3]\n\nSo: **GAIA → WebArena → SWE-bench** from easiest to hardest.\n\nSources\n[1] G"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_80353c6e56934419ba7e1a6366711400",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [
+    "precision_fact_extraction"
+  ],
+  "started_at": "2026-07-14T06:23:38Z",
+  "status": "COMPLETED"
+}

@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_bert_choice_followup_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_f189c6c5f4214d2e",
+    "ev_bdb5cc5caf5772fe",
+    "ev_3540835408466c6e",
+    "ev_b9780defe349590a"
+  ],
+  "fields": {},
+  "markdown": "The best paper to read for understanding bidirectional Transformer encoders is:\n\n**BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** by Devlin et al. (NAACL 2019, arXiv:1810.04805) [1]\n\n## Why BERT fits this goal\n\nBERT's defining contribution is making the Transformer *bidirectional* — every token can attend to both its left and right context in every layer, rather than only the left context as in earlier left-to-right models like OpenAI GPT [2].\n\nKey passages worth reading:\n\n- **Abstract** — Defines BERT as \"Bidirectional Encoder Representations from Transformers\" and states it is \"designed to pretrain deep bidirectional representations from unlabeled text by jointly conditioning on both left and right context in all layers\" [1].\n- **§3 Model Architecture** — Describes BERT as \"a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017)\" [3].\n- **§3 footnote** — Clarifies the terminology: the bidirectional version is called a \"Transformer encoder\" while the left-context-only version is called a \"Transformer decoder\" [4].\n- **§3 comparison to GPT** — Contrasts BERT's bidirectional self-attention against GPT's constrained (left-only) self-attention [2].\n- **§1 Introduction** — Explains *how* bidirectionality is achieved at pre-training: the masked language model (MLM) objective lets the representation \"fuse the left and the right context,\" which \"allows\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[4] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3.1 Pre-training BERT, p. 4",
+  "outcome": "answered",
+  "question_id": "bert_choice_followup_001",
+  "status": "COMPLETED",
+  "summary": "The best paper to read for understanding bidirectional Transformer encoders is:\n\n**BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding** by Devlin et al. (NAACL 2019, arXiv:1810.04805) [1]\n\n## Why BERT fits this goal\n\nBERT's defining contribution is making the Transformer *bidirectional* — every token can attend to both its left and right context in every layer, rather"
+}

@@ -1,0 +1,463 @@
+[
+  {
+    "arguments": {
+      "limit": 5,
+      "query_text": "Attention is all you need transformer"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "Attention is all you need transformer",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_function_bulufmmvlsjf_1",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "skill_id": "contradiction_resolution"
+    },
+    "result": {
+      "answer_guidance": "State both claims, the scope difference, and the resulting conclusion.",
+      "evidence_standard": "Use exact passages returned by read_locations for paper-content claims. Treat candidate metadata and location previews as navigation only, and state evidence gaps plainly.",
+      "instructions": [
+        "Read both primary passages.",
+        "Preserve qualifiers such as default, measured, recommended, and conditional.",
+        "Resolve by scope only when the evidence supports it."
+      ],
+      "skill_id": "contradiction_resolution",
+      "when_to_use": "Compare competing source claims and adjudicate or preserve their conflict."
+    },
+    "tool_call_id": "call_function_bulufmmvlsjf_2",
+    "tool_name": "get_research_skill"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph",
+        "table",
+        "list"
+      ],
+      "paper_ids": [
+        "attention_is_all_you_need_2017"
+      ],
+      "query_text": "Adam optimizer beta hyperparameters"
+    },
+    "result": {
+      "coverage": "complete",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_eea1133e346142a3be3c9b4d052dc0fc",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).",
+          "section": "5.2 Hardware and Schedule",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_d05620e807ac4f3b8abbab6412407e22",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "5.3 Optimizer",
+          "section": "unsectioned",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7947bca84ebb42c5b339dfc51bf2eeaa",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "For the base models, we used a single model obtained by averaging the last 5 checkpoints, which were written at 10-minute intervals. For the big models, we averaged the last 20 checkpoints. We used beam search with a beam size of 4 and length penalty $\\alpha = 0 . 6 [ 3 8 ]$ . These hyperparameters were chosen after experimentation on the development set. We set the maximum output length during inference to input length + 50, but terminate early when possible [38].",
+          "section": "6.1 Machine Translation",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d8210ddc051f4101861b92a420d170bd",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "This corresponds to increasing the learning rate linearly for the first warmup\\_steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup $. s t e p s = 4 0 0 0$",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "formula",
+          "location_ref": "formula-92",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "$$\nl r a t e = d _ { \\mathrm { m o d e l } } ^ { - 0 . 5 } \\cdot \\mathrm { m i n } ( s t e p _ { - } n u m ^ { - 0 . 5 } , s t e p _ { - } n u m \\cdot w a r m u p _ { - } s t e p s ^ { - 1 . 5 } )\\tag{3}\n$$",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "matched_count": 6,
+      "query_text": "Adam optimizer beta hyperparameters",
+      "returned_count": 6
+    },
+    "tool_call_id": "call_function_4zbexs9ksaya_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_260d1b8af78b454dbe0f610483436730"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":757.0,\"right\":825.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":757.0,\"right\":825.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_c478868f3b1b547e",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "page_screenshot_available": false,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.3 Optimizer",
+          "source_kind": "paragraph",
+          "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_e1zubxb06re1_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "## Resolved: 0.999 is Adam's default; 0.98 is the Transformer's task-specific choice\n\nThere is no real conflict — the two values live at different scopes.\n\n**What the Transformer paper actually says** (Section 5.3 \"Optimizer\", p. 7):\n\n> \"We used the Adam optimizer [20] with β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹.\" [[ev_c478868f3b1b547e]]\n\nSo Vaswani et al. (2017) do, in fact, use **β₂ = 0.98** for their Transformer experiments.\n\n**Where 0.999 comes from**\n\nβ₂ = 0.999 is the value recommended in the *original Adam paper* by Kingma & Ba (2014), which the Transformer cites as reference [20]. It is the algorithm's general default, intended as a safe starting point across a wide range of problems.\n\n**Adjudication**\n\n| Claim | Source | Scope |\n|---|---|---|\n| β₂ = 0.999 | Kingma & Ba 2014 (Adam paper, ref [20]) | Default / general-purpose setting |\n| β₂ = 0.98 | Vaswani et al. 2017, §5.3 | Specific choice for the Transformer architecture |\n\nThe Transformer authors deliberately overrode the Adam default. The two statements are consistent once their scopes are distinguished: 0.999 is what Adam *suggests by default*; 0.98 is what the Transformer authors *chose to use* for their setup. Sources that say \"0.999\" are paraphrasing Adam's general default; sources that say \"0.98\" are quoting the Transformer paper. Neither is wrong — they are answering different questions.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "use [[evidence_id]] markers instead of numeric citations or a manually written Sources section"
+    },
+    "tool_call_id": "call_function_vsmq8x35tibn_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "markdown": "## Resolved: 0.999 is Adam's default; 0.98 is the Transformer's task-specific choice\n\nThere is no real conflict — the two values live at different scopes.\n\n**What the Transformer paper actually says** (Section 5.3 \"Optimizer\", p. 7):\n\n> \"We used the Adam optimizer [20] with β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹.\" [[ev_c478868f3b1b547e]]\n\nSo Vaswani et al. (2017) do, in fact, use **β₂ = 0.98** for their Transformer experiments.\n\n**Where 0.999 comes from**\n\nβ₂ = 0.999 is the value recommended in the *original Adam paper* by Kingma & Ba (2014), which the Transformer cites as reference [20]. It is the algorithm's general default, intended as a safe starting point across a wide range of problems.\n\n**Adjudication**\n\n| Claim | Source | Scope |\n|---|---|---|\n| β₂ = 0.999 | Kingma & Ba 2014 (Adam paper, ref [20]) | Default / general-purpose setting |\n| β₂ = 0.98 | Vaswani et al. 2017, §5.3 | Specific choice for the Transformer architecture |\n\nThe Transformer authors deliberately overrode the Adam default. The two statements are consistent once their scopes are distinguished: 0.999 is what Adam *suggests by default*; 0.98 is what the Transformer authors *chose to use* for their setup. Sources that say \"0.999\" are paraphrasing Adam's general default; sources that say \"0.98\" are quoting the Transformer paper. Neither is wrong — they are answering different questions.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "use [[evidence_id]] markers instead of numeric citations or a manually written Sources section"
+    },
+    "tool_call_id": "call_function_e2whhexhwmq2_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "markdown": "## Resolved: 0.999 is Adam's default; 0.98 is the Transformer's task-specific choice\n\nThere is no real conflict — the two values live at different scopes.\n\n**What the Transformer paper actually says** (Section 5.3 \"Optimizer\", p. 7):\n\n> \"We used the Adam optimizer [20] with β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹.\" [[ev_c478868f3b1b547e]]\n\nSo Vaswani et al. (2017) do, in fact, use **β₂ = 0.98** for their Transformer experiments.\n\n**Where 0.999 comes from**\n\nβ₂ = 0.999 is the value recommended in the *original Adam paper* by Kingma & Ba (2014), which the Transformer cites as reference [20]. It is the algorithm's general default, intended as a safe starting point across a wide range of problems.\n\n**Adjudication**\n\nThe two claims are consistent once their scopes are distinguished:\n\n- **0.999** is what Adam *suggests by default* in the original Adam paper (Kingma & Ba 2014) — a general-purpose setting.\n- **0.98** is what the Transformer authors *chose to use* in §5.3 of Vaswani et al. 2017 for their specific architecture and training setup.\n\nSources that say \"0.999\" are paraphrasing Adam's general default. Sources that say \"0.98\" are quoting the Transformer paper. Neither is wrong — they are answering different questions.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "use [[evidence_id]] markers instead of numeric citations or a manually written Sources section"
+    },
+    "tool_call_id": "call_function_blpct1m3nffi_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "markdown": "There is no real conflict — the two values live at different scopes.\n\n**What the Transformer paper actually says.** In Section 5.3 \"Optimizer\" (p. 7), Vaswani et al. write: \"We used the Adam optimizer with β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹.\" [[ev_c478868f3b1b547e]] So the Transformer does, in fact, use β₂ = 0.98.\n\n**Where 0.999 comes from.** β₂ = 0.999 is the value recommended in the *original Adam paper* by Kingma & Ba (2014), which the Transformer cites as its reference [20]. It is the algorithm's general default, intended as a safe starting point across a wide range of problems.\n\n**Adjudication.** The two claims are consistent once their scopes are distinguished:\n\n- 0.999 is what Adam *suggests by default* in the original Adam paper — a general-purpose setting.\n- 0.98 is what the Transformer authors *chose to use* in §5.3 of Vaswani et al. 2017 for their specific architecture and training setup.\n\nSources that say \"0.999\" are paraphrasing Adam's general default. Sources that say \"0.98\" are quoting the Transformer paper. Neither is wrong — they are answering different questions.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "use [[evidence_id]] markers instead of numeric citations or a manually written Sources section"
+    },
+    "tool_call_id": "call_function_dk0aovgnfee2_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "markdown": "There is no real conflict — the two values live at different scopes.\n\nIn Section 5.3 \"Optimizer\" of the Transformer paper, Vaswani et al. state that they used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹. [[ev_c478868f3b1b547e]] So the Transformer does, in fact, use β₂ = 0.98.\n\nβ₂ = 0.999 is the value recommended in the original Adam paper by Kingma and Ba, which the Transformer cites as its Adam reference. It is the algorithm's general default, intended as a safe starting point across a wide range of problems.\n\nThe two claims are consistent once their scopes are distinguished. 0.999 is what Adam suggests by default in the original Adam paper — a general-purpose setting. 0.98 is what the Transformer authors chose to use in §5.3 for their specific architecture and training setup. Sources that say 0.999 are paraphrasing Adam's general default; sources that say 0.98 are quoting the Transformer paper. Neither is wrong — they are answering different questions.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+    },
+    "tool_call_id": "call_function_22ycjkstyqhc_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "markdown": "There is no real conflict — the two values live at different scopes, and the corpus confirms which one the Transformer actually used.\n\nIn Section 5.3 \"Optimizer\" of the Transformer paper, Vaswani et al. state that they used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹. [[ev_c478868f3b1b547e]] So the Transformer does, in fact, use β₂ = 0.98 for its experiments.\n\nThe 0.999 figure, by contrast, is the *general default* for Adam's second-moment decay rate as documented in Adam's original publication. That paper is not in the corpus, so this resolution can be stated only on the basis of general knowledge about Adam's defaults; the corpus-side fact is the 0.98 quoted above.\n\nAdjudication:\n\n- 0.999 is Adam's general default (the algorithm's recommended starting value, documented externally to the corpus).\n- 0.98 is what the Transformer authors *chose* in §5.3 of Vaswani et al. 2017, overriding that default for their architecture and training setup.\n\nSources that say 0.999 are paraphrasing Adam's general default; sources that say 0.98 are quoting the Transformer paper. Neither is wrong — they are answering different questions. The corpus definitively supports the 0.98 value for the Transformer.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+    },
+    "tool_call_id": "call_function_oom3jnkqrsq9_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "markdown": "There is no real conflict — the two values live at different scopes, and the corpus confirms which one the Transformer actually used.\n\nIn Section 5.3 \"Optimizer\" of the Transformer paper, Vaswani et al. state that they used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹. [[ev_c478868f3b1b547e]] So the Transformer does, in fact, use β₂ = 0.98 for its experiments.\n\nThe 0.999 figure, by contrast, is the general default for Adam's second-moment decay rate. The corpus only contains the Transformer paper (and not the original Adam publication), so the 0.999 default can only be discussed as general background; the corpus-side fact is the 0.98 value quoted above.\n\nAdjudication:\n\n- 0.999 is Adam's general default — the algorithm's recommended starting value, as documented externally.\n- 0.98 is what the Transformer authors chose in §5.3 of Vaswani et al. 2017, overriding that default for their architecture and training setup.\n\nSources that say 0.999 are paraphrasing Adam's general default; sources that say 0.98 are quoting the Transformer paper. Neither is wrong — they are answering different questions. The corpus definitively supports the 0.98 value for the Transformer.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Adam: A Method for Stochastic Optimization; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+    },
+    "tool_call_id": "call_function_la9sfwfhsaqe_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "limit": 5,
+      "query_text": "Adam stochastic optimization Kingma Ba"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1412.6980",
+          "authors": [
+            "Diederik P. Kingma",
+            "Jimmy Ba"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "adam_2014",
+          "preview": "",
+          "title": "Adam: A Method for Stochastic Optimization",
+          "venue": "ICLR",
+          "year": 2014
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "Adam stochastic optimization Kingma Ba",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_function_totzte6qhauy_1",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph",
+        "table",
+        "list"
+      ],
+      "paper_ids": [
+        "adam_2014"
+      ],
+      "query_text": "beta 0.999 hyperparameters default"
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "list",
+          "location_ref": "reading_element_9e1ba316a8824707b022fa58eaabac67",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Algorithm 2: AdaMax, a variant of Adam based on the infinity norm. See section 7.1 for details.\nGood default settings for the tested machine learning problems are \\alpha \\ : = \\ : 0 . 0 0 2 , \\beta _ { 1 } \\ : = \\ : 0 . 9 and\n\\beta _ { 2 } = 0 . 9 9 9 . With \\beta _ { 1 } ^ { \\overline { { t } } } we denote \\beta _ { 1 } to the power t. Here, ( \\alpha / ( 1 - \\beta _ { 1 } ^ { t } ) ) is the learning rate with the\nbias-correction term for the first moment. All operations on vectors are element-w",
+          "section": "unsectioned",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "list",
+          "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ {",
+          "section": "unsectioned",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "figure",
+          "location_ref": "figure-82",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "(b) after 100 epochs Figure 4: Effect of bias-correction terms (red line) versus no bias correction terms (green line) after 10 epochs (left) and 100 epochs (right) on the loss (y-axes) when learning a Variational Auto-Encoder (VAE) (Kingma & Welling, 2013), for different settings of stepsize α (x-axes) and hyperparameters $\\beta _ { 1 }$ and $\\beta _ { 2 }$",
+          "section": "6.3 EXPERIMENT: CONVOLUTIONAL NEURAL NETWORKS",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9278b129eb6f45cb816e320688d87e6d",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "where $\\zeta = 0$ if the true second moment $\\mathbb { E } [ g _ { i } ^ { 2 } ]$ is stationary; otherwise $\\zeta$ can be kept small since the exponential decay rate $\\beta _ { 1 }$ can (and should) be chosen such that the exponential moving average assigns small weights to gradients too far in the past. What is left is the term $( 1 - \\beta _ { 2 } ^ { t } )$ which is caused by initializing the running average with zeros. In algorithm 1 we therefore divide by this term to correct the initializa",
+          "section": "3 INITIALIZATION BIAS CORRECTION",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_64fc9653d4884fa8a38527f5ccef4b91",
+          "original_filename": null,
+          "page": 14,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "$\\| \\theta _ { m } - \\theta _ { n } \\| _ { \\infty } \\leq D _ { \\infty }$ for any m, $n \\in \\{ 1 , . . . , T \\}$ , and $\\beta _ { 1 } , \\beta _ { 2 } \\in [ 0 , 1 )$ satisfy $\\begin{array} { r } { \\frac { \\beta _ { 1 } ^ { 2 } } { \\sqrt { \\beta _ { 2 } } } < 1 } \\end{array}$ . Let $\\begin{array} { r } { \\alpha _ { t } = \\frac { \\alpha } { \\sqrt { t } } } \\end{array}$ and $\\beta _ { 1 , t } = \\beta _ { 1 } \\lambda ^ { t - 1 } , \\lambda \\in ( 0 , 1 )$ . Adam achieves the following guarantee, for all",
+          "section": "10.1 CONVERGENCE PROOF",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2e9b73bec67244d1bd0e65d0210cf109",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "The algorithm updates exponential moving averages of the gradient $( m _ { t } )$ and the squared gradient $( v _ { t } )$ where the hyper-parameters $\\beta _ { 1 } , \\beta _ { 2 } \\in [ 0 , 1 )$ control the exponential decay rates of these moving averages. The moving averages themselves are estimates of the $1 ^ { \\mathrm { s t } }$ moment (the mean) and the $2 ^ { \\mathrm { n d } }$ raw moment (the uncentered variance) of the gradient. However, these moving averages are initialized as (vectors",
+          "section": "2 ALGORITHM",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e4411840df0b4c2fbd35720ff93a324a",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "In case of sparse gradients, for a reliable estimate of the second moment one needs to average over many gradients by chosing a small value of $\\beta _ { 2 } ;$ however it is exactly this case of small $\\beta _ { 2 }$ where a lack of initialisation bias correction would lead to initial steps that are much larger.",
+          "section": "3 INITIALIZATION BIAS CORRECTION",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_80065353bf594660b66fe112f2107f75",
+          "original_filename": null,
+          "page": 13,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Lemma 10.4. Let $\\begin{array} { r } { \\gamma \\triangleq \\frac { \\beta _ { 1 } ^ { 2 } } { \\sqrt { \\beta _ { 2 } } } } \\end{array}$ . For $\\beta _ { 1 } , \\beta _ { 2 } \\in [ 0 , 1 )$ that satisfy $\\begin{array} { r } { \\frac { \\beta _ { 1 } ^ { 2 } } { \\sqrt { \\beta _ { 2 } } } < 1 } \\end{array}$ and bounded $g _ { t } , \\| g _ { t } \\| _ { 2 } \\leq G ,$ $\\| g _ { t } \\| _ { \\infty } \\leq G _ { \\infty }$ , the following inequality holds",
+          "section": "10.1 CONVERGENCE PROOF",
+          "title": "Adam: A Method for Stochastic Optimization"
+        }
+      ],
+      "matched_count": 51,
+      "query_text": "beta 0.999 hyperparameters default",
+      "returned_count": 8
+    },
+    "tool_call_id": "call_function_2b2vm9mcr2t0_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_914db2da80ce4b6e865ccb31050c5d19"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":101.0,\"bottom\":361.0,\"right\":491.0,\"top\":117.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":101.0,\"bottom\":361.0,\"right\":491.0,\"top\":117.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "list",
+          "evidence_id": "ev_25fa64ee50482ccf",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "unsectioned",
+          "source_kind": "list",
+          "span_text": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ { 1 } ^ { t } and \\beta _ { 2 } ^ { t }\nwe denote \\beta _ { 1 } and \\beta _ { 2 } to the power t .\nRequire: \\alpha \\mathrm { : } Stepsize\nRequire: \\beta _ { 1 } , \\bar { \\beta _ { 2 } } \\overset { - } { \\in } [ 0 , 1 ) : Exponential decay rates for the moment estimates\nRequire: f ( \\theta ) { \\mathrm { : } } Stochastic objective function with parameters θ\nRequire: \\theta _ { 0 } \\colon Initial parameter vector\nm _ { 0 } \\gets 0 (Initialize 1 ^ { \\mathrm { s t } } moment vector)\nv _ { 0 } 0 (Initialize 2 ^ { \\mathrm { n d } } moment vector)\nt \\gets 0 (Initialize timestep)\nwhile \\theta _ { t } not converged do\nt \\gets t + 1\ng _ { t } \\gets \\nabla _ { \\theta } f _ { t } ( \\theta _ { t - 1 } ) (Get gradients w.r.t. stochastic objective at timestep t)\nm _ { t } \\gets \\beta _ { 1 } \\cdot m _ { t - 1 } \\dot { + } \\left( 1 \\bar { - } \\beta _ { 1 } \\right) \\cdot g _ { t } (Update biased first moment estimate)\nv _ { t } \\beta _ { 2 } \\cdot v _ { t - 1 } + ( 1 - \\beta _ { 2 } ) \\cdot g _ { t } ^ { 2 } (Update biased second raw moment estimate)\n\\widehat { m } _ { t } \\gets m _ { t } / ( 1 - \\beta _ { 1 } ^ { t } ) (Compute bias-corrected first moment estimate)\n\\widehat { v } _ { t } \\gets v _ { t } / ( 1 - \\beta _ { 2 } ^ { t } ) (Compute bias-corrected second raw moment estimate)\n\\theta _ { t } \\theta _ { t - 1 } - \\alpha \\cdot \\widehat { m } _ { t } / ( \\sqrt { v _ { t } } + \\epsilon ) (Update parameters)\nend while\nreturn { \\underline { { \\theta _ { t } } } } (Resulting parameters)",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Adam: A Method for Stochastic Optimization"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_bhlf1sxbziqi_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "There is no real conflict — the two values live at different scopes, and the corpus confirms both.\n\n**The Adam default (0.999).** In Algorithm 1 of the Adam paper (Kingma & Ba, 2014, p. 2), the authors write: \"Good default settings for the tested machine learning problems are α = 0.001, β₁ = 0.9, β₂ = 0.999 and ε = 10⁻⁸.\" [[ev_25fa64ee50482ccf]] So 0.999 is the algorithm's recommended default across the problems the authors tested.\n\n**The Transformer's choice (0.98).** In §5.3 \"Optimizer\" of the Transformer paper, Vaswani et al. state that they used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, and ε = 10⁻⁹. [[ev_c478868f3b1b547e]] So the Transformer does, in fact, override the default and use 0.98.\n\n**Adjudication.** The two claims are consistent once their scopes are distinguished:\n\n- 0.999 is Adam's *general default* — a safe starting point recommended in Algorithm 1 of the Adam paper. [[ev_25fa64ee50482ccf]]\n- 0.98 is what the Transformer authors *chose* in §5.3 of Vaswani et al. 2017, deliberately overriding that default for their specific architecture and training setup. [[ev_c478868f3b1b547e]]\n\nSources that say \"0.999\" are paraphrasing the Adam paper's general default. Sources that say \"0.98\" are quoting the Transformer paper. Neither is wrong — they are answering different questions (default vs. specific choice). The apparent conflict dissolves once the scope of each value is made explicit.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_function_th92bl20wr7w_1",
+    "tool_name": "submit_research_answer"
+  }
+]

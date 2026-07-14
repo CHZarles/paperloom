@@ -1,0 +1,405 @@
+[
+  {
+    "arguments": {
+      "skill_id": "contradiction_resolution"
+    },
+    "result": {
+      "answer_guidance": "State both claims, the scope difference, and the resulting conclusion.",
+      "evidence_standard": "Use exact passages returned by read_locations for paper-content claims. Treat candidate metadata and location previews as navigation only, and state evidence gaps plainly.",
+      "instructions": [
+        "Read both primary passages.",
+        "Preserve qualifiers such as default, measured, recommended, and conditional.",
+        "Resolve by scope only when the evidence supports it."
+      ],
+      "skill_id": "contradiction_resolution",
+      "when_to_use": "Compare competing source claims and adjudicate or preserve their conflict."
+    },
+    "tool_call_id": "call_nC9tu9tq599HNqGj32yAsASU",
+    "tool_name": "get_research_skill"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "Adam beta2 0.999"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1412.6980",
+          "authors": [
+            "Diederik P. Kingma",
+            "Jimmy Ba"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "adam_2014",
+          "preview": "",
+          "title": "Adam: A Method for Stochastic Optimization",
+          "venue": "ICLR",
+          "year": 2014
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "Adam beta2 0.999",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_jlOfVmZuUVG8qQmCwsuF7jR7",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "Attention Is All You Need Adam beta2 0.98"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        },
+        {
+          "arxiv_id": "1412.6980",
+          "authors": [
+            "Diederik P. Kingma",
+            "Jimmy Ba"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "adam_2014",
+          "preview": "",
+          "title": "Adam: A Method for Stochastic Optimization",
+          "venue": "ICLR",
+          "year": 2014
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 2,
+      "next_offset": null,
+      "query_text": "Attention Is All You Need Adam beta2 0.98",
+      "returned_count": 2
+    },
+    "tool_call_id": "call_n48hWWFTcuS7YlUMpfCaLgdl",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "adam_2014"
+      ],
+      "query_text": "beta2 0.999 default hyperparameters",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "list",
+          "location_ref": "reading_element_9e1ba316a8824707b022fa58eaabac67",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Algorithm 2: AdaMax, a variant of Adam based on the infinity norm. See section 7.1 for details.\nGood default settings for the tested machine learning problems are \\alpha \\ : = \\ : 0 . 0 0 2 , \\beta _ { 1 } \\ : = \\ : 0 . 9 and\n\\beta _ { 2 } = 0 . 9 9 9 . With \\beta _ { 1 } ^ { \\overline { { t } } } we denote \\beta _ { 1 } to the power t. Here, ( \\alpha / ( 1 - \\beta _ { 1 } ^ { t } ) ) is the learning rate with the\nbias-correction term for the first moment. All operations on vectors are element-w",
+          "section": "unsectioned",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "list",
+          "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ {",
+          "section": "unsectioned",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "figure",
+          "location_ref": "figure-82",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "(b) after 100 epochs Figure 4: Effect of bias-correction terms (red line) versus no bias correction terms (green line) after 10 epochs (left) and 100 epochs (right) on the loss (y-axes) when learning a Variational Auto-Encoder (VAE) (Kingma & Welling, 2013), for different settings of stepsize α (x-axes) and hyperparameters $\\beta _ { 1 }$ and $\\beta _ { 2 }$",
+          "section": "6.3 EXPERIMENT: CONVOLUTIONAL NEURAL NETWORKS",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_057f143ef8494ad6983d5ea47e5c3105",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "with initial value $u _ { 0 } = 0$ . Note that, conveniently enough, we don’t need to correct for initialization bias in this case. Also note that the magnitude of parameter updates has a simpler bound with AdaMax than Adam, namely: $| \\Delta _ { t } | \\le \\alpha$",
+          "section": "7.1 ADAMAX",
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bab7686f131746d5a80510468ef5306a",
+          "original_filename": null,
+          "page": 12,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "preview": "Definition 10.1. A function $f : R ^ { d } \\to R$ is convex if for all $x , y \\in R ^ { d }$ , for all $\\lambda \\in [ 0 , 1 ]$",
+          "section": "10.1 CONVERGENCE PROOF",
+          "title": "Adam: A Method for Stochastic Optimization"
+        }
+      ],
+      "matched_count": 20,
+      "query_text": "beta2 0.999 default hyperparameters",
+      "returned_count": 5
+    },
+    "tool_call_id": "call_B7z0Nrdr6uL5KXqKp0BBlQc9",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "attention_is_all_you_need_2017"
+      ],
+      "query_text": "Adam optimizer beta1 beta2 epsilon 0.9 0.98",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "section": "5.3 Optimizer",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_d05620e807ac4f3b8abbab6412407e22",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "5.3 Optimizer",
+          "section": "unsectioned",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a576f0d28cc640b7aa8330b3b8a1edbe",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Label Smoothing During training, we employed label smoothing of value $\\epsilon _ { l s } = 0 . 1 [ 3 6 ]$ . This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.",
+          "section": "5.4 Regularization",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_1b8b2db97b6a4e888b0cac6d5d282eff",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Residual Dropout We apply dropout [33] to the output of each sub-layer, before it is added to the sub-layer input and normalized. In addition, we apply dropout to the sums of the embeddings and the positional encodings in both the encoder and decoder stacks. For the base model, we use a rate of $P _ { d r o p } = 0 . 1$",
+          "section": "5.4 Regularization",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "footnote",
+          "location_ref": "reading_element_91f7e4a2ed8b4893b4a4cc0a7e4ee889",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "<sup>5</sup>We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.",
+          "section": "6.2 Model Variations",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_80dee077f8af47c9991cc5570250c119",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "9",
+          "section": "6.3 English Constituency Parsing",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f40ba52c7c07456a815954b5a55e84f0",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "In Table 3 rows (A), we vary the number of attention heads and the attention key and value dimensions, keeping the amount of computation constant, as described in Section 3.2.2. While single-head attention is 0.9 BLEU worse than the best setting, quality also drops off with too many heads.",
+          "section": "6.2 Model Variations",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f831dac386744497a397bc60760c11e6",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "In Table 3 rows (B), we observe that reducing the attention key size $d _ { k }$ hurts model quality. This suggests that determining compatibility is not easy and that a more sophisticated compatibility function than dot product may be beneficial. We further observe in rows (C) and (D) that, as expected, bigger models are better, and dropout is very helpful in avoiding over-fitting. In row (E) we replace our sinusoidal positional encoding with learned positional embeddings [9], and observe nearl",
+          "section": "6.2 Model Variations",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7522818c79af4983af91689ca921b0ed",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "where pos is the position and i is the dimension. That is, each dimension of the positional encoding corresponds to a sinusoid. The wavelengths form a geometric progression from $2 \\pi$ to $1 0 0 0 0 \\cdot 2 \\pi$ . We chose this function because we hypothesized it would allow the model to easily learn to attend by relative positions, since for any fixed offset k, $P E _ { p o s + k }$ can be represented as a linear function of $P E _ { p o s }$",
+          "section": "3.5 Positional Encoding",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e28a6bf2492d4c928402a1b4a6eb4cf8",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We also experimented with using learned positional embeddings [9] instead, and found that the two versions produced nearly identical results (see Table 3 row (E)). We chose the sinusoidal version because it may allow the model to extrapolate to sequence lengths longer than the ones encountered during training.",
+          "section": "3.5 Positional Encoding",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_11beec39f591485e83be2364cc842ae0",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We trained a 4-layer transformer with $d _ { m o d e l } = 1 0 2 4$ on the Wall Street Journal (WSJ) portion of the Penn Treebank [25], about 40K training sentences. We also trained it in a semi-supervised setting, using the larger high-confidence and BerkleyParser corpora from with approximately 17M sentences [37]. We used a vocabulary of 16K tokens for the WSJ only setting and a vocabulary of 32K tokens for the semi-supervised setting.",
+          "section": "6.3 English Constituency Parsing",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_fd11c9d9d87c40a6a6bc6cd7b44dae28",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We performed only a small number of experiments to select the dropout, both attention and residual (section 5.4), learning rates and beam size on the Section 22 development set, all other parameters remained unchanged from the English-to-German base translation model. During inference, we increased the maximum output length to input length + 300. We used a beam size of 21 and α = 0.3 for both WSJ only and the semi-supervised setting.",
+          "section": "6.3 English Constituency Parsing",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "matched_count": 34,
+      "query_text": "Adam optimizer beta1 beta2 epsilon 0.9 0.98",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_TgzJLMmLZaFcJNcHCuf17aGZ",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+        "reading_element_260d1b8af78b454dbe0f610483436730"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":101.0,\"bottom\":361.0,\"right\":491.0,\"top\":117.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":101.0,\"bottom\":361.0,\"right\":491.0,\"top\":117.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "list",
+          "evidence_id": "ev_25fa64ee50482ccf",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "location_ref": "reading_element_914db2da80ce4b6e865ccb31050c5d19",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "adam_2014",
+          "paper_version": "arXiv v9 / ICLR 2015 camera-ready",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "unsectioned",
+          "source_kind": "list",
+          "span_text": "Algorithm 1: Adam, our proposed algorithm for stochastic optimization. See section 2 for details,\nand for a slightly more efficient (but less clear) order of computation. g _ { t } ^ { 2 } indicates the elementwise\nsquare g _ { t } \\odot g _ { t } . Good default settings for the tested machine learning problems are \\alpha = 0 . 0 0 1\n\\bar { \\beta _ { 1 } } = 0 \\bar { . } 9 , \\beta _ { 2 } \\bar { = } 0 . 999 and \\epsilon = 1 0 ^ { - 8 } . All operations on vectors are element-wise. With \\beta _ { 1 } ^ { t } and \\beta _ { 2 } ^ { t }\nwe denote \\beta _ { 1 } and \\beta _ { 2 } to the power t .\nRequire: \\alpha \\mathrm { : } Stepsize\nRequire: \\beta _ { 1 } , \\bar { \\beta _ { 2 } } \\overset { - } { \\in } [ 0 , 1 ) : Exponential decay rates for the moment estimates\nRequire: f ( \\theta ) { \\mathrm { : } } Stochastic objective function with parameters θ\nRequire: \\theta _ { 0 } \\colon Initial parameter vector\nm _ { 0 } \\gets 0 (Initialize 1 ^ { \\mathrm { s t } } moment vector)\nv _ { 0 } 0 (Initialize 2 ^ { \\mathrm { n d } } moment vector)\nt \\gets 0 (Initialize timestep)\nwhile \\theta _ { t } not converged do\nt \\gets t + 1\ng _ { t } \\gets \\nabla _ { \\theta } f _ { t } ( \\theta _ { t - 1 } ) (Get gradients w.r.t. stochastic objective at timestep t)\nm _ { t } \\gets \\beta _ { 1 } \\cdot m _ { t - 1 } \\dot { + } \\left( 1 \\bar { - } \\beta _ { 1 } \\right) \\cdot g _ { t } (Update biased first moment estimate)\nv _ { t } \\beta _ { 2 } \\cdot v _ { t - 1 } + ( 1 - \\beta _ { 2 } ) \\cdot g _ { t } ^ { 2 } (Update biased second raw moment estimate)\n\\widehat { m } _ { t } \\gets m _ { t } / ( 1 - \\beta _ { 1 } ^ { t } ) (Compute bias-corrected first moment estimate)\n\\widehat { v } _ { t } \\gets v _ { t } / ( 1 - \\beta _ { 2 } ^ { t } ) (Compute bias-corrected second raw moment estimate)\n\\theta _ { t } \\theta _ { t - 1 } - \\alpha \\cdot \\widehat { m } _ { t } / ( \\sqrt { v _ { t } } + \\epsilon ) (Update parameters)\nend while\nreturn { \\underline { { \\theta _ { t } } } } (Resulting parameters)",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Adam: A Method for Stochastic Optimization"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":757.0,\"right\":825.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":757.0,\"right\":825.0,\"top\":727.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_c478868f3b1b547e",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "location_ref": "reading_element_260d1b8af78b454dbe0f610483436730",
+          "page": 7,
+          "page_screenshot_available": false,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.3 Optimizer",
+          "source_kind": "paragraph",
+          "span_text": "We used the Adam optimizer [20] with $\\beta _ { 1 } = 0 . 9 , \\beta _ { 2 } = 0 . 9 8$ and $\\epsilon = 1 0 ^ { - 9 }$ . We varied the learning rate over the course of training, according to the formula:",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_O5otpYBFaT1x4PsG1ZVhhC9o",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "There isn’t a real conflict: the two numbers refer to different scopes.\n\n- **0.999** is the Adam paper’s stated **“good default”** for the tested machine-learning problems: it lists \\(\\alpha=0.001\\), \\(\\beta_1=0.9\\), \\(\\beta_2=0.999\\), and \\(\\epsilon=10^{-8}\\). [[ev_25fa64ee50482ccf]]\n- **0.98** is the **specific hyperparameter choice used in the Transformer paper**: it says they used Adam with \\(\\beta_1=0.9\\), \\(\\beta_2=0.98\\), and \\(\\epsilon=10^{-9}\\). [[ev_c478868f3b1b547e]]\n\nSo: if someone asks for **Adam’s default \\(\\beta_2\\)**, answer **0.999**. If they ask for **the Transformer paper’s Adam \\(\\beta_2\\)**, answer **0.98**.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_4DvfZvUyx81BYaSvo7CJAuun",
+    "tool_name": "submit_research_answer"
+  }
+]

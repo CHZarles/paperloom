@@ -13,9 +13,10 @@
    假阳性空间。
 
 因此，当前 `MiniMax 17/30` 和 `GPT-5.5 14/30` 都是**严格 Anchor 合约通过率**，不是可靠的
-端到端回答准确率。GPT-5.5 在相同 Runtime 下取得更高 Candidate Recall，并在多个 Hard Fail Case
-中给出了明显完整且有证据的答案。这说明当前最先需要修正的是离线评测机制，而不是继续修改线上
-编排或简单归因于模型能力。
+端到端回答准确率。最终盲审结果为 GPT-5.5 `28/30`、MiniMax-M3 `22/30`，偏好为
+`24 : 4`（另有 2 个 tie）。Strict Scorer 不仅低估两个模型，还反转了它们的排名。
+这说明评分机制是当前数字失真的主因，同时 GPT-5.5 与 MiniMax-M3 之间也存在真实的
+回答质量差异。
 
 本轮没有修改 Prompt、Case、Anchor、Manifest、Reading Model 或运行路径。
 
@@ -53,7 +54,7 @@ passed_count: 30
 failed_count: 0
 ```
 
-产物：`/tmp/paperloom-golden-data-validate-20260714.json`
+产物：`research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/audit/deterministic-validation.json`
 
 这证明 Manifest、Case、Fixture 和确定性 Scorer 在结构上能够闭环。它不证明真实回答语义正确。
 
@@ -65,7 +66,7 @@ passed_count: 29
 failed_count: 0
 ```
 
-产物：`/tmp/paperloom-golden-data-anchor-audit-20260714.json`
+产物：`research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/audit/anchor-audit.json`
 
 29 个 Anchor 都能在指定正页码上唯一匹配 Reading Model。Anchor 没有丢失、错页或重复命中问题。
 
@@ -99,9 +100,10 @@ Scoring coverage partial:   27
 Scoring coverage insufficient: 3
 ```
 
-机器可读产物：`/tmp/paperloom-golden-semantic-audit-gpt55-20260714.json`
+机器可读产物：
+`research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/audit/gpt55-semantic-audit.json`
 
-需要 Human Adjudication 的 7 个 Case：
+初步标记为需要 Human Adjudication 的 7 个 Case：
 
 | Case | 问题 |
 | --- | --- |
@@ -112,6 +114,10 @@ Scoring coverage insufficient: 3
 | `mint_vs_tau_interaction_comparison_001` | 五个比较轴中，MINT 的 environment-state 语义没有被当前 Required Evidence 明确约束。 |
 | `cross_benchmark_score_ranking_partial_001` | 用户明确要求“按报告百分比排序”；提供带强 caveat 的数值排序也是合理答案，强制 `partial` 并拒绝排序并非唯一正确行为。 |
 | `toolsandbox_constraint_selection_001` | 全文 Evidence 实际覆盖 milestone，但 Anchor selector 本身没有包含 milestone 片段；需要确认 Hard Gate 应针对 selector 还是完整 Evidence Span。 |
+
+最终人工裁决对这 7 个 Case 全部选择 `keep`，并确认当前 outcome 和 Required Evidence 有效；
+同时 7 个 Case 全部允许同论文中的语义等价证据。因此不修改 Golden Contract，而是将 Exact
+Anchor 与回答语义准确性分开报告。
 
 其中 ToolSandbox Case 的完整 Reading Element 已包含 intermediate/final milestones，因此更接近
 Anchor 表达问题，而不是事实错误。
@@ -224,16 +230,11 @@ GPT-5.5 通过 Responses API 接入。第一次全量运行中
 | Total Tokens | `2,702,429` | `1,069,942` |
 | Summed Case Time | `约 36.1 分钟` | `约 28.3 分钟` |
 
-GPT-5.5 产物：
+GPT-5.5 和 MiniMax 的完整保存产物位于：
 
-- `/tmp/paperloom-gpt55-single-restored-full-20260714/score_report.json`
-- `/tmp/paperloom-gpt55-single-restored-funnel-20260714.json`
-- `/tmp/paperloom-gpt55-single-restored-full-eval-20260714/`
-
-MiniMax 产物：
-
-- `/tmp/paperloom-minimax-single-restored-merged-20260714/score_report.json`
-- `/tmp/paperloom-minimax-single-restored-funnel-20260714.json`
+- `research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/`
+- `research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/`
+- `research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/*-funnel.json`
 
 ### 暂时排除 6 个明显争议 Case
 
@@ -271,10 +272,19 @@ Hard Fail 是 Exact Anchor 或 Forbidden Paper 假阴性，因此不能把 `58.3
 4. **当前“准确率”的首要瓶颈是评测机制。** Exact Anchor、Forbidden Paper 和未执行的语义要求
    共同扭曲 Hard Pass，已经不足以可靠比较 MiniMax 与 GPT-5.5 的最终回答质量。
 
-### 尚不能确认的部分
+### 人工盲审已完成
 
-不能仅凭当前 Hard Pass 宣布“MiniMax 比 GPT-5.5 更准确”，也不能宣布“GPT-5.5 已达到某个语义
-通过率”。需要对保存产物做 Human Label，或者先校准一个不会出现系统性假阴性的语义 Judge。
+30 组 A/B 答案已在新的随机映射下盲审，标签先于 `blind-map.json` 冻结。结果为：
+
+| 指标 | MiniMax-M3 | GPT-5.5 |
+| --- | ---: | ---: |
+| Human Overall Pass | `22/30 = 73.3%` | `28/30 = 93.3%` |
+| Human Grounding Pass（排除 N/A） | `18/25 = 72.0%` | `28/28 = 100%` |
+| 盲审偏好 | `4/30` | `24/30` |
+
+两个模型都通过 20 个 Case，只有 GPT-5.5 通过 8 个，只有 MiniMax-M3 通过 2 个，
+没有两者同时失败的 Case。完整结果见
+`research/golden-data/human-adjudication/2026-07-14/RESULTS.md`。
 
 自动 Judge 也不能直接替代人工。用更高版本的 `gpt-5.6-sol` 按冻结的 `llm-judge/v5` 规则复核
 既有人工标签时，23 个成功返回的 Case 全部被判为 overall fail：
@@ -293,18 +303,14 @@ false pass:       0/23
 
 ## 下一步
 
-按以下顺序处理，不改线上 Runtime：
+不改 Golden Data、Prompt、Reading Model 和线上 Runtime，先改离线报告口径：
 
-1. Human Adjudication 先审核 7 个 Case 合约问题，决定 keep / revise / drop；
-2. 对 MiniMax 与 GPT-5.5 的共同失败和模型分歧 Case 做盲审，答案中隐藏 Provider 名称；
-3. 将 authored Anchor 从“唯一正确证据”改为“诊断性 reference evidence”；只有精确数值且来源唯一
-   的 Case 才保留 exact-anchor hard gate；
-4. 将 Required Paper 改成核心结论的支撑约束，Forbidden Paper 改成 claim-level misuse，而不是
-   Evidence Ledger presence；
-5. 对存在 `facts` 的 Case，缺少字段应为 fail，或增加确定性答案文本抽取；
-6. 对 comparison、recommendation、conflict 和 boundary Case，使用经过 Human Label 校准的离线
-   Semantic Judge；
-7. 直接对现有保存 Run 离线重评分，不重新消耗模型 Token；评测口径稳定后，再决定是否重跑模型。
+1. 保留 Strict Hard Pass，但明确命名为“Contract/Anchor Conformance”，不再展示为回答准确率；
+2. 以本轮 Human Label 为基准，离线报告同时展示 Human Overall、Grounding、假阴性和假阳性；
+3. 不重跑模型，先对已保存 Run 完成评分器报告分层；
+4. 再单独处理真实模型失败：MiniMax-M3 的证据边界/过度推断和技术失败，以及 GPT-5.5 的
+   模糊请求澄清策略；
+5. 表格/图像产物的发布缺口作为独立数据管道问题处理，不与本次评分机制结论混在一起。
 
 这条路径符合 Harness 的职责边界：线上继续专注模型编排和完整记录，所有 Golden 修订、语义评分、
 Provider 对比和研究分析都留在线下。

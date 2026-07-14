@@ -1,0 +1,29 @@
+[
+  {
+    "arguments": {
+      "limit": 20,
+      "query_text": "GPT-5 architecture details"
+    },
+    "result": {
+      "candidates": [],
+      "coverage": "complete",
+      "matched_count": 0,
+      "next_offset": null,
+      "query_text": "GPT-5 architecture details",
+      "returned_count": 0
+    },
+    "tool_call_id": "call_e7zunMWyetJ26Cg1kUJ7E7KG",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "markdown": "I don’t have supported architecture details for GPT-5 in the available corpus. The corpus search returned no papers matching “GPT-5 architecture details,” so I can’t responsibly state specifics such as parameter count, layer structure, attention variants, training data, MoE usage, or context length.\n\nIf you want, I can instead summarize **publicly known, source-grounded details** from any paper or report you provide, or compare documented architectures for earlier GPT-family/open models if they exist in the corpus.",
+      "outcome": "abstained"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_uZal0YbmEL6WhdXOtXm2C917",
+    "tool_name": "submit_research_answer"
+  }
+]

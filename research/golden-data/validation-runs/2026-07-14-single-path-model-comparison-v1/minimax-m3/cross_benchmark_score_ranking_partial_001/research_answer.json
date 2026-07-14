@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_cross_benchmark_score_ranking_partial_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_cc589bd061af6a6d",
+    "ev_4220267acf17bb3c",
+    "ev_33cde24765d84659",
+    "ev_57966459e86942f2",
+    "ev_8afa18ce5dcd1cd1"
+  ],
+  "fields": {},
+  "markdown": "## Ranking from easiest → hardest (by best reported model success rate)\n\n| Rank | Benchmark | Best reported model | Success rate |\n|------|-----------|---------------------|--------------|\n| 1 (easiest) | **GAIA** | GPT-4 + plugins | **15%** overall |\n| 2 | **WebArena** | GPT-4 agent | **14.41%** end-to-end task success |\n| 3 (hardest) | **SWE-bench** | Claude 2 | **1.96%** resolved |\n\n### Supporting figures from each paper\n\n**GAIA** — Mialon et al. (2024): \"human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins.\" On a per-level basis, \"Even equipped with tools, GPT4 does not exceed a 30% success rate for the easiest of our tasks, and 0% for the hardest.\" [1] [2]\n\n**WebArena** — Zhou et al. (2024): \"the best GPT-4 agent performance is somewhat limited, with an end-to-end task success rate of only 14.41%, while the human performance is 78.24%.\" With plain CoT prompting, GPT-4 reaches 11.70% and GPT-3.5 reaches 8.75%. [3] [4]\n\n**SWE-bench** — Jimenez et al. (2024): \"The best performing model, Claude 2, is only able to resolve 1.96% of the issues\" (using BM25 retrieval on 2,294 GitHub issues). [5]\n\n### Note on comparability\nThese are not perfectly apples-to-apples: the three papers use different models, prompting/retrieval setups, and task formulations. The ranking above uses the **single best headline model success rate reported in each paper**, which is the closest like-for-like comparison available from the published numbers alone.\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[2] GAIA: a benchmark for General AI Assistants, Level 3, p. 3\n[3] WebArena: A Realistic Web Environment for Building Autonomous Agents, 1 INTRODUCTION, p. 2\n[4] WebArena: A Realistic Web Environment for Building Autonomous Agents, 5 RESULTS, p. 8\n[5] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, 5 RESULTS, p. 6",
+  "outcome": "answered",
+  "question_id": "cross_benchmark_score_ranking_partial_001",
+  "status": "COMPLETED",
+  "summary": "## Ranking from easiest → hardest (by best reported model success rate)\n\n| Rank | Benchmark | Best reported model | Success rate |\n|------|-----------|---------------------|--------------|\n| 1 (easiest) | **GAIA** | GPT-4 + plugins | **15%** overall |\n| 2 | **WebArena** | GPT-4 agent | **14.41%** end-to-end task success |\n| 3 (hardest) | **SWE-bench** | Claude 2 | **1.96%** resolved |\n\n### Support"
+}

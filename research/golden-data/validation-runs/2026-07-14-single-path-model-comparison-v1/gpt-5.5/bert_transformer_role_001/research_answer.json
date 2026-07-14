@@ -1,0 +1,13 @@
+{
+  "answer_id": "answer_bert_transformer_role_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_3540835408466c6e"
+  ],
+  "fields": {},
+  "markdown": "BERT uses the Transformer as an **encoder**: the paper describes BERT as “a multi-layer bidirectional Transformer encoder.” [1]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3",
+  "outcome": "answered",
+  "question_id": "bert_transformer_role_001",
+  "status": "COMPLETED",
+  "summary": "BERT uses the Transformer as an **encoder**: the paper describes BERT as “a multi-layer bidirectional Transformer encoder.” [1]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3"
+}

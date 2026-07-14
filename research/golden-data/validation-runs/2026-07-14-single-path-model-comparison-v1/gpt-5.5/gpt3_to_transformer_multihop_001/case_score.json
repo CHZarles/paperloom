@@ -1,0 +1,30 @@
+{
+  "case_id": "gpt3_to_transformer_multihop_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "pass"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [
+      "GPT-3 uses the same model and architecture family as GPT-2.",
+      "GPT-2 uses a Transformer-based architecture for its language models.",
+      "The supported chain is GPT-3 to GPT-2 to Attention Is All You Need; no direct GPT-3-to-Transformer citation is asserted."
+    ],
+    "status": "not_run"
+  }
+}

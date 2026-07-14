@@ -1,0 +1,10 @@
+{
+  "api_base_url": "https://cx.dorofy.com/v1",
+  "api_style": "responses",
+  "has_api_key": true,
+  "model": "gpt-5.5",
+  "provider": "codex",
+  "runtime": "agents_sdk",
+  "scope": "llm",
+  "single_path": true
+}

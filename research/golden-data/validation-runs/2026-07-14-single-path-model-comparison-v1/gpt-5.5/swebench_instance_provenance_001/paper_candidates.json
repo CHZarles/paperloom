@@ -1,0 +1,70 @@
+[
+  {
+    "arxiv_id": "2310.06770",
+    "authors": [
+      "Carlos E. Jimenez",
+      "John Yang"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_swebench_2024",
+    "filename": null,
+    "paper_id": "swebench_2024",
+    "preview": "",
+    "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+    "venue": "ICLR",
+    "year": 2024
+  },
+  {
+    "arxiv_id": "2401.13178",
+    "authors": [
+      "Chang Ma",
+      "Junlei Zhang"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_agentboard_2024",
+    "filename": null,
+    "paper_id": "agentboard_2024",
+    "preview": "",
+    "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+    "venue": "NeurIPS Oral",
+    "year": 2024
+  },
+  {
+    "arxiv_id": "2406.12045",
+    "authors": [
+      "Shunyu Yao",
+      "Noah Shinn"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_tau_bench_2024",
+    "filename": null,
+    "paper_id": "tau_bench_2024",
+    "preview": "",
+    "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+    "venue": "arXiv",
+    "year": 2024
+  },
+  {
+    "arxiv_id": "2408.04682",
+    "authors": [
+      "Jiarui Lu",
+      "Thomas Holleis"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_toolsandbox_2024",
+    "filename": null,
+    "paper_id": "toolsandbox_2024",
+    "preview": "",
+    "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+    "venue": "arXiv",
+    "year": 2024
+  }
+]

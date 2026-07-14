@@ -1,0 +1,13 @@
+[
+  {
+    "arguments": {
+      "markdown": "I'd be happy to help you find an attention-related paper, but I need a bit more to go on. Could you clarify what you're looking for? For example:\n\n- **A specific paper** — e.g., the original \"Attention Is All You Need\" (Vaswani et al., 2017), or something more recent?\n- **A specific topic** — e.g., self-attention, cross-attention, sparse attention, efficient attention, linear attention, multi-head attention?\n- **A use case** — e.g., attention for NLP, vision transformers, long-context models, multimodal models?\n- **A survey or overview** of attention mechanisms?\n\nOnce I know which direction you want, I can search the corpus and pull the relevant details.",
+      "outcome": "needs_clarification"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_019f5e8377137b318e58495a",
+    "tool_name": "submit_research_answer"
+  }
+]

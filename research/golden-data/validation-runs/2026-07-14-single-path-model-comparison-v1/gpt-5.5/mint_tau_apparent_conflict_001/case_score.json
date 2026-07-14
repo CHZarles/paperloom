@@ -1,0 +1,35 @@
+{
+  "case_id": "mint_tau_apparent_conflict_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "REQUIRED_ANCHOR_NOT_CITED:mint_tools_feedback_gains",
+        "REQUIRED_ANCHOR_NOT_CITED:tau_passk_reliability"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [
+        "REQUIRED_ANCHOR_MISSING:mint_tools_feedback_gains",
+        "REQUIRED_ANCHOR_MISSING:tau_passk_reliability"
+      ],
+      "status": "fail"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Does not invent a shared model, task distribution, or metric that would make the reported numbers directly comparable.",
+      "The findings are not contradictory because MINT measures gains from interaction support while tau-bench measures repeated-trial reliability in stateful tasks."
+    ],
+    "status": "not_run"
+  }
+}

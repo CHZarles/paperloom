@@ -1,0 +1,819 @@
+[
+  {
+    "arguments": {
+      "markdown": "Choose **SWE-bench**.\n\nSince your priority is **coding agents**, SWE-bench is the best fit among the three. It is designed around software-engineering tasks, especially evaluating whether an agent can resolve real coding issues rather than just answer questions or operate websites.\n\nQuick distinction:\n- **SWE-bench** — best for coding/software-engineering agents.\n- **WebArena** — best for browser/web-interaction agents.\n- **GAIA** — best for broad general-assistant evaluation.\n\nSo for your use case: **SWE-bench is the right benchmark.**",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: GAIA: a benchmark for General AI Assistants, SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, WebArena: A Realistic Web Environment for Building Autonomous Agents; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+    },
+    "tool_call_id": "call_E7STslVly5bzVTgyBIpUug3a",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+    },
+    "result": {
+      "matches": [
+        {
+          "arxiv_id": "2310.06770",
+          "authors": [
+            "Carlos E. Jimenez",
+            "John Yang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "swebench_2024",
+          "preview": "",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+          "venue": "ICLR",
+          "year": 2024
+        }
+      ],
+      "status": "resolved"
+    },
+    "tool_call_id": "call_SlhU48EYL3N710CsckOmtCDS",
+    "tool_name": "find_papers_by_identity"
+  },
+  {
+    "arguments": {
+      "title": "GAIA: a benchmark for General AI Assistants"
+    },
+    "result": {
+      "matches": [
+        {
+          "arxiv_id": "2311.12983",
+          "authors": [
+            "Gregoire Mialon",
+            "Clementine Fourrier"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gaia_2024",
+          "preview": "",
+          "title": "GAIA: a benchmark for General AI Assistants",
+          "venue": "ICLR",
+          "year": 2024
+        }
+      ],
+      "status": "resolved"
+    },
+    "tool_call_id": "call_mQjI7kN6eJZmESNSPyopzsr7",
+    "tool_name": "find_papers_by_identity"
+  },
+  {
+    "arguments": {
+      "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+    },
+    "result": {
+      "matches": [
+        {
+          "arxiv_id": "2307.13854",
+          "authors": [
+            "Shuyan Zhou",
+            "Frank F. Xu"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "webarena_2024",
+          "preview": "",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+          "venue": "ICLR",
+          "year": 2024
+        }
+      ],
+      "status": "resolved"
+    },
+    "tool_call_id": "call_3AX3llrtbpk8CrdWYBg8i8ru",
+    "tool_name": "find_papers_by_identity"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "swebench_2024"
+      ],
+      "query_text": "benchmark real world GitHub issues software engineering coding agents",
+      "top_k": 3
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_9e139fadc0484191b69e77b14b8c7cbf",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "SWE-BENCH: CAN LANGUAGE MODELS RESOLVE REAL-WORLD GITHUB ISSUES?",
+          "section": "unsectioned",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popul",
+          "section": "ABSTRACT",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8a88d70fe5894ee9aefbd24f1c237652",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Real-world software engineering tasks. Since each task instance in SWE-bench consists of a large and complex codebase and a description of a relevant issue, solving SWE-bench requires demonstrating sophisticated skills and knowledge possessed by experienced software engineers but are not commonly evaluated in traditional code generation benchmarks.",
+          "section": "2.3 FEATURES OF SWE-BENCH",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_09264fbf3e0e4be883752d1193de269d",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Conclusion. The complexity of real-world software development processes extends far beyond just code completion. By drawing on the open-source collaborative pipeline, SWE-bench creates a faithful mirror of real world coding environments. This more realistic environment encourages creative solutions that can have immediate applicability in open-source software development. We hope that this benchmark and our other contributions can serve as valuable assets in the future development of LMs that ar",
+          "section": "7 DISCUSSION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_205ca31a4723458a82099868086a4993",
+          "original_filename": null,
+          "page": 32,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "As reasoning on code has emerged as a foundational skill underlying many LM’s capability, a potential future of machine-automated software engineering raises many important questions and has important potential ramifications with regards to AI Safety (Gros et al., 2023). It is important to address questions on how to ensure AI-generated code is faithful to human intents and what guardrails might be in place when human objectives are misinterpreted by code agents that then carry out the task. To ",
+          "section": "E SOCIETAL IMPACT",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9bdc62b54844406c9bca7021eb867354",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "In the real world, software engineering is not as simple. Fixing a bug might involve navigating a large repository, understanding the interplay between functions in different files, or spotting a small error in convoluted code. Inspired by this, we introduce SWE-bench, a benchmark that evaluates LMs in a realistic software engineering setting. As shown in Figure 1, models are tasked to resolve issues (typically a bug report or a feature request) submitted to popular GitHub repositories. Each tas",
+          "section": "1 INTRODUCTION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_5ffd84402f9e468aa90eec402bdd1c81",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "SWE-bench offers several advantages over existing LM programming benchmarks. These include, a realistic setting that utilizes user-submitted issues and solutions, diverse inputs featuring unique code problems from 12 repositories, a robust framework for execution-based evaluation, and the ability to continuously update the benchmark with new instances, requiring minimal human intervention.",
+          "section": "1 INTRODUCTION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_634e652f3c9c4578978bc584e5a053e3",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Continually updatable. Our collection process can be easily applied to any Python repository on GitHub and requires minimal human intervention. Therefore, we can extend SWE-bench with a continual supply of new task instances and evaluate LMs on issues created after their training date, which ensures that the solution was not included in their training corpus.",
+          "section": "2.3 FEATURES OF SWE-BENCH",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_51db4123988d4cf78aeb1a06962ef641",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Traditional benchmarks in NLP typically involve only short input and output sequences and consider somewhat “contrived” problems created specifically for the benchmark. In contrast, SWE-bench’s realistic construction setting imbues the dataset with unique properties, which we discuss below.",
+          "section": "2.3 FEATURES OF SWE-BENCH",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "image",
+          "location_ref": "figure_ref_d5b1f9a41c5d439d8284341910ca140a",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Figure 1: SWE-bench sources task instances from real-world Python repositories by connecting GitHub issues to merged pull request solutions that resolve related tests. Provided with the issue text and a codebase snapshot, models generate a patch that is evaluated against real tests.",
+          "section": "1 INTRODUCTION",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_4e4310d23bc34d16b72337d2f568ea06",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "Code Generation Benchmarks. HumanEval (Chen et al., 2021) is the current standard in a longstanding pursuit of synthesizing code from natural language descriptions (Yu et al., 2018; Austin et al., 2021; Hendrycks et al., 2021; Li et al., 2022a; Zan et al., 2023). In the past year, subsequent benchmarks have sought to augment HumanEval with extensions to different languages (Cassano et al., 2022; Athiwaratkun et al., 2023; Orlanski et al., 2023), variations in edit scope (Yu et al., 2023; Du et a",
+          "section": "6 RELATED WORK",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c2988d0c54c3471aa3d207b99d0b9f78",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "ML for Software Engineering. To overcome traditional program analysis techniques that may not scale or incorporate natural language, one direction of current software engineering research is to use neural networks, including LMs, to automate real-world software development processes (Maniatis et al., 2023; Zheng et al., 2023; Hou et al., 2023). Use cases include automating commit generation (Jung, 2021; Liu et al., 2023c), PR review (Yang et al., 2016; Li et al., 2022b; Tufano et al., 2021), bug",
+          "section": "6 RELATED WORK",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        }
+      ],
+      "matched_count": 99,
+      "query_text": "benchmark real world GitHub issues software engineering coding agents",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_kmVjC8iAnPnVXOcJOUajFqoJ",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "gaia_2024"
+      ],
+      "query_text": "benchmark for general AI assistants",
+      "top_k": 2
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_ca1a2559b1694ee29d0437e4391d928a",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "A Benchmark for General AI Assistants",
+          "section": "unsectioned",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_9cae7517da944372914bd1d9419e6561",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "3.1 A convenient yet challenging benchmark for general AI assistants",
+          "section": "unsectioned",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        }
+      ],
+      "matched_count": 67,
+      "query_text": "benchmark for general AI assistants",
+      "returned_count": 2
+    },
+    "tool_call_id": "call_AG1zKWDCQf9Dbuqcl8WI4TdX",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "webarena_2024"
+      ],
+      "query_text": "benchmark autonomous agents web environment websites",
+      "top_k": 2
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_858510ff0623459f97b1688576d5c32a",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "2 WE BAR E N A: WEBSITES AS AN ENVIRONMENT FOR AUTONOMOUS AGENTS",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional web",
+          "section": "ABSTRACT",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_4f825e8832794f02805c89eecb234bdf",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "WE BAR E N A: A REALISTIC WEB ENVIRONMENT FOR BUILDING AUTONOMOUS AGENTS",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "image",
+          "location_ref": "figure_ref_f91e789ede87482c80c13f653f8feb34",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Figure 1: WebArena is a standalone, self-hostable web environment for building autonomous agents. WebArena creates websites from four popular categories with functionality and data mimicking their real-world equivalents. To emulate human problem-solving, WebArena also embeds tools and knowledge resources as independent websites. WebArena introduces a benchmark on interpreting high-level realistic natural language command to concrete web-based interactions. We provide validators to programmatical",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7ef56dc467fd4b01933ef308dc4acacd",
+          "original_filename": null,
+          "page": 9,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We present WebArena, a highly-realistic, standalone, and reproducible web environment designed for the development and testing of autonomous agents. WebArena includes fully functional web applications and organic data from popular domains. Additionally, we curate a comprehensive benchmark consisting of 812 examples that focus on mapping high-level natural language intents into concrete web interactions. We also offer outcome-based evaluation that programmatically validate the tasks success. Our ",
+          "section": "7 CONCLUSION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_0929610374d741bcae55b5a8ab9456e3",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Autonomous agents that perform everyday tasks via human natural language commands could significantly augment human capabilities, improve efficiency, and increase accessibility. Nonetheless, to fully leverage the power of autonomous agents, it is crucial to understand their behavior within an environment that is both authentic and reproducible. This will allow measurement of the ability of agents on tasks that human users care about in a fair and consistent manner.",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2f971a27e8f449f0ba1ccb41f1e9b365",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "We introduce WebArena, a realistic and reproducible web environment designed to facilitate the development of autonomous agents capable of executing tasks (§2). An overview of WebArena is in Figure 1. Our environment comprises four fully operational, self-hosted web applications, each representing a distinct domain prevalent on the internet: online shopping, discussion forums, collaborative development, and business content management. Furthermore, WebArena incorporates several utility tools, su",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d5ac4d46424b4fce981cac5a84a2d771",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Along with WebArena, we release a ready-to-use benchmark with 812 long-horizon web-based tasks (§3). Each task is described as a high-level natural language intent, emulating the abstract language usage patterns typically employed by humans (Bisk et al., 2019). Two example intents are shown in the upper left of Figure 1. We focus on evaluating the functional correctness of these tasks, i.e., does the result of the execution actually achieve the desired goal (§3.2). For instance, to evaluate the ",
+          "section": "1 INTRODUCTION",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a0027476896645569111bd02a86d544f",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Our goal is to create a realistic and reproducible web environment. We achieve reproducibility by making the environment standalone, without relying on live websites. This circumvents technica challenges such as bots being subject to CAPTCHAs, unpredictable content modifications, and configuration changes, which obstruct a fair comparison across different systems over time. We achieve realism by using open-source libraries that underlie many in-use sites from several popular categories and impor",
+          "section": "2 WE BAR E N A: WEBSITES AS AN ENVIRONMENT FOR AUTONOMOUS AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2243a454c36444cb97cacf679bd4aefc",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "Published as a conference paper at ICLR 2024",
+          "section": "2 WE BAR E N A: WEBSITES AS AN ENVIRONMENT FOR AUTONOMOUS AGENTS",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_0461d13ef58e40c6a8c31002dcd73994",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "3 BENCHMARK SUITE OF WEB-BASED TASKS",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_1681b3147b3a4171ab53dc8961cfdd18",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "preview": "4 BASELINE WEB AGENTS",
+          "section": "unsectioned",
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        }
+      ],
+      "matched_count": 77,
+      "query_text": "benchmark autonomous agents web environment websites",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_MEwGwVcobebAq4oo0qO1IgjO",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_c51e11392f594cb8b46795720b9c4229",
+        "reading_element_8a88d70fe5894ee9aefbd24f1c237652",
+        "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+        "reading_element_7ef56dc467fd4b01933ef308dc4acacd",
+        "reading_element_9cae7517da944372914bd1d9419e6561"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":526.0,\"right\":767.0,\"top\":287.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":526.0,\"right\":767.0,\"top\":287.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_e36ae33fb84ef621",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "location_ref": "reading_element_c51e11392f594cb8b46795720b9c4229",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "ABSTRACT",
+          "source_kind": "paragraph",
+          "span_text": "Language models have outpaced our ability to evaluate them effectively, but for their future development it is essential to study the frontier of their capabilities. We find real-world software engineering to be a rich, sustainable, and challenging testbed for evaluating the next generation of language models. To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. Given a codebase along with a description of an issue to be resolved, a language model is tasked with editing the codebase to address the issue. Resolving issues in SWE-bench frequently requires understanding and coordinating changes across multiple functions, classes, and even files simultaneously, calling for models to interact with execution environments, process extremely long contexts and perform complex reasoning that goes far beyond traditional code generation tasks. Our evaluations show that both state-ofthe-art proprietary models and our fine-tuned model SWE-Llama can resolve only the simplest issues. The best-performing model, Claude 2, is able to solve a mere 1.96% of the issues. Advances on SWE-bench represent steps towards LMs that are more practical, intelligent, and autonomous.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":3,\"left\":169.0,\"bottom\":498.0,\"right\":826.0,\"top\":441.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":3,\"left\":169.0,\"bottom\":498.0,\"right\":826.0,\"top\":441.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_b2b0a04ebf3546ef",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_8a88d70fe5894ee9aefbd24f1c237652",
+          "location_ref": "reading_element_8a88d70fe5894ee9aefbd24f1c237652",
+          "page": 3,
+          "page_screenshot_available": false,
+          "paper_id": "swebench_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2.3 FEATURES OF SWE-BENCH",
+          "source_kind": "paragraph",
+          "span_text": "Real-world software engineering tasks. Since each task instance in SWE-bench consists of a large and complex codebase and a description of a relevant issue, solving SWE-bench requires demonstrating sophisticated skills and knowledge possessed by experienced software engineers but are not commonly evaluated in traditional code generation benchmarks.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":632.0,\"right\":767.0,\"top\":321.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":632.0,\"right\":767.0,\"top\":321.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_4dac7c808ed1eb42",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "location_ref": "reading_element_c4d05b901eb1459292b43c5c0b8ea878",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "ABSTRACT",
+          "source_kind": "paragraph",
+          "span_text": "With advances in generative AI, there is now potential for autonomous agents to manage daily tasks via natural language commands. However, current agents are primarily created and tested in simplified synthetic environments, leading to a disconnect with real-world scenarios. In this paper, we build an environment for language-guided agents that is highly realistic and reproducible. Specifically, we focus on agents that perform tasks on the web, and create an environment with fully functional websites from four common domains: e-commerce, social forum discussions, collaborative software development, and content management. Our environment is enriched with tools (e.g., a map) and external knowledge bases (e.g., user manuals) to encourage human-like task-solving. Building upon our environment, we release a set of benchmark tasks focusing on evaluating the functional correctness of task completions. The tasks in our benchmark are diverse, long-horizon, and designed to emulate tasks that humans routinely perform on the internet. We experiment with several baseline agents, integrating recent techniques such as reasoning before acting. The results demonstrate that solving complex tasks is challenging: our best GPT-4-based agent only achieves an end-to-end task success rate of 14.41%, significantly lower than the human performance of 78.24%. These results highlight the need for further development of robust agents, that current state-of-the-art large language models are far from perfect performance in these real-life tasks, and that WebArena can be used to measure such progress. Our code, data, environment reproduction resources, and video demonstrations are publicly available at https://webarena.dev/.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":9,\"left\":169.0,\"bottom\":925.0,\"right\":826.0,\"top\":799.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":9,\"left\":169.0,\"bottom\":925.0,\"right\":826.0,\"top\":799.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_94cf3d67f2292d45",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_7ef56dc467fd4b01933ef308dc4acacd",
+          "location_ref": "reading_element_7ef56dc467fd4b01933ef308dc4acacd",
+          "page": 9,
+          "page_screenshot_available": false,
+          "paper_id": "webarena_2024",
+          "paper_version": "arXiv v4 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "7 CONCLUSION",
+          "source_kind": "paragraph",
+          "span_text": "We present WebArena, a highly-realistic, standalone, and reproducible web environment designed for the development and testing of autonomous agents. WebArena includes fully functional web applications and organic data from popular domains. Additionally, we curate a comprehensive benchmark consisting of 812 examples that focus on mapping high-level natural language intents into concrete web interactions. We also offer outcome-based evaluation that programmatically validate the tasks success. Our experiments show that even GPT-4 only achieves a limited end-to-end task success rate of 14.41%, significantly lagging behind the human performance of 78.24%. These findings underscore the need for future research to focus on enhancing the robustness and efficacy of autonomous agents within WebArena environment.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":4,\"left\":109.0,\"bottom\":324.0,\"right\":751.0,\"top\":306.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":4,\"left\":109.0,\"bottom\":324.0,\"right\":751.0,\"top\":306.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "heading",
+          "evidence_id": "ev_bf28b050304592ef",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_9cae7517da944372914bd1d9419e6561",
+          "location_ref": "reading_element_9cae7517da944372914bd1d9419e6561",
+          "page": 4,
+          "page_screenshot_available": false,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "unsectioned",
+          "source_kind": "heading",
+          "span_text": "3.1 A convenient yet challenging benchmark for general AI assistants",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "GAIA: a benchmark for General AI Assistants"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_XMonWIe7CGOfrNLfAnZsFnsD",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "Choose **SWE-bench**.\n\nSince your priority is the **coding** benchmark, SWE-bench is the best fit: it is explicitly framed as an evaluation framework for real-world software engineering problems from GitHub issues and pull requests, where the model edits a codebase to resolve an issue. [[ev_e36ae33fb84ef621]] It also emphasizes that tasks involve large, complex codebases and issue descriptions, requiring skills associated with experienced software engineers beyond traditional code-generation benchmarks. [[ev_b2b0a04ebf3546ef]]\n\nThe alternatives target different needs: **WebArena** focuses on agents performing web tasks in realistic website environments, [[ev_4dac7c808ed1eb42]] while **GAIA** is positioned as a benchmark for general AI assistants. [[ev_bf28b050304592ef]]\n\n**Recommendation: use SWE-bench.**",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "evidence coverage incomplete: the final answer cites only heading/navigation evidence for GAIA: a benchmark for General AI Assistants; read and cite substantive text, table, figure, or other content evidence"
+    },
+    "tool_call_id": "call_WUpE88V0lJZz59T2MwuIdhKS",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph"
+      ],
+      "paper_ids": [
+        "gaia_2024"
+      ],
+      "query_text": "GAIA benchmark general AI assistants real-world questions abilities",
+      "section_query": "abstract introduction",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "We introduce <sup>GAIA</sup>, a benchmark for General AI Assistants that, if solved, would represent a milestone in AI research. <sup>GAIA</sup> proposes real-world questions that require a set of fundamental abilities such as reasoning, multi-modality handling, web browsing, and generally tool-use proficiency. <sup>GAIA</sup> questions are conceptually simple for humans yet challenging for most advanced AIs: we show that human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins. This",
+          "section": "A Benchmark for General AI Assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_ca1a2559b1694ee29d0437e4391d928a",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "A Benchmark for General AI Assistants",
+          "section": "unsectioned",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_51f6669e60c84ae782bc82cb68209327",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "We move in that direction by proposing <sup>GAIA</sup>, a benchmark for General AI Assistants featuring 466 carefully crafted questions and their answer, along with the associated design methodology. Our questions are easy to create, challenging for AI systems—for LLMs, most require complex generations—, yet admit a unique, factual answer, allowing a simple and robust automatic evaluation.",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_9cae7517da944372914bd1d9419e6561",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "3.1 A convenient yet challenging benchmark for general AI assistants",
+          "section": "unsectioned",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8ba362fdd5bb4680a7650b7d3fe34295",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "<sup>GAIA</sup> attempts to avoid current pitfalls of LLMs evaluation by targeting:",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bff7a289caf84f64be6aeda31b146e4e",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "What is <sup>GAIA</sup> and how does it work? <sup>GAIA</sup> is a benchmark for AI systems proposing general assistant questions. <sup>GAIA</sup> attempts to circumvent diferent pitfalls of LLMs evaluation. It is composed of 466 questions designed and annotated by humans. These questions are text-based, and sometimes come with a file (such as an image or a spreadsheet). They cover various assistant use cases such as daily personal tasks, science, or general knowledge. The questions are designed",
+          "section": "3.1 A convenient yet challenging benchmark for general AI assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_fdc9debcf4aa4bf88dcafee083d07ed7",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Our first principle is to target questions that are conceptually simple although potentially tedious for humans, yet varied, rooted in the real world and challenging for current AI systems. This allows to focus on fundamental abilities such as quick adaptation via reasoning, multi-modality understanding, and potentially diverse tool use, rather than specialised skills (Chollet, 2019). The questions generally consist in finding and transforming information gathered from diferent and various sourc",
+          "section": "3.1 A convenient yet challenging benchmark for general AI assistants",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_37b368bd242d4d77b6831beb28836676",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "Evaluating General Assistants. While there is ongoing efort to turn Large Language Models into generalpurpose assistants (see our discussion in Appendix A), appropriate evaluation is lagging behind. Most evaluations rely on the use of closed systems, specific API calls, and a given “correct way” to attain the answer, or simply repurpose existing evaluation datasets. ToolQA (Zhuang et al., 2023) or Gentopia (Xu et al., 2023a) for example combine existing datasets with human annotations (MMLU, MAT",
+          "section": "2 Related work",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_6d48563af86b45e3b09558a2067f0b36",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "\\- Level 2 question generally involve more steps, roughly between 5 and 10 and combining diferent tools is needed.",
+          "section": "3.3 Composition of GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_b51caed99c534fbd9dad4e46c40eeabf",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "\\- Level 3 are questions for a near perfect general assistant, requiring to take arbitrarily long sequences of actions, use any number of tools, and access to the world in general.",
+          "section": "3.3 Composition of GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_449c31f7a30744c8bbcb38b719b8d332",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "An illustration of these levels is provided in Figure 1. Those definitions are not hard constraints: for example, a question with less than 10 annotator steps but that requires complex web navigation might be categorised as Level 3 rather than 2. Our definition of the dificulty is validated in Section 4.",
+          "section": "3.3 Composition of GAIA",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c42dbd675dc947238e2d9ad0290a0925",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "preview": "\\- Real-world and challenging questions. For example, a LLM will typically need to browse the open and changing web, handle multi-modality, or reason over multiple steps to answer our questions. Conversely, many LLM benchmarks are quite specific and/or restricted to closed and synthetic environments.",
+          "section": "Level 3",
+          "title": "GAIA: a benchmark for General AI Assistants"
+        }
+      ],
+      "matched_count": 105,
+      "query_text": "GAIA benchmark general AI assistants real-world questions abilities",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_BpbYOqu6Ywkxw3n5bRkZWKBk",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_d407735b30444deb9aafa1aae4ff0b8d"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":137.0,\"bottom\":416.0,\"right\":861.0,\"top\":232.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_cc589bd061af6a6d",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+          "location_ref": "reading_element_d407735b30444deb9aafa1aae4ff0b8d",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "gaia_2024",
+          "paper_version": "arXiv v1 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "A Benchmark for General AI Assistants",
+          "source_kind": "paragraph",
+          "span_text": "We introduce <sup>GAIA</sup>, a benchmark for General AI Assistants that, if solved, would represent a milestone in AI research. <sup>GAIA</sup> proposes real-world questions that require a set of fundamental abilities such as reasoning, multi-modality handling, web browsing, and generally tool-use proficiency. <sup>GAIA</sup> questions are conceptually simple for humans yet challenging for most advanced AIs: we show that human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins. This notable performance disparity contrasts with the recent trend of LLMs outperforming humans on tasks requiring professional skills in e.g. law or chemistry. <sup>GAIA</sup>’s philosophy departs from the current trend in AI benchmarks suggesting to target tasks that are ever more dificult for humans. We posit that the advent of Artificial General Intelligence (AGI) hinges on a system’s capability to exhibit similar robustness as the average human does on such questions. Using <sup>GAIA</sup>’s methodology, we devise 466 questions and their answer. We release our questions while retaining answers to 300 of them to power a leader-board hereby accessible.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "GAIA: a benchmark for General AI Assistants"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_bjNZt65PWbVQqKPGJps8mCyS",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "Choose **SWE-bench**.\n\nSince your priority is **coding agents**, SWE-bench is the best fit: it is explicitly an evaluation framework for real-world software engineering problems drawn from GitHub issues and pull requests, where a model edits a codebase to resolve an issue. [[ev_e36ae33fb84ef621]] It also emphasizes large, complex codebases and issue descriptions that require software-engineering skills beyond traditional code-generation benchmarks. [[ev_b2b0a04ebf3546ef]]\n\nThe other two are aimed elsewhere: **WebArena** focuses on agents performing tasks on the web in functional website environments, [[ev_4dac7c808ed1eb42]] while **GAIA** is a broader benchmark for general AI assistants involving reasoning, multimodality, web browsing, and tool use. [[ev_cc589bd061af6a6d]]\n\n**Recommendation: use SWE-bench.**",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_BQThIl05sY6no6A2oToro8AE",
+    "tool_name": "submit_research_answer"
+  }
+]

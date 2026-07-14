@@ -1,0 +1,33 @@
+{
+  "case_id": "agent_benchmark_ambiguous_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "grounding": {
+      "errors": [
+        "CITATIONS_FORBIDDEN"
+      ],
+      "status": "fail"
+    },
+    "outcome": {
+      "errors": [
+        "OUTCOME_MISMATCH:expected=needs_clarification:actual=answered"
+      ],
+      "status": "fail"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "hard_pass": false,
+  "review": {
+    "criteria": [
+      "Asks whether the user needs general-assistant, web, coding, multi-turn, or policy-constrained tool-agent evaluation.",
+      "Does not silently choose one benchmark or begin presenting research claims."
+    ],
+    "status": "not_run"
+  }
+}

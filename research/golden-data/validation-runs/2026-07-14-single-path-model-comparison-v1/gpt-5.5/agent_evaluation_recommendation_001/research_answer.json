@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_agent_evaluation_recommendation_001",
+  "answer_type": "context_specific_brainstorming",
+  "cited_evidence_ids": [
+    "ev_cc589bd061af6a6d",
+    "ev_94cf3d67f2292d45",
+    "ev_e36ae33fb84ef621",
+    "ev_4fc2df3e48e541f8",
+    "ev_1b93f858519772bd"
+  ],
+  "fields": {},
+  "markdown": "| Category | Recommended benchmark | Why this one |\n|---|---|---|\n| General assistants | **GAIA** | GAIA is explicitly framed as “a benchmark for General AI Assistants” and uses real-world questions requiring reasoning, multimodality, web browsing, and tool-use proficiency; it includes 466 questions and a held-out leaderboard split. [1] |\n| Realistic web tasks | **WebArena** | WebArena is a highly realistic, standalone, reproducible web environment with fully functional web applications and organic data, and its benchmark has 812 examples mapping high-level natural-language intents to concrete web interactions with programmatic outcome-based evaluation. [2] |\n| Software engineering | **SWE-bench** | SWE-bench consists of 2,294 software-engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories; models must edit a codebase to resolve an issue, often requiring changes across functions, classes, and files. [3] |\n| Policy-constrained tool-agent interaction | **τ-bench** | τ-bench evaluates dynamic conversations between a simulated user and an agent equipped with domain-specific API tools and policy guidelines, measuring whether agents interact with users and follow domain-specific rules reliably. [4] It is built around realistic databases/APIs, domain-specific policy documents, diverse user scenarios, and ground-truth annotations, with retail and airline domains as its initial demonstrations. [5] |\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, A Benchmark for General AI Assistants, p. 1\n[2] WebArena: A Realistic Web Environment for Building Autonomous Agents, 7 CONCLUSION, p. 9\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, ABSTRACT, p. 1\n[4] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, Abstract, p. 1\n[5] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, 1 Introduction, p. 1",
+  "outcome": "answered",
+  "question_id": "agent_evaluation_recommendation_001",
+  "status": "COMPLETED",
+  "summary": "| Category | Recommended benchmark | Why this one |\n|---|---|---|\n| General assistants | **GAIA** | GAIA is explicitly framed as “a benchmark for General AI Assistants” and uses real-world questions requiring reasoning, multimodality, web browsing, and tool-use proficiency; it includes 466 questions and a held-out leaderboard split. [1] |\n| Realistic web tasks | **WebArena** | WebArena is a highly"
+}

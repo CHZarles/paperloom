@@ -1,0 +1,26 @@
+{
+  "case_id": "transformer_adam_params_001",
+  "dimensions": {
+    "content": {
+      "errors": [],
+      "status": "not_run"
+    },
+    "grounding": {
+      "errors": [],
+      "status": "pass"
+    },
+    "outcome": {
+      "errors": [],
+      "status": "pass"
+    },
+    "retrieval": {
+      "errors": [],
+      "status": "pass"
+    }
+  },
+  "hard_pass": true,
+  "review": {
+    "criteria": [],
+    "status": "not_required"
+  }
+}

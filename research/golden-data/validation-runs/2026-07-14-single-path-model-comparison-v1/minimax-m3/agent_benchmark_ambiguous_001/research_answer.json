@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_agent_benchmark_ambiguous_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "Could you clarify what you're looking for? For example:\n\n- **Surveys or benchmarks for evaluating AI agents** (e.g., agent capability benchmarks, tool-use benchmarks)?\n- **A specific agent benchmark paper** (if you have a name or authors in mind)?\n- **Something else entirely**?\n\nA bit more context will help me point you to the right material in the corpus.",
+  "outcome": "needs_clarification",
+  "question_id": "agent_benchmark_ambiguous_001",
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "Could you clarify what you're looking for? For example:\n\n- **Surveys or benchmarks for evaluating AI agents** (e.g., agent capability benchmarks, tool-use benchmarks)?\n- **A specific agent benchmark paper** (if you have a name or authors in mind)?\n- **Something else entirely**?\n\nA bit more context will help me point you to the right material in the corpus."
+}

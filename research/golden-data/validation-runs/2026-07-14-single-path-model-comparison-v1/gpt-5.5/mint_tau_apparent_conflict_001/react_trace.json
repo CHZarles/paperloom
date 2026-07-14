@@ -1,0 +1,658 @@
+[
+  {
+    "arguments": {
+      "skill_id": "contradiction_resolution"
+    },
+    "result": {
+      "answer_guidance": "State both claims, the scope difference, and the resulting conclusion.",
+      "evidence_standard": "Use exact passages returned by read_locations for paper-content claims. Treat candidate metadata and location previews as navigation only, and state evidence gaps plainly.",
+      "instructions": [
+        "Read both primary passages.",
+        "Preserve qualifiers such as default, measured, recommended, and conditional.",
+        "Resolve by scope only when the evidence supports it."
+      ],
+      "skill_id": "contradiction_resolution",
+      "when_to_use": "Compare competing source claims and adjudicate or preserve their conflict."
+    },
+    "tool_call_id": "call_3Z37uAcRWDui3x8evy07Ywrg",
+    "tool_name": "get_research_skill"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "MINT tools language feedback"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2309.10691",
+          "authors": [
+            "Xingyao Wang",
+            "Zihan Wang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "mint_2024",
+          "preview": "",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2310.06770",
+          "authors": [
+            "Carlos E. Jimenez",
+            "John Yang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "swebench_2024",
+          "preview": "",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2210.03629",
+          "authors": [
+            "Shunyu Yao",
+            "Jeffrey Zhao"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "react_2023",
+          "preview": "",
+          "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+          "venue": "ICLR",
+          "year": 2023
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 3,
+      "next_offset": null,
+      "query_text": "MINT tools language feedback",
+      "returned_count": 3
+    },
+    "tool_call_id": "call_0MC994p9xT6ivxijSVgFPCdq",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "tau-bench multi-trial reliability"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2401.13178",
+          "authors": [
+            "Chang Ma",
+            "Junlei Zhang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentboard_2024",
+          "preview": "",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+          "venue": "NeurIPS Oral",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2309.10691",
+          "authors": [
+            "Xingyao Wang",
+            "Zihan Wang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "mint_2024",
+          "preview": "",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2310.06770",
+          "authors": [
+            "Carlos E. Jimenez",
+            "John Yang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "swebench_2024",
+          "preview": "",
+          "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+          "venue": "ICLR",
+          "year": 2024
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 4,
+      "next_offset": null,
+      "query_text": "tau-bench multi-trial reliability",
+      "returned_count": 4
+    },
+    "tool_call_id": "call_JjIir2AVEQLX9RLJZ4611mZi",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "mint_2024"
+      ],
+      "query_text": "gains from tools and language feedback tool use feedback performance improves",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_1edb1ec940b647de8c412f8fa7980a2d",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• All models benefit from tool interaction and natural language feedback, with absolute performance gains by 1–8% for each additional turn of tool use, and 2–17% with natural language feedback.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9af337139d904ea49ce7441460d79dfa",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "To solve complex tasks, large language models (LLMs) often require multiple rounds of interactions with the user, sometimes assisted by external tools. However, current evaluation protocols often emphasize benchmark performance with single-turn exchanges, neglecting the nuanced interactions among the user, LLMs, and external tools, while also underestimating the importance of natural language feedback from users. These oversights contribute to discrepancies between research benchmark evaluations",
+          "section": "ABSTRACT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_947f76e4555a4237a379238bca555ff0",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We evaluate 4 closed- and 16 open-source LLMs with MINT. We measure LLMs’ tool-augmented task-solving capability by analyzing their performance from multi-turn tool use (§3.2). To assess the ability to leverage natural language feedback, we measure their performance upon natural language feedback by GPT-4 (§3.3). Our results show that:",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d674f0a4c8524e79aa76a823f5746ec1",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• Better single-turn performance does not necessarily entail better multi-turn performance. For example, while Claude-2 outperforms its predecessor Claude-1 in single-turn evaluation, the latter benefit more from interaction and performs better with > 2 turns.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d5e7e59891a847bea09786a60073e953",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• On most LLMs we evaluated, models trained with supervised instruction fine-tuning (SIFT, Wei et al., 2022) and reinforcement learning from human feedback (RLHF, Ouyang et al., 2022a) perform worse in multi-turn settings regardless of the presence of language feedback. For example, SIFT hurts Codellama-34B’s multi-turn performance by 11.1% and 15.4% (w/ feedback), and RLHF negatively affects LLaMA-2-70B by 8.5% and 8.7%, respectively. Notable exceptions are Vicuna-7B and Lemur-70b-chat-v1, wher",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_47a391619a0b4849bb59a01577855fc7",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "By fixing the LLM to evaluate and changing the feedback-provider LLM, MINT can measure different LLMs’ capabilities in providing useful feedback (§3.4); We find that feedback-providing ability could be orthogonal to task-solving ability: despite performing the worst in task-solving, CodeLLaMA-34B-Instruct can provide feedback to improve the stronger GPT-3.5. Additionally, MINT’s challenging evaluation reveals undesired artifacts in ShareGPT data (2023), a widely used dataset for instruction tuni",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a3587e854cb34a36b6ec87fd4d6f3dfa",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "We expect that MINT can help track progress and incentivize future research in improving LLM’s multi-turn task-solving and/or feedback-providing capabilities, especially for open-source communities where human evaluation can be less accessible than commercial LLMs with a large user base.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_644c15da13834da0916e714a1d21d3c2",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "• There is a notable gap between open- and closed-source LLMs in multi-turn interaction performance. For example, with the help of language feedback, even the best open-source model, Lemur-70b-chat-v1, lags behind the best closed-source model by 8.7% in absolute success rate.",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_6169f4142480426286cf230aca1c46f3",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "To bridge these gaps, we introduce MINT. It is a benchmark for LLMs that measures their performance during multi-turn interaction, focusing on two particular capabilities (§2.1): (1) toolaugmented task-solving; (2) leveraging natural language feedback. MINT mirrors the real-world user-LLM-tool collaborative problem-solving setting. To solve a problem, the LLM can use external tools by generating and executing Python programs (Wang et al., 2024) and/or collecting natural language feedback to refi",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_9d8892134e3e446c995ca79b73621468",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "MINT: EVALUATING LLMS IN MULTI-TURN INTER-ACTION WITH TOOLS AND LANGUAGE FEEDBACK",
+          "section": "unsectioned",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e1cd7dc0bfba4a5089f581778e8aa6b0",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "In this section, we discuss (1) how to evaluate multi-turn interaction (§2.1) with tool use and language feedback under different settings; (2) how we repurpose existing datasets for MINT evaluation (§2.2). We use Fig. 1 as a running example.",
+          "section": "2 MINT",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e993d47f1fdd414aab84d9fd7b34d3c7",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "preview": "To address complex tasks, Large Language Models (LLMs) often need multiple rounds of interaction with the users, sometimes aided by external tools (Schick et al., 2023b; ChatGPT Plugins; Mialon et al., 2023). LLMs’ performance during multiple turns of user-LLM exchanges is crucial in real-world applications: roughly 73% of Human-ChatGPT conversations contain more than one turn based on 94k entries of ShareGPT data (2023). Meanwhile, the ability to adapt to user-provided natural language feedback",
+          "section": "1 INTRODUCTION",
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        }
+      ],
+      "matched_count": 149,
+      "query_text": "gains from tools and language feedback tool use feedback performance improves",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_b6amnNOCsW7P36UhRKmwSacL",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "tau_bench_2024"
+      ],
+      "query_text": "multi-trial reliability poor reliability multiple trials pass^k agent consistency",
+      "top_k": 8
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7c1e8c1c6349442cb727f9777124c345",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Agent consistency via pass^k. As shown in Figure 4, the chance of reliably and consistently solving the same task multiple times significantly drops as the number of trials k increases. Even for the best-performing gpt-4o function calling agent which has a > 60% average task success, pass^8 drop to < 25%. In real-world scenarios, it is important and challenging not just to build agents with high average success (pass^1), but with more robustness and consistency (pass^k trend).",
+          "section": "5.1 Main results",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_768dc5aad47d41c0861baf1696aaecf2",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Cost analysis. When we pair gpt-4o FC agent with gpt-4 user simulation on τ -retail, the agent / user simulation costs are \\$0.38 / \\$0.23 per task respectively, so running one trial per task costs around 200 dollars. For the agent, the input prompt / completion output take up 95.9% / 4.1% of the price respectively, so the cost is mainly due to long system prompt (domain policy + function definitions).",
+          "section": "5.1 Main results",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_012ad751c0d241e7ba90d06d5b40b2a7",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Existing benchmarks do not test language agents on their interaction with human users or ability to follow domain-specific rules, both of which are vital for deploying them in real world applications. We propose τ -bench, a benchmark emulating dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines. We employ an efficient and faithful evaluation process that compares the database state at the end of a ",
+          "section": "Abstract",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_8454bfc9adaf42349bb97af9610cbfa8",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Pass^k metric. For tasks like code generation with good verification techniques (unit tests), the community has defined the pass@k (pass at k) metric as the chance that at least one out of k i.i.d. task trials is successful, which captures the trend of agents enabling discovery of solutions with scaling of inference-time compute [5]. For real-world agent tasks requiring reliability and consistency like customer service, we propose a new metric – pass^k (pass hat k), defined as the chance that al",
+          "section": "3 τ -bench: A benchmark for Tool-Agent-User Interaction",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "chart",
+          "location_ref": "figure_ref_fa14bcadbb90495883b6284d257f5c83",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Figure 4: pass^k (–) and pass@k (..) in τ -retail.",
+          "section": "5.1 Main results",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_623866ce67e349b7b598811936a7eb45",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "τ -airline. Here, the agent has to help users book, modify, or cancel flight reservations, or provide refunds. We construct 300 flights between 20 US cities with realistic durations and prices, and API tools to query direct or one-stop flights. The domain policy is more complex than τ -retail, with ad-hoc constraints about combining payment methods, checked bag allowance, flight changes and cancellations, etc. These constraints can also be over membership tier and cabin class specific, creating ",
+          "section": "4.1 Domains",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_985319365e1c41a48a0de0c42e18469f",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Failure breakdown. We sample 115 gpt-4o FC agent trajectories in τ -retail (1 trial per task), out of which 40 tasks have failed (pass^1=65.2%). Upon manual examination of these failures, 4 of them are caused by user instruction typo or ambiguity (and then fixed), and the remaining 36 failure cases are agent issues, which are broken down into more detail below and in Figure 5.",
+          "section": "5.2 Research challenge analysis",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_7dbebd53fd5c47ccaf2982227026d4cf",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "In our case, for the same task, the user prompt and database transitions are the same, with just the LM sampling of the user and agent messages generating sufficient stochasticity. Thus, pass^k can capture the reliability of the agent at handling variations in conversations with the same underlying semantics while adhering to the domain policies and rules. By default, we report the average reward across tasks, $\\mathrm { p a s s } ^ { \\wedge } \\mathrm { l } \\mathrm { = p a s s } @ 1 \\mathrm { = ",
+          "section": "3 τ -bench: A benchmark for Tool-Agent-User Interaction",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2a2fed2c20644a76a111aa68f010a6db",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "We constructed τ -bench in three stages, including manual schema and API design, LM-assisted generation of data entries, and manual scenario generation and verification for the user simulator. Our evaluation scheme compares the database state at the end of each episode with the ground truth expected state. This allows for objective measurement of the agent’s decision making, while also providing room for stochastic variation in the conversation itself, since the user may pose the same request in",
+          "section": "1 Introduction",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_eeb6bc0ca094410d8c695b18df25af69",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Our experiments reveal that agents built with simple LM constructs (like function calling or ReAct) perform poorly, highlighting the need for more sophisticated agent architectures. For instance, even state-of-the-art LMs like gpt-4o achieve low task success rates (pass^1) using function calling (∼61% on τ -retail and ∼35% on τ -airline). With increasing k, the chance of consistently solving a task drops rapidly, to as low as ∼25% for pass^8 on τ -retail for the same model. This showcases the fr",
+          "section": "1 Introduction",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_854f9713cf77403ab9992df6a5b07076",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "Open-ended and diverse tasks. Each τ -bench domain’s data schemas, APIs, and rules are simplified compared to real-world domains, but they are rich enough to support the creation of extremely diverse, open-ended, and sometimes creative tasks (see § A, § C.2, § D.2). Importantly, we trade off quantity for quality — as § 5 shows, running a small set of high-quality tasks for multiple trials (with pass^k metric) can reliably reveal rich insights into different models, methods, and research challeng",
+          "section": "4.2 Key Characteristics",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e1a8839013274d0a9d61a70246239e33",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "preview": "In this subsection, we analyze in both quantitative and qualitative terms the challenges of τ -bench, with a focus on the τ -retail split and the most advanced baseline: gpt-4o function calling agent.",
+          "section": "5.2 Research challenge analysis",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        }
+      ],
+      "matched_count": 89,
+      "query_text": "multi-trial reliability poor reliability multiple trials pass^k agent consistency",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_YJPEX9gcFHNsoxHdszcCqQbq",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_1edb1ec940b647de8c412f8fa7980a2d",
+        "reading_element_6169f4142480426286cf230aca1c46f3",
+        "reading_element_7c1e8c1c6349442cb727f9777124c345",
+        "reading_element_8454bfc9adaf42349bb97af9610cbfa8",
+        "reading_element_7dbebd53fd5c47ccaf2982227026d4cf",
+        "reading_element_eeb6bc0ca094410d8c695b18df25af69"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":171.0,\"bottom\":327.0,\"right\":825.0,\"top\":299.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":171.0,\"bottom\":327.0,\"right\":825.0,\"top\":299.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_540173e000b7a95c",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_1edb1ec940b647de8c412f8fa7980a2d",
+          "location_ref": "reading_element_1edb1ec940b647de8c412f8fa7980a2d",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 INTRODUCTION",
+          "source_kind": "paragraph",
+          "span_text": "• All models benefit from tool interaction and natural language feedback, with absolute performance gains by 1–8% for each additional turn of tool use, and 2–17% with natural language feedback.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":169.0,\"bottom\":888.0,\"right\":825.0,\"top\":858.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":169.0,\"bottom\":888.0,\"right\":825.0,\"top\":858.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_b802743d249043cc",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_6169f4142480426286cf230aca1c46f3",
+          "location_ref": "reading_element_6169f4142480426286cf230aca1c46f3",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "mint_2024",
+          "paper_version": "arXiv v3 / ICLR 2024",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 INTRODUCTION",
+          "source_kind": "paragraph",
+          "span_text": "To bridge these gaps, we introduce MINT. It is a benchmark for LLMs that measures their performance during multi-turn interaction, focusing on two particular capabilities (§2.1): (1) toolaugmented task-solving; (2) leveraging natural language feedback. MINT mirrors the real-world user-LLM-tool collaborative problem-solving setting. To solve a problem, the LLM can use external tools by generating and executing Python programs (Wang et al., 2024) and/or collecting natural language feedback to refine its solutions; the feedback is provided by GPT-4 (OpenAI, 2023), aiming to simulate human users in a reproducible and scalable way.<sup>2</sup> For a comprehensive evaluation, we include eight established datasets spanning reasoning, code generation, and decision-making (§2.2). To facilitate affordable multi-turn evaluation, after collecting 29,307 diverse instances from existing datasets (Tab. 1), we construct a subset of 586 challenging and representative instances that require multi-turn interaction to solve<sup>3</sup>.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":603.0,\"right\":826.0,\"top\":531.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":603.0,\"right\":826.0,\"top\":531.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_6186ffb95632dd99",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_7c1e8c1c6349442cb727f9777124c345",
+          "location_ref": "reading_element_7c1e8c1c6349442cb727f9777124c345",
+          "page": 7,
+          "page_screenshot_available": false,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "5.1 Main results",
+          "source_kind": "paragraph",
+          "span_text": "Agent consistency via pass^k. As shown in Figure 4, the chance of reliably and consistently solving the same task multiple times significantly drops as the number of trials k increases. Even for the best-performing gpt-4o function calling agent which has a > 60% average task success, pass^8 drop to < 25%. In real-world scenarios, it is important and challenging not just to build agents with high average success (pass^1), but with more robustness and consistency (pass^k trend).",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":4,\"left\":169.0,\"bottom\":912.0,\"right\":826.0,\"top\":827.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":4,\"left\":169.0,\"bottom\":912.0,\"right\":826.0,\"top\":827.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_bee8b0ba211e6933",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_8454bfc9adaf42349bb97af9610cbfa8",
+          "location_ref": "reading_element_8454bfc9adaf42349bb97af9610cbfa8",
+          "page": 4,
+          "page_screenshot_available": false,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3 τ -bench: A benchmark for Tool-Agent-User Interaction",
+          "source_kind": "paragraph",
+          "span_text": "Pass^k metric. For tasks like code generation with good verification techniques (unit tests), the community has defined the pass@k (pass at k) metric as the chance that at least one out of k i.i.d. task trials is successful, which captures the trend of agents enabling discovery of solutions with scaling of inference-time compute [5]. For real-world agent tasks requiring reliability and consistency like customer service, we propose a new metric – pass^k (pass hat k), defined as the chance that all k i.i.d. task trials are successful, averaged across tasks. Therefore, if a task is run for n trials and c of those trials end up successful (r = 1), unbiased estimates for pass^k and pass@k would be:",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":5,\"left\":169.0,\"bottom\":332.0,\"right\":826.0,\"top\":260.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":5,\"left\":169.0,\"bottom\":332.0,\"right\":826.0,\"top\":260.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_0e982539599ca2b0",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_7dbebd53fd5c47ccaf2982227026d4cf",
+          "location_ref": "reading_element_7dbebd53fd5c47ccaf2982227026d4cf",
+          "page": 5,
+          "page_screenshot_available": false,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3 τ -bench: A benchmark for Tool-Agent-User Interaction",
+          "source_kind": "paragraph",
+          "span_text": "In our case, for the same task, the user prompt and database transitions are the same, with just the LM sampling of the user and agent messages generating sufficient stochasticity. Thus, pass^k can capture the reliability of the agent at handling variations in conversations with the same underlying semantics while adhering to the domain policies and rules. By default, we report the average reward across tasks, $\\mathrm { p a s s } ^ { \\wedge } \\mathrm { l } \\mathrm { = p a s s } @ 1 \\mathrm { = } \\mathbb { E } [ r ] = \\mathbb { E } [ c / n ]$ , as the main metric for comparing agents.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":760.0,\"right\":826.0,\"top\":618.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":760.0,\"right\":826.0,\"top\":618.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_27e19b3cb44c16f7",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_eeb6bc0ca094410d8c695b18df25af69",
+          "location_ref": "reading_element_eeb6bc0ca094410d8c695b18df25af69",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "tau_bench_2024",
+          "paper_version": "arXiv v1",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 Introduction",
+          "source_kind": "paragraph",
+          "span_text": "Our experiments reveal that agents built with simple LM constructs (like function calling or ReAct) perform poorly, highlighting the need for more sophisticated agent architectures. For instance, even state-of-the-art LMs like gpt-4o achieve low task success rates (pass^1) using function calling (∼61% on τ -retail and ∼35% on τ -airline). With increasing k, the chance of consistently solving a task drops rapidly, to as low as ∼25% for pass^8 on τ -retail for the same model. This showcases the fragile nature of such agents in handling stochasticity and partial information, which is common in human-agent interaction. Upon analyzing the failure cases, we find that current agents struggle with complex reasoning over databases, understanding and following ad-hoc policies, and handling compound (more than one) requests. We hope that τ -bench enables the evaluation and development of more consistent and capable agents for real-world digital tasks involving human interaction.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_UpFUGtaN5agp86iMfufdU2BK",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "No—these findings are not necessarily contradictory.\n\nMINT is saying that, within its benchmark, models improve when given tool interaction and natural-language feedback: it focuses on tool-augmented task solving and leveraging feedback, and reports absolute gains of 1–8% per additional tool-use turn and 2–17% with natural-language feedback. [[ev_b802743d249043cc]] [[ev_540173e000b7a95c]]\n\nτ-bench is asking a different question: whether an agent can solve the same underlying task reliably across multiple stochastic interaction trials while following domain policies and rules. [[ev_bee8b0ba211e6933]] [[ev_0e982539599ca2b0]] On that metric, τ-bench finds that consistency drops sharply as the number of required successful trials increases; even the best reported GPT-4o function-calling agent has >60% average task success but <25% pass^8. [[ev_6186ffb95632dd99]]\n\nSo the two results can coexist: tools and feedback can raise average or per-turn task success in MINT, while τ-bench can still find that agents are unreliable when they must succeed repeatedly under conversational stochasticity, partial information, databases, policies, and compound requests. [[ev_540173e000b7a95c]] [[ev_27e19b3cb44c16f7]]",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_dacs0qFBMIHZHz54ZlzhGuTh",
+    "tool_name": "submit_research_answer"
+  }
+]

@@ -1,0 +1,53 @@
+[
+  {
+    "arxiv_id": "2310.06770",
+    "authors": [
+      "Carlos E. Jimenez",
+      "John Yang"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_swebench_2024",
+    "filename": null,
+    "paper_id": "swebench_2024",
+    "preview": "",
+    "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+    "venue": "ICLR",
+    "year": 2024
+  },
+  {
+    "arxiv_id": "2311.12983",
+    "authors": [
+      "Gregoire Mialon",
+      "Clementine Fourrier"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_gaia_2024",
+    "filename": null,
+    "paper_id": "gaia_2024",
+    "preview": "",
+    "title": "GAIA: a benchmark for General AI Assistants",
+    "venue": "ICLR",
+    "year": 2024
+  },
+  {
+    "arxiv_id": "2307.13854",
+    "authors": [
+      "Shuyan Zhou",
+      "Frank F. Xu"
+    ],
+    "citeable": false,
+    "doi": null,
+    "element_type": "paper_candidate",
+    "evidence_id": "paper_candidate_webarena_2024",
+    "filename": null,
+    "paper_id": "webarena_2024",
+    "preview": "",
+    "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+    "venue": "ICLR",
+    "year": 2024
+  }
+]

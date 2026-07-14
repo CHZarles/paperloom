@@ -1,0 +1,834 @@
+[
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "GPT-3 language model"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2005.14165",
+          "authors": [
+            "Tom B. Brown"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt3_2020",
+          "preview": "",
+          "title": "Language Models are Few-Shot Learners",
+          "venue": "NeurIPS",
+          "year": 2020
+        },
+        {
+          "arxiv_id": null,
+          "authors": [
+            "Alec Radford"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt2_2019",
+          "preview": "",
+          "title": "Language Models are Unsupervised Multitask Learners",
+          "venue": "OpenAI technical report",
+          "year": 2019
+        },
+        {
+          "arxiv_id": "1810.04805",
+          "authors": [
+            "Jacob Devlin",
+            "Ming-Wei Chang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "bert_2018",
+          "preview": "",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "venue": "NAACL",
+          "year": 2018
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 3,
+      "next_offset": null,
+      "query_text": "GPT-3 language model",
+      "returned_count": 3
+    },
+    "tool_call_id": "call_function_xk7fv2off59v_1",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "GPT-2 language model"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2005.14165",
+          "authors": [
+            "Tom B. Brown"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt3_2020",
+          "preview": "",
+          "title": "Language Models are Few-Shot Learners",
+          "venue": "NeurIPS",
+          "year": 2020
+        },
+        {
+          "arxiv_id": null,
+          "authors": [
+            "Alec Radford"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt2_2019",
+          "preview": "",
+          "title": "Language Models are Unsupervised Multitask Learners",
+          "venue": "OpenAI technical report",
+          "year": 2019
+        },
+        {
+          "arxiv_id": "1810.04805",
+          "authors": [
+            "Jacob Devlin",
+            "Ming-Wei Chang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "bert_2018",
+          "preview": "",
+          "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+          "venue": "NAACL",
+          "year": 2018
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 3,
+      "next_offset": null,
+      "query_text": "GPT-2 language model",
+      "returned_count": 3
+    },
+    "tool_call_id": "call_function_xk7fv2off59v_2",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "limit": 10,
+      "query_text": "Attention Is All You Need transformer"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 1,
+      "next_offset": null,
+      "query_text": "Attention Is All You Need transformer",
+      "returned_count": 1
+    },
+    "tool_call_id": "call_function_xk7fv2off59v_3",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "gpt3_2020"
+      ],
+      "query_text": "architecture model transformer decoder",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "We use the same model and architecture as $\\mathrm { G P T } { - } 2 \\ \\mathrm { [ R W C ^ { + } 1 9 ] }$ , including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19]. To study the dependence of ML performance on model size, we train 8 different sizes of model, ranging over three or",
+          "section": "2.1 Model and Architectures",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d4f90e9ad25c4844b5f8da18de77212d",
+          "original_filename": null,
+          "page": 40,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Algorithmic innovation in language models over the last two years has been enormous, including denoising-based bidirectionality [DCLT18], prefixLM [DL15] and encoder-decoder architectures $[ \\mathrm { L L G ^ { + } } 1 9 , \\mathrm { R S R ^ { + } } 1 \\bar { 9 } ]$ , random permutations during training $[ \\mathrm { Y } \\mathrm { D } \\bar { \\mathrm { Y } } ^ { + } 1 9 ] .$ , architectures that improve the efficiency of sampling $[ \\mathrm { D Y Y ^ { + } 1 9 } ] .$ , improvements in data and train",
+          "section": "7 Related Work",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a6da780c84064fd186041b23e6a82809",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Table 2.1 shows the sizes and architectures of our 8 models. Here $n _ { \\mathrm { p a r a m s } }$ is the total number of trainable parameters, $n _ { \\mathrm { l a y e r s } }$ is the total number of layers, $d _ { \\mathrm { m o d e l } }$ is the number of units in each bottleneck layer (we always have the feedforward layer four times the size of the bottleneck layer, $d _ { \\mathrm { f f } } = 4 * d _ { \\mathrm { m o d e l } } )$ , and $d _ { \\mathrm { h e a d } }$ is the dimension of each at",
+          "section": "2.1 Model and Architectures",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c7b89e2794874511a465c4b9d8f39482",
+          "original_filename": null,
+          "page": 42,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Rewon Child and Scott Gray contributed the sparse transformer.",
+          "section": "Contributions",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_637b191966734f1299c8cb06cf05e29b",
+          "original_filename": null,
+          "page": 42,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Rewon Child and Mark Chen developed an early version of our model-parallel strategy.",
+          "section": "Contributions",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_ee37b23939c84e8a85acb3581e17623b",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Another recent trend in language modeling may offer a way forward. In recent years the capacity of transformer language models has increased substantially, from 100 million parameters [RNSS18], to 300 million parameters [DCLT18], to 1.5 billion parameters [RWC<sup>+</sup>19], to 8 billion parameters [SPP<sup>+</sup>19], 11 billion parameters [RSR<sup>+</sup>19], and finally 17 billion parameters [Tur20]. Each increase has brought improvements in text synthesis and/or downstream NLP tasks, and th",
+          "section": "1 Introduction",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_aa3444fed3a24103934178352e2b12c1",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "This last paradigm has led to substantial progress on many challenging NLP tasks such as reading comprehension, question answering, textual entailment, and many others, and has continued to advance based on new architectures and algorithms $[ \\mathrm { R \\bar { S } R ^ { + } 1 9 , L O G ^ { + } 1 9 , Y D Y ^ { + } 1 9 , L \\bar { C } G ^ { + } 1 9 } ]$ . However, a major limitation to this approach is that while the architecture is task-agnostic, there is still a need for task-specific datasets a",
+          "section": "1 Introduction",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_26c16f7a0d224c4aa41398d2b3eefd2f",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Recent years have featured a trend towards pre-trained language representations in NLP systems, applied in increasingly flexible and task-agnostic ways for downstream transfer. First, single-layer representations were learned using word vectors [MCCD13, PSM14] and fed to task-specific architectures, then RNNs with multiple layers of representations and contextual state were used to form stronger representations [DL15, MBXS17, PNZtY18] (though still applied to task-specific architectures), and mo",
+          "section": "1 Introduction",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_c880dff723b14c45912c41104e4518c5",
+          "original_filename": null,
+          "page": 46,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Table D.1: Starting from the right hand side and moving left, we begin with the number of training tokens that each model was trained with. Next we note that since T5 uses an encoder-decoder model, only half of the parameters are active for each token during a forward or backwards pass. We then note that each token is involved in a single addition and a single multiply for each active parameter in the forward pass (ignoring attention). Then we add a multiplier of 3x to account for the backwards ",
+          "section": "D Total Compute Used to Train Language Models",
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table-410",
+          "original_filename": null,
+          "page": 46,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "preview": "Caption: Table D.1: Starting from the right hand side and moving left, we begin with the number of training tokens that each model was trained with. Next we note that since T5 uses an encoder-decoder model, only half of the parameters are active for each token during a forward or backwards pass. We then note that each token is involved in a single addition and a single multiply for each active parameter in the forward pass (ignoring attention). Then we add a multiplier of 3x to account for the b",
+          "section": "D Total Compute Used to Train Language Models",
+          "title": "Language Models are Few-Shot Learners"
+        }
+      ],
+      "matched_count": 179,
+      "query_text": "architecture model transformer decoder",
+      "returned_count": 10
+    },
+    "tool_call_id": "call_function_582hycr6lu7x_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "gpt2_2019"
+      ],
+      "query_text": "architecture model transformer decoder",
+      "top_k": 10
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bc4586d5694d4ffdb9750798e26dec91",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "We use a Transformer (Vaswani et al., 2017) based architecture for our LMs. The model largely follows the details of the OpenAI GPT model (Radford et al., 2018) with a few modifications. Layer normalization (Ba et al., 2016) was moved to the input of each sub-block, similar to a pre-activation residual network (He et al., 2016) and an additional layer normalization was added after the final selfattention block. A modified initialization which accounts for the accumulation on the residual path wi",
+          "section": "2.3. Model",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_9562867fd0604e9289a7d8f6f2f2b7cb",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "Table 2. Architecture hyperparameters for the 4 model sizes.\nParameters | Layers | $d _ { m o d e l }$ | 117M | 12 | 768 | 345M | 24 | 1024 | 762M | 36 | 1280 | 1542M | 48 | 1600",
+          "section": "2.3. Model",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table-43",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "Caption: Table 2. Architecture hyperparameters for the 4 model sizes.\nParameters Layers $d _ { m o d e l }$ 117M 12 768 345M 24 1024 762M 36 1280 1542M 48 1600",
+          "section": "2.3. Model",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_5369e1d91d444d91a918e199bf71683b",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "In this paper, we connect these two lines of work and continue the trend of more general methods of transfer. We demonstrate language models can perform down-stream tasks in a zero-shot setting – without any parameter or architecture modification. We demonstrate this approach shows potential by highlighting the ability of language models to perform a wide range of tasks in a zero-shot setting. We achieve promising, competitive, and state of the art results depending on the task.",
+          "section": "1. Introduction",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_bf67aa7fa5ca46aa8dc7c585c88db801",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "2019) is a promising resource to test this more quantitatively. Similar to translation, the context of the language model is seeded with example question answer pairs which helps the model infer the short answer style of the dataset. GPT-2 answers 4.1% of questions correctly when evaluated by the exact match metric commonly used on reading comprehension datasets like SQUAD.<sup>3</sup> As a comparison point, the smallest model does not exceed the 1.0% accuracy of an incredibly simple baseline wh",
+          "section": "3.8. Question Answering",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_21699bb26a4540838e64ef054c4b0351",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "A potential way to test what information is contained within a language model is to evaluate how often it generates the correct answer to factoid-style questions. Previous showcasing of this behavior in neural systems where all information is stored in parameters such as A Neural Conversational Model (Vinyals & Le, 2015) reported qualitative results due to the lack of high-quality evaluation datasets. The recently introduced Natural Questions dataset (Kwiatkowski et al.,",
+          "section": "3.8. Question Answering",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_abfb59f443384600b2390b9a01acef75",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "This approach allows for tractable sampling from and estimation of $p ( x )$ as well as any conditionals of the form $p ( s _ { n - k } , . . . , s _ { n } \\vert s _ { 1 } , . . . , s _ { n - k - 1 } )$ . In recent years, there have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).",
+          "section": "2. Approach",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c456410912234b7f9924f37ef6b9f0c3",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "Learning to perform a single task can be expressed in a probabilistic framework as estimating a conditional distribution p(output|input). Since a general system should be able to perform many different tasks, even for the same input, it should condition not only on the input but also on the task to be performed. That is, it should model p(output|input, task). This has been variously formalized in multitask and meta-learning settings. Task conditioning is often implemented at an architectural lev",
+          "section": "2. Approach",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2bbdefba138e4da7befc2698e5bf68ce",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "Natural language processing tasks, such as question answering, machine translation, reading comprehension, and summarization, are typically approached with supervised learning on taskspecific datasets. We demonstrate that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText. When conditioned on a document plus questions, the answers generated by the language model reach 55 F1 on the CoQA dataset - matchin",
+          "section": "Abstract",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_0b3d26ba23914a33ab84b9a0d85d4957",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "preview": "2.3. Model",
+          "section": "unsectioned",
+          "title": "Language Models are Unsupervised Multitask Learners"
+        }
+      ],
+      "matched_count": 41,
+      "query_text": "architecture model transformer decoder",
+      "returned_count": 10
+    },
+    "tool_call_id": "call_function_582hycr6lu7x_2",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "paper_id": "gpt3_2020"
+    },
+    "result": {
+      "coverage": "complete",
+      "edges": [
+        {
+          "edge_type": "uses_gpt2_style_architecture",
+          "from_paper_id": "gpt3_2020",
+          "to_paper_id": "gpt2_2019"
+        }
+      ],
+      "papers": [
+        {
+          "arxiv_id": null,
+          "authors": [
+            "Alec Radford"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt2_2019",
+          "preview": "",
+          "title": "Language Models are Unsupervised Multitask Learners",
+          "venue": "OpenAI technical report",
+          "year": 2019
+        },
+        {
+          "arxiv_id": "2005.14165",
+          "authors": [
+            "Tom B. Brown"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt3_2020",
+          "preview": "",
+          "title": "Language Models are Few-Shot Learners",
+          "venue": "NeurIPS",
+          "year": 2020
+        }
+      ]
+    },
+    "tool_call_id": "call_function_582hycr6lu7x_3",
+    "tool_name": "get_citation_edges"
+  },
+  {
+    "arguments": {
+      "paper_id": "gpt2_2019"
+    },
+    "result": {
+      "coverage": "complete",
+      "edges": [
+        {
+          "edge_type": "uses_gpt2_style_architecture",
+          "from_paper_id": "gpt3_2020",
+          "to_paper_id": "gpt2_2019"
+        },
+        {
+          "edge_type": "uses_transformer_decoder_language_model",
+          "from_paper_id": "gpt2_2019",
+          "to_paper_id": "attention_is_all_you_need_2017"
+        }
+      ],
+      "papers": [
+        {
+          "arxiv_id": "1706.03762",
+          "authors": [
+            "Ashish Vaswani",
+            "Noam Shazeer"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "attention_is_all_you_need_2017",
+          "preview": "",
+          "title": "Attention Is All You Need",
+          "venue": "NeurIPS",
+          "year": 2017
+        },
+        {
+          "arxiv_id": null,
+          "authors": [
+            "Alec Radford"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt2_2019",
+          "preview": "",
+          "title": "Language Models are Unsupervised Multitask Learners",
+          "venue": "OpenAI technical report",
+          "year": 2019
+        },
+        {
+          "arxiv_id": "2005.14165",
+          "authors": [
+            "Tom B. Brown"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gpt3_2020",
+          "preview": "",
+          "title": "Language Models are Few-Shot Learners",
+          "venue": "NeurIPS",
+          "year": 2020
+        }
+      ]
+    },
+    "tool_call_id": "call_function_582hycr6lu7x_4",
+    "tool_name": "get_citation_edges"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+        "reading_element_bc4586d5694d4ffdb9750798e26dec91",
+        "reading_element_abfb59f443384600b2390b9a01acef75"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":8,\"left\":111.0,\"bottom\":453.0,\"right\":885.0,\"top\":340.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":8,\"left\":111.0,\"bottom\":453.0,\"right\":885.0,\"top\":340.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_38e0df75f5c1dc48",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+          "location_ref": "reading_element_de6cc6285cc74c3ab7cabb790e751434",
+          "page": 8,
+          "page_screenshot_available": false,
+          "paper_id": "gpt3_2020",
+          "paper_version": "arXiv v4 (2020-07-22) / NeurIPS 2020",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2.1 Model and Architectures",
+          "source_kind": "paragraph",
+          "span_text": "We use the same model and architecture as $\\mathrm { G P T } { - } 2 \\ \\mathrm { [ R W C ^ { + } 1 9 ] }$ , including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19]. To study the dependence of ML performance on model size, we train 8 different sizes of model, ranging over three orders of magnitude from 125 million parameters to 175 billion parameters, with the last being the model we call GPT-3. Previous work $[ \\mathrm { K M H ^ { + } 2 0 } ]$ suggests that with enough training data, scaling of validation loss should be approximately a smooth power law as a function of size; training models of many different sizes allows us to test this hypothesis both for validation loss and for downstream language tasks.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Language Models are Few-Shot Learners"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":4,\"left\":83.0,\"bottom\":906.0,\"right\":478.0,\"top\":859.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":4,\"left\":83.0,\"bottom\":906.0,\"right\":478.0,\"top\":859.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_4396b43fa54864c2",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_bc4586d5694d4ffdb9750798e26dec91",
+          "location_ref": "reading_element_bc4586d5694d4ffdb9750798e26dec91",
+          "page": 4,
+          "page_screenshot_available": false,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2.3. Model",
+          "source_kind": "paragraph",
+          "span_text": "We use a Transformer (Vaswani et al., 2017) based architecture for our LMs. The model largely follows the details of the OpenAI GPT model (Radford et al., 2018) with a few modifications. Layer normalization (Ba et al., 2016) was moved to the input of each sub-block, similar to a pre-activation residual network (He et al., 2016) and an additional layer normalization was added after the final selfattention block. A modified initialization which accounts for the accumulation on the residual path with model depth is used. We scale the weights of residual layers at initialization by a factor of $1 / \\hat { \\sqrt { N } }$ where N is the number of residual layers. The vocabulary is expanded to 50,257. We also increase the context size from 512 to 1024 tokens and a larger batchsize of 512 is used.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Language Models are Unsupervised Multitask Learners"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":495.0,\"bottom\":582.0,\"right\":888.0,\"top\":474.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":495.0,\"bottom\":582.0,\"right\":888.0,\"top\":474.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_df9905f582fb729a",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_abfb59f443384600b2390b9a01acef75",
+          "location_ref": "reading_element_abfb59f443384600b2390b9a01acef75",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "gpt2_2019",
+          "paper_version": "OpenAI technical report PDF (2019-02)",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2. Approach",
+          "source_kind": "paragraph",
+          "span_text": "This approach allows for tractable sampling from and estimation of $p ( x )$ as well as any conditionals of the form $p ( s _ { n - k } , . . . , s _ { n } \\vert s _ { 1 } , . . . , s _ { n - k - 1 } )$ . In recent years, there have been significant improvements in the expressiveness of models that can compute these conditional probabilities, such as self-attention architectures like the Transformer (Vaswani et al., 2017).",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Language Models are Unsupervised Multitask Learners"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_rb22maquffox_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "The two-hop chain is supported directly by the GPT-3 and GPT-2 papers in the corpus, with no fabricated direct GPT-3→Transformer architecture citation needed.\n\n**Hop 1 — GPT-3 → GPT-2 (architecture inheritance)**\nThe GPT-3 paper's §2.1 \"Model and Architectures\" states: *\"We use the same model and architecture as GPT‑2 [RWC+19], including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19].\"* The corpus citation graph records a single `uses_gpt2_style_architecture` edge from GPT-3, terminating at GPT-2. What this hop establishes: GPT-3 does not define a new backbone; it reuses the GPT-2 model and its pre‑normalization/modified‑initialization/reversible‑tokenization recipe, deviating only in swapping the attention pattern for Sparse‑Transformer‑style alternating dense/banded‑sparse attention. [[ev_38e0df75f5c1dc48]]\n\n**Hop 2 — GPT-2 → \"Attention Is All You Need\" (Transformer backbone)**\nThe GPT-2 paper's §2.3 \"Model\" states: *\"We use a Transformer (Vaswani et al., 2017) based architecture for our LMs. The model largely follows the details of the OpenAI GPT model (Radford et al., 2018) with a few modifications.\"* §2 \"Approach\" reinforces this: *\"…self‑attention architectures like the Transformer (Vaswani et al., 2017).\"* The corpus citation graph records a `uses_transformer_decoder_language_model` edge from GPT-2 to \"Attention Is All You Need.\" What this hop establishes: GPT-2's decoder‑only language model is built on the Transformer architecture introduced by Vaswani et al. (2017), and only the GPT model (Radford et al., 2018) — not the original Transformer paper — is treated as a more direct architectural antecedent. [[ev_4396b43fa54864c2]] [[ev_df9905f582fb729a]]\n\n**Why no direct GPT-3 → Transformer architecture citation is invoked**\nGPT-3's architecture section cites GPT-2 as the source of \"the same model and architecture\" and cites the Sparse Transformer [CGRS19] only for the attention‑pattern modification — not Vaswani et al. (2017). The citation graph from GPT-3 confirms this: the only architecture edge from GPT-3 leads to GPT-2, not to \"Attention Is All You Need.\" The Transformer is reached only transitively, through GPT-2's own §2.3 attribution.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": false,
+      "error": "evidence coverage incomplete: unsupported paper mentions have no reading-location candidate: Attention Is All You Need; remove them if they are not essential to the user's request, otherwise search those papers for relevant evidence"
+    },
+    "tool_call_id": "call_function_4wgrrpkysj1h_1",
+    "tool_name": "submit_research_answer"
+  },
+  {
+    "arguments": {
+      "paper_ids": [
+        "attention_is_all_you_need_2017"
+      ],
+      "query_text": "transformer architecture self-attention encoder decoder",
+      "top_k": 5
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f2d7a84201a845b8b51808e7604eb518",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "• In \"encoder-decoder attention\" layers, the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder. This allows every position in the decoder to attend over all positions in the input sequence. This mimics the typical encoder-decoder attention mechanisms in sequence-to-sequence models such as [38, 2, 9].",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being mor",
+          "section": "Abstract",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_463b8111c0174c7abaa6e8cc4d7c0c54",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "• The encoder contains self-attention layers. In a self-attention layer all of the keys, values and queries come from the same place, in this case, the output of the previous layer in the encoder. Each position in the encoder can attend to all positions in the previous layer of the encoder.",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_adce10960c0b4a1dac2bcb0ce5312d34",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Decoder: The decoder is also composed of a stack of $N = 6$ identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. Similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This ma",
+          "section": "3.1 Encoder and Decoder Stacks",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_aa69509b4243455da15d24dbfae670a7",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "The Transformer follows this overall architecture using stacked self-attention and point-wise, fully connected layers for both the encoder and decoder, shown in the left and right halves of Figure 1, respectively.",
+          "section": "3 Model Architecture",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_03dba0820f6e439d976b2a4bf51178ef",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Encoder: The encoder is composed of a stack of $N = 6$ identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, positionwise fully connected feed-forward network. We employ a residual connection [11] around each of the two sub-layers, followed by layer normalization [1]. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself. To facilitate th",
+          "section": "3.1 Encoder and Decoder Stacks",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2a9dd535848b4faeb46b65bdb08b1199",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "• Similarly, self-attention layers in the decoder allow each position in the decoder to attend to all positions in the decoder up to and including that position. We need to prevent leftward information flow in the decoder to preserve the auto-regressive property. We implement this inside of scaled dot-product attention by masking out (setting to −∞) all values in the input of the softmax which correspond to illegal connections. See Figure 2.",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_d1cfd781ff3645b4839ecb0fec45510e",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "In this work, we presented the Transformer, the first sequence transduction model based entirely on attention, replacing the recurrent layers most commonly used in encoder-decoder architectures with multi-headed self-attention.",
+          "section": "7 Conclusion",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9c5d46ed3d9a417c8df70cadfe9e4e71",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "The Transformer uses multi-head attention in three different ways:",
+          "section": "3.2.3 Applications of Attention in our Model",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_701deb32146545ad806d557306a929d7",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "For translation tasks, the Transformer can be trained significantly faster than architectures based on recurrent or convolutional layers. On both WMT 2014 English-to-German and WMT 2014 English-to-French translation tasks, we achieve a new state of the art. In the former task our best model outperforms even all previously reported ensembles.",
+          "section": "7 Conclusion",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c3e6a98de0724c35b12a94ab72451689",
+          "original_filename": null,
+          "page": 10,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "We are excited about the future of attention-based models and plan to apply them to other tasks. We plan to extend the Transformer to problems involving input and output modalities other than text and to investigate local, restricted attention mechanisms to efficiently handle large inputs and outputs such as images, audio and video. Making generation less sequential is another research goals of ours.",
+          "section": "7 Conclusion",
+          "title": "Attention Is All You Need"
+        },
+        {
+          "element_type": "figure",
+          "location_ref": "figure-31",
+          "original_filename": null,
+          "page": 3,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "preview": "Figure 1: The Transformer - model architecture.",
+          "section": "3 Model Architecture",
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "matched_count": 85,
+      "query_text": "transformer architecture self-attention encoder decoder",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_function_6evad8nfg6vi_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_d3f857764d464d7d931296ec82a0de85"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":729.0,\"right\":769.0,\"top\":518.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":1,\"left\":228.0,\"bottom\":729.0,\"right\":769.0,\"top\":518.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_7b31c6915e3d43d3",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_d3f857764d464d7d931296ec82a0de85",
+          "location_ref": "reading_element_d3f857764d464d7d931296ec82a0de85",
+          "page": 1,
+          "page_screenshot_available": false,
+          "paper_id": "attention_is_all_you_need_2017",
+          "paper_version": "arXiv v7 (2023-08-02) / NeurIPS 2017",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "Abstract",
+          "source_kind": "paragraph",
+          "span_text": "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. Our model achieves 28.4 BLEU on the WMT 2014 Englishto-German translation task, improving over the existing best results, including ensembles, by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model establishes a new single-model state-of-the-art BLEU score of 41.8 after training for 3.5 days on eight GPUs, a small fraction of the training costs of the best models from the literature. We show that the Transformer generalizes well to other tasks by applying it successfully to English constituency parsing both with large and limited training data.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "Attention Is All You Need"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_j0d2jagwjwuu_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "The two-hop chain is supported directly by the GPT-3 and GPT-2 papers in the corpus, with no fabricated direct GPT-3→Transformer architecture citation needed.\n\n**Hop 1 — GPT-3 → GPT-2 (architecture inheritance)**\nThe GPT-3 paper's §2.1 \"Model and Architectures\" states: *\"We use the same model and architecture as GPT‑2 [RWC+19], including the modified initialization, pre-normalization, and reversible tokenization described therein, with the exception that we use alternating dense and locally banded sparse attention patterns in the layers of the transformer, similar to the Sparse Transformer [CGRS19].\"* The corpus citation graph records a single `uses_gpt2_style_architecture` edge from GPT-3, terminating at GPT-2. What this hop establishes: GPT-3 does not define a new backbone; it reuses the GPT-2 model and its pre‑normalization / modified‑initialization / reversible‑tokenization recipe, deviating only in swapping the attention pattern for Sparse‑Transformer‑style alternating dense/banded‑sparse attention. [[ev_38e0df75f5c1dc48]]\n\n**Hop 2 — GPT-2 → \"Attention Is All You Need\" (Transformer backbone)**\nThe GPT-2 paper's §2.3 \"Model\" states: *\"We use a Transformer (Vaswani et al., 2017) based architecture for our LMs. The model largely follows the details of the OpenAI GPT model (Radford et al., 2018) with a few modifications.\"* §2 \"Approach\" reinforces this: *\"…self‑attention architectures like the Transformer (Vaswani et al., 2017).\"* The corpus citation graph records a `uses_transformer_decoder_language_model` edge from GPT-2 to \"Attention Is All You Need,\" and that paper's own abstract introduces *\"a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.\"* What this hop establishes: GPT-2's decoder‑only language model is built on the Transformer architecture introduced by Vaswani et al. (2017), and only the GPT model (Radford et al., 2018) — not the original Transformer paper — is treated as a more direct architectural antecedent. [[ev_4396b43fa54864c2]] [[ev_df9905f582fb729a]] [[ev_7b31c6915e3d43d3]]\n\n**Why no direct GPT-3 → Transformer architecture citation is invoked**\nGPT-3's architecture section cites GPT-2 as the source of \"the same model and architecture\" and cites the Sparse Transformer [CGRS19] only for the attention‑pattern modification — not Vaswani et al. (2017). The citation graph from GPT-3 confirms this: the only architecture edge from GPT-3 leads to GPT-2, not to \"Attention Is All You Need.\" The Transformer is reached only transitively, through GPT-2's own §2.3 attribution.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_function_9mu17q6hl2bz_1",
+    "tool_name": "submit_research_answer"
+  }
+]

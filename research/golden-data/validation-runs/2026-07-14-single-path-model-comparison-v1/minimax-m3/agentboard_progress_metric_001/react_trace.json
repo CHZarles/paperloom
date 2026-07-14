@@ -1,0 +1,634 @@
+[
+  {
+    "arguments": {
+      "query_text": "AgentBoard progress rate benchmark"
+    },
+    "result": {
+      "candidates": [
+        {
+          "arxiv_id": "2401.13178",
+          "authors": [
+            "Chang Ma",
+            "Junlei Zhang"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "agentboard_2024",
+          "preview": "",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+          "venue": "NeurIPS Oral",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2311.12983",
+          "authors": [
+            "Gregoire Mialon",
+            "Clementine Fourrier"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "gaia_2024",
+          "preview": "",
+          "title": "GAIA: a benchmark for General AI Assistants",
+          "venue": "ICLR",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2406.12045",
+          "authors": [
+            "Shunyu Yao",
+            "Noah Shinn"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "tau_bench_2024",
+          "preview": "",
+          "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+          "venue": "arXiv",
+          "year": 2024
+        },
+        {
+          "arxiv_id": "2408.04682",
+          "authors": [
+            "Jiarui Lu",
+            "Thomas Holleis"
+          ],
+          "doi": null,
+          "filename": null,
+          "paper_id": "toolsandbox_2024",
+          "preview": "",
+          "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+          "venue": "arXiv",
+          "year": 2024
+        }
+      ],
+      "coverage": "complete",
+      "matched_count": 4,
+      "next_offset": null,
+      "query_text": "AgentBoard progress rate benchmark",
+      "returned_count": 4
+    },
+    "tool_call_id": "call_function_wrtp997d7zte_1",
+    "tool_name": "search_paper_candidates"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph",
+        "heading"
+      ],
+      "paper_ids": [
+        "agentboard_2024"
+      ],
+      "query_text": "progress rate final success rate insufficient",
+      "top_k": 15
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_76f3977612d34404ae12d3b1c8e2d17a",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "We employ progress rate along with the commonly used success rate metric, which computes the proportion of tasks completed within T interactions.",
+          "section": "2.2 Fine-grained Progress Rate",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c7dcb747b1a148cba318b65cea1303eb",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Evaluating Large Language Models (LLMs) as general-purpose agents is essential for understanding their capabilities and facilitating their integration into practical applications. However, the evaluation process presents substantial challenges. A primary obstacle is the benchmarking of agent performance across diverse scenarios within a unified framework, especially in maintaining partially-observable environments and ensuring multi-round interactions. Moreover, current evaluation frameworks mos",
+          "section": "Abstract",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_09cde9270fe84b6ab7d853b54a7b049c",
+          "original_filename": null,
+          "page": 7,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Progress Rate is more informative and discriminative than success rate. The success rate and progress rate across various tasks and categories are presented in Table 3. Regarding the overall performance, the progress rate serves as a more effective differentiator between models. For example, Llama2-13b and Mistral-7b exhibit similarly negligible success rates (2.1% and 3.9%, respectively), but their progress rates differ significantly: 18.9% for Llama2-13b and 24.6% for Mistral-7b. This disparit",
+          "section": "4.2 Main Results",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_57dbaf605cd2459db85e32a8f1d5d882",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "We manually edit problems for a simpler progress rate calculation setup where each final goal aligns with a unique subgoal sequence. Here we emphasize two attributes of our adaptation.",
+          "section": "L.1 Explanation and Adaptations for “Unique” Subgoal Sequence",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_fef078aa45734b608f6021d1b1a17667",
+          "original_filename": null,
+          "page": 24,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "The origin implementation of babyai provides a reward score. Different from the original reward, our progress rate is more dense and the agent does not need to accomplish many steps before getting a increase in score. Here we compare the difference between our progress rate and the original reward score, as shown in Table 17. We can see from this case that our progress rate better measures intermediate progress for agents.",
+          "section": "L.4 BabyAI",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_51b44b9421b04125a86eb3a63c00e4e9",
+          "original_filename": null,
+          "page": 24,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "The progress rate is labelled via an interactive UI framework (Figure 8). A graduate student interact with the environments and record the observations corresponding to subgoals needed to finish the problem.",
+          "section": "L.4 BabyAI",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_e2e715b9aac749daba43946cc5b3b972",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "We conduct a comprehensive evaluation of popular LLMs, including proprietary and open-weight models. Firstly, we report the success rate and progress rate of these agents. Then, we perform detailed analysis of the",
+          "section": "4 Experiments",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_623b83ae538b49d39a961ce088edd927",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Web - WebArena (WA) (Zhou et al., 2023) is a real web environment featuring various scenarios including business content and discussion forums. To obtain the progress rate, we revised the existing method for calculating the final score (Zhou et al., 2023) and continuously computed the progress rate at each step, fusing the URL matching score with the content matching score, as detailed in Appendix L.8.",
+          "section": "3.1 Environments",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_495d0a2f63d84abd8de016a3ff379f99",
+          "original_filename": null,
+          "page": 2,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "To address these issues, we introduce AGENTBOARD, a benchmark designed for multi-turn LLM agents, complemented by an analytical evaluation board for detailed model assessment beyond final success rates. AGENTBOARD encompasses a diverse set of 9 unique tasks and 1013 exemplary environments, covering a range from embodied AI and game agents to web and tool agents. Each environment, whether newly created or adapted from pre-existing ones, is carefully crafted and authenticated by humans to ensure m",
+          "section": "1 Introduction",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_87d7beb0f34a4fc8bc9274128136c570",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Embodied - AlfWorld (ALF) (Shridhar et al., 2021) are household tasks that require agents to explore surroundings and perform commonsense tasks like “put two soapbars in garbagecan\". This task uses subgoalbased progress rates (Appendix L.2) and the original success rate of the environment as metrics.",
+          "section": "3.1 Environments",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_f9dc99333e1a41cea3f86e9b649589bd",
+          "original_filename": null,
+          "page": 6,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "After human annotation, we manually verified our labeled subgoals through multiple verification stages to ensure its quality, as detailed in Appendix J. More importantly, we conduct a user study to justify our proposed progress rate metric, asking human annotators to assess the progress of model trajectories and then evaluating its correlation with our automatic progress rate metric. Specifically, we gather 60 model trajectories for each of the 8 tasks from three strong LLMs——GPT-4, GPT-3.5-Turb",
+          "section": "3.2 Annotation Verification and Metric Justification",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "table",
+          "location_ref": "table_ref_5654ddd879b5469b8580211485c84aeb",
+          "original_filename": null,
+          "page": 8,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Table 5: Progress Rate and Success Rate for easy and hard cases. All models show distinct drop for hard cases.\nModel | Metric | Embodied AI | Game | Web | Tool | | Avg. Hard | Easy | Hard | Easy | Hard | Easy | Hard | Easy | Hard | | Easy | | | GPT-4 | Progress | 90.6 | $5 7 . 4 _ { \\mathrm { ~ \\scriptsize ~ i . 3 3 . 2 } }$ | 70.3 | $6 2 . 6 _ { \\ \\downarrow 7 . 7 }$ | 60.8 | $5 5 . 1 _ { \\ \\downarrow 5 . 7 }$ | 89.3 | 78.5 | ↓10.8 | 79.2 | | 62.7 ↓16.5 | Success | 85.0 | $2 4 . 9 _ { \\ \\downar",
+          "section": "4.2 Main Results",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_9f8530b3ed714b94b0c461080346a186",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Recent studies highlight the predominant use of success rate as the main metric for agent evaluation, which fails to capture the nuances of partial task completion by language model agents (Liu et al., 2023a; Li et al., 2023). This approach does not differentiate between near-complete tasks and minimal task execution, treating both as equivalent failures. Alternative metrics like reward scores are available but lack standardization (Chevalier-Boisvert et al., 2019; Wang et al., 2022). To mitigat",
+          "section": "2.2 Fine-grained Progress Rate",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_25c5129fb2dd44f486d7e991550af303",
+          "original_filename": null,
+          "page": 4,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "2.2 Fine-grained Progress Rate",
+          "section": "unsectioned",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "heading",
+          "location_ref": "reading_element_f2be98d0615d4d71b8ebe8e43374b4af",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "L Details of Progress Rate Metrics",
+          "section": "unsectioned",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        }
+      ],
+      "matched_count": 69,
+      "query_text": "progress rate final success rate insufficient",
+      "returned_count": 15
+    },
+    "tool_call_id": "call_function_gjpqxg5qrco5_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_9f8530b3ed714b94b0c461080346a186",
+        "reading_element_76f3977612d34404ae12d3b1c8e2d17a",
+        "reading_element_09cde9270fe84b6ab7d853b54a7b049c",
+        "reading_element_f9dc99333e1a41cea3f86e9b649589bd",
+        "reading_element_495d0a2f63d84abd8de016a3ff379f99"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":4,\"left\":169.0,\"bottom\":912.0,\"right\":826.0,\"top\":835.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":4,\"left\":169.0,\"bottom\":912.0,\"right\":826.0,\"top\":835.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_433180485b8873f1",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_9f8530b3ed714b94b0c461080346a186",
+          "location_ref": "reading_element_9f8530b3ed714b94b0c461080346a186",
+          "page": 4,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2.2 Fine-grained Progress Rate",
+          "source_kind": "paragraph",
+          "span_text": "Recent studies highlight the predominant use of success rate as the main metric for agent evaluation, which fails to capture the nuances of partial task completion by language model agents (Liu et al., 2023a; Li et al., 2023). This approach does not differentiate between near-complete tasks and minimal task execution, treating both as equivalent failures. Alternative metrics like reward scores are available but lack standardization (Chevalier-Boisvert et al., 2019; Wang et al., 2022). To mitigate this issue, we introduce a progress rate metric to accurately reflect LM agents’ goal attainment at various stages.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":5,\"left\":169.0,\"bottom\":445.0,\"right\":825.0,\"top\":417.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":5,\"left\":169.0,\"bottom\":445.0,\"right\":825.0,\"top\":417.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_ba868a1ccf1e2b44",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_76f3977612d34404ae12d3b1c8e2d17a",
+          "location_ref": "reading_element_76f3977612d34404ae12d3b1c8e2d17a",
+          "page": 5,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "2.2 Fine-grained Progress Rate",
+          "source_kind": "paragraph",
+          "span_text": "We employ progress rate along with the commonly used success rate metric, which computes the proportion of tasks completed within T interactions.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":761.0,\"right\":826.0,\"top\":570.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":7,\"left\":169.0,\"bottom\":761.0,\"right\":826.0,\"top\":570.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_06c508841246c0a8",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_09cde9270fe84b6ab7d853b54a7b049c",
+          "location_ref": "reading_element_09cde9270fe84b6ab7d853b54a7b049c",
+          "page": 7,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "4.2 Main Results",
+          "source_kind": "paragraph",
+          "span_text": "Progress Rate is more informative and discriminative than success rate. The success rate and progress rate across various tasks and categories are presented in Table 3. Regarding the overall performance, the progress rate serves as a more effective differentiator between models. For example, Llama2-13b and Mistral-7b exhibit similarly negligible success rates (2.1% and 3.9%, respectively), but their progress rates differ significantly: 18.9% for Llama2-13b and 24.6% for Mistral-7b. This disparity suggests that Mistral-7b generally outperforms Llama2-13b. For models with substantial differences in success rates, such as Text-Davinci-003 outperforming Llama2-70b by 11.7% in success rate, Text-Davinci-003 leads the progress rate by 13.4% as well, which indicates the consistency in performance disparity between significantly different models. Investigating the agent performance on specific tasks, progress rate is often able to differentiate models that have similar success rates – for instance, on the Embodied AI and Game categories, the success rates of most of the open-weight models are similarly low, while they are able to make meaningfully different progresses. Also, the success rate can be influenced by specific characteristics of agents, for example, an agent like CodeLlama-34b often fails to generate the action “finish” when performing tool-using tasks, leading to a higher progress rate and lower success rate compared to CodeLlama-13b. In contrast, progress rate is less susceptible to these agent-specific features as it reflects the overall ability of the agent at each step.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":829.0,\"right\":826.0,\"top\":688.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":6,\"left\":169.0,\"bottom\":829.0,\"right\":826.0,\"top\":688.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_9ab58fc10db4ee86",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_f9dc99333e1a41cea3f86e9b649589bd",
+          "location_ref": "reading_element_f9dc99333e1a41cea3f86e9b649589bd",
+          "page": 6,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "3.2 Annotation Verification and Metric Justification",
+          "source_kind": "paragraph",
+          "span_text": "After human annotation, we manually verified our labeled subgoals through multiple verification stages to ensure its quality, as detailed in Appendix J. More importantly, we conduct a user study to justify our proposed progress rate metric, asking human annotators to assess the progress of model trajectories and then evaluating its correlation with our automatic progress rate metric. Specifically, we gather 60 model trajectories for each of the 8 tasks from three strong LLMs——GPT-4, GPT-3.5-Turbo, and Deepseek-67b. Each trajectory is assessed by four authors of the paper. The individual human rater is asked to select progress score from {0%, 25%, 50%, 75%, 100%} given trajectories and task descriptions, without seeing the automatic score. Mean of four scores is taken as the final human score for every trajectory. We show the Pearson correlation between human progress score and the progress rate in Figure 3, and report Fleiss’kappa κ to reflect inter-annotator agreement. Results show that progress rate highly correlates with human assessment on the progress where the Pearson correlation exceeds 0.95 on all tasks, and substantial agreement is reached among the annotators.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "bbox_json": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":625.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":2,\"left\":169.0,\"bottom\":625.0,\"right\":826.0,\"top\":483.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_74e419015b392d3c",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_495d0a2f63d84abd8de016a3ff379f99",
+          "location_ref": "reading_element_495d0a2f63d84abd8de016a3ff379f99",
+          "page": 2,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "1 Introduction",
+          "source_kind": "paragraph",
+          "span_text": "To address these issues, we introduce AGENTBOARD, a benchmark designed for multi-turn LLM agents, complemented by an analytical evaluation board for detailed model assessment beyond final success rates. AGENTBOARD encompasses a diverse set of 9 unique tasks and 1013 exemplary environments, covering a range from embodied AI and game agents to web and tool agents. Each environment, whether newly created or adapted from pre-existing ones, is carefully crafted and authenticated by humans to ensure multi-round and partially observable characteristics in a unified manner. Notably, we have defined or manually annotated subgoals for each data sample, introducing a unified progress rate metric to track the agents’ detailed advancements. As we will demonstrate in §4.2, this metric uncovers significant progress made by models that would otherwise appear trivial due to negligible differences in success rates.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_8xp78jbksybv_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "element_types": [
+        "paragraph",
+        "formula"
+      ],
+      "paper_ids": [
+        "agentboard_2024"
+      ],
+      "query_text": "progress rate definition subgoal annotation formula",
+      "top_k": 8
+    },
+    "result": {
+      "coverage": "truncated",
+      "locations": [
+        {
+          "element_type": "image",
+          "location_ref": "figure_ref_1cc7413f97414cc187e4ef749d222fb6",
+          "original_filename": null,
+          "page": 26,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Figure 9: An illustration of the process of subgoal annotation for Academia Environment.",
+          "section": "L.10 Tool-Operation",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_c7dcb747b1a148cba318b65cea1303eb",
+          "original_filename": null,
+          "page": 1,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Evaluating Large Language Models (LLMs) as general-purpose agents is essential for understanding their capabilities and facilitating their integration into practical applications. However, the evaluation process presents substantial challenges. A primary obstacle is the benchmarking of agent performance across diverse scenarios within a unified framework, especially in maintaining partially-observable environments and ensuring multi-round interactions. Moreover, current evaluation frameworks mos",
+          "section": "Abstract",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_57dbaf605cd2459db85e32a8f1d5d882",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "We manually edit problems for a simpler progress rate calculation setup where each final goal aligns with a unique subgoal sequence. Here we emphasize two attributes of our adaptation.",
+          "section": "L.1 Explanation and Adaptations for “Unique” Subgoal Sequence",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_99ddb76b7977459995f31a11183470b9",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Agentboard allows for multi-trajectory inference paths: Note that a single sequence of subgoals is not equivalent to a single inference path trajectory – in fact, our progress rate can be applied to tasks with multiple inference paths. We only restrict examples that have multiple different sets of subgoals to fulfill the same final goal. However, a single set of subgoals allows for very diverse inference paths. For example, in BabyAI, a problem is “go to a red ball,” where the agent needs to fin",
+          "section": "L.1 Explanation and Adaptations for “Unique” Subgoal Sequence",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_0c08abfe5f19431699c264706296f97f",
+          "original_filename": null,
+          "page": 23,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Our adaptations for single-set subgoals only affect less than 5% of all problems: We only limit situations where a model has many diverse sets of subgoals, such as in ScienceWorld, where an agent could use either a stove or a blast furnace to vaporize liquid. We simplify it by specifying a single method and clarifying the goal “vaporize liquid” as “vaporize liquid with a stove.” This kind of adaptation only applies to tasks in BabyAI and ScienceWorld, constituting less than 5% of all problems in",
+          "section": "L.1 Explanation and Adaptations for “Unique” Subgoal Sequence",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_fef078aa45734b608f6021d1b1a17667",
+          "original_filename": null,
+          "page": 24,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "The origin implementation of babyai provides a reward score. Different from the original reward, our progress rate is more dense and the agent does not need to accomplish many steps before getting a increase in score. Here we compare the difference between our progress rate and the original reward score, as shown in Table 17. We can see from this case that our progress rate better measures intermediate progress for agents.",
+          "section": "L.4 BabyAI",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_614acf0bd67642578f92f0d32cf5f417",
+          "original_filename": null,
+          "page": 5,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Game - PDDL (PL) (Vallati et al., 2015) is a set of strategic games defined with Planning Domain Definition Language (PDDL). We selected 4 representative games, Gripper, Barman, Blocksworld, Tyreworld to benchmark",
+          "section": "3.1 Environments",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_110ddb4024ae44498ba5cb1392ac2da3",
+          "original_filename": null,
+          "page": 25,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "g<sub>1</sub> $\\bigwedge g _ { 2 } , \\dotsc , \\bigwedge g _ { n }$ and any state $p 1 \\land p 2 , \\dotsc , \\dotsc , \\land p _ { m }$ , the matching score formula is defined as:",
+          "section": "L.6 PDDL",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_4476fce5caab442cbb912ccecf0c2ab6",
+          "original_filename": null,
+          "page": 14,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Data Collection and Human Annotation Data for task examples and progress rate annotation for each task is collected and annotated with one person in charge, and verfied by at least two others: Junlei Zhang led data collection and annotation for ScienceWorld, Alfworld; Chang Ma led data collection and annotation for BabyAI, Jericho and PDDL; Zhihao Zhu led data collection and annotation for WebShop, WebArena and Sheet task in Tool-Operation; Cheng Yang led data collection and annotation for Tool-",
+          "section": "A Author Contributions",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_51b44b9421b04125a86eb3a63c00e4e9",
+          "original_filename": null,
+          "page": 24,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "The progress rate is labelled via an interactive UI framework (Figure 8). A graduate student interact with the environments and record the observations corresponding to subgoals needed to finish the problem.",
+          "section": "L.4 BabyAI",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_2500982e828b4a6e97363004791e9d88",
+          "original_filename": null,
+          "page": 25,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "In our method, we effectively utilize the annotation data, treating URLs as indicators of the web browsing trajectory and required contents as integral scoring points.The progress rate is formulated as follows:",
+          "section": "L.8 WebArena",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        },
+        {
+          "element_type": "paragraph",
+          "location_ref": "reading_element_a7e8fc4288274f97a416e135a4324934",
+          "original_filename": null,
+          "page": 14,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "preview": "Human-dependent Annotation One limitation of AGENTBOARD is its reliance on human-annotated sub goals to measure the progress rate of LLM agents. The subjectivity of annotators calls for multiple verifications just to ensure the uniformity of the data. Also, as the complexity of tasks increases, the number of subgoals and the granularity required in annotation can grow significantly. This makes the process less scalable and more labor-intensive. One alternative is to use LLMs instead of humans to",
+          "section": "B Limitations",
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        }
+      ],
+      "matched_count": 81,
+      "query_text": "progress rate definition subgoal annotation formula",
+      "returned_count": 12
+    },
+    "tool_call_id": "call_function_xd38wjpm61dw_1",
+    "tool_name": "find_reading_locations"
+  },
+  {
+    "arguments": {
+      "location_refs": [
+        "reading_element_fef078aa45734b608f6021d1b1a17667"
+      ]
+    },
+    "result": {
+      "items": [
+        {
+          "bbox_json": "{\"pageNumber\":24,\"left\":169.0,\"bottom\":571.0,\"right\":825.0,\"top\":520.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "bbox_or_cell_ref": "{\"pageNumber\":24,\"left\":169.0,\"bottom\":571.0,\"right\":825.0,\"top\":520.0,\"unit\":\"mineru_1000\",\"coordinateSystem\":\"top_left_1000\"}",
+          "element_type": "paragraph",
+          "evidence_id": "ev_756c64bd7c0ba0fe",
+          "evidence_quality": "verified",
+          "figure_id": null,
+          "figure_screenshot_available": false,
+          "formula_id": null,
+          "location": "reading_element_fef078aa45734b608f6021d1b1a17667",
+          "location_ref": "reading_element_fef078aa45734b608f6021d1b1a17667",
+          "page": 24,
+          "page_screenshot_available": false,
+          "paper_id": "agentboard_2024",
+          "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+          "parser_name": "MinerU",
+          "parser_version": "self-hosted",
+          "pdf_evidence_available": false,
+          "refutes_claim_ids": [],
+          "relevance_score": 1.0,
+          "retrieval_strategy": "source_quote_reading",
+          "section": "L.4 BabyAI",
+          "source_kind": "paragraph",
+          "span_text": "The origin implementation of babyai provides a reward score. Different from the original reward, our progress rate is more dense and the agent does not need to accomplish many steps before getting a increase in score. Here we compare the difference between our progress rate and the original reward score, as shown in Table 17. We can see from this case that our progress rate better measures intermediate progress for agents.",
+          "supports_claim_ids": [],
+          "table_id": null,
+          "table_screenshot_available": false,
+          "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+        }
+      ],
+      "missing_location_refs": []
+    },
+    "tool_call_id": "call_function_xwvb0kmy197x_1",
+    "tool_name": "read_locations"
+  },
+  {
+    "arguments": {
+      "markdown": "## Why AgentBoard argues final success rate is insufficient\n\nIn §2.2 (Fine-grained Progress Rate), the paper makes three concrete critiques of the dominant \"success rate\" metric:\n\n1. **It conflates very different outcomes.** Success rate \"fails to capture the nuances of partial task completion by language model agents\" and \"does not differentiate between near-complete tasks and minimal task execution, treating both as equivalent failures.\" [[ev_433180485b8873f1]]\n2. **Existing alternatives are non-standardized.** \"Alternative metrics like reward scores are available but lack standardization.\" [[ev_433180485b8873f1]]\n3. **It hides progress on long-horizon tasks.** Because success rate is a terminal binary, an agent that almost finishes a multi-step task is reported the same as one that barely started.\n\n## What the progress-rate metric adds\n\nAgentBoard introduces a subgoal-anchored progress rate to \"accurately reflect LM agents' goal attainment at various stages.\" [[ev_433180485b8873f1]] Specifically, the paper documents the following added properties:\n\n- **Joint use with success rate, not as a replacement.** The paper employs progress rate \"along with the commonly used success rate metric, which computes the proportion of tasks completed within T interactions.\" [[ev_ba868a1ccf1e2b44]]\n- **A unified, subgoal-based signal across diverse tasks.** AgentBoard \"defined or manually annotated subgoals for each data sample, introducing a unified progress rate metric to track the agents' detailed advancements.\" [[ev_74e419015b392d3c]]\n- **Discriminative power among weak models.** In §4.2 the paper reports that \"progress rate serves as a more effective differentiator between models. For example, Llama2-13b and Mistral-7b exhibit similarly negligible success rates (2.1% and 3.9%, respectively), but their progress rates differ significantly: 18.9% for Llama2-13b and 24.6% for Mistral-7b.\" The paper generalizes the point in §1: the metric \"uncovers significant progress made by models that would otherwise appear trivial due to negligible differences in success rates.\" [[ev_06c508841246c0a8]] [[ev_74e419015b392d3c]]\n- **Robustness to agent-specific failure modes.** \"The success rate can be influenced by specific characteristics of agents, for example, an agent like CodeLlama-34b often fails to generate the action 'finish' when performing tool-using tasks, leading to a higher progress rate and lower success rate compared to CodeLlama-13b. In contrast, progress rate is less susceptible to these agent-specific features as it reflects the overall ability of the agent at each step.\" [[ev_06c508841246c0a8]]\n- **Denser signal than ad-hoc environment rewards.** In the BabyAI environment, \"Different from the original reward, our progress rate is more dense and the agent does not need to accomplish many steps before getting a increase in score... our progress rate better measures intermediate progress for agents.\" [[ev_756c64bd7c0ba0fe]]\n- **Human-validated alignment.** A user study in which four annotators rated 60 model trajectories per task from GPT-4, GPT-3.5-Turbo, and Deepseek-67b found that \"the Pearson correlation exceeds 0.95 on all tasks\" between human progress scores and the automatic progress rate, with \"substantial agreement\" among annotators (Fleiss' κ). [[ev_9ab58fc10db4ee86]]\n\nIn short, the paper's argument is that success rate is a binary, terminal, environment-specific summary that hides partial progress and is brittle to formatting artifacts; the progress-rate metric supplies a unified, subgoal-anchored, step-by-step signal that is denser, more discriminative among weak models, and aligned with human judgment.",
+      "outcome": "answered"
+    },
+    "result": {
+      "accepted": true
+    },
+    "tool_call_id": "call_function_o6czondppy5n_1",
+    "tool_name": "submit_research_answer"
+  }
+]
