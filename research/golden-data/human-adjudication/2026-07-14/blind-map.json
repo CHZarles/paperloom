@@ -1,0 +1,122 @@
+{
+  "transformer_bert_confirmation_followup_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "toolsandbox_constraint_selection_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "gpt5_architecture_boundary_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "transformer_adam_params_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "benchmark_topic_change_followup_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "cross_benchmark_score_ranking_partial_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "agent_evaluation_recommendation_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "react_to_agent_evaluation_genealogy_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "agentboard_progress_metric_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "mint_vs_tau_interaction_comparison_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "cross_benchmark_human_agent_gap_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "webarena_reproduction_protocol_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "transformer_to_bert_genealogy_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "gaia_dataset_gap_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "bert_vs_transformer_comparison_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "mint_tau_apparent_conflict_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "attention_paper_ambiguous_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "bert_transformer_role_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "bert_choice_followup_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "swebench_instance_provenance_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "agent_benchmark_ambiguous_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "coding_benchmark_followup_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "corpus_paper_count_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "agentbench_environment_inventory_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  },
+  "adam_beta2_conflict_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "gpt3_to_transformer_multihop_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "adam_constraint_refinement_followup_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "corpus_paper_list_followup_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "transformer_optimizer_reproduction_001": {
+    "A": "minimax-m3",
+    "B": "gpt-5.5"
+  },
+  "corpus_paper_list_001": {
+    "A": "gpt-5.5",
+    "B": "minimax-m3"
+  }
+}

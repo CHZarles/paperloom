@@ -1,0 +1,422 @@
+schema_version: paperloom-blind-answer-labels/v1
+labels:
+- case_id: transformer_bert_confirmation_followup_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: toolsandbox_constraint_selection_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: gpt5_architecture_boundary_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: transformer_adam_params_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: benchmark_topic_change_followup_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: cross_benchmark_score_ranking_partial_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: agent_evaluation_recommendation_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: react_to_agent_evaluation_genealogy_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: agentboard_progress_metric_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: mint_vs_tau_interaction_comparison_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: cross_benchmark_human_agent_gap_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: webarena_reproduction_protocol_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: transformer_to_bert_genealogy_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: gaia_dataset_gap_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: bert_vs_transformer_comparison_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: mint_tau_apparent_conflict_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: attention_paper_ambiguous_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: bert_transformer_role_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: bert_choice_followup_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: swebench_instance_provenance_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: agent_benchmark_ambiguous_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: coding_benchmark_followup_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: corpus_paper_count_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: agentbench_environment_inventory_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: adam_beta2_conflict_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: gpt3_to_transformer_multihop_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: adam_constraint_refinement_followup_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: corpus_paper_list_followup_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: transformer_optimizer_reproduction_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null
+- case_id: corpus_paper_list_001
+  answer_a:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  answer_b:
+    decision: null
+    task_fulfillment: null
+    grounding: null
+    overall: null
+    note: ''
+  preferred: null

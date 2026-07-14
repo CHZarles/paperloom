@@ -1,0 +1,44 @@
+schema_version: paperloom-golden-contract-labels/v1
+labels:
+  - case_id: attention_paper_ambiguous_001
+    decision: keep
+    outcome_valid: true
+    evidence_valid: true
+    equivalent_evidence_allowed: true
+    note: ""
+  - case_id: bert_vs_transformer_comparison_001
+    decision: keep
+    outcome_valid: true
+    evidence_valid: true
+    equivalent_evidence_allowed: true
+    note: ""
+  - case_id: transformer_bert_confirmation_followup_001
+    decision: keep
+    outcome_valid: true
+    evidence_valid: true
+    equivalent_evidence_allowed: true
+    note: ""
+  - case_id: webarena_reproduction_protocol_001
+    decision: keep
+    outcome_valid: true
+    evidence_valid: true
+    equivalent_evidence_allowed: true
+    note: ""
+  - case_id: mint_vs_tau_interaction_comparison_001
+    decision: keep
+    outcome_valid: true
+    evidence_valid: true
+    equivalent_evidence_allowed: true
+    note: ""
+  - case_id: toolsandbox_constraint_selection_001
+    decision: keep
+    outcome_valid: true
+    evidence_valid: true
+    equivalent_evidence_allowed: true
+    note: ""
+  - case_id: cross_benchmark_score_ranking_partial_001
+    decision: keep
+    outcome_valid: true
+    evidence_valid: true
+    equivalent_evidence_allowed: true
+    note: ""
