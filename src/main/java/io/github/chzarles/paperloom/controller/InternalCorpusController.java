@@ -95,12 +95,14 @@ public class InternalCorpusController {
                         request.topK() == null ? 8 : request.topK()
                 )
         );
-        return Map.of(
-                "locations", result.locations().stream().map(this::locationCandidate).toList(),
-                "matched_count", result.matchedCount(),
-                "returned_count", result.returnedCount(),
-                "index_version", result.indexVersion()
-        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("query_text", request.queryText() == null ? "" : request.queryText().trim());
+        response.put("locations", result.locations().stream().map(this::locationCandidate).toList());
+        response.put("matched_count", result.matchedCount());
+        response.put("returned_count", result.returnedCount());
+        response.put("coverage", result.returnedCount() >= result.matchedCount() ? "complete" : "truncated");
+        response.put("index_version", result.indexVersion());
+        return response;
     }
 
     @PostMapping("/locations/read")

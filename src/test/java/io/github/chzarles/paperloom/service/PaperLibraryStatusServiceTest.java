@@ -8,6 +8,7 @@ import io.github.chzarles.paperloom.repository.PaperVisualAssetRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,10 +28,9 @@ class PaperLibraryStatusServiceTest {
         Paper searchable = paper("paper-searchable", Paper.VECTORIZATION_STATUS_COMPLETED);
         Paper failed = paper("paper-failed", Paper.VECTORIZATION_STATUS_FAILED);
         Paper parsing = paper("paper-parsing", Paper.VECTORIZATION_STATUS_MINERU_RUNNING);
-        when(paperService.getAccessiblePapers("u1", null)).thenReturn(List.of(searchable, failed, parsing));
-        when(searchabilityService.isSearchable(searchable)).thenReturn(true);
-        when(searchabilityService.isSearchable(failed)).thenReturn(false);
-        when(searchabilityService.isSearchable(parsing)).thenReturn(false);
+        List<Paper> accessible = List.of(searchable, failed, parsing);
+        when(paperService.getAccessiblePapers("u1", null)).thenReturn(accessible);
+        when(searchabilityService.searchablePaperIds(accessible)).thenReturn(Set.of("paper-searchable"));
         when(paperRepository.findDistinctPaperIds()).thenReturn(List.of("paper-searchable", "paper-failed", "paper-parsing"));
         when(chunkRepository.findDistinctPaperIds()).thenReturn(List.of("paper-searchable"));
         when(visualAssetRepository.findDistinctPaperIds()).thenReturn(List.of("paper-searchable"));
@@ -65,8 +65,9 @@ class PaperLibraryStatusServiceTest {
         PaperVisualAssetRepository visualAssetRepository = mock(PaperVisualAssetRepository.class);
         PaperParserArtifactRepository artifactRepository = mock(PaperParserArtifactRepository.class);
         Paper searchable = paper("paper-searchable", Paper.VECTORIZATION_STATUS_COMPLETED);
-        when(paperService.getAccessiblePapers("u1", null)).thenReturn(List.of(searchable));
-        when(searchabilityService.isSearchable(searchable)).thenReturn(true);
+        List<Paper> accessible = List.of(searchable);
+        when(paperService.getAccessiblePapers("u1", null)).thenReturn(accessible);
+        when(searchabilityService.searchablePaperIds(accessible)).thenReturn(Set.of("paper-searchable"));
         when(paperRepository.findDistinctPaperIds()).thenReturn(List.of("paper-searchable"));
         when(chunkRepository.findDistinctPaperIds()).thenReturn(List.of("paper-searchable", "orphan-chunk-paper"));
         when(visualAssetRepository.findDistinctPaperIds()).thenReturn(List.of("orphan-asset-paper"));

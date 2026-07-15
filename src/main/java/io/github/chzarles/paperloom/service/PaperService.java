@@ -508,8 +508,6 @@ public class PaperService {
                         ? paperRepository.searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
                                 userDbId,
                                 normalizedQuery,
-                                Paper.STATUS_COMPLETED,
-                                Paper.VECTORIZATION_STATUS_COMPLETED,
                                 effectivePageable
                         )
                         : paperRepository.searchAccessiblePaperCandidatesWithoutOrgTags(
@@ -524,8 +522,6 @@ public class PaperService {
                             userDbId,
                             userEffectiveTags,
                             normalizedQuery,
-                            Paper.STATUS_COMPLETED,
-                            Paper.VECTORIZATION_STATUS_COMPLETED,
                             effectivePageable
                     )
                     : paperRepository.searchAccessiblePaperCandidates(

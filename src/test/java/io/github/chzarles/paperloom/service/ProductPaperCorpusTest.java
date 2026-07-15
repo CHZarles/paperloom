@@ -4,6 +4,7 @@ import io.github.chzarles.paperloom.model.Paper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -17,9 +18,9 @@ class ProductPaperCorpusTest {
         PaperSearchabilityService searchabilityService = mock(PaperSearchabilityService.class);
         Paper searchable = paper("paper-searchable", Paper.VECTORIZATION_STATUS_COMPLETED);
         Paper failed = paper("paper-failed", Paper.VECTORIZATION_STATUS_FAILED);
-        when(paperService.getAccessiblePapers("u1", null)).thenReturn(List.of(searchable, failed));
-        when(searchabilityService.isSearchable(searchable)).thenReturn(true);
-        when(searchabilityService.isSearchable(failed)).thenReturn(false);
+        List<Paper> accessible = List.of(searchable, failed);
+        when(paperService.getAccessiblePapers("u1", null)).thenReturn(accessible);
+        when(searchabilityService.searchablePaperIds(accessible)).thenReturn(Set.of("paper-searchable"));
         ProductPaperCorpus corpus = new ProductPaperCorpus(paperService, searchabilityService);
 
         ProductPaperCorpus.ProductPaperSet resolved = corpus.resolveAccessibleSearchablePaperIds(
@@ -38,9 +39,9 @@ class ProductPaperCorpusTest {
         PaperSearchabilityService searchabilityService = mock(PaperSearchabilityService.class);
         Paper allowed = paper("paper-allowed", Paper.VECTORIZATION_STATUS_COMPLETED);
         Paper inaccessibleRequest = paper("paper-other", Paper.VECTORIZATION_STATUS_COMPLETED);
-        when(paperService.getAccessiblePapers("u1", null)).thenReturn(List.of(allowed, inaccessibleRequest));
-        when(searchabilityService.isSearchable(allowed)).thenReturn(true);
-        when(searchabilityService.isSearchable(inaccessibleRequest)).thenReturn(false);
+        List<Paper> accessible = List.of(allowed, inaccessibleRequest);
+        when(paperService.getAccessiblePapers("u1", null)).thenReturn(accessible);
+        when(searchabilityService.searchablePaperIds(accessible)).thenReturn(Set.of("paper-allowed"));
         ProductPaperCorpus corpus = new ProductPaperCorpus(paperService, searchabilityService);
 
         ProductPaperCorpus.ProductPaperSet resolved = corpus.resolveAccessibleSearchablePaperIds(

@@ -231,7 +231,9 @@ class JavaCorpusGatewayReader:
             card = child_map(raw)
             paper_id = str(card.get("paper_id") or "").strip()
             if paper_id in self.metadata_records_by_id:
-                self.metadata_records_by_id[paper_id] = _paper_record(card)
+                record = self.metadata_records_by_id[paper_id]
+                record.clear()
+                record.update(_paper_record(card))
 
     def _post(self, path: str, payload: JsonMap) -> JsonMap:
         if self.cancel_check():

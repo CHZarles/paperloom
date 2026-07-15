@@ -1,7 +1,9 @@
 package io.github.chzarles.paperloom.repository;
 
 import io.github.chzarles.paperloom.model.Paper;
-import io.github.chzarles.paperloom.model.PaperTextChunk;
+import io.github.chzarles.paperloom.model.PaperReadingModel;
+import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
+import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -22,7 +24,7 @@ class PaperRepositoryCandidateSearchTest {
     private PaperRepository paperRepository;
 
     @Autowired
-    private PaperTextChunkRepository paperTextChunkRepository;
+    private PaperReadingModelRepository paperReadingModelRepository;
 
     @Test
     void noOrgCandidateSearchMatchesMetadataAndExcludesPrivateOrgPapers() {
@@ -75,25 +77,21 @@ class PaperRepositoryCandidateSearchTest {
                 paper("repo-b-no-chunks", "owner", true, null, "GraphLoom Not Indexed", "b.pdf", null),
                 paper("repo-c-searchable", "owner", true, null, "GraphLoom Searchable C", "c.pdf", null)
         ));
-        paperTextChunkRepository.saveAll(List.of(
-                chunk("repo-a-searchable", "owner"),
-                chunk("repo-c-searchable", "owner")
+        paperReadingModelRepository.saveAll(List.of(
+                indexedModel("repo-a-searchable"),
+                indexedModel("repo-c-searchable")
         ));
         paperRepository.flush();
-        paperTextChunkRepository.flush();
+        paperReadingModelRepository.flush();
 
         Page<Paper> firstPage = paperRepository.searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
                 "owner",
                 "graphloom",
-                Paper.STATUS_COMPLETED,
-                Paper.VECTORIZATION_STATUS_COMPLETED,
                 PageRequest.of(0, 1, Sort.by("paperId"))
         );
         Page<Paper> secondPage = paperRepository.searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
                 "owner",
                 "graphloom",
-                Paper.STATUS_COMPLETED,
-                Paper.VECTORIZATION_STATUS_COMPLETED,
                 PageRequest.of(1, 1, Sort.by("paperId"))
         );
 
@@ -123,13 +121,16 @@ class PaperRepositoryCandidateSearchTest {
         return paper;
     }
 
-    private PaperTextChunk chunk(String paperId, String userId) {
-        PaperTextChunk chunk = new PaperTextChunk();
-        chunk.setPaperId(paperId);
-        chunk.setChunkId(1);
-        chunk.setTextContent("chunk");
-        chunk.setUserId(userId);
-        chunk.setPublic(true);
-        return chunk;
+    private PaperReadingModel indexedModel(String paperId) {
+        PaperReadingModel model = new PaperReadingModel();
+        model.setPaperId(paperId);
+        model.setModelVersion("rm-1");
+        model.setCurrent(true);
+        model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
+        model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.READY);
+        model.setRetrievalIndexGeneration("generation-1");
+        model.setRetrievalEmbeddingContract("collection|embedding-v1|3");
+        model.setRetrievalIndexedLocationCount(1);
+        return model;
     }
 }

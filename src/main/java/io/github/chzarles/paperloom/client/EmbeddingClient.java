@@ -90,6 +90,8 @@ public class EmbeddingClient {
         try {
             String normalizedRequesterId = requesterId == null || requesterId.isBlank() ? "unknown" : requesterId;
             logger.info("开始生成向量，文本数量: {}", texts.size());
+            ModelProviderConfigService.ActiveProviderView provider =
+                    modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
 
             List<float[]> all = new ArrayList<>(texts.size());
             int totalTokens = 0;
@@ -101,7 +103,6 @@ public class EmbeddingClient {
                         : rateLimitService.reserveEmbeddingUploadUsage(normalizedRequesterId, sub);
                 logger.debug("调用向量 API, 批次: {}-{} (size={})", start, end - 1, sub.size());
                 try {
-                    ModelProviderConfigService.ActiveProviderView provider = modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
                     String response = callApiOnce(provider, sub, usageType, timeout);
                     EmbeddingApiResponse parsedResponse = parseEmbeddingResponse(provider, response, sub);
                     usageQuotaService.settleReservation(reservation, parsedResponse.totalTokens());
@@ -113,7 +114,7 @@ public class EmbeddingClient {
                 }
             }
             logger.info("成功生成向量，总数量: {}", all.size());
-            return new EmbeddingUsageResult(all, totalTokens, currentModelVersion());
+            return new EmbeddingUsageResult(all, totalTokens, modelVersion(provider));
         } catch (WebClientResponseException e) {
             // 提供详细的API响应错误信息
             logger.error("API调用失败 - 状态码: {}, 响应: {}, 请求头: {}",
@@ -257,7 +258,12 @@ public class EmbeddingClient {
     }
 
     public String currentModelVersion() {
-        ModelProviderConfigService.ActiveProviderView provider = modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
+        ModelProviderConfigService.ActiveProviderView provider =
+                modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_EMBEDDING);
+        return modelVersion(provider);
+    }
+
+    private String modelVersion(ModelProviderConfigService.ActiveProviderView provider) {
         return provider.provider() + ":" + provider.model() + ":" + provider.dimension();
     }
 

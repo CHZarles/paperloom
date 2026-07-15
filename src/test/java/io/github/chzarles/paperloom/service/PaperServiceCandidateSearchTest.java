@@ -65,8 +65,6 @@ class PaperServiceCandidateSearchTest {
                 "1",
                 List.of("lab"),
                 "agent",
-                Paper.STATUS_COMPLETED,
-                Paper.VECTORIZATION_STATUS_COMPLETED,
                 pageable
         ))
                 .thenReturn(repositoryPage);
@@ -85,8 +83,6 @@ class PaperServiceCandidateSearchTest {
                 "1",
                 List.of("lab"),
                 "agent",
-                Paper.STATUS_COMPLETED,
-                Paper.VECTORIZATION_STATUS_COMPLETED,
                 pageable
         );
         verify(paperRepository, never()).searchAccessiblePaperCandidates("1", List.of("lab"), "agent", pageable);

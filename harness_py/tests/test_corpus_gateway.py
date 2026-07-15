@@ -31,6 +31,7 @@ class FakeGateway:
             }
         if path.endswith("/locations/search"):
             return {
+                "query_text": payload.get("query_text", ""),
                 "locations": [{
                     "paper_id": "paper-a",
                     "title": "Paper A",
@@ -43,6 +44,7 @@ class FakeGateway:
                 }],
                 "matched_count": 1,
                 "returned_count": 1,
+                "coverage": "complete",
                 "index_version": "test-index",
             }
         if path.endswith("/locations/read"):
@@ -87,6 +89,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         )
 
         dataset = reader.load_metadata_dataset()
+        scoped_record = dataset.paper_records_by_id["paper-a"]
 
         self.assertEqual({"paper-a", "paper-b"}, set(dataset.paper_records_by_id))
         self.assertEqual([], gateway.calls)
@@ -95,7 +98,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
 
         self.assertEqual(
             "Paper A",
-            dataset.paper_records_by_id["paper-a"]["identity"]["title"],
+            scoped_record["identity"]["title"],
         )
 
     def test_gateway_keeps_tool_authorization_and_exact_read_contract(self) -> None:
@@ -119,6 +122,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
 
         self.assertEqual(1, paper_result["returned_count"])
         self.assertEqual("location_ref_a", location_result["locations"][0]["location_ref"])
+        self.assertEqual("complete", location_result["coverage"])
         self.assertNotIn("evidence_id", location_result["locations"][0])
         self.assertEqual({}, tools.observations_by_evidence_id)
 

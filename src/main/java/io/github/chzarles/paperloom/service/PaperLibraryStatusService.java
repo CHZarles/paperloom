@@ -50,6 +50,7 @@ public class PaperLibraryStatusService {
     public PaperLibraryStatus statusFor(String userId, SourceScope scope) {
         List<Paper> accessible = paperService.getAccessiblePapers(userId, null);
         List<Paper> safeAccessible = accessible == null ? List.of() : accessible;
+        Set<String> indexedPaperIds = searchabilityService.searchablePaperIds(safeAccessible);
         Set<String> requested = requestedPaperIds(scope);
         LinkedHashSet<String> accessibleSearchablePaperIds = new LinkedHashSet<>();
         int searchableCount = 0;
@@ -63,7 +64,7 @@ public class PaperLibraryStatusService {
             if (paper == null || paper.getPaperId() == null || paper.getPaperId().isBlank()) {
                 continue;
             }
-            boolean searchable = searchabilityService.isSearchable(paper);
+            boolean searchable = indexedPaperIds.contains(paper.getPaperId());
             if (searchable) {
                 searchableCount++;
                 accessibleSearchablePaperIds.add(paper.getPaperId());

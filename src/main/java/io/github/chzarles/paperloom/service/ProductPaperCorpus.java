@@ -23,12 +23,13 @@ public class ProductPaperCorpus {
         SourceScope safeScope = scope == null ? SourceScope.auto() : scope;
         List<Paper> accessible = paperService.getAccessiblePapers(userId, null);
         List<Paper> safeAccessible = accessible == null ? List.of() : accessible;
+        Set<String> indexedPaperIds = searchabilityService.searchablePaperIds(safeAccessible);
         LinkedHashSet<String> searchable = new LinkedHashSet<>();
         for (Paper paper : safeAccessible) {
             if (paper == null || paper.getPaperId() == null || paper.getPaperId().isBlank()) {
                 continue;
             }
-            if (searchabilityService.isSearchable(paper)) {
+            if (indexedPaperIds.contains(paper.getPaperId())) {
                 searchable.add(paper.getPaperId());
             }
         }

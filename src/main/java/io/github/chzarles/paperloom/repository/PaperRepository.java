@@ -95,13 +95,17 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
             SELECT f FROM Paper f
             WHERE (f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false))
               AND f.paperId IS NOT NULL AND f.paperId <> ''
-              AND (
-                (f.vectorizationStatus IS NOT NULL AND TRIM(f.vectorizationStatus) <> ''
-                  AND UPPER(TRIM(f.vectorizationStatus)) = UPPER(:completedVectorizationStatus))
-                OR ((f.vectorizationStatus IS NULL OR TRIM(f.vectorizationStatus) = '') AND f.status = :completedStatus)
-              )
               AND EXISTS (
-                SELECT c.vectorId FROM PaperTextChunk c WHERE c.paperId = f.paperId
+                SELECT model.id FROM PaperReadingModel model
+                WHERE model.paperId = f.paperId
+                  AND model.isCurrent = true
+                  AND model.modelStatus = io.github.chzarles.paperloom.model.PaperReadingModelStatus.READING_MODEL_READY
+                  AND model.retrievalIndexStatus = io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus.READY
+                  AND model.retrievalIndexGeneration IS NOT NULL
+                  AND TRIM(model.retrievalIndexGeneration) <> ''
+                  AND model.retrievalEmbeddingContract IS NOT NULL
+                  AND TRIM(model.retrievalEmbeddingContract) <> ''
+                  AND model.retrievalIndexedLocationCount > 0
               )
               AND (
                 :query IS NULL OR :query = '' OR
@@ -119,8 +123,6 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
     Page<Paper> searchAccessibleSearchablePaperCandidates(@Param("userId") String userId,
                                                           @Param("orgTagList") List<String> orgTagList,
                                                           @Param("query") String query,
-                                                          @Param("completedStatus") int completedStatus,
-                                                          @Param("completedVectorizationStatus") String completedVectorizationStatus,
                                                           Pageable pageable);
 
     @Query("""
@@ -147,13 +149,17 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
             SELECT f FROM Paper f
             WHERE (f.userId = :userId OR f.isPublic = true)
               AND f.paperId IS NOT NULL AND f.paperId <> ''
-              AND (
-                (f.vectorizationStatus IS NOT NULL AND TRIM(f.vectorizationStatus) <> ''
-                  AND UPPER(TRIM(f.vectorizationStatus)) = UPPER(:completedVectorizationStatus))
-                OR ((f.vectorizationStatus IS NULL OR TRIM(f.vectorizationStatus) = '') AND f.status = :completedStatus)
-              )
               AND EXISTS (
-                SELECT c.vectorId FROM PaperTextChunk c WHERE c.paperId = f.paperId
+                SELECT model.id FROM PaperReadingModel model
+                WHERE model.paperId = f.paperId
+                  AND model.isCurrent = true
+                  AND model.modelStatus = io.github.chzarles.paperloom.model.PaperReadingModelStatus.READING_MODEL_READY
+                  AND model.retrievalIndexStatus = io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus.READY
+                  AND model.retrievalIndexGeneration IS NOT NULL
+                  AND TRIM(model.retrievalIndexGeneration) <> ''
+                  AND model.retrievalEmbeddingContract IS NOT NULL
+                  AND TRIM(model.retrievalEmbeddingContract) <> ''
+                  AND model.retrievalIndexedLocationCount > 0
               )
               AND (
                 :query IS NULL OR :query = '' OR
@@ -171,8 +177,6 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
     Page<Paper> searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
             @Param("userId") String userId,
             @Param("query") String query,
-            @Param("completedStatus") int completedStatus,
-            @Param("completedVectorizationStatus") String completedVectorizationStatus,
             Pageable pageable);
 
     @Query("SELECT f FROM Paper f WHERE f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false)")

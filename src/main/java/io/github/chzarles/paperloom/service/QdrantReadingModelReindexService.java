@@ -31,6 +31,10 @@ public class QdrantReadingModelReindexService {
             try {
                 ReadingModelQdrantIndexService.IndexResult result = indexService.indexCurrentModel(
                         model.getPaperId(), requesterId);
+                if (result.indexedLocationCount() <= 0) {
+                    throw new IllegalStateException(
+                            "Current Reading Model contains no indexable locations");
+                }
                 indexedPaperIds.add(model.getPaperId());
                 indexedLocations += result.indexedLocationCount();
                 embeddingTokens += result.actualEmbeddingTokens();
