@@ -8,16 +8,16 @@
 
 - `minimax-m3/`：MiniMax-M3 的 30 Case 产物和 `score_report.json`。
 - `gpt-5.5/`：GPT-5.5 的 30 Case 产物和 `score_report.json`。
-- `*-funnel.json` / `*-funnel.md`：Candidate -> Read -> Cited -> Hard Pass 漏斗。
+- `*-funnel.json` / `*-funnel.md`：Candidate -> Read -> Cited -> 合同/锚点一致性漏斗。
 - `audit/`：确定性 Fixture、Anchor、Semantic Audit 和 Saved Query Replay 产物。
 - `gpt-5.5-agentbench-technical-rerun.log`：GPT-5.5 唯一技术超时 Case 的单独重试记录。
 
-## 严格评分
+## 合同/锚点一致性
 
-| 模型 | Hard Pass | Candidate Recall | Candidate -> Read | Read -> Cited |
+| 模型 | 合同/锚点一致性（原 `hard_pass`） | Candidate Recall | Candidate -> Read | Read -> Cited |
 | --- | ---: | ---: | ---: | ---: |
 | MiniMax-M3 | `17/30` | `41/48` | `27/41` | `25/27` |
 | GPT-5.5 | `14/30` | `44/48` | `29/44` | `28/29` |
 
-严格评分只表示指定 Contract/Anchor 覆盖，不表示人工回答准确率。盲审结果见
+该指标只表示指定 Contract/Anchor 覆盖，不表示人工回答准确率。盲审结果见
 [`human-adjudication/2026-07-14/RESULTS.md`](../../human-adjudication/2026-07-14/RESULTS.md)。

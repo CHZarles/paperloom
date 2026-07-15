@@ -1,0 +1,1083 @@
+{
+  "schema_version": "paperloom-human-adjudication-report/v1",
+  "case_count": 30,
+  "model_ids": [
+    "gpt-5.5",
+    "minimax-m3"
+  ],
+  "input_paths": {
+    "labels": "research/golden-data/human-adjudication/2026-07-14/answer-labels-template.yaml",
+    "blind_map": "research/golden-data/human-adjudication/2026-07-14/blind-map.json",
+    "score_reports": {
+      "gpt-5.5": "research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/score_report.json",
+      "minimax-m3": "research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/score_report.json"
+    }
+  },
+  "metric_definitions": {
+    "contract_anchor_conformance": {
+      "source_field": "hard_pass",
+      "meaning": "Deterministic compliance with the authored outcome, paper, anchor, fact, and citation contract. It is not answer accuracy."
+    },
+    "semantic_quality": {
+      "source": "frozen_human_labels",
+      "meaning": "Human judgement of decision, task fulfilment, grounding, and overall answer quality."
+    }
+  },
+  "preferences": {
+    "by_model": {
+      "gpt-5.5": 24,
+      "minimax-m3": 4
+    },
+    "tie_count": 2
+  },
+  "pairwise_overall": {
+    "both_passed": 20,
+    "both_failed": 0,
+    "only_passed": {
+      "gpt-5.5": 8,
+      "minimax-m3": 2
+    }
+  },
+  "models": {
+    "gpt-5.5": {
+      "contract_anchor_conformance": {
+        "passed_count": 14,
+        "failed_count": 16,
+        "total_count": 30,
+        "pass_rate": 0.4666666666666667
+      },
+      "semantic_quality": {
+        "decision": {
+          "passed_count": 28,
+          "failed_count": 2,
+          "total_count": 30,
+          "pass_rate": 0.9333333333333333
+        },
+        "task_fulfillment": {
+          "passed_count": 28,
+          "failed_count": 2,
+          "total_count": 30,
+          "pass_rate": 0.9333333333333333
+        },
+        "grounding": {
+          "passed_count": 28,
+          "failed_count": 0,
+          "not_applicable_count": 2,
+          "applicable_count": 28,
+          "pass_rate": 1.0
+        },
+        "overall": {
+          "passed_count": 28,
+          "failed_count": 2,
+          "total_count": 30,
+          "pass_rate": 0.9333333333333333
+        }
+      },
+      "preferences": {
+        "preferred_count": 24,
+        "preferred_rate": 0.8
+      },
+      "scorer_confusion": {
+        "true_positive": 14,
+        "false_negative": 14,
+        "false_positive": 0,
+        "true_negative": 2,
+        "agreement_count": 16,
+        "agreement_rate": 0.5333333333333333
+      },
+      "genuine_failures": [
+        {
+          "case_id": "attention_paper_ambiguous_001",
+          "answer_label": "B",
+          "failed_dimensions": [
+            "decision",
+            "task_fulfillment",
+            "overall"
+          ],
+          "note": "The cited first-page passages exactly support the paper title and arXiv identifier 1706.03762v7, but the response assumes the user wants Attention Is All You Need and never clarifies whether they meant that paper or wanted identification, summary, recommendation, comparison, or another task."
+        },
+        {
+          "case_id": "agent_benchmark_ambiguous_001",
+          "answer_label": "B",
+          "failed_dimensions": [
+            "decision",
+            "task_fulfillment",
+            "overall"
+          ],
+          "note": "The descriptions of tau-bench, GAIA, and ToolSandbox are accurate and supported by the papers, but the answer silently narrows an underspecified request to three benchmarks despite several materially different benchmark families in the corpus."
+        }
+      ]
+    },
+    "minimax-m3": {
+      "contract_anchor_conformance": {
+        "passed_count": 17,
+        "failed_count": 13,
+        "total_count": 30,
+        "pass_rate": 0.5666666666666667
+      },
+      "semantic_quality": {
+        "decision": {
+          "passed_count": 29,
+          "failed_count": 1,
+          "total_count": 30,
+          "pass_rate": 0.9666666666666667
+        },
+        "task_fulfillment": {
+          "passed_count": 26,
+          "failed_count": 4,
+          "total_count": 30,
+          "pass_rate": 0.8666666666666667
+        },
+        "grounding": {
+          "passed_count": 18,
+          "failed_count": 7,
+          "not_applicable_count": 5,
+          "applicable_count": 25,
+          "pass_rate": 0.72
+        },
+        "overall": {
+          "passed_count": 22,
+          "failed_count": 8,
+          "total_count": 30,
+          "pass_rate": 0.7333333333333333
+        }
+      },
+      "preferences": {
+        "preferred_count": 4,
+        "preferred_rate": 0.13333333333333333
+      },
+      "scorer_confusion": {
+        "true_positive": 14,
+        "false_negative": 8,
+        "false_positive": 3,
+        "true_negative": 5,
+        "agreement_count": 19,
+        "agreement_rate": 0.6333333333333333
+      },
+      "genuine_failures": [
+        {
+          "case_id": "transformer_bert_confirmation_followup_001",
+          "answer_label": "B",
+          "failed_dimensions": [
+            "grounding",
+            "overall"
+          ],
+          "note": "The comparison is substantively correct and complete, but the material claim that the original Transformer was trained with cross-entropy against the reference translation is not entailed by the cited excerpts, which establish parallel data and next-token probabilities but not the loss."
+        },
+        {
+          "case_id": "react_to_agent_evaluation_genealogy_001",
+          "answer_label": "A",
+          "failed_dimensions": [
+            "task_fulfillment",
+            "grounding",
+            "overall"
+          ],
+          "note": "The core AgentBench and tau-bench links are supported, but the corpus-wide negative claims are false. MINT's Yao et al. (2022) citations resolve in its bibliography to ReAct and explicitly cover its Thought format and modified ALFWorld prompts; WebArena's Yao et al. (2022b) citation likewise resolves to ReAct and supports its CoT baseline. Thus A incorrectly dismisses directly verifiable relationships."
+        },
+        {
+          "case_id": "mint_vs_tau_interaction_comparison_001",
+          "answer_label": "A",
+          "failed_dimensions": [
+            "decision",
+            "task_fulfillment",
+            "overall"
+          ],
+          "note": "The answer only reports a technical failure and provides none of the requested comparison."
+        },
+        {
+          "case_id": "cross_benchmark_human_agent_gap_001",
+          "answer_label": "B",
+          "failed_dimensions": [
+            "grounding",
+            "overall"
+          ],
+          "note": "It makes the requested comparison and correctly computes the gap for the reported 11.70% result, but materially misdescribes that WebArena configuration as CoT prompting only: Table 2 shows 11.70% uses both CoT and the UA hint, while removing the UA hint produces the paper headline/best GPT-4 score of 14.41%. Calling 66.54 points the headline WebArena gap is therefore misleading."
+        },
+        {
+          "case_id": "webarena_reproduction_protocol_001",
+          "answer_label": "B",
+          "failed_dimensions": [
+            "task_fulfillment",
+            "grounding",
+            "overall"
+          ],
+          "note": "The paper defines three information-seeking scoring functions, but this answer repeatedly claims there are only two and omits fuzzy_match from both the evaluation checklist and build order. It also adds unsupported reset()/step() method names and is substantially more detailed than the requested concise checklist."
+        },
+        {
+          "case_id": "transformer_to_bert_genealogy_001",
+          "answer_label": "B",
+          "failed_dimensions": [
+            "grounding",
+            "overall"
+          ],
+          "note": "It establishes the direct encoder lineage, but incorrectly implies that BERT uses the original Transformer's three forms of multi-head attention; those include encoder-decoder and decoder attention absent from encoder-only BERT. It also overstates that BERT changed only training and input/output layers, overlooking documented architectural differences such as GELU versus ReLU, and misuses the unified-architecture citation, which compares BERT pre-training with BERT fine-tuning rather than BERT with Vaswani et al."
+        },
+        {
+          "case_id": "mint_tau_apparent_conflict_001",
+          "answer_label": "A",
+          "failed_dimensions": [
+            "grounding",
+            "overall"
+          ],
+          "note": "It reaches the correct high-level conclusion, but materially misstates MINT as measuring monotonic gains relative to earlier turns on the same trajectory. MINT restarts evaluation for each interaction limit k and estimates an aggregate SR_k regression slope; its reported success rates are not always monotonic."
+        },
+        {
+          "case_id": "transformer_optimizer_reproduction_001",
+          "answer_label": "A",
+          "failed_dimensions": [
+            "task_fulfillment",
+            "grounding",
+            "overall"
+          ],
+          "note": "The numerical settings are correct, but the strict checklist never names Adam in its optimizer field. It also claims without paper support that beta2 = 0.98 was chosen specifically for the warmup/inverse-square-root schedule."
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "case_id": "transformer_bert_confirmation_followup_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly resumes the chosen comparison, covers architecture role, directionality, and training objective, and supports all material claims with the cited passages."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "fail",
+            "overall": "fail"
+          },
+          "note": "The comparison is substantively correct and complete, but the material claim that the original Transformer was trained with cross-entropy against the reference translation is not entailed by the cited excerpts, which establish parallel data and next-token probabilities but not the loss."
+        }
+      }
+    },
+    {
+      "case_id": "toolsandbox_constraint_selection_001",
+      "preferred_model": "tie",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly selects ToolSandbox and directly grounds stateful tool execution, on-policy user simulation, intermediate milestone evaluation, and the insufficient-information category in the cited paper passages."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly selects ToolSandbox and accurately explains all four requested properties; the additional tool examples, milestone/minefield description, scenario statistic, and bibliographic details are confirmed by the paper."
+        }
+      }
+    },
+    {
+      "case_id": "gpt5_architecture_boundary_001",
+      "preferred_model": "tie",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "not_applicable",
+            "overall": "pass"
+          },
+          "note": "Correctly states that the authorized corpus contains no GPT-5 architecture source, avoids inventing or inferring architecture details from predecessor papers, and offers an appropriate source-grounded next step."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "not_applicable",
+            "overall": "pass"
+          },
+          "note": "Correctly identifies the GPT-5 corpus boundary, does not substitute predecessor architecture for GPT-5, and appropriately asks for a relevant source; the declared partial outcome does not impair the user-visible response."
+        }
+      }
+    },
+    {
+      "case_id": "transformer_adam_params_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly and correctly gives all three requested Transformer Adam settings, with the cited optimizer passage explicitly supporting each value."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly gives the Transformer Adam settings as beta1 = 0.9, beta2 = 0.98, and epsilon = 10^-9; its additional comparison with the Adam paper defaults is accurate and supported by the cited passages."
+        }
+      }
+    },
+    {
+      "case_id": "benchmark_topic_change_followup_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly follows the user's changed intent and selects SWE-bench; the paper directly supports the 2,294 real GitHub tasks from 12 Python repositories, patch-generation task, test-based evaluation, and resolved-instance percentage metric."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly selects SWE-bench and accurately grounds its real GitHub issues, 2,294 tasks across 12 Python repositories, realistic setting, execution-based evaluation, and continuously updateable construction in the cited paper passages."
+        }
+      }
+    },
+    {
+      "case_id": "cross_benchmark_score_ranking_partial_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly provides the requested ranking, and the cited 15%, 14.41%, and 1.96% figures and associated model setups are supported by the papers."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly ranks 15% > 14.41% > 1.96%; all benchmark figures, model/setup descriptions, and additional GAIA/WebArena details are supported by the papers. The cross-benchmark comparability caveat is appropriate."
+        }
+      }
+    },
+    {
+      "case_id": "agent_evaluation_recommendation_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly recommends all four benchmarks, with paper-supported details including GAIA's 466 questions and retained answers, WebArena's 812 examples, SWE-bench's 2,294 issues across 12 repositories, and tau-bench's policy-guided user/API interaction design."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly recommends GAIA, WebArena, SWE-bench, and tau-bench for the four categories; the papers confirm the stated capabilities, task provenance, domains, evaluation mechanism, and pass^k metric. The trailing explanatory bullet is truncated, but the requested recommendations are complete and correct."
+        }
+      }
+    },
+    {
+      "case_id": "react_to_agent_evaluation_genealogy_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "All four reported links are directly supported: AgentBench names ReAct as a predecessor, AgentBoard runs an Act-versus-ReAct ablation, tau-bench evaluates ReAct against Act, and ToolSandbox compares ReAct prompting with its minimal prompt. It avoids A's unsupported exhaustive negative claims."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "fail",
+            "grounding": "fail",
+            "overall": "fail"
+          },
+          "note": "The core AgentBench and tau-bench links are supported, but the corpus-wide negative claims are false. MINT's Yao et al. (2022) citations resolve in its bibliography to ReAct and explicitly cover its Thought format and modified ALFWorld prompts; WebArena's Yao et al. (2022b) citation likewise resolves to ReAct and supports its CoT baseline. Thus A incorrectly dismisses directly verifiable relationships."
+        }
+      }
+    },
+    {
+      "case_id": "agentboard_progress_metric_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly and accurately explains that binary final success obscures partial completion and model differences in difficult tasks, and correctly supports the progress-rate definition and the reported Llama2-13b/Mistral-7b figures."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Accurately covers partial completion, unified progress measurement, discrimination among weak models, the CodeLlama finish-action effect, denser BabyAI feedback, and the human-validation results; it is well grounded but substantially more detailed than the question requires."
+        }
+      }
+    },
+    {
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "The structured comparison covers all five requested axes. Its claims about MINT's bounded interaction, Python tool loop, lazy and informative feedback, success-rate metrics, and tau-bench's simulated user, stateful database/API environment, exact-state reward, pass^k reliability metric, and repeated trials are supported by the papers."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "fail",
+            "task_fulfillment": "fail",
+            "grounding": "not_applicable",
+            "overall": "fail"
+          },
+          "note": "The answer only reports a technical failure and provides none of the requested comparison."
+        }
+      }
+    },
+    {
+      "case_id": "cross_benchmark_human_agent_gap_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Accurately computes the GAIA gap as 77 percentage points and the WebArena best-agent gap as 63.83 points, correctly describes both evaluation protocols, and explicitly cautions that question accuracy and end-to-end web-task success are not interchangeable."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "fail",
+            "overall": "fail"
+          },
+          "note": "It makes the requested comparison and correctly computes the gap for the reported 11.70% result, but materially misdescribes that WebArena configuration as CoT prompting only: Table 2 shows 11.70% uses both CoT and the UA hint, while removing the UA hint produces the paper headline/best GPT-4 score of 14.41%. Calling 66.54 points the headline WebArena gap is therefore misleading."
+        }
+      }
+    },
+    {
+      "case_id": "webarena_reproduction_protocol_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Concise and accurate: it covers the four principal web domains and supporting sites, self-contained Docker delivery and reset behavior, natural-language task execution and baseline observations/actions, and both programmatic evaluation and all three information-seeking metrics, including fuzzy_match with GPT-4-0613."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "fail",
+            "grounding": "fail",
+            "overall": "fail"
+          },
+          "note": "The paper defines three information-seeking scoring functions, but this answer repeatedly claims there are only two and omits fuzzy_match from both the evaluation checklist and build order. It also adds unsupported reset()/step() method names and is substantially more detailed than the requested concise checklist."
+        }
+      }
+    },
+    {
+      "case_id": "transformer_to_bert_genealogy_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Accurately identifies the direct architectural lineage, explains the inherited Transformer encoder stack and BERT's bidirectional MLM pre-training, and supports every material claim with the cited passages."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "fail",
+            "overall": "fail"
+          },
+          "note": "It establishes the direct encoder lineage, but incorrectly implies that BERT uses the original Transformer's three forms of multi-head attention; those include encoder-decoder and decoder attention absent from encoder-only BERT. It also overstates that BERT changed only training and input/output layers, overlooking documented architectural differences such as GELU versus ReLU, and misuses the unified-architecture citation, which compares BERT pre-training with BERT fine-tuning rather than BERT with Vaswani et al."
+        }
+      }
+    },
+    {
+      "case_id": "gaia_dataset_gap_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Accurately and concisely explains the 466-question human-authored pipeline, three difficulty levels, independent validation and repair process, and the reported 92% human versus 15% GPT-4-with-plugins result; all material claims are directly supported by the GAIA paper."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Provides a thorough, paper-supported account of the authoring constraints, validation statistics, difficulty levels, per-level scores, plugin-oracle caveat, and the headline 92% versus 15% result; the extra baseline and timing detail is accurate but beyond the request."
+        }
+      }
+    },
+    {
+      "case_id": "bert_vs_transformer_comparison_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly and concisely compares the Transformer encoder-decoder role, unrestricted encoder versus causal decoder attention, and BERT encoder-only bidirectionality with MLM plus NSP. The papers support every material claim; the Transformer objective is described as autoregressive next-token prediction, though without naming the supervised loss."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Provides a correct, more detailed comparison. Local paper text verifies the WMT corpus sizes, encoder and decoder attention behavior, BERT 15% MLM with the 80/10/10 replacement rule, NSP, and end-to-end downstream fine-tuning. Saying BERT \"removes\" decoder masking is slightly loose because BERT instead omits the decoder, but the intended causal-directionality contrast is accurate."
+        }
+      }
+    },
+    {
+      "case_id": "mint_tau_apparent_conflict_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly distinguishes MINT's aggregate gains from additional allowed tool turns or feedback from tau-bench's pass^k reliability across repeated stochastic trials of the same task. The numerical results and cited failure contexts are supported, and the answer is concise and readable."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "fail",
+            "overall": "fail"
+          },
+          "note": "It reaches the correct high-level conclusion, but materially misstates MINT as measuring monotonic gains relative to earlier turns on the same trajectory. MINT restarts evaluation for each interaction limit k and estimates an aggregate SR_k regression slope; its reported success rates are not always monotonic."
+        }
+      }
+    },
+    {
+      "case_id": "attention_paper_ambiguous_001",
+      "preferred_model": "minimax-m3",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "fail",
+            "task_fulfillment": "fail",
+            "grounding": "pass",
+            "overall": "fail"
+          },
+          "note": "The cited first-page passages exactly support the paper title and arXiv identifier 1706.03762v7, but the response assumes the user wants Attention Is All You Need and never clarifies whether they meant that paper or wanted identification, summary, recommendation, comparison, or another task."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "not_applicable",
+            "overall": "pass"
+          },
+          "note": "Appropriately treats the underspecified phrase as ambiguous and asks targeted questions that would resolve both the paper identity and requested task; its brief Attention Is All You Need bibliographic example is accurate but does not amount to a substantive research answer."
+        }
+      }
+    },
+    {
+      "case_id": "bert_transformer_role_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly answers that BERT uses a Transformer encoder; the BERT paper explicitly calls its architecture a multi-layer bidirectional Transformer encoder."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly identifies BERT as encoder-only and accurately explains its bidirectional self-attention; both the BERT and original Transformer architecture descriptions support the material claims."
+        }
+      }
+    },
+    {
+      "case_id": "bert_choice_followup_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly selects BERT and gives a clear, accurate reading path; the cited passages directly support the bidirectional encoder architecture and MLM-based use of left and right context. Its bibliographic parenthetical is imprecise because the arXiv preprint dates to 2018 while NAACL publication was in 2019, and it names only two of four authors, but these are minor ancillary issues."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly resolves the follow-up to BERT and supports its bidirectional encoder architecture, left-and-right context, GPT contrast, and MLM explanation with the cited BERT passages. The wording that BERT made the Transformer bidirectional is slightly imprecise, and the final bullet is visibly truncated, but neither undermines the core answer."
+        }
+      }
+    },
+    {
+      "case_id": "swebench_instance_provenance_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Accurately traces an issue-resolving merged PR through issue extraction, base-commit recovery, solution/test patch splitting, and execution filtering, then correctly explains generated-patch evaluation and the requirement that all FAIL_TO_PASS and PASS_TO_PASS tests pass."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Provides a correct and fully paper-grounded account, including per-version executable contexts, cached test-transition results, automatic patch repair, and the reported fail-to-pass and pass-to-pass statistics, though it is considerably more detailed than the question requires."
+        }
+      }
+    },
+    {
+      "case_id": "agent_benchmark_ambiguous_001",
+      "preferred_model": "minimax-m3",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "fail",
+            "task_fulfillment": "fail",
+            "grounding": "pass",
+            "overall": "fail"
+          },
+          "note": "The descriptions of tau-bench, GAIA, and ToolSandbox are accurate and supported by the papers, but the answer silently narrows an underspecified request to three benchmarks despite several materially different benchmark families in the corpus."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "not_applicable",
+            "overall": "pass"
+          },
+          "note": "The query does not specify a benchmark domain, comparison goal, or desired paper, so asking focused clarification questions is appropriate and avoids unsupported paper-content claims."
+        }
+      }
+    },
+    {
+      "case_id": "coding_benchmark_followup_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly recommends SWE-bench and concisely distinguishes it from WebArena and GAIA; every material claim is supported by the cited local paper passages."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly recommends SWE-bench; its dataset, task formulation, patch representation, and execution-based evaluation claims are supported by the local reading model."
+        }
+      }
+    },
+    {
+      "case_id": "corpus_paper_count_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "not_applicable",
+            "overall": "pass"
+          },
+          "note": "Correctly and directly reports five papers, matching the authorized manifest and the five corresponding PDF, text, and reading-model assets."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "not_applicable",
+            "overall": "pass"
+          },
+          "note": "Correctly reports five papers and lists the same five titles and bibliographic metadata recorded in the authorized paper-pack manifest and present across the PDF, text, and reading-model directories."
+        }
+      }
+    },
+    {
+      "case_id": "agentbench_environment_inventory_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly and accurately explains AgentBench's evaluation target, lists all eight environments under the paper's three grounding categories, and correctly reports the principal weaknesses and the TLE, invalid-format, and invalid-action findings; all material claims are supported by the paper."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly states the benchmark's purpose, eight-environment scope, and three principal agent weaknesses; its additional claims about the 29 evaluated models, commercial-OSS gap, code training, and alignment data are also supported by the paper, though they are less directly responsive."
+        }
+      }
+    },
+    {
+      "case_id": "adam_beta2_conflict_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly and accurately distinguishes Adam's beta2 = 0.999 default from the Transformer paper's beta2 = 0.98 choice, with both claims explicitly supported by the cited optimizer passages."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly resolves the apparent conflict by distinguishing the Adam paper's beta2 = 0.999 recommended default from the Transformer paper's beta2 = 0.98 experiment-specific setting; both values and scopes are directly supported by the cited passages."
+        }
+      }
+    },
+    {
+      "case_id": "gpt3_to_transformer_multihop_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly and concisely establishes both requested hops from the papers, accurately describes GPT-3's GPT-2 inheritance and GPT-2's Transformer basis, and explicitly avoids asserting a direct GPT-3-to-Transformer citation. Its additional Transformer description is directly supported by the cited paper."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly constructs the GPT-3 to GPT-2 to Transformer chain: GPT-3 explicitly inherits GPT-2 architecture with the stated sparse-attention exception, while GPT-2 explicitly uses a Vaswani et al. Transformer-based language-model architecture. It appropriately distinguishes this transitive lineage from a direct GPT-3-to-Transformer architecture citation, though it is more verbose than necessary."
+        }
+      }
+    },
+    {
+      "case_id": "adam_constraint_refinement_followup_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly and correctly gives the requested Transformer beta2 value, explicitly supported by Section 5.3."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly answers that the Transformer used beta2 = 0.98; the additional beta1 and epsilon values are also explicitly supported by Section 5.3."
+        }
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_followup_001",
+      "preferred_model": "minimax-m3",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly lists all five papers, and every title, year, venue, and arXiv identifier matches the authoritative corpus manifest and paper assets. Its Authors column reproduces abbreviated manifest metadata without indicating omitted coauthors, but this does not impair the requested paper inventory."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly resolves the follow-up reference and lists all five corpus papers. The titles, author attributions, years, and venues agree with the paper-pack manifest and local paper assets."
+        }
+      }
+    },
+    {
+      "case_id": "transformer_optimizer_reproduction_001",
+      "preferred_model": "gpt-5.5",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "B",
+          "contract_anchor_conformance": false,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Directly provides Adam, beta1 = 0.9, beta2 = 0.98, and epsilon = 10^-9, all explicitly supported by Section 5.3; the Adam citation also supports the algorithm name."
+        },
+        "minimax-m3": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "fail",
+            "grounding": "fail",
+            "overall": "fail"
+          },
+          "note": "The numerical settings are correct, but the strict checklist never names Adam in its optimizer field. It also claims without paper support that beta2 = 0.98 was chosen specifically for the warmup/inverse-square-root schedule."
+        }
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_001",
+      "preferred_model": "minimax-m3",
+      "answers": {
+        "gpt-5.5": {
+          "answer_label": "A",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly lists all five corpus papers; every title, paper ID, canonical year, venue, and arXiv identifier matches the authorized paper-pack manifest and local assets. Its Authors column gives only the manifest's abbreviated author subset without indicating omitted coauthors, but this does not impair the requested inventory."
+        },
+        "minimax-m3": {
+          "answer_label": "B",
+          "contract_anchor_conformance": true,
+          "semantic_quality": {
+            "decision": "pass",
+            "task_fulfillment": "pass",
+            "grounding": "pass",
+            "overall": "pass"
+          },
+          "note": "Correctly and readably lists all five authorized papers with matching canonical bibliographic metadata. Its use of \"et al.\" accurately signals the additional authors visible in the paper assets."
+        }
+      }
+    }
+  ],
+  "execution_policy": {
+    "offline_only": true,
+    "model_rerun_required": false
+  }
+}

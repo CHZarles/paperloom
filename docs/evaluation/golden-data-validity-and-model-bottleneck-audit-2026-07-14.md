@@ -278,8 +278,8 @@ Hard Fail 是 Exact Anchor 或 Forbidden Paper 假阴性，因此不能把 `58.3
 
 | 指标 | MiniMax-M3 | GPT-5.5 |
 | --- | ---: | ---: |
-| Human Overall Pass | `22/30 = 73.3%` | `28/30 = 93.3%` |
-| Human Grounding Pass（排除 N/A） | `18/25 = 72.0%` | `28/28 = 100%` |
+| 人工总体通过 | `22/30 = 73.3%` | `28/30 = 93.3%` |
+| 人工事实依据通过（排除 N/A） | `18/25 = 72.0%` | `28/28 = 100%` |
 | 盲审偏好 | `4/30` | `24/30` |
 
 两个模型都通过 20 个 Case，只有 GPT-5.5 通过 8 个，只有 MiniMax-M3 通过 2 个，
@@ -301,16 +301,29 @@ false pass:       0/23
 校准结果，说明冻结 Judge Prompt、现有人工标签和“严格 citation completeness”之间仍存在口径冲突。
 因此不能把未校准的 GPT-5.5 或 GPT-5.6 Judge 当作新 Ground Truth。
 
-## 下一步
+## 实施状态与后续边界
 
-不改 Golden Data、Prompt、Reading Model 和线上 Runtime，先改离线报告口径：
+上述离线报告方案已经实现：
 
-1. 保留 Strict Hard Pass，但明确命名为“Contract/Anchor Conformance”，不再展示为回答准确率；
-2. 以本轮 Human Label 为基准，离线报告同时展示 Human Overall、Grounding、假阴性和假阳性；
-3. 不重跑模型，先对已保存 Run 完成评分器报告分层；
-4. 再单独处理真实模型失败：MiniMax-M3 的证据边界/过度推断和技术失败，以及 GPT-5.5 的
-   模糊请求澄清策略；
-5. 表格/图像产物的发布缺口作为独立数据管道问题处理，不与本次评分机制结论混在一起。
+1. 原始 `hard_pass` 保留，但在新报告中只命名为“合同/锚点一致性”，不再解释为回答准确率；
+2. 报告读取冻结的 Human Label、`blind-map.json` 和两个已保存的 `score_report.json`，同时展示
+   人工总体评分、事实依据、假阴性和假阳性；
+3. 报告完全离线生成，没有为了重新计算指标而重跑模型；
+4. JSON 与 Markdown 产物分别见
+   [`adjudication-report.json`](../../research/golden-data/human-adjudication/2026-07-14/adjudication-report.json)
+   和
+   [`adjudication-report.md`](../../research/golden-data/human-adjudication/2026-07-14/adjudication-report.md)。
 
-这条路径符合 Harness 的职责边界：线上继续专注模型编排和完整记录，所有 Golden 修订、语义评分、
-Provider 对比和研究分析都留在线下。
+真实缺陷的处置见
+[`DEFECT_DISPOSITION.md`](../../research/golden-data/human-adjudication/2026-07-14/DEFECT_DISPOSITION.md)：
+
+- MiniMax-M3 的 1 个畸形工具参数技术故障已在 Provider Adapter 边界增加通用恢复，并完成确定性
+  测试和单 Case 定向复跑；
+- MiniMax-M3 的 7 个事实依据 / 过度宣称失败保留为模型质量基线，不增加 Case 特判；
+- GPT-5.5 的 2 个歧义处理失败保留为模型行为基线，不增加硬编码预检；
+- 只有运行时、Prompt、检索、工具协议或模型行为发生实质变化时才调用模型。离线报告、指标命名和
+  文档变化不触发重跑。
+
+表格/图像产物的发布缺口仍作为独立数据管道问题处理，不与本次评分机制和 Harness 编排混在一起。
+这保持了职责边界：线上 Harness 只负责模型编排和完整记录，Golden 修订、语义评分、Provider
+对比和研究分析全部留在线下。
