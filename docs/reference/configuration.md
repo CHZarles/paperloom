@@ -16,14 +16,15 @@ should inject the same variables through their secret and configuration system.
 
 | Group | Representative variables | Current role |
 | --- | --- | --- |
-| MySQL | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Durable product state and direct live-harness corpus source |
+| MySQL | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Canonical product state and exact Reading Model content |
 | MinIO | `MINIO_ENDPOINT`, `MINIO_PUBLIC_URL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | PDFs, parser artifacts, screenshots, and crops |
 | Redis | `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`, `SPRING_DATA_REDIS_PASSWORD` | Separate transient product concerns; not assistant evidence |
 | Kafka | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Upload-processing delivery; not assistant retrieval |
-| Elasticsearch | `ELASTICSEARCH_HOST`, `ELASTICSEARCH_PORT`, `ELASTICSEARCH_SCHEME`, `ELASTICSEARCH_USERNAME`, `ELASTICSEARCH_PASSWORD` | Maintained indexing and standalone search; bypassed by current harness |
+| Qdrant | `QDRANT_BASE_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Shared dense/sparse candidate index for Current Reading Models |
 
 Host-port overrides for `docs/docker-compose.yaml` use `MYSQL_HOST_PORT`, `REDIS_HOST_PORT`,
-`MINIO_API_HOST_PORT`, `MINIO_CONSOLE_HOST_PORT`, and `ELASTICSEARCH_HOST_PORT`.
+`MINIO_API_HOST_PORT`, `MINIO_CONSOLE_HOST_PORT`, `QDRANT_HTTP_HOST_PORT`, and
+`QDRANT_GRPC_HOST_PORT`.
 
 ## Authentication
 
@@ -53,14 +54,14 @@ fallback.
 | --- | --- |
 | `RESEARCH_HARNESS_BASE_URL` | Internal harness endpoint used by Java |
 | `RESEARCH_HARNESS_INTERNAL_TOKEN` | Shared internal-service credential |
+| `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
 | `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
-| `EMBEDDING_API_URL`, `EMBEDDING_API_KEY`, `EMBEDDING_API_MODEL` | Independent indexing/embedding provider; not used by current harness retrieval |
+| `EMBEDDING_API_URL`, `EMBEDDING_API_KEY`, `EMBEDDING_API_MODEL` | Java-owned indexing and query embedding provider |
 | `EVAL_DUMP_DIR` | Optional saved-run output root |
 
-The Python research service queries MySQL directly for Java-authorized papers and ranks Reading
-Elements in memory. It does not need Elasticsearch or embedding credentials to execute the current
-assistant retrieval path.
+The Python service does not connect to MySQL or Qdrant. It calls the Java Corpus API with the locked
+scope; Java owns embedding, Qdrant retrieval, permission/current-model validation, and canonical reads.
 
 ## Secret Rules
 

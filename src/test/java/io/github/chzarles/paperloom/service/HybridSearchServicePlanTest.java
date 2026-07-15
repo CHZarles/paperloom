@@ -27,10 +27,10 @@ class HybridSearchServicePlanTest {
         HybridSearchService.SearchBranchPlan plan = HybridSearchService.SearchBranchPlan.forQuery("post-hoc hallucination detection");
         Method keywordMatchField = assertDoesNotThrow(
                 () -> HybridSearchService.SearchBranchPlan.class.getMethod("keywordMatchField"),
-                "SearchBranchPlan should expose the keyword match field used by the ES text branch"
+                "SearchBranchPlan should expose the Qdrant sparse-text payload field"
         );
 
-        assertEquals("retrievalTextContent", assertDoesNotThrow(() -> keywordMatchField.invoke(plan)));
+        assertEquals("searchable_text", assertDoesNotThrow(() -> keywordMatchField.invoke(plan)));
     }
 
     @Test

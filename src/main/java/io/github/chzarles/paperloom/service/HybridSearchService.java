@@ -1,600 +1,173 @@
 package io.github.chzarles.paperloom.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.FieldValue;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.util.ObjectBuilder;
-import io.github.chzarles.paperloom.client.EmbeddingClient;
-import io.github.chzarles.paperloom.config.PaperSearchIndex;
-import io.github.chzarles.paperloom.entity.PaperChunkDocument;
-import io.github.chzarles.paperloom.entity.PaperSearchDocument;
 import io.github.chzarles.paperloom.entity.SearchResult;
-import io.github.chzarles.paperloom.model.User;
-import io.github.chzarles.paperloom.exception.CustomException;
-import io.github.chzarles.paperloom.repository.UserRepository;
-import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.model.Paper;
-import io.github.chzarles.paperloom.model.PaperReadingElement;
-import io.github.chzarles.paperloom.model.PaperVisualAsset;
-import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
-import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
-import io.github.chzarles.paperloom.repository.PaperVisualAssetRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Set;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
- * 论文混合检索服务，结合文本匹配和向量相似度搜索。
+ * Compatibility surface for the library-search controller.
+ *
+ * The implementation now uses the canonical Qdrant Reading Model index. The class name is kept
+ * temporarily because the query planner and public controller already depend on this contract.
  */
 @Service
 public class HybridSearchService {
 
-    static final String KEYWORD_MATCH_FIELD = "retrievalTextContent";
+    private final CorpusRetrievalService corpusRetrievalService;
+    private final PaperService paperService;
 
-    private static final Logger logger = LoggerFactory.getLogger(HybridSearchService.class);
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    public HybridSearchService(CorpusRetrievalService corpusRetrievalService, PaperService paperService) {
+        this.corpusRetrievalService = corpusRetrievalService;
+        this.paperService = paperService;
+    }
 
-    @Autowired
-    private ElasticsearchClient esClient;
-
-    @Autowired
-    private EmbeddingClient embeddingClient;
-
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private OrgTagCacheService orgTagCacheService;
-
-    @Autowired
-    private PaperRepository paperRepository;
-
-    @Autowired
-    private PaperReadingModelRepository paperReadingModelRepository;
-
-    @Autowired
-    private PaperReadingElementRepository paperReadingElementRepository;
-
-    @Autowired
-    private PaperVisualAssetRepository paperVisualAssetRepository;
-
-    /**
-     * 自适应检索入口，返回检索结果和本轮扫描/停止原因诊断。
-     */
-    public AdaptiveSearchResult adaptiveSearchWithPermission(String query, String userId, RetrievalBudget budget) {
+    public AdaptiveSearchResult adaptiveSearchWithPermission(String query,
+                                                               String userId,
+                                                               RetrievalBudget budget) {
         return adaptiveSearchWithPermission(query, userId, budget, List.of());
     }
 
     public AdaptiveSearchResult adaptiveSearchWithPermission(String query,
-                                                             String userId,
-                                                             RetrievalBudget budget,
-                                                             List<String> scopePaperIds) {
-        RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
-        List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
-        logger.debug("开始自适应带权限搜索，查询: {}, 用户ID: {}, batch: {}", query, userId, effectiveBudget.pageBatchSize());
-
-        try {
-            List<String> userEffectiveTags = getUserEffectiveOrgTags(userId);
-            String userDbId = getUserDbId(userId);
-            final List<Float> queryVector = embedToVectorList(query, userId, queryEmbeddingTimeout(effectiveBudget));
-            if (queryVector == null) {
-                logger.warn("向量生成失败，使用自适应纯文本搜索");
-                return adaptiveTextOnlySearchWithPermission(query, userDbId, userEffectiveTags, effectiveBudget, effectiveScopePaperIds);
-            }
-
-            AdaptiveSearchResult semanticResult = adaptiveSemanticSearchWithPermission(
-                    query,
-                    userDbId,
-                    userEffectiveTags,
-                    effectiveBudget,
-                    effectiveScopePaperIds,
-                    queryVector
-            );
-            AdaptiveSearchResult keywordResult = adaptiveTextOnlySearchWithPermission(
-                    query,
-                    userDbId,
-                    userEffectiveTags,
-                    effectiveBudget,
-                    effectiveScopePaperIds
-            );
-            return fuseAdaptiveResults(semanticResult, keywordResult);
-        } catch (Exception e) {
-            logger.error("自适应带权限搜索失败", e);
-            try {
-                return adaptiveTextOnlySearchWithPermission(
+                                                               String userId,
+                                                               RetrievalBudget budget,
+                                                               List<String> scopePaperIds) {
+        List<String> scope = effectiveScope(userId, scopePaperIds);
+        if (scope.isEmpty()) {
+            return empty();
+        }
+        int topK = Math.min(20, Math.max(1, budget == null ? 8 : budget.pageBatchSize()));
+        CorpusRetrievalService.LocationSearchResult result = corpusRetrievalService.searchLocations(
+                new CorpusRetrievalService.LocationSearchQuery(
+                        numericUserId(userId),
+                        scope,
+                        scope,
                         query,
-                        getUserDbId(userId),
-                        getUserEffectiveOrgTags(userId),
-                        effectiveBudget,
-                        effectiveScopePaperIds
-                );
-            } catch (Exception fallbackError) {
-                logger.error("自适应后备搜索也失败", fallbackError);
-                return adaptiveResult(Collections.emptyList(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
-            }
-        }
-    }
-
-    public AdaptiveSearchResult searchPaperCandidatesWithPermission(String query,
-                                                                    String userId,
-                                                                    RetrievalBudget budget,
-                                                                    List<String> scopePaperIds) {
-        RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forLibrarySearch() : budget;
-        List<String> effectiveScopePaperIds = normalizeScopePaperIds(scopePaperIds);
-        try {
-            List<String> userEffectiveTags = getUserEffectiveOrgTags(userId);
-            String userDbId = getUserDbId(userId);
-            SearchRequest request = SearchRequest.of(s -> s
-                            .index(PaperSearchIndex.PAPER_INDEX_NAME)
-                            .size(effectiveBudget.pageBatchSize())
-                            .query(q -> q.bool(b -> b
-                                    .must(m -> m.match(ma -> ma.field("searchText").query(query)))
-                                    .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
-                                    .filter(f -> paperScopeFilter(f, effectiveScopePaperIds))
-                            ))
-                            .minScore(effectiveBudget.minScore())
-            );
-            SearchResponse<PaperSearchDocument> response = esClient.search(request, PaperSearchDocument.class);
-            List<SearchResult> candidates = response.hits().hits().stream()
-                    .map(hit -> toPaperCandidateResult(hit.source(), hit.score()))
-                    .filter(result -> result.getPaperId() != null && !result.getPaperId().isBlank())
-                    .toList();
-            attachPaperTitles(candidates);
-            finalizeReferenceEvidenceReadiness(candidates);
-            PaperRetrievalService.StopReason stopReason = candidates.isEmpty()
-                    ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
-                    : PaperRetrievalService.StopReason.EXHAUSTED;
-            return adaptiveResult(candidates, response.hits().hits().size(), stopReason);
-        } catch (Exception e) {
-            logger.error("论文元数据候选搜索失败", e);
-            return adaptiveResult(List.of(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
-        }
-    }
-
-    private AdaptiveSearchResult adaptiveTextOnlySearchWithPermission(String query,
-                                                                      String userDbId,
-                                                                      List<String> userEffectiveTags,
-                                                                      RetrievalBudget budget,
-                                                                      List<String> scopePaperIds) {
-        try {
-            List<SearchResult> accepted = new ArrayList<>();
-            long startedAt = System.nanoTime();
-            int offset = 0;
-            int acceptedTokenEstimate = 0;
-            int scannedCount = 0;
-            PaperRetrievalService.StopReason stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
-            boolean contextBudgetReached = false;
-            SearchBranchPlan branchPlan = SearchBranchPlan.forQuery(query);
-            while (withinLatencyBudget(startedAt, budget)) {
-                int pageOffset = offset;
-                SearchResponse<PaperChunkDocument> response = esClient.search(s -> s
-                                .index(PaperSearchIndex.INDEX_NAME)
-                                .from(pageOffset)
-                                .size(budget.pageBatchSize())
-                                .query(q -> q.bool(b -> b
-                                        .must(m -> m.match(ma -> ma.field(branchPlan.keywordMatchField()).query(query)))
-                                        .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
-                                        .filter(f -> paperScopeFilter(f, scopePaperIds))
-                                ))
-                                .minScore(budget.minScore()),
-                        PaperChunkDocument.class
-                );
-                if (response.hits().hits().isEmpty()) {
-                    stopReason = accepted.isEmpty()
-                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
-                            : PaperRetrievalService.StopReason.EXHAUSTED;
-                    break;
-                }
-                scannedCount += response.hits().hits().size();
-                int acceptedBeforePage = accepted.size();
-                for (var hit : response.hits().hits()) {
-                    SearchResult result = toSearchResult(hit.source(), hit.score(), "TEXT_ONLY");
-                    if (!EvidenceQuality.isUsable(result, budget.minScore())) {
-                        continue;
-                    }
-                    int tokenEstimate = estimateTokens(EvidenceQuality.bestEvidenceText(result));
-                    if (acceptedTokenEstimate + tokenEstimate > budget.contextTokenBudget()) {
-                        contextBudgetReached = true;
-                        stopReason = PaperRetrievalService.StopReason.CONTEXT_BUDGET;
-                        break;
-                    }
-                    accepted.add(result);
-                    acceptedTokenEstimate += tokenEstimate;
-                }
-                if (contextBudgetReached) {
-                    break;
-                }
-                if (accepted.size() == acceptedBeforePage) {
-                    stopReason = accepted.isEmpty()
-                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
-                            : PaperRetrievalService.StopReason.PLATEAU;
-                    break;
-                }
-                offset += response.hits().hits().size();
-                Long total = response.hits().total() == null ? null : response.hits().total().value();
-                if (total != null && offset >= total) {
-                    stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
-                    break;
-                }
-            }
-            if (!withinLatencyBudget(startedAt, budget)) {
-                stopReason = PaperRetrievalService.StopReason.LATENCY_BUDGET;
-            }
-            if (accepted.isEmpty() && stopReason == PaperRetrievalService.StopReason.EXHAUSTED) {
-                stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
-            }
-            attachPaperTitles(accepted);
-            attachTableEvidence(accepted);
-            finalizeReferenceEvidenceReadiness(accepted);
-            return adaptiveResult(accepted, scannedCount, stopReason);
-        } catch (Exception e) {
-            logger.error("自适应纯文本搜索失败", e);
-            return adaptiveResult(new ArrayList<>(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
-        }
-    }
-
-    private AdaptiveSearchResult adaptiveSemanticSearchWithPermission(String query,
-                                                                      String userDbId,
-                                                                      List<String> userEffectiveTags,
-                                                                      RetrievalBudget budget,
-                                                                      List<String> scopePaperIds,
-                                                                      List<Float> queryVector) {
-        try {
-            List<SearchResult> accepted = new ArrayList<>();
-            long startedAt = System.nanoTime();
-            int offset = 0;
-            int acceptedTokenEstimate = 0;
-            int scannedCount = 0;
-            PaperRetrievalService.StopReason stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
-            boolean contextBudgetReached = false;
-            while (withinLatencyBudget(startedAt, budget)) {
-                int pageOffset = offset;
-                int recallK = Math.max(budget.pageBatchSize() * 30, pageOffset + budget.pageBatchSize());
-                SearchResponse<PaperChunkDocument> response = esClient.search(s -> {
-                            s.index(PaperSearchIndex.INDEX_NAME);
-                            s.from(pageOffset);
-                            s.size(budget.pageBatchSize());
-                            s.knn(kn -> kn
-                                    .field("vector")
-                                    .queryVector(queryVector)
-                                    .k(recallK)
-                                    .numCandidates(recallK)
-                                    .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
-                                    .filter(f -> paperScopeFilter(f, scopePaperIds))
-                            );
-                            s.query(q -> q.bool(b -> b
-                                    .filter(f -> permissionFilter(f, userDbId, userEffectiveTags))
-                                    .filter(f -> paperScopeFilter(f, scopePaperIds))
-                            ));
-                            return s;
-                        }, PaperChunkDocument.class);
-
-                if (response.hits().hits().isEmpty()) {
-                    stopReason = accepted.isEmpty()
-                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
-                            : PaperRetrievalService.StopReason.EXHAUSTED;
-                    break;
-                }
-                scannedCount += response.hits().hits().size();
-                int acceptedBeforePage = accepted.size();
-                for (var hit : response.hits().hits()) {
-                    SearchResult result = toSearchResult(hit.source(), hit.score(), "SEMANTIC");
-                    if (!EvidenceQuality.isUsable(result, budget.minScore())) {
-                        continue;
-                    }
-                    int tokenEstimate = estimateTokens(EvidenceQuality.bestEvidenceText(result));
-                    if (acceptedTokenEstimate + tokenEstimate > budget.contextTokenBudget()) {
-                        contextBudgetReached = true;
-                        stopReason = PaperRetrievalService.StopReason.CONTEXT_BUDGET;
-                        break;
-                    }
-                    accepted.add(result);
-                    acceptedTokenEstimate += tokenEstimate;
-                }
-                if (contextBudgetReached) {
-                    break;
-                }
-                if (accepted.size() == acceptedBeforePage) {
-                    stopReason = accepted.isEmpty()
-                            ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
-                            : PaperRetrievalService.StopReason.PLATEAU;
-                    break;
-                }
-                offset += response.hits().hits().size();
-                Long total = response.hits().total() == null ? null : response.hits().total().value();
-                if (total != null && offset >= total) {
-                    stopReason = PaperRetrievalService.StopReason.EXHAUSTED;
-                    break;
-                }
-            }
-            if (!withinLatencyBudget(startedAt, budget)) {
-                stopReason = PaperRetrievalService.StopReason.LATENCY_BUDGET;
-            }
-            if (accepted.isEmpty() && stopReason == PaperRetrievalService.StopReason.EXHAUSTED) {
-                stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
-            }
-            attachPaperTitles(accepted);
-            attachTableEvidence(accepted);
-            finalizeReferenceEvidenceReadiness(accepted);
-            return adaptiveResult(accepted, scannedCount, stopReason);
-        } catch (Exception e) {
-            logger.error("自适应语义搜索失败", e);
-            return adaptiveResult(new ArrayList<>(), 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
-        }
-    }
-
-    private AdaptiveSearchResult fuseAdaptiveResults(AdaptiveSearchResult semanticResult,
-                                                     AdaptiveSearchResult keywordResult) {
-        Map<String, SearchResult> fused = new LinkedHashMap<>();
-        int scannedCount = 0;
-        PaperRetrievalService.StopReason stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
-        if (semanticResult != null) {
-            scannedCount += semanticResult.scannedCount();
-            stopReason = mergeStopReason(stopReason, semanticResult.stopReason());
-            for (SearchResult result : semanticResult.results()) {
-                fused.putIfAbsent(resultKey(result), result);
-            }
-        }
-        if (keywordResult != null) {
-            scannedCount += keywordResult.scannedCount();
-            stopReason = mergeStopReason(stopReason, keywordResult.stopReason());
-            for (SearchResult result : keywordResult.results()) {
-                fused.putIfAbsent(resultKey(result), result);
-            }
-        }
-        List<SearchResult> results = new ArrayList<>(fused.values());
-        if (results.isEmpty()) {
-            stopReason = PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE;
-        }
-        return adaptiveResult(results, scannedCount, stopReason);
-    }
-
-    private PaperRetrievalService.StopReason mergeStopReason(PaperRetrievalService.StopReason current,
-                                                             PaperRetrievalService.StopReason next) {
-        if (next == null) {
-            return current == null ? PaperRetrievalService.StopReason.EXHAUSTED : current;
-        }
-        if (next == PaperRetrievalService.StopReason.LATENCY_BUDGET
-                || current == PaperRetrievalService.StopReason.LATENCY_BUDGET) {
-            return PaperRetrievalService.StopReason.LATENCY_BUDGET;
-        }
-        if (next == PaperRetrievalService.StopReason.CONTEXT_BUDGET
-                || current == PaperRetrievalService.StopReason.CONTEXT_BUDGET) {
-            return PaperRetrievalService.StopReason.CONTEXT_BUDGET;
-        }
-        if (next == PaperRetrievalService.StopReason.PLATEAU
-                || current == PaperRetrievalService.StopReason.PLATEAU) {
-            return PaperRetrievalService.StopReason.PLATEAU;
-        }
-        if (current == null || current == PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE) {
-            return next;
-        }
-        return current;
-    }
-
-    private String resultKey(SearchResult result) {
-        if (result == null) {
-            return "";
-        }
-        return result.getPaperId() + ":" + result.getChunkId();
-    }
-
-    private AdaptiveSearchResult adaptiveResult(List<SearchResult> results,
-                                                int scannedCount,
-                                                PaperRetrievalService.StopReason stopReason) {
-        List<SearchResult> safeResults = results == null ? List.of() : results;
+                        "",
+                        List.of(),
+                        null,
+                        null,
+                        topK
+                )
+        );
+        List<SearchResult> results = result.locations().stream().map(this::toSearchResult).toList();
         return new AdaptiveSearchResult(
-                safeResults,
-                scannedCount,
-                safeResults.size(),
-                (int) safeResults.stream().map(SearchResult::getPaperId).filter(id -> id != null && !id.isBlank()).distinct().count(),
-                stopReason == null ? PaperRetrievalService.StopReason.EXHAUSTED : stopReason
+                results,
+                result.matchedCount(),
+                results.size(),
+                (int) results.stream().map(SearchResult::getPaperId).distinct().count(),
+                results.isEmpty()
+                        ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+                        : PaperRetrievalService.StopReason.EXHAUSTED
         );
     }
 
-    /**
-     * 生成查询向量，返回 List<Float>，失败时返回 null
-     */
-    private List<Float> embedToVectorList(String text, String requesterId, Duration timeout) {
-        try {
-            List<float[]> vecs = embeddingClient.embed(List.of(text), requesterId, EmbeddingClient.UsageType.QUERY, timeout);
-            if (vecs == null || vecs.isEmpty()) {
-                logger.warn("生成的向量为空");
-                return null;
-            }
-            float[] raw = vecs.get(0);
-            List<Float> list = new ArrayList<>(raw.length);
-            for (float v : raw) {
-                list.add(v);
-            }
-            return list;
-        } catch (Exception e) {
-            logger.error("生成向量失败", e);
-            return null;
+    public AdaptiveSearchResult searchPaperCandidatesWithPermission(String query,
+                                                                     String userId,
+                                                                     RetrievalBudget budget,
+                                                                     List<String> scopePaperIds) {
+        List<String> scope = effectiveScope(userId, scopePaperIds);
+        if (scope.isEmpty()) {
+            return empty();
         }
+        int limit = Math.min(100, Math.max(1, budget == null ? 20 : budget.pageBatchSize()));
+        CorpusRetrievalService.PaperSearchResult result = corpusRetrievalService.searchPapers(
+                new CorpusRetrievalService.PaperSearchQuery(
+                        numericUserId(userId),
+                        scope,
+                        query,
+                        scope,
+                        List.of(),
+                        List.of(),
+                        null,
+                        null,
+                        0,
+                        limit
+                )
+        );
+        List<SearchResult> results = result.candidates().stream().map(this::toPaperResult).toList();
+        return new AdaptiveSearchResult(
+                results,
+                result.matchedCount(),
+                results.size(),
+                results.size(),
+                results.isEmpty()
+                        ? PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE
+                        : PaperRetrievalService.StopReason.EXHAUSTED
+        );
+    }
+
+    private List<String> effectiveScope(String userId, List<String> requestedScope) {
+        if (requestedScope != null && !requestedScope.isEmpty()) {
+            return requestedScope.stream().filter(id -> id != null && !id.isBlank()).distinct().toList();
+        }
+        return paperService.getAccessiblePapers(userId, null).stream()
+                .map(Paper::getPaperId)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private SearchResult toSearchResult(CorpusRetrievalService.LocationCandidate candidate) {
+        SearchResult result = new SearchResult(
+                candidate.paperId(),
+                Math.abs(candidate.locationRef().hashCode()),
+                candidate.preview(),
+                candidate.fusedScore(),
+                null,
+                null,
+                false,
+                candidate.title(),
+                candidate.page(),
+                candidate.locationRef(),
+                "QDRANT_HYBRID",
+                candidate.preview(),
+                candidate.elementType(),
+                candidate.section(),
+                null,
+                null,
+                null,
+                null
+        );
+        result.setSourceKind("reading_model_location");
+        result.setEvidenceRole("NAVIGATION_PREVIEW");
+        return result;
+    }
+
+    private SearchResult toPaperResult(CorpusRetrievalService.PaperCard card) {
+        SearchResult result = new SearchResult(card.paperId(), 0, card.preview(), 1.0, card.title());
+        result.setOriginalFilename(card.filename());
+        result.setElementType("PAPER");
+        result.setRetrievalMode("PAPER_METADATA");
+        result.setSourceKind("paper_metadata");
+        result.setEvidenceRole("PAPER_METADATA");
+        return result;
+    }
+
+    private Long numericUserId(String userId) {
+        try {
+            return Long.valueOf(userId);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Library search requires a numeric user id", exception);
+        }
+    }
+
+    private AdaptiveSearchResult empty() {
+        return new AdaptiveSearchResult(
+                List.of(), 0, 0, 0, PaperRetrievalService.StopReason.NO_USABLE_EVIDENCE);
     }
 
     static Duration queryEmbeddingTimeout(RetrievalBudget budget) {
         RetrievalBudget effectiveBudget = budget == null ? RetrievalBudget.forQa() : budget;
         Duration byBudget = effectiveBudget.latencyBudget().dividedBy(3);
-        Duration min = Duration.ofMillis(500);
-        Duration max = Duration.ofSeconds(2);
-        if (byBudget.compareTo(min) < 0) {
-            return min;
+        Duration minimum = Duration.ofMillis(500);
+        Duration maximum = Duration.ofSeconds(2);
+        if (byBudget.compareTo(minimum) < 0) {
+            return minimum;
         }
-        return byBudget.compareTo(max) > 0 ? max : byBudget;
-    }
-
-    private void applyExtendedEvidenceFields(SearchResult result, PaperChunkDocument source) {
-        result.setFigureId(source.getFigureId());
-        result.setFormulaId(source.getFormulaId());
-        result.setEvidenceRole(source.getEvidenceRole());
-    }
-
-    private SearchResult toSearchResult(PaperChunkDocument source, Double score, String retrievalMode) {
-        if (source == null) {
-            return new SearchResult(null, null, "", score);
-        }
-        String text = source.getTextContent() == null ? "" : source.getTextContent();
-        SearchResult result = new SearchResult(
-                source.getPaperId(),
-                source.getChunkId(),
-                text,
-                score,
-                source.getUserId(),
-                source.getOrgTag(),
-                source.isPublic(),
-                null,
-                source.getPageNumber(),
-                source.getAnchorText(),
-                retrievalMode,
-                text,
-                source.getElementType(),
-                source.getSectionTitle(),
-                source.getSectionLevel(),
-                source.getBboxJson(),
-                source.getParserName(),
-                source.getParserVersion(),
-                source.getSourceKind(),
-                source.getTableId(),
-                null,
-                null,
-                false
-        );
-        applyExtendedEvidenceFields(result, source);
-        return result;
-    }
-
-    private SearchResult toPaperCandidateResult(PaperSearchDocument source, Double score) {
-        if (source == null) {
-            return new SearchResult(null, null, "", score);
-        }
-        String text = paperCandidateText(source);
-        SearchResult result = new SearchResult(
-                source.getPaperId(),
-                0,
-                text,
-                score,
-                source.getUserId(),
-                source.getOrgTag(),
-                source.isPublic(),
-                source.getPaperTitle(),
-                source.getOriginalFilename(),
-                null,
-                null,
-                "PAPER_METADATA",
-                source.getSearchText(),
-                "PAPER",
-                "title/abstract",
-                null,
-                null,
-                "paper_search",
-                null,
-                "TEXT",
-                null,
-                null,
-                null,
-                false
-        );
-        result.setEvidenceRole("PAPER_METADATA");
-        return result;
-    }
-
-    private String paperCandidateText(PaperSearchDocument source) {
-        List<String> parts = new ArrayList<>();
-        if (source.getPaperTitle() != null && !source.getPaperTitle().isBlank()) {
-            parts.add("Title: " + source.getPaperTitle().trim());
-        }
-        if (source.getAbstractText() != null && !source.getAbstractText().isBlank()) {
-            parts.add("Abstract: " + source.getAbstractText().trim());
-        }
-        if (source.getAuthors() != null && !source.getAuthors().isBlank()) {
-            parts.add("Authors: " + source.getAuthors().trim());
-        }
-        if (source.getVenue() != null && !source.getVenue().isBlank()) {
-            parts.add("Venue: " + source.getVenue().trim());
-        }
-        if (source.getYear() != null) {
-            parts.add("Year: " + source.getYear());
-        }
-        if (parts.isEmpty()) {
-            return source.getSearchText() == null ? "" : source.getSearchText();
-        }
-        return String.join("\n", parts);
-    }
-
-    private ObjectBuilder<Query> permissionFilter(Query.Builder f, String userDbId, List<String> userEffectiveTags) {
-        return f.bool(bf -> bf
-                .should(s1 -> s1.term(t -> t.field("userId").value(userDbId)))
-                .should(s2 -> s2.term(t -> t.field("public").value(true)))
-                .should(s3 -> {
-                    if (userEffectiveTags.isEmpty()) {
-                        return s3.matchNone(mn -> mn);
-                    } else if (userEffectiveTags.size() == 1) {
-                        return s3.term(t -> t.field("orgTag").value(userEffectiveTags.get(0)));
-                    }
-                    return s3.bool(inner -> {
-                        userEffectiveTags.forEach(tag ->
-                                inner.should(sh2 -> sh2.term(t -> t.field("orgTag").value(tag))));
-                        return inner;
-                    });
-                })
-        );
-    }
-
-    private ObjectBuilder<Query> paperScopeFilter(Query.Builder f, List<String> paperIds) {
-        List<String> effectivePaperIds = normalizeScopePaperIds(paperIds);
-        if (effectivePaperIds.isEmpty()) {
-            return f.matchAll(m -> m);
-        }
-        if (effectivePaperIds.size() == 1) {
-            return f.term(t -> t.field("paperId").value(effectivePaperIds.get(0)));
-        }
-        return f.terms(t -> t
-                .field("paperId")
-                .terms(v -> v.value(effectivePaperIds.stream().map(FieldValue::of).toList()))
-        );
-    }
-
-    private List<String> normalizeScopePaperIds(List<String> paperIds) {
-        if (paperIds == null || paperIds.isEmpty()) {
-            return List.of();
-        }
-        return paperIds.stream()
-                .filter(paperId -> paperId != null && !paperId.isBlank())
-                .distinct()
-                .toList();
-    }
-
-    private boolean withinLatencyBudget(long startedAtNanos, RetrievalBudget budget) {
-        return System.nanoTime() - startedAtNanos < budget.latencyBudget().toNanos();
-    }
-
-    private int estimateTokens(String text) {
-        if (text == null || text.isBlank()) {
-            return 0;
-        }
-        return Math.max(1, text.length() / 4);
+        return byBudget.compareTo(maximum) > 0 ? maximum : byBudget;
     }
 
     public record AdaptiveSearchResult(
@@ -605,7 +178,7 @@ public class HybridSearchService {
             PaperRetrievalService.StopReason stopReason
     ) {
         public AdaptiveSearchResult {
-            results = results == null ? List.of() : results;
+            results = results == null ? List.of() : List.copyOf(results);
             stopReason = stopReason == null ? PaperRetrievalService.StopReason.EXHAUSTED : stopReason;
         }
     }
@@ -619,265 +192,7 @@ public class HybridSearchService {
     ) {
         public static SearchBranchPlan forQuery(String query) {
             boolean hasQuery = query != null && !query.isBlank();
-            return new SearchBranchPlan(hasQuery, false, hasQuery, true, KEYWORD_MATCH_FIELD);
+            return new SearchBranchPlan(hasQuery, false, hasQuery, true, "searchable_text");
         }
-    }
-
-    /**
-     * 获取用户的有效组织标签（包含层级关系）
-     */
-    private List<String> getUserEffectiveOrgTags(String userId) {
-        logger.debug("获取用户有效组织标签，用户ID: {}", userId);
-        try {
-            // 获取用户名
-            User user;
-            try {
-                Long userIdLong = Long.parseLong(userId);
-                logger.debug("解析用户ID为Long: {}", userIdLong);
-                user = userRepository.findById(userIdLong)
-                    .orElseThrow(() -> new CustomException("User not found with ID: " + userId, HttpStatus.NOT_FOUND));
-                logger.debug("通过ID找到用户: {}", user.getUsername());
-            } catch (NumberFormatException e) {
-                // 如果userId不是数字格式，则假设它就是username
-                logger.debug("用户ID不是数字格式，作为用户名查找: {}", userId);
-                user = userRepository.findByUsername(userId)
-                    .orElseThrow(() -> new CustomException("User not found: " + userId, HttpStatus.NOT_FOUND));
-                logger.debug("通过用户名找到用户: {}", user.getUsername());
-            }
-
-            // 通过orgTagCacheService获取用户的有效标签集合
-            List<String> effectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
-            logger.debug("用户 {} 的有效组织标签: {}", user.getUsername(), effectiveTags);
-            return effectiveTags;
-        } catch (Exception e) {
-            logger.error("获取用户有效组织标签失败: {}", e.getMessage(), e);
-            return Collections.emptyList(); // 返回空列表作为默认值
-        }
-    }
-
-    /**
-     * 获取用户的数据库ID用于权限过滤
-     */
-    private String getUserDbId(String userId) {
-        logger.debug("获取用户数据库ID，用户ID: {}", userId);
-        try {
-            // 获取用户名
-            User user;
-            try {
-                Long userIdLong = Long.parseLong(userId);
-                logger.debug("解析用户ID为Long: {}", userIdLong);
-                user = userRepository.findById(userIdLong)
-                    .orElseThrow(() -> new CustomException("User not found with ID: " + userId, HttpStatus.NOT_FOUND));
-                logger.debug("通过ID找到用户: {}", user.getUsername());
-                return userIdLong.toString(); // 如果输入已经是数字ID，直接返回
-            } catch (NumberFormatException e) {
-                // 如果userId不是数字格式，则假设它就是username
-                logger.debug("用户ID不是数字格式，作为用户名查找: {}", userId);
-                user = userRepository.findByUsername(userId)
-                    .orElseThrow(() -> new CustomException("User not found: " + userId, HttpStatus.NOT_FOUND));
-                logger.debug("通过用户名找到用户: {}, ID: {}", user.getUsername(), user.getId());
-                return user.getId().toString(); // 返回用户的数据库ID
-            }
-        } catch (Exception e) {
-            logger.error("获取用户数据库ID失败: {}", e.getMessage(), e);
-            throw new RuntimeException("获取用户数据库ID失败", e);
-        }
-    }
-
-    private void attachPaperTitles(List<SearchResult> results) {
-        if (results == null || results.isEmpty()) {
-            return;
-        }
-        try {
-            Set<String> paperIds = results.stream()
-                    .map(SearchResult::getPaperId)
-                    .collect(Collectors.toSet());
-            List<Paper> uploads = paperRepository.findByPaperIdIn(new java.util.ArrayList<>(paperIds));
-            Map<String, Paper> paperById = uploads.stream()
-                    .collect(Collectors.toMap(Paper::getPaperId, paper -> paper, (existing, replacement) -> existing));
-            results.forEach(result -> {
-                Paper paper = paperById.get(result.getPaperId());
-                if (paper != null) {
-                    result.setPaperTitle(paper.getPaperTitle());
-                    result.setOriginalFilename(paper.getOriginalFilename());
-                    applySourceProvenance(result, paper);
-                }
-                applyVisualAssetAvailability(result);
-            });
-        } catch (Exception e) {
-            logger.error("补充论文标题失败", e);
-        }
-    }
-
-    private void attachTableEvidence(List<SearchResult> results) {
-        if (results == null || results.isEmpty()) {
-            return;
-        }
-        for (SearchResult result : results) {
-            if (!"TABLE".equalsIgnoreCase(result.getSourceKind())
-                    || result.getPaperId() == null
-                    || result.getTableId() == null) {
-                continue;
-            }
-            try {
-                Optional<PaperReadingElement> table = currentReadingElement(
-                        result.getPaperId(),
-                        result.getTableId(),
-                        List.of("TABLE")
-                );
-                table.ifPresent(element -> {
-                    applyTableEvidence(result, element);
-                    result.setTableId(element.getReadingElementId());
-                });
-                String visualTargetId = table
-                        .map(PaperReadingElement::getReadingElementId)
-                        .orElse(result.getTableId());
-                result.setTableScreenshotAvailable(readingElementAssetAvailable(
-                        result.getPaperId(),
-                        visualTargetId,
-                        PaperVisualAsset.TYPE_TABLE_CROP,
-                        PaperVisualAsset.TYPE_PARSER_IMAGE
-                ));
-            } catch (Exception e) {
-                logger.warn("补充表格 evidence 失败: paperId={}, tableId={}, error={}",
-                        result.getPaperId(), result.getTableId(), e.getMessage());
-            }
-        }
-    }
-
-    private void applyTableEvidence(SearchResult result, PaperReadingElement table) {
-        result.setTableText(table.getBodyText());
-        result.setTableMarkdown(structuredPayloadText(table, "tableMarkdown"));
-    }
-
-    private void applySourceProvenance(SearchResult result, Paper paper) {
-        result.setSourceType("PDF");
-    }
-
-    private void applyVisualAssetAvailability(SearchResult result) {
-        if (result.getPaperId() == null || result.getPaperId().isBlank()) {
-            return;
-        }
-        if (result.getPageNumber() != null) {
-            boolean pageAvailable = paperVisualAssetRepository
-                    .findFirstByPaperIdAndAssetTypeAndPageNumber(
-                            result.getPaperId(),
-                            PaperVisualAsset.TYPE_PAGE_SCREENSHOT,
-                            result.getPageNumber()
-                    )
-                    .isPresent();
-            result.setPageScreenshotAvailable(pageAvailable);
-        }
-        if (result.getFigureId() != null && !result.getFigureId().isBlank()) {
-            Optional<PaperReadingElement> figure = currentReadingElement(
-                    result.getPaperId(),
-                    result.getFigureId(),
-                    List.of("IMAGE", "CHART")
-            );
-            figure.ifPresent(element -> result.setFigureId(element.getReadingElementId()));
-            String visualTargetId = figure
-                    .map(PaperReadingElement::getReadingElementId)
-                    .orElse(result.getFigureId());
-            result.setFigureScreenshotAvailable(readingElementAssetAvailable(
-                    result.getPaperId(),
-                    visualTargetId,
-                    PaperVisualAsset.TYPE_FIGURE_CROP,
-                    PaperVisualAsset.TYPE_CHART_CROP,
-                    PaperVisualAsset.TYPE_PARSER_IMAGE
-            ));
-        }
-    }
-
-    private Optional<PaperReadingElement> currentReadingElement(String paperId, String elementId, List<String> elementTypes) {
-        if (paperId == null || paperId.isBlank()
-                || elementId == null || elementId.isBlank()
-                || paperReadingModelRepository == null
-                || paperReadingElementRepository == null) {
-            return Optional.empty();
-        }
-        return paperReadingModelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId)
-                .flatMap(model -> paperReadingElementRepository
-                        .findByPaperIdAndModelVersionAndElementTypeInOrderByPageNumberAscReadingOrderAscIdAsc(
-                                paperId,
-                                model.getModelVersion(),
-                                elementTypes
-                        )
-                        .stream()
-                        .filter(element -> elementId.equals(element.getReadingElementId())
-                                || elementId.equals(element.getSourceObjectId())
-                                || elementId.equals(element.getParserElementId()))
-                        .findFirst());
-    }
-
-    private boolean readingElementAssetAvailable(String paperId, String readingElementId, String... assetTypes) {
-        if (paperId == null || paperId.isBlank()
-                || readingElementId == null || readingElementId.isBlank()
-                || assetTypes == null
-                || paperVisualAssetRepository == null) {
-            return false;
-        }
-        for (String assetType : assetTypes) {
-            boolean available = paperVisualAssetRepository
-                    .findFirstByPaperIdAndAssetTypeAndReadingElementId(paperId, assetType, readingElementId)
-                    .filter(this::hasStoredObject)
-                    .isPresent();
-            if (available) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean hasStoredObject(PaperVisualAsset asset) {
-        return asset != null
-                && PaperVisualAsset.STATUS_AVAILABLE.equals(asset.getAssetStatus())
-                && asset.getObjectKey() != null
-                && !asset.getObjectKey().isBlank();
-    }
-
-    private String structuredPayloadText(PaperReadingElement element, String field) {
-        if (element == null || element.getStructuredPayloadJson() == null || element.getStructuredPayloadJson().isBlank()) {
-            return null;
-        }
-        try {
-            JsonNode value = objectMapper.readTree(element.getStructuredPayloadJson()).path(field);
-            return value.isMissingNode() || value.isNull() ? null : value.asText();
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private void finalizeReferenceEvidenceReadiness(List<SearchResult> results) {
-        if (results == null || results.isEmpty()) {
-            return;
-        }
-        for (SearchResult result : results) {
-            boolean pageAvailable = Boolean.TRUE.equals(result.getPageScreenshotAvailable());
-            boolean pdfEvidenceAvailable = pageAvailable;
-            result.setSourceType("PDF");
-            result.setPdfEvidenceAvailable(pdfEvidenceAvailable);
-            result.setEvidenceAssetLevel(pdfEvidenceAvailable
-                    ? "PDF_VISUAL"
-                    : "PDF_PENDING_ASSETS");
-            result.setAssetWarnings(referenceAssetWarnings(result, pageAvailable));
-        }
-    }
-
-    private List<String> referenceAssetWarnings(SearchResult result, boolean pageAvailable) {
-        List<String> warnings = new ArrayList<>();
-        if (result.getPageNumber() != null && !pageAvailable) {
-            warnings.add("page_screenshots_missing");
-        }
-        if ("TABLE".equalsIgnoreCase(result.getSourceKind())
-                && result.getTableId() != null
-                && !Boolean.TRUE.equals(result.getTableScreenshotAvailable())) {
-            warnings.add("table_screenshot_missing");
-        }
-        if (("FIGURE".equalsIgnoreCase(result.getSourceKind()) || "CHART".equalsIgnoreCase(result.getSourceKind()))
-                && result.getFigureId() != null
-                && !Boolean.TRUE.equals(result.getFigureScreenshotAvailable())) {
-            warnings.add("figure_screenshot_missing");
-        }
-        return warnings;
     }
 }

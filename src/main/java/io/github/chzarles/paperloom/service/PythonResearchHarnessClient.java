@@ -165,6 +165,7 @@ public class PythonResearchHarnessClient {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("request_id", request.generationId());
         body.put("conversation_id", request.conversationId());
+        body.put("user_id", request.userId());
         body.put("user_message", request.userMessage());
         body.put("history", request.history());
         body.put("scope", Map.of(

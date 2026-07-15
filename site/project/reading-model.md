@@ -8,10 +8,11 @@ pageClass: architecture-page
 # Reading Model 与 harness_py 工具
 
 Reading Model 是产品长期保存的论文结构。它回答页面、章节、表格、图片、公式和来源身份怎样被稳定
-表达。单次请求进入 `harness_py` 后，`DockerMySqlProductCorpusStore` 把其中一部分投影成
-`GoldenDataset` 和 `ReadingDocument`，`ReadingCorpusTools` 再向 Agents SDK 暴露具体 Function Tool。
+表达。产品请求进入 `harness_py` 后，`JavaCorpusGatewayReader` 通过 Java Corpus API 使用 Qdrant
+检索候选、用 MySQL 精确读取；`ReadingCorpusTools` 继续向 Agents SDK 暴露不变的 Function Tool。
+Golden Fixture 才使用内存 `GoldenDataset` 和 BM25 Adapter。
 
-完整 Reading Model 比当前 Python 检索面更丰富，因此 BM25、Dense Retrieval 和 Model Provider 可以
+完整 Reading Model 比 Harness 的模型编排面更丰富，因此 Sparse、Dense Retrieval 和 Model Provider 可以
 独立变化，论文与历史引用仍保留长期身份。
 
 ## Reading Model 的构成

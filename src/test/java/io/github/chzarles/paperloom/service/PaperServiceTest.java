@@ -52,7 +52,7 @@ class PaperServiceTest {
     private MinioClient minioClient;
 
     @Mock
-    private ElasticsearchService elasticsearchService;
+    private ReadingModelQdrantIndexService qdrantIndexService;
 
     @Mock
     private UploadService uploadService;
@@ -79,7 +79,7 @@ class PaperServiceTest {
         ReflectionTestUtils.setField(paperService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(paperService, "chunkInfoRepository", chunkInfoRepository);
         ReflectionTestUtils.setField(paperService, "minioClient", minioClient);
-        ReflectionTestUtils.setField(paperService, "elasticsearchService", elasticsearchService);
+        ReflectionTestUtils.setField(paperService, "qdrantIndexService", qdrantIndexService);
         ReflectionTestUtils.setField(paperService, "uploadService", uploadService);
         ReflectionTestUtils.setField(paperService, "paperParserArtifactService", paperParserArtifactService);
         ReflectionTestUtils.setField(paperService, "paperVisualAssetService", paperVisualAssetService);
@@ -154,7 +154,7 @@ class PaperServiceTest {
         verify(paperRepository).delete(target);
         verify(paperRepository).flush();
         verify(paperRepository).countByPaperId("same-hash");
-        verifyNoInteractions(elasticsearchService);
+        verifyNoInteractions(qdrantIndexService);
         verifyNoInteractions(paperTextChunkRepository);
         verifyNoInteractions(chunkInfoRepository);
     }
@@ -177,7 +177,7 @@ class PaperServiceTest {
         paperService.deletePaper("only-hash", "2", "USER");
 
         verify(uploadService).deleteFileMark("only-hash", "2");
-        verify(elasticsearchService).deleteByPaperId("only-hash");
+        verify(qdrantIndexService).deleteByPaperId("only-hash");
         verify(minioClient, times(2)).removeObject(any(RemoveObjectArgs.class));
         verify(paperTextChunkRepository).deleteByPaperId("only-hash");
         verify(chunkInfoRepository).deleteByPaperId("only-hash");

@@ -1,11 +1,8 @@
 package io.github.chzarles.paperloom.utils;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
-import io.github.chzarles.paperloom.config.PaperSearchIndex;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.repository.PaperRepository;
+import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import io.minio.CopyObjectArgs;
 import io.minio.CopySource;
 import io.minio.MinioClient;
@@ -41,7 +38,7 @@ public class MinioMigrationUtil {
     private PaperRepository paperRepository;
 
     @Autowired
-    private ElasticsearchClient esClient;
+    private ReadingModelQdrantIndexService qdrantIndexService;
 
     /**
      * 迁移所有文件从旧路径到新路径
@@ -167,14 +164,14 @@ public class MinioMigrationUtil {
         logger.warn("========================================");
 
         try {
-            // 1. 清空 ElasticSearch
-            logger.info("清空 ElasticSearch 索引...");
-            DeleteByQueryRequest deleteRequest = DeleteByQueryRequest.of(d -> d
-                .index(PaperSearchIndex.INDEX_NAME)
-                .query(Query.of(q -> q.matchAll(m -> m)))
-            );
-            esClient.deleteByQuery(deleteRequest);
-            logger.info("✅ ElasticSearch 已清空");
+            List<Paper> files = paperRepository.findAll();
+
+            // 1. 清空 Qdrant 中这些产品论文的可重建索引。
+            logger.info("清空 Qdrant 论文索引...");
+            for (Paper file : files) {
+                qdrantIndexService.deleteByPaperId(file.getPaperId());
+            }
+            logger.info("Qdrant 论文索引已清空");
 
             // 2. 清空 MySQL 表
             logger.info("清空 MySQL 表...");
@@ -183,7 +180,6 @@ public class MinioMigrationUtil {
 
             // 3. 清空 MinIO merged 目录
             logger.info("清空 MinIO merged 目录...");
-            List<Paper> files = paperRepository.findAll();
             for (Paper file : files) {
                 try {
                     minioClient.removeObject(

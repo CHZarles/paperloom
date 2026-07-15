@@ -48,7 +48,7 @@ public final class ServiceBackedPageWindowBenchmarkCli {
 
     static String[] springStartupArgs() {
         return new String[]{
-                "--elasticsearch.init.enabled=false",
+                "--qdrant.base-url=http://127.0.0.1:6333",
                 "--spring.kafka.listener.auto-startup=false",
                 "--admin.bootstrap.enabled=false",
                 "--paper.bootstrap.enabled=false"

@@ -22,7 +22,7 @@ fixes target the latest revision only.
 
 - Keep `.env` files and provider credentials outside version control.
 - Disable administrator bootstrap after creating the initial account.
-- Use trusted TLS certificates in production; do not enable insecure Elasticsearch trust settings.
+- Use trusted TLS certificates for all production storage and retrieval services.
 - Treat uploaded PDFs and parser artifacts as untrusted input.
-- Restrict MinIO, MySQL, Redis, Kafka, Elasticsearch, and the research harness to trusted networks.
+- Restrict MinIO, MySQL, Redis, Kafka, Qdrant, and the research harness to trusted networks.
 - Rotate any credential immediately if it is exposed in logs, traces, screenshots, or Git history.

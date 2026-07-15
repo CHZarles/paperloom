@@ -160,7 +160,7 @@ class ProductPdfParserSmokeRunnerTest {
     @Test
     void cliUsesSpringStartupArgsThatAvoidEvalSideEffects() {
         assertTrue(Arrays.asList(ProductPdfParserSmokeCli.springStartupArgs())
-                .contains("--elasticsearch.init.enabled=false"));
+                .contains("--qdrant.base-url=http://127.0.0.1:6333"));
         assertTrue(Arrays.asList(ProductPdfParserSmokeCli.springStartupArgs())
                 .contains("--spring.kafka.listener.auto-startup=false"));
         assertTrue(Arrays.asList(ProductPdfParserSmokeCli.springStartupArgs())

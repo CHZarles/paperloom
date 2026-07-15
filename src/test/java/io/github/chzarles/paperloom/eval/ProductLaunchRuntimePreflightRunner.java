@@ -95,9 +95,9 @@ public class ProductLaunchRuntimePreflightRunner {
                 List.of(200)
         ));
         requests.add(ProbeRequest.http(
-                "elasticsearch_health",
-                elasticsearchUrl(env, options),
-                List.of(200, 401, 403)
+                "qdrant_health",
+                qdrantUrl(env, options),
+                List.of(200)
         ));
         String mineruBase = value(env, options, "PAPER_PARSING_MINERU_BASE_URL", "http://localhost:8000");
         String mineruHealth = value(env, options, "PAPER_PARSING_MINERU_HEALTH_PATH", "/health");
@@ -141,11 +141,9 @@ public class ProductLaunchRuntimePreflightRunner {
         return ProbeRequest.tcp(caseId, host, port);
     }
 
-    private String elasticsearchUrl(Map<String, String> env, Options options) {
-        String scheme = value(env, options, "ELASTICSEARCH_SCHEME", "http");
-        String host = value(env, options, "ELASTICSEARCH_HOST", "localhost");
-        int port = intValue(value(env, options, "ELASTICSEARCH_PORT", "9200"), 9200);
-        return scheme + "://" + host + ":" + port + "/_cluster/health";
+    private String qdrantUrl(Map<String, String> env, Options options) {
+        String baseUrl = value(env, options, "QDRANT_BASE_URL", "http://127.0.0.1:6333");
+        return trimTrailingSlash(baseUrl) + "/healthz";
     }
 
     private CaseResult runRequest(ProbeRequest request) {
@@ -273,8 +271,8 @@ public class ProductLaunchRuntimePreflightRunner {
                     + targetSuffix(target) + ".";
             case "minio_health" -> "- `minio_health`: start MinIO, initialize the upload bucket, or align `MINIO_ENDPOINT`"
                     + targetSuffix(target) + ".";
-            case "elasticsearch_health" -> "- `elasticsearch_health`: start Elasticsearch or align `ELASTICSEARCH_SCHEME`, "
-                    + "`ELASTICSEARCH_HOST`, `ELASTICSEARCH_PORT`, and credentials" + targetSuffix(target) + ".";
+            case "qdrant_health" -> "- `qdrant_health`: start Qdrant or align `QDRANT_BASE_URL` and its API key"
+                    + targetSuffix(target) + ".";
             case "mineru_health" -> "- `mineru_health`: start the self-hosted MinerU sidecar or align "
                     + "`PAPER_PARSING_MINERU_BASE_URL` and `PAPER_PARSING_MINERU_HEALTH_PATH`" + targetSuffix(target)
                     + ". Do not switch to the OpenDataLoader fallback for launch evidence.";

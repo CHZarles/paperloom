@@ -80,14 +80,15 @@ Tools 和 Model Client 只活到本次 `Runner.run` 结束。
 Evidence 和模型选项序列化到请求中，再调用 `/v1/research/stream`。Python 返回 NDJSON Progress，
 Java 负责取消、异常收口、用量结算以及向前端转发进度。
 
-### 4. Python 只加载已授权论文
+### 4. Python 只访问已授权论文
 
-`ResearchHarnessService` 要求 `scope.paper_ids` 非空，再让 `DockerMySqlProductCorpusStore` 查询这组
-Paper ID 对应的 Current `READING_MODEL_READY` 数据。Python 没有“查全库再自行过滤”的步骤。
+`ResearchHarnessService` 要求 `user_id` 与 `scope.paper_ids` 非空，再通过 `JavaCorpusGatewayReader`
+调用 Java Corpus API。Java 用 Qdrant 检索 Current Reading Model 候选并从 MySQL 精确读取。Python
+没有“查全库再自行过滤”或整批加载 Reading Element 的步骤。
 
 ### 5. 创建本轮不可变输入
 
-`LiveResearchChatHarness` 再次裁剪 Dataset，分配 `run_id`，可选地打开 `EvalRecorder`，然后创建
+`LiveResearchChatHarness` 再次裁剪 Metadata Dataset，分配 `run_id`，可选地打开 `EvalRecorder`，然后创建
 `TurnExecutionInput`。这个对象包含问题、文本历史、上一轮 Evidence、取消函数和进度监听器，交给
 Runtime 后保持不变。
 

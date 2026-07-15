@@ -33,8 +33,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 SPRING_DATA_REDIS_PORT=16379
                 SPRING_KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
                 MINIO_ENDPOINT=http://localhost:9000
-                ELASTICSEARCH_HOST=localhost
-                ELASTICSEARCH_PORT=9200
+                QDRANT_BASE_URL=http://127.0.0.1:6333
                 PAPER_PARSING_MINERU_BASE_URL=http://localhost:8000
                 PAPERLOOM_TRACE_ENABLED=true
                 PAPERLOOM_TRACE_ROOT=data/traces/product-react
@@ -53,7 +52,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 "redis_tcp",
                 "kafka_tcp",
                 "minio_health",
-                "elasticsearch_health",
+                "qdrant_health",
                 "mineru_health",
                 "llm_active_provider_smoke",
                 "embedding_active_provider_smoke",
@@ -104,8 +103,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 SPRING_DATA_REDIS_PORT=16379
                 SPRING_KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
                 MINIO_ENDPOINT=http://localhost:9000
-                ELASTICSEARCH_HOST=localhost
-                ELASTICSEARCH_PORT=9200
+                QDRANT_BASE_URL=http://127.0.0.1:6333
                 PAPER_PARSING_MINERU_BASE_URL=http://localhost:8000
                 DEEPSEEK_API_KEY=
                 EMBEDDING_API_KEY=

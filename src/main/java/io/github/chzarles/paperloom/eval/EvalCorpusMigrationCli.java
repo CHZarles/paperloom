@@ -154,13 +154,7 @@ public final class EvalCorpusMigrationCli {
                     output.println(corpus + " migrated chunks: " + chunks);
                 }
                 if (options.rebuildIndices()) {
-                    EvalCorpusIndexService indexService = new EvalCorpusIndexService();
-                    for (String corpus : options.selectedCorpora()) {
-                        EvalCorpusIndexService.EvalIndices indices = indexService.indicesFor(corpus);
-                        output.println(corpus + " eval paper index: " + indices.paperSearchIndex());
-                        output.println(corpus + " eval chunk index: " + indices.chunksIndex());
-                    }
-                    output.println("rebuildIndices requested; Elasticsearch indexing is handled by the eval retrieval/index task");
+                    output.println("rebuildIndices is no longer supported: eval data remains offline and product Qdrant indexes only Current Reading Models");
                 }
             } catch (SQLException exception) {
                 throw new IllegalStateException("Failed to migrate eval corpus rows", exception);

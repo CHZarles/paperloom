@@ -2,12 +2,19 @@ from __future__ import annotations
 
 import json
 import os
+import queue
+import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any
+import uvicorn
+from starlette.applications import Starlette
+from starlette.concurrency import run_in_threadpool
+from starlette.requests import Request
+from starlette.responses import JSONResponse, StreamingResponse
+from starlette.routing import Route
 
 from ..core.models import JsonMap, as_list, child_map
-from ..corpus.product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
+from ..corpus.gateway import JavaCorpusGateway
+from ..corpus.product_db_dataset import summarize_product_corpus
 from ..orchestration.conversation import ConversationState
 from ..orchestration.live_chat import LiveResearchChatHarness
 from ..orchestration.runtime import build_harness_runtime
@@ -25,6 +32,7 @@ class ResearchHarnessService:
         provider=None,
         harness=None,
         corpus_store=None,
+        corpus_gateway=None,
     ):
         self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
         self.runtime_name = "agents_sdk"
@@ -34,7 +42,10 @@ class ResearchHarnessService:
                 max_completion_tokens=max_completion_tokens,
             ),
         )
-        self.corpus_store = corpus_store or DockerMySqlProductCorpusStore()
+        # Product runtime uses the Java Corpus API. The direct MySQL store remains an explicit
+        # fixture/CLI adapter and is never selected as a silent production fallback.
+        self.corpus_store = corpus_store
+        self.corpus_gateway = corpus_gateway or (None if corpus_store is not None else JavaCorpusGateway())
         self.corpus_limit = max(1, corpus_limit)
 
     def run_turn(self, request: JsonMap) -> JsonMap:
@@ -58,11 +69,26 @@ class ResearchHarnessService:
         if not paper_ids:
             raise ValueError("scope.paper_ids must contain the papers authorized by Java")
 
-        # Java 是权限源，Python 只加载本次请求明确授权的论文。
-        dataset = self.corpus_store.load_dataset(
-            paper_ids=paper_ids,
-            limit=max(len(paper_ids), self.corpus_limit),
-        )
+        corpus_reader = None
+        if self.corpus_gateway is not None:
+            raw_user_id = request.get("user_id")
+            if raw_user_id in (None, ""):
+                raise ValueError("user_id is required for the Java Corpus API")
+            corpus_reader = self.corpus_gateway.reader(
+                request_id=str(request.get("request_id") or ""),
+                conversation_id=conversation_id,
+                user_id=int(raw_user_id),
+                scope_paper_ids=paper_ids,
+            )
+            dataset = corpus_reader.load_metadata_dataset()
+            missing = sorted(set(paper_ids) - set(dataset.paper_records_by_id))
+            if missing:
+                raise ValueError(f"Java Corpus API rejected unavailable scope papers: {missing}")
+        else:
+            dataset = self.corpus_store.load_dataset(
+                paper_ids=paper_ids,
+                limit=max(len(paper_ids), self.corpus_limit),
+            )
         state = _conversation_state(request, conversation_id, paper_ids)
         run, next_state = self.harness.run_turn(
             dataset,
@@ -70,6 +96,7 @@ class ResearchHarnessService:
             user_message,
             progress_listener=progress_listener,
             should_cancel=should_cancel,
+            corpus_reader=corpus_reader,
         )
         return _turn_response(request, run, next_state, dataset)
 
@@ -87,116 +114,7 @@ def serve(
         corpus_limit=corpus_limit,
     )
     token = internal_token or os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
-
-    class Handler(BaseHTTPRequestHandler):
-        server_version = "PaperLoomResearchHarness/1"
-
-        def do_GET(self) -> None:
-            if self.path != "/health":
-                self._json(404, {"error": "not_found"})
-                return
-            self._json(200, {
-                "status": "ok",
-                "harness": service.runtime_name,
-                "provider": service.provider.public_diagnostics(),
-                "transport": "ndjson-stream",
-            })
-
-        def do_POST(self) -> None:
-            if self.path not in {"/v1/research/turn", "/v1/research/stream"}:
-                self._json(404, {"error": "not_found"})
-                return
-            if token and self.headers.get("Authorization") != f"Bearer {token}":
-                self._json(401, {"error": "unauthorized"})
-                return
-            try:
-                payload = self._request_payload()
-                if self.path == "/v1/research/stream":
-                    self._stream_turn(payload)
-                    return
-                self._json(200, service.run_turn(payload))
-            except (ValueError, json.JSONDecodeError) as error:
-                self._json(400, {"error": "invalid_request", "message": str(error)})
-            except Exception as error:
-                self._json(500, {
-                    "error": "harness_failed",
-                    "error_type": type(error).__name__,
-                    "message": str(error),
-                })
-
-        def log_message(self, format: str, *args: Any) -> None:
-            return
-
-        def _request_payload(self) -> JsonMap:
-            length = int(self.headers.get("Content-Length") or 0)
-            payload = json.loads(self.rfile.read(length).decode("utf-8"))
-            if not isinstance(payload, dict):
-                raise ValueError("request body must be a JSON object")
-            return payload
-
-        def _stream_turn(self, payload: JsonMap) -> None:
-            self.send_response(200)
-            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
-            self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "close")
-            self.end_headers()
-            self.close_connection = True
-
-            generation_id = str(payload.get("request_id") or "").strip()
-            sequence = 0
-            disconnected = False
-
-            def emit(event: JsonMap) -> None:
-                nonlocal disconnected, sequence
-                sequence += 1
-                try:
-                    self._ndjson({
-                        "generationId": generation_id,
-                        "sequence": sequence,
-                        "timestamp": int(time.time() * 1000),
-                        **event,
-                    })
-                except (BrokenPipeError, ConnectionResetError):
-                    # 写流失败即视为客户端取消，后续模型或工具回调会看到该状态。
-                    disconnected = True
-                    raise
-
-            try:
-                emit({"type": "job_started"})
-                response = service.run_job(payload, emit, lambda: disconnected)
-                emit({"type": "answer_completed"})
-                self._ndjson({"type": "result", "payload": response})
-            except (BrokenPipeError, ConnectionResetError):
-                return
-            except Exception as error:
-                try:
-                    emit({
-                        "type": "job_failed",
-                        "status": "failed",
-                        "errorType": type(error).__name__,
-                        "message": str(error),
-                    })
-                    self._ndjson({
-                        "type": "error",
-                        "errorType": type(error).__name__,
-                        "message": str(error),
-                    })
-                except (BrokenPipeError, ConnectionResetError):
-                    return
-
-        def _ndjson(self, payload: JsonMap) -> None:
-            self.wfile.write((json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8"))
-            self.wfile.flush()
-
-        def _json(self, status: int, payload: JsonMap) -> None:
-            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-
-    server = ThreadingHTTPServer((host, port), Handler)
+    app = _service_app(service, token)
     print(json.dumps({
         "status": "ready",
         "host": host,
@@ -205,7 +123,110 @@ def serve(
         "runtime": service.runtime_name,
         "transport": "ndjson-stream",
     }, indent=2, sort_keys=True))
-    server.serve_forever()
+    uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
+    def authorized(request: Request) -> bool:
+        return not token or request.headers.get("Authorization") == f"Bearer {token}"
+
+    async def health(_request: Request) -> JSONResponse:
+        return JSONResponse({
+            "status": "ok",
+            "harness": service.runtime_name,
+            "provider": service.provider.public_diagnostics(),
+            "transport": "ndjson-stream",
+        })
+
+    async def turn(request: Request) -> JSONResponse:
+        if not authorized(request):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+        try:
+            payload = await _request_payload(request)
+            response = await run_in_threadpool(service.run_turn, payload)
+            return JSONResponse(response)
+        except (ValueError, json.JSONDecodeError) as error:
+            return JSONResponse({"error": "invalid_request", "message": str(error)}, status_code=400)
+        except Exception as error:
+            return JSONResponse({
+                "error": "harness_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, status_code=500)
+
+    async def stream(request: Request) -> JSONResponse | StreamingResponse:
+        if not authorized(request):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+        try:
+            payload = await _request_payload(request)
+        except (ValueError, json.JSONDecodeError) as error:
+            return JSONResponse({"error": "invalid_request", "message": str(error)}, status_code=400)
+        return StreamingResponse(
+            _stream_job(service, payload),
+            media_type="application/x-ndjson",
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    return Starlette(routes=[
+        Route("/health", health, methods=["GET"]),
+        Route("/v1/research/turn", turn, methods=["POST"]),
+        Route("/v1/research/stream", stream, methods=["POST"]),
+    ])
+
+
+async def _request_payload(request: Request) -> JsonMap:
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise ValueError("request body must be a JSON object")
+    return payload
+
+
+def _stream_job(service: ResearchHarnessService, payload: JsonMap):
+    events: queue.Queue[JsonMap | None] = queue.Queue()
+    disconnected = threading.Event()
+    generation_id = str(payload.get("request_id") or "").strip()
+    sequence = 0
+
+    def emit(event: JsonMap) -> None:
+        nonlocal sequence
+        sequence += 1
+        events.put({
+            "generationId": generation_id,
+            "sequence": sequence,
+            "timestamp": int(time.time() * 1000),
+            **event,
+        })
+
+    def run() -> None:
+        try:
+            emit({"type": "job_started"})
+            response = service.run_job(payload, emit, disconnected.is_set)
+            emit({"type": "answer_completed"})
+            events.put({"type": "result", "payload": response})
+        except Exception as error:
+            emit({
+                "type": "job_failed",
+                "status": "failed",
+                "errorType": type(error).__name__,
+                "message": str(error),
+            })
+            events.put({
+                "type": "error",
+                "errorType": type(error).__name__,
+                "message": str(error),
+            })
+        finally:
+            events.put(None)
+
+    threading.Thread(target=run, name=f"research-{generation_id or 'request'}", daemon=True).start()
+    try:
+        while True:
+            event = events.get()
+            if event is None:
+                return
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+    finally:
+        disconnected.set()
 
 
 def _conversation_state(request: JsonMap, conversation_id: str, paper_ids: list[str]) -> ConversationState:

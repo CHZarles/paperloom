@@ -1,6 +1,7 @@
 package io.github.chzarles.paperloom.repository;
 
 import io.github.chzarles.paperloom.model.PaperReadingModel;
+import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,8 @@ public interface PaperReadingModelRepository extends JpaRepository<PaperReadingM
     Optional<PaperReadingModel> findFirstByPaperIdAndIsCurrentTrue(String paperId);
 
     List<PaperReadingModel> findByPaperIdOrderByCreatedAtDesc(String paperId);
+
+    List<PaperReadingModel> findByIsCurrentTrueAndModelStatusOrderByPaperIdAsc(PaperReadingModelStatus modelStatus);
 
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)

@@ -14,6 +14,7 @@ from ..core.models import GoldenDataset, JsonMap
 from .memory import ResearchMemory
 
 if TYPE_CHECKING:
+    from ..corpus.gateway import CorpusReader
     from ..evaluation.eval_recorder import EvalRecorder
     from ..transport.provider_config import ProviderConfig
 
@@ -39,6 +40,7 @@ class TurnExecutionInput:
     question: str
     conversation_messages: list[JsonMap]
     research_memory: ResearchMemory
+    corpus_reader: CorpusReader | None = None
     progress_listener: ProgressListener | None = None
     should_cancel: CancellationCheck | None = None
     eval_recorder: EvalRecorder | None = None

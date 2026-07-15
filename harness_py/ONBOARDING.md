@@ -69,6 +69,7 @@ submit_research_answer
 - [`orchestration/agents/model.py`](orchestration/agents/model.py)：MiniMax Chat Completions 和
   GPT/Codex Responses Provider 如何适配成 SDK Model。
 - [`corpus/tools.py`](corpus/tools.py)：语料工具契约和授权状态机。
+- [`corpus/gateway.py`](corpus/gateway.py)：产品运行时如何调用 Java Corpus API。
 - [`transport/service.py`](transport/service.py)：Java 与 Harness 的 HTTP 契约。
 
 理解主干后，再读两份真实改造记录：
@@ -258,18 +259,21 @@ submit_research_answer
 论文卡片和位置预览只能用于导航。只有 `read_locations` 返回的正文片段可以支持论文内容
 声明。这条规则由代码校验，不依赖模型自觉。
 
-`find_reading_locations` 对多主题或多论文查询会主动扩大候选面：查询至少包含 6 个有效词，
-或者一次比较多篇论文时，即使模型请求了更小的 `top_k`，也会返回至少 12 个候选；候选总
-上限是 20。排序同时计算全文 BM25、局部 passage BM25、开头词项、章节标题和查询词覆盖，
-多论文查询还会保留每篇论文的候选下限，避免比较任务只看到某一篇论文或第一个表面匹配。
-单篇窄查询仍使用调用方指定的 `top_k`。
+产品运行时与离线 Fixture 共用这条授权链，但检索实现不同：
+
+- 产品运行时由 `JavaCorpusGatewayReader` 调 Java Corpus API；Java 用 Qdrant Dense + Sparse
+  双路召回、确定性 RRF 和多论文覆盖选择候选，再从 MySQL Hydrate 并验证 Current Location；
+- Golden Fixture、离线 Audit 和单元测试仍使用内存 BM25，包括 passage、开头词项、章节标题、
+  查询词覆盖和多论文候选下限。
+
+这不是线上静默 Fallback。产品 Corpus API 不可用时本轮明确失败，不会偷偷加载整批 MySQL 数据。
 
 Reading Model 有两个不同检索面，不要把它们混成一种 chunk：
 
 - `reading_elements` 是语义内容库存，一条 MinerU `content_list` item 对应一个 canonical element；
 - `pages` 是物理 PDF 页表面，只在导出诊断确认来自 `middle.json` 物理 projection 时参与检索。
 
-语义元素始终是主排名层。物理页使用独立 BM25 统计，最多占 3 个 grounding 候选，不会改变
+在内存 Fixture Adapter 中，语义元素始终是主排名层。物理页使用独立 BM25 统计，最多占 3 个 grounding 候选，不会改变
 语义元素的文档频率和原有排序。PAGE 候选只有在查询词能证明“同一语义内容出现在另一物理
 页”时才进入结果，因此用于跨页续文和精确页码，不是找不到结果后猜首页或相邻页。Anchor
 Audit 同样先检查指定页的 canonical element，只有该页没有对应语义元素时才使用真实 PAGE

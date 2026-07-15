@@ -21,6 +21,7 @@ from ..evaluation.eval_recorder import EvalRecorder
 from ..evaluation.golden_case import case_question, conversation_state_for_case
 from .memory import ResearchMemory
 from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
+from ..corpus.gateway import CorpusReader
 
 
 class LiveResearchChatHarness:
@@ -58,6 +59,7 @@ class LiveResearchChatHarness:
         progress_listener: Callable[[JsonMap], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
         case_id_override: str = "",
+        corpus_reader: CorpusReader | None = None,
     ) -> tuple[JsonMap, ConversationState]:
         """执行一轮用户消息，返回 Run 和下一轮要持久化的状态。"""
 
@@ -101,6 +103,7 @@ class LiveResearchChatHarness:
                     selected_evidence_ids=list(state.selected_evidence_ids),
                     evidence_items_by_id=dict(state.evidence_items_by_id),
                 ),
+                corpus_reader=corpus_reader,
                 progress_listener=progress_listener,
                 should_cancel=should_cancel,
                 eval_recorder=recorder,

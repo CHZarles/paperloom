@@ -36,7 +36,7 @@ class ServiceBackedPageWindowBenchmarkCliTest {
     void usesSpringStartupArgsThatAvoidEvalCliSideEffects() {
         List<String> args = Arrays.asList(ServiceBackedPageWindowBenchmarkCli.springStartupArgs());
 
-        assertTrue(args.contains("--elasticsearch.init.enabled=false"));
+        assertTrue(args.contains("--qdrant.base-url=http://127.0.0.1:6333"));
         assertTrue(args.contains("--spring.kafka.listener.auto-startup=false"));
         assertTrue(args.contains("--admin.bootstrap.enabled=false"));
         assertTrue(args.contains("--paper.bootstrap.enabled=false"));

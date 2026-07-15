@@ -1,9 +1,8 @@
 # Reading Model And `harness_py` Tools
 
-PaperLoom has one durable Reading Model. For each research turn,
-`DockerMySqlProductCorpusStore` projects part of that model into a request-local `GoldenDataset` and
-`ReadingDocument` collection. `ReadingCorpusTools` then exposes concrete Function Tools to the OpenAI
-Agents SDK.
+PaperLoom has one durable Reading Model. In the product runtime, Java indexes its canonical locations
+into Qdrant and exposes a narrow Corpus API; Python keeps the model-visible tool contract and request
+authorization state. Golden fixtures use the same tools through an in-memory adapter.
 
 The durable model remains richer than the current Python retrieval surface. Retrieval can change
 without redefining paper identity, source locations, or persisted references.
@@ -168,8 +167,9 @@ recommendation tool.
 
 ### `find_reading_locations`
 
-Searches the disclosed papers' in-memory Reading Documents. It returns `location_ref` values and
-non-citeable previews. The current product path combines:
+Searches disclosed papers and returns `location_ref` values plus non-citeable previews. The product
+adapter uses Qdrant dense/sparse retrieval, deterministic rank fusion, Current Model validation, and
+bounded MySQL hydration. The in-memory fixture adapter combines:
 
 - BM25 over full element text;
 - BM25 over leading tokens and section text;
@@ -182,8 +182,8 @@ Passage windows and page-grounding candidates are enabled only when the dataset 
 page projection. The current product DB projection is Reading Element-led and does not load page rows
 as an independent retrieval surface.
 
-The live product projection is currently Reading Element-led. There is no dense vector search or
-Elasticsearch request in this tool.
+The product path never treats Qdrant payload text as Evidence. It exposes only candidates; exact
+content still comes from the Current Reading Model in MySQL.
 
 ### `read_locations`
 

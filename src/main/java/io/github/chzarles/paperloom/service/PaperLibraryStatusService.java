@@ -1,10 +1,5 @@
 package io.github.chzarles.paperloom.service;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.FieldValue;
-import co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
-import io.github.chzarles.paperloom.config.PaperSearchIndex;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.repository.PaperParserArtifactRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
@@ -28,7 +23,7 @@ public class PaperLibraryStatusService {
     private final PaperTextChunkRepository paperTextChunkRepository;
     private final PaperVisualAssetRepository paperVisualAssetRepository;
     private final PaperParserArtifactRepository paperParserArtifactRepository;
-    private final ElasticsearchClient esClient;
+    private final ReadingModelQdrantIndexService qdrantIndexService;
 
     public PaperLibraryStatusService(PaperService paperService,
                                      PaperSearchabilityService searchabilityService) {
@@ -42,14 +37,14 @@ public class PaperLibraryStatusService {
                                      PaperTextChunkRepository paperTextChunkRepository,
                                      PaperVisualAssetRepository paperVisualAssetRepository,
                                      PaperParserArtifactRepository paperParserArtifactRepository,
-                                     ElasticsearchClient esClient) {
+                                     ReadingModelQdrantIndexService qdrantIndexService) {
         this.paperService = paperService;
         this.searchabilityService = searchabilityService;
         this.paperRepository = paperRepository;
         this.paperTextChunkRepository = paperTextChunkRepository;
         this.paperVisualAssetRepository = paperVisualAssetRepository;
         this.paperParserArtifactRepository = paperParserArtifactRepository;
-        this.esClient = esClient;
+        this.qdrantIndexService = qdrantIndexService;
     }
 
     public PaperLibraryStatus statusFor(String userId, SourceScope scope) {
@@ -157,15 +152,12 @@ public class PaperLibraryStatusService {
                 ? List.of()
                 : paperParserArtifactRepository.findDistinctPaperIds()), productPaperIds);
 
-        if (esClient != null) {
-            Set<String> chunkIndexPaperIds = esDistinctPaperIds(PaperSearchIndex.INDEX_NAME, warnings);
-            addOrphanWarning(warnings, PaperSearchIndex.INDEX_NAME, chunkIndexPaperIds, productPaperIds);
-            Set<String> paperSearchIds = esDistinctPaperIds(PaperSearchIndex.PAPER_INDEX_NAME, warnings);
-            addOrphanWarning(warnings, PaperSearchIndex.PAPER_INDEX_NAME, paperSearchIds, productPaperIds);
-            LinkedHashSet<String> missingPaperSearch = new LinkedHashSet<>(accessibleSearchablePaperIds);
-            missingPaperSearch.removeAll(paperSearchIds);
-            if (!missingPaperSearch.isEmpty()) {
-                warnings.add("paper_search 缺少 " + missingPaperSearch.size() + " 篇当前可检索产品论文的元数据文档");
+        if (qdrantIndexService != null) {
+            long missing = accessibleSearchablePaperIds.stream()
+                    .filter(paperId -> qdrantPointCount(paperId, warnings) == 0)
+                    .count();
+            if (missing > 0) {
+                warnings.add("Qdrant 缺少 " + missing + " 篇当前可检索产品论文的 Reading Model 索引");
             }
         }
         return warnings;
@@ -185,37 +177,15 @@ public class PaperLibraryStatusService {
         }
     }
 
-    private Set<String> esDistinctPaperIds(String indexName, List<String> warnings) {
+    private long qdrantPointCount(String paperId, List<String> warnings) {
         try {
-            SearchResponse<Void> response = esClient.search(search -> search
-                            .index(indexName)
-                            .size(0)
-                            .aggregations("by_paper", aggregation -> aggregation
-                                    .terms(terms -> terms.field("paperId").size(10_000))),
-                    Void.class);
-            Aggregate aggregate = response.aggregations().get("by_paper");
-            if (aggregate == null || !aggregate.isSterms()) {
-                return Set.of();
-            }
-            LinkedHashSet<String> ids = new LinkedHashSet<>();
-            aggregate.sterms().buckets().array().forEach(bucket -> {
-                String key = fieldValueAsString(bucket.key());
-                if (key != null && !key.isBlank()) {
-                    ids.add(key);
-                }
-            });
-            return ids;
+            return qdrantIndexService.countByPaperId(paperId);
         } catch (Exception exception) {
-            warnings.add(indexName + " 一致性检查不可用：" + exception.getClass().getSimpleName());
-            return Set.of();
+            if (warnings.stream().noneMatch(warning -> warning.startsWith("Qdrant 一致性检查不可用"))) {
+                warnings.add("Qdrant 一致性检查不可用：" + exception.getClass().getSimpleName());
+            }
+            return 0;
         }
-    }
-
-    private String fieldValueAsString(FieldValue value) {
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        return value.isString() ? value.stringValue() : value._toJsonString();
     }
 
     private Set<String> distinctPaperIds(PaperIdSupplier supplier) {

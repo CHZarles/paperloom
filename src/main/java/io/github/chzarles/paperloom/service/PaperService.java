@@ -54,7 +54,7 @@ public class PaperService {
     private MinioClient minioClient;
 
     @Autowired
-    private ElasticsearchService elasticsearchService;
+    private ReadingModelQdrantIndexService qdrantIndexService;
 
     @Autowired
     private OrgTagCacheService orgTagCacheService;
@@ -159,10 +159,10 @@ public class PaperService {
 
     private void deleteSearchIndex(String paperId) {
         try {
-            elasticsearchService.deleteByPaperId(paperId);
-            logger.info("成功从 Elasticsearch 删除论文 chunk: paperId={}", paperId);
+            qdrantIndexService.deleteByPaperId(paperId);
+            logger.info("成功从 Qdrant 删除论文 Reading Model 索引: paperId={}", paperId);
         } catch (Exception e) {
-            logger.error("从 Elasticsearch 删除论文 chunk 时出错: paperId={}", paperId, e);
+            logger.error("从 Qdrant 删除论文索引时出错: paperId={}", paperId, e);
         }
     }
 
@@ -242,10 +242,10 @@ public class PaperService {
 
         try (InputStream fileStream = uploadService.getMergedFileStream(paperId)) {
             try {
-                elasticsearchService.deleteByPaperId(paperId);
-                logger.info("重建前已清理 Elasticsearch 论文 chunk: paperId={}", paperId);
+                qdrantIndexService.deleteByPaperId(paperId);
+                logger.info("重建前已清理 Qdrant 论文索引: paperId={}", paperId);
             } catch (Exception e) {
-                logger.warn("重建前清理 Elasticsearch 失败: paperId={}, error={}", paperId, e.getMessage());
+                logger.warn("重建前清理 Qdrant 失败: paperId={}, error={}", paperId, e.getMessage());
             }
 
             paperTextChunkRepository.deleteByPaperId(paperId);

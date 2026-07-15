@@ -42,6 +42,7 @@ Java owns the hard product boundary:
 - quota reservation, settlement, cancellation, and WebSocket/API integration;
 - durable conversation history and research memory exchange;
 - conversion of Python citations into product reference mappings;
+- Current Reading Model indexing, Qdrant retrieval, and canonical MySQL reads;
 - historical reference resolution and evidence reopening.
 
 The harness does not discover its own global paper scope. `ChatHandler` computes the authorized
@@ -51,10 +52,9 @@ paper IDs and sends that fixed set with every research turn.
 
 Python owns the research behavior inside the already-authorized scope:
 
-- loading the current corpus projection from MySQL;
-- building the request-local in-memory corpus;
+- calling the narrow Java Corpus API inside the locked scope;
 - creating the Agent, Session, Context, tools, and Agents SDK Runner;
-- paper discovery, identity lookup, location retrieval, and exact reading;
+- choosing when to discover papers, retrieve locations, and read exact content;
 - the Evidence Ledger and Candidate / Read / Cited coverage state;
 - deterministic final-answer and citation validation;
 - optional per-run evaluation capture.
@@ -65,7 +65,8 @@ cite, and submit.
 
 ## Runtime Assembly For One Turn
 
-`ResearchHarnessService` validates `scope.paper_ids` and loads only those papers from MySQL.
+`ResearchHarnessService` validates `user_id` and `scope.paper_ids`, then loads only paper metadata
+through the Java Corpus API. Reading Elements are not copied into the Harness.
 `LiveResearchChatHarness` creates the run ID, applies the scope again, opens optional Eval Capture, and
 builds an immutable `TurnExecutionInput`.
 
@@ -74,7 +75,7 @@ builds an immutable `TurnExecutionInput`.
 | Object | Role |
 | --- | --- |
 | `ResearchRunContext` | Mutable tool state, trace, model-call association, token and latency totals |
-| `ReadingCorpusTools` | In-memory corpus, paper/location disclosure, retrieval, exact reads, Evidence IDs |
+| `ReadingCorpusTools` | Stable tool schemas, paper/location disclosure, exact-read gating, Evidence IDs |
 | `RequestBackedSession` | Text history for this SDK Run; not the durable conversation database |
 | Provider model adapter | Chat Completions or Responses transport and HTTP Capture |
 | `Agent` | Instructions, tools, model settings, and tool-use behavior |
@@ -89,30 +90,18 @@ after the turn. Eval files remain offline artifacts and are never read to drive 
 
 ## Live Corpus And Retrieval
 
-For each turn, Python receives `scope.paper_ids` from Java and directly queries MySQL for only those
-papers. The product corpus projection currently contains:
+For each turn, Python receives `user_id` and `scope.paper_ids` from Java. A request-bound
+`JavaCorpusGatewayReader` uses one reusable HTTP client to call the Java data plane:
 
-- paper identity and catalog metadata;
-- the current `READING_MODEL_READY` model metadata;
-- canonical rows from `paper_reading_elements`;
-- availability flags derived from `paper_visual_assets`.
+1. Paper discovery and identity lookup query authorized product metadata.
+2. Java embeds the location query and asks Qdrant for dense and sparse candidates inside the scope.
+3. Java fuses ranks deterministically, checks the current READY model, and hydrates previews from MySQL.
+4. Search returns non-citeable previews and stable `location_ref` values.
+5. `read_locations` revalidates scope/current model and reads exact canonical MySQL content.
+6. Python creates Evidence IDs only after that exact read.
 
-The complete Reading Model also contains physical page, section, and location tables. Those tables
-remain part of the canonical product model, but the current Python product projection does not load
-them as independent retrieval surfaces.
-
-Retrieval then happens in Python memory:
-
-1. Paper candidates are ranked from title, abstract, author, venue, year, filename, and identifiers.
-2. Reading Element text is tokenized for BM25.
-3. Passage, lead, section, exact-phrase, adjacent-paragraph, page-grounding, and multi-paper coverage
-   heuristics adjust candidate selection when their prerequisites exist.
-4. Search returns non-citeable previews and `location_ref` values.
-5. `read_locations` opens exact content and creates Evidence IDs.
-
-There is no embedding, dense-retrieval, or Elasticsearch call in `harness_py`. Vector retrieval is a
-future option that must prove an improvement through the evaluation system before it enters this
-path.
+Qdrant is a rebuildable candidate index, not an evidence source. Golden fixtures and offline audits
+still use the in-memory BM25 adapter without Java, Qdrant, or provider calls.
 
 ## Tool Authorization Ladder
 

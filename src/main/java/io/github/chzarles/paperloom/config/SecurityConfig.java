@@ -51,6 +51,8 @@ public class SecurityConfig {
                             .requestMatchers("/api/v1/users/register", "/api/v1/users/login").permitAll()
                             // 允许测试接口
                             .requestMatchers("/api/v1/test/**").permitAll()
+                            // Python Harness 使用独立内部 Token 访问无模型副作用的 Corpus 数据面。
+                            .requestMatchers("/internal/v1/corpus/**").permitAll()
                             // 文件上传和下载相关接口 - 普通用户和管理员都可访问
                             .requestMatchers(
                                     "/api/v1/papers/upload/**",

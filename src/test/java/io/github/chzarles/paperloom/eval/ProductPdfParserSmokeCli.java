@@ -84,7 +84,7 @@ public final class ProductPdfParserSmokeCli {
 
     static String[] springStartupArgs() {
         return new String[]{
-                "--elasticsearch.init.enabled=false",
+                "--qdrant.base-url=http://127.0.0.1:6333",
                 "--spring.kafka.listener.auto-startup=false",
                 "--spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
                 "--admin.bootstrap.enabled=false",

@@ -15,10 +15,8 @@ visible instead of being hidden behind a single launcher.
 - Docker with Docker Compose v2
 - MinerU installed separately for real PDF ingestion
 
-Recommended local capacity is at least 8 GB of free memory because the repository's full local stack
-starts MySQL, MinIO, Redis, Kafka, Elasticsearch, the backend, and the parser together. The current
-assistant answer path itself uses Java, the Python harness, MySQL, MinIO-backed evidence assets, and
-the model provider; Elasticsearch does not contribute assistant evidence.
+Recommended local capacity is at least 6 GB of free memory because the repository's full local stack
+starts MySQL, MinIO, Redis, Kafka, Qdrant, the backend, and the parser together.
 
 ## 1. Configure the Environment
 
@@ -39,9 +37,8 @@ RESEARCH_HARNESS_INTERNAL_TOKEN
 MINIMAX_API_KEY or another configured model provider
 ```
 
-The full Docker Compose stack also requires `SPRING_DATA_REDIS_PASSWORD` and
-`ELASTICSEARCH_PASSWORD`. Embedding credentials belong to the independent indexing/search path and
-are not used by the Python research harness.
+The full Docker Compose stack also requires `SPRING_DATA_REDIS_PASSWORD`. Configure the embedding
+provider before uploading papers because Java builds and queries the Qdrant Reading Model index.
 
 Generate a JWT secret with:
 
@@ -68,13 +65,13 @@ The default local ports are:
 | Kafka | `9092` |
 | MinIO API | `9000` |
 | MinIO console | `9001` |
-| Elasticsearch | `9200` |
+| Qdrant HTTP | `6333` |
+| Qdrant gRPC | `6334` |
 
 Use the corresponding `*_HOST_PORT` variables when those ports are already occupied.
 
-MySQL is the direct corpus source for current research turns. Kafka supports upload processing,
-Redis supports separate transient product concerns, and Elasticsearch supports maintained
-standalone/indexing behavior; none of those distinctions changes the Java-authorized paper scope.
+MySQL is the canonical paper source. Qdrant stores a rebuildable candidate index over Current Reading
+Models. Kafka supports upload processing and Redis supports separate transient product concerns.
 
 ## 3. Start MinerU
 
@@ -122,6 +119,17 @@ scripts/paperloom-start-backend.sh start
 The backend listens on `http://localhost:8081` by default. A `401` or `403` response from an
 authenticated endpoint still proves that the HTTP server is reachable.
 
+When upgrading an existing installation from Elasticsearch, index the already-READY Reading Models
+once after the backend starts:
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/retrieval/reindex-current \
+  -H "Authorization: Bearer $ADMIN_JWT"
+```
+
+This admin operation calls the configured embedding provider and can take time or incur provider
+cost. Newly processed papers are indexed into Qdrant automatically.
+
 ## 6. Start Folio
 
 ```bash
@@ -140,9 +148,9 @@ Open `http://localhost:9527` and sign in with the bootstrapped administrator acc
 4. Ask a question that requires an inspectable page, table, figure, or formula.
 5. Open at least one returned reference and confirm it resolves to the expected paper evidence.
 
-The chat check proves the live path only when Python loads the selected paper from MySQL and performs
-its in-memory Reading Element retrieval. A successful independent search-index write is not evidence
-that chat used that index.
+The chat check proves the live path only when Python calls the Java Corpus API, Java retrieves a
+Current `location_ref` from Qdrant, and `read_locations` reopens exact MySQL content. A Qdrant write
+alone is not evidence that the model read or cited that location.
 
 ## Shutdown
 

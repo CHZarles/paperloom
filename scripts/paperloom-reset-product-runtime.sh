@@ -48,12 +48,9 @@ env_value() {
   ' .env
 }
 
-ES_SCHEME="${ELASTICSEARCH_SCHEME:-$(env_value ELASTICSEARCH_SCHEME)}"
-ES_HOST="${ELASTICSEARCH_HOST:-$(env_value ELASTICSEARCH_HOST)}"
-ES_PORT="${ELASTICSEARCH_PORT:-$(env_value ELASTICSEARCH_PORT)}"
-ES_USER="${ELASTICSEARCH_USERNAME:-$(env_value ELASTICSEARCH_USERNAME)}"
-ES_PASSWORD="${ELASTICSEARCH_PASSWORD:-$(env_value ELASTICSEARCH_PASSWORD)}"
-ES_INSECURE="${ELASTICSEARCH_INSECURE_TRUST_ALL_CERTIFICATES:-$(env_value ELASTICSEARCH_INSECURE_TRUST_ALL_CERTIFICATES)}"
+QDRANT_BASE_URL="${QDRANT_BASE_URL:-$(env_value QDRANT_BASE_URL)}"
+QDRANT_API_KEY_VALUE="${QDRANT_API_KEY:-$(env_value QDRANT_API_KEY)}"
+QDRANT_COLLECTION_VALUE="${QDRANT_COLLECTION:-$(env_value QDRANT_COLLECTION)}"
 REDIS_PASSWORD_VALUE="${SPRING_DATA_REDIS_PASSWORD:-$(env_value SPRING_DATA_REDIS_PASSWORD)}"
 MINIO_BUCKET_NAME_VALUE="${MINIO_BUCKET_NAME:-$(env_value MINIO_BUCKET_NAME)}"
 MYSQL_CONTAINER="${PAPERLOOM_MYSQL_CONTAINER:-paperloom-mysql}"
@@ -63,17 +60,14 @@ KAFKA_CONTAINER="${PAPERLOOM_KAFKA_CONTAINER:-paperloom-kafka}"
 KAFKA_BOOTSTRAP_SERVERS="${PAPERLOOM_KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
 PRODUCT_DB_SCHEMA="${PAPERLOOM_DB_SCHEMA:-paperloom}"
 
-ES_SCHEME="${ES_SCHEME:-http}"
-ES_HOST="${ES_HOST:-localhost}"
-ES_PORT="${ES_PORT:-9200}"
-ES_USER="${ES_USER:-elastic}"
-ES_INSECURE="${ES_INSECURE:-false}"
+QDRANT_BASE_URL="${QDRANT_BASE_URL:-http://127.0.0.1:6333}"
+QDRANT_COLLECTION_VALUE="${QDRANT_COLLECTION_VALUE:-paperloom_reading_elements_dense_sparse_v1}"
 MINIO_BUCKET_NAME_VALUE="${MINIO_BUCKET_NAME_VALUE:-uploads}"
 
 ADMIN_COUNT_BEFORE=0
 MINIO_BUCKET_EXISTS=0
 VERIFY_FAILURES=0
-declare -A ES_INDEX_EXISTS=()
+QDRANT_COLLECTION_EXISTS=0
 
 # Product runtime table policy:
 # these tables are reset because they contain uploaded paper PDFs, derived parser/vector artifacts,
@@ -104,10 +98,6 @@ PRODUCT_DB_TABLES=(
 )
 OPTIONAL_PRODUCT_DB_TABLES=(
   paper_processing_tasks
-)
-PRODUCT_ES_INDICES=(
-  paper_chunks
-  paper_search
 )
 PRODUCT_KAFKA_TOPICS=(
   paper-processing-topic
@@ -152,7 +142,7 @@ mysql_count_table() {
   mysql_scalar "$schema" "SELECT COUNT(*) FROM \`${table}\`;"
 }
 
-es_request() {
+qdrant_request() {
   local method="$1"
   local path="$2"
   local data="${3:-}"
@@ -164,37 +154,33 @@ es_request() {
   make_tmp_file
   response_body="$TMP_FILE_RESULT"
 
-  if [[ -n "$ES_USER" || -n "$ES_PASSWORD" ]]; then
-    curl_args+=(-u "${ES_USER}:${ES_PASSWORD}")
+  if [[ -n "$QDRANT_API_KEY_VALUE" ]]; then
+    curl_args+=(-H "api-key: ${QDRANT_API_KEY_VALUE}")
   fi
 
-  if [[ "$ES_INSECURE" == "true" ]]; then
-    curl_args+=(-k)
-  fi
-
-  ES_HTTP_CODE=""
-  ES_RESPONSE_BODY_FILE="$response_body"
+  QDRANT_HTTP_CODE=""
+  QDRANT_RESPONSE_BODY_FILE="$response_body"
 
   set +e
   if [[ -n "$data" ]]; then
-    ES_HTTP_CODE="$(curl "${curl_args[@]}" \
+    QDRANT_HTTP_CODE="$(curl "${curl_args[@]}" \
       -o "$response_body" \
       -w '%{http_code}' \
       -X "$method" \
-      "${ES_SCHEME}://${ES_HOST}:${ES_PORT}${path}" \
+      "${QDRANT_BASE_URL}${path}" \
       -d "$data")"
   else
-    ES_HTTP_CODE="$(curl "${curl_args[@]}" \
+    QDRANT_HTTP_CODE="$(curl "${curl_args[@]}" \
       -o "$response_body" \
       -w '%{http_code}' \
       -X "$method" \
-      "${ES_SCHEME}://${ES_HOST}:${ES_PORT}${path}")"
+      "${QDRANT_BASE_URL}${path}")"
   fi
   curl_exit=$?
   set -e
 
   if [[ "$curl_exit" -ne 0 ]]; then
-    echo "Elasticsearch request failed for ${method} ${path}: curl exited ${curl_exit}." >&2
+    echo "Qdrant request failed for ${method} ${path}: curl exited ${curl_exit}." >&2
     if [[ -s "$response_body" ]]; then
       cat "$response_body" >&2
       echo >&2
@@ -202,41 +188,20 @@ es_request() {
     return "$curl_exit"
   fi
 
-  if [[ "$ES_HTTP_CODE" =~ ^2[0-9][0-9]$ ]]; then
+  if [[ "$QDRANT_HTTP_CODE" =~ ^2[0-9][0-9]$ ]]; then
     return 0
   fi
 
-  if [[ "$allow_404" == "true" && "$ES_HTTP_CODE" == "404" ]]; then
+  if [[ "$allow_404" == "true" && "$QDRANT_HTTP_CODE" == "404" ]]; then
     return 0
   fi
 
-  echo "Elasticsearch request failed for ${method} ${path}: HTTP ${ES_HTTP_CODE}." >&2
+  echo "Qdrant request failed for ${method} ${path}: HTTP ${QDRANT_HTTP_CODE}." >&2
   if [[ -s "$response_body" ]]; then
     cat "$response_body" >&2
     echo >&2
   fi
   return 1
-}
-
-es_count_index() {
-  local index_name="$1"
-  local count
-
-  if [[ "${ES_INDEX_EXISTS[$index_name]:-0}" != "1" ]]; then
-    printf '0\n'
-    return 0
-  fi
-
-  es_request GET "/${index_name}/_count"
-  count="$(sed -n 's/.*"count"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$ES_RESPONSE_BODY_FILE" | sed -n '1p')"
-  if [[ ! "$count" =~ ^[0-9]+$ ]]; then
-    echo "Could not parse Elasticsearch count for ${index_name}." >&2
-    cat "$ES_RESPONSE_BODY_FILE" >&2
-    echo >&2
-    return 1
-  fi
-
-  printf '%s\n' "$count"
 }
 
 redis_command() {
@@ -335,22 +300,15 @@ ORDER BY TABLE_NAME, COLUMN_NAME;
   fi
 }
 
-preflight_es() {
-  local index_name
-
-  es_request GET "/_cluster/health"
-
-  # A fresh dev stack may not have product ES indices yet. Missing product indices are treated as
-  # already empty and skipped during delete/verify; auth, transport, and other HTTP errors fail.
-  for index_name in "${PRODUCT_ES_INDICES[@]}"; do
-    es_request GET "/${index_name}" "" true
-    if [[ "$ES_HTTP_CODE" == "404" ]]; then
-      ES_INDEX_EXISTS["$index_name"]=0
-      echo "Elasticsearch index ${index_name} is missing; treating it as already empty."
-    else
-      ES_INDEX_EXISTS["$index_name"]=1
-    fi
-  done
+preflight_qdrant() {
+  qdrant_request GET "/healthz"
+  qdrant_request GET "/collections/${QDRANT_COLLECTION_VALUE}" "" true
+  if [[ "$QDRANT_HTTP_CODE" == "404" ]]; then
+    QDRANT_COLLECTION_EXISTS=0
+    echo "Qdrant collection ${QDRANT_COLLECTION_VALUE} is missing; treating it as already empty."
+  else
+    QDRANT_COLLECTION_EXISTS=1
+  fi
 }
 
 preflight_redis() {
@@ -397,9 +355,9 @@ preflight_kafka() {
 }
 
 preflight() {
-  echo "Preflight: checking MySQL, Elasticsearch, Redis, MinIO, and Kafka."
+  echo "Preflight: checking MySQL, Qdrant, Redis, MinIO, and Kafka."
   preflight_mysql
-  preflight_es
+  preflight_qdrant
   preflight_redis
   preflight_minio
   preflight_kafka
@@ -493,18 +451,13 @@ SET FOREIGN_KEY_CHECKS=1;
 SQL
 }
 
-reset_es() {
-  local index_name
-
-  for index_name in "${PRODUCT_ES_INDICES[@]}"; do
-    if [[ "${ES_INDEX_EXISTS[$index_name]:-0}" != "1" ]]; then
-      echo "Skipping Elasticsearch delete for missing index ${index_name}."
-      continue
-    fi
-
-    es_request DELETE "/${index_name}"
-    ES_INDEX_EXISTS["$index_name"]=0
-  done
+reset_qdrant() {
+  if [[ "$QDRANT_COLLECTION_EXISTS" != "1" ]]; then
+    echo "Skipping Qdrant delete because collection ${QDRANT_COLLECTION_VALUE} is missing."
+    return 0
+  fi
+  qdrant_request DELETE "/collections/${QDRANT_COLLECTION_VALUE}"
+  QDRANT_COLLECTION_EXISTS=0
 }
 
 reset_redis() {
@@ -677,17 +630,14 @@ verify_eval_counts() {
   echo "eval_qasper_papers $(mysql_scalar paperloom_eval "SELECT COUNT(*) FROM eval_papers WHERE corpus='qasper';")"
 }
 
-verify_es_counts() {
-  local index_name
-  local count
-
-  for index_name in "${PRODUCT_ES_INDICES[@]}"; do
-    count="$(es_count_index "$index_name")"
-    print_assert_zero "${index_name}_es_docs" "$count"
-    if [[ "${ES_INDEX_EXISTS[$index_name]:-0}" != "1" ]]; then
-      echo "${index_name}_status missing_treated_as_empty"
-    fi
-  done
+verify_qdrant_count() {
+  qdrant_request GET "/collections/${QDRANT_COLLECTION_VALUE}" "" true
+  if [[ "$QDRANT_HTTP_CODE" == "404" ]]; then
+    print_assert_zero "qdrant_product_points" 0
+    echo "qdrant_collection_status missing_treated_as_empty"
+    return 0
+  fi
+  record_verification_failure "Qdrant collection ${QDRANT_COLLECTION_VALUE} still exists after reset"
 }
 
 verify_redis_count() {
@@ -742,7 +692,7 @@ verify_reset() {
   verify_product_db_counts
   verify_user_dependent_counts
   verify_eval_counts
-  verify_es_counts
+  verify_qdrant_count
   verify_redis_count
   verify_minio_count
   verify_kafka_topics
@@ -753,11 +703,11 @@ verify_reset() {
 }
 
 echo "Preserving: admin user and paperloom_eval benchmark corpus."
-echo "Deleting: product papers, product collections, product chunks, product chat/session history, Redis runtime keys, product ES docs, product MinIO objects."
+echo "Deleting: product papers, product collections, product chunks, product chat/session history, Redis runtime keys, product Qdrant points, product MinIO objects."
 
 preflight
 reset_mysql
-reset_es
+reset_qdrant
 reset_redis
 reset_minio
 reset_kafka

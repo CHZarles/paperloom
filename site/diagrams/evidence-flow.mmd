@@ -1,10 +1,10 @@
 flowchart TB
     subgraph ROW1["ReadingCorpusTools: paper and location state"]
         direction LR
-        SCOPE["scope.paper_ids<br/>ResearchHarnessService loads only these papers"]:::control
+        SCOPE["user_id + scope.paper_ids<br/>Java Corpus API cannot widen this scope"]:::control
         DISCOVER["search_paper_candidates<br/>or find_papers_by_identity"]:::tool
         PAPERS["authorized_paper_ids<br/>returned paper IDs"]:::state
-        LOCATE["find_reading_locations<br/>BM25 over request-local Reading Documents"]:::tool
+        LOCATE["find_reading_locations<br/>Java/Qdrant candidates + Current Model validation"]:::tool
         LOCATIONS["disclosed_location_refs<br/>returned location_ref values"]:::state
 
         SCOPE --> DISCOVER

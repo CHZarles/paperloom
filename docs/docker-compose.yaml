@@ -113,45 +113,20 @@ services:
         start_period: 60s
 
   
-  es:
-    image: elasticsearch:8.10.4
-    container_name: ${PAPERLOOM_ES_CONTAINER:-paperloom-es}
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    container_name: ${PAPERLOOM_QDRANT_CONTAINER:-paperloom-qdrant}
     restart: always
     ports:
-      - "${ELASTICSEARCH_HOST_PORT:-9200}:9200"
+      - "${QDRANT_HTTP_HOST_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_HOST_PORT:-6334}:6334"
     volumes:
-      - es-data:/usr/share/elasticsearch/data
-    environment:
-      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:?Set ELASTICSEARCH_PASSWORD in .env}
-      - node.name=paperloom-es01
-      - discovery.type=single-node
-      - xpack.license.self_generated.type=basic
-      - xpack.security.enabled=true
-      - xpack.security.enrollment.enabled=false
-      - xpack.security.http.ssl.enabled=false
-      - cluster.name=paperloom-es-cluster
-
-      # 内存配置 (根据可用RAM调整)
-      - ES_JAVA_OPTS=-Xms2g -Xmx2g
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-    command: >
-      bash -c "
-      if ! elasticsearch-plugin list | grep -q 'analysis-ik'; then
-        echo 'Installing analysis-ik plugin...';
-        elasticsearch-plugin install --batch https://release.infinilabs.com/analysis-ik/stable/elasticsearch-analysis-ik-8.10.4.zip;
-      else
-        echo 'analysis-ik plugin already installed.';
-      fi;
-      /usr/local/bin/docker-entrypoint.sh
-      "
+      - qdrant-data:/qdrant/storage
     healthcheck:
-      test: [ 'CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty' ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "curl -fsS http://localhost:6333/healthz >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   minio-init:
     image: minio/mc:RELEASE.2025-05-21T01-59-54Z
@@ -180,5 +155,5 @@ volumes:
     name: ${PAPERLOOM_MINIO_VOLUME:-paperloom-minio-data}
   kafka-data:
     name: ${PAPERLOOM_KAFKA_VOLUME:-paperloom-kafka-data}
-  es-data:
-    name: ${PAPERLOOM_ES_VOLUME:-paperloom-es-data}
+  qdrant-data:
+    name: ${PAPERLOOM_QDRANT_VOLUME:-paperloom-qdrant-data}

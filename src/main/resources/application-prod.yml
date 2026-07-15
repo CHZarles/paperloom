@@ -16,8 +16,10 @@ app:
       mode: INVITE_ONLY
       invite-required: true
 
-elasticsearch:
-  insecure-trust-all-certificates: false
+qdrant:
+  base-url: ${QDRANT_BASE_URL}
+  api-key: ${QDRANT_API_KEY:}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_elements_dense_sparse_v1}
 
 security:
   allowed-origins: ${SECURITY_ALLOWED_ORIGINS}

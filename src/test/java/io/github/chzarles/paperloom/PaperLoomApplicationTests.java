@@ -15,7 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
         "spring.kafka.listener.auto-startup=false",
         "spring.kafka.admin.auto-create=false",
         "paper.bootstrap.enabled=false",
-        "elasticsearch.init.enabled=false"
+        "qdrant.base-url=http://127.0.0.1:6333"
 })
 class PaperLoomApplicationTests {
 

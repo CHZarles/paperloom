@@ -18,7 +18,7 @@ claim back to its source as part of the product contract:
   assets;
 - Java fixes the permission, paper-scope, quota, conversation, and persistence boundaries before
   research begins;
-- Python runs one agent loop over an authorized MySQL projection of the Reading Model;
+- Python runs one agent loop through a Java-owned Corpus API inside the authorized Reading Model scope;
 - candidate previews are navigation only; citeable evidence exists only after an exact location is
   read;
 - final submission is checked against the evidence ledger before it becomes a product answer;
@@ -40,16 +40,17 @@ ChatHandler
 -> POST /v1/research/stream
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
+-> Java Corpus API
+-> Qdrant candidates + MySQL exact read
 ```
 
-Java supplies the locked paper IDs. Python loads those papers directly from MySQL, builds an
-in-memory corpus, and exposes metadata discovery, identity resolution, location search, exact
-reading, optional research guidance, and validated final submission as tools.
+Java supplies `user_id` and locked paper IDs. Python calls the Java Corpus API and exposes metadata
+discovery, identity resolution, location search, exact reading, optional research guidance, and
+validated final submission as tools. It no longer loads every Reading Element into each Harness replica.
 
-Current location retrieval is lexical: BM25 over Reading Element text plus passage, lead, section,
-exact-phrase, adjacent-paragraph, and coverage heuristics. **Vector retrieval is not part of the
-current assistant path.** It is a future, evaluation-gated extension rather than a present
-capability claim.
+Java indexes Current Reading Model locations in Qdrant, runs dense plus sparse retrieval with
+deterministic rank fusion, and hydrates/verifies candidates from MySQL. Qdrant remains a candidate
+index; `read_locations` is still the only evidence-producing content path.
 
 ## Reading Model
 
@@ -63,8 +64,8 @@ Reading Model records:
 - stable page, section, table, and figure locations;
 - PDF page screenshots and table, figure, or chart crops.
 
-The live Python projection is deliberately narrower than the complete model: it currently loads
-paper metadata, the current ready model, `paper_reading_elements`, and visual-asset availability.
+The Python product adapter loads only scoped paper metadata. Java owns the full Reading Model,
+Qdrant projection, candidate validation, and exact canonical reads.
 See [Reading Model and Agent Tools](docs/architecture/reading-model-and-agent-tools.md).
 
 ## Agent Tool Protocol
@@ -90,14 +91,15 @@ Java-authorized paper scope
 | --- | --- |
 | Folio | Vue 3 research workbench, paper selection, progress, conversations, and evidence reopening |
 | Java product boundary | Authentication, authorization, locked source scope, quota, cancellation, durable conversations, and reference mappings |
-| Python research boundary | Corpus projection, Agents SDK loop, tool execution, BM25 retrieval, evidence ledger, citation checks, and final submission |
-| MySQL | Product papers, Reading Models, conversations, and durable reference data; direct source for the live harness corpus |
+| Python research boundary | Agents SDK loop, tool execution, disclosure state, evidence ledger, citation checks, and final submission |
+| Java Corpus plane | Paper authorization, embedding, Qdrant retrieval, Current Model validation, and exact reads |
+| MySQL | Product papers, canonical Reading Models, conversations, and durable reference data |
+| Qdrant | Rebuildable dense/sparse candidate index keyed by stable `location_ref` |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and crop assets |
 | Model provider | Configurable OpenAI-compatible model used by the Agents SDK runtime |
 
-The repository still contains independent indexing and search infrastructure, but it does not
-contribute evidence to current assistant answers and is intentionally absent from the live-path
-architecture.
+Qdrant contributes navigation candidates but never evidence directly. Exact MySQL reads preserve the
+claim-to-location contract.
 
 ## Evaluation
 
@@ -128,6 +130,16 @@ scripts/paperloom-start-harness.sh start
 
 mvn spring-boot:run
 ```
+
+For an existing Elasticsearch-backed installation, run the one-time Current Reading Model backfill
+after the backend starts. New uploads are indexed into Qdrant automatically:
+
+```bash
+curl -X POST http://localhost:8081/api/v1/admin/retrieval/reindex-current \
+  -H "Authorization: Bearer $ADMIN_JWT"
+```
+
+The backfill invokes the embedding provider and may incur cost, so it is not part of every startup.
 
 In another terminal:
 

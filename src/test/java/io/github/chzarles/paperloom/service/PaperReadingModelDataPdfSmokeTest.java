@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
                 "spring.jpa.hibernate.ddl-auto=create-drop",
                 "spring.jpa.show-sql=false",
                 "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-                "elasticsearch.init.enabled=false",
+                "qdrant.base-url=http://127.0.0.1:6333",
                 "spring.kafka.listener.auto-startup=false",
                 "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
                 "admin.bootstrap.enabled=false",

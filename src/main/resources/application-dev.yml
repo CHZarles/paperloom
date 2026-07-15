@@ -156,14 +156,10 @@ research-harness:
   base-url: ${RESEARCH_HARNESS_BASE_URL:http://127.0.0.1:8091}
   internal-token: ${RESEARCH_HARNESS_INTERNAL_TOKEN:}
 
-elasticsearch:
-  # dev 下允许按需使用 https + 自签名证书
-  host: ${ELASTICSEARCH_HOST:localhost}
-  port: ${ELASTICSEARCH_PORT:9200}
-  scheme: ${ELASTICSEARCH_SCHEME:http}
-  username: ${ELASTICSEARCH_USERNAME:elastic}
-  password: ${ELASTICSEARCH_PASSWORD:}
-  insecure-trust-all-certificates: ${ELASTICSEARCH_INSECURE_TRUST_ALL_CERTIFICATES:true}
+qdrant:
+  base-url: ${QDRANT_BASE_URL:http://127.0.0.1:6333}
+  api-key: ${QDRANT_API_KEY:}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_elements_dense_sparse_v1}
 
 security:
   # 前端调试域名白名单，支持 Origin pattern

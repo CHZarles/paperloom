@@ -5,8 +5,8 @@ import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
-import io.github.chzarles.paperloom.service.ElasticsearchService;
 import io.github.chzarles.paperloom.service.ParseService;
+import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import io.github.chzarles.paperloom.service.VectorizationService;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -48,7 +48,7 @@ class BootstrapPaperInitializerTest {
     private VectorizationService vectorizationService;
 
     @Mock
-    private ElasticsearchService elasticsearchService;
+    private ReadingModelQdrantIndexService qdrantIndexService;
 
     @Mock
     private PaperRepository paperRepository;
@@ -90,7 +90,7 @@ class BootstrapPaperInitializerTest {
         when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(1L);
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
-        when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(2L);
+        when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(2L);
 
         initializer.run();
 
@@ -114,7 +114,7 @@ class BootstrapPaperInitializerTest {
         when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(0L);
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(0L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(0L);
-        when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(0L);
+        when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(0L);
         doNothing().when(vectorizationService).vectorize(fileMd5, "1", "default", true, "system-bootstrap");
         when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
 
@@ -167,7 +167,7 @@ class BootstrapPaperInitializerTest {
         when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(1L);
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
-        when(elasticsearchService.countByPaperId(fileMd5)).thenReturn(2L);
+        when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(2L);
 
         initializer.run();
 

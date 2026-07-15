@@ -146,14 +146,10 @@ paper:
       timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:3600}
       poll-interval-seconds: ${PAPER_PARSING_MINERU_POLL_INTERVAL_SECONDS:3}
 
-elasticsearch:
-  # 若容器连接的是 HTTPS ES，可直接把 scheme 改成 https
-  host: ${ELASTICSEARCH_HOST:localhost}
-  port: ${ELASTICSEARCH_PORT:9200}
-  scheme: ${ELASTICSEARCH_SCHEME:http}
-  username: ${ELASTICSEARCH_USERNAME:elastic}
-  password: ${ELASTICSEARCH_PASSWORD:}
-  insecure-trust-all-certificates: ${ELASTICSEARCH_INSECURE_TRUST_ALL_CERTIFICATES:true}
+qdrant:
+  base-url: ${QDRANT_BASE_URL:http://qdrant:6333}
+  api-key: ${QDRANT_API_KEY:}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_elements_dense_sparse_v1}
 
 security:
   # 容器部署时请显式填写前端实际访问域名，支持 Origin pattern

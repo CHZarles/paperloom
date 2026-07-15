@@ -5,7 +5,7 @@ import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
-import io.github.chzarles.paperloom.service.ElasticsearchService;
+import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.VectorizationService;
 import io.minio.MinioClient;
@@ -43,7 +43,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
 
     private final ParseService parseService;
     private final VectorizationService vectorizationService;
-    private final ElasticsearchService elasticsearchService;
+    private final ReadingModelQdrantIndexService qdrantIndexService;
     private final PaperRepository paperRepository;
     private final PaperTextChunkRepository paperTextChunkRepository;
     private final MinioClient minioClient;
@@ -69,14 +69,14 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
 
     public BootstrapPaperInitializer(ParseService parseService,
                                      VectorizationService vectorizationService,
-                                     ElasticsearchService elasticsearchService,
+                                     ReadingModelQdrantIndexService qdrantIndexService,
                                      PaperRepository paperRepository,
                                      PaperTextChunkRepository paperTextChunkRepository,
                                      MinioClient minioClient,
                                      UserRepository userRepository) {
         this.parseService = parseService;
         this.vectorizationService = vectorizationService;
-        this.elasticsearchService = elasticsearchService;
+        this.qdrantIndexService = qdrantIndexService;
         this.paperRepository = paperRepository;
         this.paperTextChunkRepository = paperTextChunkRepository;
         this.minioClient = minioClient;
@@ -146,7 +146,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         long fileRecordCount = paperRepository.countByPaperIdAndUserId(fileMd5, ownerUserId);
         long vectorCount = paperTextChunkRepository.countByPaperId(fileMd5);
         long pageAwareVectorCount = paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5);
-        long esCount = elasticsearchService.countByPaperId(fileMd5);
+        long qdrantCount = qdrantIndexService.countByPaperId(fileMd5);
 
         if (existingFile.isEmpty()) {
             return false;
@@ -159,12 +159,12 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
                 && paper.getStatus() == 1;
 
         boolean pageMetadataReady = !fileName.toLowerCase().endsWith(".pdf") || pageAwareVectorCount > 0;
-        if (metadataMatches && vectorCount > 0 && esCount > 0 && pageMetadataReady && fileRecordCount == 1) {
+        if (metadataMatches && vectorCount > 0 && qdrantCount > 0 && pageMetadataReady && fileRecordCount == 1) {
             return true;
         }
 
-        logger.info("启动论文数据不完整、元数据已变化或存在重复记录，准备重新导入: paperId={}, fileRecords={}, vectors={}, pageAwareVectors={}, esDocs={}",
-                fileMd5, fileRecordCount, vectorCount, pageAwareVectorCount, esCount);
+        logger.info("启动论文数据不完整、元数据已变化或存在重复记录，准备重新导入: paperId={}, fileRecords={}, vectors={}, pageAwareVectors={}, qdrantPoints={}",
+                fileMd5, fileRecordCount, vectorCount, pageAwareVectorCount, qdrantCount);
         return false;
     }
 
@@ -237,9 +237,9 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         }
 
         try {
-            elasticsearchService.deleteByPaperId(fileMd5);
+            qdrantIndexService.deleteByPaperId(fileMd5);
         } catch (Exception e) {
-            logger.warn("清理启动论文 ES 数据失败: paperId={}, error={}", fileMd5, e.getMessage());
+            logger.warn("清理启动论文 Qdrant 数据失败: paperId={}, error={}", fileMd5, e.getMessage());
         }
 
         try {

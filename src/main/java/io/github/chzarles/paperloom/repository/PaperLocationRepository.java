@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface PaperLocationRepository extends JpaRepository<PaperLocation, Long> {
     Optional<PaperLocation> findFirstByLocationRef(String locationRef);
 
+    List<PaperLocation> findByLocationRefIn(List<String> locationRefs);
+
     List<PaperLocation> findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc(String paperId, String modelVersion);
 
     List<PaperLocation> findByPaperIdAndModelVersionAndLocationTypeOrderByPageNumberAscIdAsc(String paperId,

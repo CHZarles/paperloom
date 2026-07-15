@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from .gateway import CorpusReader
 from .pages import (
     contains_normalized_phrase as _contains_normalized_phrase,
     normalize_text as _normalize,
@@ -168,12 +169,13 @@ class _ScoredDocument:
 @dataclass
 class ReadingCorpusTools:
     dataset: GoldenDataset
+    reader: CorpusReader | None = None
     observations_by_evidence_id: dict[str, JsonMap] = field(default_factory=dict)
     authorized_paper_ids: set[str] = field(default_factory=set)
     disclosed_location_refs: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
-        self.documents = _build_documents(self.dataset)
+        self.documents = [] if self.reader is not None else _build_documents(self.dataset)
         self.documents_by_location = {doc.location_ref: doc for doc in self.documents}
 
     def definitions(self) -> list[JsonMap]:
@@ -296,6 +298,14 @@ class ReadingCorpusTools:
         return ToolResult(name, {"error": f"unknown tool: {name}"})
 
     def search_paper_candidates(self, arguments: JsonMap) -> JsonMap:
+        if self.reader is not None:
+            payload = self.reader.search_papers(arguments)
+            self.authorized_paper_ids.update(
+                str(child_map(card).get("paper_id"))
+                for card in as_list(payload.get("candidates"))
+                if child_map(card).get("paper_id")
+            )
+            return payload
         query = str(arguments.get("query_text") or "").strip()
         query_tokens = set(_tokens(query))
         allowed_ids = {str(value) for value in as_list(arguments.get("paper_ids")) if value}
@@ -339,6 +349,15 @@ class ReadingCorpusTools:
         }
 
     def find_papers_by_identity(self, arguments: JsonMap) -> JsonMap:
+        if self.reader is not None:
+            payload = self.reader.find_papers_by_identity(arguments)
+            if payload.get("status") == "resolved":
+                self.authorized_paper_ids.update(
+                    str(child_map(card).get("paper_id"))
+                    for card in as_list(payload.get("matches"))
+                    if child_map(card).get("paper_id")
+                )
+            return payload
         hints = {
             key: value for key, value in arguments.items()
             if key in {"paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year"}
@@ -385,6 +404,14 @@ class ReadingCorpusTools:
         page_to = _optional_int(arguments.get("page_to"))
         if page_from is not None and page_to is not None and page_from > page_to:
             return {"error": "invalid_page_range", "locations": []}
+        if self.reader is not None:
+            payload = self.reader.search_locations(arguments)
+            self.disclosed_location_refs.update(
+                str(child_map(item).get("location_ref"))
+                for item in as_list(payload.get("locations"))
+                if child_map(item).get("location_ref")
+            )
+            return payload
         query_token_list = _tokens(query)
         query_tokens = set(query_token_list)
         section_tokens = set(_tokens(section_query))
@@ -573,6 +600,14 @@ class ReadingCorpusTools:
                 "unauthorized_location_refs": unauthorized,
                 "items": [],
             }
+        if self.reader is not None:
+            payload = self.reader.read_locations(arguments)
+            for raw in as_list(payload.get("items")):
+                item = child_map(raw)
+                evidence_id = str(item.get("evidence_id") or "")
+                if evidence_id:
+                    self.observations_by_evidence_id[evidence_id] = item
+            return payload
         docs = [self.documents_by_location[ref] for ref in location_refs if ref in self.documents_by_location]
         items = []
         seen: set[str] = set()

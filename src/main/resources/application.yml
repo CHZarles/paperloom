@@ -184,17 +184,13 @@ research-harness:
   base-url: ${RESEARCH_HARNESS_BASE_URL:http://127.0.0.1:8091}
   internal-token: ${RESEARCH_HARNESS_INTERNAL_TOKEN:}
 
-elasticsearch:
-  # 本地如果是自签名证书，可设为 https + trust-all=true。
-  # 生产环境必须改为 trust-all=false。
-  host: ${ELASTICSEARCH_HOST:localhost}
-  port: ${ELASTICSEARCH_PORT:9200}
-  scheme: ${ELASTICSEARCH_SCHEME:https}
-  username: ${ELASTICSEARCH_USERNAME:elastic}
-  password: ${ELASTICSEARCH_PASSWORD:}
-  insecure-trust-all-certificates: ${ELASTICSEARCH_INSECURE_TRUST_ALL_CERTIFICATES:true}
-  init:
-    enabled: ${ELASTICSEARCH_INIT_ENABLE:true}
+qdrant:
+  base-url: ${QDRANT_BASE_URL:http://127.0.0.1:6333}
+  api-key: ${QDRANT_API_KEY:}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_elements_dense_sparse_v1}
+  connect-timeout: ${QDRANT_CONNECT_TIMEOUT:5s}
+  request-timeout: ${QDRANT_REQUEST_TIMEOUT:20s}
+  upsert-batch-size: ${QDRANT_UPSERT_BATCH_SIZE:64}
 
 security:
   # WebSocket 与浏览器跨域白名单，支持 Origin pattern，多个来源用逗号分隔

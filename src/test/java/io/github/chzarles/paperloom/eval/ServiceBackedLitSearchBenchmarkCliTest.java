@@ -37,7 +37,7 @@ class ServiceBackedLitSearchBenchmarkCliTest {
     void usesSpringStartupArgsThatAvoidEvalCliSideEffects() {
         List<String> args = Arrays.asList(ServiceBackedLitSearchBenchmarkCli.springStartupArgs());
 
-        assertTrue(args.contains("--elasticsearch.init.enabled=false"));
+        assertTrue(args.contains("--qdrant.base-url=http://127.0.0.1:6333"));
         assertTrue(args.contains("--spring.kafka.listener.auto-startup=false"));
         assertTrue(args.contains("--spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"));
         assertTrue(args.contains("--admin.bootstrap.enabled=false"));

@@ -34,14 +34,10 @@ public class ProductionConfigValidator implements CommandLineRunner {
         requireNonBlank("minio.endpoint");
         requireNonBlank("minio.accessKey");
         requireNonBlank("minio.secretKey");
-        requireNonBlank("elasticsearch.host");
-        requireNonBlank("elasticsearch.password");
+        requireNonBlank("qdrant.base-url");
+        requireNonBlank("qdrant.collection");
+        requireNonBlank("research-harness.internal-token");
         requireNonBlank("security.allowed-origins");
-
-        String insecureTls = environment.getProperty("elasticsearch.insecure-trust-all-certificates", "false");
-        if (Boolean.parseBoolean(insecureTls)) {
-            throw new IllegalStateException("Production profile forbids elasticsearch.insecure-trust-all-certificates=true");
-        }
     }
 
     private void requireNonBlank(String key) {

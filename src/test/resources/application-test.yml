@@ -54,15 +54,10 @@ file:
     buffer-size: 8192
     max-memory-threshold: 0.8
 
-elasticsearch:
-  host: localhost
-  port: 9200
-  scheme: http
-  username: elastic
-  password: changeme
-  insecure-trust-all-certificates: true
-  init:
-    enabled: false
+qdrant:
+  base-url: http://localhost:6333
+  api-key:
+  collection: paperloom_reading_elements_test
 
 security:
   allowed-origins: http://localhost:3000

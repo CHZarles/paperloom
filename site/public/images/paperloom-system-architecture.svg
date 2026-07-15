@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100" role="img" aria-labelledby="title description">
   <title id="title">PaperLoom live system architecture</title>
-  <desc id="description">The current product path from Folio through the Java product boundary to the Python Agents SDK harness, its authorized MySQL corpus projection, in-memory BM25 tools, evidence validation, model provider, and the separate Reading Model ingestion lane using MinerU, MySQL, and MinIO.</desc>
+  <desc id="description">The current product path from Folio through the Java product and corpus boundary to the Python Agents SDK harness, Qdrant candidate retrieval, canonical MySQL reads, evidence validation, and Reading Model ingestion.</desc>
   <defs>
     <marker id="arrow-end" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#66766f"/>
@@ -44,7 +44,7 @@
   <rect class="canvas" width="1800" height="1100"/>
   <text class="kicker" x="40" y="40">PAPERLOOM / VERIFIED LIVE PATH</text>
   <text class="title" x="40" y="76">Evidence-bounded agentic RAG over an authorized Reading Model</text>
-  <text class="subtitle" x="40" y="102">Current assistant answers use Java product controls, a Python Agents SDK loop, direct MySQL corpus loading, and in-memory lexical retrieval.</text>
+  <text class="subtitle" x="40" y="102">Current assistant answers use Java product controls, a Python Agents SDK loop, Qdrant candidates, and canonical MySQL reads.</text>
 
   <rect class="boundary-experience" x="30" y="125" width="170" height="615" rx="6"/>
   <rect class="boundary-java" x="220" y="125" width="780" height="615" rx="6"/>
@@ -109,11 +109,11 @@
   <text class="responsibility-copy" x="302" y="662">Accepted citations become durable product mappings.</text>
 
   <rect class="node-gold" x="1050" y="440" width="300" height="125" rx="5"/>
-  <text class="node-title" x="1200" y="466" text-anchor="middle">DockerMySql</text>
-  <text class="node-title" x="1200" y="488" text-anchor="middle">ProductCorpusStore</text>
-  <text class="node-copy" x="1200" y="512" text-anchor="middle">metadata + current ready model</text>
-  <text class="node-copy" x="1200" y="533" text-anchor="middle">Reading Elements + asset availability</text>
-  <text class="node-copy" x="1200" y="554" text-anchor="middle">request-local Python memory</text>
+  <text class="node-title" x="1200" y="466" text-anchor="middle">JavaCorpus</text>
+  <text class="node-title" x="1200" y="488" text-anchor="middle">GatewayReader</text>
+  <text class="node-copy" x="1200" y="512" text-anchor="middle">scoped metadata + remote tools</text>
+  <text class="node-copy" x="1200" y="533" text-anchor="middle">Qdrant candidates + MySQL reads</text>
+  <text class="node-copy" x="1200" y="554" text-anchor="middle">no local persistent index</text>
 
   <rect class="node-green" x="1410" y="440" width="260" height="125" rx="5"/>
   <text class="node-title" x="1540" y="477" text-anchor="middle">Agents SDK Runner</text>
@@ -124,7 +124,7 @@
   <rect class="node-green" x="1050" y="610" width="300" height="100" rx="5"/>
   <text class="node-title" x="1200" y="640" text-anchor="middle">ReadingCorpusTools</text>
   <text class="node-copy" x="1200" y="663" text-anchor="middle">search · identity · find locations</text>
-  <text class="node-copy" x="1200" y="684" text-anchor="middle">BM25 · read_locations · evidence state</text>
+  <text class="node-copy" x="1200" y="684" text-anchor="middle">disclosure · read gate · evidence state</text>
 
   <rect class="node-red" x="1410" y="610" width="260" height="100" rx="5"/>
   <text class="node-title" x="1540" y="647" text-anchor="middle">provider_agents_model</text>
@@ -155,9 +155,9 @@
   <text class="node-copy" x="710" y="962" text-anchor="middle">diagnostics · visual links</text>
 
   <rect class="node-gold" x="1050" y="850" width="300" height="110" rx="5"/>
-  <text class="node-title" x="1200" y="885" text-anchor="middle">MySQL</text>
-  <text class="node-copy" x="1200" y="911" text-anchor="middle">canonical Reading Model</text>
-  <text class="node-copy" x="1200" y="932" text-anchor="middle">product state + references</text>
+  <text class="node-title" x="1200" y="885" text-anchor="middle">MySQL + Qdrant</text>
+  <text class="node-copy" x="1200" y="911" text-anchor="middle">canonical model + candidate index</text>
+  <text class="node-copy" x="1200" y="932" text-anchor="middle">stable location_ref contract</text>
 
   <rect class="node-gold" x="1410" y="870" width="260" height="90" rx="5"/>
   <text class="node-title" x="1540" y="905" text-anchor="middle">MinIO</text>
@@ -168,7 +168,7 @@
   <path class="edge-data" d="M 860 915 L 960 915 L 960 905 L 1050 905"/>
   <path class="edge-data" d="M 860 915 L 930 915 L 930 1010 L 1375 1010 L 1375 915 L 1410 915"/>
   <path class="edge-data" d="M 1200 850 L 1200 780 L 1010 780 L 1010 502 L 1050 502"/>
-  <text class="edge-label" x="1100" y="770" text-anchor="middle">DIRECT AUTHORIZED MYSQL LOAD</text>
+  <text class="edge-label" x="1100" y="770" text-anchor="middle">JAVA CORPUS API: QDRANT SEARCH + MYSQL READ</text>
 
-  <text class="subtitle" x="40" y="1080">Current assistant retrieval is in-memory BM25 over the authorized MySQL projection. Only components that produce current assistant evidence are shown.</text>
+  <text class="subtitle" x="40" y="1080">Qdrant returns navigation candidates; only a validated Current Reading Model read can create assistant evidence.</text>
 </svg>
