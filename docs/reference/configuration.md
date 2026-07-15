@@ -20,7 +20,7 @@ should inject the same variables through their secret and configuration system.
 | MinIO | `MINIO_ENDPOINT`, `MINIO_PUBLIC_URL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | PDFs, parser artifacts, screenshots, and crops |
 | Redis | `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`, `SPRING_DATA_REDIS_PASSWORD` | Separate transient product concerns; not assistant evidence |
 | Kafka | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Upload-processing delivery; not assistant retrieval |
-| Qdrant | `QDRANT_BASE_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Shared dense/sparse candidate index for Current Reading Models |
+| Qdrant | `QDRANT_BASE_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Shared dense/sparse candidate index for Current Reading Models; API key is mandatory in production and Compose |
 
 Host-port overrides for `docs/docker-compose.yaml` use `MYSQL_HOST_PORT`, `REDIS_HOST_PORT`,
 `MINIO_API_HOST_PORT`, `MINIO_CONSOLE_HOST_PORT`, `QDRANT_HTTP_HOST_PORT`, and
@@ -53,7 +53,7 @@ fallback.
 | Variable | Purpose |
 | --- | --- |
 | `RESEARCH_HARNESS_BASE_URL` | Internal harness endpoint used by Java |
-| `RESEARCH_HARNESS_INTERNAL_TOKEN` | Shared internal-service credential |
+| `RESEARCH_HARNESS_INTERNAL_TOKEN` | Required shared internal-service credential; blank tokens reject Corpus requests |
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |

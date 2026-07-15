@@ -141,7 +141,7 @@ public class InternalCorpusController {
 
     private void authorize(String authorization) {
         if (internalToken.isBlank()) {
-            return;
+            throw new UnauthorizedCorpusRequest();
         }
         String supplied = authorization == null ? "" : authorization.trim();
         String expected = "Bearer " + internalToken;

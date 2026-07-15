@@ -263,6 +263,10 @@ submit_research_answer
 
 - 产品运行时由 `JavaCorpusGatewayReader` 调 Java Corpus API；Java 用 Qdrant Dense + Sparse
   双路召回、确定性 RRF 和多论文覆盖选择候选，再从 MySQL Hydrate 并验证 Current Location；
+- `load_metadata_dataset()` 只根据锁定的 `scope.paper_ids` 建立轻量 Paper 外壳，不发 Java 请求；
+  `search_paper_candidates` 或 `find_papers_by_identity` 实际运行后才原地补全论文 Metadata；
+- Java 检索只接受 Current Reading Model 已激活的 Qdrant Generation，Collection 缺失、Generation
+  未激活或 Embedding 合同不一致都会显式失败；
 - Golden Fixture、离线 Audit 和单元测试仍使用内存 BM25，包括 passage、开头词项、章节标题、
   查询词覆盖和多论文候选下限。
 

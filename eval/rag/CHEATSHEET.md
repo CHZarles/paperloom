@@ -1,5 +1,8 @@
 # PaperLoom RAG Eval Cheatsheet
 
+> 历史分数快照：表中的 Service-backed 和 Elasticsearch 结果用于工程复盘，不是当前 Harness/Qdrant
+> 回归结果。当前测试入口见 [`research/golden-data/README.md`](../../research/golden-data/README.md)。
+
 The current interpretation and promotion boundary are recorded in
 [`RETRIEVAL_STRATEGY_DECISION.md`](RETRIEVAL_STRATEGY_DECISION.md).
 

@@ -6,15 +6,19 @@ import io.github.chzarles.paperloom.model.PaperLocationType;
 import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
+import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -32,6 +36,7 @@ import java.util.stream.Collectors;
 @Service
 public class ReadingModelQdrantIndexService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReadingModelQdrantIndexService.class);
     private static final Pattern TOKEN_PATTERN = Pattern.compile("[\\p{L}\\p{N}_]+");
     private static final int MAX_EMBEDDING_TEXT_CHARS = 12_000;
 
@@ -61,9 +66,18 @@ public class ReadingModelQdrantIndexService {
         PaperReadingModel model = modelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId)
                 .filter(candidate -> candidate.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY)
                 .orElseThrow(() -> new IllegalStateException("Current READY Reading Model not found for paperId=" + paperId));
+        String previousGeneration = blank(model.getRetrievalIndexGeneration())
+                ? null
+                : model.getRetrievalIndexGeneration().trim();
 
         List<IndexedLocation> locations = buildIndexedLocations(paperId, model.getModelVersion());
         if (locations.isEmpty()) {
+            model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.UNAVAILABLE);
+            model.setRetrievalIndexGeneration(null);
+            model.setRetrievalEmbeddingContract(null);
+            model.setRetrievalIndexedLocationCount(0);
+            model.setRetrievalIndexedAt(LocalDateTime.now());
+            modelRepository.save(model);
             qdrantClient.deleteByPaperId(paperId);
             return new IndexResult(0, 0, embeddingClient.currentModelVersion(), model.getModelVersion());
         }
@@ -87,7 +101,7 @@ public class ReadingModelQdrantIndexService {
             Map<String, Object> payload = new LinkedHashMap<>(location.payload());
             payload.put("index_generation", indexGeneration);
             points.add(new QdrantPoint(
-                    stablePointId(location.paperId(), location.modelVersion(), location.locationRef()),
+                    pointId(location.paperId(), location.modelVersion(), location.locationRef(), indexGeneration),
                     embedding.vectors().get(index),
                     sparseVector(location.searchableText()),
                     payload
@@ -95,17 +109,55 @@ public class ReadingModelQdrantIndexService {
         }
 
         beforeUpsert.run();
-        qdrantClient.upsert(points);
-        long written = qdrantClient.countByPaperIdAndGeneration(paperId, indexGeneration);
-        if (written != points.size()) {
-            throw new IllegalStateException("Qdrant indexed " + written + " of " + points.size()
-                    + " expected Reading Model locations for paperId=" + paperId);
+        String embeddingContract = qdrantClient.indexVersion() + "|" + embedding.modelVersion() + "|" + dimension;
+        LocalDateTime indexedAt = LocalDateTime.now();
+        boolean activated = false;
+        try {
+            qdrantClient.upsert(points);
+            long written = qdrantClient.countByPaperIdAndGeneration(paperId, indexGeneration);
+            if (written != points.size()) {
+                throw new IllegalStateException("Qdrant indexed " + written + " of " + points.size()
+                        + " expected Reading Model locations for paperId=" + paperId);
+            }
+            int updated = modelRepository.activateRetrievalIndex(
+                    paperId,
+                    model.getModelVersion(),
+                    previousGeneration,
+                    indexGeneration,
+                    embeddingContract,
+                    points.size(),
+                    indexedAt
+            );
+            if (updated != 1) {
+                throw new IllegalStateException(
+                        "Current Reading Model or active generation changed while Qdrant indexing was in progress for paperId="
+                                + paperId);
+            }
+            activated = true;
+        } catch (RuntimeException activationError) {
+            if (!activated) {
+                deleteUnactivatedGeneration(paperId, indexGeneration, activationError);
+            }
+            throw activationError;
         }
-        qdrantClient.deleteByPaperIdExceptGeneration(paperId, indexGeneration);
-        long retained = qdrantClient.countByPaperId(paperId);
-        if (retained != points.size()) {
-            throw new IllegalStateException("Qdrant retained " + retained + " points after stale-generation cleanup; expected "
-                    + points.size() + " for paperId=" + paperId);
+        model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.READY);
+        model.setRetrievalIndexGeneration(indexGeneration);
+        model.setRetrievalEmbeddingContract(embeddingContract);
+        model.setRetrievalIndexedLocationCount(points.size());
+        model.setRetrievalIndexedAt(indexedAt);
+        if (previousGeneration != null && !previousGeneration.equals(indexGeneration)) {
+            try {
+                qdrantClient.deleteByPaperIdAndGeneration(paperId, previousGeneration);
+                long retained = qdrantClient.countByPaperIdAndGeneration(paperId, previousGeneration);
+                if (retained != 0) {
+                    throw new IllegalStateException("Qdrant retained " + retained
+                            + " points from stale generation " + previousGeneration
+                            + " for paperId=" + paperId);
+                }
+            } catch (RuntimeException cleanupError) {
+                logger.warn("Activated Qdrant generation but stale-generation cleanup failed: paperId={}, generation={}",
+                        paperId, indexGeneration, cleanupError);
+            }
         }
         return new IndexResult(
                 embedding.totalTokens(),
@@ -113,6 +165,18 @@ public class ReadingModelQdrantIndexService {
                 embedding.modelVersion(),
                 model.getModelVersion()
         );
+    }
+
+    private void deleteUnactivatedGeneration(String paperId,
+                                              String indexGeneration,
+                                              RuntimeException activationError) {
+        try {
+            qdrantClient.deleteByPaperIdAndGeneration(paperId, indexGeneration);
+        } catch (RuntimeException cleanupError) {
+            activationError.addSuppressed(cleanupError);
+            logger.warn("Failed to remove an unactivated Qdrant generation: paperId={}, generation={}",
+                    paperId, indexGeneration, cleanupError);
+        }
     }
 
     public void deleteByPaperId(String paperId) {
@@ -167,8 +231,9 @@ public class ReadingModelQdrantIndexService {
                 .toList();
     }
 
-    static String stablePointId(String paperId, String modelVersion, String locationRef) {
-        byte[] digest = sha256Bytes(paperId + "\n" + modelVersion + "\n" + locationRef);
+    static String pointId(String paperId, String modelVersion, String locationRef, String indexGeneration) {
+        byte[] digest = sha256Bytes(
+                paperId + "\n" + modelVersion + "\n" + locationRef + "\n" + indexGeneration);
         digest[6] = (byte) ((digest[6] & 0x0f) | 0x80);
         digest[8] = (byte) ((digest[8] & 0x3f) | 0x80);
         ByteBuffer buffer = ByteBuffer.wrap(digest);
@@ -311,7 +376,6 @@ public class ReadingModelQdrantIndexService {
             put(payload, "owner_user_id", location.getUserId());
             put(payload, "org_tag", location.getOrgTag());
             put(payload, "is_public", location.isPublic());
-            put(payload, "searchable_text", searchableText);
             return new IndexedLocation(
                     location.getPaperId(),
                     location.getModelVersion(),

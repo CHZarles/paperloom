@@ -35,6 +35,7 @@ public class ProductionConfigValidator implements CommandLineRunner {
         requireNonBlank("minio.accessKey");
         requireNonBlank("minio.secretKey");
         requireNonBlank("qdrant.base-url");
+        requireNonBlank("qdrant.api-key");
         requireNonBlank("qdrant.collection");
         requireNonBlank("research-harness.internal-token");
         requireNonBlank("security.allowed-origins");

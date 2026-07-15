@@ -280,48 +280,6 @@
             background-color: #c82333;
         }
 
-        .search-results {
-            margin-top: 20px;
-        }
-
-        .search-result-item {
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            margin-bottom: 15px;
-            background-color: #f9f9f9;
-            transition: box-shadow 0.3s;
-        }
-
-        .search-result-item:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .search-result-item .score {
-            float: right;
-            background-color: var(--primary-color);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .search-result-item .content {
-            margin: 10px 0;
-            line-height: 1.6;
-            color: #333;
-        }
-
-        .search-result-item .metadata {
-            font-size: 12px;
-            color: #666;
-            margin-top: 10px;
-        }
-
-        .search-result-item .metadata span {
-            margin-right: 15px;
-        }
     </style>
 </head>
 <body>
@@ -330,7 +288,6 @@
             <h2>功能导航</h2>
             <div class="nav-item active" onclick="showSection('auth')">用户认证</div>
             <div class="nav-item" onclick="showSection('chat')">智能对话</div>
-            <div class="nav-item" onclick="showSection('search')">混合检索</div>
             <div class="nav-item" onclick="showSection('file')">文件管理</div>
             <div class="nav-item" onclick="showSection('history')">对话历史</div>
             <div class="nav-item admin-only" onclick="showSection('admin')">管理功能</div>
@@ -367,26 +324,6 @@
                         <input type="text" id="message-input" placeholder="输入您的问题..." onkeypress="handleKeyPress(event)" />
                         <button onclick="sendMessage()">发送</button>
                     </div>
-                </div>
-            </div>
-
-            <!-- 混合检索部分 -->
-            <div id="search" class="section">
-                <h2>混合检索</h2>
-                <div class="form-group">
-                    <label>搜索查询：</label>
-                    <input type="text" id="search-query" placeholder="请输入搜索关键词，如：人工智能的发展" />
-                </div>
-                <div class="form-group">
-                    <label>返回结果数量：</label>
-                    <input type="number" id="search-topk" value="10" min="1" max="50" />
-                </div>
-                <button onclick="performSearch()">开始检索</button>
-                <div id="search-response" class="response"></div>
-                
-                <div class="search-results">
-                    <h3>检索结果</h3>
-                    <div id="search-results-list"></div>
                 </div>
             </div>
 
@@ -1175,93 +1112,6 @@
             } catch (error) {
                 showResponse('activities-response', `获取用户活动失败: ${error.message}`, false);
             }
-        }
-
-        // 执行混合检索
-        async function performSearch() {
-            const query = document.getElementById('search-query').value.trim();
-            const topK = parseInt(document.getElementById('search-topk').value) || 10;
-            
-            if (!query) {
-                showResponse('search-response', '请输入搜索关键词', false);
-                return;
-            }
-            
-            try {
-                showResponse('search-response', '正在检索中...', true);
-                
-                // 构建GET请求URL
-                const params = new URLSearchParams();
-                params.append('query', query);
-                params.append('topK', topK);
-                
-                const url = `/api/v1/papers/search/hybrid?${params.toString()}`;
-                
-                const headers = {};
-                if (token) {
-                    headers['Authorization'] = `Bearer ${token}`;
-                }
-                
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: headers
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const results = await response.json();
-                
-                showResponse('search-response', `检索完成，找到 ${results.length} 条结果`, true);
-                displaySearchResults(results);
-                
-            } catch (error) {
-                showResponse('search-response', `检索失败: ${error.message}`, false);
-                document.getElementById('search-results-list').innerHTML = '';
-            }
-        }
-
-        // 显示搜索结果
-        function displaySearchResults(results) {
-            const container = document.getElementById('search-results-list');
-            container.innerHTML = '';
-            
-            if (!results || results.length === 0) {
-                container.innerHTML = '<p>没有找到相关结果</p>';
-                return;
-            }
-            
-            results.forEach((result, index) => {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'search-result-item';
-                
-                const score = result.score ? result.score.toFixed(3) : 'N/A';
-                const content = result.textContent || result.text_content || '无内容';
-                const paperId = result.paperId || '未知';
-                const paperTitle = result.paperTitle || '未知';
-                const chunkId = result.chunkId || result.chunk_id || '未知';
-                const userId = result.userId || result.user_id || '未知';
-                const orgTag = result.orgTag || result.org_tag || '未知';
-                const isPublic = result.isPublic !== undefined ? result.isPublic : 
-                                (result.is_public !== undefined ? result.is_public : false);
-                
-                resultDiv.innerHTML = `
-                    <div class="score">${score}</div>
-                    <h4>结果 ${index + 1}</h4>
-                    <div class="content">${content}</div>
-                    <div class="metadata">
-                        <span><strong>paperId:</strong> ${paperId}</span>
-                        <span><strong>paperTitle:</strong> ${paperTitle}</span>
-                        <span><strong>分片ID:</strong> ${chunkId}</span>
-                        <span><strong>用户ID:</strong> ${userId}</span>
-                        <span><strong>组织标签:</strong> ${orgTag}</span>
-                        <span><strong>可见性:</strong> ${isPublic ? '公开' : '私有'}</span>
-                    </div>
-                `;
-                
-                container.appendChild(resultDiv);
-            });
         }
 
         // 显示响应信息

@@ -64,6 +64,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             "evidence_id": "ev_1",
             "matched_anchor_id": "anchor_a",
             "matched_anchor_ids": ["anchor_a", "anchor_b"],
+            "dense_score": 0.91,
+            "sparse_score": 0.82,
+            "fused_score": 0.03,
+            "index_version": "reading-model-v1",
             "span_text": "Visible evidence.",
         })
 

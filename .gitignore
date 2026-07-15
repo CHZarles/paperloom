@@ -98,6 +98,7 @@ src/main/resources/cert
 .superpowers/
 .qoder/
 .venv-harness/
+/research/golden-data/local-runs/
 .classpath
 .factorypath
 .project

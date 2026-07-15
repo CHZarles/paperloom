@@ -26,7 +26,6 @@ public class QdrantClient {
     private final ObjectMapper objectMapper;
     private final QdrantProperties properties;
     private final HttpClient httpClient;
-    private volatile Integer ensuredDimension;
 
     public QdrantClient(ObjectMapper objectMapper, QdrantProperties properties) {
         this.objectMapper = objectMapper;
@@ -40,26 +39,49 @@ public class QdrantClient {
         if (dimension <= 0) {
             throw new IllegalArgumentException("Qdrant dense vector dimension must be positive");
         }
-        if (Integer.valueOf(dimension).equals(ensuredDimension)) {
-            return;
-        }
         HttpResponse<String> existing = send("GET", collectionPath(), null, true);
         if (existing.statusCode() == 404) {
             Map<String, Object> body = Map.of(
                     "vectors", Map.of("dense", Map.of("size", dimension, "distance", "Cosine")),
                     "sparse_vectors", Map.of("sparse", Map.of("index", Map.of("on_disk", true)))
             );
-            requireSuccess(send("PUT", collectionPath(), body, false), "create Qdrant collection");
-        } else {
-            requireSuccess(existing, "inspect Qdrant collection");
-            int configuredDimension = readDenseDimension(existing.body());
-            if (configuredDimension > 0 && configuredDimension != dimension) {
-                throw new IllegalStateException("Qdrant collection dense dimension is " + configuredDimension
-                        + " but the active embedding provider returned " + dimension);
+            HttpResponse<String> created = send("PUT", collectionPath(), body, false);
+            if (created.statusCode() == 409) {
+                validateCollection(send("GET", collectionPath(), null, false), dimension);
+            } else {
+                requireSuccess(created, "create Qdrant collection");
             }
+        } else {
+            validateCollection(existing, dimension);
         }
         ensurePayloadIndexes();
-        ensuredDimension = dimension;
+    }
+
+    public void verifyCollection(int dimension) {
+        if (dimension <= 0) {
+            throw new IllegalArgumentException("Qdrant dense vector dimension must be positive");
+        }
+        HttpResponse<String> existing = send("GET", collectionPath(), null, true);
+        if (existing.statusCode() == 404) {
+            throw new IllegalStateException("Qdrant collection is missing: " + properties.getCollection());
+        }
+        validateCollection(existing, dimension);
+    }
+
+    private void validateCollection(HttpResponse<String> existing, int dimension) {
+        requireSuccess(existing, "inspect Qdrant collection");
+        JsonNode params = readCollectionParams(existing.body());
+        int configuredDimension = params.path("vectors").path("dense").path("size").asInt(0);
+        if (configuredDimension <= 0) {
+            throw new IllegalStateException("Qdrant collection is missing the named dense vector");
+        }
+        if (configuredDimension != dimension) {
+            throw new IllegalStateException("Qdrant collection dense dimension is " + configuredDimension
+                    + " but the active embedding provider returned " + dimension);
+        }
+        if (!params.path("sparse_vectors").has("sparse")) {
+            throw new IllegalStateException("Qdrant collection is missing the named sparse vector");
+        }
     }
 
     public void upsert(List<QdrantPoint> points) {
@@ -103,19 +125,19 @@ public class QdrantClient {
         ), "delete Qdrant paper points");
     }
 
-    public void deleteByPaperIdExceptGeneration(String paperId, String indexGeneration) {
+    public void deleteByPaperIdAndGeneration(String paperId, String indexGeneration) {
         if (paperId == null || paperId.isBlank() || indexGeneration == null || indexGeneration.isBlank()) {
             throw new IllegalArgumentException("paperId and indexGeneration are required");
         }
         requireSuccess(send(
                 "POST",
                 collectionPath() + "/points/delete?wait=true",
-                Map.of("filter", Map.of(
-                        "must", List.of(matchValue("paper_id", paperId)),
-                        "must_not", List.of(matchValue("index_generation", indexGeneration))
-                )),
+                Map.of("filter", Map.of("must", List.of(
+                        matchValue("paper_id", paperId),
+                        matchValue("index_generation", indexGeneration)
+                ))),
                 false
-        ), "delete stale Qdrant paper points");
+        ), "delete Qdrant paper generation");
     }
 
     public long countByPaperId(String paperId) {
@@ -188,28 +210,47 @@ public class QdrantClient {
         ), filter, limit);
     }
 
-    public Map<String, Object> filter(List<String> paperIds,
-                                      List<String> elementTypes,
+    public Map<String, Object> filter(Map<String, String> activeGenerations,
                                       Integer pageFrom,
                                       Integer pageTo) {
         List<Map<String, Object>> must = new ArrayList<>();
-        if (paperIds != null && !paperIds.isEmpty()) {
-            must.add(matchAny("paper_id", paperIds));
-        }
-        if (elementTypes != null && !elementTypes.isEmpty()) {
-            must.add(matchAny("element_types", elementTypes));
-        }
-        if (pageFrom != null || pageTo != null) {
-            Map<String, Object> range = new LinkedHashMap<>();
-            if (pageFrom != null) {
-                range.put("gte", pageFrom);
+        if (activeGenerations != null && !activeGenerations.isEmpty()) {
+            if (activeGenerations.size() == 1) {
+                Map.Entry<String, String> entry = activeGenerations.entrySet().iterator().next();
+                must.add(matchValue("paper_id", entry.getKey()));
+                must.add(matchValue("index_generation", entry.getValue()));
+            } else {
+                List<Map<String, Object>> activePairs = activeGenerations.entrySet().stream()
+                        .map(entry -> Map.<String, Object>of("must", List.of(
+                                matchValue("paper_id", entry.getKey()),
+                                matchValue("index_generation", entry.getValue())
+                        )))
+                        .toList();
+                Map<String, Object> filter = new LinkedHashMap<>();
+                filter.put("should", activePairs);
+                addPageRange(must, pageFrom, pageTo);
+                if (!must.isEmpty()) {
+                    filter.put("must", must);
+                }
+                return filter;
             }
-            if (pageTo != null) {
-                range.put("lte", pageTo);
-            }
-            must.add(Map.of("key", "page_number", "range", range));
         }
+        addPageRange(must, pageFrom, pageTo);
         return must.isEmpty() ? Map.of() : Map.of("must", must);
+    }
+
+    private void addPageRange(List<Map<String, Object>> must, Integer pageFrom, Integer pageTo) {
+        if (pageFrom == null && pageTo == null) {
+            return;
+        }
+        Map<String, Object> range = new LinkedHashMap<>();
+        if (pageFrom != null) {
+            range.put("gte", pageFrom);
+        }
+        if (pageTo != null) {
+            range.put("lte", pageTo);
+        }
+        must.add(Map.of("key", "page_number", "range", range));
     }
 
     public String indexVersion() {
@@ -281,16 +322,12 @@ public class QdrantClient {
                 + body.substring(0, Math.min(body.length(), 1000)));
     }
 
-    private int readDenseDimension(String body) {
+    private JsonNode readCollectionParams(String body) {
         try {
             return objectMapper.readTree(body)
                     .path("result")
                     .path("config")
-                    .path("params")
-                    .path("vectors")
-                    .path("dense")
-                    .path("size")
-                    .asInt(0);
+                    .path("params");
         } catch (IOException exception) {
             throw new IllegalStateException("Invalid Qdrant collection response", exception);
         }
@@ -334,10 +371,6 @@ public class QdrantClient {
 
     private Map<String, Object> matchValue(String key, String value) {
         return Map.of("key", key, "match", Map.of("value", value));
-    }
-
-    private Map<String, Object> matchAny(String key, List<String> values) {
-        return Map.of("key", key, "match", Map.of("any", values));
     }
 
     private Duration safeDuration(Duration value, Duration fallback) {

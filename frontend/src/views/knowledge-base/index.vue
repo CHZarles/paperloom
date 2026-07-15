@@ -10,7 +10,6 @@ import SvgIcon from '@/components/custom/svg-icon.vue';
 import ConversationSidebar from '@/views/chat/modules/conversation-sidebar.vue';
 import SettingsPanel from '@/views/personal-center/modules/settings-panel.vue';
 import UploadDialog from './modules/upload-dialog.vue';
-import SearchDialog from './modules/search-dialog.vue';
 import CollectionsPanel from './modules/collections-panel.vue';
 import PaperMobileList from './modules/paper-mobile-list.vue';
 
@@ -575,13 +574,6 @@ function handleUpload() {
 }
 // #endregion
 
-// #region 检索论文库
-const searchVisible = ref(false);
-function handleSearch() {
-  searchVisible.value = true;
-}
-// #endregion
-
 function formatFileSize(value?: number | string | null) {
   const bytes = normalizeBytes(value);
   return bytes > 0 ? fileSize(bytes) : 'N/A';
@@ -1049,12 +1041,6 @@ async function onBeforeUpload(
                   >
                     Reset
                   </NButton>
-                  <NButton size="small" secondary @click="handleSearch">
-                    <template #icon>
-                      <icon-lucide:search-check class="text-icon" />
-                    </template>
-                    Evidence search
-                  </NButton>
                 </div>
               </template>
               <template #default>
@@ -1118,7 +1104,6 @@ async function onBeforeUpload(
       </NCard>
     </main>
     <UploadDialog v-model:visible="uploadVisible" />
-    <SearchDialog v-model:visible="searchVisible" />
 
     <NModal
       v-model:show="settingsVisible"

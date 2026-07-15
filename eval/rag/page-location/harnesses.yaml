@@ -13,14 +13,6 @@ harnesses:
     planner: page-locator
     verifier: disabled
     status: prototype
-  - id: service-backed-page-window
-    name: Service Backed Page Window
-    description: Production first-stage retrieval plus MySQL page-window inspection and evidence-ledger packing.
-    retrieval: adaptive-hybrid + page-window
-    planner: scientific-qa
-    verifier: evidence-ledger
-    status: prototype
-
 benchmarks:
   - id: product-rescue-curated-page-location
     name: Product Rescue Curated Page Location

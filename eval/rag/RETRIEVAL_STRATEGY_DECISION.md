@@ -1,5 +1,8 @@
 # PaperLoom Retrieval Strategy Decision
 
+> 历史归档：本文描述的生产检索实现已经被 Java Corpus API、Qdrant Candidate Index 和 MySQL Exact
+> Read 取代。当前 Harness 测试流程见 [`research/golden-data/README.md`](../../research/golden-data/README.md)。
+
 Date: 2026-06-27
 
 ## Decision

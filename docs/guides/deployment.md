@@ -59,7 +59,9 @@ Production requirements include:
 - persistent volumes and a tested backup policy;
 - resource limits suitable for Qdrant, embedding traffic, and PDF parsing.
 
-Keep Qdrant on a private network, use an API key when it crosses a trust boundary, and test snapshots.
+Keep Qdrant on a private network, require a non-empty API key in every production deployment, and
+test snapshots. The backend production profile fails closed when `qdrant.api-key` or the internal
+Harness token is blank.
 
 ## Reverse Proxy
 

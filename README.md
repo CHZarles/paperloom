@@ -64,8 +64,10 @@ Reading Model records:
 - stable page, section, table, and figure locations;
 - PDF page screenshots and table, figure, or chart crops.
 
-The Python product adapter loads only scoped paper metadata. Java owns the full Reading Model,
-Qdrant projection, candidate validation, and exact canonical reads.
+The Python product adapter first creates lightweight scoped paper-ID shells without Java I/O and
+hydrates metadata only when the model invokes a paper discovery or identity tool. Java owns the full
+Reading Model, active Qdrant generation, embedding-contract validation, candidate validation, and
+exact canonical reads.
 See [Reading Model and Agent Tools](docs/architecture/reading-model-and-agent-tools.md).
 
 ## Agent Tool Protocol

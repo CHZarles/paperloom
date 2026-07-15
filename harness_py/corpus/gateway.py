@@ -99,22 +99,14 @@ class JavaCorpusGatewayReader:
     user_id: int
     scope_paper_ids: list[str]
     cancel_check: Callable[[], bool] = field(default=lambda: False, repr=False)
-    candidates_by_location_ref: dict[str, JsonMap] = field(default_factory=dict)
+    metadata_records_by_id: dict[str, JsonMap] = field(default_factory=dict)
 
     def load_metadata_dataset(self) -> GoldenDataset:
-        records: dict[str, JsonMap] = {}
-        offset = 0
-        while True:
-            response = self.search_papers({"query_text": "", "offset": offset, "limit": 100})
-            for raw in as_list(response.get("candidates")):
-                card = child_map(raw)
-                paper_id = str(card.get("paper_id") or "").strip()
-                if paper_id:
-                    records[paper_id] = _paper_record(card)
-            next_offset = response.get("next_offset")
-            if next_offset is None:
-                break
-            offset = int(next_offset)
+        records = {
+            paper_id: _paper_record({"paper_id": paper_id})
+            for paper_id in _strings(self.scope_paper_ids)
+        }
+        self.metadata_records_by_id = records
         return GoldenDataset(
             root=Path(".").resolve(),
             manifest_path=Path("java-corpus-gateway"),
@@ -132,7 +124,7 @@ class JavaCorpusGatewayReader:
         )
 
     def search_papers(self, arguments: JsonMap) -> JsonMap:
-        return self._post("/internal/v1/corpus/papers/search", {
+        response = self._post("/internal/v1/corpus/papers/search", {
             **self._context(),
             "query_text": str(arguments.get("query_text") or ""),
             "paper_ids": _strings(arguments.get("paper_ids")),
@@ -143,6 +135,8 @@ class JavaCorpusGatewayReader:
             "offset": int(arguments.get("offset") or 0),
             "limit": int(arguments.get("limit") or 20),
         })
+        self._remember_paper_cards(response.get("candidates"))
+        return response
 
     def find_papers_by_identity(self, arguments: JsonMap) -> JsonMap:
         identity = {
@@ -151,13 +145,15 @@ class JavaCorpusGatewayReader:
             if key in {"paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year"}
             and value not in (None, "", [])
         }
-        return self._post("/internal/v1/corpus/papers/search", {
+        response = self._post("/internal/v1/corpus/papers/search", {
             **self._context(),
             "identity": identity,
         })
+        self._remember_paper_cards(response.get("matches"))
+        return response
 
     def search_locations(self, arguments: JsonMap) -> JsonMap:
-        response = self._post("/internal/v1/corpus/locations/search", {
+        return self._post("/internal/v1/corpus/locations/search", {
             **self._context(),
             "paper_ids": _strings(arguments.get("paper_ids")),
             "query_text": str(arguments.get("query_text") or ""),
@@ -167,12 +163,6 @@ class JavaCorpusGatewayReader:
             "page_to": arguments.get("page_to"),
             "top_k": int(arguments.get("top_k") or 8),
         })
-        for raw in as_list(response.get("locations")):
-            candidate = child_map(raw)
-            location_ref = str(candidate.get("location_ref") or "").strip()
-            if location_ref:
-                self.candidates_by_location_ref[location_ref] = candidate
-        return response
 
     def read_locations(self, arguments: JsonMap) -> JsonMap:
         response = self._post("/internal/v1/corpus/locations/read", {
@@ -183,8 +173,7 @@ class JavaCorpusGatewayReader:
         for raw in as_list(response.get("items")):
             item = child_map(raw)
             location_ref = str(item.get("location_ref") or "")
-            candidate = self.candidates_by_location_ref.get(location_ref, {})
-            element_type = str(candidate.get("element_type") or item.get("element_type") or "paragraph")
+            element_type = str(item.get("element_type") or "paragraph")
             page = item.get("page")
             evidence_id = _evidence_id(
                 str(item.get("paper_id") or ""),
@@ -236,6 +225,13 @@ class JavaCorpusGatewayReader:
             "user_id": self.user_id,
             "scope_paper_ids": self.scope_paper_ids,
         }
+
+    def _remember_paper_cards(self, raw_cards: object) -> None:
+        for raw in as_list(raw_cards):
+            card = child_map(raw)
+            paper_id = str(card.get("paper_id") or "").strip()
+            if paper_id in self.metadata_records_by_id:
+                self.metadata_records_by_id[paper_id] = _paper_record(card)
 
     def _post(self, path: str, payload: JsonMap) -> JsonMap:
         if self.cancel_check():

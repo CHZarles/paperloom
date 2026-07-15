@@ -32,7 +32,15 @@ SEARCH_ELEMENT_TYPES = (
 SEARCH_RESULT_LIMIT = 20
 SEARCH_SNIPPET_CHARS = 500
 PAPER_RESULT_LIMIT = 100
-MODEL_REDACTED_FIELDS = {"matched_anchor_id", "matched_anchor_ids", "evidence_anchor_id"}
+MODEL_REDACTED_FIELDS = {
+    "matched_anchor_id",
+    "matched_anchor_ids",
+    "evidence_anchor_id",
+    "dense_score",
+    "sparse_score",
+    "fused_score",
+    "index_version",
+}
 BROAD_QUERY_MIN_TOKENS = 6
 BROAD_QUERY_BASE_CANDIDATES = 12
 MULTI_PAPER_BASE_CANDIDATES = 12

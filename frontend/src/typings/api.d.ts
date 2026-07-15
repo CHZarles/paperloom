@@ -320,25 +320,6 @@ declare namespace Api {
   }
 
   namespace Paper {
-    interface SearchParams {
-      userId: string;
-      query: string;
-      pageBatchSize: number;
-    }
-
-    interface SearchResult {
-      paperId: string;
-      chunkId: number;
-      textContent: string;
-      score: number;
-      paperTitle: string;
-      originalFilename: string;
-      pageNumber?: number | null;
-      anchorText?: string | null;
-      retrievalMode?: 'HYBRID' | 'TEXT_ONLY' | 'PRODUCT_READING_REACT' | null;
-      matchedChunkText?: string | null;
-    }
-
     interface UploadState {
       tasks: UploadTask[];
       activeUploads: Set<string>; // 当前正在上传的任务ID
@@ -908,8 +889,6 @@ declare namespace Api {
   }
 
   namespace KnowledgeBase {
-    type SearchParams = Paper.SearchParams;
-    type SearchResult = Paper.SearchResult;
     type UploadState = Paper.UploadState;
     type Form = Paper.Form;
     type UploadTask = Paper.UploadTask;

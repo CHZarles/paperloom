@@ -82,9 +82,6 @@ class ResearchHarnessService:
                 cancel_check=should_cancel,
             )
             dataset = corpus_reader.load_metadata_dataset()
-            missing = sorted(set(paper_ids) - set(dataset.paper_records_by_id))
-            if missing:
-                raise ValueError(f"Java Corpus API rejected unavailable scope papers: {missing}")
         else:
             dataset = self.corpus_store.load_dataset(
                 paper_ids=paper_ids,

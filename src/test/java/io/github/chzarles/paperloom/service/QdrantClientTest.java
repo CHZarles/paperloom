@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class QdrantClientTest {
@@ -26,6 +28,9 @@ class QdrantClientTest {
     private final List<CapturedRequest> requests = new ArrayList<>();
     private HttpServer server;
     private QdrantClient client;
+    private boolean collectionExists;
+    private boolean conflictOnCreate;
+    private boolean omitSparseVector;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -54,7 +59,7 @@ class QdrantClientTest {
         )));
         List<QdrantSearchHit> hits = client.searchDense(
                 new float[]{1.0f, 0.0f, 0.0f},
-                client.filter(List.of("paper-a"), List.of("paragraph"), 2, 4),
+                client.filter(Map.of("paper-a", "generation-1"), 2, 4),
                 8
         );
 
@@ -73,13 +78,96 @@ class QdrantClientTest {
         assertEquals("dense", search.path("vector").path("name").asText());
         assertEquals(8, search.path("limit").asInt());
         assertEquals("paper_id", search.path("filter").path("must").get(0).path("key").asText());
+        assertEquals("index_generation", search.path("filter").path("must").get(1).path("key").asText());
+        assertEquals("generation-1", search.path("filter").path("must").get(1)
+                .path("match").path("value").asText());
+        assertFalse(search.toString().contains("element_types"));
         assertEquals("location_ref_a", hits.get(0).payload().get("location_ref"));
     }
 
     @Test
-    void verifiesGenerationCountBeforeDeletingStalePoints() throws Exception {
+    void scopeFilterKeepsEachPaperCoupledToItsActiveGeneration() {
+        Map<String, Object> filter = client.filter(Map.of(
+                "paper-a", "generation-a",
+                "paper-b", "generation-b"
+        ), 2, 4);
+
+        JsonNode json = objectMapper.valueToTree(filter);
+        Set<Set<String>> pairedValues = new java.util.LinkedHashSet<>();
+        for (JsonNode branch : json.path("should")) {
+            Set<String> values = new java.util.LinkedHashSet<>();
+            for (JsonNode condition : branch.path("must")) {
+                values.add(condition.path("match").path("value").asText());
+            }
+            pairedValues.add(values);
+        }
+
+        assertEquals(2, json.path("should").size());
+        assertEquals(Set.of(
+                Set.of("paper-a", "generation-a"),
+                Set.of("paper-b", "generation-b")
+        ), pairedValues);
+        assertEquals("page_number", json.path("must").get(0).path("key").asText());
+    }
+
+    @Test
+    void retrievalVerificationRejectsMissingCollectionWithoutProvisioningIt() {
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> client.verifyCollection(3)
+        );
+
+        assertTrue(error.getMessage().contains("missing"));
+        assertEquals(0, requests.stream()
+                .filter(item -> item.method().equals("PUT")
+                        && item.path().equals("/collections/test_reading_models"))
+                .count());
+    }
+
+    @Test
+    void provisioningRechecksCollectionAvailabilityAfterEarlierSuccess() {
+        client.ensureCollection(3);
+        client.ensureCollection(3);
+
+        assertEquals(2, requests.stream()
+                .filter(item -> item.method().equals("GET")
+                        && item.path().equals("/collections/test_reading_models"))
+                .count());
+    }
+
+    @Test
+    void concurrentCollectionCreationConflictRechecksTheWinningCollection() {
+        conflictOnCreate = true;
+
+        client.ensureCollection(3);
+
+        assertEquals(2, requests.stream()
+                .filter(item -> item.method().equals("GET")
+                        && item.path().equals("/collections/test_reading_models"))
+                .count());
+        assertEquals(1, requests.stream()
+                .filter(item -> item.method().equals("PUT")
+                        && item.path().equals("/collections/test_reading_models"))
+                .count());
+    }
+
+    @Test
+    void retrievalVerificationRejectsCollectionWithoutNamedSparseVector() {
+        collectionExists = true;
+        omitSparseVector = true;
+
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> client.verifyCollection(3)
+        );
+
+        assertTrue(error.getMessage().contains("sparse"));
+    }
+
+    @Test
+    void deletesOnlyTheSpecifiedPaperGeneration() throws Exception {
         assertEquals(1, client.countByPaperIdAndGeneration("paper-a", "generation-2"));
-        client.deleteByPaperIdExceptGeneration("paper-a", "generation-2");
+        client.deleteByPaperIdAndGeneration("paper-a", "generation-2");
 
         JsonNode count = bodyFor("POST", "/collections/test_reading_models/points/count");
         assertEquals("paper_id", count.path("filter").path("must").get(0).path("key").asText());
@@ -87,7 +175,9 @@ class QdrantClientTest {
 
         JsonNode delete = bodyFor("POST", "/collections/test_reading_models/points/delete?wait=true");
         assertEquals("paper_id", delete.path("filter").path("must").get(0).path("key").asText());
-        assertEquals("index_generation", delete.path("filter").path("must_not").get(0).path("key").asText());
+        assertEquals("index_generation", delete.path("filter").path("must").get(1).path("key").asText());
+        assertEquals("generation-2", delete.path("filter").path("must").get(1)
+                .path("match").path("value").asText());
     }
 
     @Test
@@ -100,7 +190,26 @@ class QdrantClientTest {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         requests.add(new CapturedRequest(exchange.getRequestMethod(), path, body));
         if ("GET".equals(exchange.getRequestMethod()) && path.equals("/collections/test_reading_models")) {
-            respond(exchange, 404, "{}");
+            if (collectionExists) {
+                String sparse = omitSparseVector
+                        ? ""
+                        : ",\"sparse_vectors\":{\"sparse\":{\"index\":{\"on_disk\":true}}}";
+                respond(exchange, 200,
+                        "{\"result\":{\"config\":{\"params\":{\"vectors\":{\"dense\":{\"size\":3}}"
+                                + sparse + "}}},\"status\":\"ok\"}");
+            } else {
+                respond(exchange, 404, "{}");
+            }
+            return;
+        }
+        if ("PUT".equals(exchange.getRequestMethod()) && path.equals("/collections/test_reading_models")) {
+            collectionExists = true;
+            if (conflictOnCreate) {
+                conflictOnCreate = false;
+                respond(exchange, 409, "{\"status\":{\"error\":\"already exists\"}}");
+            } else {
+                respond(exchange, 200, "{\"result\":true,\"status\":\"ok\"}");
+            }
             return;
         }
         if (path.endsWith("/points/search")) {

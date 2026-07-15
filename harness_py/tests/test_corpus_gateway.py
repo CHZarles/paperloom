@@ -76,6 +76,28 @@ class FakeGateway:
 
 
 class JavaCorpusGatewayTest(unittest.TestCase):
+    def test_metadata_dataset_is_built_from_locked_scope_without_java_io(self) -> None:
+        gateway = FakeGateway()
+        reader = JavaCorpusGatewayReader(
+            gateway=gateway,
+            request_id="request-1",
+            conversation_id="conversation-1",
+            user_id=7,
+            scope_paper_ids=["paper-a", "paper-b"],
+        )
+
+        dataset = reader.load_metadata_dataset()
+
+        self.assertEqual({"paper-a", "paper-b"}, set(dataset.paper_records_by_id))
+        self.assertEqual([], gateway.calls)
+
+        reader.search_papers({"paper_ids": ["paper-a"]})
+
+        self.assertEqual(
+            "Paper A",
+            dataset.paper_records_by_id["paper-a"]["identity"]["title"],
+        )
+
     def test_gateway_keeps_tool_authorization_and_exact_read_contract(self) -> None:
         gateway = FakeGateway()
         reader = JavaCorpusGatewayReader(
@@ -94,14 +116,19 @@ class JavaCorpusGatewayTest(unittest.TestCase):
             "query_text": "canonical content",
             "top_k": 8,
         })
-        read_result = tools.read_locations({"location_refs": ["location_ref_a"]})
 
         self.assertEqual(1, paper_result["returned_count"])
         self.assertEqual("location_ref_a", location_result["locations"][0]["location_ref"])
+        self.assertNotIn("evidence_id", location_result["locations"][0])
+        self.assertEqual({}, tools.observations_by_evidence_id)
+
+        read_result = tools.read_locations({"location_refs": ["location_ref_a"]})
+
         self.assertEqual("Exact canonical content.", read_result["items"][0]["span_text"])
         evidence_id = read_result["items"][0]["evidence_id"]
+        self.assertEqual("ev_e04a65dc77b9655f", evidence_id)
         self.assertIn(evidence_id, tools.observations_by_evidence_id)
-        self.assertEqual("paragraph", read_result["items"][0]["element_type"])
+        self.assertEqual("section", read_result["items"][0]["element_type"])
         self.assertTrue(all(payload["user_id"] == 7 for _, payload in gateway.calls))
         self.assertTrue(all(payload["scope_paper_ids"] == ["paper-a"] for _, payload in gateway.calls))
 
@@ -120,6 +147,22 @@ class JavaCorpusGatewayTest(unittest.TestCase):
 
         self.assertEqual("location_not_disclosed_for_reading", result["error"])
         self.assertFalse(any(path.endswith("/locations/read") for path, _ in gateway.calls))
+
+    def test_java_and_in_memory_adapters_share_the_same_core_tool_contract(self) -> None:
+        gateway = FakeGateway()
+        reader = JavaCorpusGatewayReader(
+            gateway=gateway,
+            request_id="request-1",
+            conversation_id="conversation-1",
+            user_id=7,
+            scope_paper_ids=["paper-a"],
+        )
+        dataset = reader.load_metadata_dataset()
+
+        java_definitions = ReadingCorpusTools(dataset, reader=reader).definitions()
+        in_memory_definitions = ReadingCorpusTools(dataset).definitions()
+
+        self.assertEqual(in_memory_definitions, java_definitions)
 
     def test_gateway_rejects_oversized_response(self) -> None:
         client = httpx.Client(
@@ -143,7 +186,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         )
 
         with self.assertRaises(HarnessCancelled):
-            reader.load_metadata_dataset()
+            reader.search_papers({"query_text": ""})
         self.assertEqual([], gateway.calls)
 
 

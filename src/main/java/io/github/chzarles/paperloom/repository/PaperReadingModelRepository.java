@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +20,37 @@ public interface PaperReadingModelRepository extends JpaRepository<PaperReadingM
     List<PaperReadingModel> findByPaperIdOrderByCreatedAtDesc(String paperId);
 
     List<PaperReadingModel> findByIsCurrentTrueAndModelStatusOrderByPaperIdAsc(PaperReadingModelStatus modelStatus);
+
+    List<PaperReadingModel> findByPaperIdInAndIsCurrentTrueAndModelStatus(
+            List<String> paperIds,
+            PaperReadingModelStatus modelStatus
+    );
+
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE paper_reading_models
+            SET retrieval_index_status = 'READY',
+                retrieval_index_generation = :newGeneration,
+                retrieval_embedding_contract = :embeddingContract,
+                retrieval_indexed_location_count = :indexedLocationCount,
+                retrieval_indexed_at = :indexedAt
+            WHERE paper_id = :paperId
+              AND model_version = :modelVersion
+              AND is_current = true
+              AND model_status = 'READING_MODEL_READY'
+              AND (
+                    (:previousGeneration IS NULL AND retrieval_index_generation IS NULL)
+                    OR retrieval_index_generation = :previousGeneration
+                  )
+            """, nativeQuery = true)
+    int activateRetrievalIndex(@Param("paperId") String paperId,
+                               @Param("modelVersion") String modelVersion,
+                               @Param("previousGeneration") String previousGeneration,
+                               @Param("newGeneration") String newGeneration,
+                               @Param("embeddingContract") String embeddingContract,
+                               @Param("indexedLocationCount") int indexedLocationCount,
+                               @Param("indexedAt") LocalDateTime indexedAt);
 
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)

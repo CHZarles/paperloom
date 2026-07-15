@@ -34,6 +34,7 @@ MINIO_ACCESS_KEY
 MINIO_SECRET_KEY
 JWT_SECRET_KEY
 RESEARCH_HARNESS_INTERNAL_TOKEN
+QDRANT_API_KEY
 MINIMAX_API_KEY or another configured model provider
 ```
 
@@ -71,7 +72,8 @@ The default local ports are:
 Use the corresponding `*_HOST_PORT` variables when those ports are already occupied.
 
 MySQL is the canonical paper source. Qdrant stores a rebuildable candidate index over Current Reading
-Models. Kafka supports upload processing and Redis supports separate transient product concerns.
+Models. The Compose service requires an API key and binds its host ports to loopback; Java must use
+the same key. Kafka supports upload processing and Redis supports separate transient product concerns.
 
 ## 3. Start MinerU
 

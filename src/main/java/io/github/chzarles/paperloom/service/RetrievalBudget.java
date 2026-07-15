@@ -89,11 +89,4 @@ public record RetrievalBudget(
         );
     }
 
-    public static RetrievalBudget forLibrarySearch() {
-        return new RetrievalBudget(Duration.ofSeconds(6), 12_000, 0.3d, 0.03d, 32);
-    }
-
-    public static RetrievalBudget forPageBatch(int pageBatchSize) {
-        return new RetrievalBudget(Duration.ofSeconds(6), 9_000, 0.3d, 0.03d, pageBatchSize);
-    }
 }

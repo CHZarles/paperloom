@@ -1,5 +1,8 @@
 # PaperLoom RAG Method Exploration
 
+> 历史归档：本文记录 2026 年 6 月旧 Elasticsearch/Service-backed 检索路径的实验过程，不是当前
+> Harness 运行指南。当前流程见 [`research/golden-data/README.md`](../../research/golden-data/README.md)。
+
 This note keeps the method exploration separate from `CHEATSHEET.md`, so the cheatsheet can stay a
 short score table.
 

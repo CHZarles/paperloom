@@ -48,6 +48,23 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
     @Query("SELECT f FROM Paper f WHERE f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false)")
     List<Paper> findAccessiblePapersWithTags(@Param("userId") String userId, @Param("orgTagList") List<String> orgTagList);
 
+    @Query("""
+            SELECT f FROM Paper f
+            WHERE f.paperId IN :paperIds
+              AND (f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false))
+            """)
+    List<Paper> findAccessiblePapersByPaperIdInWithTags(@Param("userId") String userId,
+                                                       @Param("orgTagList") List<String> orgTagList,
+                                                       @Param("paperIds") List<String> paperIds);
+
+    @Query("""
+            SELECT f FROM Paper f
+            WHERE f.paperId IN :paperIds
+              AND (f.userId = :userId OR f.isPublic = true)
+            """)
+    List<Paper> findAccessiblePapersByPaperIdIn(@Param("userId") String userId,
+                                                @Param("paperIds") List<String> paperIds);
+
     @Query("SELECT f FROM Paper f WHERE f.userId = :userId OR f.isPublic = true OR (f.orgTag IN :orgTagList AND f.isPublic = false)")
     Page<Paper> findAccessiblePapersPageWithTags(@Param("userId") String userId,
                                                  @Param("orgTagList") List<String> orgTagList,

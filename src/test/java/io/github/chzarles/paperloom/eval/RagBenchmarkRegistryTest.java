@@ -21,34 +21,8 @@ class RagBenchmarkRegistryTest {
                 .anyMatch(harness -> "keyword-only-baseline".equals(harness.id())
                         && "runnable-litsearch".equals(harness.status())
                         && "keyword".equals(harness.retrieval())));
-        assertTrue(registry.harnesses().stream()
-                .anyMatch(harness -> "service-backed-page-window".equals(harness.id())
-                        && "runnable-paper-qa".equals(harness.status())
-                        && "hybrid-plus-page-window".equals(harness.retrieval())
-                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
-        assertTrue(registry.harnesses().stream()
-                .anyMatch(harness -> "service-backed-scoped-page-window".equals(harness.id())
-                        && "runnable-paper-qa".equals(harness.status())
-                        && "scoped-paper-page-window".equals(harness.retrieval())
-                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
-        assertTrue(registry.harnesses().stream()
-                .anyMatch(harness -> "service-backed-scoped-diverse-window".equals(harness.id())
-                        && "runnable-paper-qa".equals(harness.status())
-                        && "scoped-paper-diverse-window".equals(harness.retrieval())
-                        && "scientific-qa-diverse-windows".equals(harness.planner())
-                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
-        assertTrue(registry.harnesses().stream()
-                .anyMatch(harness -> "service-backed-scoped-diverse-window-k5".equals(harness.id())
-                        && "runnable-paper-qa".equals(harness.status())
-                        && "scoped-paper-diverse-window-k5".equals(harness.retrieval())
-                        && "scientific-qa-diverse-windows".equals(harness.planner())
-                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
-        assertTrue(registry.harnesses().stream()
-                .anyMatch(harness -> "service-backed-scoped-diverse-window-k7".equals(harness.id())
-                        && "runnable-paper-qa".equals(harness.status())
-                        && "scoped-paper-diverse-window-k7".equals(harness.retrieval())
-                        && "scientific-qa-diverse-windows".equals(harness.planner())
-                        && harness.benchmarkIds().equals(List.of("product-rescue-paper-qa", "qasper-dev-200"))));
+        assertFalse(registry.harnesses().stream()
+                .anyMatch(harness -> harness.id().startsWith("service-backed-")));
         assertTrue(registry.harnesses().stream()
                 .anyMatch(harness -> "product-pdf-parser-smoke".equals(harness.id())
                         && "runnable-parser-smoke".equals(harness.status())
@@ -196,7 +170,7 @@ class RagBenchmarkRegistryTest {
     }
 
     @Test
-    void registersProductPaperQaSliceForServiceBackedPageWindowRuns() throws Exception {
+    void registersProductPaperQaSliceAsHistoricalBenchmarkData() throws Exception {
         RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/harnesses.yaml"));
 
         RagBenchmarkRegistry.BenchmarkDefinition benchmark = registry.benchmark("product-rescue-paper-qa");
@@ -207,6 +181,14 @@ class RagBenchmarkRegistryTest {
         assertEquals("eval/rag/product-rescue-paper-qa.jsonl", benchmark.path());
         assertEquals("passRate", benchmark.primaryMetric());
         assertEquals("10", benchmark.cases());
+    }
+
+    @Test
+    void pageLocationRegistryDoesNotAdvertiseDeletedServiceBackedHarnesses() throws Exception {
+        RagBenchmarkRegistry registry = RagBenchmarkRegistry.load(Path.of("eval/rag/page-location/harnesses.yaml"));
+
+        assertFalse(registry.harnesses().stream()
+                .anyMatch(harness -> harness.id().startsWith("service-backed-")));
     }
 
     @Test

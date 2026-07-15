@@ -59,6 +59,22 @@ public class PaperReadingModel {
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "retrieval_index_status", length = 32)
+    private PaperRetrievalIndexStatus retrievalIndexStatus;
+
+    @Column(name = "retrieval_index_generation", length = 64)
+    private String retrievalIndexGeneration;
+
+    @Column(name = "retrieval_embedding_contract", length = 255)
+    private String retrievalEmbeddingContract;
+
+    @Column(name = "retrieval_indexed_location_count")
+    private Integer retrievalIndexedLocationCount;
+
+    @Column(name = "retrieval_indexed_at")
+    private LocalDateTime retrievalIndexedAt;
+
     @Lob
     @Column(name = "diagnostics_json", columnDefinition = "TEXT")
     private String diagnosticsJson;

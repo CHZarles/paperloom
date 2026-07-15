@@ -439,6 +439,24 @@ public class PaperService {
         }
     }
 
+    public List<Paper> getAccessiblePapersByIds(String userId, List<String> paperIds) {
+        List<String> requestedIds = paperIds == null ? List.of() : paperIds.stream()
+                .filter(id -> id != null && !id.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        if (requestedIds.isEmpty()) {
+            return List.of();
+        }
+        User user = resolveUser(userId);
+        String userDbId = String.valueOf(user.getId());
+        List<String> effectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
+        if (effectiveTags == null || effectiveTags.isEmpty()) {
+            return paperRepository.findAccessiblePapersByPaperIdIn(userDbId, requestedIds);
+        }
+        return paperRepository.findAccessiblePapersByPaperIdInWithTags(userDbId, effectiveTags, requestedIds);
+    }
+
     public Page<Paper> getAccessiblePapersPage(String userId, String orgTags, Pageable pageable) {
         logger.info("分页获取用户可访问论文列表: userId={}, page={}, size={}",
                 userId,

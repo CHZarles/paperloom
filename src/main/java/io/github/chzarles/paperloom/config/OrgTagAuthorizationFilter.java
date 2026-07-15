@@ -65,7 +65,6 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                 path.matches(".*/papers/upload/status.*") ||
                 path.matches(".*/papers/uploads.*") ||
                 path.matches(".*/papers/accessible.*") ||
-                path.matches(".*/papers/search/hybrid.*") ||
                 (path.matches(".*/papers/[a-fA-F0-9]{32}.*") &&
                         ("DELETE".equals(request.getMethod()) || "POST".equals(request.getMethod()) || "PATCH".equals(request.getMethod())))) {
 
@@ -82,8 +81,6 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
                     operation = "获取用户论文";
                 } else if (path.contains("/accessible")) {
                     operation = "获取可访问论文";
-                } else if (path.contains("/search/hybrid")) {
-                    operation = "混合检索";
                 } else if ("DELETE".equals(request.getMethod()) && path.matches(".*/papers/[a-fA-F0-9]{32}.*")) {
                     operation = "删除论文";
                 } else if ("POST".equals(request.getMethod()) && path.matches(".*/papers/[a-fA-F0-9]{32}/reindex.*")) {

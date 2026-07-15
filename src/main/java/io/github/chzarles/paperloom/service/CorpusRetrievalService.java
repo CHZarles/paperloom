@@ -5,6 +5,7 @@ import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
+import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class CorpusRetrievalService {
     private static final int MAX_PAPER_LIMIT = 100;
     private static final int MAX_LOCATION_LIMIT = 20;
     private static final int RRF_K = 60;
+    private static final double ELEMENT_TYPE_HINT_BOOST = 0.001;
 
     private final PaperService paperService;
     private final PaperReadingModelRepository modelRepository;
@@ -126,7 +128,7 @@ public class CorpusRetrievalService {
         if (!scope.containsAll(requested)) {
             throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
         }
-        List<String> authorizedIds = authorizedPapers(query.userId(), query.scopePaperIds()).stream()
+        List<String> authorizedIds = authorizedPapers(query.userId(), new ArrayList<>(requested)).stream()
                 .map(Paper::getPaperId)
                 .filter(requested::contains)
                 .distinct()
@@ -134,36 +136,51 @@ public class CorpusRetrievalService {
         if (authorizedIds.size() != requested.size()) {
             throw new IllegalArgumentException("paper_ids contains an unavailable paper");
         }
+        Map<String, PaperReadingModel> currentModels = currentModels(authorizedIds);
+        Map<String, String> activeGenerations = activeGenerations(authorizedIds, currentModels);
         String retrievalQuery = String.join(" ", List.of(safe(query.queryText()), safe(query.sectionQuery()))).trim();
         if (retrievalQuery.isBlank()) {
             return new LocationSearchResult(List.of(), 0, 0, qdrantClient.indexVersion());
         }
 
-        float[] dense = embeddingClient.embed(
+        EmbeddingClient.EmbeddingUsageResult embedding = embeddingClient.embedWithUsage(
                 List.of(retrievalQuery),
                 String.valueOf(query.userId()),
                 EmbeddingClient.UsageType.QUERY,
                 Duration.ofSeconds(5)
-        ).stream().findFirst().orElseThrow(() -> new IllegalStateException("Query embedding was empty"));
-        qdrantClient.ensureCollection(dense.length);
+        );
+        float[] dense = embedding.vectors().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("Query embedding was empty"));
+        validateEmbeddingContract(currentModels, embedding.modelVersion(), dense.length);
+        qdrantClient.verifyCollection(dense.length);
         QdrantSparseVector sparse = ReadingModelQdrantIndexService.sparseVector(retrievalQuery);
         int topK = Math.max(1, Math.min(query.topK(), MAX_LOCATION_LIMIT));
         int candidateLimit = Math.min(100, Math.max(40, topK * 4));
-        Map<String, Object> filter = qdrantClient.filter(
-                authorizedIds,
-                normalizeElementTypes(query.elementTypes()),
-                query.pageFrom(),
-                query.pageTo()
-        );
-        List<QdrantSearchHit> denseHits = qdrantClient.searchDense(dense, filter, candidateLimit);
-        List<QdrantSearchHit> sparseHits = sparse.indices().isEmpty()
-                ? List.of()
-                : qdrantClient.searchSparse(sparse, filter, candidateLimit);
-
         Map<String, FusedHit> fused = new LinkedHashMap<>();
-        addHits(fused, denseHits, true);
-        addHits(fused, sparseHits, false);
+        Map<String, Object> globalFilter = qdrantClient.filter(
+                activeGenerations, query.pageFrom(), query.pageTo());
+        addHits(fused, qdrantClient.searchDense(dense, globalFilter, candidateLimit), true);
+        if (!sparse.indices().isEmpty()) {
+            addHits(fused, qdrantClient.searchSparse(sparse, globalFilter, candidateLimit), false);
+        }
+        if (activeGenerations.size() > 1
+                && activeGenerations.size() <= 8
+                && activeGenerations.size() <= topK) {
+            int perPaperLimit = Math.min(40, Math.max(8, topK * 2));
+            for (Map.Entry<String, String> entry : activeGenerations.entrySet()) {
+                Map<String, Object> filter = qdrantClient.filter(
+                        Map.of(entry.getKey(), entry.getValue()), query.pageFrom(), query.pageTo());
+                addHits(fused, qdrantClient.searchDense(dense, filter, perPaperLimit), true);
+                if (!sparse.indices().isEmpty()) {
+                    addHits(fused, qdrantClient.searchSparse(sparse, filter, perPaperLimit), false);
+                }
+            }
+        }
+        Set<String> elementTypeHints = new LinkedHashSet<>(normalizeElementTypes(query.elementTypes()));
         List<FusedHit> ranked = fused.values().stream()
+                .map(hit -> matchesElementTypeHint(hit.payload(), elementTypeHints)
+                        ? hit.withBoost(ELEMENT_TYPE_HINT_BOOST)
+                        : hit)
                 .sorted(Comparator.comparingDouble(FusedHit::fusedScore).reversed()
                         .thenComparing(FusedHit::locationRef))
                 .toList();
@@ -171,8 +188,6 @@ public class CorpusRetrievalService {
                         ranked.stream().map(FusedHit::locationRef).toList())
                 .stream()
                 .collect(Collectors.toMap(PaperLocation::getLocationRef, Function.identity(), (left, right) -> left));
-        Map<String, PaperReadingModel> currentModels = currentModels(authorizedIds);
-
         List<FusedHit> valid = ranked.stream()
                 .filter(hit -> validCurrentHit(hit, locationsByRef.get(hit.locationRef()), currentModels, requested))
                 .toList();
@@ -193,7 +208,6 @@ public class CorpusRetrievalService {
             if (content == null) {
                 continue;
             }
-            String elementType = stringPayload(hit.payload(), "element_type", content.elementType());
             candidates.add(new LocationCandidate(
                     content.paperId(),
                     content.title(),
@@ -201,7 +215,7 @@ public class CorpusRetrievalService {
                     content.locationRef(),
                     content.section(),
                     content.page(),
-                    elementType,
+                    content.elementType(),
                     SearchText.preview(content.spanText(), SearchText.tokens(retrievalQuery), 500),
                     hit.denseScore(),
                     hit.sparseScore(),
@@ -241,7 +255,8 @@ public class CorpusRetrievalService {
         if (scope.isEmpty()) {
             throw new IllegalArgumentException("scope_paper_ids is required");
         }
-        Map<String, Paper> accessible = paperService.getAccessiblePapers(String.valueOf(userId), null).stream()
+        Map<String, Paper> accessible = paperService.getAccessiblePapersByIds(
+                        String.valueOf(userId), new ArrayList<>(scope)).stream()
                 .filter(paper -> paper != null && !safe(paper.getPaperId()).isBlank())
                 .sorted(Comparator.comparing(Paper::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toMap(Paper::getPaperId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
@@ -254,13 +269,17 @@ public class CorpusRetrievalService {
     }
 
     private Map<String, PaperReadingModel> currentModels(List<String> paperIds) {
-        Map<String, PaperReadingModel> models = new LinkedHashMap<>();
-        for (String paperId : paperIds) {
-            modelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId)
-                    .filter(model -> model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY)
-                    .ifPresent(model -> models.put(paperId, model));
+        if (paperIds == null || paperIds.isEmpty()) {
+            return Map.of();
         }
-        return models;
+        return modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
+                        paperIds, PaperReadingModelStatus.READING_MODEL_READY).stream()
+                .collect(Collectors.toMap(
+                        PaperReadingModel::getPaperId,
+                        Function.identity(),
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
     }
 
     private boolean validCurrentHit(FusedHit hit,
@@ -275,7 +294,36 @@ public class CorpusRetrievalService {
             return false;
         }
         return current.getModelVersion().equals(stringPayload(hit.payload(), "model_version", ""))
-                && location.getPaperId().equals(stringPayload(hit.payload(), "paper_id", ""));
+                && location.getPaperId().equals(stringPayload(hit.payload(), "paper_id", ""))
+                && current.getRetrievalIndexGeneration().equals(
+                        stringPayload(hit.payload(), "index_generation", ""));
+    }
+
+    private Map<String, String> activeGenerations(List<String> paperIds,
+                                                   Map<String, PaperReadingModel> currentModels) {
+        Map<String, String> generations = new LinkedHashMap<>();
+        for (String paperId : paperIds) {
+            PaperReadingModel model = currentModels.get(paperId);
+            if (model == null
+                    || model.getRetrievalIndexStatus() != PaperRetrievalIndexStatus.READY
+                    || safe(model.getRetrievalIndexGeneration()).isBlank()) {
+                throw new IllegalStateException("Retrieval index is unavailable for paperId=" + paperId);
+            }
+            generations.put(paperId, model.getRetrievalIndexGeneration());
+        }
+        return generations;
+    }
+
+    private void validateEmbeddingContract(Map<String, PaperReadingModel> currentModels,
+                                           String embeddingModelVersion,
+                                           int dimension) {
+        String activeContract = qdrantClient.indexVersion() + "|" + embeddingModelVersion + "|" + dimension;
+        for (PaperReadingModel model : currentModels.values()) {
+            if (!activeContract.equals(safe(model.getRetrievalEmbeddingContract()))) {
+                throw new IllegalStateException(
+                        "Retrieval embedding contract mismatch for paperId=" + model.getPaperId());
+            }
+        }
     }
 
     private void addHits(Map<String, FusedHit> fused, List<QdrantSearchHit> hits, boolean dense) {
@@ -294,6 +342,9 @@ public class CorpusRetrievalService {
     }
 
     private List<FusedHit> selectPaperCoverage(List<FusedHit> ranked, List<String> paperOrder, int topK) {
+        if (paperOrder.size() > topK) {
+            return ranked.stream().limit(topK).toList();
+        }
         List<FusedHit> selected = new ArrayList<>();
         Set<String> selectedRefs = new LinkedHashSet<>();
         for (String paperId : paperOrder) {
@@ -409,6 +460,20 @@ public class CorpusRetrievalService {
                 .toList();
     }
 
+    private boolean matchesElementTypeHint(Map<String, Object> payload, Set<String> hints) {
+        if (payload == null || hints.isEmpty()) {
+            return false;
+        }
+        Object values = payload.get("element_types");
+        if (values instanceof List<?> list && list.stream()
+                .map(Object::toString)
+                .map(this::normalize)
+                .anyMatch(hints::contains)) {
+            return true;
+        }
+        return hints.contains(normalize(stringPayload(payload, "element_type", "")));
+    }
+
     private Set<String> normalizedSet(List<String> values) {
         if (values == null) {
             return Set.of();
@@ -514,6 +579,10 @@ public class CorpusRetrievalService {
 
         FusedHit withSparse(double score, double contribution) {
             return new FusedHit(locationRef, payload, denseScore, score, fusedScore + contribution);
+        }
+
+        FusedHit withBoost(double boost) {
+            return new FusedHit(locationRef, payload, denseScore, sparseScore, fusedScore + boost);
         }
     }
 }

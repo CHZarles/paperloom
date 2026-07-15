@@ -70,16 +70,20 @@ Runtime 本身不持有长期会话状态。
 
 ## Live Corpus Gateway
 
-`ResearchHarnessService` 从请求取出 Java 已授权的 Paper ID，通过复用的
-`JavaCorpusGateway` 读取范围内 Metadata。正文 Reading Element 不再整批进入 Harness：
+`ResearchHarnessService` 从请求取出 Java 已锁定的 Paper ID，并先用这些 ID 创建轻量 Metadata
+外壳；这一步不访问 Java，也不枚举论文正文。只有模型真正调用论文发现或身份解析工具时，
+`JavaCorpusGateway` 才读取并原地补全对应 Metadata。正文 Reading Element 不再整批进入 Harness：
 
 - `search_paper_candidates` / `find_papers_by_identity` 调 Java Paper Corpus API；
 - `find_reading_locations` 调 Java 的 Qdrant Dense + Sparse 检索，只获得候选 `location_ref`；
 - Java 对每个候选重新校验用户权限、锁定 Scope 和 Current Reading Model；
+- Java 只查询各论文当前激活的 Qdrant Generation，并校验 Collection、Embedding Model 和维度合同；
 - `read_locations` 再由 Java 从 MySQL 精确读取 Canonical Location；
 - Python 只在真实 Read 后生成 `ev_...`，继续维护 Disclosure 和 Evidence Ledger。
 
 `DockerMySqlProductCorpusStore` 仍供显式 CLI、Fixture 和迁移诊断使用，不是产品运行时的静默回退。
+Java Corpus Token 为空、Qdrant Collection 缺失、激活 Generation 不存在或 Embedding 合同不一致时，
+产品回合都会明确失败；Harness 不创建 Collection，也不会改走内存 BM25。
 
 ## 当前检索
 
@@ -162,14 +166,21 @@ Java 使用 `/v1/research/stream` 获取 NDJSON Progress 和最终结果；`/v1/
 .venv-harness/bin/python -m harness_py agent-run \
   --provider-source env \
   --case-id transformer_adam_params_001 \
-  --out /tmp/paperloom-agent-run
+  --out research/golden-data/local-runs/agent-run
 
 # 运行 Python 测试
 .venv-harness/bin/python -m unittest discover -s harness_py/tests
+
+# 运行 Java Corpus/Qdrant 与全仓后端回归
+mvn test
 ```
 
 Golden Data 的结构和离线校验方式见
 [`research/golden-data/README.md`](../research/golden-data/README.md)。
+
+真实 Qdrant 协议可用 `QdrantClientRealSmokeTest` 显式验证。测试默认跳过；只有同时设置
+`QDRANT_REAL_SMOKE_URL`、`QDRANT_REAL_SMOKE_API_KEY` 和 `QDRANT_REAL_SMOKE_COLLECTION` 时才会运行，
+并覆盖认证、Collection 创建、Active Generation 过滤、清理、维度不匹配和缺失 Collection。
 
 ## Eval Capture
 

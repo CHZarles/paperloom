@@ -23,46 +23,6 @@ harnesses:
     verifier: disabled
     status: runnable-litsearch
     benchmarkIds: litsearch-full
-  - id: service-backed-page-window
-    name: Service Backed Page Window
-    description: Production PaperRetrievalService followed by deterministic page-window inspection and evidence-ledger packing.
-    retrieval: hybrid-plus-page-window
-    planner: scientific-qa
-    verifier: enabled
-    status: runnable-paper-qa
-    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
-  - id: service-backed-scoped-page-window
-    name: Service Backed Scoped Page Window
-    description: Scoped-paper MySQL page locator followed by deterministic page-window inspection and evidence-ledger packing.
-    retrieval: scoped-paper-page-window
-    planner: scientific-qa
-    verifier: enabled
-    status: runnable-paper-qa
-    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
-  - id: service-backed-scoped-diverse-window
-    name: Service Backed Scoped Diverse Window
-    description: Scoped-paper MySQL page locator with non-overlapping page-window selection before deterministic inspection.
-    retrieval: scoped-paper-diverse-window
-    planner: scientific-qa-diverse-windows
-    verifier: enabled
-    status: runnable-paper-qa
-    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
-  - id: service-backed-scoped-diverse-window-k5
-    name: Service Backed Scoped Diverse Window K5
-    description: High-recall scoped-paper diverse-window selector using five inspected windows per query.
-    retrieval: scoped-paper-diverse-window-k5
-    planner: scientific-qa-diverse-windows
-    verifier: enabled
-    status: runnable-paper-qa
-    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
-  - id: service-backed-scoped-diverse-window-k7
-    name: Service Backed Scoped Diverse Window K7
-    description: Deep-recall scoped-paper diverse-window selector using seven inspected windows per query.
-    retrieval: scoped-paper-diverse-window-k7
-    planner: scientific-qa-diverse-windows
-    verifier: enabled
-    status: runnable-paper-qa
-    benchmarkIds: product-rescue-paper-qa,qasper-dev-200
   - id: product-pdf-parser-smoke
     name: Product PDF Parser Smoke
     description: Test-scoped database gate for real PDF-derived parser outputs, chunks, parser artifacts, and visual assets.

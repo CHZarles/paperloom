@@ -1,5 +1,8 @@
 # PaperLoom RAG Strategy Readiness
 
+> 历史归档：以下完成度只对应 2026 年 6 月的旧检索实现和旧数据面，不代表当前 Qdrant Cutover 已经
+> 通过同等验证。当前流程见 [`research/golden-data/README.md`](../../research/golden-data/README.md)。
+
 Date: 2026-06-27
 
 Goal status: complete for the current text/table-centered paper RAG retrieval strategy.

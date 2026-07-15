@@ -19,15 +19,11 @@ usage() {
   cat <<USAGE
 Usage:
   scripts/paperloom-rag-gates.sh [--dry-run] product-smoke --retrieval-corpus PRODUCT_LIBRARY
-  scripts/paperloom-rag-gates.sh [--dry-run] qasper-dev-200 --retrieval-corpus EVAL_QASPER
-  scripts/paperloom-rag-gates.sh [--dry-run] litsearch-full-summary --retrieval-corpus EVAL_LITSEARCH
   scripts/paperloom-rag-gates.sh [--dry-run] pdf-parser-smoke
   scripts/paperloom-rag-gates.sh [--dry-run] all-light
 
 Modes:
   product-smoke           Run the live Product Rescue Smoke benchmark against the active backend.
-  qasper-dev-200          Run the service-backed QASPER Dev 200 page-window gate.
-  litsearch-full-summary  Summarize existing LitSearch Full import/benchmark state only.
   pdf-parser-smoke        Check real PDF parser output rows from the manifest.
   all-light               Run daily lightweight unit/dataset gates; no live benchmark artifact.
 USAGE
@@ -127,7 +123,7 @@ if policy in {"product", "parser"} and number("passRate") < 1.0:
     failures.append(f"passRate={number('passRate'):.3f}")
 if policy == "product" and number("citationMappingRate") < 1.0:
     failures.append(f"citationMappingRate={number('citationMappingRate'):.3f}")
-if policy in {"product", "qasper"} and number("scopeLeakRate") != 0.0:
+if policy == "product" and number("scopeLeakRate") != 0.0:
     failures.append(f"scopeLeakRate={number('scopeLeakRate'):.3f}")
 
 if failures:
@@ -160,37 +156,6 @@ product_smoke() {
   check_scorecard "$run_dir" product
 }
 
-qasper_dev_200() {
-  require_retrieval_corpus EVAL_QASPER "$@"
-  local started_at harness_id dataset_id id run_dir cases
-  cases="eval/rag/qasper/generated/qasper-dev-200-service-cases.jsonl"
-  [[ "$DRY_RUN" == "1" || -f "$cases" ]] || fail "missing QASPER service cases: $cases"
-  started_at=$(timestamp)
-  harness_id="service-backed-scoped-diverse-window"
-  dataset_id="qasper-dev-200"
-  id=$(run_id "$started_at" "$harness_id" "$dataset_id")
-  run_dir="eval/rag/runs/$id"
-  prepare_classpath
-  echo "runDir=$run_dir"
-  run_cmd java -cp "$(classpath_literal)" \
-    io.github.chzarles.paperloom.eval.ServiceBackedPageWindowBenchmarkCli \
-    --cases "$cases" \
-    --runs-root eval/rag/runs \
-    --registry eval/rag/harnesses.yaml \
-    --cheatsheet eval/rag/CHEATSHEET.md \
-    --harness-id "$harness_id" \
-    --dataset-id "$dataset_id" \
-    --run-id "$id" \
-    --started-at "$started_at" \
-    --user-id 1 \
-    --retrieval-corpus EVAL_QASPER \
-    --query-planner scientific-qa-diverse-windows \
-    --candidate-source scoped-paper \
-    --window-radius 1 \
-    --top-k 3
-  check_scorecard "$run_dir" qasper
-}
-
 pdf_parser_smoke() {
   local started_at harness_id dataset_id id run_dir
   started_at=$(timestamp)
@@ -211,39 +176,14 @@ pdf_parser_smoke() {
   check_scorecard "$run_dir" parser
 }
 
-litsearch_full_summary() {
-  require_retrieval_corpus EVAL_LITSEARCH "$@"
-  if [[ "$DRY_RUN" == "1" ]]; then
-    run_cmd scripts/litsearch-full-pipeline.sh summary
-    echo "runDir=not-created (summary only)"
-    return 0
-  fi
-  local summary
-  summary=$(scripts/litsearch-full-pipeline.sh summary)
-  printf '%s\n' "$summary"
-  echo "runDir=not-created (summary only)"
-  if grep -q '^litsearch_full_papers=64183/64183$' <<<"$summary"; then
-    echo "litsearchFullReady=true"
-  else
-    echo "litsearchFullReady=false"
-    echo "This is not a fresh LitSearch Full benchmark run. Do not report partial samples as litsearch-full."
-  fi
-}
-
 all_light() {
-  run_cmd mvn -q -Dtest=EvidenceQualityTest,PaperQueryPlannerTest,PaperRetrievalServiceTest,ChatHandlerReferenceEvidenceTest,ProductPdfParserSmokeRunnerTest,RagBenchmarkEvaluatorTest,RagBenchmarkDatasetTest,RagBenchmarkReportWriterTest,RagBenchmarkRegistryTest test
+  run_cmd mvn -q -Dtest=EvidenceQualityTest,ChatHandlerReferenceEvidenceTest,ProductPdfParserSmokeRunnerTest,RagBenchmarkEvaluatorTest,RagBenchmarkDatasetTest,RagBenchmarkReportWriterTest,RagBenchmarkRegistryTest test
   echo "runDir=not-created (all-light uses unit/dataset gates only)"
 }
 
 case "$MODE" in
   product-smoke)
     product_smoke "$@"
-    ;;
-  qasper-dev-200)
-    qasper_dev_200 "$@"
-    ;;
-  litsearch-full-summary)
-    litsearch_full_summary "$@"
     ;;
   pdf-parser-smoke)
     [[ $# -eq 0 ]] || fail "unknown option for $MODE: $1"
