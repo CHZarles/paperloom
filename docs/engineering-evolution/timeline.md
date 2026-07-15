@@ -61,3 +61,4 @@ Practice reports:
 - [Golden Data and Harness Evolution](https://chzarles.github.io/paperloom/practice/evaluation/golden-data-harness-evolution)
 - [Best-of-2 Orchestration Experiment](https://chzarles.github.io/paperloom/practice/evaluation/best-of-two-agent-orchestration)
 - [Provider Migration Experiment](https://chzarles.github.io/paperloom/practice/evaluation/provider-migration-experiment)
+- [Hard Pass, Human Review, and the Stopping Rule](https://chzarles.github.io/paperloom/practice/evaluation/hard-pass-human-review-stopping-rule)

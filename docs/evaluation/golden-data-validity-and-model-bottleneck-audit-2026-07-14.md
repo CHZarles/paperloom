@@ -328,5 +328,5 @@ false pass:       0/23
 这保持了职责边界：线上 Harness 只负责模型编排和完整记录，Golden 修订、语义评分、Provider
 对比和研究分析全部留在线下。
 
-GPT-5.5 只作为问题定位对照、MiniMax 固定为生产模型后的下一阶段 Gate 见
+GPT-5.5 只作为问题定位对照、MiniMax 固定为生产模型后的停止边界见
 [`MINIMAX_DIAGNOSTIC_BASELINE.md`](../../research/golden-data/human-adjudication/2026-07-14/MINIMAX_DIAGNOSTIC_BASELINE.md)。
