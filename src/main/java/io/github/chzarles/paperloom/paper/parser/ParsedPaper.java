@@ -13,14 +13,15 @@ public record ParsedPaper(
         List<ParsedPaperTable> tables,
         List<ParsedPaperFigure> figures,
         List<ParsedPaperFormula> formulas,
-        List<ParsedPaperArtifactPayload> artifacts
+        List<ParsedPaperArtifactPayload> artifacts,
+        List<ParsedPaperPage> pages
 ) {
     public ParsedPaper(String parserName,
                        String parserVersion,
                        ParsedPaperMetadata metadata,
                        List<ParsedPaperElement> elements,
                        Map<String, Object> rawMetadata) {
-        this(parserName, parserVersion, metadata, elements, rawMetadata, null, List.of(), List.of(), List.of(), List.of());
+        this(parserName, parserVersion, metadata, elements, rawMetadata, null, List.of(), List.of(), List.of(), List.of(), List.of());
     }
 
     public ParsedPaper(String parserName,
@@ -30,7 +31,7 @@ public record ParsedPaper(
                        Map<String, Object> rawMetadata,
                        String rawParserJson,
                        List<ParsedPaperTable> tables) {
-        this(parserName, parserVersion, metadata, elements, rawMetadata, rawParserJson, tables, List.of(), List.of(), List.of());
+        this(parserName, parserVersion, metadata, elements, rawMetadata, rawParserJson, tables, List.of(), List.of(), List.of(), List.of());
     }
 
     public ParsedPaper(String parserName,
@@ -42,6 +43,19 @@ public record ParsedPaper(
                        List<ParsedPaperTable> tables,
                        List<ParsedPaperFigure> figures,
                        List<ParsedPaperFormula> formulas) {
-        this(parserName, parserVersion, metadata, elements, rawMetadata, rawParserJson, tables, figures, formulas, List.of());
+        this(parserName, parserVersion, metadata, elements, rawMetadata, rawParserJson, tables, figures, formulas, List.of(), List.of());
+    }
+
+    public ParsedPaper(String parserName,
+                       String parserVersion,
+                       ParsedPaperMetadata metadata,
+                       List<ParsedPaperElement> elements,
+                       Map<String, Object> rawMetadata,
+                       String rawParserJson,
+                       List<ParsedPaperTable> tables,
+                       List<ParsedPaperFigure> figures,
+                       List<ParsedPaperFormula> formulas,
+                       List<ParsedPaperArtifactPayload> artifacts) {
+        this(parserName, parserVersion, metadata, elements, rawMetadata, rawParserJson, tables, figures, formulas, artifacts, List.of());
     }
 }

@@ -1,0 +1,20 @@
+{
+  "answer_id": "answer_live_chat_110e251156de",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_56733b8fa1c16124",
+    "ev_0bc2881f9f4874ff",
+    "ev_e94556d64ebb74f5",
+    "ev_b451b436eb8081f0",
+    "ev_82fae777fa44b1a0",
+    "ev_0ca28d3ce4da72f4",
+    "ev_91e030dd147150a6",
+    "ev_9766e46a8e5976be"
+  ],
+  "fields": {},
+  "markdown": "**AgentBench** (\"AgentBench: Evaluating LLMs as Agents,\" Liu et al., ICLR 2024) is a multi-dimensional benchmark that assesses **LLM-as-Agent's reasoning and decision-making abilities** in real-world interactive scenarios, with evaluation done via Chain-of-Thought prompting.[1][2]\n\n### Number and types of environments\nAgentBench contains **8 distinct environments**, grouped into **3 grounding types** (five of which were newly created for the paper):[3][2]\n\n- **Code-grounded:** Operating System, Database, Knowledge Graph\n- **Game-grounded:** Digital Card Game, Lateral Thinking Puzzles, House-Holding\n- **Web-grounded:** Web Shopping, Web Browsing\n\nThe authors evaluated **29 different LLMs** on this benchmark.[3]\n\n### Agent weaknesses identified\nThe paper highlights several key weaknesses:\n\n1. **Long-term reasoning, decision-making, and instruction following** are described as the \"main obstacles for developing usable LLM agents.\"[4][5]\n2. The **predominant failure cause is \"Task Limit Exceeded\" (TLE)** — agents failing to finish within the allowed steps — which the authors attribute to weak reasoning and decision-making abilities.[6]\n3. **Open-source models (≤70B) commonly fail on the hardest tasks**, notably Knowledge Graph, Digital Card Game, and House-Holding, exposing a significant performance gap versus leading commercial API-based LLMs.[7][3]\n4. As directions for improvement, the authors specifically call out **better instruction following** and the need for **higher-quality alignment data.**[8]\n\nSources\n[1] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 1\n[2] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 2\n[3] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 3\n[4] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 1\n[5] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 3\n[6] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 8\n[7] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 8\n[8] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 3",
+  "outcome": "answered",
+  "question_id": "live_chat_110e251156de",
+  "status": "COMPLETED",
+  "summary": "**AgentBench** (\"AgentBench: Evaluating LLMs as Agents,\" Liu et al., ICLR 2024) is a multi-dimensional benchmark that assesses **LLM-as-Agent's reasoning and decision-making abilities** in real-world interactive scenarios, with evaluation done via Chain-of-Thought prompting.[1][2]\n\n### Number and types of environments\nAgentBench contains **8 distinct environments**, grouped into **3 grounding type"
+}

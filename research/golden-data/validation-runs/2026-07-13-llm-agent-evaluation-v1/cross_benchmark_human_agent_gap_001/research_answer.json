@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_live_chat_53271179aa6e",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_d1b34b0a1f94e1a4",
+    "ev_2d3fcba0effd833d",
+    "ev_2ef3408501817fd0",
+    "ev_438c8d5a9dcabf86",
+    "ev_125b79714a7cae10"
+  ],
+  "fields": {},
+  "markdown": "## Reported human–agent gaps: GAIA vs. WebArena\n\n**GAIA** — on a question-answering benchmark, the paper contrasts human respondents with a GPT-4-with-plugins agent: *\"human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins\"* — a gap of roughly **77 percentage points** [1]. A separate passage distinguishes two human tiers: *\"Human non-specialist accuracy on the benchmark is only 34.5%. Expert-level human performance is estimated at 89.8%\"* [2].\n\n**WebArena** — on a live, executable web-environment benchmark, the paper contrasts the best GPT-4-based agent with humans on end-to-end task success: *\"our best GPT-4-based agent only achieves an end-to-end task success rate of 14.41%, significantly lower than the human performance of 78.24%\"* — a gap of roughly **64 percentage points** [3] (restated in the methods section as well) [4]. The human baseline was collected from *\"five computer science graduate students\"* performing one task per template [5].\n\n**Why these percentages are not interchangeable (caveats stated by the papers themselves):**\n\n- **Different task definitions.** GAIA measures *answer accuracy* on conceptually simple, multi-step Q&A items requiring tool use, whereas WebArena measures *end-to-end task success rate* over long-horizon browser interactions.\n- **Different human populations and protocols.** GAIA reports both a general \"human respondents\" figure and a split between non-special\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, unsectioned, p. 1\n[2] GAIA: a benchmark for General AI Assistants, unsectioned, p. 1\n[3] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 1\n[4] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 2\n[5] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 7",
+  "outcome": "answered",
+  "question_id": "live_chat_53271179aa6e",
+  "status": "COMPLETED",
+  "summary": "## Reported human–agent gaps: GAIA vs. WebArena\n\n**GAIA** — on a question-answering benchmark, the paper contrasts human respondents with a GPT-4-with-plugins agent: *\"human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins\"* — a gap of roughly **77 percentage points** [1]. A separate passage distinguishes two human tiers: *\"Human non-specialist accuracy on the benchmark is only 34.5%"
+}

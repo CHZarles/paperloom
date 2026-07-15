@@ -8,6 +8,8 @@ import io.github.chzarles.paperloom.paper.parser.ParsedPaper;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElement;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElementType;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperMetadata;
+import io.github.chzarles.paperloom.paper.parser.ParsedPaperPage;
+import io.github.chzarles.paperloom.paper.parser.ParsedPaperPageBlock;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -90,6 +92,51 @@ class PaperReadingModelBuilderTest {
         assertEquals("PAGE_SURFACE", pageLocations.get(1).getContentKind());
         assertTrue(result.diagnosticsJson().contains("\"physicalPageCount\":3"));
         assertTrue(result.diagnosticsJson().contains("\"textlessPageCount\":2"));
+    }
+
+    @Test
+    void buildsPhysicalPageTextWithoutSplittingCanonicalReadingElements() {
+        ParsedPaperElement semanticElement = element(
+                "paragraph-1",
+                1,
+                1,
+                ParsedPaperElementType.PARAGRAPH,
+                "The paragraph begins on page one and continues on page two."
+        );
+        ParsedPaper paper = new ParsedPaper(
+                "MinerU",
+                "self-hosted",
+                new ParsedPaperMetadata("paper.pdf", "Paper", "Ada", 2, null, null),
+                List.of(semanticElement),
+                Map.of(),
+                "{}",
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        physicalPage(1, "The paragraph begins on page one"),
+                        physicalPage(2, "and continues on page two.")
+                )
+        );
+
+        PaperReadingModelBuildResult result = builder.build(
+                "paper-a",
+                "rm_test_1",
+                paper,
+                "user-a",
+                "lab",
+                false
+        );
+
+        assertEquals(1, result.readingElements().size());
+        assertEquals("The paragraph begins on page one and continues on page two.",
+                result.readingElements().get(0).getSearchableText());
+        assertEquals("The paragraph begins on page one", result.pages().get(0).getPageText());
+        assertEquals("and continues on page two.", result.pages().get(1).getPageText());
+        assertTrue(result.pages().get(1).getSourceSpanJson().contains("MINERU_MIDDLE_JSON"));
+        assertTrue(result.diagnosticsJson().contains("\"pagesBuiltFromPhysicalProjection\":2"));
+        assertTrue(result.diagnosticsJson().contains("\"pagesBuiltFromSemanticProjection\":0"));
     }
 
     @Test
@@ -187,6 +234,21 @@ class PaperReadingModelBuilderTest {
                 null,
                 null,
                 pageNumber == null ? null : new BoundingBox(pageNumber, 1.0, 2.0, 3.0, 4.0, "pdf_points", "bottom_left"),
+                Map.of()
+        );
+    }
+
+    private ParsedPaperPage physicalPage(int pageNumber, String text) {
+        return new ParsedPaperPage(
+                pageNumber,
+                List.of(new ParsedPaperPageBlock(
+                        "page-" + pageNumber + "-block-1",
+                        1,
+                        "text",
+                        text,
+                        new BoundingBox(pageNumber, 1.0, 2.0, 3.0, 4.0, "mineru_1000", "top_left_1000"),
+                        Map.of()
+                )),
                 Map.of()
         );
     }

@@ -1,0 +1,300 @@
+{
+  "accepted": false,
+  "case_count": 9,
+  "cases": [
+    {
+      "attempt": 1,
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The comparison is broad and useful, but it materially characterizes MINT as stateless with only short-lived state and makes other state/feedback assertions that are not established by the cited passages.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "error": "judge decision='' must be one of ['fail', 'pass']",
+        "error_type": "JudgeProtocolError",
+        "status": "technical_error"
+      },
+      "matches": {
+        "decision": false,
+        "grounding": false,
+        "overall": false,
+        "task_fulfillment": false
+      },
+      "run_id": "run_74f7eeaff4dc4fc2945fa0af314d01a9"
+    },
+    {
+      "attempt": 1,
+      "case_id": "toolsandbox_constraint_selection_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "pass",
+        "note": "The answer selects ToolSandbox and directly supports its stateful tools, on-policy user simulation, milestone evaluation, and insufficient-information category with cited passages.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The answer correctly selects ToolSandbox and grounds all four requested constraints (stateful tools, on-policy conversation, intermediate milestones, insufficient-information scenarios) in cited evidence from the ToolSandbox paper. Citation integrity is clean: each quoted claim maps to its supporting passage. The claim about \"the only benchmark\" is a strong comparative statement that isn't fully grounded by the supplied passages, but since the reviewer's expected behavior is to select ToolSandbox and ground the four constraints, and the citations all check out, the overall grounding is adequate.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_b3dfad701ad142ba8c7d7b83865ec916"
+    },
+    {
+      "attempt": 1,
+      "case_id": "cross_benchmark_human_agent_gap_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "pass",
+        "note": "The response accurately reports both gaps, cites the relevant passages, and explicitly separates answer accuracy from end-to-end web task success and their different human protocols.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The answer reports GAIA's 92% vs 15%, GAIA's 34.5%/89.8% split, WebArena's 78.24% vs 14.41%, and the graduate-student human baseline protocol. Each numeric and descriptive claim traces to a cited evidence passage with matching text. The caveats about differing task definitions, metrics, and human populations are framed as the user's instruction (\"not directly interchangeable\"), which is appropriate rather than an unsupported factual claim. No grounding issues found.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_51261825caf045518f80402b06da860c"
+    },
+    {
+      "attempt": 1,
+      "case_id": "agent_evaluation_recommendation_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The four recommendations are appropriate, but the final answer records no valid cited evidence IDs despite displaying raw location-style markers, so its research claims are not grounded through the citation contract.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "τ-bench's description as emulating \"dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines\" contains details (user simulated by LMs, domain-specific API tools) not directly supported by the supplied chunk.</item>"
+        ],
+        "overall": "fail",
+        "rationale": "The response correctly maps all four benchmarks to the four requested categories (GAIA, WebArena, SWE-bench, τ-bench), which is the correct decision/action. However, the grounding check is strict: multiple specific factual claims (SWE-bench's exact count of 2,294 problems, the 12 repositories, GAIA's framing about \"design questions,\" τ-bench's specifics about simulated users and domain-specific API tools, WebArena's \"live-style web apps\") are not directly supported by the supplied passages. Per the hard rule, grounding must be fail whenever grounding_issues is non-empty, regardless of whether the citations were used or the mapping is correct.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_d94484fb62b84fffaf55fc0be3562679"
+    },
+    {
+      "attempt": 1,
+      "case_id": "react_to_agent_evaluation_genealogy_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The named AgentBench, tau-bench, and AgentBoard relationships are directly supported, but the response overclaims an exhaustive negative check and incorrectly dismisses possible direct ReAct references in the remaining corpus.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "\"The corpus contains 9 papers total\" — no cited evidence supports this corpus count.",
+          "\"NeurIPS 2024 Oral\" for AgentBoard — no cited evidence supports the venue or Oral status.",
+          "\"Shunyu Yao is first author of both ReAct and τ-bench\" — no cited evidence supports this authorship overlap claim."
+        ],
+        "overall": "fail",
+        "rationale": "The response correctly identifies directly verified ReAct relationships in AgentBench, τ-bench, and AgentBoard, with accurate quotes and appropriate distinction between citation, adopted prompts, and evaluated baselines. All three core verified-relationship claims are well-supported. However, the response contains ancillary factual claims (corpus size of 9, AgentBoard's NeurIPS 2024 Oral status, Shunyu Yao's first authorship of both papers) that are not supported by any cited evidence passage, triggering strict grounding failure.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": false
+      },
+      "run_id": "run_44b59d60f5e24af09cd69797253b44aa"
+    },
+    {
+      "attempt": 1,
+      "case_id": "mint_tau_apparent_conflict_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The core non-contradiction is correct, but the answer claims tau-bench lacks feedback or recovery and that MINT-style oracle feedback would close its reliability gap; those causal conclusions are not supported and misdescribe tau-bench's interaction setting.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "The characterization of MINT's external tools as specifically \"Python execution\" is not supported by the cited MINT evidence, which only refers to \"tool interaction\" without specifying Python.",
+          "The claim that MINT \"spans reasoning/code/decision-making\" is not stated in any cited evidence from MINT; the cited passages only describe the gains and the single/multi-turn observation."
+        ],
+        "overall": "fail",
+        "rationale": "The answer correctly addresses the question by explaining the complementary properties measured, distinguishing the experimental settings, and appropriately presenting the relationship without overclaiming causality. Task fulfillment is solid with accurate factual content. However, grounding fails because two ancillary details—\"Python execution\" and the \"reasoning/code/decision-making\" domain span—are added beyond what the cited MINT passages actually state.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": false
+      },
+      "run_id": "run_839e97e2d5794ab49d1992efca8c169a"
+    },
+    {
+      "attempt": 1,
+      "case_id": "coding_benchmark_followup_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The response correctly resolves the choice to SWE-bench, but adds numerous uncited or insufficiently supported claims about Lite, patch quality, repository bias, dataset sizes, and benchmark noise.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "\\\"user-submitted GitHub issue from a popular Python repository\\\" — the cited evidence only mentions \\\"user-submitted issues and solutions\\\" generically; the Python-only scope is not stated in the cited passages and is an added detail.\\n",
+          "\\\"19,000 non-testing task instances spanning 37 repositories\\\" — neither figure (19,000, 37) appears in the cited evidence.\\n",
+          "\\\"SWE-bench itself uses 12 of these repositories\\\" — the \\\"12 repositories\\\" figure appears but the framing as a subset of 37 is added; the 19,000/37 details are unsupported.\\n",
+          "\\\"SWE-bench Lite is a curated subset covering 11 of those 12\\\" — not stated in any cited evidence.\\n",
+          "\\\"Patch quality vs. test-passing: the metric rewards tests passing, not necessarily clean or minimal patches\\\" — commentary/analysis not supported by the cited evidence.\\n",
+          "\\\"Repository bias\\\" concerns — not stated in cited evidence.\\n",
+          "\\\"Lite vs. full: SWE-bench Lite is the more common leaderboard target (smaller, curated); the full set is much larger and noisier\\\" — none of these claims about Lite appear in cited evidence.\\n",
+          "\\\"Continuously refreshable\\\" — only loosely supported by \\\"continuously update the benchmark with new instances\\\"; the claim that this \\\"helps limit memorization over time\\\" is an added inference.\\n"
+        ],
+        "overall": "fail",
+        "rationale": "The answer correctly resolves the follow-up by selecting SWE-bench and describing the GitHub-issue/execution-based framing, which is supported by the cited evidence. However, several ancillary factual claims (19,000 instances, 37 repositories, Python-only scope, SWE-bench Lite details covering 11 of 12 repos, patch-quality critique, and memorization claim) are not supported by the supplied passages, triggering grounding failure.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_4ef894c74e894f3d9f84b90a6554157a"
+    },
+    {
+      "attempt": 1,
+      "case_id": "cross_benchmark_score_ranking_partial_001",
+      "full_match": false,
+      "human": {
+        "decision": "fail",
+        "grounding": "fail",
+        "note": "The response performs the invalid strict ranking and asserts that SWE-bench is dramatically harder and that GAIA and WebArena are comparably difficult; the cited percentages do not support those cross-benchmark conclusions.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "fail",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "fail",
+        "rationale": "The user asked for a ranking based on reported model success percentages. The expected behavior is that the assistant should decline a strict ranking because different models, tasks, retrieval settings, and metrics prevent a valid difficulty ordering. The answer instead provides a definitive ranking and treats numerically similar percentages as equivalent benchmark difficulty, contradicting the expected behavior. Factual figures cited match the evidence passages; grounding is therefore pass, but task_fulfillment fails because the requested ranking is not the correct action given the incomparable metrics.",
+        "task_fulfillment": "fail"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": false,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_ccddbf66d43e4893a95fd3ee73397bd1"
+    },
+    {
+      "attempt": 1,
+      "case_id": "benchmark_topic_change_followup_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "pass",
+        "note": "The response cleanly follows the topic change, selects SWE-bench, and supports the issue, pull-request, and execution-based fit with cited passages.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The answer correctly follows the topic change from GAIA to SWE-bench, identifies SWE-bench as appropriate for evaluating an agent that fixes GitHub issues, and explains the GitHub issue/pull-request sourcing and execution-based evaluation. All cited claims are directly supported by the provided evidence passages: the 2,294 problems across 12 Python repositories, the issue+PR structure, and execution-based evaluation with continuous updates. No unsupported details detected.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_005f380c7c56478ca800e8e3781c6316"
+    }
+  ],
+  "dataset_id": "harness_golden_seed",
+  "dimension_agreement": {
+    "decision": {
+      "case_count": 9,
+      "matched_count": 8
+    },
+    "grounding": {
+      "case_count": 9,
+      "matched_count": 7
+    },
+    "overall": {
+      "case_count": 9,
+      "matched_count": 8
+    },
+    "task_fulfillment": {
+      "case_count": 9,
+      "matched_count": 6
+    }
+  },
+  "disagreement_count": 4,
+  "false_failure_count": 0,
+  "false_pass_count": 0,
+  "full_agreement_count": 5,
+  "judge": {
+    "api_base_url": "https://api.minimaxi.com/v1",
+    "api_style": "openai-compatible",
+    "has_api_key": true,
+    "model": "MiniMax-M3",
+    "prompt_version": "llm-judge/v5",
+    "provider": "minimax",
+    "scope": "llm"
+  },
+  "overall_agreement_count": 8,
+  "schema_version": "harness-judge-agreement/v1",
+  "source_baseline": "llm-agent-evaluation-v1-2026-07-13",
+  "technical_error_count": 1
+}

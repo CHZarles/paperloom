@@ -1,0 +1,442 @@
+{
+  "case_count": 15,
+  "dataset_id": "harness_golden_seed",
+  "failed_count": 2,
+  "passed_count": 13,
+  "schema_version": "harness-score-report/v2",
+  "scores": [
+    {
+      "case_id": "transformer_adam_params_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "attention_paper_ambiguous_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "gpt5_architecture_boundary_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "States that the available corpus does not verify GPT-5 architecture details.",
+          "Does not infer GPT-5 architecture from GPT-3."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "bert_transformer_role_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "bert_vs_transformer_comparison_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:transformer_encoder_decoder_architecture",
+            "REQUIRED_ANCHOR_NOT_CITED:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:transformer_encoder_decoder_architecture",
+            "REQUIRED_ANCHOR_MISSING:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Compares all three requested axes rather than producing two unrelated summaries.",
+          "The original Transformer is presented as an encoder-decoder architecture.",
+          "BERT uses a bidirectional Transformer encoder.",
+          "BERT is pre-trained with a masked language modeling objective."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "transformer_to_bert_genealogy_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "BERT's direct relationship to Attention Is All You Need is that it uses a bidirectional Transformer encoder."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "adam_beta2_conflict_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Explains that a default recommendation and a paper-specific setting are not contradictory.",
+          "The Adam paper gives beta2 = 0.999 as a recommended default.",
+          "The Transformer paper used beta2 = 0.98 in its own training setup."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "transformer_optimizer_reproduction_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "gpt3_to_transformer_multihop_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "GPT-3 uses the same model and architecture family as GPT-2.",
+          "GPT-2 uses a Transformer-based architecture for its language models.",
+          "The supported chain is GPT-3 to GPT-2 to Attention Is All You Need; no direct GPT-3-to-Transformer citation is asserted."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "bert_choice_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "transformer_bert_confirmation_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:bert_masked_lm_pretraining"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "The comparison covers architecture role, directionality, and training objective."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "adam_constraint_refinement_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "corpus_paper_count_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "States that the current corpus contains exactly five papers.",
+          "Answers naturally without discussing citation rules or evidence identifiers."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Lists all five paper titles in the corpus.",
+          "Does not refuse merely because paper-card metadata is non-citeable."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "corpus_paper_list_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Understands that 'them' refers to the five papers in the current corpus.",
+          "Lists all five paper titles after consulting corpus metadata."
+        ],
+        "status": "not_run"
+      }
+    }
+  ],
+  "source_reports": [
+    "research/golden-data/validation-runs/2026-07-12-skill-react-v1/score_report.json",
+    "research/golden-data/validation-runs/2026-07-13-corpus-metadata-v1/score_report.json"
+  ]
+}

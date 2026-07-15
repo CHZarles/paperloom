@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_live_chat_da6a15d6177a",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_b92266da5dfc24a8",
+    "ev_0b6df8220994eeba",
+    "ev_8cc632bae0fd2ad6",
+    "ev_e5b730aaa144ea19",
+    "ev_333e927cdd154df0"
+  ],
+  "fields": {},
+  "markdown": "## How an original SWE-bench task is created from GitHub data\n\nSWE-bench turns real GitHub issue–PR pairs into execution-checked tasks via a **3-stage pipeline**. The pipeline starts from roughly **90,000 PRs across 12 popular Python repositories** and ends with **2,294 task instances** [1]. The high-level idea (Figure 1 of the paper) is to connect GitHub issues to merged PR solutions that resolve related tests [2].\n\n### Stage I — Repository selection and data scraping\n- Source the universe from PyPI: start from the top 5,000 most-downloaded PyPI libraries (August 2023), take the top 100, identify each library's open-source GitHub repository, verify the license allows free use, and pull all PRs via the GitHub developer API [3].\n- Restrict to 12 popular repositories (e.g., astropy, django, flask, matplotlib, pylint, pytest, requests, scikit-learn, seaborn, sphinx, sympy, xarray) chosen because \"popular repositories tend to be better maintained, have clear contributor guidelines, and have better test coverage\" [4].\n- Mirror these repositories and open-source them under the SWE-bench GitHub organization so the exact code state at each PR is reproducible [[swebench_2024:page-018:chunk-012]].\n\n### Stage II — Attribute-based filtering of candidate PRs\nA PR must satisfy all three attribute rules to become a candidate task [5]:\n1. **Merged** status — the PR's code changes were accepted into the parent repository [[ev_32cbd6adf5\n\nSources\n[1] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 3\n[2] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 1\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 16\n[4] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 2\n[5] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 2",
+  "outcome": "answered",
+  "question_id": "live_chat_da6a15d6177a",
+  "status": "COMPLETED",
+  "summary": "## How an original SWE-bench task is created from GitHub data\n\nSWE-bench turns real GitHub issue–PR pairs into execution-checked tasks via a **3-stage pipeline**. The pipeline starts from roughly **90,000 PRs across 12 popular Python repositories** and ends with **2,294 task instances** [1]. The high-level idea (Figure 1 of the paper) is to connect GitHub issues to merged PR solutions that resolve"
+}

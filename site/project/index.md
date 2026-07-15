@@ -5,14 +5,13 @@ description: PaperLoom 是什么，它如何成为一个证据有界的 Agentic 
 
 # PaperLoom
 
-PaperLoom 是我围绕研究论文 PDF 搭建的 **evidence-bounded agentic RAG** 工作台，用户界面叫
-Folio。
+PaperLoom 是面向研究论文 PDF 的 **evidence-bounded agentic RAG** 工作台，用户界面叫 Folio。
 
 一次回答开始前，Java 会锁定当前用户有权访问的论文。Agent 随后决定搜索词、阅读位置和工具顺序。
 `read_locations` 读到的原文才会获得 Evidence ID，最终答案还要通过引用与 Coverage 校验。会话保存
 以后，用户仍能从历史引用回到原论文。
 
-## 我一直追问的四件事
+## 四个设计问题
 
 | 命题 | PaperLoom 的回答 |
 | --- | --- |
@@ -34,7 +33,7 @@ Folio。
 
 [系统架构图与责任边界](/project/architecture)
 
-## 为什么我把它称为 Agentic RAG
+## Agentic RAG 的依据
 
 检索在这里是一段由 Agent 推进的研究过程。它可以根据问题选择：
 
@@ -59,14 +58,12 @@ Python 直接从 MySQL 取得当前 Ready Reading Model 的 Metadata、Reading E
 - Passage、Lead、Section、Exact Phrase、Adjacent Paragraph 与 Coverage Heuristic 补充排序；
 - Search Result 只给非引用 Preview，准确读取后才生成 Evidence。
 
-当前 Assistant Answer Path **没有调用 Embedding 或 Dense Vector Retrieval**。网站只介绍会影响
-当前答案的组件。向量召回以后若进入产品，我会先用 Held-out Evaluation 检查它对 Candidate、Read、
-Cited、Hard Pass、延迟和成本的影响。
+当前 Assistant Answer Path **没有调用 Embedding 或 Dense Vector Retrieval**。向量召回是否进入产品，
+取决于 Held-out Evaluation 对 Candidate、Read、Cited、Hard Pass、延迟和成本的完整检查。
 
 ## Reading Model 为什么重要
 
-Parser 输出会随解析器版本变化。我在 Parser 和 Agent 之间加了一层产品自己的 Reading Model，用它
-稳定表达：
+Parser 输出会随解析器版本变化。Parser 与 Agent 之间的 Reading Model 负责稳定表达：
 
 - 物理页、Reading Order 与 Section Range；
 - Paragraph、Table、Figure、Chart、Formula、Footnote、Aside、Code 等类型化内容；
@@ -99,7 +96,7 @@ PaperLoom 仍在持续开发。目前还没有做到：
 - Eval 分数可以直接代表所有真实用户满意度；
 - 增加模型调用次数就一定能提高研究质量。
 
-我会把这些缺口留在页面上。后面的实验和路线更新都要从现有实现出发。
+这些缺口构成当前产品边界，实验和路线更新都以现有实现为起点。
 
 ## 继续阅读
 

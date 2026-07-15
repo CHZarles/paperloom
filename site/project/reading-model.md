@@ -11,8 +11,8 @@ Reading Model 是产品长期保存的论文结构。它回答页面、章节、
 表达。单次请求进入 `harness_py` 后，`DockerMySqlProductCorpusStore` 把其中一部分投影成
 `GoldenDataset` 和 `ReadingDocument`，`ReadingCorpusTools` 再向 Agents SDK 暴露具体 Function Tool。
 
-完整 Reading Model 比当前 Python 检索面更丰富。这个差异允许我继续调整 BM25、以后加入 Dense
-Retrieval，或替换 Model Provider，同时保留论文和历史引用的长期身份。
+完整 Reading Model 比当前 Python 检索面更丰富，因此 BM25、Dense Retrieval 和 Model Provider 可以
+独立变化，论文与历史引用仍保留长期身份。
 
 ## Reading Model 的构成
 
@@ -57,8 +57,8 @@ Text 与 Source Span。章节结构独立于后续的 Chunk 或 Ranker 策略。
 `paper_locations` 为 Page、Section、Table 与合适的 Figure 建立正式 Navigation Identity。当前一部分
 Text 或 Deferred Formula 会使用 `reading_element_id` 作为 Live Harness 的 Location Fallback。
 
-我先保证 Retained Content 能被准确读取，再逐步提高高层 Location Coverage。没有可靠位置的 Parser
-Element 会留下明确缺口，不会获得一个猜出来的 Location。
+当前实现先保证 Retained Content 能被准确读取，再逐步提高高层 Location Coverage。没有可靠位置的
+Parser Element 会留下明确缺口，不会获得猜测生成的 Location。
 
 ### 6. Visual Asset
 

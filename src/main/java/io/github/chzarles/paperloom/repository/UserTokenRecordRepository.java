@@ -72,19 +72,17 @@ public interface UserTokenRecordRepository extends JpaRepository<UserTokenRecord
     );
 
     /**
-     * 查询用户最新记录中余额不足的记录（使用子查询）
+     * 查询每个用户指定 Token 类型的最新余额不足记录。
      */
     @Query("SELECT u " +
             "FROM UserTokenRecord u " +
             "WHERE u.tokenType = :tokenType " +
-            "AND u.changeType = 'CONSUME' " +
             "AND u.balanceAfter <= :minBalance " +
-            "AND u.recordDate = (" +
-            "    SELECT MAX(ur.recordDate) " +
+            "AND u.createdAt = (" +
+            "    SELECT MAX(ur.createdAt) " +
             "    FROM UserTokenRecord ur " +
             "    WHERE ur.userId = u.userId " +
             "    AND ur.tokenType = :tokenType " +
-            "    AND ur.changeType = 'CONSUME'" +
             ")")
     List<UserTokenRecord> findUsersWithLowBalance(
             @Param("tokenType") UserTokenRecord.TokenType tokenType,

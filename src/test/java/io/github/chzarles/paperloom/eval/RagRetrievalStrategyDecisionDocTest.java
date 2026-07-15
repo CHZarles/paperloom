@@ -52,7 +52,7 @@ class RagRetrievalStrategyDecisionDocTest {
         assertContains(Files.readString(Path.of("eval/rag/README.md")), "RETRIEVAL_STRATEGY_DECISION.md");
         assertContains(Files.readString(Path.of("eval/rag/RAG_METHOD_EXPLORATION.md")), "RETRIEVAL_STRATEGY_DECISION.md");
         assertContains(
-                Files.readString(Path.of("docs/superpowers/plans/2026-06-23-rag-eval-cheatsheet.md")),
+                Files.readString(Path.of("eval/rag/CHEATSHEET.md")),
                 "RETRIEVAL_STRATEGY_DECISION.md"
         );
     }

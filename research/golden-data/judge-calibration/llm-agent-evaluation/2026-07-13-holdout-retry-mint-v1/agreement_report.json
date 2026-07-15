@@ -1,0 +1,80 @@
+{
+  "accepted": false,
+  "case_count": 1,
+  "cases": [
+    {
+      "attempt": 1,
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The comparison is broad and useful, but it materially characterizes MINT as stateless with only short-lived state and makes other state/feedback assertions that are not established by the cited passages.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "MINT 'three nested settings' (1) tool use only (2) lazy user (3) informative NL feedback — not stated in supplied evidence passages.</item>",
+          "\"turn limit k ∈ {1,2,3,4,5}\" — specific values not present in supplied evidence; only \"a limit on the number of interaction turns k\" is mentioned.</item>",
+          "\"lazy (≤1 binary 'this is not what I want' reply)\" — the quoted phrase and the binary/≤1 characterization are not in supplied evidence.</item>",
+          "\"ALFWorld (a TextWorld-based embodied household simulator)\" — ALFWorld mention and TextWorld characterization not in supplied evidence.</item>",
+          "\"HumanEval/MBPP test suites\" — these benchmarks not named in supplied evidence.</item>",
+          "\"Code is one flexible, generic tool across very different tasks (reasoning, code gen, decision-making)\" — task categories and 'generic tool' characterization added beyond supplied evidence.</item>",
+          "\"Typed signatures, e.g., return_delivered_order_items(...)\" — specific example function name not in supplied evidence.</item>",
+          "\"an ablation compares simulated vs. lazy feedback to attribute gains\" — not described in supplied evidence.</item>",
+          "\"deterministic Python transitions Tdb\" partially cited but \"stochastic LM sampling Tuser\" assigned to user's earlier synthesis without direct support in [18].</item>",
+          "MINT \"state is short-lived within a trajectory\" characterization — supported only implicitly; sourced from ev_4b48a5da3b359ac1 which says nothing about persistence.</item>"
+        ],
+        "overall": "fail",
+        "rationale": "The answer correctly addresses all five requested comparison axes and is factually reasonable. Grounding fails because multiple specific details (turn limit values, the \"three nested settings\" labels, HumanEval/MBPP/ALFWorld names, specific quoted phrases like \"this is not what I want\") are added beyond what the supplied evidence passages actually state.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": false
+      },
+      "run_id": "run_74f7eeaff4dc4fc2945fa0af314d01a9"
+    }
+  ],
+  "dataset_id": "harness_golden_seed",
+  "dimension_agreement": {
+    "decision": {
+      "case_count": 1,
+      "matched_count": 1
+    },
+    "grounding": {
+      "case_count": 1,
+      "matched_count": 1
+    },
+    "overall": {
+      "case_count": 1,
+      "matched_count": 1
+    },
+    "task_fulfillment": {
+      "case_count": 1,
+      "matched_count": 0
+    }
+  },
+  "disagreement_count": 1,
+  "false_failure_count": 0,
+  "false_pass_count": 0,
+  "full_agreement_count": 0,
+  "judge": {
+    "api_base_url": "https://api.minimaxi.com/v1",
+    "api_style": "openai-compatible",
+    "has_api_key": true,
+    "model": "MiniMax-M3",
+    "prompt_version": "llm-judge/v5",
+    "provider": "minimax",
+    "scope": "llm"
+  },
+  "overall_agreement_count": 1,
+  "schema_version": "harness-judge-agreement/v1",
+  "source_baseline": "llm-agent-evaluation-v1-2026-07-13",
+  "technical_error_count": 0
+}

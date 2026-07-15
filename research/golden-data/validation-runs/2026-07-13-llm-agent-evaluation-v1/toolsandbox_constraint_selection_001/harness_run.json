@@ -1,0 +1,832 @@
+{
+  "case_id": "toolsandbox_constraint_selection_001",
+  "citation_validation": {
+    "cited_evidence_ids": [
+      "ev_a62b0f4d2f37e24a",
+      "ev_8db5ca93c0df94ee",
+      "ev_4c22bf068a588f58",
+      "ev_fb6209a46e53c200"
+    ],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-12T21:19:07Z",
+  "diagnostics": {
+    "completion_tokens": 1710,
+    "duration_ms": 16891,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 4,
+    "model_latency_ms": 16606,
+    "prompt_tokens": 17799,
+    "skills_used": [],
+    "tool_call_count": 4,
+    "total_tokens": 19509
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_a62b0f4d2f37e24a",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "toolsandbox_2024:page-001:chunk-008",
+        "location_ref": "toolsandbox_2024:page-001:chunk-008",
+        "matched_anchor_id": "toolsandbox_stateful_on_policy_design",
+        "page": 1,
+        "page_screenshot_available": false,
+        "paper_id": "toolsandbox_2024",
+        "paper_version": "arXiv v2",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "While previous works focused on either evaluating over stateless web services (RESTful API), based on a single turn user prompt, or an off-policy dialog trajectory, T OOL S ANDBOX1 includes stateful tool execution, implicit state dependencies between tools, a built-in user simulator supporting on-policy conversational evaluation and a dynamic evaluation strategy for intermediate and final milestones over an arbitrary trajectory.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_8db5ca93c0df94ee",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "toolsandbox_2024:page-003:chunk-013",
+        "location_ref": "toolsandbox_2024:page-003:chunk-013",
+        "matched_anchor_id": null,
+        "page": 3,
+        "page_screenshot_available": false,
+        "paper_id": "toolsandbox_2024",
+        "paper_version": "arXiv v2",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "• Includes implicit state dependencies between stateful tools, allowing the agent to track and alter the world state based on its world/commonsense knowledge, which is implicit from the user query; • Includes an LLM simulated user, allowing for realistic, on-policy conversational evaluation to measure the agent’s ability on implicit dialog state tracking;",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_4c22bf068a588f58",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "toolsandbox_2024:page-006:chunk-028",
+        "location_ref": "toolsandbox_2024:page-006:chunk-028",
+        "matched_anchor_id": null,
+        "page": 6,
+        "page_screenshot_available": false,
+        "paper_id": "toolsandbox_2024",
+        "paper_version": "arXiv v2",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "Insufficient Information The insufficient information category is used for scenarios where the agent is not able to perform the task on purpose, by withholding a tool that would be needed for the task.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_fb6209a46e53c200",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "toolsandbox_2024:page-008:chunk-002",
+        "location_ref": "toolsandbox_2024:page-008:chunk-002",
+        "matched_anchor_id": null,
+        "page": 8,
+        "page_screenshot_available": false,
+        "paper_id": "toolsandbox_2024",
+        "paper_version": "arXiv v2",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "The stronger the model performance on complex tasks, the worse the insufficient information performance, showing its value at evaluating model reasoning capabilities.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_0f5d9f1d64d6",
+    "missing_evidence": [],
+    "question_id": "live_chat_0f5d9f1d64d6",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_0f5d9f1d64d6",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_a62b0f4d2f37e24a",
+      "ev_8db5ca93c0df94ee",
+      "ev_4c22bf068a588f58",
+      "ev_fb6209a46e53c200"
+    ],
+    "fields": {},
+    "markdown": "The benchmark that fits is **ToolSandbox** (Jiarui Lu, Thomas Holleis et al., 2024, arXiv:2408.04682).\n\nIts paper's own framing names each of the four ingredients you listed:\n\n- **Stateful tools.** ToolSandbox moves beyond stateless REST-style APIs by including \"stateful tool execution\" with \"implicit state dependencies between stateful tools, allowing the agent to track and alter the world state based on its world/commonsense knowledge, which is implicit from the user query.\" [1] [2]\n- **On-policy conversation.** It ships \"a built-in user simulator supporting on-policy conversational evaluation\" via an LLM-simulated user, which lets it measure \"implicit dialog state tracking\" rather than replaying an off-policy script. [1] [2]\n- **Intermediate milestones.** Evaluation is not just a final pass/fail check; it uses \"a dynamic evaluation strategy for intermediate and final milestones over an arbitrary trajectory.\" [1]\n- **Insufficient-information scenarios.** ToolSandbox has an explicit category for this: \"The insufficient information category is used for scenarios where the agent is not able to perform the task on purpose, by withholding a tool that would be needed for the task.\" The paper even observes that \"the stronger the model performance on complex tasks, the worse the insufficient information performance, showing its value at evaluating model reasoning capabilities.\" [3] [4]\n\nIn short, ToolSandbox is the only benchmark in this corpus whose design jointly targets stateful tool execution, on-policy multi-turn dialog, intermediate-milestone scoring, and explicit insufficient-information cases — and it spells out all four as core contributions in its introduction and evaluation sections.\n\nSources\n[1] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 1\n[2] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 3\n[3] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 6\n[4] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 8",
+    "outcome": "answered",
+    "question_id": "live_chat_0f5d9f1d64d6",
+    "status": "COMPLETED",
+    "summary": "The benchmark that fits is **ToolSandbox** (Jiarui Lu, Thomas Holleis et al., 2024, arXiv:2408.04682).\n\nIts paper's own framing names each of the four ingredients you listed:\n\n- **Stateful tools.** ToolSandbox moves beyond stateless REST-style APIs by including \"stateful tool execution\" with \"implicit state dependencies between stateful tools, allowing the agent to track and alter the world state "
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_a62b0f4d2f37e24a",
+      "ev_8db5ca93c0df94ee",
+      "ev_4c22bf068a588f58",
+      "ev_fb6209a46e53c200"
+    ],
+    "selected_paper_ids": [
+      "toolsandbox_2024"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "2311.12983",
+      "authors": [
+        "Gregoire Mialon",
+        "Clementine Fourrier"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gaia_2024",
+      "filename": null,
+      "paper_id": "gaia_2024",
+      "preview": "",
+      "title": "GAIA: a benchmark for General AI Assistants",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2406.12045",
+      "authors": [
+        "Shunyu Yao",
+        "Noah Shinn"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_tau_bench_2024",
+      "filename": null,
+      "paper_id": "tau_bench_2024",
+      "preview": "",
+      "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2408.04682",
+      "authors": [
+        "Jiarui Lu",
+        "Thomas Holleis"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_toolsandbox_2024",
+      "filename": null,
+      "paper_id": "toolsandbox_2024",
+      "preview": "",
+      "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2308.03688",
+      "authors": [
+        "Xiao Liu",
+        "Hao Yu"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_agentbench_2024",
+      "filename": null,
+      "paper_id": "agentbench_2024",
+      "preview": "",
+      "title": "AgentBench: Evaluating LLMs as Agents",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2401.13178",
+      "authors": [
+        "Chang Ma",
+        "Junlei Zhang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_agentboard_2024",
+      "filename": null,
+      "paper_id": "agentboard_2024",
+      "preview": "",
+      "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+      "venue": "NeurIPS Oral",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2309.10691",
+      "authors": [
+        "Xingyao Wang",
+        "Zihan Wang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_mint_2024",
+      "filename": null,
+      "paper_id": "mint_2024",
+      "preview": "",
+      "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2310.06770",
+      "authors": [
+        "Carlos E. Jimenez",
+        "John Yang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_swebench_2024",
+      "filename": null,
+      "paper_id": "swebench_2024",
+      "preview": "",
+      "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2307.13854",
+      "authors": [
+        "Shuyan Zhou",
+        "Frank F. Xu"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_webarena_2024",
+      "filename": null,
+      "paper_id": "webarena_2024",
+      "preview": "",
+      "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2210.03629",
+      "authors": [
+        "Shunyu Yao",
+        "Jeffrey Zhao"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_react_2023",
+      "filename": null,
+      "paper_id": "react_2023",
+      "preview": "",
+      "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+      "venue": "ICLR",
+      "year": 2023
+    }
+  ],
+  "question_id": "toolsandbox_constraint_selection_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "limit": 50,
+        "query_text": "benchmark"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 3,
+        "next_offset": null,
+        "query_text": "benchmark",
+        "returned_count": 3
+      },
+      "tool_call_id": "call_019f583284f27c52b3679137",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 100,
+        "query_text": ""
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2308.03688",
+            "authors": [
+              "Xiao Liu",
+              "Hao Yu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentbench_2024",
+            "preview": "",
+            "title": "AgentBench: Evaluating LLMs as Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2401.13178",
+            "authors": [
+              "Chang Ma",
+              "Junlei Zhang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentboard_2024",
+            "preview": "",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+            "venue": "NeurIPS Oral",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2309.10691",
+            "authors": [
+              "Xingyao Wang",
+              "Zihan Wang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "mint_2024",
+            "preview": "",
+            "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2310.06770",
+            "authors": [
+              "Carlos E. Jimenez",
+              "John Yang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "swebench_2024",
+            "preview": "",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2307.13854",
+            "authors": [
+              "Shuyan Zhou",
+              "Frank F. Xu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "webarena_2024",
+            "preview": "",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2210.03629",
+            "authors": [
+              "Shunyu Yao",
+              "Jeffrey Zhao"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "react_2023",
+            "preview": "",
+            "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+            "venue": "ICLR",
+            "year": 2023
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 9,
+        "next_offset": null,
+        "query_text": "",
+        "returned_count": 9
+      },
+      "tool_call_id": "call_019f583290e374b0ad274e49",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "paragraph",
+          "heading"
+        ],
+        "paper_ids": [
+          "toolsandbox_2024",
+          "tau_bench_2024",
+          "gaia_2024"
+        ],
+        "query_text": "stateful conversation on-policy milestone insufficient information",
+        "top_k": 10
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "toolsandbox_2024:page-001:chunk-008",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "preview": "While previous works focused on either evaluating over stateless web services (RESTful API), based on a single turn user prompt, or an off-policy dialog trajectory, T OOL S ANDBOX1 includes stateful tool execution, implicit state dependencies between tools, a built-in user simulator supporting on-policy conversational evaluation and a dynamic evaluation strategy for intermediate and final milestones over an arbitrary trajectory.",
+            "section": "unsectioned",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-002:chunk-011",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "The benchmark tests an agent’s ability to collate and convey all required information from/to users through multiple interactions, and solve complex issues on the fly while ensuring it follows guidelines laid out in a domain-specific policy document.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-006:chunk-011",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "Both figures are based on information reported by human annotators when answering the questions, and AI systems might proceed differently.",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "toolsandbox_2024:page-003:chunk-013",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "preview": "• Includes implicit state dependencies between stateful tools, allowing the agent to track and alter the world state based on its world/commonsense knowledge, which is implicit from the user query; • Includes an LLM simulated user, allowing for realistic, on-policy conversational evaluation to measure the agent’s ability on implicit dialog state tracking;",
+            "section": "unsectioned",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-015:chunk-006",
+            "original_filename": null,
+            "page": 15,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "Retail policies # Retail agent policy As a retail agent, you can help users cancel or modify pending orders, return or exchange delivered orders, modify their default user address, or provide information about their own profile, orders, and related products. - At the beginning of the conversation, you have to authenticate the user identity by locating their user id via email, or via name + zip code.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-019:chunk-014",
+            "original_filename": null,
+            "page": 19,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "This includes potential deletion of the source of truth. • Make sure the answer to your question is unambiguous. • Make sure your question is “interesting”, i.e. by reading it you think that an AI assistant answering this kind of question would help you a lot. • Make sure your question can be answered in a reasonable amount of time by a human annotator. • (Added later on): check the robots.txt of the website containing the information needed to answer so that it is accessible to AI assistants.",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "toolsandbox_2024:page-006:chunk-028",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "preview": "Insufficient Information The insufficient information category is used for scenarios where the agent is not able to perform the task on purpose, by withholding a tool that would be needed for the task.",
+            "section": "unsectioned",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-003:chunk-004",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "In contrast, our benchmark focuses on a more realistic setting where the agent has to interact with human users to gather information and authorization.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-023:chunk-012",
+            "original_filename": null,
+            "page": 23,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "Figure 10 The official GPT4 browsing plugin is able to refine its initial query based on the information it finds.",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "toolsandbox_2024:page-008:chunk-002",
+            "original_filename": null,
+            "page": 8,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "preview": "The stronger the model performance on complex tasks, the worse the insufficient information performance, showing its value at evaluating model reasoning capabilities.",
+            "section": "unsectioned",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          }
+        ],
+        "matched_count": 307,
+        "query_text": "stateful conversation on-policy milestone insufficient information",
+        "returned_count": 10
+      },
+      "tool_call_id": "call_019f583290e374b0ad274e51",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "toolsandbox_2024:page-001:chunk-008",
+          "toolsandbox_2024:page-003:chunk-013",
+          "toolsandbox_2024:page-006:chunk-028",
+          "toolsandbox_2024:page-008:chunk-002"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_a62b0f4d2f37e24a",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "toolsandbox_2024:page-001:chunk-008",
+            "location_ref": "toolsandbox_2024:page-001:chunk-008",
+            "page": 1,
+            "page_screenshot_available": false,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "While previous works focused on either evaluating over stateless web services (RESTful API), based on a single turn user prompt, or an off-policy dialog trajectory, T OOL S ANDBOX1 includes stateful tool execution, implicit state dependencies between tools, a built-in user simulator supporting on-policy conversational evaluation and a dynamic evaluation strategy for intermediate and final milestones over an arbitrary trajectory.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_8db5ca93c0df94ee",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "toolsandbox_2024:page-003:chunk-013",
+            "location_ref": "toolsandbox_2024:page-003:chunk-013",
+            "page": 3,
+            "page_screenshot_available": false,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "• Includes implicit state dependencies between stateful tools, allowing the agent to track and alter the world state based on its world/commonsense knowledge, which is implicit from the user query; • Includes an LLM simulated user, allowing for realistic, on-policy conversational evaluation to measure the agent’s ability on implicit dialog state tracking;",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_4c22bf068a588f58",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "toolsandbox_2024:page-006:chunk-028",
+            "location_ref": "toolsandbox_2024:page-006:chunk-028",
+            "page": 6,
+            "page_screenshot_available": false,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "Insufficient Information The insufficient information category is used for scenarios where the agent is not able to perform the task on purpose, by withholding a tool that would be needed for the task.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_fb6209a46e53c200",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "toolsandbox_2024:page-008:chunk-002",
+            "location_ref": "toolsandbox_2024:page-008:chunk-002",
+            "page": 8,
+            "page_screenshot_available": false,
+            "paper_id": "toolsandbox_2024",
+            "paper_version": "arXiv v2",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "The stronger the model performance on complex tasks, the worse the insufficient information performance, showing its value at evaluating model reasoning capabilities.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_019f58329c5c7f53b5b3c310",
+      "tool_name": "read_locations"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_0f5d9f1d64d6",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_a62b0f4d2f37e24a",
+      "ev_8db5ca93c0df94ee",
+      "ev_4c22bf068a588f58",
+      "ev_fb6209a46e53c200"
+    ],
+    "fields": {},
+    "markdown": "The benchmark that fits is **ToolSandbox** (Jiarui Lu, Thomas Holleis et al., 2024, arXiv:2408.04682).\n\nIts paper's own framing names each of the four ingredients you listed:\n\n- **Stateful tools.** ToolSandbox moves beyond stateless REST-style APIs by including \"stateful tool execution\" with \"implicit state dependencies between stateful tools, allowing the agent to track and alter the world state based on its world/commonsense knowledge, which is implicit from the user query.\" [1] [2]\n- **On-policy conversation.** It ships \"a built-in user simulator supporting on-policy conversational evaluation\" via an LLM-simulated user, which lets it measure \"implicit dialog state tracking\" rather than replaying an off-policy script. [1] [2]\n- **Intermediate milestones.** Evaluation is not just a final pass/fail check; it uses \"a dynamic evaluation strategy for intermediate and final milestones over an arbitrary trajectory.\" [1]\n- **Insufficient-information scenarios.** ToolSandbox has an explicit category for this: \"The insufficient information category is used for scenarios where the agent is not able to perform the task on purpose, by withholding a tool that would be needed for the task.\" The paper even observes that \"the stronger the model performance on complex tasks, the worse the insufficient information performance, showing its value at evaluating model reasoning capabilities.\" [3] [4]\n\nIn short, ToolSandbox is the only benchmark in this corpus whose design jointly targets stateful tool execution, on-policy multi-turn dialog, intermediate-milestone scoring, and explicit insufficient-information cases — and it spells out all four as core contributions in its introduction and evaluation sections.\n\nSources\n[1] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 1\n[2] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 3\n[3] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 6\n[4] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 8",
+    "outcome": "answered",
+    "question_id": "live_chat_0f5d9f1d64d6",
+    "status": "COMPLETED",
+    "summary": "The benchmark that fits is **ToolSandbox** (Jiarui Lu, Thomas Holleis et al., 2024, arXiv:2408.04682).\n\nIts paper's own framing names each of the four ingredients you listed:\n\n- **Stateful tools.** ToolSandbox moves beyond stateless REST-style APIs by including \"stateful tool execution\" with \"implicit state dependencies between stateful tools, allowing the agent to track and alter the world state "
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_b3dfad701ad142ba8c7d7b83865ec916",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-12T21:18:52Z",
+  "status": "COMPLETED"
+}

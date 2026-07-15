@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_live_chat_0f5d9f1d64d6",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_a62b0f4d2f37e24a",
+    "ev_8db5ca93c0df94ee",
+    "ev_4c22bf068a588f58",
+    "ev_fb6209a46e53c200"
+  ],
+  "fields": {},
+  "markdown": "The benchmark that fits is **ToolSandbox** (Jiarui Lu, Thomas Holleis et al., 2024, arXiv:2408.04682).\n\nIts paper's own framing names each of the four ingredients you listed:\n\n- **Stateful tools.** ToolSandbox moves beyond stateless REST-style APIs by including \"stateful tool execution\" with \"implicit state dependencies between stateful tools, allowing the agent to track and alter the world state based on its world/commonsense knowledge, which is implicit from the user query.\" [1] [2]\n- **On-policy conversation.** It ships \"a built-in user simulator supporting on-policy conversational evaluation\" via an LLM-simulated user, which lets it measure \"implicit dialog state tracking\" rather than replaying an off-policy script. [1] [2]\n- **Intermediate milestones.** Evaluation is not just a final pass/fail check; it uses \"a dynamic evaluation strategy for intermediate and final milestones over an arbitrary trajectory.\" [1]\n- **Insufficient-information scenarios.** ToolSandbox has an explicit category for this: \"The insufficient information category is used for scenarios where the agent is not able to perform the task on purpose, by withholding a tool that would be needed for the task.\" The paper even observes that \"the stronger the model performance on complex tasks, the worse the insufficient information performance, showing its value at evaluating model reasoning capabilities.\" [3] [4]\n\nIn short, ToolSandbox is the only benchmark in this corpus whose design jointly targets stateful tool execution, on-policy multi-turn dialog, intermediate-milestone scoring, and explicit insufficient-information cases — and it spells out all four as core contributions in its introduction and evaluation sections.\n\nSources\n[1] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 1\n[2] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 3\n[3] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 6\n[4] ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities, unsectioned, p. 8",
+  "outcome": "answered",
+  "question_id": "live_chat_0f5d9f1d64d6",
+  "status": "COMPLETED",
+  "summary": "The benchmark that fits is **ToolSandbox** (Jiarui Lu, Thomas Holleis et al., 2024, arXiv:2408.04682).\n\nIts paper's own framing names each of the four ingredients you listed:\n\n- **Stateful tools.** ToolSandbox moves beyond stateless REST-style APIs by including \"stateful tool execution\" with \"implicit state dependencies between stateful tools, allowing the agent to track and alter the world state "
+}

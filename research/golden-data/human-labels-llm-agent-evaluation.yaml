@@ -1,0 +1,112 @@
+schema_version: harness-human-labels/v1
+dataset_id: harness_golden_seed
+source_baseline: llm-agent-evaluation-v1-2026-07-13
+
+labels:
+  - case_id: agentbench_environment_inventory_001
+    attempt: 1
+    run_id: run_0a109034cbcc488dbe49f8faca548a16
+    review:
+      user_request: "What does AgentBench evaluate, how many environments does it contain, and which agent weaknesses does the paper identify?"
+      expected_behavior:
+        - "Explains that AgentBench evaluates LLM agents across eight interactive environments."
+        - "Identifies long-term reasoning, decision-making, and instruction following as reported weaknesses."
+        - "Material claims must be supported by the cited AgentBench passages."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentbench_environment_inventory_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentbench_environment_inventory_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: fail
+      overall: fail
+      note: "The response answers the requested scope, count, and weaknesses, but its opening claim that evaluation is done via Chain-of-Thought prompting is not supported by the cited passages attached to that claim."
+
+  - case_id: gaia_dataset_gap_001
+    attempt: 1
+    run_id: run_c619d068910843fb9a3bb2acc8981f76
+    review:
+      user_request: "Explain how the GAIA benchmark was constructed and give the reported human versus GPT-4-with-plugins result."
+      expected_behavior:
+        - "Covers the human-authored and validated question-construction process."
+        - "Reports 466 questions, 92% human performance, and 15% for GPT-4 with plugins."
+        - "Material claims must be supported by cited GAIA passages."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/gaia_dataset_gap_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/gaia_dataset_gap_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: pass
+      overall: pass
+      note: "The answer accurately covers GAIA's construction, validation, split, and reported human-model gap, with direct cited support for the material details."
+
+  - case_id: webarena_reproduction_protocol_001
+    attempt: 1
+    run_id: run_bb15fe705e84464cbb5031d19474fa78
+    review:
+      user_request: "Give me a concise WebArena reproduction checklist covering its web domains, environment reset, task execution, and evaluation criterion."
+      expected_behavior:
+        - "Provides a concise checklist covering all four requested areas."
+        - "Includes functional-correctness evaluation rather than stopping at environment and action details."
+        - "Material claims must be supported by cited WebArena passages."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/webarena_reproduction_protocol_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/webarena_reproduction_protocol_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "The response covers domains, reset, and task execution but is cut off before the requested evaluation criterion; several detailed reset instructions also exceed the cited sentence-level evidence."
+
+  - case_id: swebench_instance_provenance_001
+    attempt: 1
+    run_id: run_c0c1fe1c6a7646c589bdbb4b2f1ffa1a
+    review:
+      user_request: "Trace how an original SWE-bench task is created from GitHub data and explain how a generated patch is evaluated."
+      expected_behavior:
+        - "Traces issues and merged pull requests into benchmark instances."
+        - "Explains execution-based patch evaluation against repository tests."
+        - "Material claims must be supported by cited SWE-bench passages."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/swebench_instance_provenance_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/swebench_instance_provenance_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "The response begins a useful construction trace but ends during filtering and never completes the requested generated-patch evaluation explanation; it also contains raw location markers and unsupported reproducibility detail."
+
+  - case_id: agentboard_progress_metric_001
+    attempt: 1
+    run_id: run_233cd7ba23f74308bff3bf05fdaf125b
+    review:
+      user_request: "Why does AgentBoard argue that final success rate is insufficient, and what does its progress-rate metric add?"
+      expected_behavior:
+        - "Explains the limited process insight and lack of partial-completion credit in final success rate."
+        - "Explains that progress rate tracks incremental advancement."
+        - "Material claims must be supported by cited AgentBoard passages."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentboard_progress_metric_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentboard_progress_metric_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: fail
+      overall: fail
+      note: "The core comparison is correct, but the answer adds step-level operational and per-environment implementation claims whose cited passages do not fully support those details."
+
+  - case_id: agent_benchmark_ambiguous_001
+    attempt: 1
+    run_id: run_f7990d2aa17944a8aa3ba392195dd331
+    review:
+      user_request: "agent benchmark"
+      expected_behavior:
+        - "Recognizes that the request does not identify a task domain or comparison goal."
+        - "Offers useful clarification dimensions without choosing one benchmark."
+        - "Does not make citeable paper-content claims before clarification."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agent_benchmark_ambiguous_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agent_benchmark_ambiguous_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: not_applicable
+      overall: pass
+      note: "The response uses corpus metadata to show the available benchmark families and asks the user to choose a goal; it does not select a benchmark or cite paper-content evidence."

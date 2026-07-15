@@ -6,6 +6,7 @@ import io.github.chzarles.paperloom.repository.UserRepository;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 public class UsageBalanceDashboardService extends UsageDashboardService {
     private static final int RANK_LIMIT = 5;
@@ -78,9 +79,7 @@ public class UsageBalanceDashboardService extends UsageDashboardService {
      * 构建 排行榜项
      */
     private UsageRankingItem buildRankingItem(UserTokenRecord consumer, String scope) {
-        // 根据 userId 查询用户信息
-        User user = userRepository.findById(Long.valueOf(consumer.getUserId())).orElse(null);
-        String username = user != null ? user.getUsername() : "Unknown User";
+        String username = resolveUsername(consumer.getUserId());
 
         return new UsageRankingItem(
                 consumer.getUserId(),
@@ -103,28 +102,51 @@ public class UsageBalanceDashboardService extends UsageDashboardService {
         // 转换为 UsageAlert
         return alertItems.stream()
                 .map(item -> {
-                    User user = userRepository.findById(Long.parseLong(item.getUserId())).orElse(null);
-                    String username = user != null ? user.getUsername() : "Unknown User";
+                    String username = resolveUsername(item.getUserId());
                     String scope = tokenType == UserTokenRecord.TokenType.LLM ? "llm" : "embedding";
+                    long remainingTokens = safeLong(item.getBalanceAfter());
+                    long limitTokens = tokenType == UserTokenRecord.TokenType.LLM
+                            ? safeLong(userTokenService.getUserLlmTotalIncreaseTokens(item.getUserId()))
+                            : safeLong(userTokenService.getUserEmbeddingTotalIncreaseTokens(item.getUserId()));
+                    long usedTokens = Math.max(0L, limitTokens - remainingTokens);
 
                     // 判断告警级别
-                    String level = item.getAmount() <= 0 ? "critical" : "warning";
-                    String message = item.getAmount() <= 0 ? "剩余额度已耗尽" : "剩余额度已接近上限";
+                    String level = remainingTokens <= 0 ? "critical" : "warning";
+                    String message = remainingTokens <= 0 ? "剩余额度已耗尽" : "剩余额度已接近上限";
+                    double usageRatio = limitTokens <= 0 ? 0d : usedTokens / (double) limitTokens;
 
                     return new UsageAlert(
                             level,
                             item.getUserId(),
                             username,
                             scope,
-                            item.getAmount(),
-                            item.getBalanceBefore(),
-                            item.getBalanceAfter(),
-                            item.getRequestCount(),
-                            // 保留两位小数
-                            Math.round(item.getBalanceAfter() / (double) item.getBalanceBefore() * 100) / 100.0,
+                            usedTokens,
+                            limitTokens,
+                            remainingTokens,
+                            safeLong(item.getRequestCount()),
+                            Math.round(usageRatio * 100.0) / 100.0,
                             message
                     );
                 })
                 .toList();
+    }
+
+    private String resolveUsername(String userId) {
+        return parseUserId(userId)
+                .flatMap(userRepository::findById)
+                .map(User::getUsername)
+                .orElse("Unknown User");
+    }
+
+    private Optional<Long> parseUserId(String userId) {
+        try {
+            return Optional.of(Long.parseLong(userId));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+
+    private long safeLong(Long value) {
+        return value == null ? 0L : value;
     }
 }

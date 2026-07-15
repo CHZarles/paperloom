@@ -1,0 +1,180 @@
+schema_version: harness-human-labels/v1
+dataset_id: harness_golden_seed
+source_baseline: llm-agent-evaluation-v1-2026-07-13
+
+labels:
+  - case_id: mint_vs_tau_interaction_comparison_001
+    attempt: 1
+    run_id: run_74f7eeaff4dc4fc2945fa0af314d01a9
+    review:
+      user_request: "Compare MINT and tau-bench on interaction design, tool use, feedback, environment state, and reliability measurement."
+      expected_behavior:
+        - "Compares both papers across all five requested axes."
+        - "Distinguishes MINT's experimental feedback settings from tau-bench's stateful user-tool environment and pass^k metric."
+        - "Does not infer unsupported state or feedback properties."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_vs_tau_interaction_comparison_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_vs_tau_interaction_comparison_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "The comparison is broad and useful, but it materially characterizes MINT as stateless with only short-lived state and makes other state/feedback assertions that are not established by the cited passages."
+
+  - case_id: toolsandbox_constraint_selection_001
+    attempt: 1
+    run_id: run_b3dfad701ad142ba8c7d7b83865ec916
+    review:
+      user_request: "Choose the benchmark in this corpus that combines stateful tools, on-policy conversation, intermediate milestones, and insufficient-information scenarios. Explain why it fits."
+      expected_behavior:
+        - "Selects ToolSandbox."
+        - "Grounds all four requested constraints in ToolSandbox passages."
+        - "Does not use MINT or tau-bench as supporting substitutes."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/toolsandbox_constraint_selection_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/toolsandbox_constraint_selection_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: pass
+      overall: pass
+      note: "The answer selects ToolSandbox and directly supports its stateful tools, on-policy user simulation, milestone evaluation, and insufficient-information category with cited passages."
+
+  - case_id: cross_benchmark_human_agent_gap_001
+    attempt: 1
+    run_id: run_51261825caf045518f80402b06da860c
+    review:
+      user_request: "Compare the reported human-agent gaps in GAIA and WebArena, but do not imply that their percentages are directly interchangeable."
+      expected_behavior:
+        - "Reports GAIA's 92% versus 15% result and WebArena's 78.24% versus 14.41% result."
+        - "Explains that the task definitions, metrics, and human protocols differ."
+        - "Material claims must be supported by the cited passages."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_human_agent_gap_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_human_agent_gap_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: pass
+      overall: pass
+      note: "The response accurately reports both gaps, cites the relevant passages, and explicitly separates answer accuracy from end-to-end web task success and their different human protocols."
+
+  - case_id: agent_evaluation_recommendation_001
+    attempt: 1
+    run_id: run_d94484fb62b84fffaf55fc0be3562679
+    review:
+      user_request: "Recommend one benchmark each for general assistants, realistic web tasks, software engineering, and policy-constrained tool-agent interaction."
+      expected_behavior:
+        - "Maps GAIA, WebArena, SWE-bench, and tau-bench to the four requested scenarios."
+        - "Provides grounded selection reasons for every recommendation."
+        - "Material paper-content claims require valid cited evidence."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agent_evaluation_recommendation_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agent_evaluation_recommendation_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: fail
+      overall: fail
+      note: "The four recommendations are appropriate, but the final answer records no valid cited evidence IDs despite displaying raw location-style markers, so its research claims are not grounded through the citation contract."
+
+  - case_id: react_to_agent_evaluation_genealogy_001
+    attempt: 1
+    run_id: run_44b59d60f5e24af09cd69797253b44aa
+    review:
+      user_request: "Trace only directly verified relationships from ReAct into later agent-evaluation papers in this corpus. Do not infer influence from topical similarity."
+      expected_behavior:
+        - "Includes only relationships directly stated or evaluated in later papers."
+        - "Distinguishes a citation, an adopted prompt method, and an evaluated baseline."
+        - "Does not claim that unverified papers were exhaustively ruled out."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/react_to_agent_evaluation_genealogy_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/react_to_agent_evaluation_genealogy_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "The named AgentBench, tau-bench, and AgentBoard relationships are directly supported, but the response overclaims an exhaustive negative check and incorrectly dismisses possible direct ReAct references in the remaining corpus."
+
+  - case_id: mint_tau_apparent_conflict_001
+    attempt: 1
+    run_id: run_839e97e2d5794ab49d1992efca8c169a
+    review:
+      user_request: "MINT reports gains from tools and language feedback, while tau-bench reports poor multi-trial reliability. Are these findings contradictory?"
+      expected_behavior:
+        - "Explains that performance gains from support and repeated-trial reliability measure different properties."
+        - "Keeps the two experimental settings distinct."
+        - "Does not invent a causal claim that MINT feedback would solve tau-bench reliability."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_tau_apparent_conflict_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_tau_apparent_conflict_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "The core non-contradiction is correct, but the answer claims tau-bench lacks feedback or recovery and that MINT-style oracle feedback would close its reliability gap; those causal conclusions are not supported and misdescribe tau-bench's interaction setting."
+
+  - case_id: coding_benchmark_followup_001
+    attempt: 1
+    run_id: run_4ef894c74e894f3d9f84b90a6554157a
+    review:
+      user_request: "The coding one."
+      conversation:
+        - role: user
+          content: "Help me choose one benchmark: GAIA for general assistants, WebArena for web agents, or SWE-bench for coding agents."
+        - role: assistant
+          content: "Which target matters most: general assistance, web interaction, or software engineering?"
+        - role: user
+          content: "The coding one."
+      expected_behavior:
+        - "Resolves the follow-up to SWE-bench without asking the user to repeat the choice."
+        - "Explains the GitHub issue and execution-based evaluation fit."
+        - "Material ancillary claims require cited support."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/coding_benchmark_followup_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/coding_benchmark_followup_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: fail
+      overall: fail
+      note: "The response correctly resolves the choice to SWE-bench, but adds numerous uncited or insufficiently supported claims about Lite, patch quality, repository bias, dataset sizes, and benchmark noise."
+
+  - case_id: cross_benchmark_score_ranking_partial_001
+    attempt: 1
+    run_id: run_ccddbf66d43e4893a95fd3ee73397bd1
+    review:
+      user_request: "Rank GAIA, WebArena, and SWE-bench from easiest to hardest using only their reported model success percentages."
+      expected_behavior:
+        - "Provides the reported figures but declines a strict ranking."
+        - "Explains that different models, tasks, retrieval settings, and metrics prevent a valid difficulty ordering."
+        - "Does not treat numerically similar percentages as equivalent benchmark difficulty."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_score_ranking_partial_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_score_ranking_partial_001/evidence_ledger.json"
+    judgment:
+      decision: fail
+      task_fulfillment: fail
+      grounding: fail
+      overall: fail
+      note: "The response performs the invalid strict ranking and asserts that SWE-bench is dramatically harder and that GAIA and WebArena are comparably difficult; the cited percentages do not support those cross-benchmark conclusions."
+
+  - case_id: benchmark_topic_change_followup_001
+    attempt: 1
+    run_id: run_005f380c7c56478ca800e8e3781c6316
+    review:
+      user_request: "Actually, I need to evaluate an agent that fixes GitHub issues."
+      conversation:
+        - role: user
+          content: "Which benchmark should I use for a general AI assistant?"
+        - role: assistant
+          content: "GAIA is the direct fit for general-assistant evaluation."
+        - role: user
+          content: "Actually, I need to evaluate an agent that fixes GitHub issues."
+      expected_behavior:
+        - "Follows the topic change from GAIA to SWE-bench."
+        - "Explains the GitHub issue, pull-request, and execution-based evaluation fit."
+        - "Material claims must be supported by cited SWE-bench passages."
+      answer_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/benchmark_topic_change_followup_001/research_answer.json"
+      evidence_path: "research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/benchmark_topic_change_followup_001/evidence_ledger.json"
+    judgment:
+      decision: pass
+      task_fulfillment: pass
+      grounding: pass
+      overall: pass
+      note: "The response cleanly follows the topic change, selects SWE-bench, and supports the issue, pull-request, and execution-based fit with cited passages."

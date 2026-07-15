@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_live_chat_12e564385532",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_8bca21ed6317c97b",
+    "ev_30eede0355dda4dd",
+    "ev_d94dde3c5576bd8f"
+  ],
+  "fields": {},
+  "markdown": "For an agent that fixes GitHub issues, **SWE-bench** is the right benchmark — it's built exactly for that task.\n\n- It's an evaluation framework of 2,294 software engineering problems drawn from real GitHub issues and their resolving pull requests, spread across 12 popular Python repositories [1].\n- Tasks are sourced from user-submitted issues (bug reports and feature requests), paired with the merged PRs that fix them [2].\n- It provides execution-based evaluation (running the project's tests against the agent's patch) and is designed to be continuously updated with new instances [3].\n\nThe paper is available in the corpus as `swebench_2024` (Jimenez et al., ICLR 2024).\n\nSources\n[1] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 1\n[2] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 2\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 2",
+  "outcome": "answered",
+  "question_id": "live_chat_12e564385532",
+  "status": "COMPLETED",
+  "summary": "For an agent that fixes GitHub issues, **SWE-bench** is the right benchmark — it's built exactly for that task.\n\n- It's an evaluation framework of 2,294 software engineering problems drawn from real GitHub issues and their resolving pull requests, spread across 12 popular Python repositories [1].\n- Tasks are sourced from user-submitted issues (bug reports and feature requests), paired with the mer"
+}

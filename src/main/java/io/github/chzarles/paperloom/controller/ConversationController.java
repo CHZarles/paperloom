@@ -35,7 +35,9 @@ public class ConversationController {
             @RequestHeader("Authorization") String token,
             @RequestParam(required = false) String start_date,
             @RequestParam(required = false) String end_date,
-            @RequestParam(required = false) String conversationId) {
+            @RequestParam(required = false) String conversationId,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Long beforeRecordId) {
 
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_CONVERSATIONS");
         String username = null;
@@ -54,7 +56,7 @@ public class ConversationController {
             List<Map<String, Object>> messages;
 
             if (conversationId != null && !conversationId.isBlank()) {
-                messages = conversationService.getMessagesByConversationId(userId, conversationId);
+                messages = conversationService.getMessagesByConversationId(userId, conversationId, limit, beforeRecordId);
             } else {
                 LocalDateTime startDateTime = parseStartDate(start_date);
                 LocalDateTime endDateTime = parseEndDate(end_date);

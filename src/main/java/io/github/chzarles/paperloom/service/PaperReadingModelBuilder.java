@@ -13,6 +13,8 @@ import io.github.chzarles.paperloom.paper.parser.ParsedPaperElement;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElementType;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperFigure;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperFormula;
+import io.github.chzarles.paperloom.paper.parser.ParsedPaperPage;
+import io.github.chzarles.paperloom.paper.parser.ParsedPaperPageBlock;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperTable;
 import org.springframework.stereotype.Component;
 
@@ -123,22 +125,59 @@ public class PaperReadingModelBuilder {
                         LinkedHashMap::new,
                         Collectors.toList()
                 ));
+        Map<Integer, ParsedPaperPage> physicalPagesByNumber = parsedPaper.pages() == null
+                ? Map.of()
+                : parsedPaper.pages().stream()
+                        .filter(Objects::nonNull)
+                        .filter(page -> page.pageNumber() != null && page.pageNumber() > 0)
+                        .collect(Collectors.toMap(
+                                ParsedPaperPage::pageNumber,
+                                page -> page,
+                                (left, right) -> left,
+                                LinkedHashMap::new
+                        ));
 
         int parserPageCount = resolvePageCount(parsedPaper);
-        int effectivePageCount = resolvePhysicalPageCount(physicalPageCount, parserPageCount, byPage);
+        int effectivePageCount = resolvePhysicalPageCount(
+                physicalPageCount,
+                parserPageCount,
+                byPage,
+                physicalPagesByNumber
+        );
         List<PaperPage> pages = new ArrayList<>();
         List<PaperSection> sections = new ArrayList<>();
         List<PaperLocation> locations = new ArrayList<>();
         int readableCharCount = 0;
         int readablePageCount = 0;
+        int physicalProjectionPageCount = 0;
+        int semanticProjectionPageCount = 0;
         int displayOrder = 1;
         for (int pageNumber = 1; pageNumber <= effectivePageCount; pageNumber++) {
             List<ReadableElement> pageElements = byPage.getOrDefault(pageNumber, List.of());
-            String pageText = pageElements.stream()
-                    .map(ReadableElement::text)
-                    .collect(Collectors.joining("\n\n"));
+            ParsedPaperPage physicalPage = physicalPagesByNumber.get(pageNumber);
+            String pageText;
+            String sourceSpanJson;
+            String textStatus;
+            if (physicalPage != null) {
+                physicalProjectionPageCount++;
+                pageText = physicalPageText(physicalPage);
+                sourceSpanJson = sourceSpanJson(parsedPaper, physicalPage);
+                textStatus = pageText.isBlank()
+                        ? PaperPage.TEXT_STATUS_TEXTLESS
+                        : PaperPage.TEXT_STATUS_READABLE;
+            } else {
+                semanticProjectionPageCount++;
+                pageText = pageElements.stream()
+                        .map(ReadableElement::text)
+                        .collect(Collectors.joining("\n\n"));
+                sourceSpanJson = sourceSpanJson(parsedPaper, pageNumber, pageElements);
+                textStatus = pageText.isBlank() && !physicalPagesByNumber.isEmpty()
+                        ? PaperPage.TEXT_STATUS_PARSER_MISSING
+                        : pageText.isBlank()
+                                ? PaperPage.TEXT_STATUS_TEXTLESS
+                                : PaperPage.TEXT_STATUS_READABLE;
+            }
             boolean readablePage = !pageText.isBlank();
-            String sourceSpanJson = sourceSpanJson(parsedPaper, pageNumber, pageElements);
 
             PaperPage page = new PaperPage();
             page.setPaperId(paperId);
@@ -147,7 +186,7 @@ public class PaperReadingModelBuilder {
             page.setPageText(pageText);
             page.setTextHash(sha256(pageText));
             page.setCharCount(pageText.length());
-            page.setTextStatus(readablePage ? PaperPage.TEXT_STATUS_READABLE : PaperPage.TEXT_STATUS_TEXTLESS);
+            page.setTextStatus(textStatus);
             page.setSourceSpanJson(sourceSpanJson);
             page.setParserName(parsedPaper.parserName());
             page.setParserVersion(parsedPaper.parserVersion());
@@ -217,6 +256,14 @@ public class PaperReadingModelBuilder {
         diagnostics.put("readableCharCount", readableCharCount);
         diagnostics.put("textlessPageCount", Math.max(0, effectivePageCount - readablePageCount));
         diagnostics.put("pagesWithoutText", Math.max(0, effectivePageCount - readablePageCount));
+        diagnostics.put("physicalPageProjectionCount", physicalPagesByNumber.size());
+        diagnostics.put("pagesBuiltFromPhysicalProjection", physicalProjectionPageCount);
+        diagnostics.put("pagesBuiltFromSemanticProjection", semanticProjectionPageCount);
+        diagnostics.put("physicalPageBlockCount", physicalPagesByNumber.values().stream()
+                .map(ParsedPaperPage::blocks)
+                .filter(Objects::nonNull)
+                .mapToLong(List::size)
+                .sum());
         diagnostics.put("pageLocationCount", effectivePageCount);
         diagnostics.put("sectionCount", structured.sectionCount());
         diagnostics.put("sectionLocationCount", structured.sectionLocationCount());
@@ -1089,6 +1136,60 @@ public class PaperReadingModelBuilder {
                 .trim();
     }
 
+    private String physicalPageText(ParsedPaperPage page) {
+        if (page == null || page.blocks() == null) {
+            return "";
+        }
+        return page.blocks().stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(
+                        ParsedPaperPageBlock::readingOrder,
+                        Comparator.nullsLast(Integer::compareTo)
+                ))
+                .map(ParsedPaperPageBlock::text)
+                .map(this::normalizeText)
+                .filter(text -> !text.isBlank())
+                .collect(Collectors.joining("\n\n"));
+    }
+
+    private String sourceSpanJson(ParsedPaper paper, ParsedPaperPage page) {
+        List<ParsedPaperPageBlock> blocks = page.blocks() == null
+                ? List.of()
+                : page.blocks().stream().filter(Objects::nonNull).toList();
+        List<String> blockIds = blocks.stream()
+                .map(ParsedPaperPageBlock::blockId)
+                .filter(Objects::nonNull)
+                .toList();
+        List<Integer> orders = blocks.stream()
+                .map(ParsedPaperPageBlock::readingOrder)
+                .filter(Objects::nonNull)
+                .toList();
+        LinkedHashSet<String> sourceKinds = blocks.stream()
+                .map(ParsedPaperPageBlock::blockType)
+                .filter(type -> type != null && !type.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        List<BoundingBox> bboxes = blocks.stream()
+                .map(ParsedPaperPageBlock::boundingBox)
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<String, Object> sourceSpan = new LinkedHashMap<>();
+        sourceSpan.put("parserName", paper.parserName());
+        sourceSpan.put("parserVersion", paper.parserVersion());
+        sourceSpan.put("pageNumber", page.pageNumber());
+        sourceSpan.put("pageNumberFrom", page.pageNumber());
+        sourceSpan.put("pageNumberTo", page.pageNumber());
+        sourceSpan.put("locationType", PaperLocationType.PAGE.name());
+        sourceSpan.put("sourceObjectId", null);
+        sourceSpan.put("elementIds", blockIds);
+        sourceSpan.put("readingOrderFrom", orders.stream().min(Integer::compareTo).orElse(null));
+        sourceSpan.put("readingOrderTo", orders.stream().max(Integer::compareTo).orElse(null));
+        sourceSpan.put("bbox", bboxes.isEmpty() ? null : bboxes);
+        sourceSpan.put("sourceKinds", List.copyOf(sourceKinds));
+        sourceSpan.put("rawArtifactRef", "MINERU_MIDDLE_JSON");
+        return writeJson(sourceSpan);
+    }
+
     private String sourceSpanJson(ParsedPaper paper, int pageNumber, List<ReadableElement> pageElements) {
         List<String> elementIds = pageElements.stream()
                 .map(item -> item.element().elementId())
@@ -1372,30 +1473,43 @@ public class PaperReadingModelBuilder {
 
     private int resolvePhysicalPageCount(Integer physicalPageCount,
                                          int parserPageCount,
-                                         Map<Integer, List<ReadableElement>> byPage) {
+                                         Map<Integer, List<ReadableElement>> byPage,
+                                         Map<Integer, ParsedPaperPage> physicalPagesByNumber) {
         int maxReadablePage = byPage.keySet().stream()
                 .filter(page -> page != null && page > 0)
                 .max(Integer::compareTo)
                 .orElse(0);
+        int maxPhysicalProjectionPage = physicalPagesByNumber.keySet().stream()
+                .filter(page -> page != null && page > 0)
+                .max(Integer::compareTo)
+                .orElse(0);
+        int maxParserPage = Math.max(maxReadablePage, maxPhysicalProjectionPage);
         if (physicalPageCount != null && physicalPageCount > 0) {
-            return Math.max(physicalPageCount, maxReadablePage);
+            return Math.max(physicalPageCount, maxParserPage);
         }
-        return maxReadablePage > 0 ? maxReadablePage : parserPageCount;
+        return maxParserPage > 0 ? maxParserPage : parserPageCount;
     }
 
     private int resolvePageCount(ParsedPaper parsedPaper) {
         if (parsedPaper == null) {
             return 0;
         }
-        if (parsedPaper.metadata() != null && parsedPaper.metadata().pageCount() != null) {
-            return parsedPaper.metadata().pageCount();
-        }
-        return parsedPaper.elements() == null ? 0 : parsedPaper.elements().stream()
+        int metadataPageCount = parsedPaper.metadata() == null || parsedPaper.metadata().pageCount() == null
+                ? 0
+                : parsedPaper.metadata().pageCount();
+        int elementPageCount = parsedPaper.elements() == null ? 0 : parsedPaper.elements().stream()
                 .filter(Objects::nonNull)
                 .map(ParsedPaperElement::pageNumber)
                 .filter(pageNumber -> pageNumber != null && pageNumber > 0)
                 .max(Integer::compareTo)
                 .orElse(0);
+        int physicalProjectionPageCount = parsedPaper.pages() == null ? 0 : parsedPaper.pages().stream()
+                .filter(Objects::nonNull)
+                .map(ParsedPaperPage::pageNumber)
+                .filter(pageNumber -> pageNumber != null && pageNumber > 0)
+                .max(Integer::compareTo)
+                .orElse(0);
+        return Math.max(metadataPageCount, Math.max(elementPageCount, physicalProjectionPageCount));
     }
 
     private PaperReadingModelValidationException failure(String reason, Map<String, Object> diagnostics) {

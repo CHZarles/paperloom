@@ -39,6 +39,7 @@ public class MinerUOutputMapper {
             List<ParsedPaperTable> tables = new ArrayList<>();
             List<ParsedPaperFigure> figures = new ArrayList<>();
             List<ParsedPaperFormula> formulas = new ArrayList<>();
+            List<ParsedPaperPage> pages = toPhysicalPages(middleJson);
             String currentSectionTitle = null;
             Integer currentSectionLevel = null;
             int order = 0;
@@ -68,7 +69,7 @@ public class MinerUOutputMapper {
                     originalFilename,
                     inferTitle(elements, markdown, originalFilename),
                     null,
-                    inferPageCount(elements),
+                    inferPageCount(elements, pages),
                     null,
                     null
             );
@@ -87,10 +88,70 @@ public class MinerUOutputMapper {
                     tables,
                     figures,
                     formulas,
-                    artifactPayloads(contentListJson, middleJson, markdown)
+                    artifactPayloads(contentListJson, middleJson, markdown),
+                    pages
             );
         } catch (Exception e) {
             throw new PaperParsingException("Failed to map MinerU output", e);
+        }
+    }
+
+    private List<ParsedPaperPage> toPhysicalPages(String middleJson) throws JsonProcessingException {
+        if (middleJson == null || middleJson.isBlank()) {
+            return List.of();
+        }
+        JsonNode root = objectMapper.readTree(middleJson);
+        JsonNode pdfInfo = root.path("pdf_info");
+        if (!pdfInfo.isArray()) {
+            return List.of();
+        }
+
+        List<ParsedPaperPage> pages = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < pdfInfo.size(); pageIndex++) {
+            JsonNode page = pdfInfo.get(pageIndex);
+            Integer parserPageIndex = integer(page, "page_idx");
+            int pageNumber = (parserPageIndex == null ? pageIndex : parserPageIndex) + 1;
+            List<ParsedPaperPageBlock> blocks = new ArrayList<>();
+            appendPhysicalPageBlocks(page.path("preproc_blocks"), pageNumber, blocks);
+
+            Map<String, Object> pageAttributes = new LinkedHashMap<>();
+            pageAttributes.put("source", "mineru_middle_json.preproc_blocks");
+            pageAttributes.put("page_idx", pageNumber - 1);
+            if (page.has("page_size")) {
+                pageAttributes.put("page_size", objectMapper.convertValue(page.path("page_size"), Object.class));
+            }
+            pages.add(new ParsedPaperPage(pageNumber, blocks, pageAttributes));
+        }
+        return pages;
+    }
+
+    private void appendPhysicalPageBlocks(JsonNode nodes,
+                                          int pageNumber,
+                                          List<ParsedPaperPageBlock> target) {
+        if (!nodes.isArray()) {
+            return;
+        }
+        for (JsonNode node : nodes) {
+            JsonNode nested = node.path("blocks");
+            if (nested.isArray() && !nested.isEmpty()) {
+                appendPhysicalPageBlocks(nested, pageNumber, target);
+                continue;
+            }
+            String blockText = middleBlockText(node);
+            if (blockText.isBlank()) {
+                continue;
+            }
+            int readingOrder = target.size() + 1;
+            Map<String, Object> rawAttributes = new LinkedHashMap<>(toMap(node));
+            rawAttributes.put("source", "mineru_middle_json.preproc_blocks");
+            target.add(new ParsedPaperPageBlock(
+                    "middle-page-" + pageNumber + "-block-" + readingOrder,
+                    readingOrder,
+                    normalizeKey(text(node, "type")),
+                    blockText,
+                    boundingBox(node.path("bbox"), pageNumber),
+                    rawAttributes
+            ));
         }
     }
 
@@ -399,12 +460,24 @@ public class MinerUOutputMapper {
         return level;
     }
 
-    private Integer inferPageCount(List<ParsedPaperElement> elements) {
-        return elements.stream()
+    private Integer inferPageCount(List<ParsedPaperElement> elements, List<ParsedPaperPage> pages) {
+        Integer elementPageCount = elements.stream()
                 .map(ParsedPaperElement::pageNumber)
                 .filter(page -> page != null && page > 0)
                 .max(Integer::compareTo)
                 .orElse(null);
+        Integer physicalPageCount = pages.stream()
+                .map(ParsedPaperPage::pageNumber)
+                .filter(page -> page != null && page > 0)
+                .max(Integer::compareTo)
+                .orElse(null);
+        if (elementPageCount == null) {
+            return physicalPageCount;
+        }
+        if (physicalPageCount == null) {
+            return elementPageCount;
+        }
+        return Math.max(elementPageCount, physicalPageCount);
     }
 
     private String inferTitle(List<ParsedPaperElement> elements, String markdown, String originalFilename) {

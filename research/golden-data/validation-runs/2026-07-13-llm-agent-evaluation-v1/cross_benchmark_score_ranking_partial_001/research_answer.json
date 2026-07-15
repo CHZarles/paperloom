@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_live_chat_efbc196911df",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_d1b34b0a1f94e1a4",
+    "ev_fde58522f715b298",
+    "ev_2ef3408501817fd0",
+    "ev_de1b18e439a7d544",
+    "ev_653c8f6fca3a9206"
+  ],
+  "fields": {},
+  "markdown": "Based on the headline model success percentages reported in each paper's main results:\n\n**Easiest → Hardest:**\n\n1. **GAIA (easiest)** — GPT-4 equipped with plugins: **15%** overall success rate [1]. On the easiest Level 1 subset, the best model reaches ~30% [2].\n\n2. **WebArena (middle)** — Best GPT-4-based agent: **14.41%** end-to-end task success rate [3].\n\n3. **SWE-bench (hardest)** — Best performing model (Claude 2) with BM25 retrieval: **1.96%** resolve rate [4] [5].\n\nSo the gap between GAIA/WebArena and SWE-bench is roughly an order of magnitude: GAIA and WebArena are comparably difficult for frontier models (≈14–15%), while SWE-bench is dramatically harder (under 2% for the best model in the standard BM25 retrieval setting).\n\nSources\n[1] GAIA: a benchmark for General AI Assistants, unsectioned, p. 1\n[2] GAIA: a benchmark for General AI Assistants, unsectioned, p. 21\n[3] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 1\n[4] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 2\n[5] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 6",
+  "outcome": "answered",
+  "question_id": "live_chat_efbc196911df",
+  "status": "COMPLETED",
+  "summary": "Based on the headline model success percentages reported in each paper's main results:\n\n**Easiest → Hardest:**\n\n1. **GAIA (easiest)** — GPT-4 equipped with plugins: **15%** overall success rate [1]. On the easiest Level 1 subset, the best model reaches ~30% [2].\n\n2. **WebArena (middle)** — Best GPT-4-based agent: **14.41%** end-to-end task success rate [3].\n\n3. **SWE-bench (hardest)** — Best perfo"
+}

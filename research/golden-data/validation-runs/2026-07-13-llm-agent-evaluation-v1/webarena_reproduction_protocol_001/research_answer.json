@@ -1,0 +1,22 @@
+{
+  "answer_id": "answer_live_chat_9918ca2706c3",
+  "answer_type": "methodology_reproduction",
+  "cited_evidence_ids": [
+    "ev_c56f3dc3811d6540",
+    "ev_a7bf69792df99fe4",
+    "ev_3ae8dc906050dee9",
+    "ev_ff6f20238ce4a99e",
+    "ev_3129e6ebdf76720c",
+    "ev_9175ee3e3cc22512",
+    "ev_bb254b2083f392be",
+    "ev_ba23817d73c82aa5",
+    "ev_8a2f51d42cc1dc17",
+    "ev_5847b921b626f38f"
+  ],
+  "fields": {},
+  "markdown": "## WebArena Reproduction Checklist\n\n### 1. Web Domains (4 self-hosted applications + tools)\n- **E-commerce** — OneStopShop (built on Magento2) for online shopping activities [1]\n- **Social forum** — Reddit (Postmill-based clone) for opinion exchanges [1]\n- **Collaborative development** — GitLab for software development [1]\n- **Content management** — online store CMS for managing digital content [1]\n- Additional tools/KB: a map (OpenStreetMap) and English Wikipedia [2]\n- Implementations use open-source libraries; build self-hosted versions of each [2]\n\n### 2. Environment Reset\n- Deliver each website in a **separate, fully self-contained Docker image** (code, database, all dependencies bundled) [3]\n- To reset: **stop and delete the running container for that website, then restart it from the original Docker image** to fully restore initial state\n- Reset is needed when an evaluation case modifies website data (e.g., creating a user, deleting a post); not all cases require it [3] [4]\n- This restart-based reset has a non-negligible but small overhead on evaluation time (combined with LLM inference cost) [5]\n\n### 3. Task Execution\n- Environment formalism: **E = ⟨S, A, O, T⟩** with state space S, action space A, observation space O, deterministic transition function T [6]\n- Agent loop: given intent *i*, current observation *oₜ*, action history *a₁:ₜ₋₁*, observation history *o₁:ₜ₋₁*, emit next action *aₜ ∈ A*; action produces new state *sₜ₊₁* and observation *oₜ₊₁* [7]\n- **Action space** (6 primitives):\n  - `noop` — do nothing\n  - `click(elem)` — click at an element\n  - `hover(elem)` — hover on an element\n  - `type(elem, text)` — type into an element\n  - `press(key_comb)` — press a key combination\n  - `scroll(dir)` — scroll up/down [8] [9]\n  - Plus **URL navigation** actions (visit a URL, go forward/back in history) [10]\n- **Observation space**: web page URL + opened tabs + content of the focused tab; content can be rendered as a screenshot, HTML DOM tree, or accessibility tree, with each\n\nSources\n[1] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 3\n[2] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 3\n[3] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 15\n[4] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 15\n[5] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 16\n[6] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 3\n[7] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 3\n[8] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 5\n[9] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 5\n[10] WebArena: A Realistic Web Environment for Building Autonomous Agents, unsectioned, p. 4",
+  "outcome": "answered",
+  "question_id": "live_chat_9918ca2706c3",
+  "status": "COMPLETED",
+  "summary": "## WebArena Reproduction Checklist\n\n### 1. Web Domains (4 self-hosted applications + tools)\n- **E-commerce** — OneStopShop (built on Magento2) for online shopping activities [1]\n- **Social forum** — Reddit (Postmill-based clone) for opinion exchanges [1]\n- **Collaborative development** — GitLab for software development [1]\n- **Content management** — online store CMS for managing digital content [1"
+}

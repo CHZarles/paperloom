@@ -1,0 +1,618 @@
+{
+  "case_id": "agent_evaluation_recommendation_001",
+  "citation_validation": {
+    "cited_evidence_ids": [],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-12T21:20:01Z",
+  "diagnostics": {
+    "completion_tokens": 2335,
+    "duration_ms": 27608,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 6,
+    "model_latency_ms": 27191,
+    "prompt_tokens": 28755,
+    "skills_used": [],
+    "tool_call_count": 7,
+    "total_tokens": 31090
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [],
+    "ledger_id": "ledger_live_chat_cafc590e1a11",
+    "missing_evidence": [],
+    "question_id": "live_chat_cafc590e1a11",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_cafc590e1a11",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "## Benchmark Recommendations\n\n### 1. General Assistants — **GAIA**\nGAIA is explicitly positioned as a benchmark for AI systems proposing general assistant questions, targeting the design questions a general-purpose assistant should be able to answer. [[gaia_2024:page-004:chunk-009]]\n\n### 2. Realistic Web Tasks — **WebArena**\nWebArena is introduced as a realistic and reproducible web environment designed to facilitate the development of autonomous agents capable of executing tasks on live-style web apps. [[webarena_2024:page-002:chunk-015]]\n\n### 3. Software Engineering — **SWE-bench**\nSWE-bench is an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. [[swebench_2024:page-001:chunk-011]]\n\n### 4. Policy-Constrained Tool-Agent Interaction — **τ-bench (tau-bench)**\nτ-bench is a benchmark emulating dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines — directly matching the policy-constrained tool-agent interaction category. [[tau_bench_2024:page-001:chunk-004]]\n\n**Honorable mention:** The corpus also contains AgentBench, AgentBoard, MINT, and ToolSandbox, which evaluate broader agent/tool-use capabilities but are less category-specific than the four above. Let me know if you'd like a comparison table (e.g., on domains, evaluation protocol, or task scale) across these.",
+    "outcome": "answered",
+    "question_id": "live_chat_cafc590e1a11",
+    "status": "COMPLETED",
+    "summary": "## Benchmark Recommendations\n\n### 1. General Assistants — **GAIA**\nGAIA is explicitly positioned as a benchmark for AI systems proposing general assistant questions, targeting the design questions a general-purpose assistant should be able to answer. [[gaia_2024:page-004:chunk-009]]\n\n### 2. Realistic Web Tasks — **WebArena**\nWebArena is introduced as a realistic and reproducible web environment de"
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [],
+    "selected_paper_ids": []
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "2308.03688",
+      "authors": [
+        "Xiao Liu",
+        "Hao Yu"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_agentbench_2024",
+      "filename": null,
+      "paper_id": "agentbench_2024",
+      "preview": "",
+      "title": "AgentBench: Evaluating LLMs as Agents",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2401.13178",
+      "authors": [
+        "Chang Ma",
+        "Junlei Zhang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_agentboard_2024",
+      "filename": null,
+      "paper_id": "agentboard_2024",
+      "preview": "",
+      "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+      "venue": "NeurIPS Oral",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2311.12983",
+      "authors": [
+        "Gregoire Mialon",
+        "Clementine Fourrier"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gaia_2024",
+      "filename": null,
+      "paper_id": "gaia_2024",
+      "preview": "",
+      "title": "GAIA: a benchmark for General AI Assistants",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2309.10691",
+      "authors": [
+        "Xingyao Wang",
+        "Zihan Wang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_mint_2024",
+      "filename": null,
+      "paper_id": "mint_2024",
+      "preview": "",
+      "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2310.06770",
+      "authors": [
+        "Carlos E. Jimenez",
+        "John Yang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_swebench_2024",
+      "filename": null,
+      "paper_id": "swebench_2024",
+      "preview": "",
+      "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2406.12045",
+      "authors": [
+        "Shunyu Yao",
+        "Noah Shinn"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_tau_bench_2024",
+      "filename": null,
+      "paper_id": "tau_bench_2024",
+      "preview": "",
+      "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2408.04682",
+      "authors": [
+        "Jiarui Lu",
+        "Thomas Holleis"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_toolsandbox_2024",
+      "filename": null,
+      "paper_id": "toolsandbox_2024",
+      "preview": "",
+      "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2307.13854",
+      "authors": [
+        "Shuyan Zhou",
+        "Frank F. Xu"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_webarena_2024",
+      "filename": null,
+      "paper_id": "webarena_2024",
+      "preview": "",
+      "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2210.03629",
+      "authors": [
+        "Shunyu Yao",
+        "Jeffrey Zhao"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_react_2023",
+      "filename": null,
+      "paper_id": "react_2023",
+      "preview": "",
+      "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+      "venue": "ICLR",
+      "year": 2023
+    }
+  ],
+  "question_id": "agent_evaluation_recommendation_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "limit": 100
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2308.03688",
+            "authors": [
+              "Xiao Liu",
+              "Hao Yu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentbench_2024",
+            "preview": "",
+            "title": "AgentBench: Evaluating LLMs as Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2401.13178",
+            "authors": [
+              "Chang Ma",
+              "Junlei Zhang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentboard_2024",
+            "preview": "",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+            "venue": "NeurIPS Oral",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2309.10691",
+            "authors": [
+              "Xingyao Wang",
+              "Zihan Wang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "mint_2024",
+            "preview": "",
+            "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2310.06770",
+            "authors": [
+              "Carlos E. Jimenez",
+              "John Yang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "swebench_2024",
+            "preview": "",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2307.13854",
+            "authors": [
+              "Shuyan Zhou",
+              "Frank F. Xu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "webarena_2024",
+            "preview": "",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2210.03629",
+            "authors": [
+              "Shunyu Yao",
+              "Jeffrey Zhao"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "react_2023",
+            "preview": "",
+            "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+            "venue": "ICLR",
+            "year": 2023
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 9,
+        "next_offset": null,
+        "query_text": "",
+        "returned_count": 9
+      },
+      "tool_call_id": "call_019f583331717c10afbd3375",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "gaia_2024",
+          "webarena_2024",
+          "swebench_2024",
+          "tau_bench_2024"
+        ],
+        "query_text": "benchmark overview focus domain policy tool agent",
+        "top_k": 3
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-003:chunk-009",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "This paper covers the composition of GAIA, its design choices, and explain how to craft questions and the associated challenges so that the community can further extend the benchmark to target emerging questions such as safety associated to tool use, or multi-modality.",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "webarena_2024:page-002:chunk-019",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Lastly, WebArena is complemented by an extensive collection of documentation and knowledge bases that vary from general resources like English Wikipedia to more domain-specific references, such as manuals for using the integrated development tool (Fan et al., 2022).",
+            "section": "unsectioned",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-010:chunk-004",
+            "original_filename": null,
+            "page": 10,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Second, our experiments aim to establish a baseline of the simplest and most straight-forward approaches for this task; we do not intend to constrain future methodologies to the same type of approach and encourage future work to investigate different methods (e.g., agent-based approaches, tool augmented LMs).",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "matched_count": 338,
+        "query_text": "benchmark overview focus domain policy tool agent",
+        "returned_count": 3
+      },
+      "tool_call_id": "call_019f5833438377d2a99bf05f",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "tau_bench_2024",
+          "gaia_2024",
+          "swebench_2024",
+          "webarena_2024"
+        ],
+        "query_text": "abstract benchmark propose evaluation policy rules realistic",
+        "top_k": 3
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-001:chunk-004",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "We propose τ -bench, a benchmark emulating dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-003:chunk-016",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "(2018) introduced the General Language Understanding Evaluation benchmark (GLUE), on which models surpassed humans within a year.",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-002:chunk-011",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "These include, a realistic setting that utilizes user-submitted issues and solutions, diverse inputs featuring unique code problems from 12 repositories, a robust framework for execution-based evaluation, and the ability to continuously update the benchmark with new instances, requiring minimal human intervention.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "matched_count": 245,
+        "query_text": "abstract benchmark propose evaluation policy rules realistic",
+        "returned_count": 3
+      },
+      "tool_call_id": "call_019f58335551704086db330a",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "tau_bench_2024:page-001:chunk-001",
+          "tau_bench_2024:page-001:chunk-002",
+          "gaia_2024:page-001:chunk-001",
+          "webarena_2024:page-001:chunk-001",
+          "swebench_2024:page-001:chunk-001"
+        ]
+      },
+      "result": {
+        "error": "location_not_disclosed_for_reading",
+        "items": [],
+        "unauthorized_location_refs": [
+          "tau_bench_2024:page-001:chunk-001",
+          "tau_bench_2024:page-001:chunk-002",
+          "gaia_2024:page-001:chunk-001",
+          "webarena_2024:page-001:chunk-001",
+          "swebench_2024:page-001:chunk-001"
+        ]
+      },
+      "tool_call_id": "call_019f58335551704086db3312",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "gaia_2024"
+        ],
+        "query_text": "abstract propose benchmark GAIA general assistant",
+        "top_k": 2
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-004:chunk-009",
+            "original_filename": null,
+            "page": 4,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "GAIA is a benchmark for AI systems proposing general assistant questions.",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-001:chunk-001",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "GAIA: A Benchmark for General AI Assistants Grégoire Mialon1 , Clémentine Fourrier2 , Craig Swift3 , Thomas Wolf2 , Yann LeCun1 , Thomas Scialom4",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          }
+        ],
+        "matched_count": 114,
+        "query_text": "abstract propose benchmark GAIA general assistant",
+        "returned_count": 2
+      },
+      "tool_call_id": "call_019f5833616e793299ca61b7",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "webarena_2024"
+        ],
+        "query_text": "abstract WebArena realistic web environment autonomous agents",
+        "top_k": 2
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "webarena_2024:page-002:chunk-015",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "We introduce WebArena, a realistic and reproducible web environment designed to facilitate the development of autonomous agents capable of executing tasks (§2).",
+            "section": "unsectioned",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "webarena_2024:page-009:chunk-031",
+            "original_filename": null,
+            "page": 9,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "We present WebArena, a highly-realistic, standalone, and reproducible web environment designed for the development and testing of autonomous agents.",
+            "section": "unsectioned",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          }
+        ],
+        "matched_count": 128,
+        "query_text": "abstract WebArena realistic web environment autonomous agents",
+        "returned_count": 2
+      },
+      "tool_call_id": "call_019f5833616e793299ca61cb",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "paper_ids": [
+          "swebench_2024"
+        ],
+        "query_text": "abstract SWE-bench resolve real world GitHub issues",
+        "top_k": 2
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-001:chunk-028",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Figure 1: SWE-bench sources task instances from real-world Python repositories by connecting GitHub issues to merged pull request solutions that resolve related tests.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-001:chunk-011",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "To this end, we introduce SWE-bench, an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "matched_count": 188,
+        "query_text": "abstract SWE-bench resolve real world GitHub issues",
+        "returned_count": 2
+      },
+      "tool_call_id": "call_019f5833616e793299ca61d2",
+      "tool_name": "find_reading_locations"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_cafc590e1a11",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [],
+    "fields": {},
+    "markdown": "## Benchmark Recommendations\n\n### 1. General Assistants — **GAIA**\nGAIA is explicitly positioned as a benchmark for AI systems proposing general assistant questions, targeting the design questions a general-purpose assistant should be able to answer. [[gaia_2024:page-004:chunk-009]]\n\n### 2. Realistic Web Tasks — **WebArena**\nWebArena is introduced as a realistic and reproducible web environment designed to facilitate the development of autonomous agents capable of executing tasks on live-style web apps. [[webarena_2024:page-002:chunk-015]]\n\n### 3. Software Engineering — **SWE-bench**\nSWE-bench is an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. [[swebench_2024:page-001:chunk-011]]\n\n### 4. Policy-Constrained Tool-Agent Interaction — **τ-bench (tau-bench)**\nτ-bench is a benchmark emulating dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines — directly matching the policy-constrained tool-agent interaction category. [[tau_bench_2024:page-001:chunk-004]]\n\n**Honorable mention:** The corpus also contains AgentBench, AgentBoard, MINT, and ToolSandbox, which evaluate broader agent/tool-use capabilities but are less category-specific than the four above. Let me know if you'd like a comparison table (e.g., on domains, evaluation protocol, or task scale) across these.",
+    "outcome": "answered",
+    "question_id": "live_chat_cafc590e1a11",
+    "status": "COMPLETED",
+    "summary": "## Benchmark Recommendations\n\n### 1. General Assistants — **GAIA**\nGAIA is explicitly positioned as a benchmark for AI systems proposing general assistant questions, targeting the design questions a general-purpose assistant should be able to answer. [[gaia_2024:page-004:chunk-009]]\n\n### 2. Realistic Web Tasks — **WebArena**\nWebArena is introduced as a realistic and reproducible web environment de"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_d94484fb62b84fffaf55fc0be3562679",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-12T21:19:35Z",
+  "status": "COMPLETED"
+}

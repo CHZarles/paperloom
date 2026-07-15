@@ -4,7 +4,6 @@ import {
   BookOpen,
   ExternalLink,
   FileText,
-  FileSearch,
   GitFork,
   GitPullRequestArrow,
   Quote,
@@ -12,6 +11,7 @@ import {
   ScrollText
 } from '@lucide/vue';
 import { withBase } from 'vitepress';
+import { data as practiceEntries } from '../../../practice/practices.data';
 
 const pipeline = [
   ['01', '上传', '研究论文 PDF'],
@@ -61,29 +61,13 @@ const evidenceRows = [
   }
 ];
 
-const articles = [
-  {
-    date: '2026.07.14',
-    result: '36.7%',
-    title: '换成更强的模型之后，为什么 Harness 反而下降',
-    summary: '接口迁移跑通后，同一套工具预算和停止条件在新模型上造成了明显回归。',
-    href: withBase('/practice/evaluation/provider-migration-experiment')
-  },
-  {
-    date: '2026.07.14',
-    result: '53.3%',
-    title: '同时跑两遍 Agent，为什么没有提高通过率',
-    summary: '两条并行路径的候选池只到 17/30，Selector 还额外选错了 1 个 Case。',
-    href: withBase('/practice/evaluation/best-of-two-agent-orchestration')
-  },
-  {
-    date: '2026.07.13',
-    result: '29/32',
-    title: '召回恢复之后，为什么最终只多通过一个 Case',
-    summary: '输入契约修复了召回，剩余失败集中到了 Evidence Selection。',
-    href: withBase('/practice/evaluation/golden-data-harness-evolution')
-  }
-];
+const articles = practiceEntries.slice(0, 3).map(entry => ({
+  date: entry.date.replaceAll('-', '.'),
+  result: entry.result || entry.category,
+  title: entry.title,
+  summary: entry.description,
+  href: withBase(entry.url)
+}));
 </script>
 
 <template>
@@ -134,7 +118,7 @@ const articles = [
         <p class="project-hero__eyebrow">PROJECT + ENGINEERING PRACTICE</p>
         <h1 id="project-title">PaperLoom</h1>
         <p class="project-hero__summary">
-          我在 PaperLoom 里搭了一条研究论文阅读链路。Agent 可以自己检索和阅读，每个内容声明都必须引用当前会话授权过的原文。
+          PaperLoom 把研究论文 PDF 建成 Reading Model。Agent 可以自主检索和阅读，每个内容声明都必须引用当前会话授权过的原文。
         </p>
         <div class="project-hero__actions">
           <a class="action-link action-link--primary" :href="withBase('/project/')">
@@ -161,7 +145,7 @@ const articles = [
 
     <section class="current-focus" aria-label="Current focus">
       <span class="current-focus__label">NOW</span>
-      <p>我正在研究 Reading Model 投影、Evidence Selection，以及如何用保存下来的 Trace 改进 Agent。</p>
+      <p>当前工作集中在 Reading Model 投影、Evidence Selection，以及用已保存的 Trace 改进 Agent。</p>
       <a :href="withBase('/now')">查看当前问题 <ArrowRight :size="16" aria-hidden="true" /></a>
     </section>
 
@@ -183,7 +167,7 @@ const articles = [
     <section class="home-section evidence-section" aria-labelledby="evidence-title">
       <div class="section-intro section-intro--compact">
         <p class="section-kicker">DESIGN QUESTIONS</p>
-        <h2 id="evidence-title">四个我反复校验的设计问题</h2>
+        <h2 id="evidence-title">四个持续校验的设计问题</h2>
       </div>
       <div class="evidence-list">
         <article v-for="row in evidenceRows" :key="row.label" class="evidence-row">
@@ -206,7 +190,7 @@ const articles = [
       <div class="section-intro">
         <p class="section-kicker">ENGINEERING EVOLUTION</p>
         <h2 id="evolution-title">理解被事实改写的过程</h2>
-        <p>这里保留改变过系统边界的故障、实验、决策和验证。没有结论的过程稿不会进入公开站点。</p>
+        <p>时间线保留改变过系统边界的故障、实验、决策和验证，不收录临时过程稿。</p>
         <a class="inline-command" :href="withBase('/evolution/')">
           <GitPullRequestArrow :size="18" aria-hidden="true" />
           查看演化时间线
@@ -254,17 +238,5 @@ const articles = [
       </div>
     </section>
 
-    <section class="closing-section" aria-labelledby="closing-title">
-      <FileSearch :size="34" aria-hidden="true" />
-      <div>
-        <p class="section-kicker">A GROWING BODY OF WORK</p>
-        <h2 id="closing-title">系统在变，我对 Agentic AI 的理解也在变。</h2>
-        <p>我把实现、实验和判断一起记下来，方便以后回看自己为何改了架构，又删掉了哪些方案。</p>
-      </div>
-      <a class="action-link action-link--primary" :href="withBase('/about')">
-        关于这段实践
-        <ArrowRight :size="18" aria-hidden="true" />
-      </a>
-    </section>
   </main>
 </template>

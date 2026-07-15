@@ -5,7 +5,7 @@ const isGitHubPages = process.env.GITHUB_ACTIONS === 'true';
 export default defineConfig({
   lang: 'zh-CN',
   title: 'PaperLoom',
-  description: 'An evidence-bounded agentic RAG system and a growing engineering practice journal.',
+  description: 'An evidence-bounded agentic RAG system for research-paper reading.',
   base: isGitHubPages ? '/paperloom/' : '/',
   appearance: false,
   cleanUrls: true,
@@ -20,7 +20,7 @@ export default defineConfig({
     ['meta', { property: 'og:title', content: 'PaperLoom' }],
     ['meta', {
       property: 'og:description',
-      content: 'An evidence-bounded agentic RAG system and a growing engineering practice journal.'
+      content: 'An evidence-bounded agentic RAG system for research-paper reading.'
     }],
     ['meta', {
       property: 'og:image',
@@ -66,17 +66,6 @@ export default defineConfig({
             { text: '完整技术记录', link: 'https://github.com/CHZarles/paperloom/tree/main/docs/engineering-evolution' }
           ]
         }
-      ],
-      '/practice/': [
-        {
-          text: '实践记录',
-          items: [
-            { text: '文章索引', link: '/practice/' },
-            { text: 'Golden Data 与 Harness', link: '/practice/evaluation/golden-data-harness-evolution' },
-            { text: 'Best-of-2 编排实验', link: '/practice/evaluation/best-of-two-agent-orchestration' },
-            { text: 'Provider 迁移实验', link: '/practice/evaluation/provider-migration-experiment' }
-          ]
-        }
       ]
     },
     socialLinks: [
@@ -97,7 +86,7 @@ export default defineConfig({
       text: '最后更新'
     },
     footer: {
-      message: 'Built in public as PaperLoom evolves.',
+      message: 'PaperLoom · Evidence-bounded Agentic RAG',
       copyright: 'Copyright © 2026 Charles'
     }
   }

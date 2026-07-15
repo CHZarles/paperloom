@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +25,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -136,13 +139,46 @@ public class ConversationService {
 
     public List<Map<String, Object>> getConversationSessions(Long userId) {
         List<ConversationSession> sessions = sessionRepository.findByUserIdOrderByUpdatedAtDesc(userId);
+        Set<String> nonEmptyConversationIds = new HashSet<>(conversationRepository.findDistinctConversationIdsByUserId(userId));
         List<Map<String, Object>> result = new ArrayList<>();
+        String redisKey = "user:" + userId + ":current_conversation";
+        String storedCurrentConversationId = redisTemplate.opsForValue().get(redisKey);
+
+        boolean currentIsUsable = storedCurrentConversationId != null && sessions.stream().anyMatch(session ->
+                storedCurrentConversationId.equals(session.getConversationId())
+                        && session.getStatus() == ConversationSession.SessionStatus.ACTIVE
+        );
+        String currentConversationId = storedCurrentConversationId;
+        if (!currentIsUsable) {
+            currentConversationId = sessions.stream()
+                    .filter(session -> session.getStatus() == ConversationSession.SessionStatus.ACTIVE)
+                    .map(ConversationSession::getConversationId)
+                    .filter(nonEmptyConversationIds::contains)
+                    .findFirst()
+                    .orElse(null);
+            if (currentConversationId == null) {
+                redisTemplate.delete(redisKey);
+            } else {
+                redisTemplate.opsForValue().set(redisKey, currentConversationId, Duration.ofDays(7));
+            }
+        }
+
+        Integer autoLibraryPaperCount = null;
+        boolean needsAutoLibraryCount = sessions.stream().anyMatch(session ->
+                nonEmptyConversationIds.contains(session.getConversationId())
+                        && session.getScopeMode() != null
+                        && "AUTO_LIBRARY".equals(session.getScopeMode().name())
+        );
+        if (needsAutoLibraryCount && conversationScopeService != null) {
+            autoLibraryPaperCount = conversationScopeService.autoLibraryReadablePaperCount(userId);
+        }
 
         for (ConversationSession session : sessions) {
-            if (isEmptySession(userId, session)) {
+            if (!nonEmptyConversationIds.contains(session.getConversationId())) {
                 continue;
             }
-            result.add(toSessionResponse(userId, session));
+            result.add(toSessionListResponse(session, autoLibraryPaperCount,
+                    session.getConversationId().equals(currentConversationId)));
         }
 
         return result;
@@ -183,6 +219,21 @@ public class ConversationService {
     }
 
     private Map<String, Object> toSessionResponse(Long userId, ConversationSession session) {
+        Map<String, Object> item = toSessionBaseResponse(session);
+        appendScopeSummary(item, userId, session);
+        return item;
+    }
+
+    private Map<String, Object> toSessionListResponse(ConversationSession session,
+                                                       Integer autoLibraryPaperCount,
+                                                       boolean current) {
+        Map<String, Object> item = toSessionBaseResponse(session);
+        appendScopeSummary(item, session, autoLibraryPaperCount);
+        item.put("current", current);
+        return item;
+    }
+
+    private Map<String, Object> toSessionBaseResponse(ConversationSession session) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", session.getId());
         item.put("conversationId", session.getConversationId());
@@ -190,7 +241,6 @@ public class ConversationService {
         item.put("status", session.getStatus().name());
         item.put("createdAt", formatTimestamp(session.getCreatedAt()));
         item.put("updatedAt", formatTimestamp(session.getUpdatedAt()));
-        appendScopeSummary(item, userId, session);
         return item;
     }
 
@@ -345,6 +395,23 @@ public class ConversationService {
         return toMessageHistory(conversations, false);
     }
 
+    public List<Map<String, Object>> getMessagesByConversationId(Long userId,
+                                                                  String conversationId,
+                                                                  Integer limit,
+                                                                  Long beforeRecordId) {
+        if (limit == null) {
+            return getMessagesByConversationId(userId, conversationId);
+        }
+        int pageSize = Math.max(1, Math.min(limit, 50));
+        List<Conversation> conversations = conversationRepository.findConversationHistoryPage(
+                userId,
+                conversationId,
+                beforeRecordId,
+                PageRequest.of(0, pageSize)
+        );
+        return toMessageHistory(conversations, false);
+    }
+
     private ConversationSession requireOwnedSession(Long userId, String conversationId) {
         return findOwnedSession(userId, conversationId)
                 .orElseThrow(() -> new CustomException("对话不存在", HttpStatus.NOT_FOUND));
@@ -367,6 +434,23 @@ public class ConversationService {
                 : session.getScopeStatus().name());
         item.put("sourceLabel", sourceLabel(session));
         item.put("sourcePaperCount", sourcePaperCount(userId, session));
+    }
+
+    private void appendScopeSummary(Map<String, Object> item,
+                                    ConversationSession session,
+                                    Integer autoLibraryPaperCount) {
+        item.put("scopeMode", session.getScopeMode() == null
+                ? "AUTO_LIBRARY"
+                : session.getScopeMode().name());
+        item.put("scopeLocked", session.isScopeLocked());
+        item.put("scopeStatus", session.getScopeStatus() == null
+                ? "READY"
+                : session.getScopeStatus().name());
+        item.put("sourceLabel", sourceLabel(session));
+        item.put("sourcePaperCount",
+                session.getScopeMode() != null && "AUTO_LIBRARY".equals(session.getScopeMode().name())
+                        ? Optional.ofNullable(autoLibraryPaperCount).orElse(session.getSourcePaperCount())
+                        : session.getSourcePaperCount());
     }
 
     private Integer sourcePaperCount(Long userId, ConversationSession session) {

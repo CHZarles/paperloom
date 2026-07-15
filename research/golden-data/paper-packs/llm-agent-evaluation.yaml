@@ -1,0 +1,256 @@
+schema_version: harness-paper-pack/v2
+id: llm_agent_evaluation
+data_dir: ../../research/golden-data/corpora/llm-agent-evaluation
+
+papers:
+  - id: react_2023
+    role: foundation
+    title: "ReAct: Synergizing Reasoning and Acting in Language Models"
+    authors: ["Shunyu Yao", "Jeffrey Zhao"]
+    year: 2023
+    venue: ICLR
+    arxiv_id: "2210.03629"
+    version_label: "arXiv v3 / ICLR 2023 camera ready"
+    source_url: "https://arxiv.org/pdf/2210.03629v3"
+  - id: agentbench_2024
+    role: target
+    title: "AgentBench: Evaluating LLMs as Agents"
+    authors: ["Xiao Liu", "Hao Yu"]
+    year: 2024
+    venue: ICLR
+    arxiv_id: "2308.03688"
+    version_label: "arXiv v3 / ICLR 2024"
+    source_url: "https://arxiv.org/pdf/2308.03688v3"
+  - id: gaia_2024
+    role: target
+    title: "GAIA: a benchmark for General AI Assistants"
+    authors: ["Gregoire Mialon", "Clementine Fourrier"]
+    year: 2024
+    venue: ICLR
+    arxiv_id: "2311.12983"
+    version_label: "arXiv v1 / ICLR 2024"
+    source_url: "https://arxiv.org/pdf/2311.12983v1"
+  - id: webarena_2024
+    role: target
+    title: "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+    authors: ["Shuyan Zhou", "Frank F. Xu"]
+    year: 2024
+    venue: ICLR
+    arxiv_id: "2307.13854"
+    version_label: "arXiv v4 / ICLR 2024"
+    source_url: "https://arxiv.org/pdf/2307.13854v4"
+  - id: swebench_2024
+    role: target
+    title: "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+    authors: ["Carlos E. Jimenez", "John Yang"]
+    year: 2024
+    venue: ICLR
+    arxiv_id: "2310.06770"
+    version_label: "arXiv v3 / ICLR 2024"
+    source_url: "https://arxiv.org/pdf/2310.06770v3"
+  - id: mint_2024
+    role: target
+    title: "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+    authors: ["Xingyao Wang", "Zihan Wang"]
+    year: 2024
+    venue: ICLR
+    arxiv_id: "2309.10691"
+    version_label: "arXiv v3 / ICLR 2024"
+    source_url: "https://arxiv.org/pdf/2309.10691v3"
+  - id: agentboard_2024
+    role: target
+    title: "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+    authors: ["Chang Ma", "Junlei Zhang"]
+    year: 2024
+    venue: "NeurIPS Oral"
+    arxiv_id: "2401.13178"
+    version_label: "arXiv v2 / NeurIPS 2024 Oral"
+    source_url: "https://arxiv.org/pdf/2401.13178v2"
+  - id: tau_bench_2024
+    role: target
+    title: "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+    authors: ["Shunyu Yao", "Noah Shinn"]
+    year: 2024
+    venue: arXiv
+    arxiv_id: "2406.12045"
+    version_label: "arXiv v1"
+    source_url: "https://arxiv.org/pdf/2406.12045v1"
+  - id: toolsandbox_2024
+    role: target
+    title: "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities"
+    authors: ["Jiarui Lu", "Thomas Holleis"]
+    year: 2024
+    venue: arXiv
+    arxiv_id: "2408.04682"
+    version_label: "arXiv v2"
+    source_url: "https://arxiv.org/pdf/2408.04682v2"
+
+citation_edges:
+  - from_paper_id: agentbench_2024
+    to_paper_id: react_2023
+    edge_type: cites_react_reasoning_action_method
+    evidence_anchor_id: agentbench_react_pioneer_relationship
+  - from_paper_id: tau_bench_2024
+    to_paper_id: react_2023
+    edge_type: evaluates_react_agent_construct
+    evidence_anchor_id: tau_react_baseline_relationship
+
+anchors:
+  - id: react_interleaved_reasoning_actions
+    paper: react_2023
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "generate both reasoning traces and task-specific actions in an interleaved manner"
+    facts:
+      method_pattern: interleaved reasoning traces and task-specific actions
+  - id: agentbench_eight_environments
+    paper: agentbench_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "consists of 8 distinct environments to assess LLM-as-Agent's reasoning and decision-making abilities"
+    facts:
+      environment_count: 8
+  - id: agentbench_failure_obstacles
+    paper: agentbench_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "poor long-term reasoning, decision-making, and instruction following abilities are the main obstacles for developing usable LLM agents"
+  - id: agentbench_react_pioneer_relationship
+    paper: agentbench_2024
+    role: background
+    type: paragraph
+    page: 9
+    section: "Related Work"
+    quote: "ReAct (Yao et al., 2023b) is a pioneer work to combine CoT reasoning and actions in agent tasks"
+  - id: gaia_question_construction
+    paper: gaia_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "Using GAIA's methodology, we devise 466 questions and their answer"
+    facts:
+      question_count: 466
+  - id: gaia_human_gpt4_gap
+    paper: gaia_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "human respondents obtain 92% vs. 15% for GPT-4 equipped with plugins"
+    facts:
+      human_success_rate: "92%"
+      gpt4_plugins_success_rate: "15%"
+  - id: webarena_functional_correctness_tasks
+    paper: webarena_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "release a set of benchmark tasks focusing on evaluating the functional correctness of task completions"
+  - id: webarena_gpt4_human_gap
+    paper: webarena_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "best GPT-4-based agent only achieves an end-to-end task success rate of 14.41%, significantly lower than the human performance of 78.24%"
+    facts:
+      gpt4_success_rate: "14.41%"
+      human_success_rate: "78.24%"
+  - id: webarena_four_self_hosted_domains
+    paper: webarena_2024
+    type: paragraph
+    page: 2
+    section: "Websites as an Environment for Autonomous Agents"
+    quote: "Our environment comprises four fully operational, self-hosted web applications, each representing a distinct domain prevalent on the internet"
+    facts:
+      application_count: 4
+  - id: webarena_deterministic_initial_state
+    paper: webarena_2024
+    type: paragraph
+    page: 4
+    section: "Implementation"
+    quote: "We deliver the environment as dockers and provide scripts to reset the environment to a deterministic initial state"
+  - id: swebench_issue_pr_provenance
+    paper: swebench_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories"
+    facts:
+      problem_count: 2294
+      repository_count: 12
+  - id: swebench_patch_test_construction
+    paper: swebench_2024
+    type: figure
+    page: 1
+    section: Introduction
+    quote: "SWE-bench sources task instances from real-world Python repositories by connecting GitHub issues to merged pull request solutions that resolve related tests"
+  - id: swebench_claude2_baseline
+    paper: swebench_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "best-performing model, Claude 2, is able to solve a mere 1.96% of the issues"
+    facts:
+      claude2_resolved_rate: "1.96%"
+  - id: mint_tools_feedback_protocol
+    paper: mint_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "evaluates LLMs' ability to solve challenging tasks with multi-turn interactions by (1) using tools and (2) leveraging natural language feedback"
+  - id: mint_tools_feedback_gains
+    paper: mint_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "performance gains (absolute, same below) of 1-8% for each turn of tool use and 2-17% with natural language feedback"
+    facts:
+      tool_turn_gain: "1-8%"
+      language_feedback_gain: "2-17%"
+  - id: agentboard_final_success_rate_limit
+    paper: agentboard_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "current evaluation frameworks mostly focus on the final success rate, revealing few insights during the process"
+  - id: agentboard_progress_rate_metric
+    paper: agentboard_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "offers a fine-grained progress rate metric that captures incremental advancements"
+  - id: tau_database_end_state_evaluation
+    paper: tau_bench_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "compares the database state at the end of a conversation with the annotated goal state"
+  - id: tau_passk_reliability
+    paper: tau_bench_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "pass^8 < 25% in retail"
+    facts:
+      retail_pass8: "<25%"
+  - id: tau_react_baseline_relationship
+    paper: tau_bench_2024
+    role: qualifies
+    type: paragraph
+    page: 2
+    section: Introduction
+    quote: "agents built with simple LM constructs (like function calling or ReAct) perform poorly"
+  - id: toolsandbox_stateful_on_policy_design
+    paper: toolsandbox_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "includes stateful tool execution, implicit state dependencies between tools, a built-in user simulator supporting on-policy conversational evaluation"
+  - id: toolsandbox_challenge_categories
+    paper: toolsandbox_2024
+    type: abstract
+    page: 1
+    section: Abstract
+    quote: "complex tasks like State Dependency, Canonicalization and Insufficient Information"

@@ -1,0 +1,220 @@
+{
+  "accepted": false,
+  "case_count": 6,
+  "cases": [
+    {
+      "attempt": 1,
+      "case_id": "agentbench_environment_inventory_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The response answers the requested scope, count, and weaknesses, but its opening claim that evaluation is done via Chain-of-Thought prompting is not supported by the cited passages attached to that claim.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "fail",
+        "grounding": "fail",
+        "grounding_issues": [
+          "\"with evaluation done via Chain-of-Thought prompting\" - none of the cited evidence passages mention Chain-of-Thought prompting; this is an unsupported addition."
+        ],
+        "overall": "fail",
+        "rationale": "The response correctly covers the main aspects of the user request (what AgentBench evaluates, 8 environments, and agent weaknesses), and most claims are well-supported by the cited evidence. However, the claim that evaluation is done via \"Chain-of-Thought prompting\" is not supported by any of the cited passages, constituting a grounding failure.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": false,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_0a109034cbcc488dbe49f8faca548a16"
+    },
+    {
+      "attempt": 1,
+      "case_id": "gaia_dataset_gap_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "pass",
+        "note": "The answer accurately covers GAIA's construction, validation, split, and reported human-model gap, with direct cited support for the material details.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "pass",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "Task fulfillment: The response covers both requested parts—construction methodology (human design/annotation, 466 questions, dev/held-out split, difficulty levels, validation pipeline, ~2 hours per question) and the headline result (92% humans vs 15% GPT-4-with-plugins). Key numbers (466, 92%, 15%, 34.5%, 89.8%, 30%, 0%) are reported with cited pages. Grounding: Each cited claim ties to a supplied evidence span. The 34.5% and 89.8% figures are flagged as from \"the same paper\" with citations [20] (p.3); however the supplied evidence for ev_90f311553c8e6a6b (p.3) discusses paper scope/design rather than those specific numbers. Looking more carefully, the cited evidence spans do not contain \"34.5%\" or \"89.8%\" — those specific percentages are not present in the supplied evidence snippets. This is a grounding issue. Additionally, \"validates if same answer; otherwise creator repairs\" is supported. The ~2 hours claim is supported by two separate evidences. The 466/dev split claim is supported. The unsectioned page citations (e.g., \"p.1\" for ev_d9aca91aa2864b5e) match the supplied evidence. The specific numbers 34.5% and 89.8% lack direct citation support in the supplied passages.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_c619d068910843fb9a3bb2acc8981f76"
+    },
+    {
+      "attempt": 1,
+      "case_id": "webarena_reproduction_protocol_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The response covers domains, reset, and task execution but is cut off before the requested evaluation criterion; several detailed reset instructions also exceed the cited sentence-level evidence.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "fail",
+        "grounding": "fail",
+        "grounding_issues": [
+          "\"Content management — online store CMS for managing digital content\" cites [1] for this being one of the four domains, but the source passage describes four categories (E-commerce, social forum, collaborative development, CMS). The passage does not specifically describe the CMS as \"online store CMS for managing digital content\" as the *fourth domain*; this is a conflation/added detail not directly supported.",
+          "\"OneStopShop (built on Magento2)\" — the source passage (ev_a7bf69792df99fe4) says OneStopShop was built using open-source libraries but does not mention \"Magento2\". This is an unsupported detail.",
+          "\"Reddit (Postmill-based clone)\" — the source passage does not mention Postmill. Unsupported detail.",
+          "\"Deliver each website in a separate, fully self-contained Docker image (code, database, all dependencies bundled) [3]\" — ev_3ae8dc906050dee9 (cited as [3]) does not mention Docker images; it only says evaluation cases may modify data and resetting is crucial. The Docker image claim is not supported by the cited evidence.",
+          "\"deterministic transition function T [6]\" — ev_9175ee3e3cc22512 says \"E= ⟨S, A, O, T ⟩ with state space S, action space A (§2.4) and observation space O (§2.3)\" but does not mention T being a \"deterministic transition function\". Unsupported detail.",
+          "\"action produces new state sₜ₊₁ and observation oₜ₊₁ [7]\" — ev_bb254b2083f392be describes the agent issuing actions based on intent and histories, but does not explicitly state the action produces a new state and observation. The \"produces new state\" formulation is an added/unsupported claim.",
+          "\"reset method has a non-negligible but small overhead on evaluation time (combined with LLM inference cost) [5]\" — supported by ev_3129e6ebdf76720c, but phrasing slightly modifies \"agent LLMs\" to just \"LLM inference cost\" — minor but acceptable equivalent.",
+          "Evaluation criterion section is completely missing from the response. The user explicitly requested coverage of \"evaluation criterion\", and the checklist only covers web domains, environment reset, and task execution (the latter is also truncated)."
+        ],
+        "overall": "fail",
+        "rationale": "The response fails to cover one of the four explicitly requested areas (functional-correctness evaluation criterion), so task_fulfillment is fail. Additionally, several specific factual details (Magento2, Postmill, Docker image bundling, deterministic transition function, action producing new state) are not supported by the cited evidence passages, so grounding is fail. Decision is fail.",
+        "task_fulfillment": "fail"
+      },
+      "matches": {
+        "decision": false,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_bb15fe705e84464cbb5031d19474fa78"
+    },
+    {
+      "attempt": 1,
+      "case_id": "swebench_instance_provenance_001",
+      "full_match": false,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The response begins a useful construction trace but ends during filtering and never completes the requested generated-patch evaluation explanation; it also contains raw location markers and unsupported reproducibility detail.",
+        "overall": "fail",
+        "task_fulfillment": "fail"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "The cited evidence ev_e5b730aaa144ea19 supports \"popular repositories tend to be better maintained, have clear contributor guidelines, and have better test coverage,\" but the answer does not cite this evidence for the specific 12 repositories listed (astropy, django, flask, matplotlib, pylint, pytest, requests, scikit-learn, seaborn, sphinx, sympy, xarray) — that list appears in the answer but is not directly supported by the cited passage.</item>\n<item>The answer lists specific repositories (astropy, django, flask, matplotlib, pylint, pytest, requests, scikit-learn, seaborn, sphinx, sympy, xarray) with no supporting citation in the supplied evidence passages.</item>\n<item>\"the PR's code changes were accepted into the parent repository\" in the bullet about Merged status adds interpretive detail (\"code changes were accepted\") not present in the cited evidence ev_333e927cdd154df0, which only refers to \"merged PRs.\"</item>\n<item>The detail that licenses are verified to \"allow free use\" and repositories are \"mirror[ed] and open-source[d] under the SWE-bench GitHub organization so the exact code state at each PR is reproducible\" is not supported by the cited passages in the packet.</item>",
+          "The answer is truncated, so the explanation of how a generated patch is evaluated (the second half of the user request) is not provided — however, this affects task_fulfillment, not grounding.</item>"
+        ],
+        "overall": "fail",
+        "rationale": "The decision (pass) is based on the fact that the response addresses the first part of the question (tracing task creation). Task fulfillment fails because the response is truncated mid-sentence and never covers the second half of the user's request — how a generated patch is evaluated against repository tests. Grounding fails due to unsupported specifics: the enumerated list of 12 repositories, the interpretive gloss on \"merged,\" the claim about mirroring repositories under the SWE-bench GitHub organization, and the license-verification framing, none of which are directly supported by the cited evidence passages.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": false
+      },
+      "run_id": "run_c0c1fe1c6a7646c589bdbb4b2f1ffa1a"
+    },
+    {
+      "attempt": 1,
+      "case_id": "agentboard_progress_metric_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "fail",
+        "note": "The core comparison is correct, but the answer adds step-level operational and per-environment implementation claims whose cited passages do not fully support those details.",
+        "overall": "fail",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "fail",
+        "grounding_issues": [
+          "The claim about \"nine environments\" is not supported by the cited evidence.</item>"
+        ],
+        "overall": "fail",
+        "rationale": "The answer correctly addresses the user's question about why AgentBoard argues final success rate is insufficient and what the progress-rate metric adds. The core claims about process opacity, limited multi-turn insight, and lack of partial-completion credit are well-supported by cited passages. However, several specific details (notation names rtsubgoal/rtmatch, state-to-goal property matching, \"nine environments,\" step-level resolution details) are not supported by the cited evidence, constituting grounding failures despite the overall task being fulfilled.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_233cd7ba23f74308bff3bf05fdaf125b"
+    },
+    {
+      "attempt": 1,
+      "case_id": "agent_benchmark_ambiguous_001",
+      "full_match": true,
+      "human": {
+        "decision": "pass",
+        "grounding": "not_applicable",
+        "note": "The response uses corpus metadata to show the available benchmark families and asks the user to choose a goal; it does not select a benchmark or cite paper-content evidence.",
+        "overall": "pass",
+        "task_fulfillment": "pass"
+      },
+      "judge": {
+        "decision": "pass",
+        "grounding": "not_applicable",
+        "grounding_issues": [],
+        "overall": "pass",
+        "rationale": "The response correctly identifies the ambiguous request, offers useful clarification dimensions (compare, summarize, recommend, reproduce), and does not make substantive paper-content claims that would require citation support. Decision (needs_clarification) matches the expected behavior of recognizing the request lacks a specific task domain or comparison goal. Task fulfillment is satisfied because the response appropriately handles an ambiguous query with clarification options. Grounding is not applicable since no research claims are made.",
+        "task_fulfillment": "pass"
+      },
+      "matches": {
+        "decision": true,
+        "grounding": true,
+        "overall": true,
+        "task_fulfillment": true
+      },
+      "run_id": "run_f7990d2aa17944a8aa3ba392195dd331"
+    }
+  ],
+  "dataset_id": "harness_golden_seed",
+  "dimension_agreement": {
+    "decision": {
+      "case_count": 6,
+      "matched_count": 4
+    },
+    "grounding": {
+      "case_count": 6,
+      "matched_count": 6
+    },
+    "overall": {
+      "case_count": 6,
+      "matched_count": 6
+    },
+    "task_fulfillment": {
+      "case_count": 6,
+      "matched_count": 5
+    }
+  },
+  "disagreement_count": 3,
+  "false_failure_count": 0,
+  "false_pass_count": 0,
+  "full_agreement_count": 3,
+  "judge": {
+    "api_base_url": "https://api.minimaxi.com/v1",
+    "api_style": "openai-compatible",
+    "has_api_key": true,
+    "model": "MiniMax-M3",
+    "prompt_version": "llm-judge/v5",
+    "provider": "minimax",
+    "scope": "llm"
+  },
+  "overall_agreement_count": 6,
+  "schema_version": "harness-judge-agreement/v1",
+  "source_baseline": "llm-agent-evaluation-v1-2026-07-13",
+  "technical_error_count": 0
+}

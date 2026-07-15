@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_live_chat_cafc590e1a11",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "## Benchmark Recommendations\n\n### 1. General Assistants — **GAIA**\nGAIA is explicitly positioned as a benchmark for AI systems proposing general assistant questions, targeting the design questions a general-purpose assistant should be able to answer. [[gaia_2024:page-004:chunk-009]]\n\n### 2. Realistic Web Tasks — **WebArena**\nWebArena is introduced as a realistic and reproducible web environment designed to facilitate the development of autonomous agents capable of executing tasks on live-style web apps. [[webarena_2024:page-002:chunk-015]]\n\n### 3. Software Engineering — **SWE-bench**\nSWE-bench is an evaluation framework consisting of 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. [[swebench_2024:page-001:chunk-011]]\n\n### 4. Policy-Constrained Tool-Agent Interaction — **τ-bench (tau-bench)**\nτ-bench is a benchmark emulating dynamic conversations between a user (simulated by language models) and a language agent provided with domain-specific API tools and policy guidelines — directly matching the policy-constrained tool-agent interaction category. [[tau_bench_2024:page-001:chunk-004]]\n\n**Honorable mention:** The corpus also contains AgentBench, AgentBoard, MINT, and ToolSandbox, which evaluate broader agent/tool-use capabilities but are less category-specific than the four above. Let me know if you'd like a comparison table (e.g., on domains, evaluation protocol, or task scale) across these.",
+  "outcome": "answered",
+  "question_id": "live_chat_cafc590e1a11",
+  "status": "COMPLETED",
+  "summary": "## Benchmark Recommendations\n\n### 1. General Assistants — **GAIA**\nGAIA is explicitly positioned as a benchmark for AI systems proposing general assistant questions, targeting the design questions a general-purpose assistant should be able to answer. [[gaia_2024:page-004:chunk-009]]\n\n### 2. Realistic Web Tasks — **WebArena**\nWebArena is introduced as a realistic and reproducible web environment de"
+}

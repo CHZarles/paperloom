@@ -1,0 +1,11 @@
+{
+  "answer_id": "answer_live_chat_7ace910651d8",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [],
+  "fields": {},
+  "markdown": "The corpus contains 8 papers that introduce or evaluate LLM-agent benchmarks, plus ReAct as a foundational method paper:\n\n- **AgentBench** (Liu et al., ICLR 2024)\n- **AgentBoard** (Ma et al., NeurIPS 2024)\n- **GAIA** (Mialon et al., ICLR 2024)\n- **MINT** (Wang et al., ICLR 2024)\n- **SWE-bench** (Jimenez et al., ICLR 2024)\n- **τ-bench** (Yao & Shinn, 2024)\n- **ToolSandbox** (Lu et al., 2024)\n- **WebArena** (Zhou et al., ICLR 2024)\n\nWhich aspect would you like to explore?\n\n- **Compare** these benchmarks on dimensions like task domain, evaluation protocol, or metrics\n- **Summarize** a specific one (e.g., how SWE-bench constructs its tasks, or what τ-bench measures)\n- **Recommend** one for a concrete use case (e.g., evaluating coding agents vs. web agents vs. tool use)\n- **Reproduce** a benchmark's methodology",
+  "outcome": "needs_clarification",
+  "question_id": "live_chat_7ace910651d8",
+  "status": "NEEDS_CLARIFICATION",
+  "summary": "The corpus contains 8 papers that introduce or evaluate LLM-agent benchmarks, plus ReAct as a foundational method paper:\n\n- **AgentBench** (Liu et al., ICLR 2024)\n- **AgentBoard** (Ma et al., NeurIPS 2024)\n- **GAIA** (Mialon et al., ICLR 2024)\n- **MINT** (Wang et al., ICLR 2024)\n- **SWE-bench** (Jimenez et al., ICLR 2024)\n- **τ-bench** (Yao & Shinn, 2024)\n- **ToolSandbox** (Lu et al., 2024)\n- **We"
+}

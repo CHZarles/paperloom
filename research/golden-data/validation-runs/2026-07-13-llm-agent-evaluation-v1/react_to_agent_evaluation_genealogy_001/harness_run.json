@@ -1,0 +1,1240 @@
+{
+  "case_id": "react_to_agent_evaluation_genealogy_001",
+  "citation_validation": {
+    "cited_evidence_ids": [
+      "ev_f5f35d11d217f6aa",
+      "ev_60bb051df1c2c0fb",
+      "ev_6fb23382e8ec49cc",
+      "ev_0009f2ff679452a2",
+      "ev_5a2707c33d423790",
+      "ev_dec9313b4e211c1d"
+    ],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-12T21:20:43Z",
+  "diagnostics": {
+    "completion_tokens": 4204,
+    "duration_ms": 46395,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 8,
+    "model_latency_ms": 45991,
+    "prompt_tokens": 57795,
+    "skills_used": [],
+    "tool_call_count": 8,
+    "total_tokens": 61999
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_f5f35d11d217f6aa",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "agentbench_2024:page-009:chunk-008",
+        "location_ref": "agentbench_2024:page-009:chunk-008",
+        "matched_anchor_id": "agentbench_react_pioneer_relationship",
+        "page": 9,
+        "page_screenshot_available": false,
+        "paper_id": "agentbench_2024",
+        "paper_version": "arXiv v3 / ICLR 2024",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "ReAct (Yao et al., 2023b) is a pioneer work to combine CoT reasoning and actions in agent tasks.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "AgentBench: Evaluating LLMs as Agents"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_60bb051df1c2c0fb",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "agentbench_2024:page-039:chunk-002",
+        "location_ref": "agentbench_2024:page-039:chunk-002",
+        "matched_anchor_id": null,
+        "page": 39,
+        "page_screenshot_available": false,
+        "paper_id": "agentbench_2024",
+        "paper_version": "arXiv v3 / ICLR 2024",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "Following ReAct (Yao et al., 2023b), we adopt the few-shot examples and prompts in corresponding repository5 .",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "AgentBench: Evaluating LLMs as Agents"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_6fb23382e8ec49cc",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "tau_bench_2024:page-002:chunk-020",
+        "location_ref": "tau_bench_2024:page-002:chunk-020",
+        "matched_anchor_id": "tau_react_baseline_relationship",
+        "page": 2,
+        "page_screenshot_available": false,
+        "paper_id": "tau_bench_2024",
+        "paper_version": "arXiv v1",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "Our experiments reveal that agents built with simple LM constructs (like function calling or ReAct) perform poorly, highlighting the need for more sophisticated agent architectures.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_0009f2ff679452a2",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "tau_bench_2024:page-006:chunk-025",
+        "location_ref": "tau_bench_2024:page-006:chunk-025",
+        "matched_anchor_id": null,
+        "page": 6,
+        "page_screenshot_available": false,
+        "paper_id": "tau_bench_2024",
+        "paper_version": "arXiv v1",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "We also test text-formatted ReAct [26] and its Act-only ablation, where the model is instructed to zero-shot generate “Thought: {some reasoning} Action: {some JSON format action argument}” or only the action part.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_5a2707c33d423790",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "tau_bench_2024:page-007:chunk-014",
+        "location_ref": "tau_bench_2024:page-007:chunk-014",
+        "matched_anchor_id": null,
+        "page": 7,
+        "page_screenshot_available": false,
+        "paper_id": "tau_bench_2024",
+        "paper_version": "arXiv v1",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "For text-formatted agent methods, adding reasoning traces still consistently helps (compare ReAct vs. Act columns) as it helps bridge the gap between observations and actions that have unfamiliar formats.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_dec9313b4e211c1d",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "agentboard_2024:page-004:chunk-043",
+        "location_ref": "agentboard_2024:page-004:chunk-043",
+        "matched_anchor_id": null,
+        "page": 4,
+        "page_screenshot_available": false,
+        "paper_id": "agentboard_2024",
+        "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "We provide ablation results such as ReAct prompting (Yao et al., 2023) and other long-context processing techniques to justify our framework in Appendix F.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_f8f41f59e200",
+    "missing_evidence": [],
+    "question_id": "live_chat_f8f41f59e200",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_f8f41f59e200",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_f5f35d11d217f6aa",
+      "ev_60bb051df1c2c0fb",
+      "ev_6fb23382e8ec49cc",
+      "ev_0009f2ff679452a2",
+      "ev_5a2707c33d423790",
+      "ev_dec9313b4e211c1d"
+    ],
+    "fields": {},
+    "markdown": "## Directly Verified Relationships: ReAct → Later Agent-Evaluation Papers\n\nThe corpus contains 9 papers total. Three agent-evaluation papers have a **directly verified** relationship with ReAct (Yao et al., ICLR 2023; arXiv:2210.03629). The remaining agent-evaluation papers in the corpus have no verified direct ReAct relationship and are excluded to avoid inferring influence from topical similarity.\n\n### 1. AgentBench (`agentbench_2024`, Liu et al., ICLR 2024)\n**Citation-graph edge type:** `cites_react_reasoning_action_method`\n\nDirectly verified uses of ReAct:\n- Frames ReAct as a \"pioneer work to combine CoT reasoning and actions in agent tasks\" [1].\n- Adopts ReAct's few-shot examples and prompts from the original ReAct repository as part of agent construction across its benchmark tasks [2].\n\n### 2. τ-bench (`tau_bench_2024`, Yao, Shinn et al., arXiv 2024)\n**Citation-graph edge type:** `evaluates_react_agent_construct`\n\nDirectly verified uses of ReAct:\n- Identifies ReAct as one of the \"simple LM constructs\" it evaluates, and reports that ReAct-based agents \"perform poorly\" on the benchmark [3].\n- Tests text-formatted ReAct alongside its Act-only ablation as an explicit baseline [4].\n- Reports a ReAct vs. Act-only ablation comparison, concluding that \"adding reasoning traces still consistently helps\" [5].\n\n**Directly observable corpus-metadata fact (not an inferred influence claim):** Shunyu Yao is first author of both ReAct and τ-bench.\n\n### 3. AgentBoard (`agentboard_2024`, Ma, Zhang et al., NeurIPS 2024 Oral)\n**Citation-graph note:** No outgoing edge from ReAct was returned by `get_citation_edges`, but the paper's body text contains a direct, named citation to ReAct.\n\nDirectly verified use of ReAct:\n- States: \"We provide ablation results such as ReAct prompting (Yao et al., 2023) and other long-context processing techniques to justify our framework in Appendix F\" [6]. AgentBoard includes ReAct prompting as an explicit ablation baseline against its analytical evaluation board.\n\n---\n\n### Agent-evaluation papers with no verified direct ReAct relationship in this corpus\nGAIA (`gaia_2024`), MINT (`mint_2024`), SWE-bench (`swebench_2024`), WebArena (`webarena_2024`), and ToolSandbox (`toolsandbox_2024`) were checked against the ReAct citation graph and the papers' text. Any \"Yao et al., 2022/2023\" citations found in these papers point to other works (e.g., WebShop, Reflexion) or are general references, not to the ReAct method itself. No directly verified ReAct → paper relationship is established for them, so they are intentionally omitted from the trace.\n\nSources\n[1] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 9\n[2] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 39\n[3] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, unsectioned, p. 2\n[4] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, unsectioned, p. 6\n[5] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, unsectioned, p. 7\n[6] AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents, unsectioned, p. 4",
+    "outcome": "answered",
+    "question_id": "live_chat_f8f41f59e200",
+    "status": "COMPLETED",
+    "summary": "## Directly Verified Relationships: ReAct → Later Agent-Evaluation Papers\n\nThe corpus contains 9 papers total. Three agent-evaluation papers have a **directly verified** relationship with ReAct (Yao et al., ICLR 2023; arXiv:2210.03629). The remaining agent-evaluation papers in the corpus have no verified direct ReAct relationship and are excluded to avoid inferring influence from topical similarit"
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_f5f35d11d217f6aa",
+      "ev_60bb051df1c2c0fb",
+      "ev_6fb23382e8ec49cc",
+      "ev_0009f2ff679452a2",
+      "ev_5a2707c33d423790",
+      "ev_dec9313b4e211c1d"
+    ],
+    "selected_paper_ids": [
+      "agentbench_2024",
+      "tau_bench_2024",
+      "agentboard_2024"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "2210.03629",
+      "authors": [
+        "Shunyu Yao",
+        "Jeffrey Zhao"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_react_2023",
+      "filename": null,
+      "paper_id": "react_2023",
+      "preview": "",
+      "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+      "venue": "ICLR",
+      "year": 2023
+    },
+    {
+      "arxiv_id": "2308.03688",
+      "authors": [
+        "Xiao Liu",
+        "Hao Yu"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_agentbench_2024",
+      "filename": null,
+      "paper_id": "agentbench_2024",
+      "preview": "",
+      "title": "AgentBench: Evaluating LLMs as Agents",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2401.13178",
+      "authors": [
+        "Chang Ma",
+        "Junlei Zhang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_agentboard_2024",
+      "filename": null,
+      "paper_id": "agentboard_2024",
+      "preview": "",
+      "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+      "venue": "NeurIPS Oral",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2309.10691",
+      "authors": [
+        "Xingyao Wang",
+        "Zihan Wang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_mint_2024",
+      "filename": null,
+      "paper_id": "mint_2024",
+      "preview": "",
+      "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2310.06770",
+      "authors": [
+        "Carlos E. Jimenez",
+        "John Yang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_swebench_2024",
+      "filename": null,
+      "paper_id": "swebench_2024",
+      "preview": "",
+      "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2307.13854",
+      "authors": [
+        "Shuyan Zhou",
+        "Frank F. Xu"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_webarena_2024",
+      "filename": null,
+      "paper_id": "webarena_2024",
+      "preview": "",
+      "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2406.12045",
+      "authors": [
+        "Shunyu Yao",
+        "Noah Shinn"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_tau_bench_2024",
+      "filename": null,
+      "paper_id": "tau_bench_2024",
+      "preview": "",
+      "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2408.04682",
+      "authors": [
+        "Jiarui Lu",
+        "Thomas Holleis"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_toolsandbox_2024",
+      "filename": null,
+      "paper_id": "toolsandbox_2024",
+      "preview": "",
+      "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+      "venue": "arXiv",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2311.12983",
+      "authors": [
+        "Gregoire Mialon",
+        "Clementine Fourrier"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_gaia_2024",
+      "filename": null,
+      "paper_id": "gaia_2024",
+      "preview": "",
+      "title": "GAIA: a benchmark for General AI Assistants",
+      "venue": "ICLR",
+      "year": 2024
+    }
+  ],
+  "question_id": "react_to_agent_evaluation_genealogy_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "limit": 50,
+        "query_text": "ReAct reasoning acting language agents"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2210.03629",
+            "authors": [
+              "Shunyu Yao",
+              "Jeffrey Zhao"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "react_2023",
+            "preview": "",
+            "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+            "venue": "ICLR",
+            "year": 2023
+          },
+          {
+            "arxiv_id": "2308.03688",
+            "authors": [
+              "Xiao Liu",
+              "Hao Yu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentbench_2024",
+            "preview": "",
+            "title": "AgentBench: Evaluating LLMs as Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2401.13178",
+            "authors": [
+              "Chang Ma",
+              "Junlei Zhang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentboard_2024",
+            "preview": "",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+            "venue": "NeurIPS Oral",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2309.10691",
+            "authors": [
+              "Xingyao Wang",
+              "Zihan Wang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "mint_2024",
+            "preview": "",
+            "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2310.06770",
+            "authors": [
+              "Carlos E. Jimenez",
+              "John Yang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "swebench_2024",
+            "preview": "",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2307.13854",
+            "authors": [
+              "Shuyan Zhou",
+              "Frank F. Xu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "webarena_2024",
+            "preview": "",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+            "venue": "ICLR",
+            "year": 2024
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 6,
+        "next_offset": null,
+        "query_text": "ReAct reasoning acting language agents",
+        "returned_count": 6
+      },
+      "tool_call_id": "call_019f583394667e51b411b6b2",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 50,
+        "query_text": "agent evaluation benchmark"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2401.13178",
+            "authors": [
+              "Chang Ma",
+              "Junlei Zhang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentboard_2024",
+            "preview": "",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+            "venue": "NeurIPS Oral",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 4,
+        "next_offset": null,
+        "query_text": "agent evaluation benchmark",
+        "returned_count": 4
+      },
+      "tool_call_id": "call_019f583394667e51b411b6c6",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "limit": 100,
+        "query_text": ""
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2308.03688",
+            "authors": [
+              "Xiao Liu",
+              "Hao Yu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentbench_2024",
+            "preview": "",
+            "title": "AgentBench: Evaluating LLMs as Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2401.13178",
+            "authors": [
+              "Chang Ma",
+              "Junlei Zhang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentboard_2024",
+            "preview": "",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents",
+            "venue": "NeurIPS Oral",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2311.12983",
+            "authors": [
+              "Gregoire Mialon",
+              "Clementine Fourrier"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "gaia_2024",
+            "preview": "",
+            "title": "GAIA: a benchmark for General AI Assistants",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2309.10691",
+            "authors": [
+              "Xingyao Wang",
+              "Zihan Wang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "mint_2024",
+            "preview": "",
+            "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2310.06770",
+            "authors": [
+              "Carlos E. Jimenez",
+              "John Yang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "swebench_2024",
+            "preview": "",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2408.04682",
+            "authors": [
+              "Jiarui Lu",
+              "Thomas Holleis"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "toolsandbox_2024",
+            "preview": "",
+            "title": "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities",
+            "venue": "arXiv",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2307.13854",
+            "authors": [
+              "Shuyan Zhou",
+              "Frank F. Xu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "webarena_2024",
+            "preview": "",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2210.03629",
+            "authors": [
+              "Shunyu Yao",
+              "Jeffrey Zhao"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "react_2023",
+            "preview": "",
+            "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+            "venue": "ICLR",
+            "year": 2023
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 9,
+        "next_offset": null,
+        "query_text": "",
+        "returned_count": 9
+      },
+      "tool_call_id": "call_019f5833a06670f084a878a2",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "paper_id": "react_2023"
+      },
+      "result": {
+        "coverage": "complete",
+        "edges": [
+          {
+            "edge_type": "cites_react_reasoning_action_method",
+            "from_paper_id": "agentbench_2024",
+            "to_paper_id": "react_2023"
+          },
+          {
+            "edge_type": "evaluates_react_agent_construct",
+            "from_paper_id": "tau_bench_2024",
+            "to_paper_id": "react_2023"
+          }
+        ],
+        "papers": [
+          {
+            "arxiv_id": "2308.03688",
+            "authors": [
+              "Xiao Liu",
+              "Hao Yu"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "agentbench_2024",
+            "preview": "",
+            "title": "AgentBench: Evaluating LLMs as Agents",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2210.03629",
+            "authors": [
+              "Shunyu Yao",
+              "Jeffrey Zhao"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "react_2023",
+            "preview": "",
+            "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+            "venue": "ICLR",
+            "year": 2023
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          }
+        ]
+      },
+      "tool_call_id": "call_019f5833a0677e83a62b2f53",
+      "tool_name": "get_citation_edges"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "paragraph",
+          "heading",
+          "footnote"
+        ],
+        "paper_ids": [
+          "agentbench_2024",
+          "tau_bench_2024"
+        ],
+        "query_text": "ReAct",
+        "top_k": 10
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "agentbench_2024:page-009:chunk-008",
+            "original_filename": null,
+            "page": 9,
+            "paper_id": "agentbench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "ReAct (Yao et al., 2023b) is a pioneer work to combine CoT reasoning and actions in agent tasks.",
+            "section": "unsectioned",
+            "title": "AgentBench: Evaluating LLMs as Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-002:chunk-020",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "Our experiments reveal that agents built with simple LM constructs (like function calling or ReAct) perform poorly, highlighting the need for more sophisticated agent architectures.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "agentbench_2024:page-016:chunk-019",
+            "original_filename": null,
+            "page": 16,
+            "paper_id": "agentbench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "React: Synergizing reasoning and acting in language models.",
+            "section": "unsectioned",
+            "title": "AgentBench: Evaluating LLMs as Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-006:chunk-025",
+            "original_filename": null,
+            "page": 6,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "We also test text-formatted ReAct [26] and its Act-only ablation, where the model is instructed to zero-shot generate “Thought: {some reasoning} Action: {some JSON format action argument}” or only the action part.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "agentbench_2024:page-039:chunk-002",
+            "original_filename": null,
+            "page": 39,
+            "paper_id": "agentbench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Following ReAct (Yao et al., 2023b), we adopt the few-shot examples and prompts in corresponding repository5 .",
+            "section": "unsectioned",
+            "title": "AgentBench: Evaluating LLMs as Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-007:chunk-005",
+            "original_filename": null,
+            "page": 7,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "Table 2: Pass^1 across models via function calling, except Llama-3 via text-ReAct.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "agentbench_2024:page-039:chunk-033",
+            "original_filename": null,
+            "page": 39,
+            "paper_id": "agentbench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "https://github.com/ysymyth/ReAct",
+            "section": "unsectioned",
+            "title": "AgentBench: Evaluating LLMs as Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-007:chunk-014",
+            "original_filename": null,
+            "page": 7,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "For text-formatted agent methods, adding reasoning traces still consistently helps (compare ReAct vs. Act columns) as it helps bridge the gap between observations and actions that have unfamiliar formats.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-011:chunk-002",
+            "original_filename": null,
+            "page": 11,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "ReAct: Synergizing reasoning and acting in language models. arXiv preprint arXiv:2210.03629, 2022. [25] S.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "tau_bench_2024:page-011:chunk-004",
+            "original_filename": null,
+            "page": 11,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "preview": "React: Synergizing reasoning and acting in language models, 2023. [27] S.",
+            "section": "unsectioned",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          }
+        ],
+        "matched_count": 11,
+        "query_text": "ReAct",
+        "returned_count": 10
+      },
+      "tool_call_id": "call_019f5833af9a7c92918b83ae",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "agentbench_2024:page-009:chunk-008",
+          "agentbench_2024:page-039:chunk-002",
+          "tau_bench_2024:page-002:chunk-020",
+          "tau_bench_2024:page-006:chunk-025",
+          "tau_bench_2024:page-007:chunk-014"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_f5f35d11d217f6aa",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "agentbench_2024:page-009:chunk-008",
+            "location_ref": "agentbench_2024:page-009:chunk-008",
+            "page": 9,
+            "page_screenshot_available": false,
+            "paper_id": "agentbench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "ReAct (Yao et al., 2023b) is a pioneer work to combine CoT reasoning and actions in agent tasks.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "AgentBench: Evaluating LLMs as Agents"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_60bb051df1c2c0fb",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "agentbench_2024:page-039:chunk-002",
+            "location_ref": "agentbench_2024:page-039:chunk-002",
+            "page": 39,
+            "page_screenshot_available": false,
+            "paper_id": "agentbench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "Following ReAct (Yao et al., 2023b), we adopt the few-shot examples and prompts in corresponding repository5 .",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "AgentBench: Evaluating LLMs as Agents"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_6fb23382e8ec49cc",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "tau_bench_2024:page-002:chunk-020",
+            "location_ref": "tau_bench_2024:page-002:chunk-020",
+            "page": 2,
+            "page_screenshot_available": false,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "Our experiments reveal that agents built with simple LM constructs (like function calling or ReAct) perform poorly, highlighting the need for more sophisticated agent architectures.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_0009f2ff679452a2",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "tau_bench_2024:page-006:chunk-025",
+            "location_ref": "tau_bench_2024:page-006:chunk-025",
+            "page": 6,
+            "page_screenshot_available": false,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "We also test text-formatted ReAct [26] and its Act-only ablation, where the model is instructed to zero-shot generate “Thought: {some reasoning} Action: {some JSON format action argument}” or only the action part.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_5a2707c33d423790",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "tau_bench_2024:page-007:chunk-014",
+            "location_ref": "tau_bench_2024:page-007:chunk-014",
+            "page": 7,
+            "page_screenshot_available": false,
+            "paper_id": "tau_bench_2024",
+            "paper_version": "arXiv v1",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "For text-formatted agent methods, adding reasoning traces still consistently helps (compare ReAct vs. Act columns) as it helps bridge the gap between observations and actions that have unfamiliar formats.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_019f5833bab97882804c04d8",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "paragraph",
+          "heading",
+          "footnote"
+        ],
+        "paper_ids": [
+          "agentboard_2024",
+          "gaia_2024",
+          "mint_2024",
+          "swebench_2024",
+          "webarena_2024",
+          "toolsandbox_2024"
+        ],
+        "query_text": "ReAct Yao 2023",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "agentboard_2024:page-004:chunk-043",
+            "original_filename": null,
+            "page": 4,
+            "paper_id": "agentboard_2024",
+            "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+            "preview": "We provide ablation results such as ReAct prompting (Yao et al., 2023) and other long-context processing techniques to justify our framework in Appendix F.",
+            "section": "unsectioned",
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "gaia_2024:page-001:chunk-002",
+            "original_filename": null,
+            "page": 1,
+            "paper_id": "gaia_2024",
+            "paper_version": "arXiv v1 / ICLR 2024",
+            "preview": "arXiv:2311.12983v1 [cs.CL] 21 Nov 2023",
+            "section": "unsectioned",
+            "title": "GAIA: a benchmark for General AI Assistants"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "mint_2024:page-004:chunk-026",
+            "original_filename": null,
+            "page": 4,
+            "paper_id": "mint_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Previous methods (Yao et al., 2022; Shinn et al., 2023) choose to evaluate on randomly drawn test examples, increasing the barriers to fair comparisons.",
+            "section": "unsectioned",
+            "title": "MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-009:chunk-007",
+            "original_filename": null,
+            "page": 9,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Several recent works for evaluating LMs have either proposed a collection of mutually distinct tasks spanning across multiple domains (Hendrycks et al., 2021; Liang et al., 2022; Srivastava et al., 2023) or turned to the web as an interactive setting featuring tasks that require multiple steps to solve (Yao et al., 2022; Zhou et al., 2023; Deng et al., 2023; Liu et al., 2023d).",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "webarena_2024:page-009:chunk-006",
+            "original_filename": null,
+            "page": 9,
+            "paper_id": "webarena_2024",
+            "paper_version": "arXiv v4 / ICLR 2024",
+            "preview": "Mind2Web (Deng et al., 2023) Form/QAWoB (Shi et al., 2017) MiniWoB++ (Liu et al., 2018) Webshop (Yao et al., 2022a) ALFRED (Shridhar et al., 2020) VirtualHome (Puig et al., 2018) AndroidEnv (Toyama et al., 2021)",
+            "section": "unsectioned",
+            "title": "WebArena: A Realistic Web Environment for Building Autonomous Agents"
+          }
+        ],
+        "matched_count": 276,
+        "query_text": "ReAct Yao 2023",
+        "returned_count": 5
+      },
+      "tool_call_id": "call_019f5833d80170e382cb99f0",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "agentboard_2024:page-004:chunk-043"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_dec9313b4e211c1d",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "agentboard_2024:page-004:chunk-043",
+            "location_ref": "agentboard_2024:page-004:chunk-043",
+            "page": 4,
+            "page_screenshot_available": false,
+            "paper_id": "agentboard_2024",
+            "paper_version": "arXiv v2 / NeurIPS 2024 Oral",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "We provide ablation results such as ReAct prompting (Yao et al., 2023) and other long-context processing techniques to justify our framework in Appendix F.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_019f5833efb371c3bd5bfee7",
+      "tool_name": "read_locations"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_f8f41f59e200",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_f5f35d11d217f6aa",
+      "ev_60bb051df1c2c0fb",
+      "ev_6fb23382e8ec49cc",
+      "ev_0009f2ff679452a2",
+      "ev_5a2707c33d423790",
+      "ev_dec9313b4e211c1d"
+    ],
+    "fields": {},
+    "markdown": "## Directly Verified Relationships: ReAct → Later Agent-Evaluation Papers\n\nThe corpus contains 9 papers total. Three agent-evaluation papers have a **directly verified** relationship with ReAct (Yao et al., ICLR 2023; arXiv:2210.03629). The remaining agent-evaluation papers in the corpus have no verified direct ReAct relationship and are excluded to avoid inferring influence from topical similarity.\n\n### 1. AgentBench (`agentbench_2024`, Liu et al., ICLR 2024)\n**Citation-graph edge type:** `cites_react_reasoning_action_method`\n\nDirectly verified uses of ReAct:\n- Frames ReAct as a \"pioneer work to combine CoT reasoning and actions in agent tasks\" [1].\n- Adopts ReAct's few-shot examples and prompts from the original ReAct repository as part of agent construction across its benchmark tasks [2].\n\n### 2. τ-bench (`tau_bench_2024`, Yao, Shinn et al., arXiv 2024)\n**Citation-graph edge type:** `evaluates_react_agent_construct`\n\nDirectly verified uses of ReAct:\n- Identifies ReAct as one of the \"simple LM constructs\" it evaluates, and reports that ReAct-based agents \"perform poorly\" on the benchmark [3].\n- Tests text-formatted ReAct alongside its Act-only ablation as an explicit baseline [4].\n- Reports a ReAct vs. Act-only ablation comparison, concluding that \"adding reasoning traces still consistently helps\" [5].\n\n**Directly observable corpus-metadata fact (not an inferred influence claim):** Shunyu Yao is first author of both ReAct and τ-bench.\n\n### 3. AgentBoard (`agentboard_2024`, Ma, Zhang et al., NeurIPS 2024 Oral)\n**Citation-graph note:** No outgoing edge from ReAct was returned by `get_citation_edges`, but the paper's body text contains a direct, named citation to ReAct.\n\nDirectly verified use of ReAct:\n- States: \"We provide ablation results such as ReAct prompting (Yao et al., 2023) and other long-context processing techniques to justify our framework in Appendix F\" [6]. AgentBoard includes ReAct prompting as an explicit ablation baseline against its analytical evaluation board.\n\n---\n\n### Agent-evaluation papers with no verified direct ReAct relationship in this corpus\nGAIA (`gaia_2024`), MINT (`mint_2024`), SWE-bench (`swebench_2024`), WebArena (`webarena_2024`), and ToolSandbox (`toolsandbox_2024`) were checked against the ReAct citation graph and the papers' text. Any \"Yao et al., 2022/2023\" citations found in these papers point to other works (e.g., WebShop, Reflexion) or are general references, not to the ReAct method itself. No directly verified ReAct → paper relationship is established for them, so they are intentionally omitted from the trace.\n\nSources\n[1] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 9\n[2] AgentBench: Evaluating LLMs as Agents, unsectioned, p. 39\n[3] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, unsectioned, p. 2\n[4] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, unsectioned, p. 6\n[5] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, unsectioned, p. 7\n[6] AgentBoard: An Analytical Evaluation Board of Multi-turn LLM Agents, unsectioned, p. 4",
+    "outcome": "answered",
+    "question_id": "live_chat_f8f41f59e200",
+    "status": "COMPLETED",
+    "summary": "## Directly Verified Relationships: ReAct → Later Agent-Evaluation Papers\n\nThe corpus contains 9 papers total. Three agent-evaluation papers have a **directly verified** relationship with ReAct (Yao et al., ICLR 2023; arXiv:2210.03629). The remaining agent-evaluation papers in the corpus have no verified direct ReAct relationship and are excluded to avoid inferring influence from topical similarit"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_44b59d60f5e24af09cd69797253b44aa",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-12T21:20:01Z",
+  "status": "COMPLETED"
+}

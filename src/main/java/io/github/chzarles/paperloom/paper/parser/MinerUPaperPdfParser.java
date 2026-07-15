@@ -80,7 +80,8 @@ public class MinerUPaperPdfParser implements PaperPdfParser {
                 paper.tables(),
                 paper.figures(),
                 paper.formulas(),
-                artifacts
+                artifacts,
+                paper.pages()
         );
     }
 }

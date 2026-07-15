@@ -462,7 +462,7 @@ class ConversationServiceTest {
         ReflectionTestUtils.setField(session, "createdAt", LocalDateTime.of(2026, 6, 28, 12, 0));
         ReflectionTestUtils.setField(session, "updatedAt", LocalDateTime.of(2026, 6, 28, 12, 5));
         when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(session));
-        when(conversationRepository.existsByUserIdAndConversationId(1L, "conversation-1")).thenReturn(true);
+        when(conversationRepository.findDistinctConversationIdsByUserId(1L)).thenReturn(List.of("conversation-1"));
 
         List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
 
@@ -488,8 +488,7 @@ class ConversationServiceTest {
         used.setTitle("Reading session");
         used.setStatus(ConversationSession.SessionStatus.ACTIVE);
         when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(empty, used));
-        when(conversationRepository.existsByUserIdAndConversationId(1L, "empty-session")).thenReturn(false);
-        when(conversationRepository.existsByUserIdAndConversationId(1L, "used-session")).thenReturn(true);
+        when(conversationRepository.findDistinctConversationIdsByUserId(1L)).thenReturn(List.of("used-session"));
 
         List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
 

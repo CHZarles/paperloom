@@ -164,6 +164,62 @@ class MinerUOutputMapperTest {
     }
 
     @Test
+    void keepsLogicalContentElementsSeparateFromPhysicalPageText() {
+        String contentListJson = """
+                [
+                  {
+                    "type": "text",
+                    "text": "The paragraph begins on one page and continues with a deterministic initial state.",
+                    "page_idx": 0,
+                    "bbox": [70, 700, 930, 930]
+                  }
+                ]
+                """;
+        String middleJson = """
+                {
+                  "pdf_info": [
+                    {
+                      "page_idx": 0,
+                      "preproc_blocks": [
+                        {
+                          "type": "text",
+                          "bbox": [70, 700, 930, 730],
+                          "lines": [{"spans": [{"content": "The paragraph begins on one page"}]}]
+                        }
+                      ]
+                    },
+                    {
+                      "page_idx": 1,
+                      "preproc_blocks": [
+                        {
+                          "type": "text",
+                          "bbox": [70, 200, 930, 230],
+                          "lines": [{"spans": [{"content": "and continues with a deterministic initial state."}]}]
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """;
+
+        ParsedPaper paper = new MinerUOutputMapper().map(
+                contentListJson,
+                middleJson,
+                "",
+                "MinerU",
+                "self-hosted",
+                "paper.pdf"
+        );
+
+        assertEquals(1, paper.elements().size());
+        assertEquals(1, paper.elements().get(0).pageNumber());
+        assertTrue(paper.elements().get(0).text().contains("deterministic initial state"));
+        assertEquals(2, paper.pages().size());
+        assertEquals("The paragraph begins on one page", paper.pages().get(0).blocks().get(0).text());
+        assertTrue(paper.pages().get(1).blocks().get(0).text().contains("deterministic initial state"));
+    }
+
+    @Test
     void appendsUniqueCodeBodyBlocksFromMiddleJsonAsRetrievableEvidence() {
         String contentListJson = """
                 [

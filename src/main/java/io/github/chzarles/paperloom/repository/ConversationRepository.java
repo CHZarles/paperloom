@@ -3,6 +3,9 @@ package io.github.chzarles.paperloom.repository;
 import io.github.chzarles.paperloom.model.Conversation;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -52,6 +55,23 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     Optional<Conversation> findByIdAndUserId(Long id, Long userId);
 
     boolean existsByUserIdAndConversationId(Long userId, String conversationId);
+
+    @Query("SELECT DISTINCT c.conversationId FROM Conversation c WHERE c.user.id = :userId AND c.conversationId IS NOT NULL")
+    List<String> findDistinctConversationIdsByUserId(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT c FROM Conversation c
+            WHERE c.user.id = :userId
+              AND c.conversationId = :conversationId
+              AND (:beforeRecordId IS NULL OR c.id < :beforeRecordId)
+            ORDER BY c.timestamp DESC, c.id DESC
+            """)
+    List<Conversation> findConversationHistoryPage(
+            @Param("userId") Long userId,
+            @Param("conversationId") String conversationId,
+            @Param("beforeRecordId") Long beforeRecordId,
+            Pageable pageable
+    );
 
     void deleteByUserIdAndConversationId(Long userId, String conversationId);
 }

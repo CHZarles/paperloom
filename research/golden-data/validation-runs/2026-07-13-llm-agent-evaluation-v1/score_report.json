@@ -1,0 +1,492 @@
+{
+  "case_count": 15,
+  "dataset_id": "harness_golden_seed",
+  "failed_count": 10,
+  "passed_count": 5,
+  "schema_version": "harness-score-report/v2",
+  "scores": [
+    {
+      "case_id": "agentbench_environment_inventory_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "AgentBench evaluates LLM agents in eight interactive environments.",
+          "The paper identifies weak long-term reasoning, decision-making, and instruction following as major obstacles."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "gaia_dataset_gap_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Attributes the 92% and 15% figures to GAIA rather than treating them as general agent performance numbers."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "webarena_reproduction_protocol_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_run"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_four_self_hosted_domains",
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_deterministic_initial_state",
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_functional_correctness_tasks"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:webarena_deterministic_initial_state",
+            "REQUIRED_ANCHOR_MISSING:webarena_functional_correctness_tasks"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Presents an executable checklist rather than a general summary of WebArena."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "swebench_instance_provenance_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_issue_pr_provenance"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:swebench_issue_pr_provenance"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "SWE-bench connects GitHub issues with merged pull-request solutions and evaluates generated patches against tests."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "agentboard_progress_metric_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Final success rate exposes little about intermediate behavior, while progress rate captures incremental task advancement."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "agent_benchmark_ambiguous_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Asks whether the user needs general-assistant, web, coding, multi-turn, or policy-constrained tool-agent evaluation.",
+          "Does not silently choose one benchmark or begin presenting research claims."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:mint_tools_feedback_protocol",
+            "REQUIRED_ANCHOR_NOT_CITED:tau_database_end_state_evaluation",
+            "REQUIRED_ANCHOR_NOT_CITED:tau_passk_reliability"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:mint_tools_feedback_protocol",
+            "REQUIRED_ANCHOR_MISSING:tau_database_end_state_evaluation",
+            "REQUIRED_ANCHOR_MISSING:tau_passk_reliability"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Uses aligned comparison axes and distinguishes MINT's feedback protocol from tau-bench's state and reliability evaluation."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "toolsandbox_constraint_selection_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:toolsandbox_challenge_categories"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:toolsandbox_challenge_categories"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "ToolSandbox satisfies the combined stateful, on-policy, milestone-based, and insufficient-information constraints."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "cross_benchmark_human_agent_gap_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [],
+          "status": "pass"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "hard_pass": true,
+      "review": {
+        "criteria": [
+          "Reports both gaps accurately and explains that the benchmarks use different tasks and evaluation settings."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "agent_evaluation_recommendation_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "CITATIONS_REQUIRED",
+            "REQUIRED_ANCHOR_NOT_CITED:gaia_question_construction",
+            "REQUIRED_ANCHOR_NOT_CITED:webarena_four_self_hosted_domains",
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_patch_test_construction",
+            "REQUIRED_ANCHOR_NOT_CITED:tau_database_end_state_evaluation"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_PAPER_MISSING:gaia_2024",
+            "REQUIRED_PAPER_MISSING:webarena_2024",
+            "REQUIRED_PAPER_MISSING:swebench_2024",
+            "REQUIRED_PAPER_MISSING:tau_bench_2024",
+            "REQUIRED_ANCHOR_MISSING:gaia_question_construction",
+            "REQUIRED_ANCHOR_MISSING:webarena_four_self_hosted_domains",
+            "REQUIRED_ANCHOR_MISSING:swebench_patch_test_construction",
+            "REQUIRED_ANCHOR_MISSING:tau_database_end_state_evaluation"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Maps GAIA, WebArena, SWE-bench, and tau-bench to the four requested scenarios with grounded reasons."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "react_to_agent_evaluation_genealogy_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:react_interleaved_reasoning_actions"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_PAPER_MISSING:react_2023",
+            "REQUIRED_ANCHOR_MISSING:react_interleaved_reasoning_actions"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "AgentBench describes ReAct as combining reasoning and actions for agent tasks.",
+          "tau-bench directly evaluates ReAct as a simple agent construction."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "mint_tau_apparent_conflict_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:tau_passk_reliability"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:tau_passk_reliability"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Does not invent a shared model, task distribution, or metric that would make the reported numbers directly comparable.",
+          "The findings are not contradictory because MINT measures gains from interaction support while tau-bench measures repeated-trial reliability in stateful tasks."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "coding_benchmark_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_issue_pr_provenance"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:swebench_issue_pr_provenance"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [],
+        "status": "not_required"
+      }
+    },
+    {
+      "case_id": "cross_benchmark_score_ranking_partial_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_claude2_baseline"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [
+            "OUTCOME_MISMATCH:expected=partial:actual=answered"
+          ],
+          "status": "fail"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:swebench_claude2_baseline"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Provides the reported figures but declines a strict difficulty ranking because the models, tasks, and metrics differ."
+        ],
+        "status": "not_run"
+      }
+    },
+    {
+      "case_id": "benchmark_topic_change_followup_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:swebench_patch_test_construction"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Follows the topic change to SWE-bench instead of continuing the GAIA recommendation."
+        ],
+        "status": "not_run"
+      }
+    }
+  ]
+}

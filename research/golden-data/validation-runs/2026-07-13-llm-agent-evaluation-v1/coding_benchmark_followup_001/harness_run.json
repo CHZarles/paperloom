@@ -1,0 +1,557 @@
+{
+  "case_id": "coding_benchmark_followup_001",
+  "citation_validation": {
+    "cited_evidence_ids": [
+      "ev_7007f30962e0d39e",
+      "ev_d94dde3c5576bd8f",
+      "ev_e1c16b638ddd8ac6"
+    ],
+    "corpus_tools_used": true,
+    "passed": true
+  },
+  "completed_at": "2026-07-12T21:21:36Z",
+  "diagnostics": {
+    "completion_tokens": 1651,
+    "duration_ms": 20501,
+    "finish_reason": "model_submitted_answer",
+    "model_call_count": 6,
+    "model_latency_ms": 20334,
+    "prompt_tokens": 25011,
+    "skills_used": [],
+    "tool_call_count": 4,
+    "total_tokens": 26662
+  },
+  "evidence_ledger": {
+    "coverage": [],
+    "items": [
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_d94dde3c5576bd8f",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "swebench_2024:page-002:chunk-011",
+        "location_ref": "swebench_2024:page-002:chunk-011",
+        "matched_anchor_id": null,
+        "page": 2,
+        "page_screenshot_available": false,
+        "paper_id": "swebench_2024",
+        "paper_version": "arXiv v3 / ICLR 2024",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "These include, a realistic setting that utilizes user-submitted issues and solutions, diverse inputs featuring unique code problems from 12 repositories, a robust framework for execution-based evaluation, and the ability to continuously update the benchmark with new instances, requiring minimal human intervention.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_7007f30962e0d39e",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "swebench_2024:page-003:chunk-012",
+        "location_ref": "swebench_2024:page-003:chunk-012",
+        "matched_anchor_id": null,
+        "page": 3,
+        "page_screenshot_available": false,
+        "paper_id": "swebench_2024",
+        "paper_version": "arXiv v3 / ICLR 2024",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "The metric for our benchmark is the percentage of task instances that are resolved.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+      },
+      {
+        "bbox_json": null,
+        "bbox_or_cell_ref": null,
+        "element_type": "paragraph",
+        "evidence_id": "ev_e1c16b638ddd8ac6",
+        "evidence_quality": "verified",
+        "figure_id": null,
+        "figure_screenshot_available": false,
+        "formula_id": null,
+        "location": "swebench_2024:page-004:chunk-022",
+        "location_ref": "swebench_2024:page-004:chunk-022",
+        "matched_anchor_id": null,
+        "page": 4,
+        "page_screenshot_available": false,
+        "paper_id": "swebench_2024",
+        "paper_version": "arXiv v3 / ICLR 2024",
+        "parser_name": "pdftotext",
+        "parser_version": "pdftotext version 24.02.0",
+        "pdf_evidence_available": true,
+        "refutes_claim_ids": [],
+        "relevance_score": 1.0,
+        "retrieval_strategy": "source_quote_reading",
+        "section": "unsectioned",
+        "source_kind": "paragraph",
+        "span_text": "To eliminate the risk of data contamination, the set of repositories in the training data is disjoint from those included in the evaluation benchmark.",
+        "supports_claim_ids": [],
+        "table_id": null,
+        "table_screenshot_available": false,
+        "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+      }
+    ],
+    "ledger_id": "ledger_live_chat_0a0633572e49",
+    "missing_evidence": [],
+    "question_id": "live_chat_0a0633572e49",
+    "rejected_items": []
+  },
+  "final_answer": {
+    "answer_id": "answer_live_chat_0a0633572e49",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_7007f30962e0d39e",
+      "ev_d94dde3c5576bd8f",
+      "ev_e1c16b638ddd8ac6"
+    ],
+    "fields": {},
+    "markdown": "For coding-agent evaluation, **SWE-bench** is the right pick from your three options.\n\n**What the task is.** SWE-bench frames evaluation as real software engineering: a model receives a user-submitted GitHub issue from a popular Python repository and must produce a code patch that makes the repository's existing test suite pass. The metric is the percentage of task instances resolved [1].\n\n**Construction and scale.** Task instances are drawn from pull requests across multiple popular GitHub repositories, yielding a dataset of 19,000 non-testing task instances spanning 37 repositories. SWE-bench itself uses 12 of these repositories, and \"SWE-bench Lite\" is a curated subset covering 11 of those 12 with a similar diversity and distribution.\n\n**Why it's a strong coding benchmark.**\n- *Realistic:* issues and solutions come from real developer activity, not synthetic prompts [2].\n- *Diverse:* unique code problems spread across 12 repositories in the main benchmark (37 in the full dataset) [2].\n- *Execution-based:* evaluation runs the repository's actual test suite rather than relying on string matching or human judging [2].\n- *Contamination-aware by design:* the repositories used in any training data are kept disjoint from those used for evaluation [3].\n- *Continuously refreshable:* new instances can be added with minimal human intervention, which helps limit memorization over time [2].\n\n**What to weigh before committing.**\n- *Python-only scope:* if you need multilingual or systems-level coding coverage, SWE-bench alone won't cover it.\n- *Patch quality vs. test-passing:* the metric rewards tests passing, not necessarily clean or minimal patches, so a high score can hide overfitting to the visible tests.\n- *Repository bias:* even with 12 repos, results are skewed toward the kinds of issues that arise in those specific projects.\n- *Lite vs. full:* SWE-bench Lite is the more common leaderboard target (smaller, curated); the full set is much larger and noisier.\n\nIf your goal is to compare coding agents on realistic, execution-validated GitHub issues with a contamination-resistant setup, SWE-bench is the standard choice.\n\nSources\n[1] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 3\n[2] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 2\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 4",
+    "outcome": "answered",
+    "question_id": "live_chat_0a0633572e49",
+    "status": "COMPLETED",
+    "summary": "For coding-agent evaluation, **SWE-bench** is the right pick from your three options.\n\n**What the task is.** SWE-bench frames evaluation as real software engineering: a model receives a user-submitted GitHub issue from a popular Python repository and must produce a code patch that makes the repository's existing test suite pass. The metric is the percentage of task instances resolved [1].\n\n**Const"
+  },
+  "harness_id": "python_skill_guided_react_harness_v1",
+  "memory_update": {
+    "selected_evidence_ids": [
+      "ev_7007f30962e0d39e",
+      "ev_d94dde3c5576bd8f",
+      "ev_e1c16b638ddd8ac6"
+    ],
+    "selected_paper_ids": [
+      "swebench_2024"
+    ]
+  },
+  "paper_candidates": [
+    {
+      "arxiv_id": "2310.06770",
+      "authors": [
+        "Carlos E. Jimenez",
+        "John Yang"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_swebench_2024",
+      "filename": null,
+      "paper_id": "swebench_2024",
+      "preview": "",
+      "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+      "venue": "ICLR",
+      "year": 2024
+    },
+    {
+      "arxiv_id": "2406.12045",
+      "authors": [
+        "Shunyu Yao",
+        "Noah Shinn"
+      ],
+      "citeable": false,
+      "doi": null,
+      "element_type": "paper_candidate",
+      "evidence_id": "paper_candidate_tau_bench_2024",
+      "filename": null,
+      "paper_id": "tau_bench_2024",
+      "preview": "",
+      "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+      "venue": "arXiv",
+      "year": 2024
+    }
+  ],
+  "question_id": "coding_benchmark_followup_001",
+  "react_trace": [
+    {
+      "arguments": {
+        "limit": 10,
+        "query_text": "SWE-bench"
+      },
+      "result": {
+        "candidates": [
+          {
+            "arxiv_id": "2310.06770",
+            "authors": [
+              "Carlos E. Jimenez",
+              "John Yang"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "swebench_2024",
+            "preview": "",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+            "venue": "ICLR",
+            "year": 2024
+          },
+          {
+            "arxiv_id": "2406.12045",
+            "authors": [
+              "Shunyu Yao",
+              "Noah Shinn"
+            ],
+            "doi": null,
+            "filename": null,
+            "paper_id": "tau_bench_2024",
+            "preview": "",
+            "title": "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+            "venue": "arXiv",
+            "year": 2024
+          }
+        ],
+        "coverage": "complete",
+        "matched_count": 2,
+        "next_offset": null,
+        "query_text": "SWE-bench",
+        "returned_count": 2
+      },
+      "tool_call_id": "call_019f5834c67b7cc389030c78",
+      "tool_name": "search_paper_candidates"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "paragraph",
+          "table"
+        ],
+        "paper_ids": [
+          "swebench_2024"
+        ],
+        "query_text": "benchmark construction task definition evaluation",
+        "top_k": 8
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-016:chunk-002",
+            "original_filename": null,
+            "page": 16,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "A PPENDIX In the appendix, we provide more thorough details regarding the dataset construction process, evaluation pipeline, and characterization of the SWE-bench benchmark.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-002:chunk-011",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "These include, a realistic setting that utilizes user-submitted issues and solutions, diverse inputs featuring unique code problems from 12 repositories, a robust framework for execution-based evaluation, and the ability to continuously update the benchmark with new instances, requiring minimal human intervention.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-003:chunk-012",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "The metric for our benchmark is the percentage of task instances that are resolved.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-004:chunk-022",
+            "original_filename": null,
+            "page": 4,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "To eliminate the risk of data contamination, the set of repositories in the training data is disjoint from those included in the evaluation benchmark.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-011:chunk-004",
+            "original_filename": null,
+            "page": 11,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "During the collection or evaluation processes, we do not collect information about GitHub users, and the SWE-bench task instances do not use GitHub data beyond what is offered via the public API and website.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-011:chunk-005",
+            "original_filename": null,
+            "page": 11,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Our contributions do not involve any human subject participation; we do not perform crowdsourcing or recruit human task workers for any part of SWE-bench, including its collection and evaluation procedures along with the experiments.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-011:chunk-007",
+            "original_filename": null,
+            "page": 11,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "For the dataset release, we plan to open source the SWE-bench task instances, the collection and evaluation infrastructure, the experimental results, the training data used for fine-tuning SWE-Llama models, and the SWE-Llama model weights.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-016:chunk-003",
+            "original_filename": null,
+            "page": 16,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "This section complements Section 2 with a more technical and fine-grained summary of the data collection, execution-based validation, and evaluation procedures, along with a fuller characterization of the task instances.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "matched_count": 193,
+        "query_text": "benchmark construction task definition evaluation",
+        "returned_count": 8
+      },
+      "tool_call_id": "call_019f5834cd8a715299e73093",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "location_refs": [
+          "swebench_2024:page-002:chunk-011",
+          "swebench_2024:page-003:chunk-012",
+          "swebench_2024:page-004:chunk-022"
+        ]
+      },
+      "result": {
+        "items": [
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_d94dde3c5576bd8f",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "swebench_2024:page-002:chunk-011",
+            "location_ref": "swebench_2024:page-002:chunk-011",
+            "page": 2,
+            "page_screenshot_available": false,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "These include, a realistic setting that utilizes user-submitted issues and solutions, diverse inputs featuring unique code problems from 12 repositories, a robust framework for execution-based evaluation, and the ability to continuously update the benchmark with new instances, requiring minimal human intervention.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_7007f30962e0d39e",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "swebench_2024:page-003:chunk-012",
+            "location_ref": "swebench_2024:page-003:chunk-012",
+            "page": 3,
+            "page_screenshot_available": false,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "The metric for our benchmark is the percentage of task instances that are resolved.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "bbox_json": null,
+            "bbox_or_cell_ref": null,
+            "element_type": "paragraph",
+            "evidence_id": "ev_e1c16b638ddd8ac6",
+            "evidence_quality": "verified",
+            "figure_id": null,
+            "figure_screenshot_available": false,
+            "formula_id": null,
+            "location": "swebench_2024:page-004:chunk-022",
+            "location_ref": "swebench_2024:page-004:chunk-022",
+            "page": 4,
+            "page_screenshot_available": false,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "parser_name": "pdftotext",
+            "parser_version": "pdftotext version 24.02.0",
+            "pdf_evidence_available": true,
+            "refutes_claim_ids": [],
+            "relevance_score": 1.0,
+            "retrieval_strategy": "source_quote_reading",
+            "section": "unsectioned",
+            "source_kind": "paragraph",
+            "span_text": "To eliminate the risk of data contamination, the set of repositories in the training data is disjoint from those included in the evaluation benchmark.",
+            "supports_claim_ids": [],
+            "table_id": null,
+            "table_screenshot_available": false,
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "missing_location_refs": []
+      },
+      "tool_call_id": "call_019f5834d7d47210aae28a3c",
+      "tool_name": "read_locations"
+    },
+    {
+      "arguments": {
+        "element_types": [
+          "paragraph"
+        ],
+        "paper_ids": [
+          "swebench_2024"
+        ],
+        "query_text": "number of task instances repositories",
+        "top_k": 5
+      },
+      "result": {
+        "coverage": "truncated",
+        "locations": [
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-002:chunk-015",
+            "original_filename": null,
+            "page": 2,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "This dataset comprises a collection of 19,000 non-testing task instances derived from 37 repositories.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-003:chunk-003",
+            "original_filename": null,
+            "page": 3,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "A final breakdown of these task instances across repositories is presented in Figure 3, and Table 1 highlights the key features of SWE-bench task instances.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-004:chunk-011",
+            "original_filename": null,
+            "page": 4,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "The full filtering criteria and dataset information is included in SWE-bench Lite covers 11 of the original 12 repositories, with a similar diversity and distribution of task instances across repositories as the original.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-019:chunk-033",
+            "original_filename": null,
+            "page": 19,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "With moderate variation across repositories, we observe that this step generally removes half of the candidate task instances.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          },
+          {
+            "element_type": "paragraph",
+            "location_ref": "swebench_2024:page-023:chunk-022",
+            "original_filename": null,
+            "page": 23,
+            "paper_id": "swebench_2024",
+            "paper_version": "arXiv v3 / ICLR 2024",
+            "preview": "Table 12: Summary and licenses for all GitHub repositories that task instances were extracted from. within a file, changing ∼15 lines, and has a single fail to pass test to verify the correctness of the change along with 51 pass to pass tests to check whether existing behavior is preserved.",
+            "section": "unsectioned",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?"
+          }
+        ],
+        "matched_count": 411,
+        "query_text": "number of task instances repositories",
+        "returned_count": 5
+      },
+      "tool_call_id": "call_019f5834d7d47210aae28a45",
+      "tool_name": "find_reading_locations"
+    },
+    {
+      "arguments": {
+        "markdown": "For coding-agent evaluation, **SWE-bench** is the right pick from your three options.\n\n**What the task is.** SWE-bench frames evaluation as real software engineering: a model receives a user-submitted GitHub issue from a popular Python repository and must produce a code patch that makes the repository's existing test suite pass. The metric is the percentage of task instances resolved.\n\n**Construction and scale.** Task instances are drawn from pull requests across multiple popular GitHub repositories, yielding a dataset of 19,000 non-testing task instances spanning 37 repositories. SWE-bench itself uses 12 of these repositories, and \"SWE-bench Lite\" is a curated subset covering 11 of those 12 with a similar diversity and distribution.\n\n**Why it's a strong coding benchmark.**\n- *Realistic:* issues and solutions come from real developer activity, not synthetic prompts.\n- *Diverse:* unique code problems spread across 12 repositories in the main benchmark (37 in the full dataset).\n- *Execution-based:* evaluation runs the repository's actual test suite rather than relying on string matching or human judging.\n- *Contamination-aware by design:* the repositories used in any training data are kept disjoint from those used for evaluation.\n- *Continuously refreshable:* new instances can be added with minimal human intervention, which helps limit memorization over time.\n\n**What to weigh before committing.**\n- *Python-only scope:* if you need multilingual or systems-level coding coverage, SWE-bench alone won't cover it.\n- *Patch quality vs. test-passing:* the metric rewards tests passing, not necessarily clean or minimal patches, so a high score can hide overfitting to the visible tests.\n- *Repository bias:* even with 12 repos, results are skewed toward the kinds of issues that arise in those specific projects.\n- *Lite vs. full:* SWE-bench Lite is the more common leaderboard target (smaller, curated); the full set is much larger and noisier.\n\nIf your goal is to compare coding agents on realistic, execution-validated GitHub issues with a contamination-resistant setup, SWE-bench is the standard choice.",
+        "outcome": "answered"
+      },
+      "result": {
+        "accepted": false,
+        "error": "paper-content evidence was read, so cite a returned evidence item; do not mention this validation rule"
+      },
+      "tool_call_id": "call_019f5834ecb4763286aafc3a",
+      "tool_name": "submit_research_answer"
+    }
+  ],
+  "research_answer": {
+    "answer_id": "answer_live_chat_0a0633572e49",
+    "answer_type": "conversation",
+    "cited_evidence_ids": [
+      "ev_7007f30962e0d39e",
+      "ev_d94dde3c5576bd8f",
+      "ev_e1c16b638ddd8ac6"
+    ],
+    "fields": {},
+    "markdown": "For coding-agent evaluation, **SWE-bench** is the right pick from your three options.\n\n**What the task is.** SWE-bench frames evaluation as real software engineering: a model receives a user-submitted GitHub issue from a popular Python repository and must produce a code patch that makes the repository's existing test suite pass. The metric is the percentage of task instances resolved [1].\n\n**Construction and scale.** Task instances are drawn from pull requests across multiple popular GitHub repositories, yielding a dataset of 19,000 non-testing task instances spanning 37 repositories. SWE-bench itself uses 12 of these repositories, and \"SWE-bench Lite\" is a curated subset covering 11 of those 12 with a similar diversity and distribution.\n\n**Why it's a strong coding benchmark.**\n- *Realistic:* issues and solutions come from real developer activity, not synthetic prompts [2].\n- *Diverse:* unique code problems spread across 12 repositories in the main benchmark (37 in the full dataset) [2].\n- *Execution-based:* evaluation runs the repository's actual test suite rather than relying on string matching or human judging [2].\n- *Contamination-aware by design:* the repositories used in any training data are kept disjoint from those used for evaluation [3].\n- *Continuously refreshable:* new instances can be added with minimal human intervention, which helps limit memorization over time [2].\n\n**What to weigh before committing.**\n- *Python-only scope:* if you need multilingual or systems-level coding coverage, SWE-bench alone won't cover it.\n- *Patch quality vs. test-passing:* the metric rewards tests passing, not necessarily clean or minimal patches, so a high score can hide overfitting to the visible tests.\n- *Repository bias:* even with 12 repos, results are skewed toward the kinds of issues that arise in those specific projects.\n- *Lite vs. full:* SWE-bench Lite is the more common leaderboard target (smaller, curated); the full set is much larger and noisier.\n\nIf your goal is to compare coding agents on realistic, execution-validated GitHub issues with a contamination-resistant setup, SWE-bench is the standard choice.\n\nSources\n[1] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 3\n[2] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 2\n[3] SWE-bench: Can Language Models Resolve Real-World GitHub Issues?, unsectioned, p. 4",
+    "outcome": "answered",
+    "question_id": "live_chat_0a0633572e49",
+    "status": "COMPLETED",
+    "summary": "For coding-agent evaluation, **SWE-bench** is the right pick from your three options.\n\n**What the task is.** SWE-bench frames evaluation as real software engineering: a model receives a user-submitted GitHub issue from a popular Python repository and must produce a code patch that makes the repository's existing test suite pass. The metric is the percentage of task instances resolved [1].\n\n**Const"
+  },
+  "result_status": "COMPLETED",
+  "run_id": "run_4ef894c74e894f3d9f84b90a6554157a",
+  "schema_version": "harness-run-trace/v2",
+  "skills_used": [],
+  "started_at": "2026-07-12T21:21:17Z",
+  "status": "COMPLETED"
+}
