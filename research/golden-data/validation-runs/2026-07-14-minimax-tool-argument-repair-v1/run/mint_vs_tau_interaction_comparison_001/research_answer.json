@@ -1,0 +1,16 @@
+{
+  "answer_id": "answer_mint_vs_tau_interaction_comparison_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_7c30c02dcf913454",
+    "ev_953f8cee2c42257f",
+    "ev_630a16b64ed4afba",
+    "ev_3e3287f673c2e4c4"
+  ],
+  "fields": {},
+  "markdown": "## MINT vs τ-bench: A Side-by-Side Comparison\n\nBoth benchmarks evaluate LLM agents in multi-turn settings with tools, but they target different parts of the agent loop and use different reliability metrics. Below is a dimension-by-dimension comparison, grounded in the cited passages.\n\n### 1. Interaction Design\n\n**MINT** frames evaluation around the LLM in the middle of two loops and defines three settings of increasing interaction complexity: \"LLMs interacting with a lazy user,\" \"LLMs interacting with a lazy user and tools,\" and \"Informative user-LLM interaction with language feedback.\" At each turn, the LLM is instructed to optionally produce a `Thought:`, then either interact with tools by emitting Python code in an `<execute>...</execute>` block, or propose a solution in `<solution>...</solution>` (Wang et al. 2024 style) [1]. The interaction limit `k ∈ {1,2,3,4,5}` bounds the number of turns, with `k=1` meaning no interaction [2].\n\n**τ-bench** frames each task as a POMDP `(S, A, O, T, R, U)` where `S = S_db ⊗ S_user`, `A = A_db ∪ A_user`, and `O = O_db ∪ O_user`; the agent simultaneously handles a database (via API tools) and a (simulated) user under a domain-specific policy [3]. An episode is a free-form dialogue that ends when the user emits the stop token `###STOP###` [4].\n\nSources\n[1] MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback, 2.1 INTERACTION FRAMEWORK, p. 2\n[2] MINT: Evaluating LLMs in Multi-turn Interaction with Tools and Language Feedback, 2.1 INTERACTION FRAMEWORK, p. 3\n[3] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, 3 τ -bench: A benchmark for Tool-Agent-User Interaction, p. 3\n[4] tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains, 3 τ -bench: A benchmark for Tool-Agent-User Interaction, p. 3",
+  "outcome": "answered",
+  "question_id": "mint_vs_tau_interaction_comparison_001",
+  "status": "COMPLETED",
+  "summary": "## MINT vs τ-bench: A Side-by-Side Comparison\n\nBoth benchmarks evaluate LLM agents in multi-turn settings with tools, but they target different parts of the agent loop and use different reliability metrics. Below is a dimension-by-dimension comparison, grounded in the cited passages.\n\n### 1. Interaction Design\n\n**MINT** frames evaluation around the LLM in the middle of two loops and defines three "
+}

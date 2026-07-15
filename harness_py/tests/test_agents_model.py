@@ -14,6 +14,8 @@ from harness_py.orchestration.agents.context import ResearchRunContext
 from harness_py.orchestration.agents.model import (
     MiniMaxAgentsModel,
     OpenAIResponsesAgentsModel,
+    TEXT_NUDGE_TOOL_NAME,
+    TOOL_ARGUMENT_REPAIR_PREFIX,
     bind_research_context,
     provider_agents_model,
 )
@@ -159,3 +161,94 @@ class AgentsModelTest(unittest.TestCase):
         self.assertEqual("submit_research_answer", captured["tools"][0]["function"]["name"])
         self.assertEqual({"model.request", "model.response"}, event_kinds)
         self.assertNotIn("test-key", events_text)
+
+    def test_malformed_tool_arguments_become_a_valid_repair_call(self) -> None:
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                length = int(self.headers.get("Content-Length") or 0)
+                self.rfile.read(length)
+                body = json.dumps({
+                    "id": "response_malformed",
+                    "object": "chat.completion",
+                    "created": 1,
+                    "model": "MiniMax-M3",
+                    "choices": [{
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": "",
+                            "tool_calls": [{
+                                "id": "call_truncated",
+                                "type": "function",
+                                "function": {
+                                    "name": "submit_research_answer",
+                                    "arguments": '{"outcome":"answered","markdown":"truncated',
+                                },
+                            }],
+                        },
+                        "finish_reason": "length",
+                    }],
+                    "usage": {
+                        "prompt_tokens": 10,
+                        "completion_tokens": 5,
+                        "total_tokens": 15,
+                    },
+                }).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, format, *args) -> None:
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        model = MiniMaxAgentsModel(ProviderConfig(
+            scope="llm",
+            provider="minimax",
+            api_style="openai-compatible",
+            api_base_url=f"http://127.0.0.1:{server.server_port}/v1",
+            model="MiniMax-M3",
+            api_key="test-key",
+        ))
+        tool = FunctionTool(
+            name="submit_research_answer",
+            description="Finish",
+            params_json_schema={"type": "object", "additionalProperties": True},
+            on_invoke_tool=lambda context, raw: raw,
+            strict_json_schema=False,
+        )
+
+        async def invoke():
+            try:
+                return await model.get_response(
+                    "System prompt",
+                    [{"role": "user", "content": "Hello"}],
+                    model.research_settings(1234),
+                    [tool],
+                    None,
+                    [],
+                    ModelTracing.DISABLED,
+                    previous_response_id=None,
+                    conversation_id=None,
+                    prompt=None,
+                )
+            finally:
+                await model.close()
+
+        try:
+            response = asyncio.run(invoke())
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+        self.assertEqual(1, len(response.output))
+        repaired = response.output[0]
+        self.assertEqual(TEXT_NUDGE_TOOL_NAME, repaired.name)
+        payload = json.loads(repaired.arguments)
+        self.assertTrue(payload["content"].startswith(TOOL_ARGUMENT_REPAIR_PREFIX))
+        self.assertIn("submit_research_answer", payload["content"])

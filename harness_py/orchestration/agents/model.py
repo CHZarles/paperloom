@@ -32,6 +32,7 @@ _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(
     default=None,
 )
 TEXT_NUDGE_TOOL_NAME = "_continue_research_turn"
+TOOL_ARGUMENT_REPAIR_PREFIX = "[tool_arguments_repair] "
 
 
 @contextmanager
@@ -75,6 +76,10 @@ class _ObservedOpenAIModel:
                 )
             raise
 
+        response.output = [
+            _repair_function_call(item)
+            for item in response.output
+        ]
         if any(getattr(item, "type", "") == "function_call" for item in response.output):
             return response
 
@@ -233,3 +238,31 @@ def _json_or_text(value: str) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return value
+
+
+def _repair_function_call(item: Any) -> Any:
+    """Replace malformed provider arguments before the SDK replays them.
+
+    Some Chat Completions providers can truncate a function-call argument string at the token
+    limit. The SDK correctly returns a tool error, but its next request also replays the malformed
+    assistant call. MiniMax rejects that history with HTTP 400 before the model can repair it.
+    Converting only the malformed call into the existing continuation tool keeps the transcript
+    valid and gives the model one explicit repair instruction.
+    """
+
+    if getattr(item, "type", "") != "function_call":
+        return item
+    raw_arguments = getattr(item, "arguments", None)
+    try:
+        json.loads(raw_arguments)
+        return item
+    except (json.JSONDecodeError, TypeError):
+        tool_name = str(getattr(item, "name", "") or "tool")
+        message = (
+            f"{TOOL_ARGUMENT_REPAIR_PREFIX}The previous {tool_name} call had invalid or truncated "
+            "JSON arguments. Retry that call with a shorter valid JSON object."
+        )
+        return item.model_copy(update={
+            "name": TEXT_NUDGE_TOOL_NAME,
+            "arguments": json.dumps({"content": message}, ensure_ascii=False),
+        })

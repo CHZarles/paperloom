@@ -35,7 +35,7 @@ from ..run_output import (
     tool_trace_item,
 )
 from .context import ResearchRunContext
-from .model import TEXT_NUDGE_TOOL_NAME
+from .model import TEXT_NUDGE_TOOL_NAME, TOOL_ARGUMENT_REPAIR_PREFIX
 
 
 def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
@@ -112,9 +112,15 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
         if name == TEXT_NUDGE_TOOL_NAME:
             # 模型适配器把纯文本响应转换成这个内部调用。这里不接受纯文本为最终答案，而是
             # 明确提醒模型继续使用 submit_research_answer 协议。
+            content = str(arguments.get("content") or "")
+            repair_message = (
+                content.removeprefix(TOOL_ARGUMENT_REPAIR_PREFIX)
+                if content.startswith(TOOL_ARGUMENT_REPAIR_PREFIX)
+                else ""
+            )
             return json.dumps({
                 "continue": True,
-                "message": (
+                "message": repair_message or (
                     "Finish by calling submit_research_answer as the only tool call. "
                     "Copy exact evidence IDs returned by read_locations; placeholders such as "
                     "[[evidence_id]] are invalid. Remove claims not directly supported by cited spans."

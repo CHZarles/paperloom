@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import unittest
 from dataclasses import replace
@@ -11,6 +12,11 @@ from harness_py.orchestration.agents.tools import (
     FINAL_TOOL_NAME,
     _invoke_final,
     _normalize_structured_arguments,
+    build_agent_tools,
+)
+from harness_py.orchestration.agents.model import (
+    TEXT_NUDGE_TOOL_NAME,
+    TOOL_ARGUMENT_REPAIR_PREFIX,
 )
 from harness_py.orchestration.memory import ResearchMemory
 from harness_py.orchestration.runtime import TurnExecutionInput
@@ -29,6 +35,36 @@ class AgentsToolsTest(unittest.TestCase):
                 "field_values": {"$text": '[{"name":"beta1","value":"0.9"}]'},
             }),
         )
+
+    def test_internal_continuation_returns_the_malformed_argument_repair_message(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=dataset,
+            case_id="repair_arguments",
+            run_id="run_repair_arguments",
+            question="hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        tool = next(
+            item
+            for item in build_agent_tools(context)
+            if item.name == TEXT_NUDGE_TOOL_NAME
+        )
+        tool_context = ToolContext(
+            context=context,
+            tool_name=TEXT_NUDGE_TOOL_NAME,
+            tool_call_id="call_repair",
+            tool_arguments="{}",
+        )
+        requested = "Retry submit_research_answer with shorter valid JSON."
+
+        output = asyncio.run(tool.on_invoke_tool(
+            tool_context,
+            json.dumps({"content": TOOL_ARGUMENT_REPAIR_PREFIX + requested}),
+        ))
+
+        self.assertEqual(requested, json.loads(output)["message"])
 
     def test_mixed_final_and_research_calls_are_rejected(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()

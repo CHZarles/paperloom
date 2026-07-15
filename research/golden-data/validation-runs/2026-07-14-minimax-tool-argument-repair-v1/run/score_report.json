@@ -1,0 +1,43 @@
+{
+  "case_count": 1,
+  "dataset_id": "harness_golden_seed",
+  "failed_count": 1,
+  "passed_count": 0,
+  "schema_version": "harness-score-report/v2",
+  "scores": [
+    {
+      "case_id": "mint_vs_tau_interaction_comparison_001",
+      "dimensions": {
+        "content": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "grounding": {
+          "errors": [
+            "REQUIRED_ANCHOR_NOT_CITED:mint_tools_feedback_protocol",
+            "REQUIRED_ANCHOR_NOT_CITED:tau_database_end_state_evaluation",
+            "REQUIRED_ANCHOR_NOT_CITED:tau_passk_reliability"
+          ],
+          "status": "fail"
+        },
+        "outcome": {
+          "errors": [],
+          "status": "pass"
+        },
+        "retrieval": {
+          "errors": [
+            "REQUIRED_ANCHOR_MISSING:mint_tools_feedback_protocol"
+          ],
+          "status": "fail"
+        }
+      },
+      "hard_pass": false,
+      "review": {
+        "criteria": [
+          "Uses aligned comparison axes and distinguishes MINT's feedback protocol from tau-bench's state and reliability evaluation."
+        ],
+        "status": "not_run"
+      }
+    }
+  ]
+}
