@@ -12,6 +12,8 @@
 - 统计解读和瓶颈结论见 [`RESULTS.md`](RESULTS.md)。
 - 9 个模型质量缺陷和 1 个技术处置项见
   [`DEFECT_DISPOSITION.md`](DEFECT_DISPOSITION.md)。
+- 已保存运行的质量、Token、调用和耗时对比见
+  [`MODEL_ECONOMICS.md`](MODEL_ECONOMICS.md)。
 
 `REVIEW_ORDER.md` 保留当时的随机审核顺序，用于审计和复现本轮标注过程。
 

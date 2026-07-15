@@ -327,3 +327,6 @@ false pass:       0/23
 表格/图像产物的发布缺口仍作为独立数据管道问题处理，不与本次评分机制和 Harness 编排混在一起。
 这保持了职责边界：线上 Harness 只负责模型编排和完整记录，Golden 修订、语义评分、Provider
 对比和研究分析全部留在线下。
+
+基于同一批保存 Run 的质量、Token、调用次数、累计耗时和价格换算边界见
+[`MODEL_ECONOMICS.md`](../../research/golden-data/human-adjudication/2026-07-14/MODEL_ECONOMICS.md)。
