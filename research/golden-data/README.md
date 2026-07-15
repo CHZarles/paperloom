@@ -17,8 +17,11 @@
 | `research/golden-data/manifest.yaml` | 原始 `transformer-bert-gpt` Pack | 5 篇论文，15 个 Case | 旧 Golden Data 的稳定回归门槛 |
 | `research/golden-data/manifest-expanded.yaml` | 原始 Pack 加 `llm-agent-evaluation` | 14 篇论文，30 个 Case | 更广的研究和 Benchmark 覆盖 |
 
-稳定 Manifest 应保持精简并向后兼容。探索性的 Pack 和 Case 先放进扩展 Manifest；数据、
-Anchor 和预期行为稳定后，再考虑提升到稳定回归集。
+两个 Manifest 使用不同的 `dataset_id`。扩展数据的 Run、Human Label 和报告不能冒充稳定数据，
+也不能覆盖稳定数据的回归结论。
+
+稳定 Manifest 应保持精简；原有 Pack、Case、路径和预期不能因为扩展数据而改变。探索性的 Pack
+和 Case 先放进扩展 Manifest；数据、Anchor 和预期行为稳定后，再考虑提升到稳定回归集。
 
 人工编写的数据分为：
 

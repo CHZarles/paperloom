@@ -1,5 +1,5 @@
 schema_version: harness-golden-data/v2
-dataset_id: harness_golden_seed
+dataset_id: harness_golden_expanded
 paper_packs:
   - paper-packs/transformer-bert-gpt.yaml
   - paper-packs/llm-agent-evaluation.yaml

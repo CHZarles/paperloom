@@ -39,6 +39,8 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
     manifest = _load_yaml(manifest_path)
     if manifest.get("schema_version") != GOLDEN_SCHEMA_VERSION:
         raise ValueError(f"unsupported manifest schema: {manifest.get('schema_version')!r}")
+    if not isinstance(manifest.get("dataset_id"), str) or not manifest["dataset_id"].strip():
+        raise ValueError("manifest requires a non-empty dataset_id")
 
     base = manifest_path.parent
     packs = [

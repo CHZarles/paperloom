@@ -1,5 +1,5 @@
 schema_version: harness-human-labels/v1
-dataset_id: harness_golden_seed
+dataset_id: harness_golden_expanded
 source_baseline: llm-agent-evaluation-v1-2026-07-13
 
 labels:
