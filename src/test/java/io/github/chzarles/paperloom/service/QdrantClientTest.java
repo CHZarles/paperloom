@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,6 +61,10 @@ class QdrantClientTest {
         JsonNode create = bodyFor("PUT", "/collections/test_reading_models");
         assertEquals(3, create.path("vectors").path("dense").path("size").asInt());
         assertTrue(create.path("sparse_vectors").has("sparse"));
+        assertEquals(8, requests.stream()
+                .filter(item -> item.method().equals("PUT")
+                        && item.path().equals("/collections/test_reading_models/index?wait=true"))
+                .count());
 
         JsonNode upsert = bodyFor("PUT", "/collections/test_reading_models/points?wait=true");
         assertEquals("location_ref_a", upsert.path("points").get(0).path("payload").path("location_ref").asText());
@@ -69,6 +74,25 @@ class QdrantClientTest {
         assertEquals(8, search.path("limit").asInt());
         assertEquals("paper_id", search.path("filter").path("must").get(0).path("key").asText());
         assertEquals("location_ref_a", hits.get(0).payload().get("location_ref"));
+    }
+
+    @Test
+    void verifiesGenerationCountBeforeDeletingStalePoints() throws Exception {
+        assertEquals(1, client.countByPaperIdAndGeneration("paper-a", "generation-2"));
+        client.deleteByPaperIdExceptGeneration("paper-a", "generation-2");
+
+        JsonNode count = bodyFor("POST", "/collections/test_reading_models/points/count");
+        assertEquals("paper_id", count.path("filter").path("must").get(0).path("key").asText());
+        assertEquals("index_generation", count.path("filter").path("must").get(1).path("key").asText());
+
+        JsonNode delete = bodyFor("POST", "/collections/test_reading_models/points/delete?wait=true");
+        assertEquals("paper_id", delete.path("filter").path("must").get(0).path("key").asText());
+        assertEquals("index_generation", delete.path("filter").path("must_not").get(0).path("key").asText());
+    }
+
+    @Test
+    void readsIndexedPaperIdsWithOneFacetRequest() {
+        assertEquals(Set.of("paper-a", "paper-b"), client.indexedPaperIds(10_000));
     }
 
     private void handle(HttpExchange exchange) throws IOException {
@@ -84,6 +108,14 @@ class QdrantClientTest {
                     {"result":[{"id":"10000000-0000-0000-0000-000000000001","score":0.9,
                     "payload":{"paper_id":"paper-a","location_ref":"location_ref_a"}}],"status":"ok"}
                     """);
+            return;
+        }
+        if (path.endsWith("/points/count")) {
+            respond(exchange, 200, "{\"result\":{\"count\":1},\"status\":\"ok\"}");
+            return;
+        }
+        if (path.endsWith("/facet")) {
+            respond(exchange, 200, "{\"result\":{\"hits\":[{\"value\":\"paper-a\",\"count\":2},{\"value\":\"paper-b\",\"count\":1}]},\"status\":\"ok\"}");
             return;
         }
         respond(exchange, 200, "{\"result\":true,\"status\":\"ok\"}");

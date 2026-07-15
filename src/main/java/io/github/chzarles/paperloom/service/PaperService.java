@@ -241,13 +241,6 @@ public class PaperService {
         markVectorizationProcessing(paper, true);
 
         try (InputStream fileStream = uploadService.getMergedFileStream(paperId)) {
-            try {
-                qdrantIndexService.deleteByPaperId(paperId);
-                logger.info("重建前已清理 Qdrant 论文索引: paperId={}", paperId);
-            } catch (Exception e) {
-                logger.warn("重建前清理 Qdrant 失败: paperId={}, error={}", paperId, e.getMessage());
-            }
-
             paperTextChunkRepository.deleteByPaperId(paperId);
             paperParserArtifactService.deleteParserArtifacts(paperId);
             paperVisualAssetService.deleteVisualAssets(paperId);

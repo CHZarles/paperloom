@@ -153,12 +153,7 @@ public class PaperLibraryStatusService {
                 : paperParserArtifactRepository.findDistinctPaperIds()), productPaperIds);
 
         if (qdrantIndexService != null) {
-            long missing = accessibleSearchablePaperIds.stream()
-                    .filter(paperId -> qdrantPointCount(paperId, warnings) == 0)
-                    .count();
-            if (missing > 0) {
-                warnings.add("Qdrant 缺少 " + missing + " 篇当前可检索产品论文的 Reading Model 索引");
-            }
+            qdrantConsistencyWarnings(warnings, accessibleSearchablePaperIds, productPaperIds);
         }
         return warnings;
     }
@@ -177,14 +172,19 @@ public class PaperLibraryStatusService {
         }
     }
 
-    private long qdrantPointCount(String paperId, List<String> warnings) {
+    private void qdrantConsistencyWarnings(List<String> warnings,
+                                           Set<String> accessibleSearchablePaperIds,
+                                           Set<String> productPaperIds) {
         try {
-            return qdrantIndexService.countByPaperId(paperId);
-        } catch (Exception exception) {
-            if (warnings.stream().noneMatch(warning -> warning.startsWith("Qdrant 一致性检查不可用"))) {
-                warnings.add("Qdrant 一致性检查不可用：" + exception.getClass().getSimpleName());
+            Set<String> indexedPaperIds = qdrantIndexService.indexedPaperIds(10_000);
+            addOrphanWarning(warnings, "qdrant_reading_models", indexedPaperIds, productPaperIds);
+            LinkedHashSet<String> missing = new LinkedHashSet<>(accessibleSearchablePaperIds);
+            missing.removeAll(indexedPaperIds);
+            if (!missing.isEmpty()) {
+                warnings.add("Qdrant 缺少 " + missing.size() + " 篇当前可检索产品论文的 Reading Model 索引");
             }
-            return 0;
+        } catch (Exception exception) {
+            warnings.add("Qdrant 一致性检查不可用：" + exception.getClass().getSimpleName());
         }
     }
 

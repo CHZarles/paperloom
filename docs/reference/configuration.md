@@ -55,6 +55,7 @@ fallback.
 | `RESEARCH_HARNESS_BASE_URL` | Internal harness endpoint used by Java |
 | `RESEARCH_HARNESS_INTERNAL_TOKEN` | Shared internal-service credential |
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
+| `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
 | `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
 | `EMBEDDING_API_URL`, `EMBEDDING_API_KEY`, `EMBEDDING_API_MODEL` | Java-owned indexing and query embedding provider |

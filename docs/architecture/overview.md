@@ -140,12 +140,12 @@ do not replace the product-owned Reading Model.
 
 | Store | Live-path responsibility |
 | --- | --- |
-| MySQL | Users, access rules, papers, Reading Models, conversations, research memory, and persistent reference data; direct source of the Python corpus projection |
+| MySQL | Users, access rules, papers, canonical Reading Models, conversations, research memory, and persistent reference data; exact source behind the Java Corpus API |
+| Qdrant | Rebuildable dense/sparse candidate index over Current Reading Model locations; never a source of citeable content |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and visual evidence crops |
 
-The repository also maintains independent indexing, upload-processing, and search infrastructure.
-Those services may still receive writes or serve standalone endpoints, but they do not contribute to
-current assistant answers and must not be confused with the live agentic RAG path.
+Kafka remains upload-processing infrastructure and Redis serves separate transient product concerns.
+Neither is an evidence source.
 
 ## Evaluation Boundary
 

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import unittest
 
-from harness_py.corpus.gateway import JavaCorpusGatewayReader
+import httpx
+
+from harness_py.core.errors import HarnessCancelled
+from harness_py.corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
 from harness_py.corpus.tools import ReadingCorpusTools
 
 
@@ -117,6 +120,31 @@ class JavaCorpusGatewayTest(unittest.TestCase):
 
         self.assertEqual("location_not_disclosed_for_reading", result["error"])
         self.assertFalse(any(path.endswith("/locations/read") for path, _ in gateway.calls))
+
+    def test_gateway_rejects_oversized_response(self) -> None:
+        client = httpx.Client(
+            base_url="http://corpus.test",
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=b"x" * 33)),
+        )
+        gateway = JavaCorpusGateway(client=client, max_response_bytes=32)
+
+        with self.assertRaisesRegex(RuntimeError, "size limit"):
+            gateway.post("/internal/v1/corpus/papers/search", {})
+
+    def test_reader_checks_cancellation_before_corpus_request(self) -> None:
+        gateway = FakeGateway()
+        reader = JavaCorpusGatewayReader(
+            gateway=gateway,
+            request_id="request-1",
+            conversation_id="conversation-1",
+            user_id=7,
+            scope_paper_ids=["paper-a"],
+            cancel_check=lambda: True,
+        )
+
+        with self.assertRaises(HarnessCancelled):
+            reader.load_metadata_dataset()
+        self.assertEqual([], gateway.calls)
 
 
 if __name__ == "__main__":

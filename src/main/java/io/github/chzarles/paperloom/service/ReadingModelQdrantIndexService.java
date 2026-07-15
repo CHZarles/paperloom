@@ -22,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -80,19 +81,32 @@ public class ReadingModelQdrantIndexService {
         qdrantClient.ensureCollection(dimension);
 
         List<QdrantPoint> points = new ArrayList<>(locations.size());
+        String indexGeneration = UUID.randomUUID().toString();
         for (int index = 0; index < locations.size(); index++) {
             IndexedLocation location = locations.get(index);
+            Map<String, Object> payload = new LinkedHashMap<>(location.payload());
+            payload.put("index_generation", indexGeneration);
             points.add(new QdrantPoint(
                     stablePointId(location.paperId(), location.modelVersion(), location.locationRef()),
                     embedding.vectors().get(index),
                     sparseVector(location.searchableText()),
-                    location.payload()
+                    payload
             ));
         }
 
         beforeUpsert.run();
-        qdrantClient.deleteByPaperId(paperId);
         qdrantClient.upsert(points);
+        long written = qdrantClient.countByPaperIdAndGeneration(paperId, indexGeneration);
+        if (written != points.size()) {
+            throw new IllegalStateException("Qdrant indexed " + written + " of " + points.size()
+                    + " expected Reading Model locations for paperId=" + paperId);
+        }
+        qdrantClient.deleteByPaperIdExceptGeneration(paperId, indexGeneration);
+        long retained = qdrantClient.countByPaperId(paperId);
+        if (retained != points.size()) {
+            throw new IllegalStateException("Qdrant retained " + retained + " points after stale-generation cleanup; expected "
+                    + points.size() + " for paperId=" + paperId);
+        }
         return new IndexResult(
                 embedding.totalTokens(),
                 points.size(),
@@ -107,6 +121,10 @@ public class ReadingModelQdrantIndexService {
 
     public long countByPaperId(String paperId) {
         return qdrantClient.countByPaperId(paperId);
+    }
+
+    public Set<String> indexedPaperIds(int limit) {
+        return qdrantClient.indexedPaperIds(limit);
     }
 
     public List<IndexedLocation> buildIndexedLocations(String paperId, String modelVersion) {
@@ -150,8 +168,11 @@ public class ReadingModelQdrantIndexService {
     }
 
     static String stablePointId(String paperId, String modelVersion, String locationRef) {
-        return UUID.nameUUIDFromBytes((paperId + "\n" + modelVersion + "\n" + locationRef)
-                .getBytes(StandardCharsets.UTF_8)).toString();
+        byte[] digest = sha256Bytes(paperId + "\n" + modelVersion + "\n" + locationRef);
+        digest[6] = (byte) ((digest[6] & 0x0f) | 0x80);
+        digest[8] = (byte) ((digest[8] & 0x3f) | 0x80);
+        ByteBuffer buffer = ByteBuffer.wrap(digest);
+        return new UUID(buffer.getLong(), buffer.getLong()).toString();
     }
 
     static QdrantSparseVector sparseVector(String text) {

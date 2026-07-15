@@ -106,41 +106,45 @@ Java must remain authoritative for:
 - quota reservation and settlement;
 - cancellation and streamed product integration;
 - durable history, research-memory exchange, and conversation ownership;
-- product reference persistence and historical evidence reopening.
+- product reference persistence and historical evidence reopening;
+- Current Reading Model indexing, query embeddings, Qdrant retrieval, scope revalidation, and exact
+  MySQL location reads.
 
 ### Python Responsibilities
 
 Python must remain authoritative for:
 
-- loading only the paper IDs Java authorized;
-- building the request-local corpus projection;
+- accepting only the paper IDs Java authorized and never widening that scope;
+- calling the Java Corpus API through a request-bound gateway;
 - the Agents SDK model-tool loop;
 - paper and location disclosure state;
-- lexical retrieval, exact reading, and Evidence ID creation;
+- Evidence ID creation only after a successful exact Java read;
 - Candidate / Read / Cited / substantive-evidence coverage;
 - final answer, outcome, and citation validation;
 - optional per-run evaluation capture.
 
 ## Current Corpus And Retrieval
 
-The Python service loads its live corpus directly from MySQL. The current product projection contains
-paper metadata, current ready-model metadata, `paper_reading_elements`, and visual-asset availability.
+The Python product service loads only authorized paper metadata through the Java Corpus API. It does
+not load all `paper_reading_elements` into each Harness process or call Docker MySQL directly.
 
-Paper discovery uses deterministic metadata matching and ranking. Reading-location retrieval uses
-in-memory BM25 plus passage, lead, section, exact-phrase, adjacent-paragraph, and coverage heuristics.
+Paper discovery uses deterministic metadata matching inside the locked scope. Reading-location
+retrieval uses Java-owned query embeddings, Qdrant dense/sparse candidates, deterministic RRF,
+Current Model and scope validation, and bounded MySQL hydration. Golden fixtures and offline tests
+retain the in-memory BM25 adapter.
 
 Current requirements:
 
-- always filter corpus loading by Java-authorized Paper IDs;
+- always filter Corpus API operations by Java-authorized Paper IDs;
 - never treat a Candidate Preview as paper-content evidence;
 - preserve deterministic ordering and bounded result limits;
 - expose enough location identity for an exact later read;
 - create citeable evidence only from retained source text;
 - keep retrieval internals out of user-facing answer prose.
 
-Vector retrieval, embeddings, and dense reranking are not current assistant capabilities. They may
-be added later as derived retrieval projections, but only after held-out evaluation demonstrates an
-improvement in Candidate, Read, Cited, Hard Pass, latency, and cost.
+Qdrant vectors remain a derived candidate projection, not canonical evidence. Dense/sparse quality,
+capacity, and any future reranker still require held-out Candidate, Read, Cited, Hard Pass, latency,
+and cost evaluation before stronger product claims are made.
 
 ## Agent Tool Contract
 

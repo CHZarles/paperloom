@@ -218,11 +218,19 @@ public class CorpusRetrievalService {
 
     @Transactional(readOnly = true)
     public CanonicalReadingLocationService.ReadBatch readLocations(LocationReadQuery query) {
+        List<String> locationRefs = query.locationRefs().stream()
+                .filter(ref -> ref != null && !ref.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        if (locationRefs.size() > MAX_LOCATION_LIMIT) {
+            throw new IllegalArgumentException("location_refs cannot contain more than " + MAX_LOCATION_LIMIT + " items");
+        }
         List<String> authorizedIds = authorizedPapers(query.userId(), query.scopePaperIds()).stream()
                 .map(Paper::getPaperId)
                 .distinct()
                 .toList();
-        return canonicalReadService.read(query.locationRefs(), authorizedIds);
+        return canonicalReadService.read(locationRefs, authorizedIds);
     }
 
     private List<Paper> authorizedPapers(Long userId, List<String> scopePaperIds) {

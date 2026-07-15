@@ -176,8 +176,8 @@ research-paper PDF ingestion, an inspectable Reading Model, authorized agentic r
 evidence-grounded research chat.
 
 It does not yet claim general-purpose document ingestion, reliable coordinate-level highlighting,
-automatic citation-graph construction, dense or multimodal retrieval in the live assistant, or
-perfect metadata extraction for every PDF.
+automatic citation-graph construction, multimodal retrieval, validated dense-retrieval quality and
+capacity at large scale, or perfect metadata extraction for every PDF.
 
 ## Documentation
 

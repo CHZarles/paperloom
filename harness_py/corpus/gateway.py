@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import Callable, Protocol
 
 import httpx
 
+from ..core.errors import HarnessCancelled
 from ..core.models import GoldenDataset, JsonMap, as_list, child_map
 
 
@@ -34,12 +36,17 @@ class JavaCorpusGateway:
         internal_token: str | None = None,
         *,
         client: httpx.Client | None = None,
+        max_response_bytes: int | None = None,
     ):
         base_url = (base_url or os.getenv("JAVA_CORPUS_BASE_URL") or "http://127.0.0.1:8081").rstrip("/")
         token = internal_token if internal_token is not None else os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
         headers = {"Accept": "application/json"}
         if token.strip():
             headers["Authorization"] = f"Bearer {token.strip()}"
+        self.max_response_bytes = _positive_int(
+            max_response_bytes,
+            _positive_int(os.getenv("JAVA_CORPUS_MAX_RESPONSE_BYTES"), 8 * 1024 * 1024),
+        )
         self.client = client or httpx.Client(
             base_url=base_url,
             headers=headers,
@@ -54,6 +61,7 @@ class JavaCorpusGateway:
         conversation_id: str,
         user_id: int,
         scope_paper_ids: list[str],
+        cancel_check: Callable[[], bool] | None = None,
     ) -> JavaCorpusGatewayReader:
         return JavaCorpusGatewayReader(
             gateway=self,
@@ -61,14 +69,23 @@ class JavaCorpusGateway:
             conversation_id=conversation_id,
             user_id=user_id,
             scope_paper_ids=scope_paper_ids,
+            cancel_check=cancel_check or (lambda: False),
         )
 
     def post(self, path: str, payload: JsonMap) -> JsonMap:
-        response = self.client.post(path, json=payload)
-        if response.status_code != 200:
-            message = response.text[:1000]
-            raise RuntimeError(f"Java Corpus API returned HTTP {response.status_code}: {message}")
-        result = response.json()
+        with self.client.stream("POST", path, json=payload) as response:
+            content_length = int(response.headers.get("content-length") or 0)
+            if content_length > self.max_response_bytes:
+                raise RuntimeError("Java Corpus API response exceeded the configured size limit")
+            body = bytearray()
+            for chunk in response.iter_bytes():
+                body.extend(chunk)
+                if len(body) > self.max_response_bytes:
+                    raise RuntimeError("Java Corpus API response exceeded the configured size limit")
+            if response.status_code != 200:
+                message = bytes(body[:1000]).decode("utf-8", errors="replace")
+                raise RuntimeError(f"Java Corpus API returned HTTP {response.status_code}: {message}")
+        result = json.loads(body)
         if not isinstance(result, dict):
             raise RuntimeError("Java Corpus API response must be a JSON object")
         return result
@@ -81,6 +98,7 @@ class JavaCorpusGatewayReader:
     conversation_id: str
     user_id: int
     scope_paper_ids: list[str]
+    cancel_check: Callable[[], bool] = field(default=lambda: False, repr=False)
     candidates_by_location_ref: dict[str, JsonMap] = field(default_factory=dict)
 
     def load_metadata_dataset(self) -> GoldenDataset:
@@ -114,7 +132,7 @@ class JavaCorpusGatewayReader:
         )
 
     def search_papers(self, arguments: JsonMap) -> JsonMap:
-        return self.gateway.post("/internal/v1/corpus/papers/search", {
+        return self._post("/internal/v1/corpus/papers/search", {
             **self._context(),
             "query_text": str(arguments.get("query_text") or ""),
             "paper_ids": _strings(arguments.get("paper_ids")),
@@ -133,13 +151,13 @@ class JavaCorpusGatewayReader:
             if key in {"paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year"}
             and value not in (None, "", [])
         }
-        return self.gateway.post("/internal/v1/corpus/papers/search", {
+        return self._post("/internal/v1/corpus/papers/search", {
             **self._context(),
             "identity": identity,
         })
 
     def search_locations(self, arguments: JsonMap) -> JsonMap:
-        response = self.gateway.post("/internal/v1/corpus/locations/search", {
+        response = self._post("/internal/v1/corpus/locations/search", {
             **self._context(),
             "paper_ids": _strings(arguments.get("paper_ids")),
             "query_text": str(arguments.get("query_text") or ""),
@@ -157,7 +175,7 @@ class JavaCorpusGatewayReader:
         return response
 
     def read_locations(self, arguments: JsonMap) -> JsonMap:
-        response = self.gateway.post("/internal/v1/corpus/locations/read", {
+        response = self._post("/internal/v1/corpus/locations/read", {
             **self._context(),
             "location_refs": _strings(arguments.get("location_refs")),
         })
@@ -219,6 +237,14 @@ class JavaCorpusGatewayReader:
             "scope_paper_ids": self.scope_paper_ids,
         }
 
+    def _post(self, path: str, payload: JsonMap) -> JsonMap:
+        if self.cancel_check():
+            raise HarnessCancelled("research job cancelled")
+        result = self.gateway.post(path, payload)
+        if self.cancel_check():
+            raise HarnessCancelled("research job cancelled")
+        return result
+
 
 def _paper_record(card: JsonMap) -> JsonMap:
     return {
@@ -251,3 +277,11 @@ def _strings(value: object) -> list[str]:
             seen.add(text)
             result.append(text)
     return result
+
+
+def _positive_int(value: object, fallback: int) -> int:
+    try:
+        parsed = int(value or 0)
+    except (TypeError, ValueError):
+        return fallback
+    return parsed if parsed > 0 else fallback

@@ -149,8 +149,8 @@ corepack pnpm dev
 PaperLoom 仍在持续开发。目前的明确边界是研究论文 PDF 导入、可检查的 Reading Model、授权范围内
 的 Agentic Retrieval，以及有来源的研究问答。
 
-项目暂不宣称已经稳定支持任意文档类型、坐标级 PDF 高亮、自动引文网络、Live Assistant 的
-Dense / Multimodal Retrieval，或所有 PDF 的可靠元数据抽取。
+项目暂不宣称已经稳定支持任意文档类型、坐标级 PDF 高亮、自动引文网络、Multimodal Retrieval、
+大规模 Dense 检索质量与容量结论，或所有 PDF 的可靠元数据抽取。
 
 ## 继续阅读
 

@@ -15,8 +15,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class QdrantClient {
@@ -56,6 +58,7 @@ public class QdrantClient {
                         + " but the active embedding provider returned " + dimension);
             }
         }
+        ensurePayloadIndexes();
         ensuredDimension = dimension;
     }
 
@@ -100,15 +103,66 @@ public class QdrantClient {
         ), "delete Qdrant paper points");
     }
 
+    public void deleteByPaperIdExceptGeneration(String paperId, String indexGeneration) {
+        if (paperId == null || paperId.isBlank() || indexGeneration == null || indexGeneration.isBlank()) {
+            throw new IllegalArgumentException("paperId and indexGeneration are required");
+        }
+        requireSuccess(send(
+                "POST",
+                collectionPath() + "/points/delete?wait=true",
+                Map.of("filter", Map.of(
+                        "must", List.of(matchValue("paper_id", paperId)),
+                        "must_not", List.of(matchValue("index_generation", indexGeneration))
+                )),
+                false
+        ), "delete stale Qdrant paper points");
+    }
+
     public long countByPaperId(String paperId) {
         if (paperId == null || paperId.isBlank()) {
             return 0;
         }
+        return count(Map.of("must", List.of(matchValue("paper_id", paperId))));
+    }
+
+    public long countByPaperIdAndGeneration(String paperId, String indexGeneration) {
+        if (paperId == null || paperId.isBlank() || indexGeneration == null || indexGeneration.isBlank()) {
+            return 0;
+        }
+        return count(Map.of("must", List.of(
+                matchValue("paper_id", paperId),
+                matchValue("index_generation", indexGeneration)
+        )));
+    }
+
+    public Set<String> indexedPaperIds(int limit) {
+        HttpResponse<String> response = send(
+                "POST",
+                collectionPath() + "/facet",
+                Map.of("key", "paper_id", "limit", Math.max(1, limit), "exact", true),
+                false
+        );
+        requireSuccess(response, "facet Qdrant paper ids");
+        try {
+            LinkedHashSet<String> result = new LinkedHashSet<>();
+            for (JsonNode hit : objectMapper.readTree(response.body()).path("result").path("hits")) {
+                String value = hit.path("value").asText("").trim();
+                if (!value.isBlank()) {
+                    result.add(value);
+                }
+            }
+            return result;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Invalid Qdrant facet response", exception);
+        }
+    }
+
+    private long count(Map<String, Object> filter) {
         HttpResponse<String> response = send(
                 "POST",
                 collectionPath() + "/points/count",
                 Map.of(
-                        "filter", Map.of("must", List.of(matchValue("paper_id", paperId))),
+                        "filter", filter,
                         "exact", true
                 ),
                 false
@@ -239,6 +293,26 @@ public class QdrantClient {
                     .asInt(0);
         } catch (IOException exception) {
             throw new IllegalStateException("Invalid Qdrant collection response", exception);
+        }
+    }
+
+    private void ensurePayloadIndexes() {
+        Map<String, String> indexes = new LinkedHashMap<>();
+        indexes.put("paper_id", "keyword");
+        indexes.put("model_version", "keyword");
+        indexes.put("index_generation", "keyword");
+        indexes.put("element_types", "keyword");
+        indexes.put("page_number", "integer");
+        indexes.put("owner_user_id", "keyword");
+        indexes.put("org_tag", "keyword");
+        indexes.put("is_public", "bool");
+        for (Map.Entry<String, String> index : indexes.entrySet()) {
+            requireSuccess(send(
+                    "PUT",
+                    collectionPath() + "/index?wait=true",
+                    Map.of("field_name", index.getKey(), "field_schema", index.getValue()),
+                    false
+            ), "create Qdrant payload index " + index.getKey());
         }
     }
 

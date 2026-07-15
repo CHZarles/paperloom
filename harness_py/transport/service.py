@@ -79,6 +79,7 @@ class ResearchHarnessService:
                 conversation_id=conversation_id,
                 user_id=int(raw_user_id),
                 scope_paper_ids=paper_ids,
+                cancel_check=should_cancel,
             )
             dataset = corpus_reader.load_metadata_dataset()
             missing = sorted(set(paper_ids) - set(dataset.paper_records_by_id))

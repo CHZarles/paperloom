@@ -80,7 +80,7 @@ Parser 输出会随解析器版本变化。Parser 与 Agent 之间的 Reading Mo
 - Versioned Reading Model、页面、章节、类型化元素、Location 与视觉资产；
 - 论文库、显式 Source Scope、持续会话与点击来源追问；
 - 基于 OpenAI Agents SDK 的单路径 Python Research Harness；
-- 授权范围内的 Metadata Discovery 与 In-memory BM25 Reading Retrieval；
+- Java Corpus API、Qdrant Dense/Sparse Candidate Retrieval 与 MySQL Exact Read；
 - Evidence Ledger、Citation Validation、`evaluate_evidence_coverage` 与可重开的历史引用；
 - Evidence-first Golden Case、Per-run Trace、Human Label 与 Judge Calibration；
 - Vue 3 论文库、研究进度、来源选择和 Evidence Inspection。
@@ -92,7 +92,8 @@ PaperLoom 仍在持续开发。目前还没有做到：
 - 任意文档格式都能稳定进入同一 Reading Model；
 - 所有 PDF 都能抽取可靠的作者、会议和 DOI；
 - 已经实现坐标级高亮或完整 Citation Graph；
-- 在 Live Assistant 中使用 Dense / Multimodal Retrieval；
+- 大规模 Dense Retrieval 的质量、容量和高可用验证；
+- 在 Live Assistant 中使用 Multimodal Retrieval；
 - Eval 分数可以直接代表所有真实用户满意度；
 - 增加模型调用次数就一定能提高研究质量。
 

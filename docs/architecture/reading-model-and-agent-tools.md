@@ -87,19 +87,19 @@ in MinIO and are reopened through the product boundary.
 
 This is why the Reading Model is a product model rather than a thin parser cache.
 
-## Full Model Versus Live Projection
+## Full Model Versus Product Retrieval
 
-The complete Reading Model and the current Python corpus are intentionally not identical:
+The complete Reading Model and the product retrieval projection are intentionally not identical:
 
-| Capability | Durable Reading Model | Current live Python projection |
+| Capability | Durable Reading Model | Current product path |
 | --- | --- | --- |
-| Model metadata and readiness | Yes | Yes |
-| Physical page rows | Yes | Not directly loaded |
-| Section rows | Yes | Not directly loaded |
-| Typed Reading Elements | Yes | Yes, primary retrieval surface |
-| Formal location rows | Yes | Location fields carried from elements; separate table not directly loaded |
-| Visual asset records | Yes | Availability flags only |
-| Vector or embedding representation | Not required for canonical truth | Not used |
+| Model metadata and readiness | Yes | Java selects only the Current READY version |
+| Physical page rows | Yes | Read by Java for exact page locations; not loaded into Python |
+| Section rows | Yes | Read by Java for exact section locations; not loaded into Python |
+| Typed Reading Elements | Yes | Projected into Qdrant candidates and reopened from MySQL by Java |
+| Formal location rows | Yes | Stable `location_ref` is the candidate and Evidence navigation identity |
+| Visual asset records | Yes | Retained in MySQL/MinIO; binary assets are not copied into the Harness |
+| Vector or embedding representation | Not canonical truth | Rebuildable dense/sparse Qdrant projection owned by Java |
 
 This distinction prevents documentation from claiming that a stored capability already participates
 in the live answer path.
@@ -223,10 +223,10 @@ Agents SDK loop.
 The system remains bounded because authorization, disclosure, evidence creation, coverage, citation,
 and final submission are deterministic tool and validator rules outside the model's discretion.
 
-## Future Retrieval Work
+## Next Retrieval Validation
 
-Dense retrieval can be added later without replacing the Reading Model. A future implementation can
-derive embeddings from canonical Reading Elements, fuse lexical and dense candidates, or train a
-reranker from saved behavior. Promotion should depend on held-out Candidate / Read / Cited / Hard
-Pass improvements, latency, cost, and failure analysis rather than on vector-search availability
-alone.
+The product path now derives dense and sparse candidates from canonical Reading Elements and fuses
+them deterministically. The next retrieval work is measurement rather than another storage rewrite:
+held-out Candidate / Read / Cited recall, semantic-miss analysis, large-scope filter performance,
+capacity, snapshot/restore, and only then a possible reranker. Promotion decisions should depend on
+quality, latency, cost, and failure analysis rather than on vector-search availability alone.
