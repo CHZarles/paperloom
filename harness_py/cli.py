@@ -6,13 +6,21 @@ import os
 import sys
 from dataclasses import replace
 from pathlib import Path
+from uuid import uuid4
 
 from .corpus.product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
+from .corpus.gateway import JavaCorpusGateway
 from .evaluation.audit import audit_dataset
 from .evaluation.dataset import load_dataset
 from .evaluation.golden_fixture import GoldenFixtureHarness
+from .evaluation.golden_case import case_question, conversation_state_for_case
 from .evaluation.judge import LLMJudge, evaluate_calibration, load_calibration_cases
 from .evaluation.judge_model import MiniMaxJudgeModel
+from .evaluation.product_runner import (
+    load_product_corpus_map,
+    product_reader_for_case,
+    validate_product_scope,
+)
 from .evaluation.scoring import BehaviorScorer
 from .orchestration.conversation import ConversationState
 from .orchestration.live_chat import LiveResearchChatHarness
@@ -29,13 +37,24 @@ def main(argv: list[str] | None = None) -> int:
     audit_parser = subcommands.add_parser("audit", help="Verify authored anchors against parsed reading models.")
     audit_parser.add_argument(
         "--out",
-        default="data/golden/transformer-bert-gpt/generated-audit/anchor-verification.json",
+        default="research/golden-data/local-runs/stable-anchor-audit.json",
     )
     run_parser = subcommands.add_parser("run", help="Run all cases and write frontend-readable JSON artifacts.")
     run_parser.add_argument("--out", default="eval/rag/runs/python-harness-prototype")
     agent_parser = subcommands.add_parser("agent-run", help="Run the real tool-using agent harness with MiniMax.")
     agent_parser.add_argument("--out", default="eval/rag/runs/python-minimax-agent")
     agent_parser.add_argument("--case-id", action="append", default=[])
+    agent_parser.add_argument(
+        "--corpus-backend",
+        choices=["golden-memory", "java-qdrant"],
+        default="golden-memory",
+        help="Use frozen Golden Reading Models or the product Java/Qdrant corpus path.",
+    )
+    agent_parser.add_argument(
+        "--product-corpus-map",
+        default=os.getenv("GOLDEN_PRODUCT_CORPUS_MAP", ""),
+        help="Golden-to-product paper mapping required by --corpus-backend java-qdrant.",
+    )
     _add_runtime_options(agent_parser)
     chat_parser = subcommands.add_parser("chat", help="Chat with current product DB papers.")
     chat_parser.add_argument("--question", required=True)
@@ -97,12 +116,48 @@ def main(argv: list[str] | None = None) -> int:
             }, indent=2, sort_keys=True), file=sys.stderr)
             return 2
         cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
+        corpus_map = None
+        corpus_gateway = None
+        if args.corpus_backend == "java-qdrant":
+            try:
+                corpus_map = load_product_corpus_map(args.product_corpus_map, dataset)
+                validate_product_scope(dataset, cases, corpus_map)
+                corpus_gateway = JavaCorpusGateway()
+            except Exception as error:
+                print(json.dumps({
+                    "error": "golden_product_corpus_setup_failed",
+                    "error_type": type(error).__name__,
+                    "message": str(error),
+                }, indent=2, sort_keys=True), file=sys.stderr)
+                return 2
         provider, harness = _live_harness(
             args.provider_source,
             args.max_tokens,
             args.eval_dump,
         )
-        runs = [harness.run_case(dataset, case) for case in cases]
+        runs = []
+        for case in cases:
+            if corpus_map is None or corpus_gateway is None:
+                run = harness.run_case(dataset, case)
+            else:
+                state = conversation_state_for_case(dataset, case)
+                reader = product_reader_for_case(
+                    corpus_gateway,
+                    dataset,
+                    case,
+                    corpus_map,
+                    request_id=f"golden-{case['id']}-{uuid4().hex}",
+                    conversation_id=state.conversation_id,
+                )
+                run, _ = harness.run_turn(
+                    dataset,
+                    state,
+                    case_question(case),
+                    case_id_override=str(case["id"]),
+                    corpus_reader=reader,
+                )
+            run.setdefault("diagnostics", {})["corpus_backend"] = args.corpus_backend
+            runs.append(run)
         report = BehaviorScorer().score_dataset(
             dataset if not selected else _dataset_with_cases(dataset, cases),
             runs,
@@ -112,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
             "out": str(out),
             "provider": provider.public_diagnostics(),
             "runtime": "agents_sdk",
+            "corpus_backend": args.corpus_backend,
             "eval_capture_failed_count": harness.eval_capture_failures,
             "score_report": report,
         }, indent=2, sort_keys=True))

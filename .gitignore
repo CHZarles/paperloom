@@ -77,17 +77,6 @@ frontend/AutoClaw.pem
 src/main/resources/cert
 /.runtime
 /data/*
-!/data/golden/
-/data/golden/*
-!/data/golden/transformer-bert-gpt/
-/data/golden/transformer-bert-gpt/*
-!/data/golden/transformer-bert-gpt/reading-models/
-/data/golden/transformer-bert-gpt/reading-models/*
-!/data/golden/transformer-bert-gpt/reading-models/adam_2014.reading-model.json
-!/data/golden/transformer-bert-gpt/reading-models/attention_is_all_you_need_2017.reading-model.json
-!/data/golden/transformer-bert-gpt/reading-models/bert_2018.reading-model.json
-!/data/golden/transformer-bert-gpt/reading-models/gpt2_2019.reading-model.json
-!/data/golden/transformer-bert-gpt/reading-models/gpt3_2020.reading-model.json
 
 # Worktrees
 .worktrees/
@@ -99,6 +88,7 @@ src/main/resources/cert
 .qoder/
 .venv-harness/
 /research/golden-data/local-runs/
+/research/golden-data/product-corpus-map.local.yaml
 .classpath
 .factorypath
 .project

@@ -1,0 +1,9 @@
+schema_version: harness-golden-product-corpus-map/v1
+dataset_id: harness_golden_seed
+user_id: 1
+papers:
+  attention_is_all_you_need_2017: REPLACE_WITH_PRODUCT_PAPER_ID
+  adam_2014: REPLACE_WITH_PRODUCT_PAPER_ID
+  bert_2018: REPLACE_WITH_PRODUCT_PAPER_ID
+  gpt2_2019: REPLACE_WITH_PRODUCT_PAPER_ID
+  gpt3_2020: REPLACE_WITH_PRODUCT_PAPER_ID

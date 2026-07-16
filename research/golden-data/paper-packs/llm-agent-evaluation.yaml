@@ -1,6 +1,6 @@
 schema_version: harness-paper-pack/v2
 id: llm_agent_evaluation
-data_dir: ../../research/golden-data/corpora/llm-agent-evaluation
+data_dir: corpora/llm-agent-evaluation
 
 papers:
   - id: react_2023

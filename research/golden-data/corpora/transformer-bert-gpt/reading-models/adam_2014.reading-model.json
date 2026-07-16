@@ -3,7 +3,7 @@
   "pack_id" : "transformer-bert-gpt",
   "paper_id" : "adam_2014",
   "model_version" : "rm_golden_adam_2014",
-  "source_pdf_path" : "data/golden/transformer-bert-gpt/pdfs/adam_2014.pdf",
+  "source_pdf_path" : "research/golden-data/corpora/transformer-bert-gpt/pdfs/adam_2014.pdf",
   "source_pdf_sha256" : "eab9c73ae2ceda884b94830bda99312254bac4806f6c9f045cbab90721ecda31",
   "pdf_page_count" : 15,
   "parser_name" : "MinerU",

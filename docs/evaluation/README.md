@@ -85,7 +85,7 @@ checked across different valid phrasings:
 See:
 
 - [`research/golden-data/README.md`](../../research/golden-data/README.md)
-- [`research/harness-golden-data-schema.md`](../../research/harness-golden-data-schema.md)
+- [`research/golden-data/SCHEMA.md`](../../research/golden-data/SCHEMA.md)
 - [`harness_py/README.md`](../../harness_py/README.md)
 
 ## What The Data Can Improve

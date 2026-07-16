@@ -3,7 +3,7 @@
   "pack_id" : "transformer-bert-gpt",
   "paper_id" : "bert_2018",
   "model_version" : "rm_golden_bert_2018",
-  "source_pdf_path" : "data/golden/transformer-bert-gpt/pdfs/bert_2018.pdf",
+  "source_pdf_path" : "research/golden-data/corpora/transformer-bert-gpt/pdfs/bert_2018.pdf",
   "source_pdf_sha256" : "5692a5514787a8c6727b4ff3b726a3385798bc68e12138d1d4af83947e2acf6e",
   "pdf_page_count" : 16,
   "parser_name" : "MinerU",

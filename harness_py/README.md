@@ -168,6 +168,14 @@ Java 使用 `/v1/research/stream` 获取 NDJSON Progress 和最终结果；`/v1/
   --case-id transformer_adam_params_001 \
   --out research/golden-data/local-runs/agent-run
 
+# 通过产品 Java/Qdrant 链路运行同一个 Golden Case
+.venv-harness/bin/python -m harness_py agent-run \
+  --provider-source env \
+  --corpus-backend java-qdrant \
+  --product-corpus-map research/golden-data/product-corpus-map.local.yaml \
+  --case-id transformer_adam_params_001 \
+  --out research/golden-data/local-runs/agent-run-qdrant
+
 # 运行 Python 测试
 .venv-harness/bin/python -m unittest discover -s harness_py/tests
 

@@ -80,6 +80,20 @@ class GoldenV2Test(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "dataset_id"):
                 load_dataset(manifest)
 
+    def test_loader_rejects_authoring_files_outside_the_golden_root(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "manifest.yaml"
+            manifest.write_text(
+                "schema_version: harness-golden-data/v2\n"
+                "dataset_id: fixture\n"
+                "paper_packs: [../pack.yaml]\n"
+                "case_files: []\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "stay inside"):
+                load_dataset(manifest)
+
     def test_expanded_dataset_is_an_isolated_superset_of_the_stable_dataset(self) -> None:
         expanded = load_dataset("research/golden-data/manifest-expanded.yaml")
         stable_pack_id = str(self.dataset.paper_packs[0]["id"])
@@ -199,9 +213,12 @@ class GoldenV2Test(unittest.TestCase):
 
     def test_committed_reading_models_use_the_authored_pack_data_directory(self) -> None:
         pack = self.dataset.paper_packs[0]
-        self.assertEqual("transformer-bert-gpt", pack["data_dir"])
+        self.assertEqual("corpora/transformer-bert-gpt", pack["data_dir"])
         expected_paths = {
-            paper_id: f"data/golden/transformer-bert-gpt/reading-models/{paper_id}.reading-model.json"
+            paper_id: (
+                "research/golden-data/corpora/transformer-bert-gpt/reading-models/"
+                f"{paper_id}.reading-model.json"
+            )
             for paper_id in self.dataset.paper_records_by_id
         }
 
@@ -214,6 +231,34 @@ class GoldenV2Test(unittest.TestCase):
         )
         self.assertEqual(set(expected_paths), set(self.dataset.reading_models_by_paper_id))
         self.assertEqual([], self.dataset.load_warnings)
+
+    def test_all_golden_corpora_resolve_below_the_single_management_root(self) -> None:
+        expanded = load_dataset("research/golden-data/manifest-expanded.yaml")
+
+        self.assertTrue(all(
+            str(pack["data_dir"]).startswith("corpora/")
+            for pack in expanded.paper_packs
+        ))
+        self.assertTrue(all(
+            str(record["source_assets"]["reading_model_path"]).startswith(
+                "research/golden-data/corpora/"
+            )
+            for record in expanded.paper_records_by_id.values()
+        ))
+        self.assertFalse(any(
+            "data/golden" in str(record["source_assets"]["reading_model_path"])
+            for record in expanded.paper_records_by_id.values()
+        ))
+
+    def test_pack_data_directory_cannot_escape_the_golden_management_root(self) -> None:
+        from harness_py.evaluation.paths import resolve_pack_data_dir
+
+        with TemporaryDirectory() as directory:
+            manifest = Path(directory) / "manifest.yaml"
+            manifest.write_text("dataset_id: fixture\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "stay inside"):
+                resolve_pack_data_dir(manifest, "../outside")
 
     def test_all_authored_anchors_are_locatable_in_reading_models(self) -> None:
         from harness_py.evaluation.audit import audit_dataset

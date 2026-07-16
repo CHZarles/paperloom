@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
-
 import yaml
 
 from .golden_case import CITATION_POLICIES, OUTCOMES
+from .paths import display_repo_path, reading_model_path, resolve_authoring_path
 from ..core.models import (
     GOLDEN_CASE_SCHEMA_VERSION,
     GOLDEN_SCHEMA_VERSION,
@@ -42,19 +41,18 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
     if not isinstance(manifest.get("dataset_id"), str) or not manifest["dataset_id"].strip():
         raise ValueError("manifest requires a non-empty dataset_id")
 
-    base = manifest_path.parent
     packs = [
-        _load_yaml(_resolve_authoring_path(base, root, path))
+        _load_yaml(resolve_authoring_path(manifest_path, path))
         for path in as_list(manifest.get("paper_packs"))
     ]
     cases: list[JsonMap] = []
     for path in as_list(manifest.get("case_files")):
-        loaded = _load_yaml(_resolve_authoring_path(base, root, path))
+        loaded = _load_yaml(resolve_authoring_path(manifest_path, path))
         cases.extend(child_map(case) for case in as_list(loaded.get("cases")))
 
     _validate_packs(packs)
     _validate_cases(cases, packs)
-    paper_records = _normalized_paper_records(packs)
+    paper_records = _normalized_paper_records(packs, manifest_path, root)
     anchors = _normalized_anchors(packs)
     citation_edges = [edge for pack in packs for edge in as_list(pack.get("citation_edges"))]
     warnings: list[str] = []
@@ -180,7 +178,11 @@ def _validate_cases(cases: list[JsonMap], packs: list[JsonMap]) -> None:
                     raise ValueError(f"case {case_id} claim references unknown anchor {anchor_id}")
 
 
-def _normalized_paper_records(packs: list[JsonMap]) -> dict[str, JsonMap]:
+def _normalized_paper_records(
+    packs: list[JsonMap],
+    manifest_path: Path,
+    root: Path,
+) -> dict[str, JsonMap]:
     records: dict[str, JsonMap] = {}
     for pack in packs:
         data_dir = str(pack["data_dir"])
@@ -199,11 +201,9 @@ def _normalized_paper_records(packs: list[JsonMap]) -> dict[str, JsonMap]:
                 },
                 "source_assets": {
                     "source_url": paper.get("source_url"),
-                    "reading_model_path": str(
-                        Path("data/golden")
-                        / data_dir
-                        / "reading-models"
-                        / f"{paper_id}.reading-model.json"
+                    "reading_model_path": display_repo_path(
+                        reading_model_path(manifest_path, data_dir, paper_id),
+                        root,
                     ),
                 },
             }
@@ -237,18 +237,6 @@ def _load_yaml(path: Path) -> JsonMap:
     if not isinstance(data, dict):
         raise ValueError(f"YAML root must be a mapping: {path}")
     return data
-
-
-def _resolve_authoring_path(base: Path, root: Path, raw_path: Any) -> Path:
-    if not raw_path:
-        raise ValueError("manifest reference is missing path")
-    path = Path(str(raw_path))
-    if path.is_absolute():
-        return path
-    by_manifest = base / path
-    if by_manifest.exists():
-        return by_manifest.resolve()
-    return (root / path).resolve()
 
 
 def _load_reading_models(root: Path, paper_records: dict[str, JsonMap], warnings: list[str]) -> dict[str, JsonMap]:

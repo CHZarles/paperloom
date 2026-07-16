@@ -3,7 +3,7 @@
   "pack_id" : "transformer-bert-gpt",
   "paper_id" : "gpt3_2020",
   "model_version" : "rm_golden_gpt3_2020",
-  "source_pdf_path" : "data/golden/transformer-bert-gpt/pdfs/gpt3_2020.pdf",
+  "source_pdf_path" : "research/golden-data/corpora/transformer-bert-gpt/pdfs/gpt3_2020.pdf",
   "source_pdf_sha256" : "97fd272f1fdfc18677462d0292f5fbf26ca86b4d1b485c2dba03269b643a0e83",
   "pdf_page_count" : 75,
   "parser_name" : "MinerU",
