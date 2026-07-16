@@ -149,7 +149,8 @@ separately.
 
 1. No executable Golden path depends on `data/golden`.
 2. Both Paper Packs resolve Reading Models below `research/golden-data/corpora/`.
-3. Stable and expanded validation and Anchor audits retain their existing counts.
+3. Stable and expanded validation pass all 10 and 24 retrieval cases; Anchor audits retain their
+   existing 7 and 29 Anchor counts.
 4. `agent-run --corpus-backend java-qdrant` uses `JavaCorpusGatewayReader` for every selected case.
 5. Logical/product paper IDs are translated in requests, candidates, locations, and Evidence Ledger
    items without changing Golden case contracts.

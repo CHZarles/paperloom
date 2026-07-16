@@ -116,21 +116,6 @@ cases:
       citations: required
 
   - schema_version: harness-golden-case/v2
-    id: agent_benchmark_ambiguous_001
-    split: seed
-    paradigm: ambiguity_resolution
-    paper_pack: llm_agent_evaluation
-    messages:
-      - role: user
-        content: "agent benchmark"
-    expect:
-      outcome: needs_clarification
-      citations: forbidden
-    review:
-      - "Asks whether the user needs general-assistant, web, coding, multi-turn, or policy-constrained tool-agent evaluation."
-      - "Does not silently choose one benchmark or begin presenting research claims."
-
-  - schema_version: harness-golden-case/v2
     id: mint_vs_tau_interaction_comparison_001
     split: stress
     paradigm: deep_comparison

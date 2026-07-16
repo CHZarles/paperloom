@@ -29,9 +29,9 @@ class GoldenV2Test(unittest.TestCase):
     def setUp(self) -> None:
         self.dataset = load_dataset("research/golden-data/manifest.yaml")
 
-    def test_committed_dataset_is_v2_and_has_fifteen_cases(self) -> None:
+    def test_committed_dataset_is_v2_and_has_ten_retrieval_cases(self) -> None:
         self.assertEqual("harness-golden-data/v2", self.dataset.manifest["schema_version"])
-        self.assertEqual(15, len(self.dataset.cases))
+        self.assertEqual(10, len(self.dataset.cases))
         self.assertEqual(5, len(self.dataset.paper_records_by_id))
         self.assertEqual(7, len(self.dataset.anchors_by_id))
         self.assertEqual(5, len(self.dataset.reading_models_by_paper_id))
@@ -171,6 +171,15 @@ class GoldenV2Test(unittest.TestCase):
                 expanded_run.pop(timestamp_field)
             self.assertEqual(stable_run, expanded_run)
 
+    def test_active_manifests_only_include_cases_that_exercise_retrieval(self) -> None:
+        expanded = load_dataset("research/golden-data/manifest-expanded.yaml")
+
+        self.assertEqual(10, len(self.dataset.cases))
+        self.assertEqual(24, len(expanded.cases))
+        for case in expanded.cases:
+            required = case.get("expect", {}).get("evidence", {}).get("required", [])
+            self.assertTrue(required, case["id"])
+
     def test_expanded_dataset_does_not_change_the_harness_contract(self) -> None:
         expanded = load_dataset("research/golden-data/manifest-expanded.yaml")
         instructions = research_agent_instructions(ResearchSkillRegistry())
@@ -186,10 +195,10 @@ class GoldenV2Test(unittest.TestCase):
             "expanded Golden Data must not change model-visible corpus tools",
         )
 
-    def test_committed_dataset_has_four_history_snapshots(self) -> None:
+    def test_committed_dataset_has_three_history_snapshots(self) -> None:
         history_cases = [case for case in self.dataset.cases if len(case["messages"]) > 1]
-        self.assertEqual(4, len(history_cases))
-        self.assertEqual(15, len(self.dataset.cases))
+        self.assertEqual(3, len(history_cases))
+        self.assertEqual(10, len(self.dataset.cases))
 
     def test_history_snapshot_becomes_live_conversation_context(self) -> None:
         from harness_py.evaluation.golden_case import case_question, conversation_state_for_case
@@ -207,7 +216,7 @@ class GoldenV2Test(unittest.TestCase):
         runs = [GoldenFixtureHarness().run_case(self.dataset, case) for case in self.dataset.cases]
         report = BehaviorScorer().score_dataset(self.dataset, runs)
 
-        self.assertEqual(15, report["case_count"])
+        self.assertEqual(10, report["case_count"])
         self.assertEqual(0, report["failed_count"], report)
         self.assertTrue(all(score["hard_pass"] for score in report["scores"]))
 
@@ -815,9 +824,18 @@ class GoldenV2Test(unittest.TestCase):
         )
 
     def test_scorer_rejects_an_outcome_inconsistent_with_execution_status(self) -> None:
-        case = next(
-            case for case in self.dataset.cases if case["id"] == "attention_paper_ambiguous_001"
+        case = deepcopy(
+            next(
+                case
+                for case in self.dataset.cases
+                if case["id"] == "transformer_adam_params_001"
+            )
         )
+        case["id"] = "needs_clarification_fixture"
+        case["expect"] = {
+            "outcome": "needs_clarification",
+            "citations": "forbidden",
+        }
         run = GoldenFixtureHarness().run_case(self.dataset, case)
         run["status"] = "COMPLETED"
         run["research_answer"]["status"] = "COMPLETED"

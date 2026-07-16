@@ -19,8 +19,13 @@
 
 | Manifest | 范围 | 当前规模 | 用途 |
 | --- | --- | --- | --- |
-| `research/golden-data/manifest.yaml` | 原始 `transformer-bert-gpt` Pack | 5 篇论文，15 个 Case | 旧 Golden Data 的稳定回归门槛 |
-| `research/golden-data/manifest-expanded.yaml` | 原始 Pack 加 `llm-agent-evaluation` | 14 篇论文，30 个 Case | 更广的研究和 Benchmark 覆盖 |
+| `research/golden-data/manifest.yaml` | 原始 `transformer-bert-gpt` Pack | 5 篇论文，10 个检索 Case | 旧 Golden Data 的稳定回归门槛 |
+| `research/golden-data/manifest-expanded.yaml` | 原始 Pack 加 `llm-agent-evaluation` | 14 篇论文，24 个检索 Case | 更广的研究和 Benchmark 覆盖 |
+
+两个活动 Manifest 只保留必须读取论文证据的 Case，因此每个问题都会实际经过检索路径。语料清单、
+模糊短语澄清和超出语料范围的问题不经过检索，不再占用 Golden/Qdrant 回归预算；对应的底层合同
+继续由单元测试覆盖。历史 Run、人工复核和 Judge 校准产物保持冻结，其中仍可能出现已经退出活动
+Manifest 的旧 Case。
 
 两个 Manifest 使用不同的 `dataset_id`。扩展数据的 Run、Human Label 和报告不能冒充稳定数据，
 也不能覆盖稳定数据的回归结论。
@@ -109,8 +114,8 @@ python3 -m harness_py \
 预期摘要是：
 
 ```text
-stable:   case_count=15, passed_count=15, failed_count=0
-expanded: case_count=30, passed_count=30, failed_count=0
+stable:   case_count=10, passed_count=10, failed_count=0
+expanded: case_count=24, passed_count=24, failed_count=0
 ```
 
 修改 Manifest、Pack、Case、Schema、Fixture 生成或确定性评分后，先运行这一层。
@@ -156,7 +161,7 @@ Fixture 校验通过不代表 Anchor 审计也会通过。
   --out research/golden-data/local-runs/expanded-saved-query-replay.json
 ```
 
-它不调用模型，只统计 15 个新增 Case 的 Required Anchor 是否进入候选。当前结果为
+它不调用模型，只统计扩展 Pack 中 14 个检索 Case 的 Required Anchor 是否进入候选。当前结果为
 `29/32`，高于发布 Gate `21/32`。这一层用于区分“模型没有继续读”与“内存对照检索器根本没有
 返回”，不能代表 Java/Qdrant 产品路径的结果。
 
