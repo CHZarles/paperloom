@@ -286,7 +286,7 @@ class ProductRunnerTest(unittest.TestCase):
             run["evidence_ledger"]["items"][0]["matched_anchor_ids"],
         )
 
-    def test_cli_java_qdrant_backend_passes_a_product_reader_to_the_golden_runner(self) -> None:
+    def test_cli_passes_a_product_reader_to_the_golden_runner(self) -> None:
         dataset = self._dataset()
 
         class Provider:
@@ -334,7 +334,6 @@ class ProductRunnerTest(unittest.TestCase):
                 code = main([
                     "--manifest", "ignored.yaml",
                     "agent-run",
-                    "--corpus-backend", "java-qdrant",
                     "--product-corpus-map", str(mapping),
                     "--out", str(out),
                 ])
@@ -354,11 +353,24 @@ class ProductRunnerTest(unittest.TestCase):
             code = main([
                 "--manifest", "ignored.yaml",
                 "agent-run",
-                "--corpus-backend", "java-qdrant",
             ])
 
         self.assertEqual(2, code)
         live_harness.assert_not_called()
+
+    def test_cli_rejects_removed_compatibility_entries(self) -> None:
+        for arguments in (
+            ["agent-run", "--corpus-backend", "golden-memory"],
+            ["run"],
+            ["chat"],
+            ["chat-shell"],
+        ):
+            with self.subTest(arguments=arguments):
+                with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as raised:
+                        main(arguments)
+
+                self.assertEqual(2, raised.exception.code)
 
     @unittest.skipUnless(
         os.getenv("GOLDEN_QDRANT_LIVE_SMOKE") == "1",

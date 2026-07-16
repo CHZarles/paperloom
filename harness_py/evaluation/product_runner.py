@@ -27,7 +27,7 @@ def load_product_corpus_map(
     dataset: GoldenDataset,
 ) -> ProductCorpusMap:
     if not str(path or "").strip():
-        raise ValueError("--product-corpus-map is required for the java-qdrant backend")
+        raise ValueError("--product-corpus-map is required for agent-run")
     source = Path(path)
     with source.open("r", encoding="utf-8") as handle:
         document = yaml.safe_load(handle) or {}

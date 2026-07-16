@@ -407,22 +407,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         for value in forbidden:
             self.assertNotIn(value, source)
 
-    def test_cli_run_writes_optional_frontend_panes(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            from harness_py.cli import main
-
-            code = main(["--manifest", "research/golden-data/manifest.yaml", "run", "--out", tmp])
-
-            self.assertEqual(0, code)
-            report_path = Path(tmp) / "score_report.json"
-            self.assertTrue(report_path.exists())
-            report = json.loads(report_path.read_text(encoding="utf-8"))
-            self.assertEqual(0, report["failed_count"])
-            first_case = Path(tmp) / "transformer_adam_params_001"
-            self.assertTrue((first_case / "evidence_ledger.json").exists())
-            self.assertTrue((first_case / "citation_validation.json").exists())
-            self.assertTrue((first_case / "react_trace.json").exists())
-
     def test_agent_run_rejects_unknown_case_before_provider_or_output(self) -> None:
         from harness_py.cli import main
 
@@ -449,40 +433,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             self.assertNotEqual(0, code)
             live_harness.assert_not_called()
             self.assertFalse(out.exists())
-
-    def test_chat_shell_keeps_terminal_session_state(self) -> None:
-        from harness_py.cli import run_chat_shell
-
-        dataset = self._synthetic_dataset()
-        state = ConversationState.new("shell_test")
-        inputs = iter(["What is the answer?", "Use the same evidence.", "/state", "/exit"])
-        outputs = []
-        prompts = []
-
-        def input_func(prompt):
-            prompts.append(prompt)
-            return next(inputs)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            state_path = Path(tmp) / "state.json"
-            final_state = run_chat_shell(
-                dataset,
-                _ShellFakeHarness(),
-                state,
-                state_path=str(state_path),
-                input_func=input_func,
-                output_func=outputs.append,
-            )
-
-            saved = ConversationState.load(state_path)
-
-        self.assertEqual(2, final_state.turn_index)
-        self.assertEqual(final_state, saved)
-        self.assertEqual(["shell_ev_2"], final_state.selected_evidence_ids)
-        self.assertEqual(["you> ", "you> ", "you> ", "you> "], prompts)
-        self.assertTrue(any("Interactive chat ready" in output for output in outputs))
-        self.assertTrue(any(output == "assistant" for output in outputs))
-        self.assertTrue(any('"turn_index": 2' in output for output in outputs))
 
     def _synthetic_dataset(self) -> GoldenDataset:
         paper = {
@@ -554,44 +504,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 }
             },
         )
-
-
-class _ShellFakeHarness:
-    def run_turn(self, dataset, state, user_message):
-        turn = state.turn_index + 1
-        evidence_id = f"shell_ev_{turn}"
-        run = {
-            "run_id": f"shell_run_{turn}",
-            "case_id": f"shell_case_{turn}",
-            "research_answer": {
-                "status": "COMPLETED",
-                "answer_type": "exact_fact",
-                "summary": f"Shell answer {turn}.",
-                "markdown": f"Shell answer {turn}.",
-                "cited_evidence_ids": [evidence_id],
-            },
-            "evidence_ledger": {
-                "items": [{
-                    "evidence_id": evidence_id,
-                    "paper_id": "synthetic_paper",
-                    "title": "Synthetic Paper",
-                    "section": "Result",
-                    "page": 1,
-                    "location": f"loc_{turn}",
-                    "element_type": "paragraph",
-                    "span_text": "The structured value forty two is the answer.",
-                }]
-            },
-            "diagnostics": {
-                "tool_call_count": 1,
-                "finish_reason": "final_json",
-            },
-            "memory_update": {
-                "selected_paper_ids": ["synthetic_paper"],
-                "selected_evidence_ids": [evidence_id],
-            },
-        }
-        return run, state.updated_from_run(dataset, run, user_message)
 
 
 if __name__ == "__main__":

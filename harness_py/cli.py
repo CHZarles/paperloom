@@ -8,7 +8,6 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
-from .corpus.product_db_dataset import DockerMySqlProductCorpusStore, summarize_product_corpus
 from .corpus.gateway import JavaCorpusGateway
 from .evaluation.audit import audit_dataset
 from .evaluation.dataset import load_dataset
@@ -22,7 +21,6 @@ from .evaluation.product_runner import (
     validate_product_scope,
 )
 from .evaluation.scoring import BehaviorScorer
-from .orchestration.conversation import ConversationState
 from .orchestration.live_chat import LiveResearchChatHarness
 from .orchestration.runtime import build_harness_runtime
 from .transport.provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
@@ -33,45 +31,29 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Python research harness prototype.")
     parser.add_argument("--manifest", default="research/golden-data/manifest.yaml")
     subcommands = parser.add_subparsers(dest="command", required=True)
-    subcommands.add_parser("validate", help="Load the dataset and validate emitted traces in memory.")
+    subcommands.add_parser("validate", help="Load the dataset and validate deterministic fixture traces.")
     audit_parser = subcommands.add_parser("audit", help="Verify authored anchors against parsed reading models.")
     audit_parser.add_argument(
         "--out",
         default="research/golden-data/local-runs/stable-anchor-audit.json",
     )
-    run_parser = subcommands.add_parser("run", help="Run all cases and write frontend-readable JSON artifacts.")
-    run_parser.add_argument("--out", default="eval/rag/runs/python-harness-prototype")
-    agent_parser = subcommands.add_parser("agent-run", help="Run the real tool-using agent harness with MiniMax.")
+    agent_parser = subcommands.add_parser(
+        "agent-run",
+        help="Run the real tool-using agent through the Java/Qdrant product corpus.",
+    )
     agent_parser.add_argument("--out", default="eval/rag/runs/python-minimax-agent")
     agent_parser.add_argument("--case-id", action="append", default=[])
     agent_parser.add_argument(
-        "--corpus-backend",
-        choices=["golden-memory", "java-qdrant"],
-        default="golden-memory",
-        help="Use frozen Golden Reading Models or the product Java/Qdrant corpus path.",
-    )
-    agent_parser.add_argument(
         "--product-corpus-map",
         default=os.getenv("GOLDEN_PRODUCT_CORPUS_MAP", ""),
-        help="Golden-to-product paper mapping required by --corpus-backend java-qdrant.",
+        help="Golden-to-product paper mapping required by agent-run.",
     )
     _add_runtime_options(agent_parser)
-    chat_parser = subcommands.add_parser("chat", help="Chat with current product DB papers.")
-    chat_parser.add_argument("--question", required=True)
-    _add_chat_options(chat_parser)
-    chat_parser.add_argument("--print-state", action="store_true")
-    _add_runtime_options(chat_parser)
-    chat_parser.add_argument("--print-run", action="store_true")
-    shell_parser = subcommands.add_parser("chat-shell", help="Open an interactive terminal chat with product DB papers.")
-    _add_chat_options(shell_parser)
-    shell_parser.add_argument("--print-run", action="store_true")
-    _add_runtime_options(shell_parser)
     serve_parser = subcommands.add_parser("serve", help="Run the internal HTTP research harness service.")
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8091)
     serve_parser.add_argument("--internal-token", default="")
     serve_parser.add_argument("--max-tokens", type=int, default=3000)
-    serve_parser.add_argument("--corpus-limit", type=int, default=1000)
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
         help="Compare one LLM judge with fixed human-labelled harness runs.",
@@ -96,14 +78,6 @@ def main(argv: list[str] | None = None) -> int:
         _write_json(target, report)
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0 if report["failed_count"] == 0 else 1
-    if args.command == "run":
-        dataset = load_dataset(args.manifest)
-        harness = GoldenFixtureHarness()
-        runs = [harness.run_case(dataset, case) for case in dataset.cases]
-        report = BehaviorScorer().score_dataset(dataset, runs)
-        out = _write_runs(args.out, runs, report)
-        print(json.dumps({"out": str(out), "score_report": report}, indent=2, sort_keys=True))
-        return 0 if report["failed_count"] == 0 else 1
     if args.command == "agent-run":
         dataset = load_dataset(args.manifest)
         selected = set(args.case_id)
@@ -116,20 +90,17 @@ def main(argv: list[str] | None = None) -> int:
             }, indent=2, sort_keys=True), file=sys.stderr)
             return 2
         cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
-        corpus_map = None
-        corpus_gateway = None
-        if args.corpus_backend == "java-qdrant":
-            try:
-                corpus_map = load_product_corpus_map(args.product_corpus_map, dataset)
-                validate_product_scope(dataset, cases, corpus_map)
-                corpus_gateway = JavaCorpusGateway()
-            except Exception as error:
-                print(json.dumps({
-                    "error": "golden_product_corpus_setup_failed",
-                    "error_type": type(error).__name__,
-                    "message": str(error),
-                }, indent=2, sort_keys=True), file=sys.stderr)
-                return 2
+        try:
+            corpus_map = load_product_corpus_map(args.product_corpus_map, dataset)
+            validate_product_scope(dataset, cases, corpus_map)
+            corpus_gateway = JavaCorpusGateway()
+        except Exception as error:
+            print(json.dumps({
+                "error": "golden_product_corpus_setup_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
         provider, harness = _live_harness(
             args.provider_source,
             args.max_tokens,
@@ -137,26 +108,23 @@ def main(argv: list[str] | None = None) -> int:
         )
         runs = []
         for case in cases:
-            if corpus_map is None or corpus_gateway is None:
-                run = harness.run_case(dataset, case)
-            else:
-                state = conversation_state_for_case(dataset, case)
-                reader = product_reader_for_case(
-                    corpus_gateway,
-                    dataset,
-                    case,
-                    corpus_map,
-                    request_id=f"golden-{case['id']}-{uuid4().hex}",
-                    conversation_id=state.conversation_id,
-                )
-                run, _ = harness.run_turn(
-                    dataset,
-                    state,
-                    case_question(case),
-                    case_id_override=str(case["id"]),
-                    corpus_reader=reader,
-                )
-            run.setdefault("diagnostics", {})["corpus_backend"] = args.corpus_backend
+            state = conversation_state_for_case(dataset, case)
+            reader = product_reader_for_case(
+                corpus_gateway,
+                dataset,
+                case,
+                corpus_map,
+                request_id=f"golden-{case['id']}-{uuid4().hex}",
+                conversation_id=state.conversation_id,
+            )
+            run, _ = harness.run_turn(
+                dataset,
+                state,
+                case_question(case),
+                case_id_override=str(case["id"]),
+                corpus_reader=reader,
+            )
+            run.setdefault("diagnostics", {})["corpus_backend"] = "java-qdrant"
             runs.append(run)
         report = BehaviorScorer().score_dataset(
             dataset if not selected else _dataset_with_cases(dataset, cases),
@@ -167,89 +135,19 @@ def main(argv: list[str] | None = None) -> int:
             "out": str(out),
             "provider": provider.public_diagnostics(),
             "runtime": "agents_sdk",
-            "corpus_backend": args.corpus_backend,
+            "corpus_backend": "java-qdrant",
             "eval_capture_failed_count": harness.eval_capture_failures,
             "score_report": report,
         }, indent=2, sort_keys=True))
         if args.eval_dump and harness.eval_capture_failures:
             return 2
         return 0 if report["failed_count"] == 0 else 1
-    if args.command == "chat":
-        dataset = DockerMySqlProductCorpusStore().load_dataset(
-            paper_ids=args.paper_id or _state_scope_paper_ids(args.state),
-            query=args.paper_query,
-            limit=args.limit,
-        )
-        provider, harness = _live_harness(
-            args.provider_source,
-            args.max_tokens,
-            args.eval_dump,
-        )
-        state = _chat_state(args, dataset)
-        run, state = harness.run_turn(dataset, state, args.question)
-        case_dir = _write_run_if_requested(run, state, args.out)
-        state_path = args.state_out or args.state
-        _save_state_if_requested(state, state_path)
-        response = {
-            "provider": provider.public_diagnostics(),
-            "corpus": summarize_product_corpus(dataset).to_dict(),
-            "answer": run["research_answer"],
-            "conversation": {
-                "conversation_id": state.conversation_id,
-                "turn_index": state.turn_index,
-                "scope_paper_ids": state.scope_paper_ids,
-                "selected_paper_ids": state.selected_paper_ids,
-                "selected_evidence_ids": state.selected_evidence_ids,
-                "state_path": state_path or None,
-            },
-            "diagnostics": {
-                "finish_reason": run["diagnostics"].get("finish_reason"),
-                "tool_call_count": run["diagnostics"].get("tool_call_count"),
-            },
-        }
-        if case_dir:
-            response["out"] = str(case_dir)
-        if args.print_run:
-            response["harness_run"] = run
-        if args.print_state:
-            response["conversation_state"] = state.to_dict()
-        print(json.dumps(response, indent=2, sort_keys=True, ensure_ascii=False))
-        return 0
-    if args.command == "chat-shell":
-        dataset = DockerMySqlProductCorpusStore().load_dataset(
-            paper_ids=args.paper_id or _state_scope_paper_ids(args.state),
-            query=args.paper_query,
-            limit=args.limit,
-        )
-        provider, harness = _live_harness(
-            args.provider_source,
-            args.max_tokens,
-            args.eval_dump,
-        )
-        state = _chat_state(args, dataset)
-        state_path = args.state_out or args.state
-        print(json.dumps({
-            "provider": provider.public_diagnostics(),
-            "corpus": summarize_product_corpus(dataset).to_dict(),
-            "conversation_id": state.conversation_id,
-            "state_path": state_path or None,
-        }, indent=2, sort_keys=True, ensure_ascii=False))
-        run_chat_shell(
-            dataset,
-            harness,
-            state,
-            state_path=state_path,
-            out=args.out,
-            print_run=args.print_run,
-        )
-        return 0
     if args.command == "serve":
         serve(
             host=args.host,
             port=args.port,
             internal_token=args.internal_token,
             max_completion_tokens=args.max_tokens,
-            corpus_limit=args.corpus_limit,
         )
         return 0
     if args.command == "judge-calibrate":
@@ -288,111 +186,6 @@ def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--max-tokens", type=int, default=3000)
 
 
-def _add_chat_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--paper-id", action="append", default=[])
-    parser.add_argument("--paper-query", default="")
-    parser.add_argument("--limit", type=int, default=30)
-    parser.add_argument("--out", default="")
-    parser.add_argument("--state", default="")
-    parser.add_argument("--state-out", default="")
-    parser.add_argument("--conversation-id", default="live_conversation")
-
-
-def run_chat_shell(
-    dataset,
-    harness,
-    state: ConversationState,
-    state_path: str = "",
-    out: str = "",
-    print_run: bool = False,
-    input_func=input,
-    output_func=print,
-) -> ConversationState:
-    output_func("Interactive chat ready. Type /help for commands, /exit to quit.")
-    while True:
-        try:
-            user_message = input_func("you> ")
-        except EOFError:
-            output_func("")
-            break
-        stripped = user_message.strip()
-        if not stripped:
-            continue
-        if stripped in {"/exit", "/quit"}:
-            break
-        if stripped == "/help":
-            output_func(
-                "Commands: /state, /history, /new, /clear, /save, /exit. "
-                "Any other input is sent as a research turn."
-            )
-            continue
-        if stripped == "/state":
-            output_func(json.dumps(_terminal_state_summary(state), indent=2, sort_keys=True, ensure_ascii=False))
-            continue
-        if stripped == "/save":
-            _save_state_if_requested(state, state_path)
-            output_func(f"Saved state: {state_path}" if state_path else "No --state path configured.")
-            continue
-        if stripped in {"/new", "/clear"}:
-            state = state.reset()
-            _save_state_if_requested(state, state_path)
-            output_func("Started a fresh conversation context.")
-            continue
-        if stripped == "/history":
-            output_func(json.dumps(state.message_history, indent=2, ensure_ascii=False))
-            continue
-
-        run, state = harness.run_turn(dataset, state, stripped)
-        case_dir = _write_run_if_requested(run, state, out)
-        _save_state_if_requested(state, state_path)
-        _print_terminal_answer(output_func, run, case_dir)
-        if print_run:
-            output_func(json.dumps(run, indent=2, sort_keys=True, ensure_ascii=False))
-
-    _save_state_if_requested(state, state_path)
-    return state
-
-
-def _print_terminal_answer(output_func, run: dict, case_dir: Path | None) -> None:
-    answer = run.get("research_answer") or {}
-    output_func("")
-    output_func("assistant")
-    text = answer.get("markdown") or answer.get("summary") or ""
-    if text:
-        output_func(str(text))
-    if case_dir:
-        output_func(f"artifacts: {case_dir}")
-    output_func("")
-
-
-def _write_run_if_requested(run: dict, state: ConversationState, out: str) -> Path | None:
-    if not out:
-        return None
-    case_dir = Path(out) / str(run["case_id"])
-    case_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(case_dir / "harness_run.json", run)
-    _write_child_artifacts(case_dir, run)
-    _write_json(case_dir / "conversation_state.json", state.to_dict())
-    return case_dir
-
-
-def _save_state_if_requested(state: ConversationState, state_path: str) -> None:
-    if state_path:
-        state.save(state_path)
-
-
-def _terminal_state_summary(state: ConversationState) -> dict:
-    return {
-        "conversation_id": state.conversation_id,
-        "turn_index": state.turn_index,
-        "scope_paper_ids": state.scope_paper_ids,
-        "selected_paper_ids": state.selected_paper_ids,
-        "selected_evidence_ids": state.selected_evidence_ids,
-        "message_count": len(state.message_history),
-        "tool_trace_count": len(state.tool_traces),
-    }
-
-
 def _live_harness(
     provider_source: str,
     max_completion_tokens: int,
@@ -414,24 +207,6 @@ def _judge_model(provider_source: str):
 def _provider(provider_source: str):
     store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
     return store.load_active_provider("llm")
-
-
-def _chat_state(args, dataset):
-    if args.state and Path(args.state).exists():
-        state = ConversationState.load(args.state)
-    else:
-        state = ConversationState.new(args.conversation_id)
-    if args.paper_id:
-        return replace(state, scope_paper_ids=args.paper_id)
-    if not state.scope_paper_ids:
-        return replace(state, scope_paper_ids=sorted(dataset.paper_records_by_id))
-    return state
-
-
-def _state_scope_paper_ids(path: str) -> list[str]:
-    if not path or not Path(path).exists():
-        return []
-    return ConversationState.load(path).scope_paper_ids
 
 
 def _dataset_with_cases(dataset, cases):

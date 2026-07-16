@@ -28,10 +28,8 @@ class ResearchHarnessService:
         self,
         *,
         max_completion_tokens: int = 3000,
-        corpus_limit: int = 1000,
         provider=None,
         harness=None,
-        corpus_store=None,
         corpus_gateway=None,
     ):
         self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
@@ -42,11 +40,7 @@ class ResearchHarnessService:
                 max_completion_tokens=max_completion_tokens,
             ),
         )
-        # Product runtime uses the Java Corpus API. The direct MySQL store remains an explicit
-        # fixture/CLI adapter and is never selected as a silent production fallback.
-        self.corpus_store = corpus_store
-        self.corpus_gateway = corpus_gateway or (None if corpus_store is not None else JavaCorpusGateway())
-        self.corpus_limit = max(1, corpus_limit)
+        self.corpus_gateway = corpus_gateway or JavaCorpusGateway()
 
     def run_turn(self, request: JsonMap) -> JsonMap:
         return self.run_job(request, lambda _event: None, lambda: False)
@@ -69,24 +63,17 @@ class ResearchHarnessService:
         if not paper_ids:
             raise ValueError("scope.paper_ids must contain the papers authorized by Java")
 
-        corpus_reader = None
-        if self.corpus_gateway is not None:
-            raw_user_id = request.get("user_id")
-            if raw_user_id in (None, ""):
-                raise ValueError("user_id is required for the Java Corpus API")
-            corpus_reader = self.corpus_gateway.reader(
-                request_id=str(request.get("request_id") or ""),
-                conversation_id=conversation_id,
-                user_id=int(raw_user_id),
-                scope_paper_ids=paper_ids,
-                cancel_check=should_cancel,
-            )
-            dataset = corpus_reader.load_metadata_dataset()
-        else:
-            dataset = self.corpus_store.load_dataset(
-                paper_ids=paper_ids,
-                limit=max(len(paper_ids), self.corpus_limit),
-            )
+        raw_user_id = request.get("user_id")
+        if raw_user_id in (None, ""):
+            raise ValueError("user_id is required for the Java Corpus API")
+        corpus_reader = self.corpus_gateway.reader(
+            request_id=str(request.get("request_id") or ""),
+            conversation_id=conversation_id,
+            user_id=int(raw_user_id),
+            scope_paper_ids=paper_ids,
+            cancel_check=should_cancel,
+        )
+        dataset = corpus_reader.load_metadata_dataset()
         state = _conversation_state(request, conversation_id, paper_ids)
         run, next_state = self.harness.run_turn(
             dataset,
@@ -105,11 +92,9 @@ def serve(
     port: int = 8091,
     internal_token: str = "",
     max_completion_tokens: int = 3000,
-    corpus_limit: int = 1000,
 ) -> None:
     service = ResearchHarnessService(
         max_completion_tokens=max_completion_tokens,
-        corpus_limit=corpus_limit,
     )
     token = internal_token or os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
     app = _service_app(service, token)

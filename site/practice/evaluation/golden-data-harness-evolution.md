@@ -258,14 +258,9 @@ Python tests：                  76/76
   --manifest research/golden-data/manifest-expanded.yaml \
   validate
 
-.venv-harness/bin/python research/golden-data/replay_saved_queries.py \
-  --out /tmp/paperloom-saved-query-replay.json
-
-.venv-harness/bin/python research/golden-data/analyze_evidence_funnel.py \
-  --runs /tmp/paperloom-expanded-live \
-  --eval-dump /tmp/paperloom-expanded-eval \
-  --out /tmp/paperloom-evidence-funnel.json \
-  --markdown-out /tmp/paperloom-evidence-funnel.md
+.venv-harness/bin/python -m harness_py agent-run \
+  --product-corpus-map research/golden-data/product-corpus-map.local.yaml \
+  --case-id transformer_adam_params_001
 ```
 
 相关资料：

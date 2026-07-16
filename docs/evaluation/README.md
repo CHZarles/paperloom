@@ -90,14 +90,14 @@ See:
 
 ## What The Data Can Improve
 
-### Lexical Retrieval
+### Qdrant Retrieval
 
-Candidate queries, returned locations, BM25 inputs, chosen reads, and required anchors can identify
+Candidate queries, returned locations, Qdrant scores, chosen reads, and required anchors can identify
 false negatives, over-broad queries, weak section boosts, poor coverage allocation, and cases where
-adjacent context should or should not help. This supports measured tuning of the current in-memory
+adjacent context should or should not help. This supports measured tuning of the Java/Qdrant product
 retriever.
 
-### Future Dense Retrieval And Reranking
+### Dense Retrieval And Reranking
 
 Accepted reads can become positive query-location pairs. Disclosed but skipped or rejected locations
 can provide carefully filtered hard negatives. Held-out Golden Cases can then test whether an

@@ -81,7 +81,7 @@ Runtime 本身不持有长期会话状态。
 - `read_locations` 再由 Java 从 MySQL 精确读取 Canonical Location；
 - Python 只在真实 Read 后生成 `ev_...`，继续维护 Disclosure 和 Evidence Ledger。
 
-`DockerMySqlProductCorpusStore` 仍供显式 CLI、Fixture 和迁移诊断使用，不是产品运行时的静默回退。
+`DockerMySqlProductCorpusStore` 只供 Qdrant 产品探针和离线迁移诊断使用，不是 CLI 或运行时入口。
 Java Corpus Token 为空、Qdrant Collection 缺失、激活 Generation 不存在或 Embedding 合同不一致时，
 产品回合都会明确失败；Harness 不创建 Collection，也不会改走内存 BM25。
 
@@ -137,41 +137,20 @@ export MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1
 export MINIMAX_API_KEY=...
 export MINIMAX_MODEL=MiniMax-M3
 
-.venv-harness/bin/python -m harness_py chat-shell --provider-source env
-```
-
-`chat` 和 `chat-shell` 从产品 MySQL 加载论文。`--provider-source env` 只表示 Model Provider
-来自环境变量，不改变 Corpus 来源。
-
-启动供 Java 调用的内部服务：
-
-```bash
 .venv-harness/bin/python -m harness_py serve \
   --host 127.0.0.1 \
   --port 8091
 ```
 
 Java 使用 `/v1/research/stream` 获取 NDJSON Progress 和最终结果；`/v1/research/turn` 提供同步
-边界。Health Endpoint 是 `/health`。
+边界。Corpus 固定经过 Java/Qdrant；Health Endpoint 是 `/health`。
 
 ## 常用命令
 
 ```bash
-# 对产品库执行一个问题
-.venv-harness/bin/python -m harness_py chat \
-  --provider-source env \
-  --question "这篇论文的核心方法是什么？"
-
-# 运行一个真实 Golden Case
+# 通过唯一的产品 Java/Qdrant 链路运行 Golden Case
 .venv-harness/bin/python -m harness_py agent-run \
   --provider-source env \
-  --case-id transformer_adam_params_001 \
-  --out research/golden-data/local-runs/agent-run
-
-# 通过产品 Java/Qdrant 链路运行同一个 Golden Case
-.venv-harness/bin/python -m harness_py agent-run \
-  --provider-source env \
-  --corpus-backend java-qdrant \
   --product-corpus-map research/golden-data/product-corpus-map.local.yaml \
   --case-id transformer_adam_params_001 \
   --out research/golden-data/local-runs/agent-run-qdrant

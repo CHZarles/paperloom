@@ -376,18 +376,12 @@ export MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1
 export MINIMAX_API_KEY=...
 export MINIMAX_MODEL=MiniMax-M3
 
-.venv-harness/bin/python -m harness_py chat-shell --provider-source env
-```
-
-这里 `--provider-source env` 只选择模型配置来源；论文 Corpus 仍从产品数据库加载。
-
-启动内部服务：
-
-```bash
 .venv-harness/bin/python -m harness_py serve \
   --host 127.0.0.1 \
   --port 8091
 ```
+
+内部服务只通过 Java Corpus API 和 Qdrant 读取论文，不提供直接 MySQL 或内存 Corpus 入口。
 
 ## 最小心智模型
 

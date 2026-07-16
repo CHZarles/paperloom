@@ -13,8 +13,8 @@ The executable examples are:
 - `research/golden-data/cases/core.yaml`
 
 All Paper Pack `data_dir` values are relative to `research/golden-data/`, and corpus assets live under
-`research/golden-data/corpora/<pack-id>/`. Product-aligned Golden runs use the separate
-`harness-golden-product-corpus-map/v1` identity map described in
-`research/golden-data/CONSOLIDATION_AND_QDRANT_RUNNER_PROPOSAL.md`.
+`research/golden-data/corpora/<pack-id>/`. Golden runs always use the Java/Qdrant product corpus and
+bind stable Golden paper IDs to installation-specific product IDs through the
+`harness-golden-product-corpus-map/v1` identity map.
 
 V1 intent, retrieval-plan, trace-obligation, and compatibility-projection fields are no longer supported by the Python harness.

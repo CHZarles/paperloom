@@ -18,7 +18,6 @@ from .conversation import ConversationState
 from ..core.errors import HarnessCancelled
 from ..core.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stable_id
 from ..evaluation.eval_recorder import EvalRecorder
-from ..evaluation.golden_case import case_question, conversation_state_for_case
 from .memory import ResearchMemory
 from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
 from ..corpus.gateway import CorpusReader
@@ -36,20 +35,6 @@ class LiveResearchChatHarness:
         eval_dump_dir = eval_dump_dir or os.getenv("EVAL_DUMP_DIR")
         self.eval_dump_dir = Path(eval_dump_dir) if eval_dump_dir else None
         self.eval_capture_failures = 0
-
-    def run_question(self, dataset: GoldenDataset, question: str) -> JsonMap:
-        run, _ = self.run_turn(dataset, ConversationState.new("transient_live_chat"), question)
-        return run
-
-    def run_case(self, dataset: GoldenDataset, case: JsonMap) -> JsonMap:
-        state = conversation_state_for_case(dataset, case)
-        run, _ = self.run_turn(
-            dataset,
-            state,
-            case_question(case),
-            case_id_override=str(case["id"]),
-        )
-        return run
 
     def run_turn(
         self,
