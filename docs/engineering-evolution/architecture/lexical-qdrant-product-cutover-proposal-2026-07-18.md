@@ -288,3 +288,121 @@ of the following occurs:
 This proposal deliberately separates implementation completion from production acceptance. The
 product is switched only after this cutover record proves the DDL, deployed runtime, rebuilt index,
 retrieval behavior, and complete MiniMax Golden Data together.
+
+## Final Acceptance Record
+
+Recorded on 2026-07-18. Decision: **accept the destructive lexical-Qdrant cutover**. This decision
+means the product data plane is deployed and verified; it does not mean every MiniMax Golden Case
+hard-passes.
+
+Persistent evidence root:
+
+```text
+research/golden-data/local-runs/lexical-qdrant-cutover-20260718-173750/
+```
+
+### Release Identity
+
+| Item | Accepted value |
+| --- | --- |
+| Main release commit | `a08f03804e5d079b633ce94318a9beb59f642028` |
+| JAR SHA-256 | `153c0a605921c3663231ac2612325507ebdf5b5445b2b4fb8a37359a97adca72` |
+| Lexical DDL migration SHA-256 | `39a920f2a8055bec6e23d80476d374555d1f4e12fc979347333e69c275705978` |
+| Embedding cleanup migration SHA-256 | `d4b304e3e0e66bd0d956dfe73cbddb8c8876d18d236437bcdc9838af20ab4850` |
+| Backend ready timestamp | `2026-07-18T22:52:39+08:00` |
+| Qdrant version | `1.15.5`, commit `48203e414e4e7f639a6d394fb6e4df695f808e51` |
+| Qdrant image | `qdrant/qdrant:v1.15.5`, image ID `sha256:0ad2e23181e5646b286253c04cea23f07040ca313cc377d9fa7b21db184b6406` |
+| Collection | `paperloom_reading_locations_bm25_v1` |
+| Sparse vector | `lexical_bm25_v1`, `modifier=idf`, `on_disk=true` |
+
+The deployed process command points at the JAR built from the committed `a08f038` snapshot. Port
+`8081` is reachable, the authenticated `/api/v1/users/me` probe returns the expected unauthenticated
+`403`, and the process environment resolves `QDRANT_COLLECTION` to the accepted collection.
+
+### Build And Schema Gates
+
+- Clean Java test compilation passed.
+- The nine focused cutover test classes passed: `35` tests, `0` failures.
+- The complete Java suite passed from the committed snapshot: `685` tests, `0` failures, `0` errors,
+  `3` skipped. The ignored launch PDF corpus was mounted into the isolated build worktree for the
+  manifest existence test; no corpus file was copied or modified.
+- The Python Harness suite passed: `120` tests, `0` failures, `1` skipped.
+- Frontend `vue-tsc` type checking and the production Vite build passed. Login, chat-shell, and
+  knowledge-base bundle budgets all passed.
+- The installed MySQL schema contains the lexical index columns and singleton
+  `QDRANT_FULL_REBUILD` control row. Obsolete embedding/index-generation columns count is `0`, and
+  `model_provider_configs` contains only `llm` rows.
+- The two destructive migrations were already applied before this deployment and were not rerun.
+  The live schema and repository contract were verified instead.
+
+### Rebuild And Retrieval Gates
+
+The saved synchronous rebuild completed with:
+
+```text
+Current READY models:       87/87
+Indexed locations:          9,383
+Indexed lexical tokens:     2,257,908
+Failed papers:              0
+Frozen average doc length:  240.6381754236385
+```
+
+The deployed verifier output
+`cutover-verification-deployed-a08f038.json` reports `failure_count=0`. The global Qdrant exact
+count is `9,383`, and all `87` per-`(paper_id, model_version)` exact counts equal MySQL. Qdrant is
+green and contains only `paperloom_reading_locations_bm25_v1`; its dense vector map is empty and its
+only sparse vector is `lexical_bm25_v1`.
+
+The post-deployment replay in `retrieval-probe-deployed-a08f038/` exercised all `69` saved MiniMax
+retrieval queries through Java, Qdrant, Current Model validation, and MySQL hydration:
+
+| Metric | Java/Qdrant lexical result | Gate |
+| --- | ---: | ---: |
+| Exact evidence obligations | `48/48` | `>= 42/48` |
+| Complete Cases | `24/24` | `>= 20/24` |
+| MRR | `0.4801925505` | `>= 0.35923` |
+
+The frozen 76-paper latency run remains the accepted scale measurement: narrow p50 `64.821 ms`;
+broad p50 `132.100 ms`, p95 `371.559 ms`, and max `390.086 ms`. Source and runtime inspection found
+no Elasticsearch path, Dense search, query embedding, RRF, Hybrid request path, or request-level
+retrieval fallback. The retriever test and implementation verify one lexical Qdrant search per
+request; coverage is selected from that same candidate pool.
+
+### MiniMax-M3 Gate
+
+Both unchanged manifests completed with MiniMax-M3 through the Agents SDK and the Java/Qdrant
+product corpus path:
+
+| Manifest | Hard Pass | Technical failures | Eval capture failures | Duplicate events |
+| --- | ---: | ---: | ---: | ---: |
+| Stable | `6/10` | `0` | `0` | `0` |
+| Expanded | `9/24` | `0` | `0` | `0` |
+
+Against the immediately preceding live-Qdrant MiniMax runs, stable remained `6/10` with one improved,
+one regressed, and eight unchanged Cases. Expanded improved from `5/24` to `9/24`, with six improved,
+two regressed, and sixteen unchanged Cases. Every newly regressed Case had all required candidates
+available; the failures were model evidence-selection, citation, or content behavior rather than a
+missing or stale Qdrant candidate.
+
+Across the final expanded attribution, `47/48` required obligations were available to the actual
+MiniMax queries and `29/48` were read. The remaining broad-query miss is
+`tau_react_baseline_relationship`; the frozen replay retrieves it at rank `9`. That Case was already
+failing in the preceding live-Qdrant baseline, so it is not a new cutover regression, but it remains
+an explicit model-query/top-k limitation. The `6/10` and `9/24` results must therefore remain visible;
+candidate recall must not be reported as end-to-end Golden success.
+
+### Protected Inputs And Retirement Audit
+
+The release diff does not modify prompts, Golden manifests, Golden Cases, Anchors, product corpus
+maps, PDFs, extracted text, Reading Models, or corpus directories. Runtime and container inspection
+also confirms:
+
+- only MySQL and sparse-only Qdrant are required by this retrieval data plane;
+- no Elasticsearch container or volume exists;
+- no Elasticsearch or embedding environment variable is present in the backend process;
+- the embedding client/provider runtime, Dense/Hybrid/RRF path, old collection contract, and
+  request fallback are absent from current source.
+
+All five cutover gates are therefore accepted. Future work may improve MiniMax evidence selection or
+ranking under different query wording, but it must proceed as a new experiment rather than restoring
+the deleted compatibility path.
