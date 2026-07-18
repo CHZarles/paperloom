@@ -17,4 +17,6 @@ public interface PaperSectionRepository extends JpaRepository<PaperSection, Long
                                                                          String sectionId);
 
     long countByPaperIdAndModelVersion(String paperId, String modelVersion);
+
+    void deleteByPaperId(String paperId);
 }

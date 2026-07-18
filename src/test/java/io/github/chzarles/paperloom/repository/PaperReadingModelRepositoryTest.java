@@ -47,8 +47,7 @@ class PaperReadingModelRepositoryTest {
         model.setReadablePageCount(1);
         model.setReadableCharCount(12);
         model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.READY);
-        model.setRetrievalIndexGeneration("generation-1");
-        model.setRetrievalEmbeddingContract("collection|embedding-v1|3");
+        model.setRetrievalIndexContract("collection|location-bm25-v1");
         model.setRetrievalIndexedLocationCount(1);
         model.setRetrievalIndexedAt(LocalDateTime.of(2026, 7, 15, 12, 0));
         modelRepository.save(model);
@@ -108,8 +107,7 @@ class PaperReadingModelRepositoryTest {
 
         PaperReadingModel persisted = modelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-a").orElseThrow();
         assertEquals(PaperRetrievalIndexStatus.READY, persisted.getRetrievalIndexStatus());
-        assertEquals("generation-1", persisted.getRetrievalIndexGeneration());
-        assertEquals("collection|embedding-v1|3", persisted.getRetrievalEmbeddingContract());
+        assertEquals("collection|location-bm25-v1", persisted.getRetrievalIndexContract());
         assertEquals(1, persisted.getRetrievalIndexedLocationCount());
         assertEquals(1, pageRepository.findByPaperIdAndModelVersionOrderByPageNumberAsc("paper-a", "rm_test_1").size());
         assertEquals(1, sectionRepository.findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc("paper-a", "rm_test_1").size());
@@ -122,48 +120,33 @@ class PaperReadingModelRepositoryTest {
     }
 
     @Test
-    void activatesOnlyWhenTheExpectedGenerationIsStillCurrent() {
+    void claimsAndFinalizesOnlyTheOwningIndexJob() {
         PaperReadingModel model = new PaperReadingModel();
         model.setPaperId("paper-cas");
         model.setModelVersion("rm-cas-1");
         model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
         model.setCurrent(true);
+        model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.PENDING);
         modelRepository.saveAndFlush(model);
 
-        int first = modelRepository.activateRetrievalIndex(
-                "paper-cas",
-                "rm-cas-1",
-                null,
-                "generation-first",
-                "collection|embedding-v2|3",
-                7,
-                LocalDateTime.of(2026, 7, 15, 13, 0)
-        );
-        int stale = modelRepository.activateRetrievalIndex(
-                "paper-cas",
-                "rm-cas-1",
-                null,
-                "generation-loser",
-                "collection|embedding-v2|3",
-                7,
-                LocalDateTime.of(2026, 7, 15, 13, 1)
-        );
-        int replacement = modelRepository.activateRetrievalIndex(
-                "paper-cas",
-                "rm-cas-1",
-                "generation-first",
-                "generation-new",
-                "collection|embedding-v3|3",
-                8,
-                LocalDateTime.of(2026, 7, 15, 13, 2)
-        );
+        int first = modelRepository.claimInitialIndex(
+                "paper-cas", "rm-cas-1", "job-first", LocalDateTime.of(2026, 7, 15, 13, 0));
+        int duplicate = modelRepository.claimInitialIndex(
+                "paper-cas", "rm-cas-1", "job-loser", LocalDateTime.of(2026, 7, 15, 13, 1));
+        int stale = modelRepository.finishRetrievalIndexReady(
+                "paper-cas", "rm-cas-1", "BUILDING", "job-loser",
+                "collection|location-bm25-v2", 7, LocalDateTime.of(2026, 7, 15, 13, 2));
+        int completed = modelRepository.finishRetrievalIndexReady(
+                "paper-cas", "rm-cas-1", "BUILDING", "job-first",
+                "collection|location-bm25-v3", 8, LocalDateTime.of(2026, 7, 15, 13, 3));
 
         PaperReadingModel activated = modelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-cas").orElseThrow();
         assertEquals(1, first);
+        assertEquals(0, duplicate);
         assertEquals(0, stale);
-        assertEquals(1, replacement);
-        assertEquals("generation-new", activated.getRetrievalIndexGeneration());
-        assertEquals("collection|embedding-v3|3", activated.getRetrievalEmbeddingContract());
+        assertEquals(1, completed);
+        assertEquals(PaperRetrievalIndexStatus.READY, activated.getRetrievalIndexStatus());
+        assertEquals("collection|location-bm25-v3", activated.getRetrievalIndexContract());
         assertEquals(8, activated.getRetrievalIndexedLocationCount());
     }
 }

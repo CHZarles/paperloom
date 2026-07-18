@@ -4,8 +4,7 @@ import java.util.Map;
 
 public record QdrantPoint(
         String id,
-        float[] denseVector,
-        QdrantSparseVector sparseVector,
+        QdrantSparseVector lexicalVector,
         Map<String, Object> payload
 ) {
     public QdrantPoint {

@@ -70,7 +70,6 @@ const activeProcessingStatuses = new Set<Api.Paper.UploadTask['processingStatus'
   'MAPPING_STRUCTURED_CONTENT',
   'RENDERING_VISUAL_ASSETS',
   'CHUNKING',
-  'EMBEDDING',
   'INDEXING'
 ]);
 
@@ -82,7 +81,6 @@ const processingStatusLabels: Partial<Record<NonNullable<Api.Paper.UploadTask['p
   MAPPING_STRUCTURED_CONTENT: 'Mapping',
   RENDERING_VISUAL_ASSETS: 'Rendering',
   CHUNKING: 'Chunking',
-  EMBEDDING: 'Embedding',
   INDEXING: 'Indexing'
 };
 
@@ -160,7 +158,7 @@ function paperRowMenuOptions(row: Api.Paper.UploadTask) {
       key: 'parser',
       disabled: !canManageFile(row) || !row.parserArtifact?.available
     },
-    ...(canRetryVectorization(row) ? [{ label: 'Retry indexing', key: 'retry' }] : []),
+    ...(canRetryVectorization(row) ? [{ label: 'Retry processing', key: 'retry' }] : []),
     ...(canManageFile(row) ? [{ label: 'Delete paper', key: 'delete' }] : [])
   ];
 }
@@ -258,8 +256,8 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
       render: row => <span class="library-size-cell">{formatFileSize(row.totalSize ?? row.sourceFileSizeBytes)}</span>
     },
     {
-      key: 'estimatedEmbeddingTokens',
-      title: 'Index',
+      key: 'retrievalIndexedTokenCount',
+      title: 'Lexical index',
       width: 240,
       render: row => renderIndexUsage(row)
     },
@@ -348,7 +346,7 @@ const libraryStats = computed(() => {
   const searchable = rows.filter(item => isPaperSearchable(item)).length;
   const processing = rows.filter(item => isPipelineActive(item)).length;
   const failed = rows.filter(item => isPipelineFailed(item)).length;
-  const estimatedTokens = rows.reduce((sum, item) => sum + Number(item.estimatedEmbeddingTokens || 0), 0);
+  const indexedLocations = rows.reduce((sum, item) => sum + Number(item.retrievalIndexedLocationCount || 0), 0);
 
   return [
     {
@@ -372,9 +370,9 @@ const libraryStats = computed(() => {
       detail: 'needs action'
     },
     {
-      label: 'Est. tokens',
-      value: compactNumber(estimatedTokens),
-      detail: 'embedding'
+      label: 'Locations',
+      value: compactNumber(indexedLocations),
+      detail: 'lexical index'
     }
   ];
 });
@@ -413,10 +411,8 @@ function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.Uplo
     isPublic: source.isPublic,
     createdAt: source.createdAt,
     mergedAt: source.mergedAt,
-    estimatedEmbeddingTokens: source.estimatedEmbeddingTokens,
-    estimatedChunkCount: source.estimatedChunkCount,
-    actualEmbeddingTokens: source.actualEmbeddingTokens,
-    actualChunkCount: source.actualChunkCount,
+    retrievalIndexedTokenCount: source.retrievalIndexedTokenCount,
+    retrievalIndexedLocationCount: source.retrievalIndexedLocationCount,
     processingStatus: source.processingStatus,
     processingErrorMessage: source.processingErrorMessage,
     sourceType: source.sourceType,
@@ -629,7 +625,6 @@ function renderUploadProgress(percentage: number) {
 function renderIndexUsage(row: Api.Paper.UploadTask) {
   return (
     <div class="library-index-cell">
-      {renderIndexLine('EST', row.estimatedEmbeddingTokens, row.estimatedChunkCount)}
       {renderActualIndexLine(row)}
       {renderAssetStatus(row)}
     </div>
@@ -685,25 +680,25 @@ function formatAssetWarnings(warnings?: string[]) {
   return (warnings || []).map(warning => assetWarningLabels[warning] || warning).join('; ');
 }
 
-function renderIndexLine(label: string, tokens?: number | null, chunks?: number | null) {
-  if (!tokens) {
+function renderIndexLine(label: string, tokens?: number | null, locations?: number | null) {
+  if (!locations) {
     return (
       <div class="library-index-line library-index-line--empty">
         <span class="library-index-line__label">{label}</span>
-        <span>no estimate</span>
+        <span>not indexed</span>
       </div>
     );
   }
 
-  const tokenLabel = Number(tokens).toLocaleString();
-  const chunkLabel = Number(chunks || 0).toLocaleString();
+  const tokenLabel = Number(tokens || 0).toLocaleString();
+  const locationLabel = Number(locations).toLocaleString();
   return (
     <div class="library-index-line">
       <div class="library-index-line__top">
         <span class="library-index-line__label">{label}</span>
         <span>{tokenLabel} Tokens</span>
       </div>
-      <div class="library-index-line__meta">{chunkLabel} chunks</div>
+      <div class="library-index-line__meta">{locationLabel} locations</div>
     </div>
   );
 }
@@ -720,8 +715,7 @@ function isPaperSearchable(row: Api.Paper.UploadTask) {
   return (
     isUploadCompleted(row) &&
     row.processingStatus === 'COMPLETED' &&
-    hasActualVectorizationUsage(row) &&
-    Number(row.actualChunkCount || 0) > 0
+    hasRetrievalIndexUsage(row)
   );
 }
 
@@ -734,21 +728,17 @@ function isPipelineFailed(row: Api.Paper.UploadTask) {
   return row.status === UploadStatus.Break || row.processingStatus === 'FAILED';
 }
 
-function hasActualVectorizationUsage(row: Api.Paper.UploadTask) {
-  return row.actualEmbeddingTokens !== null && row.actualEmbeddingTokens !== undefined;
+function hasRetrievalIndexUsage(row: Api.Paper.UploadTask) {
+  return Number(row.retrievalIndexedLocationCount || 0) > 0;
 }
 
 function canRetryVectorization(row: Api.Paper.UploadTask) {
-  if (!canManageFile(row)) return false;
-  if (row.processingStatus === 'FAILED') return true;
-  if (row.processingStatus === 'COMPLETED' && !hasActualVectorizationUsage(row)) return true;
-  if (!hasActualVectorizationUsage(row) && row.estimatedEmbeddingTokens) return true;
-  return false;
+  return canManageFile(row) && row.processingStatus === 'FAILED';
 }
 
 async function handleRetryVectorization(row: Api.Paper.UploadTask) {
   const { error } = await request({
-    url: `/papers/${row.paperId}/vectorization/retry`,
+    url: `/papers/${row.paperId}/processing/retry`,
     method: 'POST'
   });
 
@@ -756,15 +746,15 @@ async function handleRetryVectorization(row: Api.Paper.UploadTask) {
 
   row.processingStatus = 'PROCESSING';
   row.processingErrorMessage = null;
-  row.actualEmbeddingTokens = undefined;
-  row.actualChunkCount = undefined;
-  window.$message?.success('Indexing retry queued');
+  row.retrievalIndexedTokenCount = undefined;
+  row.retrievalIndexedLocationCount = undefined;
+  window.$message?.success('Processing retry queued');
   await getList();
 }
 
 function renderActualIndexLine(row: Api.Paper.UploadTask) {
-  if (hasActualVectorizationUsage(row)) {
-    return renderIndexLine('ACT', row.actualEmbeddingTokens, row.actualChunkCount);
+  if (hasRetrievalIndexUsage(row)) {
+    return renderIndexLine('IDX', row.retrievalIndexedTokenCount, row.retrievalIndexedLocationCount);
   }
 
   if (isVectorizationProcessing(row)) {
@@ -774,7 +764,7 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
           <span class="library-index-line__label">ACT</span>
           <span>indexing</span>
         </div>
-        <div class="library-index-line__meta">waiting for token writeback</div>
+        <div class="library-index-line__meta">waiting for index writeback</div>
       </div>
     );
   }
@@ -790,7 +780,7 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
         {canRetryVectorization(row) ? (
           <div>
             <NButton size="tiny" secondary onClick={() => handleRetryVectorization(row)}>
-              Retry indexing
+              Retry processing
             </NButton>
           </div>
         ) : null}
@@ -806,12 +796,12 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
           <span>failed</span>
         </div>
         <NEllipsis tooltip lineClamp={2} style="color: var(--color-error)">
-          {row.processingErrorMessage || 'Check the embedding quota or retry later'}
+          {row.processingErrorMessage || 'Check the processing failure and retry'}
         </NEllipsis>
         {canRetryVectorization(row) ? (
           <div>
             <NButton size="tiny" type="error" secondary onClick={() => handleRetryVectorization(row)}>
-              Retry indexing
+              Retry processing
             </NButton>
           </div>
         ) : null}
@@ -829,7 +819,7 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
         <div class="library-index-line__meta">retry writeback</div>
         <div>
           <NButton size="tiny" secondary onClick={() => handleRetryVectorization(row)}>
-            Retry indexing
+            Retry processing
           </NButton>
         </div>
       </div>
@@ -869,7 +859,7 @@ function scheduleVectorizationPolling() {
 watch(
   () =>
     tasks.value
-      .map(item => `${item.paperId}:${item.processingStatus || ''}:${item.actualEmbeddingTokens ?? ''}`)
+      .map(item => `${item.paperId}:${item.processingStatus || ''}:${item.retrievalIndexedLocationCount ?? ''}`)
       .join('|'),
   () => {
     scheduleVectorizationPolling();

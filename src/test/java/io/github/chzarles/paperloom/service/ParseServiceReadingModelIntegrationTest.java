@@ -39,9 +39,6 @@ class ParseServiceReadingModelIntegrationTest {
     private PaperRepository paperRepository;
 
     @Mock
-    private UsageQuotaService usageQuotaService;
-
-    @Mock
     private PaperPdfParser paperPdfParser;
 
     @Mock
@@ -86,7 +83,6 @@ class ParseServiceReadingModelIntegrationTest {
         ParseService parseService = new ParseService();
         ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
-        ReflectionTestUtils.setField(parseService, "usageQuotaService", usageQuotaService);
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
         ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);

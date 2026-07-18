@@ -1,0 +1,59 @@
+schema_version: harness-qdrant-product-probes/v2
+
+golden_manifest: research/golden-data/manifest-expanded.yaml
+saved_runs: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3
+saved_query_fills:
+  mint_vs_tau_interaction_comparison_001: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1
+quality_candidate_budget_policy: strict_requested_top_k
+
+user_id: 1
+paper_id_map:
+  attention_is_all_you_need_2017: 18e1b007a1dab45b30cc861ba2dfda25
+  adam_2014: 5960b344851c685e12a021bbb31fec97
+  bert_2018: eb00ee1cacec4cdc5fdb41beff58f944
+  gpt2_2019: 662552d0dd512ea5b9cdbef326ffb293
+  gpt3_2020: f1798481561d9495486bc007180aa998
+  agentbench_2024: bf00436579e72429679264b76a660d3f
+  gaia_2024: f66a3a3cca316754ec460037e78d73a2
+  agentboard_2024: 3d47869e74a9e6ccb1ecddd25eef9d33
+  react_2023: 7fb2c7e66b7b7785d3971b44469f04f9
+  webarena_2024: a61452013dac11d41b5f74ecac49da5c
+  swebench_2024: 84916e46ded4b1219257c37f96a6e058
+  mint_2024: dab0879eee4da0d3cec56ad87bce7298
+  tau_bench_2024: d5a91f276cffcd6de38eca480a34c550
+  toolsandbox_2024: a77cffa7d51ca920f3e984ad1fc2bf0f
+
+cases:
+  - case_id: transformer_adam_params_001
+  - case_id: bert_transformer_role_001
+  - case_id: bert_vs_transformer_comparison_001
+  - case_id: transformer_to_bert_genealogy_001
+  - case_id: adam_beta2_conflict_001
+  - case_id: transformer_optimizer_reproduction_001
+  - case_id: gpt3_to_transformer_multihop_001
+  - case_id: bert_choice_followup_001
+  - case_id: transformer_bert_confirmation_followup_001
+  - case_id: adam_constraint_refinement_followup_001
+  - case_id: agentbench_environment_inventory_001
+    latency_query: environments evaluate weaknesses agent
+  - case_id: gaia_dataset_gap_001
+    latency_query: benchmark construction human annotators GPT-4 plugins results
+  - case_id: webarena_reproduction_protocol_001
+  - case_id: swebench_instance_provenance_001
+  - case_id: agentboard_progress_metric_001
+    latency_query: progress rate final success rate insufficient
+  - case_id: mint_vs_tau_interaction_comparison_001
+  - case_id: toolsandbox_constraint_selection_001
+  - case_id: cross_benchmark_human_agent_gap_001
+  - case_id: agent_evaluation_recommendation_001
+  - case_id: react_to_agent_evaluation_genealogy_001
+  - case_id: mint_tau_apparent_conflict_001
+  - case_id: coding_benchmark_followup_001
+  - case_id: cross_benchmark_score_ranking_partial_001
+  - case_id: benchmark_topic_change_followup_001
+
+scope_sizes: [1, 8, 32, 76]
+latency_top_k: 8
+latency_warmups: 1
+latency_repeats: 3
+query_min_interval_seconds: 0

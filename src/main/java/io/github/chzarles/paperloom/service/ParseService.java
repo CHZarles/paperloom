@@ -11,7 +11,6 @@ import io.github.chzarles.paperloom.paper.parser.ParsedPaper;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,9 +33,6 @@ public class ParseService {
 
     @Autowired
     private PaperRepository paperRepository;
-
-    @Autowired
-    private UsageQuotaService usageQuotaService;
 
     @Autowired
     private PaperPdfParser paperPdfParser;
@@ -120,31 +115,6 @@ public class ParseService {
         logger.info("论文 PDF 结构化解析和入库完成，paperId: {}, chunkCount: {}", paperId, chunks.size());
     }
 
-    public EmbeddingEstimate estimateEmbeddingUsage(InputStream fileStream) throws IOException {
-        return estimateEmbeddingUsage(fileStream, null);
-    }
-
-    public EmbeddingEstimate estimateEmbeddingUsage(InputStream fileStream, String originalFilename) throws IOException {
-        logger.info("开始估算论文 Embedding Token");
-        checkMemoryThreshold();
-
-        byte[] pdfBytes = fileStream.readAllBytes();
-        List<String> texts = splitEstimateText(extractEstimateText(pdfBytes));
-        long estimatedTokens = usageQuotaService.estimateEmbeddingTokens(texts);
-        return new EmbeddingEstimate(estimatedTokens, texts.size());
-    }
-
-    private String extractEstimateText(byte[] pdfBytes) {
-        if (pdfBytes == null || pdfBytes.length == 0) {
-            return "";
-        }
-        try (PDDocument document = PDDocument.load(pdfBytes)) {
-            return new PDFTextStripper().getText(document);
-        } catch (Exception ignored) {
-            return new String(pdfBytes, StandardCharsets.UTF_8);
-        }
-    }
-
     private Integer physicalPageCount(byte[] pdfBytes) {
         if (pdfBytes == null || pdfBytes.length == 0) {
             return null;
@@ -155,20 +125,6 @@ public class ParseService {
             logger.warn("无法读取 PDF 物理页数，将使用 parser 页数: {}", e.getMessage());
             return null;
         }
-    }
-
-    private List<String> splitEstimateText(String text) {
-        String normalized = text == null ? "" : text.replaceAll("\\s+", " ").trim();
-        if (normalized.isBlank()) {
-            return List.of();
-        }
-        int effectiveChunkSize = Math.max(1, chunkSize);
-        List<String> chunks = new ArrayList<>();
-        for (int start = 0; start < normalized.length(); start += effectiveChunkSize) {
-            int end = Math.min(start + effectiveChunkSize, normalized.length());
-            chunks.add(normalized.substring(start, end));
-        }
-        return chunks;
     }
 
     private void updatePaperMetadata(String paperId, ParsedPaper parsedPaper) {
@@ -258,6 +214,4 @@ public class ParseService {
         }
     }
 
-    public record EmbeddingEstimate(long estimatedTokens, int estimatedChunkCount) {
-    }
 }

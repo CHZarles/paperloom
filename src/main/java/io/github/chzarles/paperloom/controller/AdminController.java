@@ -9,7 +9,6 @@ import io.github.chzarles.paperloom.repository.RechargePackageRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.service.InviteCodeService;
-import io.github.chzarles.paperloom.service.ModelProviderConfigService;
 import io.github.chzarles.paperloom.service.RateLimitConfigService;
 import io.github.chzarles.paperloom.service.UsageDashboardService;
 import io.github.chzarles.paperloom.service.UsageQuotaService;
@@ -64,9 +63,6 @@ public class AdminController {
 
     @Autowired
     private RateLimitConfigService rateLimitConfigService;
-
-    @Autowired
-    private ModelProviderConfigService modelProviderConfigService;
 
     @Autowired
     private RechargePackageRepository rechargePackageRepository;
@@ -235,81 +231,6 @@ public class AdminController {
         }
     }
 
-    @GetMapping("/model-providers")
-    public ResponseEntity<?> getModelProviders(@RequestHeader("Authorization") String token) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-
-        try {
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "获取模型配置成功",
-                    "data", modelProviderConfigService.getCurrentSettings()
-            ));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_GET_MODEL_PROVIDERS", adminUsername, "获取模型配置失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "获取模型配置失败: " + e.getMessage()));
-        }
-    }
-
-    @PutMapping("/model-providers/{scope}")
-    public ResponseEntity<?> updateModelProviders(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String scope,
-            @RequestBody ModelProviderConfigService.UpdateScopeRequest request) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-
-        try {
-            requireEmbeddingProviderScope(scope);
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "模型配置更新成功",
-                    "data", modelProviderConfigService.updateScope(scope, request, adminUsername)
-            ));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("ADMIN_UPDATE_MODEL_PROVIDERS", adminUsername, "更新模型配置失败: %s", e, e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_UPDATE_MODEL_PROVIDERS", adminUsername, "更新模型配置异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "更新模型配置失败: " + e.getMessage()));
-        }
-    }
-
-    @PostMapping("/model-providers/{scope}/test")
-    public ResponseEntity<?> testModelProviderConnection(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String scope,
-            @RequestBody ModelProviderConfigService.ProviderConnectionTestRequest request) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-
-        try {
-            requireEmbeddingProviderScope(scope);
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "模型连接测试完成",
-                    "data", modelProviderConfigService.testConnection(scope, request)
-            ));
-        } catch (CustomException e) {
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "模型连接测试失败: " + e.getMessage()));
-        }
-    }
-
-    private void requireEmbeddingProviderScope(String scope) {
-        if (!ModelProviderConfigService.SCOPE_EMBEDDING.equalsIgnoreCase(scope)) {
-            throw new CustomException(
-                    "LLM provider configuration is deployment-managed",
-                    HttpStatus.BAD_REQUEST
-            );
-        }
-    }
-    
     /**
      * 创建管理员用户
      */

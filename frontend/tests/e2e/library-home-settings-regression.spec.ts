@@ -453,7 +453,6 @@ test('settings modal exposes admin and billing entries in place', async ({ page 
   await expect(page.getByRole('button', { name: 'Recharge', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'User Management', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Org Tag Admin', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Embedding Model/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Invite Codes', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Usage Monitor', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Recharge Management', exact: true })).toBeVisible();
@@ -462,7 +461,6 @@ test('settings modal exposes admin and billing entries in place', async ({ page 
     { entry: 'Recharge', heading: 'Billing / 余额充值' },
     { entry: 'User Management', heading: 'User Registry / 用户' },
     { entry: 'Org Tag Admin', heading: 'Taxonomy Tags / 分类标签' },
-    { entry: /^Embedding Model/, heading: 'Embedding Model / 向量模型' },
     { entry: 'Invite Codes', heading: 'Invite Codes / 邀请码' },
     { entry: 'Usage Monitor', heading: 'Runtime Limits / 限流配置' },
     { entry: 'Recharge Management', heading: 'Billing Packages / 充值套餐' }
@@ -474,34 +472,10 @@ test('settings modal exposes admin and billing entries in place', async ({ page 
   }
 });
 
-test('settings model provider entry loads real configuration in place', async ({ page }) => {
-  const modelProviderStatuses: number[] = [];
-  page.on('response', response => {
-    if (response.url().includes('/admin/model-providers') && response.request().method() === 'GET') {
-      modelProviderStatuses.push(response.status());
-    }
-  });
-
-  await installLoginState(page, await login());
-
-  await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('.chat-shell .chat-sidebar')).toBeVisible();
-  await page.getByRole('button', { name: '进入管理页面' }).click();
-  await page.getByRole('button', { name: /^Embedding Model/ }).click();
-
-  await expect(page).toHaveURL(/#\/chat/);
-  await expect(page.locator('[data-testid="settings-modal"]')).toBeVisible();
-  await expect(page.getByText('Embedding Model / 向量模型').first()).toBeVisible();
-  await expect(page.getByText('LLM Provider').first()).toHaveCount(0);
-  await expect(page.getByText('Embedding Provider').first()).toBeVisible();
-  await expect.poll(() => modelProviderStatuses).toContain(200);
-});
-
 test('regular users do not see or load admin settings content', async ({ page }) => {
   const adminModuleFragments = [
     '/src/views/user/',
     '/src/views/org-tag/',
-    '/src/views/model-provider/',
     '/src/views/invite-code/',
     '/src/views/usage-monitor/',
     '/src/views/recharge-manage/'
@@ -573,7 +547,6 @@ test('regular users cannot view admin pages through direct routes', async ({ pag
   const adminRoutes = [
     { path: '/chat-history', heading: 'Chat History' },
     { path: '/org-tag', heading: 'Taxonomy Tags / 分类标签' },
-    { path: '/model-provider', heading: 'Embedding Model / 向量模型' },
     { path: '/invite-code', heading: 'Invite Codes / 邀请码' },
     { path: '/usage-monitor', heading: 'Runtime Limits / 限流配置' },
     { path: '/recharge-manage', heading: 'Billing Packages / 充值套餐' }

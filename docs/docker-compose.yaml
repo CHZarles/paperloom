@@ -117,6 +117,10 @@ services:
     image: qdrant/qdrant:v1.15.5
     container_name: ${PAPERLOOM_QDRANT_CONTAINER:-paperloom-qdrant}
     restart: always
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "127.0.0.1:${QDRANT_HTTP_HOST_PORT:-6333}:6333"
       - "127.0.0.1:${QDRANT_GRPC_HOST_PORT:-6334}:6334"
@@ -125,7 +129,12 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
     healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333'"]
+      test:
+        - CMD-SHELL
+        - >-
+          timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333;
+          printf "GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3;
+          grep -q "^HTTP/1.1 200" <&3'
       interval: 10s
       timeout: 5s
       retries: 5

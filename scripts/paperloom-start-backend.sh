@@ -27,8 +27,9 @@ load_env() {
 }
 
 apply_local_ports() {
-  local mysql_port
-  mysql_port="$(docker port "$MYSQL_CONTAINER" 3306/tcp 2>/dev/null | sed -n '1s/.*://p')"
+  local mysql_container mysql_port
+  mysql_container="${PAPERLOOM_MYSQL_CONTAINER:-$MYSQL_CONTAINER}"
+  mysql_port="$(docker port "$mysql_container" 3306/tcp 2>/dev/null | sed -n '1s/.*://p' || true)"
   if [[ -n "$mysql_port" && "${SPRING_DATASOURCE_URL:-}" == jdbc:mysql://localhost:3306/* ]]; then
     export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL/jdbc:mysql:\/\/localhost:3306\//jdbc:mysql:\/\/localhost:${mysql_port}\/}"
   fi

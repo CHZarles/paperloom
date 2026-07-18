@@ -27,7 +27,6 @@ public class Paper {
     public static final String VECTORIZATION_STATUS_MAPPING_STRUCTURED_CONTENT = "MAPPING_STRUCTURED_CONTENT";
     public static final String VECTORIZATION_STATUS_RENDERING_VISUAL_ASSETS = "RENDERING_VISUAL_ASSETS";
     public static final String VECTORIZATION_STATUS_CHUNKING = "CHUNKING";
-    public static final String VECTORIZATION_STATUS_EMBEDDING = "EMBEDDING";
     public static final String VECTORIZATION_STATUS_INDEXING = "INDEXING";
 
     /**
@@ -97,17 +96,11 @@ public class Paper {
     @Column(name = "is_public", nullable = false)
     private boolean isPublic = false;
 
-    @Column(name = "estimated_embedding_tokens")
-    private Long estimatedEmbeddingTokens;
+    @Column(name = "retrieval_indexed_token_count")
+    private Long retrievalIndexedTokenCount;
 
-    @Column(name = "estimated_chunk_count")
-    private Integer estimatedChunkCount;
-
-    @Column(name = "actual_embedding_tokens")
-    private Long actualEmbeddingTokens;
-
-    @Column(name = "actual_chunk_count")
-    private Integer actualChunkCount;
+    @Column(name = "retrieval_indexed_location_count")
+    private Integer retrievalIndexedLocationCount;
 
     @Column(name = "vectorization_status", length = 32)
     private String vectorizationStatus;

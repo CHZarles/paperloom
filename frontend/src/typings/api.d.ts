@@ -246,37 +246,6 @@ declare namespace Api {
       embeddingQueryGlobalToken: TokenBudgetLimit;
     }
 
-    interface ModelProviderItem {
-      provider: string;
-      displayName: string;
-      apiStyle: string;
-      apiBaseUrl: string;
-      model: string;
-      dimension: number | null;
-      enabled: boolean;
-      active: boolean;
-      hasApiKey: boolean;
-      maskedApiKey: string;
-      apiKeyInput?: string;
-    }
-
-    interface ModelProviderScopeSettings {
-      scope: 'llm' | 'embedding';
-      activeProvider: string;
-      providers: ModelProviderItem[];
-    }
-
-    interface ModelProviderSettings {
-      llm: ModelProviderScopeSettings;
-      embedding: ModelProviderScopeSettings;
-    }
-
-    interface ConnectivityTestResult {
-      success: boolean;
-      message: string;
-      latencyMs: number;
-    }
-
     interface UsageTrendPoint {
       day: string;
       chatRequestCount: number;
@@ -351,10 +320,8 @@ declare namespace Api {
       progress: number;
       status: UploadStatus;
       uploadStatus?: 0 | 1 | 2 | 'UPLOADING' | 'MERGING' | 'COMPLETED';
-      estimatedEmbeddingTokens?: number;
-      estimatedChunkCount?: number;
-      actualEmbeddingTokens?: number;
-      actualChunkCount?: number;
+      retrievalIndexedTokenCount?: number;
+      retrievalIndexedLocationCount?: number;
       processingStatus?:
         | 'PENDING'
         | 'PROCESSING'
@@ -363,7 +330,6 @@ declare namespace Api {
         | 'MAPPING_STRUCTURED_CONTENT'
         | 'RENDERING_VISUAL_ASSETS'
         | 'CHUNKING'
-        | 'EMBEDDING'
         | 'INDEXING'
         | 'COMPLETED'
         | 'FAILED'
@@ -423,8 +389,6 @@ declare namespace Api {
       paperId: string;
       paperTitle: string;
       originalFilename: string;
-      estimatedEmbeddingTokens?: number;
-      estimatedChunkCount?: number;
     }
 
     interface DownloadResponse {

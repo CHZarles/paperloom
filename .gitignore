@@ -88,7 +88,7 @@ src/main/resources/cert
 .qoder/
 .venv-harness/
 /research/golden-data/local-runs/
-/research/golden-data/product-corpus-map.local.yaml
+/research/golden-data/product-corpus-map*.local.yaml
 .classpath
 .factorypath
 .project

@@ -15,9 +15,12 @@ import java.util.Set;
 public class PaperSearchabilityService {
 
     private final PaperReadingModelRepository modelRepository;
+    private final RetrievalIndexContractService contractService;
 
-    public PaperSearchabilityService(PaperReadingModelRepository modelRepository) {
+    public PaperSearchabilityService(PaperReadingModelRepository modelRepository,
+                                     RetrievalIndexContractService contractService) {
         this.modelRepository = modelRepository;
+        this.contractService = contractService;
     }
 
     public boolean isSearchable(Paper paper) {
@@ -25,6 +28,26 @@ public class PaperSearchabilityService {
             return false;
         }
         return searchablePaperIds(List.of(paper)).contains(paper.getPaperId().trim());
+    }
+
+    public boolean isSearchable(String paperId) {
+        if (paperId == null || paperId.isBlank()) {
+            return false;
+        }
+        return modelRepository.findFirstByPaperIdAndIsCurrentTrue(paperId.trim())
+                .map(this::isSearchable)
+                .orElse(false);
+    }
+
+    public boolean isSearchable(PaperReadingModel model) {
+        return model != null
+                && model.getPaperId() != null
+                && !model.getPaperId().isBlank()
+                && model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY
+                && model.getRetrievalIndexStatus() == PaperRetrievalIndexStatus.READY
+                && contractService.isActive(model.getRetrievalIndexContract())
+                && model.getRetrievalIndexedLocationCount() != null
+                && model.getRetrievalIndexedLocationCount() > 0;
     }
 
     public Set<String> searchablePaperIds(List<Paper> papers) {
@@ -43,23 +66,10 @@ public class PaperSearchabilityService {
         LinkedHashSet<String> searchable = new LinkedHashSet<>();
         for (PaperReadingModel model : modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
                 List.copyOf(paperIds), PaperReadingModelStatus.READING_MODEL_READY)) {
-            if (hasActiveRetrievalIndex(model)) {
+            if (isSearchable(model)) {
                 searchable.add(model.getPaperId());
             }
         }
         return Set.copyOf(searchable);
-    }
-
-    private boolean hasActiveRetrievalIndex(PaperReadingModel model) {
-        return model != null
-                && model.getPaperId() != null
-                && !model.getPaperId().isBlank()
-                && model.getRetrievalIndexStatus() == PaperRetrievalIndexStatus.READY
-                && model.getRetrievalIndexGeneration() != null
-                && !model.getRetrievalIndexGeneration().isBlank()
-                && model.getRetrievalEmbeddingContract() != null
-                && !model.getRetrievalEmbeddingContract().isBlank()
-                && model.getRetrievalIndexedLocationCount() != null
-                && model.getRetrievalIndexedLocationCount() > 0;
     }
 }

@@ -8,6 +8,8 @@ import java.util.Optional;
 
 @Repository
 public interface PaperSourceQuoteRepository extends JpaRepository<PaperSourceQuote, Long> {
+    void deleteByPaperId(String paperId);
+
     Optional<PaperSourceQuote> findFirstBySourceQuoteRef(String sourceQuoteRef);
 
     Optional<PaperSourceQuote> findFirstByPaperIdAndModelVersionAndLocationRefAndSplitPolicyVersionAndSplitIndexAndContentHash(

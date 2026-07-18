@@ -49,24 +49,24 @@ class QdrantClientTest {
     }
 
     @Test
-    void createsNamedDenseSparseCollectionAndSearchesWithScopeFilter() throws Exception {
-        client.ensureCollection(3);
+    void createsSparseOnlyLexicalCollectionAndSearchesWithScopeFilter() throws Exception {
+        client.ensureCollection();
         client.upsert(List.of(new QdrantPoint(
                 "10000000-0000-0000-0000-000000000001",
-                new float[]{1.0f, 0.0f, 0.0f},
                 new QdrantSparseVector(List.of(7), List.of(1.0f)),
                 Map.of("paper_id", "paper-a", "location_ref", "location_ref_a")
         )));
-        List<QdrantSearchHit> hits = client.searchDense(
-                new float[]{1.0f, 0.0f, 0.0f},
-                client.filter(Map.of("paper-a", "generation-1"), 2, 4),
+        List<QdrantSearchHit> hits = client.searchLexical(
+                new QdrantSparseVector(List.of(7), List.of(1.0f)),
+                client.filter(Map.of("paper-a", "rm-1"), 2, 4),
                 8
         );
 
         JsonNode create = bodyFor("PUT", "/collections/test_reading_models");
-        assertEquals(3, create.path("vectors").path("dense").path("size").asInt());
-        assertTrue(create.path("sparse_vectors").has("sparse"));
-        assertEquals(8, requests.stream()
+        assertFalse(create.has("vectors"));
+        assertEquals("idf", create.path("sparse_vectors").path("lexical_bm25_v1")
+                .path("modifier").asText());
+        assertEquals(5, requests.stream()
                 .filter(item -> item.method().equals("PUT")
                         && item.path().equals("/collections/test_reading_models/index?wait=true"))
                 .count());
@@ -75,21 +75,22 @@ class QdrantClientTest {
         assertEquals("location_ref_a", upsert.path("points").get(0).path("payload").path("location_ref").asText());
 
         JsonNode search = bodyFor("POST", "/collections/test_reading_models/points/search");
-        assertEquals("dense", search.path("vector").path("name").asText());
+        assertEquals("lexical_bm25_v1", search.path("vector").path("name").asText());
+        assertEquals(7, search.path("vector").path("vector").path("indices").get(0).asInt());
         assertEquals(8, search.path("limit").asInt());
         assertEquals("paper_id", search.path("filter").path("must").get(0).path("key").asText());
-        assertEquals("index_generation", search.path("filter").path("must").get(1).path("key").asText());
-        assertEquals("generation-1", search.path("filter").path("must").get(1)
+        assertEquals("model_version", search.path("filter").path("must").get(1).path("key").asText());
+        assertEquals("rm-1", search.path("filter").path("must").get(1)
                 .path("match").path("value").asText());
         assertFalse(search.toString().contains("element_types"));
         assertEquals("location_ref_a", hits.get(0).payload().get("location_ref"));
     }
 
     @Test
-    void scopeFilterKeepsEachPaperCoupledToItsActiveGeneration() {
+    void scopeFilterKeepsEachPaperCoupledToItsCurrentReadingModel() {
         Map<String, Object> filter = client.filter(Map.of(
-                "paper-a", "generation-a",
-                "paper-b", "generation-b"
+                "paper-a", "rm-a",
+                "paper-b", "rm-b"
         ), 2, 4);
 
         JsonNode json = objectMapper.valueToTree(filter);
@@ -104,17 +105,20 @@ class QdrantClientTest {
 
         assertEquals(2, json.path("should").size());
         assertEquals(Set.of(
-                Set.of("paper-a", "generation-a"),
-                Set.of("paper-b", "generation-b")
+                Set.of("paper-a", "rm-a"),
+                Set.of("paper-b", "rm-b")
         ), pairedValues);
-        assertEquals("page_number", json.path("must").get(0).path("key").asText());
+        assertEquals("page_end_number", json.path("must").get(0).path("key").asText());
+        assertEquals(2, json.path("must").get(0).path("range").path("gte").asInt());
+        assertEquals("page_number", json.path("must").get(1).path("key").asText());
+        assertEquals(4, json.path("must").get(1).path("range").path("lte").asInt());
     }
 
     @Test
     void retrievalVerificationRejectsMissingCollectionWithoutProvisioningIt() {
         IllegalStateException error = assertThrows(
                 IllegalStateException.class,
-                () -> client.verifyCollection(3)
+                client::verifyCollection
         );
 
         assertTrue(error.getMessage().contains("missing"));
@@ -126,12 +130,16 @@ class QdrantClientTest {
 
     @Test
     void provisioningRechecksCollectionAvailabilityAfterEarlierSuccess() {
-        client.ensureCollection(3);
-        client.ensureCollection(3);
+        client.ensureCollection();
+        client.ensureCollection();
 
         assertEquals(2, requests.stream()
                 .filter(item -> item.method().equals("GET")
                         && item.path().equals("/collections/test_reading_models"))
+                .count());
+        assertEquals(5, requests.stream()
+                .filter(item -> item.method().equals("PUT")
+                        && item.path().equals("/collections/test_reading_models/index?wait=true"))
                 .count());
     }
 
@@ -139,7 +147,7 @@ class QdrantClientTest {
     void concurrentCollectionCreationConflictRechecksTheWinningCollection() {
         conflictOnCreate = true;
 
-        client.ensureCollection(3);
+        client.ensureCollection();
 
         assertEquals(2, requests.stream()
                 .filter(item -> item.method().equals("GET")
@@ -158,26 +166,24 @@ class QdrantClientTest {
 
         IllegalStateException error = assertThrows(
                 IllegalStateException.class,
-                () -> client.verifyCollection(3)
+                client::verifyCollection
         );
 
-        assertTrue(error.getMessage().contains("sparse"));
+        assertTrue(error.getMessage().contains("lexical_bm25_v1"));
     }
 
     @Test
-    void deletesOnlyTheSpecifiedPaperGeneration() throws Exception {
-        assertEquals(1, client.countByPaperIdAndGeneration("paper-a", "generation-2"));
-        client.deleteByPaperIdAndGeneration("paper-a", "generation-2");
+    void countsTheSpecifiedPaperModelAndDeletesTheWholePaper() throws Exception {
+        assertEquals(1, client.countByPaperIdAndModelVersion("paper-a", "rm-2"));
+        client.deleteByPaperId("paper-a");
 
         JsonNode count = bodyFor("POST", "/collections/test_reading_models/points/count");
         assertEquals("paper_id", count.path("filter").path("must").get(0).path("key").asText());
-        assertEquals("index_generation", count.path("filter").path("must").get(1).path("key").asText());
+        assertEquals("model_version", count.path("filter").path("must").get(1).path("key").asText());
 
         JsonNode delete = bodyFor("POST", "/collections/test_reading_models/points/delete?wait=true");
         assertEquals("paper_id", delete.path("filter").path("must").get(0).path("key").asText());
-        assertEquals("index_generation", delete.path("filter").path("must").get(1).path("key").asText());
-        assertEquals("generation-2", delete.path("filter").path("must").get(1)
-                .path("match").path("value").asText());
+        assertEquals(1, delete.path("filter").path("must").size());
     }
 
     @Test
@@ -192,11 +198,17 @@ class QdrantClientTest {
         if ("GET".equals(exchange.getRequestMethod()) && path.equals("/collections/test_reading_models")) {
             if (collectionExists) {
                 String sparse = omitSparseVector
-                        ? ""
-                        : ",\"sparse_vectors\":{\"sparse\":{\"index\":{\"on_disk\":true}}}";
+                        ? "\"sparse_vectors\":{}"
+                        : "\"sparse_vectors\":{\"lexical_bm25_v1\":{\"modifier\":\"idf\",\"index\":{\"on_disk\":true}}}";
                 respond(exchange, 200,
-                        "{\"result\":{\"config\":{\"params\":{\"vectors\":{\"dense\":{\"size\":3}}"
-                                + sparse + "}}},\"status\":\"ok\"}");
+                        "{\"result\":{\"config\":{\"params\":{\"vectors\":{},"
+                                + sparse + "}},\"payload_schema\":{"
+                                + "\"paper_id\":{\"data_type\":\"keyword\"},"
+                                + "\"model_version\":{\"data_type\":\"keyword\"},"
+                                + "\"element_types\":{\"data_type\":\"keyword\"},"
+                                + "\"page_number\":{\"data_type\":\"integer\"},"
+                                + "\"page_end_number\":{\"data_type\":\"integer\"}}},"
+                                + "\"status\":\"ok\"}");
             } else {
                 respond(exchange, 404, "{}");
             }

@@ -128,8 +128,7 @@ class PaperRepositoryCandidateSearchTest {
         model.setCurrent(true);
         model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
         model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.READY);
-        model.setRetrievalIndexGeneration("generation-1");
-        model.setRetrievalEmbeddingContract("collection|embedding-v1|3");
+        model.setRetrievalIndexContract("canonical-location-v2|lexical-bm25-v1");
         model.setRetrievalIndexedLocationCount(1);
         return model;
     }

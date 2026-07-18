@@ -23,6 +23,8 @@ import java.util.Set;
 @Service
 public class QdrantClient {
 
+    static final String LEXICAL_VECTOR_NAME = "lexical_bm25_v1";
+
     private final ObjectMapper objectMapper;
     private final QdrantProperties properties;
     private final HttpClient httpClient;
@@ -35,52 +37,55 @@ public class QdrantClient {
                 .build();
     }
 
-    public synchronized void ensureCollection(int dimension) {
-        if (dimension <= 0) {
-            throw new IllegalArgumentException("Qdrant dense vector dimension must be positive");
-        }
+    public synchronized void ensureCollection() {
         HttpResponse<String> existing = send("GET", collectionPath(), null, true);
         if (existing.statusCode() == 404) {
-            Map<String, Object> body = Map.of(
-                    "vectors", Map.of("dense", Map.of("size", dimension, "distance", "Cosine")),
-                    "sparse_vectors", Map.of("sparse", Map.of("index", Map.of("on_disk", true)))
-            );
+            Map<String, Object> body = Map.of("sparse_vectors", Map.of(
+                    LEXICAL_VECTOR_NAME,
+                    Map.of("modifier", "idf", "index", Map.of("on_disk", true))
+            ));
             HttpResponse<String> created = send("PUT", collectionPath(), body, false);
             if (created.statusCode() == 409) {
-                validateCollection(send("GET", collectionPath(), null, false), dimension);
+                existing = send("GET", collectionPath(), null, false);
             } else {
                 requireSuccess(created, "create Qdrant collection");
+                existing = null;
             }
-        } else {
-            validateCollection(existing, dimension);
         }
-        ensurePayloadIndexes();
+        if (existing != null) {
+            validateCollection(existing);
+        }
+        ensurePayloadIndexes(existing);
     }
 
-    public void verifyCollection(int dimension) {
-        if (dimension <= 0) {
-            throw new IllegalArgumentException("Qdrant dense vector dimension must be positive");
-        }
+    public void verifyCollection() {
         HttpResponse<String> existing = send("GET", collectionPath(), null, true);
         if (existing.statusCode() == 404) {
             throw new IllegalStateException("Qdrant collection is missing: " + properties.getCollection());
         }
-        validateCollection(existing, dimension);
+        validateCollection(existing);
     }
 
-    private void validateCollection(HttpResponse<String> existing, int dimension) {
+    private void validateCollection(HttpResponse<String> existing) {
         requireSuccess(existing, "inspect Qdrant collection");
         JsonNode params = readCollectionParams(existing.body());
-        int configuredDimension = params.path("vectors").path("dense").path("size").asInt(0);
-        if (configuredDimension <= 0) {
-            throw new IllegalStateException("Qdrant collection is missing the named dense vector");
+        JsonNode vectors = params.path("vectors");
+        if (vectors.isObject() && vectors.size() > 0) {
+            throw new IllegalStateException("Qdrant lexical collection must not contain dense vectors");
         }
-        if (configuredDimension != dimension) {
-            throw new IllegalStateException("Qdrant collection dense dimension is " + configuredDimension
-                    + " but the active embedding provider returned " + dimension);
+        JsonNode sparseVectors = params.path("sparse_vectors");
+        if (!sparseVectors.has(LEXICAL_VECTOR_NAME)) {
+            throw new IllegalStateException("Qdrant collection is missing " + LEXICAL_VECTOR_NAME);
         }
-        if (!params.path("sparse_vectors").has("sparse")) {
-            throw new IllegalStateException("Qdrant collection is missing the named sparse vector");
+        if (sparseVectors.size() != 1) {
+            throw new IllegalStateException("Qdrant lexical collection contains unexpected sparse vectors");
+        }
+        String modifier = sparseVectors.path(LEXICAL_VECTOR_NAME).path("modifier").asText("");
+        if (!"idf".equalsIgnoreCase(modifier)) {
+            throw new IllegalStateException("Qdrant lexical sparse vector must use modifier=idf");
+        }
+        if (!sparseVectors.path(LEXICAL_VECTOR_NAME).path("index").path("on_disk").asBoolean(false)) {
+            throw new IllegalStateException("Qdrant lexical sparse index must use on_disk=true");
         }
     }
 
@@ -94,13 +99,10 @@ public class QdrantClient {
             for (QdrantPoint point : points.subList(start, Math.min(points.size(), start + batchSize))) {
                 batch.add(Map.of(
                         "id", point.id(),
-                        "vector", Map.of(
-                                "dense", point.denseVector(),
-                                "sparse", Map.of(
-                                        "indices", point.sparseVector().indices(),
-                                        "values", point.sparseVector().values()
-                                )
-                        ),
+                        "vector", Map.of(LEXICAL_VECTOR_NAME, Map.of(
+                                "indices", point.lexicalVector().indices(),
+                                "values", point.lexicalVector().values()
+                        )),
                         "payload", point.payload()
                 ));
             }
@@ -117,27 +119,22 @@ public class QdrantClient {
         if (paperId == null || paperId.isBlank()) {
             return;
         }
-        requireSuccess(send(
+        HttpResponse<String> response = send(
                 "POST",
                 collectionPath() + "/points/delete?wait=true",
                 Map.of("filter", Map.of("must", List.of(matchValue("paper_id", paperId)))),
-                false
-        ), "delete Qdrant paper points");
+                true
+        );
+        if (response.statusCode() != 404) {
+            requireSuccess(response, "delete Qdrant paper points");
+        }
     }
 
-    public void deleteByPaperIdAndGeneration(String paperId, String indexGeneration) {
-        if (paperId == null || paperId.isBlank() || indexGeneration == null || indexGeneration.isBlank()) {
-            throw new IllegalArgumentException("paperId and indexGeneration are required");
+    public void deleteCollectionIfExists() {
+        HttpResponse<String> response = send("DELETE", collectionPath(), null, true);
+        if (response.statusCode() != 404) {
+            requireSuccess(response, "delete Qdrant collection");
         }
-        requireSuccess(send(
-                "POST",
-                collectionPath() + "/points/delete?wait=true",
-                Map.of("filter", Map.of("must", List.of(
-                        matchValue("paper_id", paperId),
-                        matchValue("index_generation", indexGeneration)
-                ))),
-                false
-        ), "delete Qdrant paper generation");
     }
 
     public long countByPaperId(String paperId) {
@@ -147,13 +144,13 @@ public class QdrantClient {
         return count(Map.of("must", List.of(matchValue("paper_id", paperId))));
     }
 
-    public long countByPaperIdAndGeneration(String paperId, String indexGeneration) {
-        if (paperId == null || paperId.isBlank() || indexGeneration == null || indexGeneration.isBlank()) {
+    public long countByPaperIdAndModelVersion(String paperId, String modelVersion) {
+        if (paperId == null || paperId.isBlank() || modelVersion == null || modelVersion.isBlank()) {
             return 0;
         }
         return count(Map.of("must", List.of(
                 matchValue("paper_id", paperId),
-                matchValue("index_generation", indexGeneration)
+                matchValue("model_version", modelVersion)
         )));
     }
 
@@ -197,33 +194,29 @@ public class QdrantClient {
         }
     }
 
-    public List<QdrantSearchHit> searchDense(float[] vector, Map<String, Object> filter, int limit) {
-        return search(Map.of("name", "dense", "vector", vector), filter, limit);
-    }
-
-    public List<QdrantSearchHit> searchSparse(QdrantSparseVector vector,
-                                              Map<String, Object> filter,
-                                              int limit) {
+    public List<QdrantSearchHit> searchLexical(QdrantSparseVector vector,
+                                               Map<String, Object> filter,
+                                               int limit) {
         return search(Map.of(
-                "name", "sparse",
+                "name", LEXICAL_VECTOR_NAME,
                 "vector", Map.of("indices", vector.indices(), "values", vector.values())
         ), filter, limit);
     }
 
-    public Map<String, Object> filter(Map<String, String> activeGenerations,
+    public Map<String, Object> filter(Map<String, String> activeModels,
                                       Integer pageFrom,
                                       Integer pageTo) {
         List<Map<String, Object>> must = new ArrayList<>();
-        if (activeGenerations != null && !activeGenerations.isEmpty()) {
-            if (activeGenerations.size() == 1) {
-                Map.Entry<String, String> entry = activeGenerations.entrySet().iterator().next();
+        if (activeModels != null && !activeModels.isEmpty()) {
+            if (activeModels.size() == 1) {
+                Map.Entry<String, String> entry = activeModels.entrySet().iterator().next();
                 must.add(matchValue("paper_id", entry.getKey()));
-                must.add(matchValue("index_generation", entry.getValue()));
+                must.add(matchValue("model_version", entry.getValue()));
             } else {
-                List<Map<String, Object>> activePairs = activeGenerations.entrySet().stream()
+                List<Map<String, Object>> activePairs = activeModels.entrySet().stream()
                         .map(entry -> Map.<String, Object>of("must", List.of(
                                 matchValue("paper_id", entry.getKey()),
-                                matchValue("index_generation", entry.getValue())
+                                matchValue("model_version", entry.getValue())
                         )))
                         .toList();
                 Map<String, Object> filter = new LinkedHashMap<>();
@@ -240,17 +233,12 @@ public class QdrantClient {
     }
 
     private void addPageRange(List<Map<String, Object>> must, Integer pageFrom, Integer pageTo) {
-        if (pageFrom == null && pageTo == null) {
-            return;
-        }
-        Map<String, Object> range = new LinkedHashMap<>();
         if (pageFrom != null) {
-            range.put("gte", pageFrom);
+            must.add(Map.of("key", "page_end_number", "range", Map.of("gte", pageFrom)));
         }
         if (pageTo != null) {
-            range.put("lte", pageTo);
+            must.add(Map.of("key", "page_number", "range", Map.of("lte", pageTo)));
         }
-        must.add(Map.of("key", "page_number", "range", range));
     }
 
     public String indexVersion() {
@@ -323,27 +311,32 @@ public class QdrantClient {
     }
 
     private JsonNode readCollectionParams(String body) {
+        return readCollectionResult(body).path("config").path("params");
+    }
+
+    private JsonNode readCollectionResult(String body) {
         try {
             return objectMapper.readTree(body)
-                    .path("result")
-                    .path("config")
-                    .path("params");
+                    .path("result");
         } catch (IOException exception) {
             throw new IllegalStateException("Invalid Qdrant collection response", exception);
         }
     }
 
-    private void ensurePayloadIndexes() {
+    private void ensurePayloadIndexes(HttpResponse<String> collectionResponse) {
         Map<String, String> indexes = new LinkedHashMap<>();
         indexes.put("paper_id", "keyword");
         indexes.put("model_version", "keyword");
-        indexes.put("index_generation", "keyword");
         indexes.put("element_types", "keyword");
         indexes.put("page_number", "integer");
-        indexes.put("owner_user_id", "keyword");
-        indexes.put("org_tag", "keyword");
-        indexes.put("is_public", "bool");
+        indexes.put("page_end_number", "integer");
+        JsonNode payloadSchema = collectionResponse == null
+                ? objectMapper.createObjectNode()
+                : readCollectionResult(collectionResponse.body()).path("payload_schema");
         for (Map.Entry<String, String> index : indexes.entrySet()) {
+            if (payloadSchema.has(index.getKey())) {
+                continue;
+            }
             requireSuccess(send(
                     "PUT",
                     collectionPath() + "/index?wait=true",

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 
@@ -78,6 +82,17 @@ class FakeGateway:
 
 
 class JavaCorpusGatewayTest(unittest.TestCase):
+    def test_gateway_loads_internal_token_from_env_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            env_path = Path(temporary) / ".env"
+            env_path.write_text("RESEARCH_HARNESS_INTERNAL_TOKEN=local-token\n", encoding="utf-8")
+            with patch.dict(os.environ, {"RESEARCH_HARNESS_INTERNAL_TOKEN": ""}):
+                gateway = JavaCorpusGateway(env_path=env_path)
+            try:
+                self.assertEqual("Bearer local-token", gateway.client.headers["Authorization"])
+            finally:
+                gateway.client.close()
+
     def test_metadata_dataset_is_built_from_locked_scope_without_java_io(self) -> None:
         gateway = FakeGateway()
         reader = JavaCorpusGatewayReader(

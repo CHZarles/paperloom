@@ -39,10 +39,8 @@ CREATE TABLE file_upload (
                              abstract_text TEXT            DEFAULT NULL COMMENT '论文摘要',
                              doi          VARCHAR(255)     DEFAULT NULL COMMENT 'DOI',
                              arxiv_id     VARCHAR(255)     DEFAULT NULL COMMENT 'arXiv ID',
-                             estimated_embedding_tokens BIGINT DEFAULT NULL COMMENT '预估 embedding token 数',
-                             estimated_chunk_count INT DEFAULT NULL COMMENT '预估切片数',
-                             actual_embedding_tokens BIGINT DEFAULT NULL COMMENT '实际 embedding token 数',
-                             actual_chunk_count INT DEFAULT NULL COMMENT '实际切片数',
+                             retrieval_indexed_token_count BIGINT DEFAULT NULL COMMENT '词法索引 Token 数',
+                             retrieval_indexed_location_count INT DEFAULT NULL COMMENT '词法索引 Location 数',
                              vectorization_status VARCHAR(32) DEFAULT 'PENDING' COMMENT '解析/向量化流水线状态',
                              vectorization_error_message VARCHAR(1000) DEFAULT NULL COMMENT '解析/向量化错误信息',
                              created_at   TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -106,6 +104,14 @@ CREATE TABLE IF NOT EXISTS paper_reading_models (
     readable_page_count INT DEFAULT NULL COMMENT '有可读文本的页数',
     readable_char_count INT DEFAULT NULL COMMENT '可读字符数',
     failure_reason VARCHAR(1000) DEFAULT NULL COMMENT '构建失败原因',
+    retrieval_index_status VARCHAR(32) DEFAULT 'PENDING' COMMENT 'PENDING/BUILDING/READY/REBUILDING/FAILED',
+    retrieval_index_job_id VARCHAR(64) DEFAULT NULL COMMENT '当前索引任务 ID',
+    retrieval_index_contract VARCHAR(255) DEFAULT NULL COMMENT '词法检索索引合同',
+    retrieval_indexed_location_count INT DEFAULT NULL COMMENT '已索引位置数量',
+    retrieval_index_started_at TIMESTAMP NULL DEFAULT NULL COMMENT '索引任务开始时间',
+    retrieval_indexed_at TIMESTAMP NULL DEFAULT NULL COMMENT '索引完成时间',
+    retrieval_index_error_type VARCHAR(128) DEFAULT NULL COMMENT '索引错误类型',
+    retrieval_index_error_message VARCHAR(1000) DEFAULT NULL COMMENT '索引错误信息',
     diagnostics_json TEXT DEFAULT NULL COMMENT '构建诊断 JSON',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -113,6 +119,25 @@ CREATE TABLE IF NOT EXISTS paper_reading_models (
     INDEX idx_paper_reading_models_paper_current (paper_id, is_current),
     INDEX idx_paper_reading_models_paper_version (paper_id, model_version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论文 Reading Model 版本';
+
+CREATE TABLE IF NOT EXISTS paper_retrieval_control (
+    control_name VARCHAR(64) NOT NULL COMMENT '维护任务名称',
+    full_rebuild_status VARCHAR(32) NOT NULL COMMENT 'IDLE/RUNNING/SUCCEEDED/FAILED',
+    job_id VARCHAR(64) DEFAULT NULL COMMENT '当前全量任务 ID',
+    requested_by VARCHAR(64) DEFAULT NULL COMMENT '发起管理员 ID',
+    snapshot_paper_count INT NOT NULL DEFAULT 0 COMMENT '任务论文快照数量',
+    completed_paper_count INT NOT NULL DEFAULT 0 COMMENT '成功数量',
+    failed_paper_count INT NOT NULL DEFAULT 0 COMMENT '失败数量',
+    started_at TIMESTAMP NULL DEFAULT NULL COMMENT '开始时间',
+    finished_at TIMESTAMP NULL DEFAULT NULL COMMENT '结束时间',
+    last_error VARCHAR(1000) DEFAULT NULL COMMENT '最近错误',
+    active_index_contract VARCHAR(255) DEFAULT NULL COMMENT '当前词法检索索引合同',
+    lexical_average_document_length DOUBLE DEFAULT NULL COMMENT 'BM25 平均文档长度快照',
+    PRIMARY KEY (control_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论文检索全量维护状态';
+
+INSERT IGNORE INTO paper_retrieval_control (control_name, full_rebuild_status)
+VALUES ('QDRANT_FULL_REBUILD', 'IDLE');
 
 CREATE TABLE IF NOT EXISTS paper_pages (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -307,14 +332,13 @@ CREATE TABLE rate_limit_configs (
 
 CREATE TABLE model_provider_configs (
                                         id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '模型配置主键',
-                                        config_scope VARCHAR(32) NOT NULL COMMENT '作用域：llm / embedding',
+                                        config_scope VARCHAR(32) NOT NULL COMMENT '作用域：llm',
                                         provider_code VARCHAR(64) NOT NULL COMMENT 'provider 标识',
                                         display_name VARCHAR(128) NOT NULL COMMENT '展示名称',
                                         api_style VARCHAR(64) NOT NULL COMMENT '协议风格',
                                         api_base_url VARCHAR(512) NOT NULL COMMENT 'API 基础地址',
                                         model_name VARCHAR(255) NOT NULL COMMENT '模型名称',
                                         api_key_ciphertext VARCHAR(2048) DEFAULT NULL COMMENT '加密后的 API Key',
-                                        embedding_dimension INT DEFAULT NULL COMMENT 'Embedding 维度',
                                         enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否启用',
                                         active BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否当前激活',
                                         updated_by VARCHAR(255) NOT NULL COMMENT '最后更新人',

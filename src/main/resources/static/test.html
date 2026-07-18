@@ -334,18 +334,6 @@
                     <label>选择文件：</label>
                     <input type="file" id="upload-file" />
                 </div>
-                <div class="form-group">
-                    <label>组织标签：</label>
-                    <select id="org-tag-select">
-                        <option value="">使用主组织标签</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="is-public" />
-                        公开文件
-                    </label>
-                </div>
                     <div class="file-upload-progress">
                         <div class="progress-bar" id="upload-progress"></div>
                     </div>
@@ -430,7 +418,6 @@
             if (token) {
                 initializeWebSocket();
                 checkAdminStatus();
-                loadOrgTags();
                 loadUserFiles();
             }
         });
@@ -639,30 +626,6 @@
             }
         }
 
-        // 加载组织标签
-        async function loadOrgTags() {
-            try {
-                const response = await fetch('/api/v1/users/upload-orgs', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await response.json();
-                if (data.code === 200) {
-                    const select = document.getElementById('org-tag-select');
-                    select.innerHTML = '<option value="">使用主组织标签</option>';
-                    data.data.orgTags.forEach(tag => {
-                        const option = document.createElement('option');
-                        option.value = tag;
-                        option.textContent = tag;
-                        select.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('加载组织标签失败:', error);
-            }
-        }
-
         // 注册
         async function register() {
             const username = document.getElementById('username').value;
@@ -704,7 +667,6 @@
                     localStorage.setItem('token', token);
                     await checkAdminStatus();
                     initializeWebSocket();
-                    loadOrgTags();
                     loadUserFiles();
                     showResponse('auth-response', '登录成功', true);
                     updateUI();
@@ -790,8 +752,6 @@
             const totalChunks = Math.ceil(file.size / chunkSize);
             const paperId = await calculateMD5(file);
             const progressBar = document.getElementById('upload-progress');
-            const orgTag = document.getElementById('org-tag-select').value;
-            const isPublic = document.getElementById('is-public').checked;
             
             showResponse('upload-response', `开始上传论文 PDF，共${totalChunks}个分片...`, true);
             
@@ -806,9 +766,7 @@
                         paperTitle: file.name,
                         totalSize: file.size,
                         chunkIndex,
-                        totalChunks,
-                        orgTag,
-                        isPublic
+                        totalChunks
                     });
                     
                     const progress = ((chunkIndex + 1) / totalChunks) * 100;
@@ -839,11 +797,6 @@
                 if (metadata.totalChunks) {
                     formData.append('totalChunks', metadata.totalChunks.toString());
                 }
-                if (metadata.orgTag) {
-                    formData.append('orgTag', metadata.orgTag);
-                }
-                formData.append('isPublic', metadata.isPublic.toString());
-                
                 const xhr = new XMLHttpRequest();
                 
                 xhr.onload = function() {

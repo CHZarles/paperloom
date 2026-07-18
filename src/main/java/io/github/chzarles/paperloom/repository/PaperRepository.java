@@ -101,10 +101,8 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
                   AND model.isCurrent = true
                   AND model.modelStatus = io.github.chzarles.paperloom.model.PaperReadingModelStatus.READING_MODEL_READY
                   AND model.retrievalIndexStatus = io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus.READY
-                  AND model.retrievalIndexGeneration IS NOT NULL
-                  AND TRIM(model.retrievalIndexGeneration) <> ''
-                  AND model.retrievalEmbeddingContract IS NOT NULL
-                  AND TRIM(model.retrievalEmbeddingContract) <> ''
+                  AND model.retrievalIndexContract IS NOT NULL
+                  AND TRIM(model.retrievalIndexContract) <> ''
                   AND model.retrievalIndexedLocationCount > 0
               )
               AND (
@@ -155,10 +153,8 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
                   AND model.isCurrent = true
                   AND model.modelStatus = io.github.chzarles.paperloom.model.PaperReadingModelStatus.READING_MODEL_READY
                   AND model.retrievalIndexStatus = io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus.READY
-                  AND model.retrievalIndexGeneration IS NOT NULL
-                  AND TRIM(model.retrievalIndexGeneration) <> ''
-                  AND model.retrievalEmbeddingContract IS NOT NULL
-                  AND TRIM(model.retrievalEmbeddingContract) <> ''
+                  AND model.retrievalIndexContract IS NOT NULL
+                  AND TRIM(model.retrievalIndexContract) <> ''
                   AND model.retrievalIndexedLocationCount > 0
               )
               AND (

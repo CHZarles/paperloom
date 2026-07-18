@@ -152,69 +152,15 @@ public class PaperController {
         }
     }
 
-    @PostMapping("/{paperId}/reindex")
-    public ResponseEntity<?> reindexPaper(
-            @PathVariable String paperId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("role") String role) {
-
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("REINDEX_PAPER");
-        try {
-            LogUtils.logBusiness("REINDEX_PAPER", userId, "接收到重建论文索引请求: paperId=%s, role=%s", paperId, role);
-
-            Optional<Paper> fileOpt = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId);
-            if (fileOpt.isEmpty()) {
-                monitor.end("重建失败：论文不存在");
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", HttpStatus.NOT_FOUND.value());
-                response.put("message", "论文不存在");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            }
-
-            Paper file = fileOpt.get();
-            if (!file.getUserId().equals(userId) && !"ADMIN".equals(role)) {
-                monitor.end("重建失败：权限不足");
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", HttpStatus.FORBIDDEN.value());
-                response.put("message", "没有权限重建此论文索引");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
-            }
-
-            var result = paperService.reindexPaper(paperId, userId);
-            monitor.end("论文索引重建成功");
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("paperId", paperId);
-            data.put("paperTitle", file.getPaperTitle());
-            data.put("originalFilename", file.getOriginalFilename());
-            data.put("actualEmbeddingTokens", result.actualEmbeddingTokens());
-            data.put("actualChunkCount", result.actualChunkCount());
-            data.put("modelVersion", result.modelVersion());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 200);
-            response.put("message", "论文索引重建成功");
-            response.put("data", data);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            LogUtils.logBusinessError("REINDEX_PAPER", userId, "重建论文索引失败: paperId=%s", e, paperId);
-            monitor.end("重建失败: " + e.getMessage());
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            response.put("message", "重建论文索引失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
-
-    @PostMapping("/{paperId}/vectorization/retry")
-    public ResponseEntity<?> retryVectorizationAsync(
+    @PostMapping("/{paperId}/processing/retry")
+    public ResponseEntity<?> retryProcessingAsync(
             @PathVariable String paperId,
             @RequestAttribute("userId") String userId,
             @RequestAttribute("role") String role) {
 
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("RETRY_VECTORIZATION_ASYNC");
         try {
-            LogUtils.logBusiness("RETRY_VECTORIZATION_ASYNC", userId, "接收到异步论文向量化重试请求: paperId=%s, role=%s", paperId, role);
+            LogUtils.logBusiness("RETRY_VECTORIZATION_ASYNC", userId, "接收到异步论文处理重试请求: paperId=%s, role=%s", paperId, role);
 
             Optional<Paper> fileOpt = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId);
             if (fileOpt.isEmpty()) {
@@ -230,12 +176,12 @@ public class PaperController {
                 monitor.end("重试失败：权限不足");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                         "code", HttpStatus.FORBIDDEN.value(),
-                        "message", "没有权限重试此论文向量化"
+                        "message", "没有权限重试此论文处理"
                 ));
             }
 
             Paper queuedFile = paperService.enqueueAsyncVectorizationRetry(paperId, userId);
-            monitor.end("异步向量化重试任务已提交");
+            monitor.end("异步论文处理重试任务已提交");
 
             Map<String, Object> data = new HashMap<>();
             data.put("paperId", queuedFile.getPaperId());
@@ -245,15 +191,15 @@ public class PaperController {
 
             return ResponseEntity.ok(Map.of(
                     "code", 200,
-                    "message", "已提交论文向量化重试任务",
+                    "message", "已提交论文解析与词法索引重试任务",
                     "data", data
             ));
         } catch (Exception e) {
-            LogUtils.logBusinessError("RETRY_VECTORIZATION_ASYNC", userId, "异步论文向量化重试失败: paperId=%s", e, paperId);
-            monitor.end("异步向量化重试失败: " + e.getMessage());
+            LogUtils.logBusinessError("RETRY_VECTORIZATION_ASYNC", userId, "异步论文处理重试失败: paperId=%s", e, paperId);
+            monitor.end("异步论文处理重试失败: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                     "code", HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                    "message", "异步论文向量化重试失败: " + e.getMessage()
+                    "message", "异步论文解析或词法索引重试失败: " + e.getMessage()
             ));
         }
     }
@@ -515,10 +461,8 @@ public class PaperController {
             dto.put("isPublic", file.isPublic());
             dto.put("createdAt", file.getCreatedAt());
             dto.put("mergedAt", file.getMergedAt());
-            dto.put("estimatedEmbeddingTokens", file.getEstimatedEmbeddingTokens());
-            dto.put("estimatedChunkCount", file.getEstimatedChunkCount());
-            dto.put("actualEmbeddingTokens", file.getActualEmbeddingTokens());
-            dto.put("actualChunkCount", file.getActualChunkCount());
+            dto.put("retrievalIndexedTokenCount", file.getRetrievalIndexedTokenCount());
+            dto.put("retrievalIndexedLocationCount", file.getRetrievalIndexedLocationCount());
             dto.put("authors", file.getAuthors());
             dto.put("publicationYear", file.getPublicationYear());
             dto.put("venue", file.getVenue());

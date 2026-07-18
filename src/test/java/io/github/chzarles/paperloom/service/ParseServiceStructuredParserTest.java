@@ -53,9 +53,6 @@ class ParseServiceStructuredParserTest {
     private PaperRepository paperRepository;
 
     @Mock
-    private UsageQuotaService usageQuotaService;
-
-    @Mock
     private PaperPdfParser paperPdfParser;
 
     @Mock
@@ -72,7 +69,6 @@ class ParseServiceStructuredParserTest {
         ParseService parseService = new ParseService();
         ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
-        ReflectionTestUtils.setField(parseService, "usageQuotaService", usageQuotaService);
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
         ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
@@ -152,7 +148,6 @@ class ParseServiceStructuredParserTest {
         ParseService parseService = new ParseService();
         ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
-        ReflectionTestUtils.setField(parseService, "usageQuotaService", usageQuotaService);
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
         ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
@@ -188,33 +183,6 @@ class ParseServiceStructuredParserTest {
         );
 
         verify(paperTextChunkRepository, never()).save(any());
-    }
-
-    @Test
-    void estimateEmbeddingUsageDoesNotCreatePersistentArtifacts() throws Exception {
-        ParseService parseService = new ParseService();
-        ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
-        ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
-        ReflectionTestUtils.setField(parseService, "usageQuotaService", usageQuotaService);
-        ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
-        ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
-        ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
-        ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
-        ReflectionTestUtils.setField(parseService, "chunkSize", 512);
-        ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
-
-        when(usageQuotaService.estimateEmbeddingTokens(any())).thenReturn(42);
-
-        ParseService.EmbeddingEstimate estimate = parseService.estimateEmbeddingUsage(
-                new ByteArrayInputStream("%PDF-test".getBytes(StandardCharsets.UTF_8)),
-                "uploaded.pdf"
-        );
-
-        assertEquals(42L, estimate.estimatedTokens());
-        assertEquals(1, estimate.estimatedChunkCount());
-        verify(paperPdfParser, never()).parse(any(), any());
-        verify(paperParserArtifactService, never()).saveParserArtifact(any(), any(), any(), any(), eq(false));
-        verify(paperVisualAssetService, never()).replaceVisualAssets(any(), any(), any(), any(), any(), any(), eq(false));
     }
 
     private ParsedPaper parsedPaper() {

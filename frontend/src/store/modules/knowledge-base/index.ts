@@ -123,18 +123,11 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
       const index = tasks.value.findIndex(t => t.paperId === task.paperId);
       tasks.value[index].status = UploadStatus.Completed;
       tasks.value[index].progress = 100;
-      tasks.value[index].estimatedEmbeddingTokens = data?.estimatedEmbeddingTokens;
-      tasks.value[index].estimatedChunkCount = data?.estimatedChunkCount;
       tasks.value[index].processingStatus = 'PROCESSING';
       tasks.value[index].processingErrorMessage = null;
-      tasks.value[index].actualEmbeddingTokens = undefined;
-      tasks.value[index].actualChunkCount = undefined;
-
-      if (data?.estimatedEmbeddingTokens) {
-        const tokenLabel = Number(data.estimatedEmbeddingTokens).toLocaleString();
-        const chunkLabel = Number(data.estimatedChunkCount || 0).toLocaleString();
-        window.$message?.success(`上传完成，预计向量化消耗 ${tokenLabel} Tokens（${chunkLabel} 个切片）`);
-      }
+      tasks.value[index].retrievalIndexedTokenCount = undefined;
+      tasks.value[index].retrievalIndexedLocationCount = undefined;
+      window.$message?.success('上传完成，论文解析与词法索引任务已提交');
       return true;
     } catch {
       return false;

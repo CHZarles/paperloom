@@ -102,20 +102,6 @@ public class ProductLaunchRuntimePreflightRunner {
         String mineruBase = value(env, options, "PAPER_PARSING_MINERU_BASE_URL", "http://localhost:8000");
         String mineruHealth = value(env, options, "PAPER_PARSING_MINERU_HEALTH_PATH", "/health");
         requests.add(ProbeRequest.http("mineru_health", trimTrailingSlash(mineruBase) + ensureLeadingSlash(mineruHealth), List.of(200)));
-        requests.add(ProbeRequest.modelProviderSmoke(
-                "llm_active_provider_smoke",
-                options.apiBase(),
-                options.username(),
-                options.password(),
-                "llm"
-        ));
-        requests.add(ProbeRequest.modelProviderSmoke(
-                "embedding_active_provider_smoke",
-                options.apiBase(),
-                options.username(),
-                options.password(),
-                "embedding"
-        ));
         requests.add(ProbeRequest.traceConfig(
                 value(env, options, "PAPERLOOM_TRACE_ENABLED", "true"),
                 value(env, options, "PAPERLOOM_TRACE_ROOT", "data/traces/product-react")
@@ -276,13 +262,6 @@ public class ProductLaunchRuntimePreflightRunner {
             case "mineru_health" -> "- `mineru_health`: start the self-hosted MinerU sidecar or align "
                     + "`PAPER_PARSING_MINERU_BASE_URL` and `PAPER_PARSING_MINERU_HEALTH_PATH`" + targetSuffix(target)
                     + ". Do not switch to the OpenDataLoader fallback for launch evidence.";
-            case "llm_active_provider_smoke" -> "- `llm_active_provider_smoke`: verify the active backend LLM "
-                    + "model-provider config and stored credential through `/admin/model-providers/llm/test`"
-                    + targetSuffix(target) + ". The remediation artifact intentionally omits credentials.";
-            case "embedding_active_provider_smoke" -> "- `embedding_active_provider_smoke`: verify the active backend "
-                    + "Embedding model-provider config and stored credential through "
-                    + "`/admin/model-providers/embedding/test`" + targetSuffix(target)
-                    + ". The remediation artifact intentionally omits credentials.";
             case "trace_config" -> "- `trace_config`: set `PAPERLOOM_TRACE_ENABLED=true` and a writable "
                     + "`PAPERLOOM_TRACE_ROOT` before running the live smoke.";
             default -> "- `" + failure.caseId() + "`: inspect `run.json` diagnostics and fix the reported "
@@ -443,43 +422,6 @@ public class ProductLaunchRuntimePreflightRunner {
                     trimTrailingSlash(apiBaseUrl),
                     blankToDefault(apiKey, ""),
                     params
-            );
-        }
-
-        static ProbeRequest embeddingApiSmoke(String apiBaseUrl, String model, String apiKey, Integer dimension) {
-            Map<String, Object> params = new LinkedHashMap<>();
-            params.put("apiBaseUrl", trimTrailingSlash(apiBaseUrl));
-            params.put("model", blankToDefault(model, "text-embedding-v4"));
-            params.put("path", "/embeddings");
-            params.put("keyName", "EMBEDDING_API_KEY");
-            if (dimension != null && dimension > 0) {
-                params.put("dimension", dimension);
-            }
-            return new ProbeRequest(
-                    "embedding_api_smoke",
-                    "EMBEDDING_API_SMOKE",
-                    trimTrailingSlash(apiBaseUrl),
-                    blankToDefault(apiKey, ""),
-                    params
-            );
-        }
-
-        static ProbeRequest modelProviderSmoke(String caseId,
-                                               String apiBase,
-                                               String username,
-                                               String password,
-                                               String scope) {
-            String normalizedScope = blankToDefault(scope, "llm").toLowerCase();
-            return new ProbeRequest(
-                    caseId,
-                    "MODEL_PROVIDER_SMOKE",
-                    trimTrailingSlash(apiBase),
-                    blankToDefault(password, ""),
-                    Map.of(
-                            "apiBase", trimTrailingSlash(apiBase),
-                            "username", blankToDefault(username, ""),
-                            "scope", normalizedScope
-                    )
             );
         }
 

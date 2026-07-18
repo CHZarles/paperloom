@@ -149,7 +149,7 @@ paper:
 qdrant:
   base-url: ${QDRANT_BASE_URL:http://qdrant:6333}
   api-key: ${QDRANT_API_KEY:}
-  collection: ${QDRANT_COLLECTION:paperloom_reading_elements_dense_sparse_v1}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_locations_bm25_v1}
 
 security:
   # 容器部署时请显式填写前端实际访问域名，支持 Origin pattern
@@ -168,14 +168,6 @@ deepseek:
     url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1}
     model: ${DEEPSEEK_API_MODEL:deepseek-chat}
     key: ${DEEPSEEK_API_KEY:}
-
-embedding:
-  api:
-    url: ${EMBEDDING_API_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-    key: ${EMBEDDING_API_KEY:}
-    model: ${EMBEDDING_API_MODEL:text-embedding-v4}
-    batch-size: ${EMBEDDING_BATCH_SIZE:10}
-    dimension: ${EMBEDDING_DIMENSION:2048}
 
 ai:
   prompt:

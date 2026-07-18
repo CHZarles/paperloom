@@ -26,9 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 论文管理服务。
@@ -38,9 +36,6 @@ import java.util.Map;
 public class PaperService {
 
     private static final Logger logger = LoggerFactory.getLogger(PaperService.class);
-    private static final String LEGACY_COMPLETED_WITHOUT_USAGE_MESSAGE = "历史数据未统计实际 Tokens，可按需重试以回写实际向量化结果";
-    private static final String LEGACY_FAILED_MESSAGE = "历史向量化结果缺失，可点击重试向量化重新处理";
-
     @Autowired
     private PaperRepository paperRepository;
 
@@ -57,6 +52,9 @@ public class PaperService {
     private ReadingModelQdrantIndexService qdrantIndexService;
 
     @Autowired
+    private PaperSearchabilityService paperSearchabilityService;
+
+    @Autowired
     private OrgTagCacheService orgTagCacheService;
 
     @Autowired
@@ -64,12 +62,6 @@ public class PaperService {
 
     @Autowired
     private UploadService uploadService;
-
-    @Autowired
-    private ParseService parseService;
-
-    @Autowired
-    private VectorizationService vectorizationService;
 
     @Autowired
     private PaperParserArtifactService paperParserArtifactService;
@@ -232,55 +224,17 @@ public class PaperService {
         }
     }
 
-    public VectorizationService.VectorizationUsageResult reindexPaper(String paperId, String requesterId) {
-        logger.info("开始重建论文索引: paperId={}, requesterId={}", paperId, requesterId);
-
-        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
-                .orElseThrow(() -> new RuntimeException("论文不存在"));
-
-        markVectorizationProcessing(paper, true);
-
-        try (InputStream fileStream = uploadService.getMergedFileStream(paperId)) {
-            paperTextChunkRepository.deleteByPaperId(paperId);
-            paperParserArtifactService.deleteParserArtifacts(paperId);
-            paperVisualAssetService.deleteVisualAssets(paperId);
-
-            parseService.parseAndSave(
-                    paperId,
-                    fileStream,
-                    paper.getOriginalFilename(),
-                    paper.getUserId(),
-                    paper.getOrgTag(),
-                    paper.isPublic()
-            );
-
-            VectorizationService.VectorizationUsageResult result = vectorizationService.vectorizeWithUsage(
-                    paperId,
-                    paper.getUserId(),
-                    paper.getOrgTag(),
-                    paper.isPublic(),
-                    requesterId
-            );
-            markVectorizationCompleted(paper, result);
-
-            logger.info(
-                    "论文索引重建完成: paperId={}, actualTokens={}, actualChunkCount={}",
-                    paperId,
-                    result.actualEmbeddingTokens(),
-                    result.actualChunkCount()
-            );
-            return result;
-        } catch (Exception e) {
-            markVectorizationFailed(paper, e);
-            logger.error("重建论文索引失败: paperId={}", paperId, e);
-            throw new RuntimeException("重建论文索引失败: " + e.getMessage(), e);
-        }
-    }
-
     @Transactional
     public Paper enqueueAsyncVectorizationRetry(String paperId, String requesterId) {
         Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
+
+        if (paperSearchabilityService.isSearchable(paper)) {
+            throw new IllegalStateException("PAPER_ALREADY_READY");
+        }
+        if (!Paper.VECTORIZATION_STATUS_FAILED.equalsIgnoreCase(paper.getVectorizationStatus())) {
+            throw new IllegalStateException("Paper initial processing has not failed");
+        }
 
         markVectorizationProcessing(paper, true);
 
@@ -291,7 +245,7 @@ public class PaperService {
                 paper.getUserId(),
                 paper.getOrgTag(),
                 paper.isPublic(),
-                PaperProcessingTask.TASK_TYPE_REINDEX,
+                PaperProcessingTask.TASK_TYPE_RETRY_INITIAL,
                 requesterId
         );
 
@@ -300,19 +254,19 @@ public class PaperService {
             return true;
         });
 
-        logger.info("已发送异步论文向量化重试任务: paperId={}, requesterId={}", paperId, requesterId);
+        logger.info("已发送异步论文处理重试任务: paperId={}, requesterId={}", paperId, requesterId);
         return paper;
     }
 
     @Transactional
-    public void markVectorizationProcessing(String paperId, boolean resetActualUsage) {
+    public void markVectorizationProcessing(String paperId, boolean resetIndexMetrics) {
         Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
-        markVectorizationProcessing(paper, resetActualUsage);
+        markVectorizationProcessing(paper, resetIndexMetrics);
     }
 
     @Transactional
-    public void markVectorizationCompleted(String paperId, VectorizationService.VectorizationUsageResult result) {
+    public void markVectorizationCompleted(String paperId, RetrievalIndexingService.IndexingResult result) {
         Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
         markVectorizationCompleted(paper, result);
@@ -332,19 +286,19 @@ public class PaperService {
         markVectorizationFailed(paper, error);
     }
 
-    private void markVectorizationProcessing(Paper paper, boolean resetActualUsage) {
+    private void markVectorizationProcessing(Paper paper, boolean resetIndexMetrics) {
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PROCESSING);
         paper.setVectorizationErrorMessage(null);
-        if (resetActualUsage) {
-            paper.setActualEmbeddingTokens(null);
-            paper.setActualChunkCount(null);
+        if (resetIndexMetrics) {
+            paper.setRetrievalIndexedTokenCount(null);
+            paper.setRetrievalIndexedLocationCount(null);
         }
         paperRepository.save(paper);
     }
 
-    private void markVectorizationCompleted(Paper paper, VectorizationService.VectorizationUsageResult result) {
-        paper.setActualEmbeddingTokens((long) result.actualEmbeddingTokens());
-        paper.setActualChunkCount(result.actualChunkCount());
+    private void markVectorizationCompleted(Paper paper, RetrievalIndexingService.IndexingResult result) {
+        paper.setRetrievalIndexedTokenCount((long) result.indexedTokenCount());
+        paper.setRetrievalIndexedLocationCount(result.indexedLocationCount());
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
         paper.setVectorizationErrorMessage(null);
         paperRepository.save(paper);
@@ -382,11 +336,11 @@ public class PaperService {
         }
 
         if (deepestMessage == null || deepestMessage.isBlank()) {
-            return "向量化失败，请稍后重试";
+            return "论文解析或词法索引失败，请稍后重试";
         }
 
         if ("向量化失败".equals(deepestMessage) || "Error processing task".equals(deepestMessage)) {
-            return "向量化失败，请稍后重试";
+            return "论文解析或词法索引失败，请稍后重试";
         }
 
         return deepestMessage;
@@ -394,7 +348,7 @@ public class PaperService {
 
     private String trimVectorizationErrorMessage(String errorMessage) {
         if (errorMessage == null || errorMessage.isBlank()) {
-            return "向量化失败，请稍后重试";
+            return "论文解析或词法索引失败，请稍后重试";
         }
         return errorMessage.length() > 1000 ? errorMessage.substring(0, 1000) : errorMessage;
     }
@@ -411,8 +365,6 @@ public class PaperService {
         logger.info("获取用户可访问论文列表: userId={}", userId);
 
         try {
-            backfillLegacyVectorizationStatuses();
-
             User user = resolveUser(userId);
             String userDbId = String.valueOf(user.getId());
 
@@ -464,8 +416,6 @@ public class PaperService {
                 pageable == null ? null : pageable.getPageSize());
 
         try {
-            backfillLegacyVectorizationStatuses();
-
             User user = resolveUser(userId);
             String userDbId = String.valueOf(user.getId());
             Pageable effectivePageable = pageable == null ? Pageable.ofSize(10) : pageable;
@@ -494,8 +444,6 @@ public class PaperService {
                 pageable == null ? null : pageable.getPageSize());
 
         try {
-            backfillLegacyVectorizationStatuses();
-
             User user = resolveUser(userId);
             String userDbId = String.valueOf(user.getId());
             Pageable effectivePageable = pageable == null ? Pageable.ofSize(10) : pageable;
@@ -557,7 +505,6 @@ public class PaperService {
         logger.info("获取用户上传的论文列表: userId={}", userId);
 
         try {
-            backfillLegacyVectorizationStatuses();
             List<Paper> files = paperRepository.findByUserId(userId);
             logger.info("成功获取用户上传的论文列表: userId={}, paperCount={}", userId, files.size());
             return files;
@@ -575,56 +522,6 @@ public class PaperService {
         } catch (NumberFormatException ignored) {
             return userRepository.findByUsername(userId)
                     .orElseThrow(() -> new RuntimeException("用户不存在: " + userId));
-        }
-    }
-
-    private void backfillLegacyVectorizationStatuses() {
-        backfillLegacyVectorizationStatuses(paperRepository.findAllByVectorizationStatusIsNull());
-    }
-
-    private void backfillLegacyVectorizationStatuses(List<Paper> files) {
-        if (files == null || files.isEmpty()) {
-            return;
-        }
-
-        Map<String, Long> vectorCountCache = new HashMap<>();
-        for (Paper file : files) {
-            if (file == null || file.getVectorizationStatus() != null) {
-                continue;
-            }
-
-            boolean changed = false;
-            if (file.getStatus() == Paper.STATUS_UPLOADING) {
-                file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PENDING);
-                file.setVectorizationErrorMessage(null);
-                changed = true;
-            } else if (file.getStatus() == Paper.STATUS_MERGING) {
-                file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PROCESSING);
-                file.setVectorizationErrorMessage(null);
-                changed = true;
-            } else if (file.getActualEmbeddingTokens() != null || file.getActualChunkCount() != null) {
-                file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
-                file.setVectorizationErrorMessage(null);
-                changed = true;
-            } else {
-                long vectorCount = vectorCountCache.computeIfAbsent(
-                        file.getPaperId(),
-                        paperTextChunkRepository::countByPaperId
-                );
-                if (vectorCount > 0) {
-                    file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
-                    file.setVectorizationErrorMessage(LEGACY_COMPLETED_WITHOUT_USAGE_MESSAGE);
-                    changed = true;
-                } else if (file.getEstimatedEmbeddingTokens() != null || file.getEstimatedChunkCount() != null) {
-                    file.setVectorizationStatus(Paper.VECTORIZATION_STATUS_FAILED);
-                    file.setVectorizationErrorMessage(LEGACY_FAILED_MESSAGE);
-                    changed = true;
-                }
-            }
-
-            if (changed) {
-                paperRepository.save(file);
-            }
         }
     }
 

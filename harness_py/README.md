@@ -22,8 +22,8 @@ Java ChatHandler
 ```
 
 Java 是权限和语料数据源。每个请求都必须携带 `user_id` 与 `scope.paper_ids`，Python 不能扩大
-当前会话范围，也不持有 Qdrant 管理权限。Java 同时负责 Current Reading Model、Embedding、Qdrant
-索引生命周期、配额、取消、长期会话和 Product Reference Mapping；Python 负责授权范围内的模型编排。
+当前会话范围，也不持有 Qdrant 管理权限。Java 同时负责 Current Reading Model、Qdrant Sparse BM25
+索引生命周期、取消、长期会话和 Product Reference Mapping；Python 负责授权范围内的模型编排。
 
 ## 阅读入口
 
@@ -35,6 +35,10 @@ Java 是权限和语料数据源。每个请求都必须携带 `user_id` 与 `sc
 - [Evaluation System](../docs/evaluation/README.md)：理解 Run Capture、Golden Case 与数据利用方向。
 - [Reading Model 与检索实践复盘](../research/golden-data/2026-07-13-reading-model-retrieval-practice.md)：
   数据变化、错误方案和分层诊断记录。
+- [Qdrant 检索影响量化报告](../docs/evaluation/qdrant-retrieval-impact-2026-07-15.md)：
+  同查询下的相关性、延迟、内存、索引、可靠性和 MiniMax 小样本对照。
+- [Java/Qdrant 工程实践](../site/practice/evaluation/qdrant-retrieval-impact-benchmark.md)：
+  记录引入共享向量索引的背景、收益、退化、故障和保留边界。
 
 第一次接触 Agents SDK 时先读 SDK Guide；已经熟悉 SDK 时可直接读 ONBOARDING 和本页的
 执行路径。
@@ -75,24 +79,25 @@ Runtime 本身不持有长期会话状态。
 `JavaCorpusGateway` 才读取并原地补全对应 Metadata。正文 Reading Element 不再整批进入 Harness：
 
 - `search_paper_candidates` / `find_papers_by_identity` 调 Java Paper Corpus API；
-- `find_reading_locations` 调 Java 的 Qdrant Dense + Sparse 检索，只获得候选 `location_ref`；
+- `find_reading_locations` 调 Java 的 Qdrant Sparse BM25 检索，只获得候选 `location_ref`；
 - Java 对每个候选重新校验用户权限、锁定 Scope 和 Current Reading Model；
-- Java 只查询各论文当前激活的 Qdrant Generation，并校验 Collection、Embedding Model 和维度合同；
+- Java 只查询各论文 Current Reading Model 对应的词法索引合同，并校验 Collection Schema；
 - `read_locations` 再由 Java 从 MySQL 精确读取 Canonical Location；
 - Python 只在真实 Read 后生成 `ev_...`，继续维护 Disclosure 和 Evidence Ledger。
 
 `DockerMySqlProductCorpusStore` 只供 Qdrant 产品探针和离线迁移诊断使用，不是 CLI 或运行时入口。
-Java Corpus Token 为空、Qdrant Collection 缺失、激活 Generation 不存在或 Embedding 合同不一致时，
+Java Corpus Token 为空、Qdrant Collection 缺失、Current Model 不可检索或词法索引合同不一致时，
 产品回合都会明确失败；Harness 不创建 Collection，也不会改走内存 BM25。
 
 ## 当前检索
 
-产品检索由 Java 数据面执行：Qdrant 对 Current Reading Model 做 Dense + Sparse 双路召回，使用
-确定性 RRF 合并并按论文保留覆盖，再从 MySQL Hydrate 和验证候选。Qdrant Payload 不是 Evidence，
-Tool 仍只返回非引用 Preview 与 `location_ref`；`read_locations` 是唯一生成 Evidence ID 的入口。
+产品检索由 Java 数据面执行：Java 将查询编码成 BM25 风格 Sparse Vector，Qdrant 在
+`lexical_bm25_v1` 上执行一次词法检索，Java 再做确定性的论文与 Lead Coverage，并从 MySQL Hydrate
+和验证候选。Qdrant Payload 不是 Evidence，Tool 仍只返回非引用 Preview 与 `location_ref`；
+`read_locations` 是唯一生成 Evidence ID 的入口。
 
 Golden Fixture、离线 Audit 和单元测试继续使用 `ReadingCorpusTools` 的内存 BM25 Adapter，因此无需
-启动 Java、Qdrant 或 Embedding Provider。两条路径共享同一套模型可见 Tool Schema 和授权状态机。
+启动 Java 或 Qdrant。两条路径共享同一套模型可见 Tool Schema 和授权状态机。
 
 ## Agent 可见工具
 
@@ -167,7 +172,7 @@ Golden Data 的结构和离线校验方式见
 
 真实 Qdrant 协议可用 `QdrantClientRealSmokeTest` 显式验证。测试默认跳过；只有同时设置
 `QDRANT_REAL_SMOKE_URL`、`QDRANT_REAL_SMOKE_API_KEY` 和 `QDRANT_REAL_SMOKE_COLLECTION` 时才会运行，
-并覆盖认证、Collection 创建、Active Generation 过滤、清理、维度不匹配和缺失 Collection。
+并覆盖认证、Sparse-only Collection 创建、Current Model 过滤、Schema 校验、清理和缺失 Collection。
 
 ## Eval Capture
 

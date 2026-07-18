@@ -17,23 +17,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class QdrantClientRealSmokeTest {
 
     @Test
-    void authenticatedCollectionKeepsActivePaperGenerationPairsExact() {
+    void authenticatedCollectionKeepsActivePaperModelPairsExact() {
         String collection = requiredEnvironment("QDRANT_REAL_SMOKE_COLLECTION");
         QdrantClient client = client(collection, requiredEnvironment("QDRANT_REAL_SMOKE_API_KEY"));
 
-        client.ensureCollection(3);
+        client.ensureCollection();
         client.upsert(List.of(
-                point("10000000-0000-0000-0000-000000000001", "paper-a", "generation-a", "a-active"),
-                point("10000000-0000-0000-0000-000000000002", "paper-a", "generation-b", "a-stale"),
-                point("10000000-0000-0000-0000-000000000003", "paper-b", "generation-b", "b-active"),
-                point("10000000-0000-0000-0000-000000000004", "paper-b", "generation-a", "b-stale")
+                point("10000000-0000-0000-0000-000000000001", "paper-a", "rm-a", "a-active"),
+                point("10000000-0000-0000-0000-000000000002", "paper-a", "rm-b", "a-stale"),
+                point("10000000-0000-0000-0000-000000000003", "paper-b", "rm-b", "b-active"),
+                point("10000000-0000-0000-0000-000000000004", "paper-b", "rm-a", "b-stale")
         ));
 
-        List<QdrantSearchHit> hits = client.searchDense(
-                new float[]{1.0f, 0.0f, 0.0f},
+        List<QdrantSearchHit> hits = client.searchLexical(
+                new QdrantSparseVector(List.of(7), List.of(1.0f)),
                 client.filter(Map.of(
-                        "paper-a", "generation-a",
-                        "paper-b", "generation-b"
+                        "paper-a", "rm-a",
+                        "paper-b", "rm-b"
                 ), null, null),
                 10
         );
@@ -43,22 +43,18 @@ class QdrantClientRealSmokeTest {
                 .collect(java.util.stream.Collectors.toSet()));
         assertEquals(Set.of("paper-a", "paper-b"), client.indexedPaperIds(10));
 
-        client.deleteByPaperIdAndGeneration("paper-a", "generation-b");
-        assertEquals(1, client.countByPaperId("paper-a"));
-        assertEquals(1, client.countByPaperIdAndGeneration("paper-a", "generation-a"));
+        client.deleteByPaperId("paper-a");
+        assertEquals(0, client.countByPaperId("paper-a"));
+        assertEquals(1, client.countByPaperIdAndModelVersion("paper-b", "rm-b"));
 
-        IllegalStateException dimensionMismatch = assertThrows(
-                IllegalStateException.class,
-                () -> client.verifyCollection(4)
-        );
-        assertTrue(dimensionMismatch.getMessage().contains("dense dimension"));
+        client.verifyCollection();
 
         QdrantClient missingCollection = client(collection + "_missing", requiredEnvironment("QDRANT_REAL_SMOKE_API_KEY"));
-        assertTrue(assertThrows(IllegalStateException.class, () -> missingCollection.verifyCollection(3))
+        assertTrue(assertThrows(IllegalStateException.class, missingCollection::verifyCollection)
                 .getMessage().contains("missing"));
 
         QdrantClient wrongKey = client(collection, "wrong-key");
-        assertTrue(assertThrows(IllegalStateException.class, () -> wrongKey.verifyCollection(3))
+        assertTrue(assertThrows(IllegalStateException.class, wrongKey::verifyCollection)
                 .getMessage().contains("HTTP 401"));
     }
 
@@ -70,15 +66,13 @@ class QdrantClientRealSmokeTest {
         return new QdrantClient(new ObjectMapper(), properties);
     }
 
-    private QdrantPoint point(String id, String paperId, String generation, String locationRef) {
+    private QdrantPoint point(String id, String paperId, String modelVersion, String locationRef) {
         return new QdrantPoint(
                 id,
-                new float[]{1.0f, 0.0f, 0.0f},
                 new QdrantSparseVector(List.of(7), List.of(1.0f)),
                 Map.of(
                         "paper_id", paperId,
-                        "model_version", "rm-1",
-                        "index_generation", generation,
+                        "model_version", modelVersion,
                         "location_ref", locationRef,
                         "element_types", List.of("paragraph"),
                         "page_number", 1

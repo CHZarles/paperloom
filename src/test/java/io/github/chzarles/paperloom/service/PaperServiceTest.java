@@ -18,16 +18,13 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,6 +52,9 @@ class PaperServiceTest {
     private ReadingModelQdrantIndexService qdrantIndexService;
 
     @Mock
+    private PaperSearchabilityService paperSearchabilityService;
+
+    @Mock
     private UploadService uploadService;
 
     @Mock
@@ -80,6 +80,7 @@ class PaperServiceTest {
         ReflectionTestUtils.setField(paperService, "chunkInfoRepository", chunkInfoRepository);
         ReflectionTestUtils.setField(paperService, "minioClient", minioClient);
         ReflectionTestUtils.setField(paperService, "qdrantIndexService", qdrantIndexService);
+        ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);
         ReflectionTestUtils.setField(paperService, "uploadService", uploadService);
         ReflectionTestUtils.setField(paperService, "paperParserArtifactService", paperParserArtifactService);
         ReflectionTestUtils.setField(paperService, "paperVisualAssetService", paperVisualAssetService);
@@ -210,6 +211,7 @@ class PaperServiceTest {
     @SuppressWarnings("unchecked")
     void retryVectorizationSendsPaperIdAsKafkaKey() {
         Paper paper = paper("paper-md5", "1");
+        paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_FAILED);
         when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-md5"))
                 .thenReturn(Optional.of(paper));
         when(kafkaConfig.getPaperProcessingTopic()).thenReturn("paper-processing-topic");
@@ -221,13 +223,6 @@ class PaperServiceTest {
         paperService.enqueueAsyncVectorizationRetry("paper-md5", "admin");
 
         verify(kafkaTemplate).send(eq("paper-processing-topic"), eq("paper-md5"), any());
-    }
-
-    @Test
-    void reindexPaperDoesNotWrapOcrAndEmbeddingInOneTransaction() throws NoSuchMethodException {
-        Method method = PaperService.class.getMethod("reindexPaper", String.class, String.class);
-
-        assertFalse(method.isAnnotationPresent(Transactional.class));
     }
 
     private Paper paper(String paperId, String userId) {

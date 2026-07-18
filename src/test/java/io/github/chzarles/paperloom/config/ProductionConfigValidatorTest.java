@@ -30,8 +30,6 @@ class ProductionConfigValidatorTest {
         environment.setProperty("jwt.secret-key", "secret");
         environment.setProperty("deepseek.api.url", "https://model.example");
         environment.setProperty("deepseek.api.key", "secret");
-        environment.setProperty("embedding.api.url", "https://embedding.example");
-        environment.setProperty("embedding.api.key", "secret");
         environment.setProperty("minio.endpoint", "https://minio.example");
         environment.setProperty("minio.accessKey", "access");
         environment.setProperty("minio.secretKey", "secret");

@@ -49,9 +49,6 @@ public class ModelProviderConfig {
     @Column(name = "api_key_ciphertext", length = 2048)
     private String apiKeyCiphertext;
 
-    @Column(name = "embedding_dimension")
-    private Integer embeddingDimension;
-
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 

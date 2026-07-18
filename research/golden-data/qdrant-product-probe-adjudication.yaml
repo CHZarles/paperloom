@@ -1,0 +1,40 @@
+schema_version: harness-qdrant-product-probe-adjudication/v1
+source: research/golden-data/local-runs/2026-07-15-qdrant-impact/product-probe-v3/qdrant-quality.json
+source_sha256: c4710c843a7f4c816af1b78a086c90f4d88505cb17fb944cf1ef1d962014018d
+
+decisions:
+  - case_id: agentbench_environment_inventory_001
+    anchor_id: agentbench_eight_environments
+    status: equivalent
+    label_source: human
+    query_index: 0
+    rank: 9
+    location_ref: figure_ref_96bf351c684049dab18569e67861214d
+    reason: Figure 2 states that AgentBench evaluates eight distinct environments.
+
+  - case_id: agentbench_environment_inventory_001
+    anchor_id: agentbench_failure_obstacles
+    status: equivalent
+    label_source: human
+    query_index: 1
+    rank: 4
+    location_ref: page_ref_273fd699cf8c4a309256187040bc3a61
+    reason: The Introduction lists insufficient long-term reasoning, decision-making, and instruction following.
+
+  - case_id: agentboard_progress_metric_001
+    anchor_id: agentboard_final_success_rate_limit
+    status: equivalent
+    label_source: human
+    query_index: 0
+    rank: 7
+    location_ref: page_ref_e67576a63bf84cab91308174d9bc59d0
+    reason: The Introduction says final success rate provides limited process insight and is inadequate when success is near zero.
+
+  - case_id: agentboard_progress_metric_001
+    anchor_id: agentboard_progress_rate_metric
+    status: equivalent
+    label_source: human
+    query_index: 0
+    rank: 1
+    location_ref: page_ref_32bb047c732f4267bf9d50ef63e7c08b
+    reason: Section 2.2 defines progress rate as advancement toward the goal state at each interaction round.

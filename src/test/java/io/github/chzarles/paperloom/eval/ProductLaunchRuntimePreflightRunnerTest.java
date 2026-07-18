@@ -54,14 +54,12 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 "minio_health",
                 "qdrant_health",
                 "mineru_health",
-                "llm_active_provider_smoke",
-                "embedding_active_provider_smoke",
                 "trace_config"
         ), caseIds);
 
         JsonNode scorecard = OBJECT_MAPPER.readTree(runDir.resolve("scorecard.json").toFile());
-        assertEquals(11, scorecard.path("caseCount").asInt());
-        assertEquals(11, scorecard.path("passed").asInt());
+        assertEquals(9, scorecard.path("caseCount").asInt());
+        assertEquals(9, scorecard.path("passed").asInt());
         assertEquals(1.0d, scorecard.path("passRate").asDouble());
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("launch preflight passed"));
@@ -80,23 +78,10 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 .orElseThrow();
         assertEquals("localhost", mysql.params().get("host"));
         assertEquals(13306, mysql.params().get("port"));
-        ProductLaunchRuntimePreflightRunner.ProbeRequest llmProviderSmoke = probe.requests.stream()
-                .filter(request -> "llm_active_provider_smoke".equals(request.caseId()))
-                .findFirst()
-                .orElseThrow();
-        assertEquals("MODEL_PROVIDER_SMOKE", llmProviderSmoke.kind());
-        assertEquals("secret", llmProviderSmoke.secret());
-        assertEquals("llm", llmProviderSmoke.params().get("scope"));
-        ProductLaunchRuntimePreflightRunner.ProbeRequest embeddingProviderSmoke = probe.requests.stream()
-                .filter(request -> "embedding_active_provider_smoke".equals(request.caseId()))
-                .findFirst()
-                .orElseThrow();
-        assertEquals("MODEL_PROVIDER_SMOKE", embeddingProviderSmoke.kind());
-        assertEquals("embedding", embeddingProviderSmoke.params().get("scope"));
     }
 
     @Test
-    void blankLegacyModelKeysDoNotBlockBackendProviderConfigChecks() throws Exception {
+    void blankLegacyModelKeysDoNotBlockRuntimeChecks() throws Exception {
         Path env = env("""
                 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:13306/paperloom
                 SPRING_DATA_REDIS_HOST=localhost
@@ -106,23 +91,19 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 QDRANT_BASE_URL=http://127.0.0.1:6333
                 PAPER_PARSING_MINERU_BASE_URL=http://localhost:8000
                 DEEPSEEK_API_KEY=
-                EMBEDDING_API_KEY=
                 """);
         FakeProbe probe = FakeProbe.configAware();
 
         Path runDir = runner(probe).run(options(env));
 
         JsonNode rows = OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases");
-        assertTrue(row(rows, "llm_active_provider_smoke").path("passed").asBoolean());
-        assertTrue(row(rows, "embedding_active_provider_smoke").path("passed").asBoolean());
         String remediation = Files.readString(runDir.resolve("remediation.md"));
         assertTrue(remediation.contains("launch preflight passed"));
         assertFalse(remediation.contains("DEEPSEEK_API_KEY"));
-        assertFalse(remediation.contains("EMBEDDING_API_KEY"));
         assertFalse(remediation.contains("secret"));
         assertFalse(remediation.contains("llm-key"));
         assertFalse(remediation.contains("Do not run the 30-PDF seed"));
-        assertTrue(remediation.contains("11/11"));
+        assertTrue(remediation.contains("9/9"));
     }
 
     @Test
@@ -130,7 +111,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
         Path env = env("""
                 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/paperloom
                 DEEPSEEK_API_KEY=
-                EMBEDDING_API_KEY=
                 """);
         FakeProbe probe = FakeProbe.configAware();
 
@@ -143,18 +123,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals(13306, mysql.params().get("port"));
-        assertEquals("llm", probe.requests.stream()
-                .filter(request -> "llm_active_provider_smoke".equals(request.caseId()))
-                .findFirst()
-                .orElseThrow()
-                .params()
-                .get("scope"));
-        assertEquals("embedding", probe.requests.stream()
-                .filter(request -> "embedding_active_provider_smoke".equals(request.caseId()))
-                .findFirst()
-                .orElseThrow()
-                .params()
-                .get("scope"));
     }
 
     @Test
@@ -162,7 +130,6 @@ class ProductLaunchRuntimePreflightRunnerTest {
         Path env = env("""
                 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/paperloom
                 DEEPSEEK_API_KEY=llm-key
-                EMBEDDING_API_KEY=embedding-key
                 """);
         FakeProbe probe = FakeProbe.failOnly("mysql_tcp", "tcp_unreachable(localhost:3306)", "RUNTIME_UNAVAILABLE");
 
@@ -179,36 +146,10 @@ class ProductLaunchRuntimePreflightRunnerTest {
     }
 
     @Test
-    void providerSmokeFailuresRemainSecretFreeInArtifacts() throws Exception {
-        Path env = env("""
-                SPRING_DATASOURCE_URL=jdbc:mysql://localhost:13306/paperloom
-                DEEPSEEK_API_URL=https://api.deepseek.com/v1
-                DEEPSEEK_API_MODEL=deepseek-chat
-                DEEPSEEK_API_KEY=llm-key
-                EMBEDDING_API_KEY=embedding-key
-                """);
-        FakeProbe probe = FakeProbe.failOnly("llm_active_provider_smoke", "llm_provider_rejected(status=401)", "CONFIG_INVALID");
-
-        Path runDir = runner(probe).run(options(env));
-
-        JsonNode llmSmoke = row(OBJECT_MAPPER.readTree(runDir.resolve("run.json").toFile()).path("cases"), "llm_active_provider_smoke");
-        assertFalse(llmSmoke.path("passed").asBoolean());
-        assertTrue(llmSmoke.path("failureClass").toString().contains("CONFIG_INVALID"));
-        assertEquals("MODEL_PROVIDER_SMOKE", llmSmoke.path("diagnostics").path("kind").asText());
-        String runJson = Files.readString(runDir.resolve("run.json"));
-        String remediation = Files.readString(runDir.resolve("remediation.md"));
-        assertFalse(runJson.contains("llm-key"));
-        assertFalse(runJson.contains("embedding-key"));
-        assertFalse(remediation.contains("llm-key"));
-        assertTrue(remediation.contains("llm_active_provider_smoke"));
-    }
-
-    @Test
     void frontendHttpFailureHasActionableRemediation() throws Exception {
         Path env = env("""
                 PAPERLOOM_FRONTEND_BASE_URL=http://127.0.0.1:9527
                 DEEPSEEK_API_KEY=llm-key
-                EMBEDDING_API_KEY=embedding-key
                 """);
         FakeProbe probe = FakeProbe.failOnly("frontend_http", "http_unreachable(http://127.0.0.1:9527)",
                 "RUNTIME_UNAVAILABLE");
@@ -310,7 +251,7 @@ class ProductLaunchRuntimePreflightRunnerTest {
                     );
                 }
             }
-            if (configAware && (request.kind().equals("LLM_API_SMOKE") || request.kind().equals("EMBEDDING_API_SMOKE"))
+            if (configAware && request.kind().equals("LLM_API_SMOKE")
                     && request.secret().isBlank()) {
                 return ProductLaunchRuntimePreflightRunner.ProbeResult.fail(
                         List.of(request.caseId() + "_missing_key"),

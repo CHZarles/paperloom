@@ -79,9 +79,9 @@ CRUD API. WebSocket upgrade headers must be forwarded explicitly.
 3. Start MinerU and confirm its health endpoint.
 4. Start the research harness and confirm its internal health endpoint.
 5. Start the backend and verify authentication and dependency health.
-6. For an Elasticsearch-to-Qdrant upgrade, call `POST /api/v1/admin/retrieval/reindex-current`
-   once with an administrator token. This invokes the embedding provider; monitor its cost and allow
-   a long request timeout.
+6. If canonical Current Reading Models were imported without their lexical index, call the
+   destructive `POST /api/v1/admin/retrieval/rebuild-all` operation once with an administrator token
+   and allow a long request timeout.
 7. Publish the frontend assets.
 8. Run an authenticated upload, processing, research, and reference-reopen smoke test.
 

@@ -34,6 +34,7 @@ class ResearchHarnessService:
     ):
         self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
         self.runtime_name = "agents_sdk"
+        self.max_completion_tokens = max_completion_tokens
         self.harness = harness or LiveResearchChatHarness(
             build_harness_runtime(
                 self.provider,
@@ -105,6 +106,7 @@ def serve(
         "provider": service.provider.public_diagnostics(),
         "runtime": service.runtime_name,
         "transport": "ndjson-stream",
+        "max_completion_tokens": service.max_completion_tokens,
     }, indent=2, sort_keys=True))
     uvicorn.run(app, host=host, port=port, log_level="info")
 
@@ -119,6 +121,7 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
             "harness": service.runtime_name,
             "provider": service.provider.public_diagnostics(),
             "transport": "ndjson-stream",
+            "max_completion_tokens": service.max_completion_tokens,
         })
 
     async def turn(request: Request) -> JSONResponse:

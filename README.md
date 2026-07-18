@@ -48,9 +48,9 @@ Java supplies `user_id` and locked paper IDs. Python calls the Java Corpus API a
 discovery, identity resolution, location search, exact reading, optional research guidance, and
 validated final submission as tools. It no longer loads every Reading Element into each Harness replica.
 
-Java indexes Current Reading Model locations in Qdrant, runs dense plus sparse retrieval with
-deterministic rank fusion, and hydrates/verifies candidates from MySQL. Qdrant remains a candidate
-index; `read_locations` is still the only evidence-producing content path.
+Java indexes canonical Current Reading Model locations into a sparse-only Qdrant collection and
+runs BM25-style lexical retrieval. It then validates and hydrates candidates from MySQL. Qdrant
+remains a candidate index; `read_locations` is still the only evidence-producing content path.
 
 ## Reading Model
 
@@ -66,8 +66,7 @@ Reading Model records:
 
 The Python product adapter first creates lightweight scoped paper-ID shells without Java I/O and
 hydrates metadata only when the model invokes a paper discovery or identity tool. Java owns the full
-Reading Model, active Qdrant generation, embedding-contract validation, candidate validation, and
-exact canonical reads.
+Reading Model, active lexical index contract, candidate validation, and exact canonical reads.
 See [Reading Model and Agent Tools](docs/architecture/reading-model-and-agent-tools.md).
 
 ## Agent Tool Protocol
@@ -94,11 +93,11 @@ Java-authorized paper scope
 | Folio | Vue 3 research workbench, paper selection, progress, conversations, and evidence reopening |
 | Java product boundary | Authentication, authorization, locked source scope, quota, cancellation, durable conversations, and reference mappings |
 | Python research boundary | Agents SDK loop, tool execution, disclosure state, evidence ledger, citation checks, and final submission |
-| Java Corpus plane | Paper authorization, embedding, Qdrant retrieval, Current Model validation, and exact reads |
+| Java Corpus plane | Paper authorization, lexical Qdrant retrieval, Current Model validation, and exact reads |
 | MySQL | Product papers, canonical Reading Models, conversations, and durable reference data |
-| Qdrant | Rebuildable dense/sparse candidate index keyed by stable `location_ref` |
+| Qdrant | Rebuildable sparse BM25 candidate index keyed by stable `location_ref` |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and crop assets |
-| Model provider | Configurable OpenAI-compatible model used by the Agents SDK runtime |
+| Model provider | MiniMax-M3 used by the Agents SDK runtime through deployment-managed credentials |
 
 Qdrant contributes navigation candidates but never evidence directly. Exact MySQL reads preserve the
 claim-to-location contract.
@@ -133,15 +132,9 @@ scripts/paperloom-start-harness.sh start
 mvn spring-boot:run
 ```
 
-For an existing Elasticsearch-backed installation, run the one-time Current Reading Model backfill
-after the backend starts. New uploads are indexed into Qdrant automatically:
-
-```bash
-curl -X POST http://localhost:8081/api/v1/admin/retrieval/reindex-current \
-  -H "Authorization: Bearer $ADMIN_JWT"
-```
-
-The backfill invokes the embedding provider and may incur cost, so it is not part of every startup.
+New uploads build their lexical Qdrant index automatically. If canonical Current Reading Models were
+imported without an index, run the destructive `POST /api/v1/admin/retrieval/rebuild-all` operation
+once after startup. The lexical rebuild does not call an embedding provider.
 
 In another terminal:
 

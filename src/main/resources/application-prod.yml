@@ -19,7 +19,7 @@ app:
 qdrant:
   base-url: ${QDRANT_BASE_URL}
   api-key: ${QDRANT_API_KEY:}
-  collection: ${QDRANT_COLLECTION:paperloom_reading_elements_dense_sparse_v1}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_locations_bm25_v1}
 
 security:
   allowed-origins: ${SECURITY_ALLOWED_ORIGINS}

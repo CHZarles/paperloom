@@ -35,11 +35,11 @@ MINIO_SECRET_KEY
 JWT_SECRET_KEY
 RESEARCH_HARNESS_INTERNAL_TOKEN
 QDRANT_API_KEY
-MINIMAX_API_KEY or another configured model provider
+MINIMAX_API_KEY
 ```
 
-The full Docker Compose stack also requires `SPRING_DATA_REDIS_PASSWORD`. Configure the embedding
-provider before uploading papers because Java builds and queries the Qdrant Reading Model index.
+The full Docker Compose stack also requires `SPRING_DATA_REDIS_PASSWORD`. Java builds and queries the
+Sparse-only Qdrant Reading Model index locally; no embedding provider is required.
 
 Generate a JWT secret with:
 
@@ -121,16 +121,16 @@ scripts/paperloom-start-backend.sh start
 The backend listens on `http://localhost:8081` by default. A `401` or `403` response from an
 authenticated endpoint still proves that the HTTP server is reachable.
 
-When upgrading an existing installation from Elasticsearch, index the already-READY Reading Models
-once after the backend starts:
+If canonical Current Reading Models were imported without their lexical index, rebuild the complete
+Qdrant collection once after the backend starts:
 
 ```bash
-curl -X POST http://localhost:8081/api/v1/admin/retrieval/reindex-current \
+curl -X POST http://localhost:8081/api/v1/admin/retrieval/rebuild-all \
   -H "Authorization: Bearer $ADMIN_JWT"
 ```
 
-This admin operation calls the configured embedding provider and can take time or incur provider
-cost. Newly processed papers are indexed into Qdrant automatically.
+This is a destructive, synchronous lexical rebuild and does not call an embedding provider. Newly
+processed papers are indexed into Qdrant automatically.
 
 ## 6. Start Folio
 

@@ -99,7 +99,7 @@ The complete Reading Model and the product retrieval projection are intentionall
 | Typed Reading Elements | Yes | Projected into Qdrant candidates and reopened from MySQL by Java |
 | Formal location rows | Yes | Stable `location_ref` is the candidate and Evidence navigation identity |
 | Visual asset records | Yes | Retained in MySQL/MinIO; binary assets are not copied into the Harness |
-| Vector or embedding representation | Not canonical truth | Rebuildable dense/sparse Qdrant projection owned by Java |
+| Retrieval representation | Not canonical truth | Rebuildable sparse BM25 Qdrant projection owned by Java |
 
 This distinction prevents documentation from claiming that a stored capability already participates
 in the live answer path.
@@ -168,8 +168,9 @@ recommendation tool.
 ### `find_reading_locations`
 
 Searches disclosed papers and returns `location_ref` values plus non-citeable previews. The product
-adapter uses Qdrant dense/sparse retrieval, deterministic rank fusion, Current Model validation, and
-bounded MySQL hydration. The in-memory fixture adapter combines:
+adapter encodes the query as a BM25-style sparse vector, performs one Qdrant search, applies
+deterministic paper and canonical-lead coverage, validates the Current Model, and hydrates a bounded
+result from MySQL. The in-memory fixture adapter combines:
 
 - BM25 over full element text;
 - BM25 over leading tokens and section text;
@@ -225,8 +226,9 @@ and final submission are deterministic tool and validator rules outside the mode
 
 ## Next Retrieval Validation
 
-The product path now derives dense and sparse candidates from canonical Reading Elements and fuses
-them deterministically. The next retrieval work is measurement rather than another storage rewrite:
-held-out Candidate / Read / Cited recall, semantic-miss analysis, large-scope filter performance,
-capacity, snapshot/restore, and only then a possible reranker. Promotion decisions should depend on
-quality, latency, cost, and failure analysis rather than on vector-search availability alone.
+The product path now derives one sparse BM25 candidate set from canonical locations and selects from
+that same set deterministically. The next retrieval work is measurement rather than another storage
+rewrite: held-out Candidate / Read / Cited recall, lexical-miss analysis, large-scope filter
+performance, capacity, snapshot/restore, and only then a separately justified reranker. Promotion
+decisions should depend on quality, latency, cost, and failure analysis rather than on storage-engine
+availability alone.

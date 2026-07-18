@@ -54,6 +54,9 @@ Candidate 恢复后的下一阶段编排方案见
 两份文档分别记录“已经验证了什么”和“如何实现下一阶段”，实际状态以方案顶部和实施结果为准。
 面向工程分享的完整故事见
 [`从 16/32 到 29/32，却只多过了 1 个 Case`](../../site/practice/evaluation/golden-data-harness-evolution.md)。
+Qdrant 切换后的量化结论见
+[`Qdrant 检索影响量化报告`](../../docs/evaluation/qdrant-retrieval-impact-2026-07-15.md)，工程实践记录见
+[`Java/Qdrant 让 76 篇论文范围的广查询快了 4.5 倍，指定证据命中却从 44/48 降到 34/48`](../../site/practice/evaluation/qdrant-retrieval-impact-benchmark.md)。
 
 ## 扩展语料资产
 
@@ -151,12 +154,108 @@ expanded: anchor_count=29, passed_count=29, failed_count=0
 修改 Anchor、页码、解析器输出、语料资产路径或重新生成 Reading Model 后，应运行这一层。
 Fixture 校验通过不代表 Anchor 审计也会通过。
 
-## 3. 真实 Agents SDK 执行
+## 3. Qdrant 影响量化
+
+当前产品请求通过 Python `serve` 入口调用 Java Corpus API，由 Java 使用 Qdrant 找候选，再从 MySQL
+读取 Canonical Reading Model 内容。Golden `agent-run` 只使用这条产品链路；内存 BM25 仅可作为
+离线算法报告中的历史比较项，不是 Runner Backend，也不能在产品链路失败时接管请求。
+
+量化测试分为两层：
+
+- 离线算法层：保留切换前 BM25、旧 Sparse、Dense 和 Hybrid 结果作为历史对照；
+- 产品探针层：经过 Python Gateway、Java Corpus API、Sparse-only Qdrant、Current Model / Index
+  Contract 校验和 MySQL Hydration，并可选运行 MiniMax Smoke。
+
+2026-07-18 的当前产品切换结果位于
+`local-runs/lexical-qdrant-cutover-20260718-173750/`：Java/Qdrant 词法路径在 69 条冻结查询上达到
+`48/48` 指定证据、`24/24` 完整 Case 和 `0.48019` MRR；内存 BM25 对照为 `35/48`、`15/24`、
+`0.37838`。稳定与扩展 MiniMax-M3 全量运行均无技术失败，严格 Hard Pass 分别为 `6/10` 和 `9/24`。
+Candidate 指标与模型最终分数必须分开解释。
+
+离线层同时报告两种口径。Native 保留迁移前后各方法实际给模型的输出：BM25 Adapter 在 `24/69`
+条广查询或多论文查询中会扩展到最多 12 个候选，产品式 Qdrant 严格停在请求的 `top_k`。固定
+`Recall@1/5/8/12` 和 `offline-budget-analysis-v5.json` 则用于等预算比较。产品探针始终使用
+`strict_requested_top_k`。离线层为计算这些切面会查询到 evaluation depth，因此它记录的服务耗时
+不是产品原生 `top_k` 请求延迟；产品延迟只看 `product-probe-v3`。
+
+离线预检不访问 Embedding 或 Qdrant：
+
+```bash
+.venv-harness/bin/python research/golden-data/qdrant_impact_benchmark.py --preflight
+```
+
+全量算法测试必须使用独立 Qdrant 实例，结果写入持久目录。以下命令假定隔离容器
+`paperloom-qdrant-benchmark` 已在 `6335` 端口运行：
+
+```bash
+run_stamp=$(date +%Y%m%d-%H%M%S)
+offline_out="research/golden-data/local-runs/2026-07-15-qdrant-impact/offline-algorithm-${run_stamp}"
+
+QDRANT_BASE_URL=http://127.0.0.1:6335 \
+PAPERLOOM_QDRANT_CONTAINER=paperloom-qdrant-benchmark \
+.venv-harness/bin/python research/golden-data/qdrant_impact_benchmark.py \
+  --mysql-container pai_smart_mysql \
+  --out "$offline_out" \
+  --cleanup
+```
+
+人工等价证据结论不是手填汇总数；验证工具会重新读取冻结的 `report.json` 和
+`query_results.jsonl`，检查每个决定引用的候选确实存在，再计算总数：
+
+```bash
+run_stamp=$(date +%Y%m%d-%H%M%S)
+.venv-harness/bin/python research/golden-data/qdrant_impact_adjudication.py \
+  --out "research/golden-data/local-runs/2026-07-15-qdrant-impact/adjudication-v5-check-${run_stamp}.json"
+```
+
+该命令验证复核 YAML 固定引用的权威 `offline-algorithm-v5`，包括报告、查询和数据集 Hash、精确命中
+重算、人工决定与具体排名的绑定及 Miss 覆盖。它不会自动判断语义等价，也不会自动复核刚生成的新
+Run。独立重复运行保存在 `offline-algorithm-v4`；v4/v5 的产品式 Headline 都是 `34/48`、完整
+Case 都是 `15/24`，但 `36/69` 条 Native 排名发生变化，MRR 分别为 `0.17005` 和 `0.16997`。
+比较排序算法时不能把单次完整排名当成确定性输出。v5 的等请求预算重算保存在
+`offline-budget-analysis-v5.json`。
+
+产品探针要求本地 Java、Harness、MySQL 和产品 Qdrant 已经运行：
+
+```bash
+run_stamp=$(date +%Y%m%d-%H%M%S)
+product_out="research/golden-data/local-runs/2026-07-15-qdrant-impact/product-probe-${run_stamp}"
+
+.venv-harness/bin/python research/golden-data/qdrant_product_probe.py \
+  --out "$product_out" \
+  --run-model-smoke
+```
+
+以下是 2026-07-16 切换前 Hybrid 路径的历史固定结果：
+
+| 方法（实际输出语义） | 精确 Anchor | 完整 Case | 人工复核后等价证据 |
+| --- | ---: | ---: | ---: |
+| 内存 BM25，含既有候选扩展 | `44/48` | `20/24` | `48/48` |
+| 产品式 Qdrant | `34/48` | `15/24` | `47/48` |
+
+等请求预算下，BM25 为 `42/48`、`20/24`、MRR `0.35923`，产品式 Qdrant 为 `34/48`、`15/24`、
+MRR `0.16997`。因此实际行为差距中有 2 个命中来自 BM25 的候选扩展，但算法排序退化仍然存在。
+
+这说明 Qdrant 避免了每个 Python Worker 重复加载全文，并改善了 76 篇论文广查询的延迟，但当前
+Sparse、Dense 和等权 RRF 没有超过 BM25 排序。v5 构建 789 个 Point 共耗时 `61.70 s`，其中
+Embedding `56.43 s`、Collection 准备 `3.54 s`、Upsert `1.66 s`；记录 370 个外部逻辑请求
+（Embedding 148、Qdrant 222）和 67 次主动限速等待，共 `34.08 s`。
+
+`product-probe-v3` 在 76 篇范围的三组查询中，广查询 p50 为 BM25 `1.838-2.139 s`、Qdrant
+`0.378-0.493 s`；窄查询 p50 为 BM25 `19-40 ms`、Qdrant `345-456 ms`。本地快照中 Qdrant
+RSS 为 `559.1 MiB`，Elasticsearch 为 `1.56 GiB`；两者索引粒度和职责不同，资源数不能解释为
+质量对比。
+
+MiniMax Smoke 已验证两条链路都使用 MiniMax-M3、相同 API Style 和
+`max_completion_tokens=3000`。严格 Hard Pass 是 BM25 `1/3`、Qdrant `0/3`。每种方法每个 Case
+只有一个 Sample，这一层只做接线和失败定位，不能估计稳定模型质量，也不能据此判断用户体验。
+
+## 4. 真实 Agents SDK 执行
 
 `agent-run` 通过 MiniMax 和默认 OpenAI Agents SDK 运行真实的
 `LiveResearchChatHarness`。Golden 命令中，只有它会同时测试模型编排、工具调用、最终
 答案校验和真实证据 Grounding。它固定经过 Python Gateway、Java Corpus API、Qdrant、Current
-Generation 校验和 MySQL Hydration，不提供其他 Backend 或内存静默回退。
+Model / Index Contract 校验和 MySQL Hydration，不提供其他 Backend 或内存静默回退。
 
 先安装固定版本的环境：
 
@@ -202,7 +301,7 @@ python3 -m venv .venv-harness
 真实运行的硬评分失败与 Fixture 或 Anchor 失败不是一回事。模型行为会波动，建议先运行
 一两个有代表性的 Case，检查保存的 Run，再决定是否为完整 Manifest 消耗 Token。
 
-## 4. 可选的 LLM Judge 校准
+## 5. 可选的 LLM Judge 校准
 
 确定性 Scorer 处理可观察结构和 Grounding。自然语言答案质量和语义标准由单独校准的
 LLM Judge 根据固定人工标签评估。普通 Harness 开发不必每次运行 Judge 校准，更不能把
@@ -271,5 +370,13 @@ focused Python tests -> stable validate -> stable audit -> one stable live case
 -> selected expanded live cases -> optional judge calibration
 ```
 
+修改产品检索、Qdrant 索引或 Java Corpus Gateway 时：
+
+```text
+focused Python/Java tests -> stable/expanded validate and audit
+-> Qdrant offline preflight -> isolated Qdrant algorithm benchmark
+-> adjudication verification -> product probe -> selected MiniMax product smoke
+```
+
 某一层通过不等于完整 Golden 测试通过。报告结果时，应分别说明 Fixture 校验、Anchor
-审计、真实硬评分和 Judge 校准结果。
+审计、内存 BM25 对照、Java/Qdrant 产品探针、真实硬评分和 Judge 校准结果。

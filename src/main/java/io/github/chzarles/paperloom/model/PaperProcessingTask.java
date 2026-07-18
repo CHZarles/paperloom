@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PaperProcessingTask {
     public static final String TASK_TYPE_UPLOAD_PROCESS = "UPLOAD_PROCESS";
-    public static final String TASK_TYPE_REINDEX = "REINDEX";
+    public static final String TASK_TYPE_RETRY_INITIAL = "RETRY_INITIAL";
 
     private String paperId;
     private String paperObjectUrl;

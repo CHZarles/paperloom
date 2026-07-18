@@ -1,0 +1,27 @@
+schema_version: harness-qdrant-product-probes/v2
+
+golden_manifest: research/golden-data/manifest-expanded.yaml
+golden_cases: research/golden-data/cases/llm-agent-evaluation.yaml
+saved_runs: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1
+adjudication: research/golden-data/qdrant-product-probe-adjudication.yaml
+quality_candidate_budget_policy: strict_requested_top_k
+
+user_id: 1
+paper_id_map:
+  agentbench_2024: bf00436579e72429679264b76a660d3f
+  gaia_2024: f66a3a3cca316754ec460037e78d73a2
+  agentboard_2024: 3d47869e74a9e6ccb1ecddd25eef9d33
+
+cases:
+  - case_id: agentbench_environment_inventory_001
+    latency_query: weaknesses failures observations failure modes
+  - case_id: gaia_dataset_gap_001
+    latency_query: benchmark construction human annotators GPT-4 plugins results
+  - case_id: agentboard_progress_metric_001
+    latency_query: final success rate insufficient progress rate
+
+scope_sizes: [1, 8, 32, 76]
+latency_top_k: 8
+latency_warmups: 1
+latency_repeats: 3
+query_min_interval_seconds: 1.05

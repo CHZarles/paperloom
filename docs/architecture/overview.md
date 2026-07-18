@@ -94,8 +94,8 @@ For each turn, Python receives `user_id` and `scope.paper_ids` from Java. A requ
 `JavaCorpusGatewayReader` uses one reusable HTTP client to call the Java data plane:
 
 1. Paper discovery and identity lookup query authorized product metadata.
-2. Java embeds the location query and asks Qdrant for dense and sparse candidates inside the scope.
-3. Java fuses ranks deterministically, checks the current READY model, and hydrates previews from MySQL.
+2. Java encodes the location query as a BM25-style sparse vector and performs one scoped Qdrant search.
+3. Java applies deterministic paper and canonical-lead coverage, checks the current READY model, and hydrates previews from MySQL.
 4. Search returns non-citeable previews and stable `location_ref` values.
 5. `read_locations` revalidates scope/current model and reads exact canonical MySQL content.
 6. Python creates Evidence IDs only after that exact read.
@@ -141,7 +141,7 @@ do not replace the product-owned Reading Model.
 | Store | Live-path responsibility |
 | --- | --- |
 | MySQL | Users, access rules, papers, canonical Reading Models, conversations, research memory, and persistent reference data; exact source behind the Java Corpus API |
-| Qdrant | Rebuildable dense/sparse candidate index over Current Reading Model locations; never a source of citeable content |
+| Qdrant | Rebuildable sparse BM25 candidate index over Current Reading Model locations; never a source of citeable content |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and visual evidence crops |
 
 Kafka remains upload-processing infrastructure and Redis serves separate transient product concerns.

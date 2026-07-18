@@ -7,7 +7,7 @@ import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import io.github.chzarles.paperloom.service.ParseService;
-import io.github.chzarles.paperloom.service.VectorizationService;
+import io.github.chzarles.paperloom.service.RetrievalIndexingService;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
@@ -42,7 +42,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(BootstrapPaperInitializer.class);
 
     private final ParseService parseService;
-    private final VectorizationService vectorizationService;
+    private final RetrievalIndexingService retrievalIndexingService;
     private final ReadingModelQdrantIndexService qdrantIndexService;
     private final PaperRepository paperRepository;
     private final PaperTextChunkRepository paperTextChunkRepository;
@@ -68,14 +68,14 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
     private String adminUsername;
 
     public BootstrapPaperInitializer(ParseService parseService,
-                                     VectorizationService vectorizationService,
+                                     RetrievalIndexingService retrievalIndexingService,
                                      ReadingModelQdrantIndexService qdrantIndexService,
                                      PaperRepository paperRepository,
                                      PaperTextChunkRepository paperTextChunkRepository,
                                      MinioClient minioClient,
                                      UserRepository userRepository) {
         this.parseService = parseService;
-        this.vectorizationService = vectorizationService;
+        this.retrievalIndexingService = retrievalIndexingService;
         this.qdrantIndexService = qdrantIndexService;
         this.paperRepository = paperRepository;
         this.paperTextChunkRepository = paperTextChunkRepository;
@@ -182,7 +182,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         }
 
         try {
-            vectorizationService.vectorize(fileMd5, ownerUserId, bootstrapOrgTag, bootstrapPublic, bootstrapUserId);
+            retrievalIndexingService.index(fileMd5, bootstrapUserId);
 
             Paper paper = new Paper();
             paper.setPaperId(fileMd5);

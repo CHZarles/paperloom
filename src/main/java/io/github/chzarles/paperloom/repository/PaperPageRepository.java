@@ -16,4 +16,6 @@ public interface PaperPageRepository extends JpaRepository<PaperPage, Long> {
                                                                        Integer pageNumber);
 
     long countByPaperIdAndModelVersion(String paperId, String modelVersion);
+
+    void deleteByPaperId(String paperId);
 }

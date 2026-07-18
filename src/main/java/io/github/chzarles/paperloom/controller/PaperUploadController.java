@@ -358,31 +358,6 @@ public class PaperUploadController {
             paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
                     .orElseThrow(() -> new RuntimeException("论文记录不存在"));
 
-            ParseService.EmbeddingEstimate embeddingEstimate = null;
-            try (io.minio.GetObjectResponse mergedFileStream = uploadService.getMergedFileStream(request.paperId())) {
-                embeddingEstimate = parseService.estimateEmbeddingUsage(mergedFileStream, request.paperTitle());
-                paper.setEstimatedEmbeddingTokens(embeddingEstimate.estimatedTokens());
-                paper.setEstimatedChunkCount(embeddingEstimate.estimatedChunkCount());
-                paperRepository.save(paper);
-                LogUtils.logBusiness(
-                        "MERGE_FILE",
-                        userId,
-                        "论文 Embedding 预估完成: paperId=%s, estimatedTokens=%d, estimatedChunkCount=%d",
-                        request.paperId(),
-                        embeddingEstimate.estimatedTokens(),
-                        embeddingEstimate.estimatedChunkCount()
-                );
-            } catch (Exception estimateException) {
-                LogUtils.logBusinessError(
-                        "MERGE_FILE",
-                        userId,
-                        "论文 Embedding 预估失败: paperId=%s, paperTitle=%s",
-                        estimateException,
-                        request.paperId(),
-                        request.paperTitle()
-                );
-            }
-
             // 发送任务到 Kafka，包含完整的权限信息
             LogUtils.logBusiness("MERGE_FILE", userId, "创建论文处理任务: paperId=%s, paperTitle=%s, fileType=%s, orgTag=%s, isPublic=%s",
                     request.paperId(), request.paperTitle(), fileType, paper.getOrgTag(), paper.isPublic());
@@ -400,8 +375,8 @@ public class PaperUploadController {
 
             paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PROCESSING);
             paper.setVectorizationErrorMessage(null);
-            paper.setActualEmbeddingTokens(null);
-            paper.setActualChunkCount(null);
+            paper.setRetrievalIndexedTokenCount(null);
+            paper.setRetrievalIndexedLocationCount(null);
             paperRepository.save(paper);
 
             LogUtils.logBusiness("MERGE_FILE", userId, "发送论文处理任务到 Kafka(事务): topic=%s, paperId=%s, paperTitle=%s",
@@ -418,11 +393,6 @@ public class PaperUploadController {
             data.put("paperTitle", paper.getPaperTitle());
             data.put("originalFilename", paper.getOriginalFilename());
             data.put("objectUrl", objectUrl);
-            if (embeddingEstimate != null) {
-                data.put("estimatedEmbeddingTokens", embeddingEstimate.estimatedTokens());
-                data.put("estimatedChunkCount", embeddingEstimate.estimatedChunkCount());
-            }
-
             // 构建统一响应格式
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);

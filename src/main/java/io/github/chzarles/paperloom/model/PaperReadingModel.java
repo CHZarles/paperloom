@@ -63,17 +63,26 @@ public class PaperReadingModel {
     @Column(name = "retrieval_index_status", length = 32)
     private PaperRetrievalIndexStatus retrievalIndexStatus;
 
-    @Column(name = "retrieval_index_generation", length = 64)
-    private String retrievalIndexGeneration;
+    @Column(name = "retrieval_index_job_id", length = 64)
+    private String retrievalIndexJobId;
 
-    @Column(name = "retrieval_embedding_contract", length = 255)
-    private String retrievalEmbeddingContract;
+    @Column(name = "retrieval_index_contract", length = 255)
+    private String retrievalIndexContract;
 
     @Column(name = "retrieval_indexed_location_count")
     private Integer retrievalIndexedLocationCount;
 
     @Column(name = "retrieval_indexed_at")
     private LocalDateTime retrievalIndexedAt;
+
+    @Column(name = "retrieval_index_started_at")
+    private LocalDateTime retrievalIndexStartedAt;
+
+    @Column(name = "retrieval_index_error_type", length = 128)
+    private String retrievalIndexErrorType;
+
+    @Column(name = "retrieval_index_error_message", length = 1000)
+    private String retrievalIndexErrorMessage;
 
     @Lob
     @Column(name = "diagnostics_json", columnDefinition = "TEXT")

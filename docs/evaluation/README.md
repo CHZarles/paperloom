@@ -87,6 +87,7 @@ See:
 - [`research/golden-data/README.md`](../../research/golden-data/README.md)
 - [`research/golden-data/SCHEMA.md`](../../research/golden-data/SCHEMA.md)
 - [`harness_py/README.md`](../../harness_py/README.md)
+- [`Golden Data architecture and retrieval evolution review`](golden-data-architecture-and-retrieval-evolution-2026-07-16.md)
 
 ## What The Data Can Improve
 

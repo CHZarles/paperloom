@@ -107,8 +107,8 @@ Java must remain authoritative for:
 - cancellation and streamed product integration;
 - durable history, research-memory exchange, and conversation ownership;
 - product reference persistence and historical evidence reopening;
-- Current Reading Model indexing, query embeddings, Qdrant retrieval, scope revalidation, and exact
-  MySQL location reads.
+- Current Reading Model lexical indexing, Qdrant retrieval, scope revalidation, and exact MySQL
+  location reads.
 
 ### Python Responsibilities
 
@@ -129,9 +129,9 @@ The Python product service loads only authorized paper metadata through the Java
 not load all `paper_reading_elements` into each Harness process or call Docker MySQL directly.
 
 Paper discovery uses deterministic metadata matching inside the locked scope. Reading-location
-retrieval uses Java-owned query embeddings, Qdrant dense/sparse candidates, deterministic RRF,
-Current Model and scope validation, and bounded MySQL hydration. Golden fixtures and offline tests
-retain the in-memory BM25 adapter.
+retrieval uses a Java-owned BM25-style sparse query, one Qdrant lexical search, deterministic
+coverage, Current Model and scope validation, and bounded MySQL hydration. Golden fixtures and
+offline tests retain the in-memory BM25 adapter.
 
 Current requirements:
 
@@ -142,7 +142,7 @@ Current requirements:
 - create citeable evidence only from retained source text;
 - keep retrieval internals out of user-facing answer prose.
 
-Qdrant vectors remain a derived candidate projection, not canonical evidence. Dense/sparse quality,
+Qdrant sparse vectors remain a derived candidate projection, not canonical evidence. Lexical quality,
 capacity, and any future reranker still require held-out Candidate, Read, Cited, Hard Pass, latency,
 and cost evaluation before stronger product claims are made.
 

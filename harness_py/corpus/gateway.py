@@ -35,11 +35,15 @@ class JavaCorpusGateway:
         base_url: str | None = None,
         internal_token: str | None = None,
         *,
+        env_path: str | Path = ".env",
         client: httpx.Client | None = None,
         max_response_bytes: int | None = None,
     ):
         base_url = (base_url or os.getenv("JAVA_CORPUS_BASE_URL") or "http://127.0.0.1:8081").rstrip("/")
-        token = internal_token if internal_token is not None else os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
+        token = internal_token if internal_token is not None else (
+            os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN")
+            or _env_file_value(Path(env_path), "RESEARCH_HARNESS_INTERNAL_TOKEN")
+        )
         headers = {"Accept": "application/json"}
         if token.strip():
             headers["Authorization"] = f"Bearer {token.strip()}"
@@ -283,3 +287,16 @@ def _positive_int(value: object, fallback: int) -> int:
     except (TypeError, ValueError):
         return fallback
     return parsed if parsed > 0 else fallback
+
+
+def _env_file_value(path: Path, name: str) -> str:
+    if not path.is_file():
+        return ""
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() == name:
+            return value.strip().strip('"').strip("'")
+    return ""

@@ -61,7 +61,7 @@ KAFKA_BOOTSTRAP_SERVERS="${PAPERLOOM_KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
 PRODUCT_DB_SCHEMA="${PAPERLOOM_DB_SCHEMA:-paperloom}"
 
 QDRANT_BASE_URL="${QDRANT_BASE_URL:-http://127.0.0.1:6333}"
-QDRANT_COLLECTION_VALUE="${QDRANT_COLLECTION_VALUE:-paperloom_reading_elements_dense_sparse_v1}"
+QDRANT_COLLECTION_VALUE="${QDRANT_COLLECTION_VALUE:-paperloom_reading_locations_bm25_v1}"
 MINIO_BUCKET_NAME_VALUE="${MINIO_BUCKET_NAME_VALUE:-uploads}"
 
 ADMIN_COUNT_BEFORE=0
@@ -88,6 +88,8 @@ PRODUCT_DB_TABLES=(
   paper_sections
   paper_pages
   paper_reading_models
+  paper_retrieval_control
+  paper_publications
   paper_tables
   paper_figures
   paper_formulas

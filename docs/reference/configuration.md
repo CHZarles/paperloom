@@ -20,7 +20,7 @@ should inject the same variables through their secret and configuration system.
 | MinIO | `MINIO_ENDPOINT`, `MINIO_PUBLIC_URL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | PDFs, parser artifacts, screenshots, and crops |
 | Redis | `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`, `SPRING_DATA_REDIS_PASSWORD` | Separate transient product concerns; not assistant evidence |
 | Kafka | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Upload-processing delivery; not assistant retrieval |
-| Qdrant | `QDRANT_BASE_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Shared dense/sparse candidate index for Current Reading Models; API key is mandatory in production and Compose |
+| Qdrant | `QDRANT_BASE_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Shared lexical BM25 sparse candidate index for Current Reading Models; API key is mandatory in production and Compose |
 
 Host-port overrides for `docs/docker-compose.yaml` use `MYSQL_HOST_PORT`, `REDIS_HOST_PORT`,
 `MINIO_API_HOST_PORT`, `MINIO_CONSOLE_HOST_PORT`, `QDRANT_HTTP_HOST_PORT`, and
@@ -58,11 +58,10 @@ fallback.
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
 | `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
-| `EMBEDDING_API_URL`, `EMBEDDING_API_KEY`, `EMBEDDING_API_MODEL` | Java-owned indexing and query embedding provider |
 | `EVAL_DUMP_DIR` | Optional saved-run output root |
 
 The Python service does not connect to MySQL or Qdrant. It calls the Java Corpus API with the locked
-scope; Java owns embedding, Qdrant retrieval, permission/current-model validation, and canonical reads.
+scope; Java owns sparse BM25 Qdrant retrieval, permission/current-model validation, and canonical reads.
 
 ## Secret Rules
 

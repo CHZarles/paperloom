@@ -1,6 +1,5 @@
 package io.github.chzarles.paperloom.service;
 
-import io.github.chzarles.paperloom.client.EmbeddingClient;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperLocationType;
@@ -10,8 +9,8 @@ import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,11 +19,8 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,352 +31,311 @@ class CorpusRetrievalServiceTest {
 
     @Test
     void explicitSmallComparisonRecallsCandidatesFromEveryRequestedPaper() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
+        Fixture fixture = new Fixture();
         List<String> scope = List.of("paper-a", "paper-b");
-        Map<String, String> generations = Map.of(
-                "paper-a", "generation-paper-a",
-                "paper-b", "generation-paper-b"
-        );
-        Map<String, Object> globalFilter = Map.of("branch", "global");
-        Map<String, Object> paperAFilter = Map.of("branch", "paper-a");
-        Map<String, Object> paperBFilter = Map.of("branch", "paper-b");
-        when(paperService.getAccessiblePapersByIds("7", scope)).thenReturn(scope.stream().map(CorpusRetrievalServiceTest::paper).toList());
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                scope, PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(readyModel("paper-a", "rm-a"), readyModel("paper-b", "rm-b")));
-        when(embeddingClient.embedWithUsage(
-                anyList(), eq("7"), eq(EmbeddingClient.UsageType.QUERY), any(Duration.class)))
-                .thenReturn(new EmbeddingClient.EmbeddingUsageResult(
-                        List.of(new float[]{1.0f, 0.0f, 0.0f}), 1, "embedding-v1"));
-        when(qdrantClient.indexVersion()).thenReturn("test-index");
-        when(qdrantClient.filter(generations, null, null)).thenReturn(globalFilter);
-        when(qdrantClient.filter(Map.of("paper-a", "generation-paper-a"), null, null)).thenReturn(paperAFilter);
-        when(qdrantClient.filter(Map.of("paper-b", "generation-paper-b"), null, null)).thenReturn(paperBFilter);
-        when(qdrantClient.searchDense(any(float[].class), eq(globalFilter), anyInt()))
-                .thenReturn(List.of(hitFor("paper-a", "rm-a", "location-a")));
-        when(qdrantClient.searchDense(any(float[].class), eq(paperAFilter), anyInt()))
-                .thenReturn(List.of(hitFor("paper-a", "rm-a", "location-a")));
-        when(qdrantClient.searchDense(any(float[].class), eq(paperBFilter), anyInt()))
-                .thenReturn(List.of(hitFor("paper-b", "rm-b", "location-b")));
-        when(qdrantClient.searchSparse(any(), any(), anyInt())).thenReturn(List.of());
-        when(locationRepository.findByLocationRefIn(anyList())).thenReturn(List.of(
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-a"), readyModel("paper-b", "rm-b"));
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval(
+                candidate("paper-a", "rm-a", "location-a", 0.9),
+                candidate("paper-b", "rm-b", "location-b", 0.8)
+        ));
+        fixture.locations(
                 locationFor("paper-a", "rm-a", "location-a"),
                 locationFor("paper-b", "rm-b", "location-b")
-        ));
-        when(readService.read(anyList(), anyList())).thenReturn(new CanonicalReadingLocationService.ReadBatch(
-                List.of(
-                        canonicalFor("paper-a", "rm-a", "location-a"),
-                        canonicalFor("paper-b", "rm-b", "location-b")
-                ),
-                List.of()
-        ));
+        );
+        fixture.canonical(
+                canonicalFor("paper-a", "rm-a", "location-a", "paragraph"),
+                canonicalFor("paper-b", "rm-b", "location-b", "paragraph")
+        );
 
-        CorpusRetrievalService.LocationSearchResult result = service.searchLocations(
+        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
                 new CorpusRetrievalService.LocationSearchQuery(
                         7L, scope, scope, "query", "", List.of(), null, null, 2));
 
-        assertEquals(Set.of("location-a", "location-b"),
-                result.locations().stream().map(CorpusRetrievalService.LocationCandidate::locationRef)
-                        .collect(Collectors.toSet()));
-        verify(qdrantClient).searchDense(any(float[].class), eq(globalFilter), anyInt());
-        verify(qdrantClient).searchDense(any(float[].class), eq(paperAFilter), anyInt());
-        verify(qdrantClient).searchDense(any(float[].class), eq(paperBFilter), anyInt());
+        assertEquals(Set.of("location-a", "location-b"), result.locations().stream()
+                .map(CorpusRetrievalService.LocationCandidate::locationRef)
+                .collect(Collectors.toSet()));
+        ArgumentCaptor<ReadingLocationRetriever.LocationRetrievalRequest> request =
+                ArgumentCaptor.forClass(ReadingLocationRetriever.LocationRetrievalRequest.class);
+        verify(fixture.retriever).retrieve(request.capture());
+        assertEquals(Map.of("paper-a", "rm-a", "paper-b", "rm-b"), request.getValue().activeModels());
     }
 
     @Test
     void multiPaperSearchUsesGlobalRelevanceWhenTopKCannotCoverEveryPaper() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
+        Fixture fixture = new Fixture();
         List<String> scope = List.of("paper-a", "paper-b", "paper-c");
-        Map<String, String> generations = Map.of(
-                "paper-a", "generation-paper-a",
-                "paper-b", "generation-paper-b",
-                "paper-c", "generation-paper-c"
-        );
-        Map<String, Object> globalFilter = Map.of("branch", "global");
-        when(paperService.getAccessiblePapersByIds("7", scope)).thenReturn(scope.stream().map(CorpusRetrievalServiceTest::paper).toList());
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                scope, PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(
+        fixture.authorize(scope);
+        fixture.models(
                 readyModel("paper-a", "rm-a"),
                 readyModel("paper-b", "rm-b"),
                 readyModel("paper-c", "rm-c")
+        );
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval(
+                candidate("paper-c", "rm-c", "location-c", 0.9),
+                candidate("paper-b", "rm-b", "location-b", 0.8),
+                candidate("paper-a", "rm-a", "location-a", 0.7)
         ));
-        when(embeddingClient.embedWithUsage(
-                anyList(), eq("7"), eq(EmbeddingClient.UsageType.QUERY), any(Duration.class)))
-                .thenReturn(new EmbeddingClient.EmbeddingUsageResult(
-                        List.of(new float[]{1.0f, 0.0f, 0.0f}), 1, "embedding-v1"));
-        when(qdrantClient.indexVersion()).thenReturn("test-index");
-        when(qdrantClient.filter(generations, null, null)).thenReturn(globalFilter);
-        when(qdrantClient.searchDense(any(float[].class), eq(globalFilter), anyInt())).thenReturn(List.of(
-                hitFor("paper-c", "rm-c", "location-c"),
-                hitFor("paper-b", "rm-b", "location-b"),
-                hitFor("paper-a", "rm-a", "location-a")
-        ));
-        when(qdrantClient.searchSparse(any(), any(), anyInt())).thenReturn(List.of());
-        when(locationRepository.findByLocationRefIn(anyList())).thenReturn(List.of(
+        fixture.locations(
                 locationFor("paper-a", "rm-a", "location-a"),
                 locationFor("paper-b", "rm-b", "location-b"),
                 locationFor("paper-c", "rm-c", "location-c")
-        ));
-        when(readService.read(anyList(), anyList())).thenReturn(new CanonicalReadingLocationService.ReadBatch(
-                List.of(
-                        canonicalFor("paper-a", "rm-a", "location-a"),
-                        canonicalFor("paper-b", "rm-b", "location-b"),
-                        canonicalFor("paper-c", "rm-c", "location-c")
-                ),
-                List.of()
-        ));
+        );
+        fixture.canonical(
+                canonicalFor("paper-a", "rm-a", "location-a", "paragraph"),
+                canonicalFor("paper-b", "rm-b", "location-b", "paragraph"),
+                canonicalFor("paper-c", "rm-c", "location-c", "paragraph")
+        );
 
-        CorpusRetrievalService.LocationSearchResult result = service.searchLocations(
+        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
                 new CorpusRetrievalService.LocationSearchQuery(
                         7L, scope, scope, "query", "", List.of(), null, null, 2));
 
-        assertEquals(List.of("location-c", "location-b"),
-                result.locations().stream().map(CorpusRetrievalService.LocationCandidate::locationRef).toList());
-        verify(qdrantClient).filter(generations, null, null);
-        verify(qdrantClient).searchDense(any(float[].class), eq(globalFilter), anyInt());
+        assertEquals(List.of("location-c", "location-b"), result.locations().stream()
+                .map(CorpusRetrievalService.LocationCandidate::locationRef).toList());
     }
 
     @Test
-    void locationSearchRejectsEmbeddingContractMismatchBeforeQdrantSearch() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
+    void singlePaperSearchReservesTheCanonicalAbstractFromTheDeepCandidatePool() {
+        Fixture fixture = new Fixture();
         List<String> scope = List.of("paper-a");
-        PaperReadingModel model = readyModel("paper-a", "rm-1");
-        model.setRetrievalEmbeddingContract("test-index|embedding-v1|3");
-        when(paperService.getAccessiblePapersByIds("7", scope)).thenReturn(List.of(paper("paper-a")));
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                scope, PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(model));
-        when(embeddingClient.embedWithUsage(
-                eq(List.of("query")),
-                eq("7"),
-                eq(EmbeddingClient.UsageType.QUERY),
-                any(Duration.class)
-        )).thenReturn(new EmbeddingClient.EmbeddingUsageResult(
-                List.of(new float[]{1.0f, 0.0f, 0.0f}), 1, "embedding-v2"));
-        when(qdrantClient.indexVersion()).thenReturn("test-index");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-a"));
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval(
+                candidate("paper-a", "rm-a", "location-1", 0.9),
+                candidate("paper-a", "rm-a", "location-2", 0.8),
+                candidate("paper-a", "rm-a", "location-3", 0.7),
+                leadCandidate("paper-a", "rm-a", "abstract-ref", 0.1)
+        ));
+        fixture.locations(
+                locationFor("paper-a", "rm-a", "location-1"),
+                locationFor("paper-a", "rm-a", "location-2"),
+                locationFor("paper-a", "rm-a", "location-3"),
+                locationFor("paper-a", "rm-a", "abstract-ref")
+        );
+        fixture.canonical(
+                canonicalFor("paper-a", "rm-a", "location-1", "section"),
+                canonicalFor("paper-a", "rm-a", "location-2", "section"),
+                canonicalFor("paper-a", "rm-a", "location-3", "section"),
+                canonicalFor("paper-a", "rm-a", "abstract-ref", "section")
+        );
 
-        IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.searchLocations(
+        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
                 new CorpusRetrievalService.LocationSearchQuery(
-                        7L, scope, scope, "query", "", List.of(), null, null, 8)));
+                        7L, scope, scope, "benchmark structure task instances evaluation", "",
+                        List.of(), null, null, 3));
 
-        assertTrue(error.getMessage().contains("embedding contract"));
-        verify(qdrantClient, never()).verifyCollection(anyInt());
-        verify(qdrantClient, never()).searchDense(any(), any(), anyInt());
+        assertEquals(List.of("location-1", "location-2", "abstract-ref"), result.locations().stream()
+                .map(CorpusRetrievalService.LocationCandidate::locationRef).toList());
     }
 
     @Test
-    void locationSearchRejectsMissingActiveIndexBeforeEmbeddingOrQdrant() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
-        List<String> scope = List.of("paper-a");
-        PaperReadingModel model = new PaperReadingModel();
-        model.setPaperId("paper-a");
-        model.setModelVersion("rm-1");
-        model.setCurrent(true);
-        model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
-        when(paperService.getAccessiblePapersByIds("7", scope)).thenReturn(List.of(paper("paper-a")));
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                scope, PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(model));
-
-        assertThrows(IllegalStateException.class, () -> service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
-                        7L, scope, scope, "query", "", List.of(), null, null, 8)));
-
-        verifyNoInteractions(embeddingClient, qdrantClient, locationRepository, readService);
-    }
-
-    @Test
-    void elementTypesBoostMatchingCandidatesWithoutFilteringOtherTypes() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
+    void shortMultiPaperSearchReservesOneLeadPerPaper() {
+        Fixture fixture = new Fixture();
         List<String> scope = List.of("paper-a", "paper-b");
-        List<String> requested = List.of("paper-a");
-        when(paperService.getAccessiblePapersByIds("7", requested)).thenReturn(List.of(paper("paper-a")));
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                requested, PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(readyModel("paper-a", "rm-1")));
-        when(embeddingClient.embedWithUsage(
-                anyList(), eq("7"), eq(EmbeddingClient.UsageType.QUERY), any(Duration.class)))
-                .thenReturn(new EmbeddingClient.EmbeddingUsageResult(
-                        List.of(new float[]{1.0f, 0.0f, 0.0f}), 1, "embedding-v1"));
-        when(qdrantClient.filter(Map.of("paper-a", "generation-paper-a"), null, null)).thenReturn(Map.of());
-        when(qdrantClient.searchDense(any(float[].class), any(), anyInt())).thenReturn(List.of(
-                hit("paragraph-ref", "paragraph"),
-                hit("table-ref", "table")
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-a"), readyModel("paper-b", "rm-b"));
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval(
+                candidate("paper-a", "rm-a", "a-hit", 0.9),
+                candidate("paper-b", "rm-b", "b-hit", 0.8),
+                candidate("paper-a", "rm-a", "a-second", 0.7),
+                candidate("paper-b", "rm-b", "b-second", 0.6),
+                leadCandidate("paper-a", "rm-a", "a-abstract", 0.2),
+                leadCandidate("paper-b", "rm-b", "b-abstract", 0.1)
         ));
-        when(qdrantClient.searchSparse(any(), any(), anyInt())).thenReturn(List.of());
-        when(qdrantClient.indexVersion()).thenReturn("test-index");
-        when(locationRepository.findByLocationRefIn(anyList())).thenReturn(List.of(
-                location("paragraph-ref"),
-                location("table-ref")
-        ));
-        when(readService.read(anyList(), anyList())).thenReturn(new CanonicalReadingLocationService.ReadBatch(
-                List.of(
-                        canonical("paragraph-ref", "paragraph"),
-                        canonical("table-ref", "table")
-                ),
-                List.of()
-        ));
+        fixture.locations(
+                locationFor("paper-a", "rm-a", "a-hit"),
+                locationFor("paper-b", "rm-b", "b-hit"),
+                locationFor("paper-a", "rm-a", "a-second"),
+                locationFor("paper-b", "rm-b", "b-second"),
+                locationFor("paper-a", "rm-a", "a-abstract"),
+                locationFor("paper-b", "rm-b", "b-abstract")
+        );
+        fixture.canonical(
+                canonicalFor("paper-a", "rm-a", "a-hit", "section"),
+                canonicalFor("paper-b", "rm-b", "b-hit", "section"),
+                canonicalFor("paper-a", "rm-a", "a-second", "section"),
+                canonicalFor("paper-b", "rm-b", "b-second", "section"),
+                canonicalFor("paper-a", "rm-a", "a-abstract", "section"),
+                canonicalFor("paper-b", "rm-b", "b-abstract", "section")
+        );
 
-        CorpusRetrievalService.LocationSearchResult result = service.searchLocations(
+        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
                 new CorpusRetrievalService.LocationSearchQuery(
-                        7L, scope, requested, "query", "", List.of("table"), null, null, 1));
+                        7L, scope, scope, "ReAct", "", List.of(), null, null, 4));
 
-        assertEquals(1, result.returnedCount());
+        assertEquals(Set.of("a-hit", "b-hit", "a-abstract", "b-abstract"), result.locations().stream()
+                .map(CorpusRetrievalService.LocationCandidate::locationRef)
+                .collect(Collectors.toSet()));
+    }
+
+    @Test
+    void shortQueryDoesNotLetLeadCoverageConsumeTheWholeBudget() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a", "paper-b");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-a"), readyModel("paper-b", "rm-b"));
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval(
+                candidate("paper-a", "rm-a", "a-hit", 0.9),
+                candidate("paper-b", "rm-b", "b-hit", 0.8),
+                leadCandidate("paper-a", "rm-a", "a-abstract", 0.2),
+                leadCandidate("paper-b", "rm-b", "b-abstract", 0.1)
+        ));
+        fixture.locations(
+                locationFor("paper-a", "rm-a", "a-hit"),
+                locationFor("paper-b", "rm-b", "b-hit"),
+                locationFor("paper-a", "rm-a", "a-abstract"),
+                locationFor("paper-b", "rm-b", "b-abstract")
+        );
+        fixture.canonical(
+                canonicalFor("paper-a", "rm-a", "a-hit", "section"),
+                canonicalFor("paper-b", "rm-b", "b-hit", "section"),
+                canonicalFor("paper-a", "rm-a", "a-abstract", "section"),
+                canonicalFor("paper-b", "rm-b", "b-abstract", "section")
+        );
+
+        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
+                new CorpusRetrievalService.LocationSearchQuery(
+                        7L, scope, scope, "ReAct", "", List.of(), null, null, 2));
+
+        assertEquals(List.of("a-hit", "b-hit"), result.locations().stream()
+                .map(CorpusRetrievalService.LocationCandidate::locationRef).toList());
+    }
+
+    @Test
+    void locationSearchRejectsMissingActiveIndexBeforeRetriever() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-1"));
+        when(fixture.searchability.isSearchable(any(PaperReadingModel.class))).thenReturn(false);
+
+        assertThrows(IllegalStateException.class, () -> fixture.service.searchLocations(
+                new CorpusRetrievalService.LocationSearchQuery(
+                        7L, scope, scope, "query", "", List.of(), null, null, 8)));
+
+        verifyNoInteractions(fixture.retriever, fixture.locationRepository, fixture.readService);
+    }
+
+    @Test
+    void elementTypeHintsReachRetrieverWithoutChangingToolContract() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-1"));
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval(
+                candidate("paper-a", "rm-1", "table-ref", 0.9)
+        ));
+        fixture.locations(locationFor("paper-a", "rm-1", "table-ref"));
+        fixture.canonical(canonicalFor("paper-a", "rm-1", "table-ref", "table"));
+
+        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
+                new CorpusRetrievalService.LocationSearchQuery(
+                        7L, scope, scope, "query", "", List.of("table"), null, null, 1));
+
+        ArgumentCaptor<ReadingLocationRetriever.LocationRetrievalRequest> request =
+                ArgumentCaptor.forClass(ReadingLocationRetriever.LocationRetrievalRequest.class);
+        verify(fixture.retriever).retrieve(request.capture());
+        assertEquals(Set.of("table"), request.getValue().elementTypeHints());
         assertEquals("table-ref", result.locations().get(0).locationRef());
-        assertEquals("table", result.locations().get(0).elementType());
+    }
+
+    @Test
+    void staleQdrantCandidateIsRejectedBeforeCanonicalHydration() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-current"));
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval(
+                candidate("paper-a", "rm-stale", "stale-ref", 0.9)
+        ));
+        fixture.locations(locationFor("paper-a", "rm-stale", "stale-ref"));
+        fixture.canonical();
+
+        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
+                new CorpusRetrievalService.LocationSearchQuery(
+                        7L, scope, scope, "query", "", List.of(), null, null, 8));
+
+        assertEquals(0, result.returnedCount());
+        verify(fixture.readService).read(List.of(), scope);
     }
 
     @Test
     void paperSearchAuthorizesLockedScopeWithBatchQueries() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
-        Paper paperA = paper("paper-a");
-        Paper paperB = paper("paper-b");
-        PaperReadingModel modelA = readyModel("paper-a", "rm-a");
-        PaperReadingModel modelB = readyModel("paper-b", "rm-b");
+        Fixture fixture = new Fixture();
         List<String> scope = List.of("paper-a", "paper-b");
-        when(paperService.getAccessiblePapersByIds("7", scope)).thenReturn(List.of(paperA, paperB));
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                scope, PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(modelA, modelB));
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-a"), readyModel("paper-b", "rm-b"));
 
-        CorpusRetrievalService.PaperSearchResult result = service.searchPapers(
+        CorpusRetrievalService.PaperSearchResult result = fixture.service.searchPapers(
                 new CorpusRetrievalService.PaperSearchQuery(
                         7L, scope, "", List.of(), List.of(), List.of(), null, null, 0, 20));
 
         assertEquals(2, result.returnedCount());
-        verify(paperService).getAccessiblePapersByIds("7", scope);
-        verify(paperService, never()).getAccessiblePapers("7", null);
-        verify(modelRepository).findByPaperIdInAndIsCurrentTrueAndModelStatus(
+        verify(fixture.paperService).getAccessiblePapersByIds("7", scope);
+        verify(fixture.paperService, never()).getAccessiblePapers("7", null);
+        verify(fixture.modelRepository).findByPaperIdInAndIsCurrentTrueAndModelStatus(
                 scope, PaperReadingModelStatus.READING_MODEL_READY);
-        verify(modelRepository, never()).findFirstByPaperIdAndIsCurrentTrue(any());
-    }
-
-    @Test
-    void locationSearchVerifiesExistingIndexWithoutProvisioning() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
-        List<String> scope = List.of("paper-a", "paper-b");
-        List<String> requested = List.of("paper-a");
-        when(paperService.getAccessiblePapersByIds("7", requested)).thenReturn(List.of(paper("paper-a")));
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                requested, PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(readyModel("paper-a", "rm-1")));
-        when(embeddingClient.embedWithUsage(
-                eq(List.of("query")),
-                eq("7"),
-                eq(EmbeddingClient.UsageType.QUERY),
-                any(Duration.class)
-        )).thenReturn(new EmbeddingClient.EmbeddingUsageResult(
-                List.of(new float[]{1.0f, 0.0f, 0.0f}), 1, "embedding-v1"));
-        when(qdrantClient.filter(any(), any(), any())).thenReturn(Map.of());
-        when(qdrantClient.searchDense(any(float[].class), any(), anyInt())).thenReturn(List.of());
-        when(qdrantClient.searchSparse(any(), any(), anyInt())).thenReturn(List.of());
-        when(qdrantClient.indexVersion()).thenReturn("test-index");
-        when(readService.read(anyList(), anyList())).thenReturn(
-                new CanonicalReadingLocationService.ReadBatch(List.of(), List.of()));
-
-        service.searchLocations(new CorpusRetrievalService.LocationSearchQuery(
-                7L, scope, requested, "query", "", List.of(), null, null, 8));
-
-        verify(qdrantClient).verifyCollection(3);
-        verify(qdrantClient, never()).ensureCollection(anyInt());
-        verify(paperService).getAccessiblePapersByIds("7", requested);
     }
 
     @Test
     void locationSearchRejectsPaperOutsideLockedScopeBeforeRetrieval() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
+        Fixture fixture = new Fixture();
 
-        assertThrows(IllegalArgumentException.class, () -> service.searchLocations(
+        assertThrows(IllegalArgumentException.class, () -> fixture.service.searchLocations(
                 new CorpusRetrievalService.LocationSearchQuery(
-                        7L,
-                        List.of("paper-a"),
-                        List.of("paper-b"),
-                        "query",
-                        "",
-                        List.of(),
-                        null,
-                        null,
-                        8
-                )
-        ));
+                        7L, List.of("paper-a"), List.of("paper-b"), "query", "",
+                        List.of(), null, null, 8)));
 
-        verifyNoInteractions(paperService, embeddingClient, qdrantClient, readService);
+        verifyNoInteractions(fixture.paperService, fixture.retriever, fixture.readService);
     }
 
     @Test
     void exactReadRejectsUnboundedLocationBatchBeforeAuthorizationQueries() {
-        PaperService paperService = mock(PaperService.class);
-        PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
-        PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
-        EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-        QdrantClient qdrantClient = mock(QdrantClient.class);
-        CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, embeddingClient, qdrantClient, readService);
+        Fixture fixture = new Fixture();
         List<String> refs = IntStream.range(0, 21).mapToObj(index -> "location-" + index).toList();
 
-        assertThrows(IllegalArgumentException.class, () -> service.readLocations(
-                new CorpusRetrievalService.LocationReadQuery(7L, List.of("paper-a"), refs)
-        ));
+        assertThrows(IllegalArgumentException.class, () -> fixture.service.readLocations(
+                new CorpusRetrievalService.LocationReadQuery(7L, List.of("paper-a"), refs)));
 
-        verifyNoInteractions(paperService, modelRepository, readService);
+        verifyNoInteractions(fixture.paperService, fixture.modelRepository, fixture.readService);
+    }
+
+    private static ReadingLocationRetriever.RetrievalCandidates retrieval(
+            ReadingLocationRetriever.RankedLocationCandidate... candidates) {
+        return new ReadingLocationRetriever.RetrievalCandidates(
+                List.of(candidates), candidates.length, "lexical-index-v1");
+    }
+
+    private static ReadingLocationRetriever.RankedLocationCandidate candidate(
+            String paperId, String modelVersion, String locationRef, double score) {
+        return new ReadingLocationRetriever.RankedLocationCandidate(
+                locationRef,
+                Map.of(
+                        "paper_id", paperId,
+                        "model_version", modelVersion,
+                        "location_ref", locationRef,
+                        "element_types", List.of("paragraph")
+                ),
+                score
+        );
+    }
+
+    private static ReadingLocationRetriever.RankedLocationCandidate leadCandidate(
+            String paperId, String modelVersion, String locationRef, double score) {
+        return new ReadingLocationRetriever.RankedLocationCandidate(
+                locationRef,
+                Map.of(
+                        "paper_id", paperId,
+                        "model_version", modelVersion,
+                        "location_ref", locationRef,
+                        "location_type", "SECTION",
+                        "section_path", "Abstract",
+                        "page_number", 1,
+                        "element_types", List.of("paragraph")
+                ),
+                score
+        );
     }
 
     private static Paper paper(String paperId) {
@@ -397,69 +352,9 @@ class CorpusRetrievalServiceTest {
         model.setCurrent(true);
         model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
         model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.READY);
-        model.setRetrievalIndexGeneration("generation-" + paperId);
-        model.setRetrievalEmbeddingContract("test-index|embedding-v1|3");
+        model.setRetrievalIndexContract("active-index-contract");
+        model.setRetrievalIndexedLocationCount(1);
         return model;
-    }
-
-    private static QdrantSearchHit hit(String locationRef, String elementType) {
-        return new QdrantSearchHit(
-                locationRef,
-                0.9,
-                Map.of(
-                        "paper_id", "paper-a",
-                        "model_version", "rm-1",
-                        "location_ref", locationRef,
-                        "index_generation", "generation-paper-a",
-                        "element_type", "paragraph",
-                        "element_types", List.of(elementType)
-                )
-        );
-    }
-
-    private static PaperLocation location(String locationRef) {
-        PaperLocation location = new PaperLocation();
-        location.setLocationRef(locationRef);
-        location.setPaperId("paper-a");
-        location.setModelVersion("rm-1");
-        location.setLocationType(PaperLocationType.SECTION);
-        location.setPageNumber(1);
-        return location;
-    }
-
-    private static CanonicalReadingLocationService.CanonicalLocation canonical(
-            String locationRef,
-            String elementType
-    ) {
-        return new CanonicalReadingLocationService.CanonicalLocation(
-                "paper-a",
-                "Paper A",
-                "rm-1",
-                locationRef,
-                elementType,
-                1,
-                1,
-                "Methods",
-                "Canonical " + elementType + " content.",
-                "",
-                "mineru",
-                "1",
-                locationRef
-        );
-    }
-
-    private static QdrantSearchHit hitFor(String paperId, String modelVersion, String locationRef) {
-        return new QdrantSearchHit(
-                locationRef,
-                0.9,
-                Map.of(
-                        "paper_id", paperId,
-                        "model_version", modelVersion,
-                        "location_ref", locationRef,
-                        "index_generation", "generation-" + paperId,
-                        "element_types", List.of("paragraph")
-                )
-        );
     }
 
     private static PaperLocation locationFor(String paperId, String modelVersion, String locationRef) {
@@ -473,24 +368,45 @@ class CorpusRetrievalServiceTest {
     }
 
     private static CanonicalReadingLocationService.CanonicalLocation canonicalFor(
-            String paperId,
-            String modelVersion,
-            String locationRef
-    ) {
+            String paperId, String modelVersion, String locationRef, String elementType) {
         return new CanonicalReadingLocationService.CanonicalLocation(
-                paperId,
-                paperId,
-                modelVersion,
-                locationRef,
-                "paragraph",
-                1,
-                1,
-                "Methods",
-                "Canonical content for " + paperId,
-                "",
-                "mineru",
-                "1",
-                locationRef
-        );
+                paperId, paperId, modelVersion, locationRef, elementType, 1, 1, "Methods",
+                "Canonical content for " + paperId, "", "mineru", "1", locationRef);
+    }
+
+    private static final class Fixture {
+        private final PaperService paperService = mock(PaperService.class);
+        private final PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
+        private final PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
+        private final CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
+        private final PaperSearchabilityService searchability = mock(PaperSearchabilityService.class);
+        private final ReadingLocationRetriever retriever = mock(ReadingLocationRetriever.class);
+        private final CorpusRetrievalService service = new CorpusRetrievalService(
+                paperService, modelRepository, locationRepository, readService, searchability, retriever);
+
+        private Fixture() {
+            when(searchability.isSearchable(any(PaperReadingModel.class))).thenReturn(true);
+        }
+
+        private void authorize(List<String> paperIds) {
+            when(paperService.getAccessiblePapersByIds("7", paperIds))
+                    .thenReturn(paperIds.stream().map(CorpusRetrievalServiceTest::paper).toList());
+        }
+
+        private void models(PaperReadingModel... models) {
+            List<String> paperIds = java.util.Arrays.stream(models)
+                    .map(PaperReadingModel::getPaperId).toList();
+            when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
+                    paperIds, PaperReadingModelStatus.READING_MODEL_READY)).thenReturn(List.of(models));
+        }
+
+        private void locations(PaperLocation... locations) {
+            when(locationRepository.findByLocationRefIn(anyList())).thenReturn(List.of(locations));
+        }
+
+        private void canonical(CanonicalReadingLocationService.CanonicalLocation... locations) {
+            when(readService.read(anyList(), anyList())).thenReturn(
+                    new CanonicalReadingLocationService.ReadBatch(List.of(locations), List.of()));
+        }
     }
 }

@@ -1,17 +1,15 @@
 package io.github.chzarles.paperloom.service;
 
-import io.github.chzarles.paperloom.client.EmbeddingClient;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
-import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -29,28 +27,27 @@ public class CorpusRetrievalService {
 
     private static final int MAX_PAPER_LIMIT = 100;
     private static final int MAX_LOCATION_LIMIT = 20;
-    private static final int RRF_K = 60;
-    private static final double ELEMENT_TYPE_HINT_BOOST = 0.001;
 
     private final PaperService paperService;
     private final PaperReadingModelRepository modelRepository;
     private final PaperLocationRepository locationRepository;
-    private final EmbeddingClient embeddingClient;
-    private final QdrantClient qdrantClient;
     private final CanonicalReadingLocationService canonicalReadService;
+    private final PaperSearchabilityService paperSearchabilityService;
+    private final ReadingLocationRetriever readingLocationRetriever;
 
+    @Autowired
     public CorpusRetrievalService(PaperService paperService,
                                   PaperReadingModelRepository modelRepository,
                                   PaperLocationRepository locationRepository,
-                                  EmbeddingClient embeddingClient,
-                                  QdrantClient qdrantClient,
-                                  CanonicalReadingLocationService canonicalReadService) {
+                                  CanonicalReadingLocationService canonicalReadService,
+                                  PaperSearchabilityService paperSearchabilityService,
+                                  ReadingLocationRetriever readingLocationRetriever) {
         this.paperService = paperService;
         this.modelRepository = modelRepository;
         this.locationRepository = locationRepository;
-        this.embeddingClient = embeddingClient;
-        this.qdrantClient = qdrantClient;
         this.canonicalReadService = canonicalReadService;
+        this.paperSearchabilityService = paperSearchabilityService;
+        this.readingLocationRetriever = readingLocationRetriever;
     }
 
     @Transactional(readOnly = true)
@@ -128,7 +125,7 @@ public class CorpusRetrievalService {
         if (!scope.containsAll(requested)) {
             throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
         }
-        List<String> authorizedIds = authorizedPapers(query.userId(), new ArrayList<>(requested)).stream()
+        List<String> authorizedIds = accessiblePapers(query.userId(), new ArrayList<>(requested)).stream()
                 .map(Paper::getPaperId)
                 .filter(requested::contains)
                 .distinct()
@@ -136,53 +133,33 @@ public class CorpusRetrievalService {
         if (authorizedIds.size() != requested.size()) {
             throw new IllegalArgumentException("paper_ids contains an unavailable paper");
         }
-        Map<String, PaperReadingModel> currentModels = currentModels(authorizedIds);
-        Map<String, String> activeGenerations = activeGenerations(authorizedIds, currentModels);
+        Map<String, PaperReadingModel> currentModels = currentReadyModels(authorizedIds);
+        Map<String, String> activeModels = activeModels(authorizedIds, currentModels);
         String retrievalQuery = String.join(" ", List.of(safe(query.queryText()), safe(query.sectionQuery()))).trim();
         if (retrievalQuery.isBlank()) {
-            return new LocationSearchResult(List.of(), 0, 0, qdrantClient.indexVersion());
+            return new LocationSearchResult(List.of(), 0, 0, "");
         }
 
-        EmbeddingClient.EmbeddingUsageResult embedding = embeddingClient.embedWithUsage(
-                List.of(retrievalQuery),
-                String.valueOf(query.userId()),
-                EmbeddingClient.UsageType.QUERY,
-                Duration.ofSeconds(5)
-        );
-        float[] dense = embedding.vectors().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("Query embedding was empty"));
-        validateEmbeddingContract(currentModels, embedding.modelVersion(), dense.length);
-        qdrantClient.verifyCollection(dense.length);
-        QdrantSparseVector sparse = ReadingModelQdrantIndexService.sparseVector(retrievalQuery);
         int topK = Math.max(1, Math.min(query.topK(), MAX_LOCATION_LIMIT));
-        int candidateLimit = Math.min(100, Math.max(40, topK * 4));
-        Map<String, FusedHit> fused = new LinkedHashMap<>();
-        Map<String, Object> globalFilter = qdrantClient.filter(
-                activeGenerations, query.pageFrom(), query.pageTo());
-        addHits(fused, qdrantClient.searchDense(dense, globalFilter, candidateLimit), true);
-        if (!sparse.indices().isEmpty()) {
-            addHits(fused, qdrantClient.searchSparse(sparse, globalFilter, candidateLimit), false);
-        }
-        if (activeGenerations.size() > 1
-                && activeGenerations.size() <= 8
-                && activeGenerations.size() <= topK) {
-            int perPaperLimit = Math.min(40, Math.max(8, topK * 2));
-            for (Map.Entry<String, String> entry : activeGenerations.entrySet()) {
-                Map<String, Object> filter = qdrantClient.filter(
-                        Map.of(entry.getKey(), entry.getValue()), query.pageFrom(), query.pageTo());
-                addHits(fused, qdrantClient.searchDense(dense, filter, perPaperLimit), true);
-                if (!sparse.indices().isEmpty()) {
-                    addHits(fused, qdrantClient.searchSparse(sparse, filter, perPaperLimit), false);
-                }
-            }
-        }
         Set<String> elementTypeHints = new LinkedHashSet<>(normalizeElementTypes(query.elementTypes()));
-        List<FusedHit> ranked = fused.values().stream()
-                .map(hit -> matchesElementTypeHint(hit.payload(), elementTypeHints)
-                        ? hit.withBoost(ELEMENT_TYPE_HINT_BOOST)
-                        : hit)
-                .sorted(Comparator.comparingDouble(FusedHit::fusedScore).reversed()
-                        .thenComparing(FusedHit::locationRef))
+        ReadingLocationRetriever.RetrievalCandidates retrieval = readingLocationRetriever.retrieve(
+                new ReadingLocationRetriever.LocationRetrievalRequest(
+                        activeModels,
+                        query.queryText(),
+                        query.sectionQuery(),
+                        elementTypeHints,
+                        query.pageFrom(),
+                        query.pageTo(),
+                        topK
+                ));
+        List<FusedHit> ranked = retrieval.ranked().stream()
+                .map(candidate -> new FusedHit(
+                        candidate.locationRef(),
+                        candidate.payload(),
+                        0,
+                        candidate.lexicalScore(),
+                        candidate.lexicalScore()
+                ))
                 .toList();
         Map<String, PaperLocation> locationsByRef = locationRepository.findByLocationRefIn(
                         ranked.stream().map(FusedHit::locationRef).toList())
@@ -191,7 +168,7 @@ public class CorpusRetrievalService {
         List<FusedHit> valid = ranked.stream()
                 .filter(hit -> validCurrentHit(hit, locationsByRef.get(hit.locationRef()), currentModels, requested))
                 .toList();
-        List<FusedHit> selected = selectPaperCoverage(valid, authorizedIds, topK);
+        List<FusedHit> selected = selectPaperCoverage(valid, authorizedIds, retrievalQuery, topK);
         CanonicalReadingLocationService.ReadBatch hydrated = canonicalReadService.read(
                 selected.stream().map(FusedHit::locationRef).toList(),
                 authorizedIds
@@ -226,7 +203,7 @@ public class CorpusRetrievalService {
                 candidates,
                 valid.size(),
                 candidates.size(),
-                qdrantClient.indexVersion()
+                retrieval.indexVersion()
         );
     }
 
@@ -248,6 +225,15 @@ public class CorpusRetrievalService {
     }
 
     private List<Paper> authorizedPapers(Long userId, List<String> scopePaperIds) {
+        List<Paper> accessible = accessiblePapers(userId, scopePaperIds);
+        Map<String, PaperReadingModel> currentModels = currentModels(
+                accessible.stream().map(Paper::getPaperId).toList());
+        return accessible.stream()
+                .filter(paper -> currentModels.containsKey(paper.getPaperId()))
+                .toList();
+    }
+
+    private List<Paper> accessiblePapers(Long userId, List<String> scopePaperIds) {
         if (userId == null) {
             throw new IllegalArgumentException("user_id is required");
         }
@@ -260,15 +246,24 @@ public class CorpusRetrievalService {
                 .filter(paper -> paper != null && !safe(paper.getPaperId()).isBlank())
                 .sorted(Comparator.comparing(Paper::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toMap(Paper::getPaperId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
-        Map<String, PaperReadingModel> currentModels = currentModels(new ArrayList<>(scope));
         return scope.stream()
                 .filter(accessible::containsKey)
-                .filter(currentModels::containsKey)
                 .map(accessible::get)
                 .toList();
     }
 
     private Map<String, PaperReadingModel> currentModels(List<String> paperIds) {
+        return currentReadyModels(paperIds).entrySet().stream()
+                .filter(entry -> paperSearchabilityService.isSearchable(entry.getValue()))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private Map<String, PaperReadingModel> currentReadyModels(List<String> paperIds) {
         if (paperIds == null || paperIds.isEmpty()) {
             return Map.of();
         }
@@ -294,59 +289,50 @@ public class CorpusRetrievalService {
             return false;
         }
         return current.getModelVersion().equals(stringPayload(hit.payload(), "model_version", ""))
-                && location.getPaperId().equals(stringPayload(hit.payload(), "paper_id", ""))
-                && current.getRetrievalIndexGeneration().equals(
-                        stringPayload(hit.payload(), "index_generation", ""));
+                && location.getPaperId().equals(stringPayload(hit.payload(), "paper_id", ""));
     }
 
-    private Map<String, String> activeGenerations(List<String> paperIds,
-                                                   Map<String, PaperReadingModel> currentModels) {
-        Map<String, String> generations = new LinkedHashMap<>();
+    private Map<String, String> activeModels(List<String> paperIds,
+                                             Map<String, PaperReadingModel> currentModels) {
+        Map<String, String> models = new LinkedHashMap<>();
         for (String paperId : paperIds) {
             PaperReadingModel model = currentModels.get(paperId);
             if (model == null
-                    || model.getRetrievalIndexStatus() != PaperRetrievalIndexStatus.READY
-                    || safe(model.getRetrievalIndexGeneration()).isBlank()) {
+                    || !paperSearchabilityService.isSearchable(model)) {
                 throw new IllegalStateException("Retrieval index is unavailable for paperId=" + paperId);
             }
-            generations.put(paperId, model.getRetrievalIndexGeneration());
+            models.put(paperId, model.getModelVersion());
         }
-        return generations;
+        return models;
     }
 
-    private void validateEmbeddingContract(Map<String, PaperReadingModel> currentModels,
-                                           String embeddingModelVersion,
-                                           int dimension) {
-        String activeContract = qdrantClient.indexVersion() + "|" + embeddingModelVersion + "|" + dimension;
-        for (PaperReadingModel model : currentModels.values()) {
-            if (!activeContract.equals(safe(model.getRetrievalEmbeddingContract()))) {
-                throw new IllegalStateException(
-                        "Retrieval embedding contract mismatch for paperId=" + model.getPaperId());
-            }
-        }
-    }
-
-    private void addHits(Map<String, FusedHit> fused, List<QdrantSearchHit> hits, boolean dense) {
-        for (int index = 0; index < hits.size(); index++) {
-            QdrantSearchHit hit = hits.get(index);
-            String locationRef = stringPayload(hit.payload(), "location_ref", "");
-            if (locationRef.isBlank()) {
-                continue;
-            }
-            FusedHit current = fused.getOrDefault(locationRef, FusedHit.empty(locationRef, hit.payload()));
-            double contribution = 1.0 / (RRF_K + index + 1.0);
-            fused.put(locationRef, dense
-                    ? current.withDense(hit.score(), contribution)
-                    : current.withSparse(hit.score(), contribution));
-        }
-    }
-
-    private List<FusedHit> selectPaperCoverage(List<FusedHit> ranked, List<String> paperOrder, int topK) {
+    private List<FusedHit> selectPaperCoverage(List<FusedHit> ranked,
+                                               List<String> paperOrder,
+                                               String query,
+                                               int topK) {
         if (paperOrder.size() > topK) {
             return ranked.stream().limit(topK).toList();
         }
         List<FusedHit> selected = new ArrayList<>();
         Set<String> selectedRefs = new LinkedHashSet<>();
+        boolean reserveLeads = paperOrder.size() == 1
+                || (SearchText.tokens(query).size() <= 2 && paperOrder.size() * 2 <= topK);
+        if (reserveLeads) {
+            for (String paperId : paperOrder) {
+                ranked.stream()
+                        .filter(hit -> paperId.equals(stringPayload(hit.payload(), "paper_id", "")))
+                        .filter(hit -> leadPriority(hit.payload()) < Integer.MAX_VALUE)
+                        .min(Comparator
+                                .comparingInt((FusedHit hit) -> leadPriority(hit.payload()))
+                                .thenComparing(Comparator.comparingDouble(FusedHit::fusedScore).reversed())
+                                .thenComparing(FusedHit::locationRef))
+                        .ifPresent(hit -> {
+                            if (selected.size() < topK && selectedRefs.add(hit.locationRef())) {
+                                selected.add(hit);
+                            }
+                        });
+            }
+        }
         for (String paperId : paperOrder) {
             ranked.stream()
                     .filter(hit -> paperId.equals(stringPayload(hit.payload(), "paper_id", "")))
@@ -370,6 +356,30 @@ public class CorpusRetrievalService {
         selected.sort(Comparator.comparingDouble(FusedHit::fusedScore).reversed()
                 .thenComparing(FusedHit::locationRef));
         return selected;
+    }
+
+    private int leadPriority(Map<String, Object> payload) {
+        String locationType = stringPayload(payload, "location_type", "");
+        String section = normalize(stringPayload(payload, "section_path", ""));
+        if ("SECTION".equalsIgnoreCase(locationType)
+                && ("abstract".equals(section) || section.endsWith(" abstract"))) {
+            return 0;
+        }
+        if (firstPage(payload) && "PAGE".equalsIgnoreCase(locationType)) {
+            return 1;
+        }
+        if (firstPage(payload) && "SECTION".equalsIgnoreCase(locationType)) {
+            return 2;
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    private boolean firstPage(Map<String, Object> payload) {
+        Object value = payload == null ? null : payload.get("page_number");
+        if (value instanceof Number number) {
+            return number.intValue() == 1;
+        }
+        return value != null && "1".equals(value.toString());
     }
 
     private boolean matchesIdentity(Paper paper, Map<String, Object> hints) {
@@ -458,20 +468,6 @@ public class CorpusRetrievalService {
                 .map(value -> value.trim().toLowerCase(Locale.ROOT))
                 .distinct()
                 .toList();
-    }
-
-    private boolean matchesElementTypeHint(Map<String, Object> payload, Set<String> hints) {
-        if (payload == null || hints.isEmpty()) {
-            return false;
-        }
-        Object values = payload.get("element_types");
-        if (values instanceof List<?> list && list.stream()
-                .map(Object::toString)
-                .map(this::normalize)
-                .anyMatch(hints::contains)) {
-            return true;
-        }
-        return hints.contains(normalize(stringPayload(payload, "element_type", "")));
     }
 
     private Set<String> normalizedSet(List<String> values) {
@@ -569,20 +565,5 @@ public class CorpusRetrievalService {
 
     private record FusedHit(String locationRef, Map<String, Object> payload,
                             double denseScore, double sparseScore, double fusedScore) {
-        static FusedHit empty(String locationRef, Map<String, Object> payload) {
-            return new FusedHit(locationRef, payload == null ? Map.of() : payload, 0, 0, 0);
-        }
-
-        FusedHit withDense(double score, double contribution) {
-            return new FusedHit(locationRef, payload, score, sparseScore, fusedScore + contribution);
-        }
-
-        FusedHit withSparse(double score, double contribution) {
-            return new FusedHit(locationRef, payload, denseScore, score, fusedScore + contribution);
-        }
-
-        FusedHit withBoost(double boost) {
-            return new FusedHit(locationRef, payload, denseScore, sparseScore, fusedScore + boost);
-        }
     }
 }

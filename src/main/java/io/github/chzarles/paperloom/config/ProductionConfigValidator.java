@@ -29,8 +29,6 @@ public class ProductionConfigValidator implements CommandLineRunner {
         requireNonBlank("jwt.secret-key");
         requireNonBlank("deepseek.api.url");
         requireNonBlank("deepseek.api.key");
-        requireNonBlank("embedding.api.url");
-        requireNonBlank("embedding.api.key");
         requireNonBlank("minio.endpoint");
         requireNonBlank("minio.accessKey");
         requireNonBlank("minio.secretKey");

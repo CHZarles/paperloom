@@ -181,7 +181,6 @@ test('management functions stay out of generated global navigation metadata', ()
   const managementRouteNames = [
     'chat-history',
     'org-tag',
-    'model-provider',
     'invite-code',
     'usage-monitor',
     'recharge',
@@ -201,7 +200,7 @@ test('user management is not exposed as a standalone route', () => {
 
 test('chat return button keeps a neutral focus treatment', async ({ page }) => {
   await installLoginState(page, await login());
-  await page.goto('/#/model-provider');
+  await page.goto('/#/org-tag');
 
   const button = page.getByRole('button', { name: '返回 Chat' });
   await button.focus();
@@ -229,11 +228,11 @@ test('chat return button keeps a neutral focus treatment', async ({ page }) => {
 test('global avatar exposes the management entry', async ({ page }) => {
   await installLoginState(page, await login());
 
-  await page.goto('/#/model-provider');
+  await page.goto('/#/org-tag');
   await expect(page.locator('.global-header-shell .avatar-identicon')).toBeVisible();
   await page.locator('.global-header-shell .avatar-identicon').click();
   await page.getByText('管理页面').click();
 
-  await expect(page).toHaveURL(/#\/model-provider/);
+  await expect(page).toHaveURL(/#\/org-tag/);
   await expect(page.locator('[data-testid="settings-modal"]')).toBeVisible();
 });

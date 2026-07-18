@@ -114,19 +114,6 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
-    name: 'model-provider',
-    path: '/model-provider',
-    component: 'layout.base$view.model-provider',
-    meta: {
-      title: 'model-provider',
-      i18nKey: 'route.model-provider',
-      icon: 'lucide:flask-conical',
-      roles: ['ADMIN'],
-      order: 5,
-      hideInMenu: true
-    }
-  },
-  {
     name: 'org-tag',
     path: '/org-tag',
     component: 'layout.base$view.org-tag',

@@ -27,9 +27,7 @@ function isSearchable(row: Api.Paper.UploadTask) {
   return (
     isUploadCompleted(row) &&
     row.processingStatus === 'COMPLETED' &&
-    row.actualEmbeddingTokens !== null &&
-    row.actualEmbeddingTokens !== undefined &&
-    Number(row.actualChunkCount || 0) > 0
+    Number(row.retrievalIndexedLocationCount || 0) > 0
   );
 }
 
@@ -69,11 +67,7 @@ function assetCount(row: Api.Paper.UploadTask) {
 }
 
 function canRetry(row: Api.Paper.UploadTask) {
-  if (!props.canManage(row)) return false;
-  if (row.processingStatus === 'FAILED') return true;
-  const actualUsageMissing = row.actualEmbeddingTokens === undefined || row.actualEmbeddingTokens === null;
-  if (row.processingStatus === 'COMPLETED' && actualUsageMissing) return true;
-  return actualUsageMissing && Boolean(row.estimatedEmbeddingTokens);
+  return props.canManage(row) && row.processingStatus === 'FAILED';
 }
 
 function rowOptions(row: Api.Paper.UploadTask): DropdownOption[] {
@@ -88,7 +82,7 @@ function rowOptions(row: Api.Paper.UploadTask): DropdownOption[] {
       key: 'parser',
       disabled: !props.canManage(row) || !row.parserArtifact?.available
     },
-    ...(canRetry(row) ? [{ label: 'Retry indexing', key: 'retry' }] : []),
+    ...(canRetry(row) ? [{ label: 'Retry processing', key: 'retry' }] : []),
     ...(props.canManage(row) ? [{ label: 'Delete paper', key: 'delete' }] : [])
   ];
 }
@@ -149,16 +143,11 @@ function handleRowAction(key: string | number, row: Api.Paper.UploadTask) {
 
       <div class="paper-mobile-item__metrics">
         <div>
-          <span>Estimated</span>
-          <strong>{{ compactNumber(row.estimatedEmbeddingTokens) }}</strong>
-          <small>{{ Number(row.estimatedChunkCount || 0).toLocaleString() }} chunks</small>
-        </div>
-        <div>
-          <span>Actual</span>
+          <span>Lexical index</span>
           <strong>
-            {{ row.actualEmbeddingTokens == null ? 'Pending' : compactNumber(row.actualEmbeddingTokens) }}
+            {{ row.retrievalIndexedTokenCount == null ? 'Pending' : compactNumber(row.retrievalIndexedTokenCount) }}
           </strong>
-          <small>{{ Number(row.actualChunkCount || 0).toLocaleString() }} chunks</small>
+          <small>{{ Number(row.retrievalIndexedLocationCount || 0).toLocaleString() }} locations</small>
         </div>
       </div>
 

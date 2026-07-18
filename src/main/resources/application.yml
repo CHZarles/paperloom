@@ -169,8 +169,7 @@ paper:
   bootstrap:
     enabled: ${PAPER_BOOTSTRAP_ENABLED:true}
     path: ${PAPER_BOOTSTRAP_PATH:data/2412.08972.pdf}
-    org-tag: ${PAPER_BOOTSTRAP_ORG_TAG:default}
-    public: ${PAPER_BOOTSTRAP_PUBLIC:true}
+    publish: ${PAPER_BOOTSTRAP_PUBLISH:true}
     user-id: ${PAPER_BOOTSTRAP_USER_ID:system-bootstrap}
 
 paperloom:
@@ -187,7 +186,7 @@ research-harness:
 qdrant:
   base-url: ${QDRANT_BASE_URL:http://127.0.0.1:6333}
   api-key: ${QDRANT_API_KEY:}
-  collection: ${QDRANT_COLLECTION:paperloom_reading_elements_dense_sparse_v1}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_locations_bm25_v1}
   connect-timeout: ${QDRANT_CONNECT_TIMEOUT:5s}
   request-timeout: ${QDRANT_REQUEST_TIMEOUT:20s}
   upsert-batch-size: ${QDRANT_UPSERT_BATCH_SIZE:64}
@@ -216,15 +215,6 @@ deepseek:
     url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1}
     model: ${DEEPSEEK_API_MODEL:deepseek-chat}
     key: ${DEEPSEEK_API_KEY:}
-
-embedding:
-  api:
-    # 向量服务配置
-    url: ${EMBEDDING_API_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-    key: ${EMBEDDING_API_KEY:}
-    model: ${EMBEDDING_API_MODEL:text-embedding-v4}
-    batch-size: ${EMBEDDING_BATCH_SIZE:10}
-    dimension: ${EMBEDDING_DIMENSION:2048}
 
 ai:
   prompt:

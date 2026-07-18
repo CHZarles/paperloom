@@ -21,16 +21,20 @@ class PaperSearchabilityServiceTest {
     @Mock
     private PaperReadingModelRepository modelRepository;
 
+    @Mock
+    private RetrievalIndexContractService contractService;
+
     private PaperSearchabilityService service;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        service = new PaperSearchabilityService(modelRepository);
+        when(contractService.isActive("active-index-contract")).thenReturn(true);
+        service = new PaperSearchabilityService(modelRepository, contractService);
     }
 
     @Test
-    void activeQdrantGenerationMakesPaperSearchable() {
+    void readyQdrantIndexMakesPaperSearchable() {
         when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
                 List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
         )).thenReturn(List.of(indexedModel("paper-a")));
@@ -39,7 +43,7 @@ class PaperSearchabilityServiceTest {
     }
 
     @Test
-    void legacyCompletionWithoutActiveQdrantGenerationIsNotSearchable() {
+    void legacyCompletionWithoutReadyIndexIsNotSearchable() {
         when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
                 List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
         )).thenReturn(List.of());
@@ -50,7 +54,7 @@ class PaperSearchabilityServiceTest {
     @Test
     void incompleteRetrievalContractIsNotSearchable() {
         PaperReadingModel model = indexedModel("paper-a");
-        model.setRetrievalEmbeddingContract(null);
+        model.setRetrievalIndexContract(null);
         when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
                 List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
         )).thenReturn(List.of(model));
@@ -61,7 +65,7 @@ class PaperSearchabilityServiceTest {
     @Test
     void unavailableRetrievalIndexIsNotSearchable() {
         PaperReadingModel model = indexedModel("paper-a");
-        model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.UNAVAILABLE);
+        model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.FAILED);
         when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
                 List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
         )).thenReturn(List.of(model));
@@ -71,7 +75,7 @@ class PaperSearchabilityServiceTest {
 
     @Test
     void nullOrBlankPaperIsNotSearchable() {
-        assertFalse(service.isSearchable(null));
+        assertFalse(service.isSearchable((Paper) null));
         assertFalse(service.isSearchable(paper(" ")));
     }
 
@@ -90,8 +94,7 @@ class PaperSearchabilityServiceTest {
         model.setCurrent(true);
         model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
         model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.READY);
-        model.setRetrievalIndexGeneration("generation-1");
-        model.setRetrievalEmbeddingContract("collection|embedding-v1|3");
+        model.setRetrievalIndexContract("active-index-contract");
         model.setRetrievalIndexedLocationCount(1);
         return model;
     }

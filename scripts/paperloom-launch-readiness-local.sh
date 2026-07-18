@@ -125,7 +125,7 @@ safe_summary() {
   echo "spring_datasource_url=${SPRING_DATASOURCE_URL:-}"
   echo "frontend_base_url=${PAPERLOOM_FRONTEND_BASE_URL:-}"
   echo "mineru_base_url=${PAPER_PARSING_MINERU_BASE_URL:-}"
-  echo "provider_smoke=backend-active-model-providers"
+  echo "provider_smoke=backend-active-llm-provider"
 }
 
 source_env_file "$ENV_FILE" false

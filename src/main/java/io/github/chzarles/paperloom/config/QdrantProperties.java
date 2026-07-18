@@ -11,7 +11,7 @@ public class QdrantProperties {
 
     private String baseUrl = "http://127.0.0.1:6333";
     private String apiKey = "";
-    private String collection = "paperloom_reading_elements_dense_sparse_v1";
+    private String collection = "paperloom_reading_locations_bm25_v1";
     private Duration connectTimeout = Duration.ofSeconds(5);
     private Duration requestTimeout = Duration.ofSeconds(20);
     private int upsertBatchSize = 64;

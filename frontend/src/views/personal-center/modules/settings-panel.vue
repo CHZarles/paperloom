@@ -4,7 +4,6 @@ import { NTag } from 'naive-ui';
 import RechargePage from '@/views/recharge/index.vue';
 
 const InviteCodePage = defineAsyncComponent(() => import('@/views/invite-code/index.vue'));
-const ModelProviderPage = defineAsyncComponent(() => import('@/views/model-provider/index.vue'));
 const OrgTagPage = defineAsyncComponent(() => import('@/views/org-tag/index.vue'));
 const RechargeManagePage = defineAsyncComponent(() => import('@/views/recharge-manage/index.vue'));
 const UsageMonitorPage = defineAsyncComponent(() => import('@/views/usage-monitor/index.vue'));
@@ -39,7 +38,6 @@ type SettingsSection =
   | 'recharge'
   | 'userAdmin'
   | 'orgTagAdmin'
-  | 'modelProvider'
   | 'inviteCode'
   | 'usageMonitor'
   | 'rechargeManage';
@@ -47,7 +45,6 @@ type SettingsSection =
 const adminSections = new Set<SettingsSection>([
   'userAdmin',
   'orgTagAdmin',
-  'modelProvider',
   'inviteCode',
   'usageMonitor',
   'rechargeManage'
@@ -476,15 +473,6 @@ function buildAvatarFill(seed: string) {
           <button
             type="button"
             class="settings-nav__item"
-            :class="{ 'settings-nav__item--active': activeSection === 'modelProvider' }"
-            @click="activeSection = 'modelProvider'"
-          >
-            <icon-lucide:flask-conical />
-            <span>Embedding Model / 向量模型</span>
-          </button>
-          <button
-            type="button"
-            class="settings-nav__item"
             :class="{ 'settings-nav__item--active': activeSection === 'inviteCode' }"
             @click="activeSection = 'inviteCode'"
           >
@@ -628,12 +616,6 @@ function buildAvatarFill(seed: string) {
           </NSpin>
         </section>
 
-        <section
-          v-if="authStore.isAdmin && activeSection === 'modelProvider'"
-          class="settings-section settings-section--model-provider"
-        >
-          <ModelProviderPage />
-        </section>
         <section v-if="activeSection === 'recharge'" class="settings-section settings-section--embedded">
           <RechargePage />
         </section>

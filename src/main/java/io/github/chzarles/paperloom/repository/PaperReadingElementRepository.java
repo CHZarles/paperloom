@@ -34,6 +34,8 @@ public interface PaperReadingElementRepository extends JpaRepository<PaperReadin
 
     long countByPaperIdAndModelVersionAndElementType(String paperId, String modelVersion, String elementType);
 
+    void deleteByPaperId(String paperId);
+
     @Query("""
             select element
             from PaperReadingElement element

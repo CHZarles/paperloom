@@ -62,6 +62,7 @@ public class PaperReadingModelService {
         model.setPaperId(paperId);
         model.setModelVersion(modelVersion);
         model.setModelStatus(PaperReadingModelStatus.READING_MODEL_BUILDING);
+        model.setRetrievalIndexStatus(io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus.PENDING);
         model.setCurrent(false);
         model.setParserName(parsedPaper == null ? null : parsedPaper.parserName());
         model.setParserVersion(parsedPaper == null ? null : parsedPaper.parserVersion());

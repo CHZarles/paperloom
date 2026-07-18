@@ -7,7 +7,7 @@ import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
-import io.github.chzarles.paperloom.service.VectorizationService;
+import io.github.chzarles.paperloom.service.RetrievalIndexingService;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class BootstrapPaperInitializerTest {
     private ParseService parseService;
 
     @Mock
-    private VectorizationService vectorizationService;
+    private RetrievalIndexingService retrievalIndexingService;
 
     @Mock
     private ReadingModelQdrantIndexService qdrantIndexService;
@@ -95,7 +95,7 @@ class BootstrapPaperInitializerTest {
         initializer.run();
 
         verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyString(), anyBoolean());
-        verify(vectorizationService, never()).vectorize(anyString(), anyString(), anyString(), anyBoolean(), anyString());
+        verify(retrievalIndexingService, never()).index(anyString(), anyString());
         verify(paperRepository, never()).save(any(Paper.class));
         verify(minioClient, never()).putObject(any(PutObjectArgs.class));
     }
@@ -115,14 +115,14 @@ class BootstrapPaperInitializerTest {
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(0L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(0L);
         when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(0L);
-        doNothing().when(vectorizationService).vectorize(fileMd5, "1", "default", true, "system-bootstrap");
+        doNothing().when(retrievalIndexingService).index(fileMd5, "system-bootstrap");
         when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
 
         initializer.run();
 
         verify(minioClient).putObject(any(PutObjectArgs.class));
         verify(parseService).parseAndSave(eq(fileMd5), any(), eq("paperloom.pdf"), eq("1"), eq("default"), eq(true));
-        verify(vectorizationService).vectorize(fileMd5, "1", "default", true, "system-bootstrap");
+        verify(retrievalIndexingService).index(fileMd5, "system-bootstrap");
 
         ArgumentCaptor<Paper> captor = ArgumentCaptor.forClass(Paper.class);
         verify(paperRepository).save(captor.capture());
@@ -173,7 +173,7 @@ class BootstrapPaperInitializerTest {
 
         verify(paperRepository).deleteAll(List.of(duplicate));
         verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyString(), anyBoolean());
-        verify(vectorizationService, never()).vectorize(anyString(), anyString(), anyString(), anyBoolean(), anyString());
+        verify(retrievalIndexingService, never()).index(anyString(), anyString());
     }
 
     private void configureInitializer(Path pdfPath) {

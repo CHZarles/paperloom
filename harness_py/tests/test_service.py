@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import unittest
 
+from starlette.testclient import TestClient
+
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.orchestration.runtime import TurnExecutionResult
-from harness_py.transport.service import ResearchHarnessService
+from harness_py.transport.service import ResearchHarnessService, _service_app
 from harness_py.tests import test_harness_py as _harness_tests
 
 
@@ -17,6 +19,31 @@ class ServiceTest(unittest.TestCase):
                 harness=object(),
                 corpus_store=object(),
             )
+
+    def test_health_exposes_harmless_model_runtime_contract(self) -> None:
+        class Provider:
+            def public_diagnostics(self):
+                return {
+                    "provider": "minimax",
+                    "model": "MiniMax-M3",
+                    "api_style": "openai-compatible",
+                    "has_api_key": True,
+                }
+
+        service = ResearchHarnessService(
+            provider=Provider(),
+            harness=object(),
+            corpus_gateway=object(),
+            max_completion_tokens=4321,
+        )
+
+        with TestClient(_service_app(service, "")) as client:
+            response = client.get("/health")
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(4321, response.json()["max_completion_tokens"])
+        self.assertEqual("MiniMax-M3", response.json()["provider"]["model"])
+        self.assertNotIn("api_key", response.json()["provider"])
 
     def test_run_job_preserves_response_and_research_memory_contract(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()

@@ -21,4 +21,6 @@ public interface PaperLocationRepository extends JpaRepository<PaperLocation, Lo
                                                                                              PaperLocationType locationType);
 
     long countByPaperIdAndModelVersion(String paperId, String modelVersion);
+
+    void deleteByPaperId(String paperId);
 }

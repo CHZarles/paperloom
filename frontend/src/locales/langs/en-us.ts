@@ -166,7 +166,6 @@ const local: App.I18n.Schema = {
     'chat-history': 'Q&A History',
     'invite-code': 'Invite Codes',
     'knowledge-base': 'Paper Library',
-    'model-provider': 'Embedding Model',
     'org-tag': 'Taxonomy Tags',
     'usage-monitor': 'Usage Curves',
     'personal-center': 'Research Profile',
