@@ -3,22 +3,23 @@ package io.github.chzarles.paperloom.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.model.Paper;
-import io.github.chzarles.paperloom.model.OrganizationTag;
 import io.github.chzarles.paperloom.model.PaperParserArtifact;
 import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.OrganizationTagRepository;
+import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.service.PaperCandidateSearchRequest;
+import io.github.chzarles.paperloom.service.PaperAccessService;
 import io.github.chzarles.paperloom.service.PaperParserArtifactService;
 import io.github.chzarles.paperloom.service.PaperRecommendationCandidate;
 import io.github.chzarles.paperloom.service.PaperRecommendationCandidateService;
 import io.github.chzarles.paperloom.service.PaperRecommendationSearchRequest;
+import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperVisualAssetService;
 import io.github.chzarles.paperloom.utils.LogUtils;
@@ -44,6 +45,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -62,10 +64,16 @@ public class PaperController {
     private PaperService paperService;
 
     @Autowired
+    private PaperAccessService paperAccessService;
+
+    @Autowired
+    private PaperSearchabilityService paperSearchabilityService;
+
+    @Autowired
     private PaperRepository paperRepository;
 
     @Autowired
-    private OrganizationTagRepository organizationTagRepository;
+    private PaperPublicationRepository paperPublicationRepository;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -111,9 +119,7 @@ public class PaperController {
         try {
             LogUtils.logBusiness("DELETE_PAPER", userId, "接收到删除论文请求: paperId=%s, role=%s", paperId, role);
 
-            Optional<Paper> fileOpt = "ADMIN".equalsIgnoreCase(role)
-                    ? paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
-                    : paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId);
+            Optional<Paper> fileOpt = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId);
             if (fileOpt.isEmpty()) {
                 LogUtils.logUserOperation(userId, "DELETE_PAPER", paperId, "FAILED_NOT_FOUND");
                 monitor.end("删除失败：论文不存在");
@@ -124,16 +130,6 @@ public class PaperController {
             }
 
             Paper file = fileOpt.get();
-            if (!file.getUserId().equals(userId) && !"ADMIN".equals(role)) {
-                LogUtils.logUserOperation(userId, "DELETE_PAPER", paperId, "FAILED_PERMISSION_DENIED");
-                LogUtils.logBusiness("DELETE_PAPER", userId, "用户无权删除论文: paperId=%s, owner=%s", paperId, file.getUserId());
-                monitor.end("删除失败：权限不足");
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", HttpStatus.FORBIDDEN.value());
-                response.put("message", "没有权限删除此论文");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
-            }
-
             paperService.deletePaper(paperId, userId, role);
 
             LogUtils.logFileOperation(userId, "DELETE", file.getOriginalFilename(), paperId, "SUCCESS");
@@ -142,6 +138,12 @@ public class PaperController {
             response.put("code", 200);
             response.put("message", "论文删除成功");
             return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            monitor.end("删除论文被拒绝: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "code", HttpStatus.CONFLICT.value(),
+                    "message", e.getMessage()
+            ));
         } catch (Exception e) {
             LogUtils.logBusinessError("DELETE_PAPER", userId, "删除论文失败: paperId=%s", e, paperId);
             monitor.end("删除失败: " + e.getMessage());
@@ -162,21 +164,12 @@ public class PaperController {
         try {
             LogUtils.logBusiness("RETRY_VECTORIZATION_ASYNC", userId, "接收到异步论文处理重试请求: paperId=%s, role=%s", paperId, role);
 
-            Optional<Paper> fileOpt = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId);
+            Optional<Paper> fileOpt = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId);
             if (fileOpt.isEmpty()) {
                 monitor.end("重试失败：论文不存在");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                         "code", HttpStatus.NOT_FOUND.value(),
                         "message", "论文不存在"
-                ));
-            }
-
-            Paper file = fileOpt.get();
-            if (!file.getUserId().equals(userId) && !"ADMIN".equals(role)) {
-                monitor.end("重试失败：权限不足");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                        "code", HttpStatus.FORBIDDEN.value(),
-                        "message", "没有权限重试此论文处理"
                 ));
             }
 
@@ -193,6 +186,12 @@ public class PaperController {
                     "code", 200,
                     "message", "已提交论文解析与词法索引重试任务",
                     "data", data
+            ));
+        } catch (IllegalStateException e) {
+            monitor.end("异步论文处理重试被拒绝: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "code", HttpStatus.CONFLICT.value(),
+                    "message", e.getMessage()
             ));
         } catch (Exception e) {
             LogUtils.logBusinessError("RETRY_VECTORIZATION_ASYNC", userId, "异步论文处理重试失败: paperId=%s", e, paperId);
@@ -441,6 +440,7 @@ public class PaperController {
     }
 
     private List<Map<String, Object>> convertPapersToResponse(List<Paper> files) {
+        Set<String> searchablePaperIds = paperSearchabilityService.searchablePaperIds(files);
         return files.stream().map(file -> {
             Map<String, Object> dto = new LinkedHashMap<>();
             Map<String, Object> parserArtifact = buildParserArtifactStatus(file.getPaperId());
@@ -457,8 +457,10 @@ public class PaperController {
             dto.put("processingStatus", normalizeProcessingStatus(file.getVectorizationStatus(), file.getStatus()));
             dto.put("processingErrorMessage", file.getVectorizationErrorMessage());
             dto.put("userId", file.getUserId());
-            dto.put("orgTag", file.getOrgTag());
-            dto.put("isPublic", file.isPublic());
+            boolean published = paperPublicationRepository.existsByPaperId(file.getPaperId());
+            dto.put("libraryScope", published
+                    ? "GLOBAL" : "PRIVATE");
+            dto.put("searchable", searchablePaperIds.contains(file.getPaperId()));
             dto.put("createdAt", file.getCreatedAt());
             dto.put("mergedAt", file.getMergedAt());
             dto.put("retrievalIndexedTokenCount", file.getRetrievalIndexedTokenCount());
@@ -469,7 +471,6 @@ public class PaperController {
             dto.put("abstractText", file.getAbstractText());
             dto.put("doi", file.getDoi());
             dto.put("arxivId", file.getArxivId());
-            dto.put("orgTagName", getOrgTagName(file.getOrgTag()));
             dto.put("parserArtifact", parserArtifact);
             dto.put("tableAsset", tableAsset);
             dto.put("figureAsset", figureAsset);
@@ -1035,7 +1036,7 @@ public class PaperController {
             LogUtils.logBusiness("DOWNLOAD_PAPER", userId != null ? userId : "anonymous", "接收到论文下载请求: paperId=%s", paperId);
 
             if (userId == null) {
-                Optional<Paper> publicFile = paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc(paperId);
+                Optional<Paper> publicFile = findPublishedPaper(paperId);
                 if (publicFile.isEmpty()) {
                     Map<String, Object> response = new HashMap<>();
                     response.put("code", HttpStatus.NOT_FOUND.value());
@@ -1146,7 +1147,7 @@ public class PaperController {
             Paper file = null;
 
             if (userId == null) {
-                file = paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc(paperId)
+                file = findPublishedPaper(paperId)
                         .orElse(null);
 
                 if (file == null) {
@@ -1489,9 +1490,13 @@ public class PaperController {
 
     private Optional<Paper> findPreviewablePaper(String paperId, RequestAuthContext authContext) {
         if (authContext.userId() == null) {
-            return paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc(paperId);
+            return findPublishedPaper(paperId);
         }
         return findAccessiblePaper(paperId, authContext.userId(), authContext.orgTags());
+    }
+
+    private Optional<Paper> findPublishedPaper(String paperId) {
+        return paperAccessService.findPublishedPaper(paperId);
     }
 
     private String sanitizePdfFilename(String originalFilename, String fallbackPaperId) {
@@ -1617,28 +1622,4 @@ public class PaperController {
 
     private record RequestAuthContext(String userId, String orgTags) {}
 
-    /**
-     * 根据tagId获取tagName
-     *
-     * @param tagId 组织标签ID
-     * @return 组织标签名称，如果找不到则返回原tagId
-     */
-    private String getOrgTagName(String tagId) {
-        if (tagId == null || tagId.isEmpty()) {
-            return null;
-        }
-
-        try {
-            Optional<OrganizationTag> tagOpt = organizationTagRepository.findByTagId(tagId);
-            if (tagOpt.isPresent()) {
-                return tagOpt.get().getName();
-            } else {
-                LogUtils.logBusiness("GET_ORG_TAG_NAME", "system", "找不到组织标签: tagId=%s", tagId);
-                return tagId; // 如果找不到标签名称，返回原tagId
-            }
-        } catch (Exception e) {
-            LogUtils.logBusinessError("GET_ORG_TAG_NAME", "system", "查询组织标签名称失败: tagId=%s", e, tagId);
-            return tagId; // 发生错误时返回原tagId
-        }
-    }
 }

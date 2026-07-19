@@ -212,9 +212,9 @@ public class ProductPdfLaunchDataSeedRunner {
         }
         return uploadCompleted(status.uploadStatus())
                 && "COMPLETED".equalsIgnoreCase(blankToDefault(status.processingStatus(), ""))
-                && status.actualEmbeddingTokens() != null
-                && status.actualChunkCount() != null
-                && status.actualChunkCount() > 0;
+                && status.retrievalIndexedTokenCount() != null
+                && status.retrievalIndexedLocationCount() != null
+                && status.retrievalIndexedLocationCount() > 0;
     }
 
     private static boolean uploadCompleted(Object uploadStatus) {
@@ -375,8 +375,8 @@ public class ProductPdfLaunchDataSeedRunner {
             map.put("originalFilename", status.originalFilename());
             map.put("uploadStatus", status.uploadStatus());
             map.put("processingStatus", status.processingStatus());
-            map.put("actualEmbeddingTokens", status.actualEmbeddingTokens());
-            map.put("actualChunkCount", status.actualChunkCount());
+            map.put("retrievalIndexedTokenCount", status.retrievalIndexedTokenCount());
+            map.put("retrievalIndexedLocationCount", status.retrievalIndexedLocationCount());
             return map;
         }
     }
@@ -421,8 +421,8 @@ public class ProductPdfLaunchDataSeedRunner {
             String originalFilename,
             Object uploadStatus,
             String processingStatus,
-            Long actualEmbeddingTokens,
-            Integer actualChunkCount,
+            Long retrievalIndexedTokenCount,
+            Integer retrievalIndexedLocationCount,
             Map<String, Object> raw
     ) {
         public PaperStatus {

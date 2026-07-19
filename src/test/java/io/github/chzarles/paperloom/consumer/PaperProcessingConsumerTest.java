@@ -5,8 +5,8 @@ import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.ParseService;
-import io.github.chzarles.paperloom.service.RetrievalIndexingService;
 import io.github.chzarles.paperloom.service.UploadService;
+import io.github.chzarles.paperloom.service.RetrievalIndexingService;
 import io.minio.GetObjectResponse;
 import okhttp3.Headers;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +18,7 @@ import java.io.ByteArrayInputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,10 +37,10 @@ class PaperProcessingConsumerTest {
     private UploadService uploadService;
 
     @Mock
-    private PaperSearchabilityService paperSearchabilityService;
+    private PaperSearchabilityService searchabilityService;
 
     @Mock
-    private PaperReadingModelRepository paperReadingModelRepository;
+    private PaperReadingModelRepository readingModelRepository;
 
     private PaperProcessingConsumer consumer;
 
@@ -47,13 +48,8 @@ class PaperProcessingConsumerTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         consumer = new PaperProcessingConsumer(
-                parseService,
-                retrievalIndexingService,
-                paperService,
-                uploadService,
-                paperSearchabilityService,
-                paperReadingModelRepository
-        );
+                parseService, retrievalIndexingService, paperService, uploadService,
+                searchabilityService, readingModelRepository);
     }
 
     @Test
@@ -75,8 +71,6 @@ class PaperProcessingConsumerTest {
                 "http://127.0.0.1:9/expired-presigned-url",
                 "paper.pdf",
                 "1",
-                "default",
-                false,
                 PaperProcessingTask.TASK_TYPE_UPLOAD_PROCESS,
                 "1"
         );
@@ -84,7 +78,7 @@ class PaperProcessingConsumerTest {
         consumer.processTask(task);
 
         verify(uploadService).getMergedFileStream(paperId);
-        verify(parseService).parseAndSave(eq(paperId), any(), eq("paper.pdf"), eq("1"), eq("default"), eq(false));
+        verify(parseService).parseAndSave(eq(paperId), any(), eq("paper.pdf"), eq("1"), isNull(), eq(false));
         verify(paperService).markVectorizationCompleted(
                 eq(paperId),
                 eq(new RetrievalIndexingService.IndexingResult(10, 2, "lexical-contract"))

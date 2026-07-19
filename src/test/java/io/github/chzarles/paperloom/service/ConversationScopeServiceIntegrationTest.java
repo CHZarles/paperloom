@@ -54,7 +54,7 @@ class ConversationScopeServiceIntegrationTest {
     private PaperSearchabilityService paperSearchabilityService;
 
     @MockBean
-    private OrgTagCacheService orgTagCacheService;
+    private PaperAccessService paperAccessService;
 
     @MockBean
     private PaperRepository paperRepository;

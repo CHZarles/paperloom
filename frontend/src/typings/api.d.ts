@@ -295,11 +295,6 @@ declare namespace Api {
     }
 
     interface Form {
-      orgTag: string | null;
-      orgTagName: string | null;
-      uploadMaxSizeBytes?: number | null;
-      uploadMaxSizeMb?: number | null;
-      isPublic: boolean;
       fileList: import('naive-ui').UploadFileInfo[];
     }
 
@@ -313,9 +308,8 @@ declare namespace Api {
       paperTitle: string;
       originalFilename: string;
       userId?: string;
-      orgTag: string | null;
-      orgTagName?: string | null;
-      isPublic: boolean;
+      libraryScope?: 'GLOBAL' | 'PRIVATE';
+      searchable?: boolean;
       uploadedChunks: number[];
       progress: number;
       status: UploadStatus;
@@ -330,6 +324,7 @@ declare namespace Api {
         | 'MAPPING_STRUCTURED_CONTENT'
         | 'RENDERING_VISUAL_ASSETS'
         | 'CHUNKING'
+        | 'EMBEDDING'
         | 'INDEXING'
         | 'COMPLETED'
         | 'FAILED'
@@ -774,7 +769,13 @@ declare namespace Api {
       sourceKind?: ReferenceEvidence['sourceKind'];
       sourceQuoteRef?: string | null;
       locationRef?: string | null;
-      readingAction?: 'SEARCH_PAPERS' | 'LIST_LOCATIONS' | 'FIND_LOCATIONS' | 'READ_LOCATION' | 'TRACE_SOURCE_QUOTE' | null;
+      readingAction?:
+        | 'SEARCH_PAPERS'
+        | 'LIST_LOCATIONS'
+        | 'FIND_LOCATIONS'
+        | 'READ_LOCATION'
+        | 'TRACE_SOURCE_QUOTE'
+        | null;
     }
 
     interface ConversationScope {

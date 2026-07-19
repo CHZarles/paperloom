@@ -1,7 +1,9 @@
 package io.github.chzarles.paperloom.config;
 
 import io.github.chzarles.paperloom.model.Paper;
+import io.github.chzarles.paperloom.model.PaperPublication;
 import io.github.chzarles.paperloom.model.User;
+import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
@@ -45,6 +47,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
     private final RetrievalIndexingService retrievalIndexingService;
     private final ReadingModelQdrantIndexService qdrantIndexService;
     private final PaperRepository paperRepository;
+    private final PaperPublicationRepository publicationRepository;
     private final PaperTextChunkRepository paperTextChunkRepository;
     private final MinioClient minioClient;
     private final UserRepository userRepository;
@@ -52,11 +55,8 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
     @Value("${paper.bootstrap.path:data/2412.08972.pdf}")
     private String bootstrapPaperPath;
 
-    @Value("${paper.bootstrap.org-tag:default}")
-    private String bootstrapOrgTag;
-
-    @Value("${paper.bootstrap.public:true}")
-    private boolean bootstrapPublic;
+    @Value("${paper.bootstrap.publish:true}")
+    private boolean bootstrapPublish;
 
     @Value("${paper.bootstrap.user-id:system-bootstrap}")
     private String bootstrapUserId;
@@ -71,6 +71,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
                                      RetrievalIndexingService retrievalIndexingService,
                                      ReadingModelQdrantIndexService qdrantIndexService,
                                      PaperRepository paperRepository,
+                                     PaperPublicationRepository publicationRepository,
                                      PaperTextChunkRepository paperTextChunkRepository,
                                      MinioClient minioClient,
                                      UserRepository userRepository) {
@@ -78,6 +79,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         this.retrievalIndexingService = retrievalIndexingService;
         this.qdrantIndexService = qdrantIndexService;
         this.paperRepository = paperRepository;
+        this.publicationRepository = publicationRepository;
         this.paperTextChunkRepository = paperTextChunkRepository;
         this.minioClient = minioClient;
         this.userRepository = userRepository;
@@ -154,12 +156,14 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
 
         Paper paper = existingFile.get();
         boolean metadataMatches = fileName.equals(paper.getOriginalFilename())
-                && bootstrapOrgTag.equals(paper.getOrgTag())
-                && bootstrapPublic == paper.isPublic()
+                && paper.getOrgTag() == null
+                && !paper.isPublic()
                 && paper.getStatus() == 1;
+        boolean publicationMatches = publicationRepository.existsByPaperId(fileMd5) == shouldPublish(ownerUserId);
 
         boolean pageMetadataReady = !fileName.toLowerCase().endsWith(".pdf") || pageAwareVectorCount > 0;
-        if (metadataMatches && vectorCount > 0 && qdrantCount > 0 && pageMetadataReady && fileRecordCount == 1) {
+        if (metadataMatches && publicationMatches && vectorCount > 0 && qdrantCount > 0
+                && pageMetadataReady && fileRecordCount == 1) {
             return true;
         }
 
@@ -175,7 +179,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         uploadToMinio(paperPath, fileMd5);
 
         try (InputStream inputStream = Files.newInputStream(paperPath)) {
-            parseService.parseAndSave(fileMd5, inputStream, fileName, ownerUserId, bootstrapOrgTag, bootstrapPublic);
+            parseService.parseAndSave(fileMd5, inputStream, fileName, ownerUserId, null, false);
         } catch (Exception e) {
             cleanupBootstrapData(fileMd5, ownerUserId);
             throw e;
@@ -191,10 +195,11 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
             paper.setTotalSize(totalSize);
             paper.setStatus(1);
             paper.setUserId(ownerUserId);
-            paper.setOrgTag(bootstrapOrgTag);
-            paper.setPublic(bootstrapPublic);
+            paper.setOrgTag(null);
+            paper.setPublic(false);
             paper.setMergedAt(LocalDateTime.now());
             paperRepository.save(paper);
+            updatePublication(fileMd5, ownerUserId);
 
             logger.info("启动论文 PDF 导入完成: fileName={}, paperId={}", fileName, fileMd5);
         } catch (Exception e) {
@@ -249,6 +254,12 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         }
 
         try {
+            publicationRepository.deleteByPaperId(fileMd5);
+        } catch (Exception e) {
+            logger.warn("清理启动论文全局发布记录失败: paperId={}, error={}", fileMd5, e.getMessage());
+        }
+
+        try {
             paperRepository.deleteByPaperIdAndUserId(fileMd5, ownerUserId);
         } catch (Exception e) {
             logger.warn("清理启动论文记录失败: paperId={}, error={}", fileMd5, e.getMessage());
@@ -280,6 +291,26 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         return userRepository.findAll().stream()
                 .filter(user -> User.Role.ADMIN.equals(user.getRole()))
                 .findFirst();
+    }
+
+    private boolean shouldPublish(String ownerUserId) {
+        return bootstrapPublish && findAdminUser()
+                .map(user -> String.valueOf(user.getId()).equals(ownerUserId))
+                .orElse(false);
+    }
+
+    private void updatePublication(String paperId, String ownerUserId) {
+        if (!shouldPublish(ownerUserId)) {
+            publicationRepository.deleteByPaperId(paperId);
+            return;
+        }
+        if (publicationRepository.existsByPaperId(paperId)) {
+            return;
+        }
+        PaperPublication publication = new PaperPublication();
+        publication.setPaperId(paperId);
+        publication.setPublishedBy(ownerUserId);
+        publicationRepository.save(publication);
     }
 
     private Path resolvePaperPath() {

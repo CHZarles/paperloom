@@ -1,0 +1,53 @@
+schema_version: harness-qdrant-impact-benchmark/v1
+
+dataset:
+  manifest: research/golden-data/manifest-expanded.yaml
+  saved_minimax_runs: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3
+  saved_query_fills:
+    mint_vs_tau_interaction_comparison_001: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1
+
+embedding:
+  provider_source: docker_mysql
+  env_path: .env
+  mysql_container_env: HARNESS_MYSQL_CONTAINER
+  default_mysql_container: pai_smart_mysql
+  # Match the Java product indexer's document embedding batch size.
+  batch_size: 10
+  request_timeout_seconds: 90
+  query_min_interval_seconds: 1.05
+  retry:
+    max_attempts: 3
+    initial_backoff_seconds: 1.0
+    max_backoff_seconds: 8.0
+
+qdrant:
+  base_url_env: QDRANT_BASE_URL
+  default_base_url: http://127.0.0.1:6333
+  api_key_env: QDRANT_API_KEY
+  container_env: PAPERLOOM_QDRANT_CONTAINER
+  default_container: paperloom-qdrant
+  collection: paperloom_golden_qdrant_impact_v1
+  request_timeout_seconds: 30
+  retry:
+    max_attempts: 4
+    initial_backoff_seconds: 0.25
+    max_backoff_seconds: 2.0
+  upsert_batch_size: 64
+
+retrieval:
+  cutoffs: [1, 5, 8, 12]
+  default_native_top_k: 8
+  max_top_k: 20
+  rrf_k: 60
+  candidate_limit_min: 40
+  candidate_limit_multiplier: 4
+  candidate_limit_max: 100
+  per_paper_limit_min: 8
+  per_paper_limit_multiplier: 2
+  per_paper_limit_max: 40
+  per_paper_search_max_papers: 8
+  element_type_hint_boost: 0.001
+
+artifacts:
+  root: research/golden-data/local-runs
+  run_prefix: qdrant-impact

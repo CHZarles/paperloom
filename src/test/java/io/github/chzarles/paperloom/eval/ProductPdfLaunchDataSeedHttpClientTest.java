@@ -64,7 +64,7 @@ class ProductPdfLaunchDataSeedHttpClientTest {
                     {"code":200,"data":{"paperId":"paper-a"}}
                     """);
             server.respond("/api/v1/papers/uploads", """
-                    {"code":200,"data":[{"paperId":"paper-a","originalFilename":"paper-a.pdf","uploadStatus":1,"processingStatus":"COMPLETED","actualEmbeddingTokens":10,"actualChunkCount":2}]}
+                    {"code":200,"data":[{"paperId":"paper-a","originalFilename":"paper-a.pdf","uploadStatus":1,"processingStatus":"COMPLETED","retrievalIndexedTokenCount":10,"retrievalIndexedLocationCount":2}]}
                     """);
             ProductPdfLaunchDataSeedHttpClient client = client(server);
 
@@ -80,8 +80,8 @@ class ProductPdfLaunchDataSeedHttpClientTest {
             assertEquals(1, statuses.size());
             assertEquals("paper-a", statuses.get(0).paperId());
             assertEquals("COMPLETED", statuses.get(0).processingStatus());
-            assertEquals(10L, statuses.get(0).actualEmbeddingTokens());
-            assertEquals(2, statuses.get(0).actualChunkCount());
+            assertEquals(10L, statuses.get(0).retrievalIndexedTokenCount());
+            assertEquals(2, statuses.get(0).retrievalIndexedLocationCount());
         }
     }
 

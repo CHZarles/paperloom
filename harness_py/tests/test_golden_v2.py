@@ -752,6 +752,307 @@ class GoldenV2Test(unittest.TestCase):
         self.assertFalse(score.hard_pass)
         self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
 
+    def test_scorer_reads_user_visible_facts_instead_of_treating_arbitrary_fields_as_fact_contract(self) -> None:
+        case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "adam_constraint_refinement_followup_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["research_answer"]["markdown"] = (
+            "The Transformer paper uses β₂ = 0.98. "
+            "[[ev_07f6cc721a8f6053]]"
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {"evidence_id": "ev_07f6cc721a8f6053"}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_rejects_a_wrong_user_visible_fact_even_when_arbitrary_fields_are_empty(self) -> None:
+        case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "adam_constraint_refinement_followup_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["research_answer"]["markdown"] = "The Transformer paper uses β₂ = 0.999."
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertEqual("fail", score.dimensions["content"].status)
+        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+
+    def test_scorer_does_not_match_an_expected_value_from_an_unrelated_claim(self) -> None:
+        case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "adam_constraint_refinement_followup_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["research_answer"]["markdown"] = (
+            "The Transformer paper uses β₂ = 0.999. "
+            "A separate accuracy result is 0.98."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+
+    def test_scorer_normalizes_user_visible_scientific_notation(self) -> None:
+        source_case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "transformer_adam_params_001"
+        )
+        case = deepcopy(source_case)
+        case["expect"]["facts"] = {"epsilon": "1e-9"}
+        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
+        run["research_answer"]["markdown"] = "The paper uses ε = 10⁻⁹."
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_normalizes_arbitrary_power_of_ten_exponents(self) -> None:
+        source_case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "transformer_adam_params_001"
+        )
+        case = deepcopy(source_case)
+        case["expect"]["facts"] = {"epsilon": "1e-12"}
+        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
+        run["research_answer"]["markdown"] = "The paper uses ε = 1 × 10⁻¹²."
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_matches_a_complete_optimizer_fact_set_in_user_visible_markdown(self) -> None:
+        case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "transformer_optimizer_reproduction_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["research_answer"]["markdown"] = """
+        | Field | Exact value from the Transformer paper |
+        | --- | --- |
+        | Optimizer | Adam |
+        | β₁ | 0.9 |
+        | β₂ | 0.98 |
+        | ε | 10⁻⁹ |
+        """
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_matches_a_normalized_phrase_fact_in_user_visible_markdown(self) -> None:
+        case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "bert_transformer_role_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["research_answer"]["markdown"] = (
+            "BERT uses a bidirectional Transformer encoder."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_matches_a_labeled_count_written_as_a_word(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
+        case = next(
+            case for case in dataset.cases
+            if case["id"] == "agentbench_environment_inventory_001"
+        )
+        run = GoldenFixtureHarness().run_case(dataset, case)
+        run["research_answer"]["markdown"] = (
+            "AgentBench evaluates agents in eight interactive environments."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_matches_multiple_labeled_counts_and_percentages(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
+        case = next(
+            case for case in dataset.cases
+            if case["id"] == "gaia_dataset_gap_001"
+        )
+        run = GoldenFixtureHarness().run_case(dataset, case)
+        run["research_answer"]["markdown"] = (
+            "GAIA contains 466 questions. Human annotators solve 92%, while "
+            "GPT-4 with plugins reaches 15%."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_rejects_percentages_attached_to_the_wrong_subjects(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
+        case = next(
+            case for case in dataset.cases
+            if case["id"] == "gaia_dataset_gap_001"
+        )
+        run = GoldenFixtureHarness().run_case(dataset, case)
+        run["research_answer"]["markdown"] = (
+            "GAIA contains 466 questions. Human annotators solve 15%, while "
+            "GPT-4 with plugins reaches 92%."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertIn("FACT_MISMATCH:human_success_rate", score.dimensions["content"].errors)
+        self.assertIn("FACT_MISMATCH:gpt4_plugins_success_rate", score.dimensions["content"].errors)
+
+    def test_scorer_matches_a_versus_comparison_with_qualified_model_name(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
+        case = next(
+            case for case in dataset.cases
+            if case["id"] == "gaia_dataset_gap_001"
+        )
+        run = GoldenFixtureHarness().run_case(dataset, case)
+        run["research_answer"]["markdown"] = (
+            "GAIA contains 466 questions. Human respondents obtain 92% versus "
+            "15% for GPT-4 equipped with plugins."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_matches_an_application_count_expressed_as_domains(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
+        case = next(
+            case for case in dataset.cases
+            if case["id"] == "webarena_reproduction_protocol_001"
+        )
+        run = GoldenFixtureHarness().run_case(dataset, case)
+        run["research_answer"]["markdown"] = (
+            "WebArena provides four self-hosted web domains."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_matches_an_application_count_expressed_as_apps(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
+        case = next(
+            case for case in dataset.cases
+            if case["id"] == "webarena_reproduction_protocol_001"
+        )
+        run = GoldenFixtureHarness().run_case(dataset, case)
+        run["research_answer"]["markdown"] = (
+            "Self-host four fully functional apps plus utilities."
+        )
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(dataset, case, run)
+
+        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertEqual("pass", score.dimensions["content"].status)
+
+    def test_scorer_requires_review_instead_of_passing_an_unsupported_fact_type(self) -> None:
+        source_case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "transformer_adam_params_001"
+        )
+        case = deepcopy(source_case)
+        case["expect"]["facts"] = {"unsupported_semantic_relation": "expected"}
+        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
+        run["research_answer"]["markdown"] = "The expected relation is present."
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertEqual("review_required", score.dimensions["content"].status)
+        self.assertIn(
+            "FACT_ASSERTION_UNSUPPORTED:unsupported_semantic_relation",
+            score.dimensions["content"].errors,
+        )
+
+    def test_scorer_preserves_a_definite_fact_failure_when_another_fact_needs_review(self) -> None:
+        source_case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "transformer_adam_params_001"
+        )
+        case = deepcopy(source_case)
+        case["expect"]["facts"] = {
+            "beta2": "0.98",
+            "unsupported_semantic_relation": "expected",
+        }
+        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
+        run["research_answer"]["markdown"] = "The Transformer uses β₂ = 0.999."
+        run["research_answer"].pop("fields_schema")
+        run["research_answer"]["fields"] = {}
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertEqual("fail", score.dimensions["content"].status)
+        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+        self.assertIn(
+            "FACT_ASSERTION_UNSUPPORTED:unsupported_semantic_relation",
+            score.dimensions["content"].errors,
+        )
+
+    def test_scorer_rejects_an_unknown_declared_fact_fields_schema(self) -> None:
+        case = next(
+            case for case in self.dataset.cases
+            if case["id"] == "adam_constraint_refinement_followup_001"
+        )
+        run = GoldenFixtureHarness().run_case(self.dataset, case)
+        run["research_answer"]["fields_schema"] = "golden-facts/v999"
+        run["research_answer"]["markdown"] = "The Transformer uses β₂ = 0.98."
+
+        score = BehaviorScorer().score_case(self.dataset, case, run)
+
+        self.assertFalse(score.hard_pass)
+        self.assertEqual("review_required", score.dimensions["content"].status)
+        self.assertIn(
+            "FACT_FIELDS_SCHEMA_UNSUPPORTED:golden-facts/v999",
+            score.dimensions["content"].errors,
+        )
+
     def test_scorer_rejects_a_missing_structured_fact_with_matching_nested_value(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
         run = GoldenFixtureHarness().run_case(self.dataset, case)

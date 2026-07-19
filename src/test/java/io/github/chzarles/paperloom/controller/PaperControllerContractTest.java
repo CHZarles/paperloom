@@ -2,16 +2,18 @@ package io.github.chzarles.paperloom.controller;
 
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperParserArtifact;
+import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.OrganizationTagRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ConversationService;
+import io.github.chzarles.paperloom.service.PaperAccessService;
 import io.github.chzarles.paperloom.service.PaperParserArtifactService;
 import io.github.chzarles.paperloom.service.PaperRecommendationCandidate;
 import io.github.chzarles.paperloom.service.PaperRecommendationCandidateService;
 import io.github.chzarles.paperloom.service.PaperRecommendationSearchRequest;
+import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperVisualAssetService;
 import io.github.chzarles.paperloom.service.ReadingLocationCandidate;
@@ -64,7 +66,13 @@ class PaperControllerContractTest {
     private PaperRepository paperRepository;
 
     @Mock
-    private OrganizationTagRepository organizationTagRepository;
+    private PaperPublicationRepository paperPublicationRepository;
+
+    @Mock
+    private PaperAccessService paperAccessService;
+
+    @Mock
+    private PaperSearchabilityService paperSearchabilityService;
 
     @Mock
     private JwtUtils jwtUtils;
@@ -97,8 +105,10 @@ class PaperControllerContractTest {
         MockitoAnnotations.openMocks(this);
         paperController = new PaperController();
         ReflectionTestUtils.setField(paperController, "paperService", paperService);
+        ReflectionTestUtils.setField(paperController, "paperAccessService", paperAccessService);
+        ReflectionTestUtils.setField(paperController, "paperSearchabilityService", paperSearchabilityService);
         ReflectionTestUtils.setField(paperController, "paperRepository", paperRepository);
-        ReflectionTestUtils.setField(paperController, "organizationTagRepository", organizationTagRepository);
+        ReflectionTestUtils.setField(paperController, "paperPublicationRepository", paperPublicationRepository);
         ReflectionTestUtils.setField(paperController, "jwtUtils", jwtUtils);
         ReflectionTestUtils.setField(paperController, "chatHandler", chatHandler);
         ReflectionTestUtils.setField(paperController, "conversationService", conversationService);
@@ -110,6 +120,7 @@ class PaperControllerContractTest {
 
         when(paperParserArtifactService.findLatestParserArtifact(anyString())).thenReturn(Optional.empty());
         when(paperReadingModelRepository.findFirstByPaperIdAndIsCurrentTrue(anyString())).thenReturn(Optional.empty());
+        when(paperSearchabilityService.searchablePaperIds(any())).thenReturn(java.util.Set.of());
         when(paperVisualAssetService.countPageScreenshots(anyString())).thenReturn(0L);
         when(paperVisualAssetService.countTableCrops(anyString())).thenReturn(0L);
         when(paperVisualAssetService.countFigureCrops(anyString())).thenReturn(0L);
@@ -134,7 +145,7 @@ class PaperControllerContractTest {
         artifact.setParserVersion("1.0");
 
         when(paperService.getUserUploadedPapers("2")).thenReturn(List.of(paper));
-        when(organizationTagRepository.findByTagId("lab")).thenReturn(Optional.empty());
+        when(paperPublicationRepository.existsByPaperId("0123456789abcdef0123456789abcdef")).thenReturn(true);
         when(paperParserArtifactService.findLatestParserArtifact("0123456789abcdef0123456789abcdef"))
                 .thenReturn(Optional.of(artifact));
         when(paperVisualAssetService.countPageScreenshots("0123456789abcdef0123456789abcdef")).thenReturn(1L);
@@ -148,7 +159,8 @@ class PaperControllerContractTest {
         assertEquals("Paper Title", item.get("paperTitle"));
         assertEquals("original.pdf", item.get("originalFilename"));
         assertEquals("COMPLETED", item.get("processingStatus"));
-        assertTrue((Boolean) item.get("isPublic"));
+        assertEquals("GLOBAL", item.get("libraryScope"));
+        assertFalse(item.containsKey("isPublic"));
         assertFalse(item.containsKey("fileMd5"));
         assertFalse(item.containsKey("fileName"));
         assertFalse(item.containsKey("sourceFileName"));
@@ -321,7 +333,7 @@ class PaperControllerContractTest {
                 Paper.STATUS_COMPLETED
         );
 
-        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+        when(paperAccessService.findPublishedPaper("paper-preview"))
                 .thenReturn(Optional.of(paper));
 
         var response = paperController.previewPaperByPath("paper-preview", null, null, null);
@@ -348,7 +360,7 @@ class PaperControllerContractTest {
         );
         paper.setTotalSize(8L);
 
-        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+        when(paperAccessService.findPublishedPaper("paper-preview"))
                 .thenReturn(Optional.of(paper));
 
         var response = paperController.previewPdfDataByPath("paper-preview", null, null);
@@ -380,7 +392,7 @@ class PaperControllerContractTest {
         );
         paper.setTotalSize(8L);
 
-        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+        when(paperAccessService.findPublishedPaper("paper-preview"))
                 .thenReturn(Optional.of(paper));
         when(paperService.openMergedPdfRangeStream("paper-preview", 1L, 4L))
                 .thenReturn(new ByteArrayInputStream("PDF-".getBytes()));
@@ -417,7 +429,7 @@ class PaperControllerContractTest {
         );
         paper.setTotalSize(requestedLength + 16);
 
-        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+        when(paperAccessService.findPublishedPaper("paper-preview"))
                 .thenReturn(Optional.of(paper));
         when(paperService.openMergedPdfRangeStream("paper-preview", 0L, requestedLength))
                 .thenReturn(new ByteArrayInputStream(new byte[(int) requestedLength]));
@@ -439,7 +451,7 @@ class PaperControllerContractTest {
         );
         paper.setTotalSize(8L);
 
-        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-preview"))
+        when(paperAccessService.findPublishedPaper("paper-preview"))
                 .thenReturn(Optional.of(paper));
 
         var response = paperController.previewPdfByPath("paper-preview", null, null);
@@ -465,7 +477,7 @@ class PaperControllerContractTest {
                 Paper.STATUS_COMPLETED
         );
 
-        when(paperRepository.findFirstByPaperIdAndIsPublicTrueOrderByCreatedAtDesc("paper-download"))
+        when(paperAccessService.findPublishedPaper("paper-download"))
                 .thenReturn(Optional.of(paper));
         when(paperService.generateAttachmentDownloadUrl("paper-download"))
                 .thenReturn("http://localhost:9000/uploads/merged/paper-download?download=1");
@@ -599,19 +611,15 @@ class PaperControllerContractTest {
     }
 
     @Test
-    void adminCanDeletePaperOwnedByAnotherUser() {
-        Paper paper = new Paper();
-        paper.setPaperId("0123456789abcdef0123456789abcdef");
-        paper.setOriginalFilename("other-user-paper.pdf");
-        paper.setUserId("2");
-
-        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("0123456789abcdef0123456789abcdef"))
-                .thenReturn(Optional.of(paper));
+    void adminCannotDeleteAnotherUsersPersonalLibraryEntry() {
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(
+                "0123456789abcdef0123456789abcdef", "1"))
+                .thenReturn(Optional.empty());
 
         var response = paperController.deletePaper("0123456789abcdef0123456789abcdef", "1", "ADMIN");
 
-        assertEquals(200, response.getStatusCode().value());
-        verify(paperService).deletePaper("0123456789abcdef0123456789abcdef", "1", "ADMIN");
+        assertEquals(404, response.getStatusCode().value());
+        verify(paperService, never()).deletePaper("0123456789abcdef0123456789abcdef", "1", "ADMIN");
     }
 
     @Test

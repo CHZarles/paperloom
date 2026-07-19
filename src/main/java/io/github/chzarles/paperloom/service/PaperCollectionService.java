@@ -36,19 +36,22 @@ public class PaperCollectionService {
     private final PaperRepository paperRepository;
     private final PaperSearchabilityService paperSearchabilityService;
     private final OrgTagCacheService orgTagCacheService;
+    private final PaperAccessService paperAccessService;
 
     public PaperCollectionService(PaperCollectionRepository collectionRepository,
                                   PaperCollectionPaperRepository collectionPaperRepository,
                                   UserRepository userRepository,
                                   PaperRepository paperRepository,
                                   PaperSearchabilityService paperSearchabilityService,
-                                  OrgTagCacheService orgTagCacheService) {
+                                  OrgTagCacheService orgTagCacheService,
+                                  PaperAccessService paperAccessService) {
         this.collectionRepository = collectionRepository;
         this.collectionPaperRepository = collectionPaperRepository;
         this.userRepository = userRepository;
         this.paperRepository = paperRepository;
         this.paperSearchabilityService = paperSearchabilityService;
         this.orgTagCacheService = orgTagCacheService;
+        this.paperAccessService = paperAccessService;
     }
 
     @Transactional(readOnly = true)
@@ -419,17 +422,7 @@ public class PaperCollectionService {
     }
 
     private boolean canAccessPaper(User user, Paper paper, List<String> effectiveOrgTags) {
-        if (isAdmin(user)) {
-            return true;
-        }
-        if (String.valueOf(user.getId()).equals(trimToNull(paper.getUserId()))) {
-            return true;
-        }
-        if (paper.isPublic()) {
-            return true;
-        }
-        String paperOrgTag = trimToNull(paper.getOrgTag());
-        return paperOrgTag != null && effectiveOrgTags.contains(paperOrgTag);
+        return paperAccessService.canAccess(String.valueOf(user.getId()), paper.getPaperId());
     }
 
     private void touchCollection(PaperCollection collection) {

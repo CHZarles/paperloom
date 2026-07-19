@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PaperLoom Interview Roadmap</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+  <p class="eyebrow">Living reference</p>
+  <h1>PaperLoom Interview Roadmap</h1>
+  <p class="lead">The course moves from a defensible project story to implementation depth, then mixes topics so recall survives interview pressure.</p>
+
+  <table>
+    <thead><tr><th>Track</th><th>Interview outcome</th><th>PaperLoom anchor</th></tr></thead>
+    <tbody>
+      <tr><td>Project narrative</td><td>Explain problem, architecture, hard choices, results, and limitations</td><td>Architecture docs, ADRs, evaluation reports</td></tr>
+      <tr><td>Java foundations</td><td>Reason about collections, generics, exceptions, reflection, annotations, I/O, and modern Java</td><td>Entities, DTOs, services, clients, utility code</td></tr>
+      <tr><td>JVM</td><td>Explain memory, GC, class loading, JIT, diagnostics, and failure modes</td><td>Spring Boot process and PDF-heavy workloads</td></tr>
+      <tr><td>Concurrency</td><td>Choose thread-safety, pools, locks, async models, and backpressure deliberately</td><td>streaming chat, cancellation, WebClient, upload processing</td></tr>
+      <tr><td>Spring</td><td>Trace IoC, AOP, transactions, MVC/WebFlux, Security, validation, and testing</td><td>Java product boundary</td></tr>
+      <tr><td>Data systems</td><td>Defend schemas, indexes, transactions, caching, messaging, and consistency</td><td>MySQL, Redis, Kafka, MinIO, Qdrant</td></tr>
+      <tr><td>Agent engineering</td><td>Explain loops, tools, state, guardrails, context, memory, failure recovery, and evaluation</td><td><code>harness_py</code> runtime</td></tr>
+      <tr><td>RAG</td><td>Separate ingestion, retrieval, ranking, exact reads, citations, and quality measurement</td><td>Reading Model and Evidence Ledger</td></tr>
+      <tr><td>System design</td><td>Handle scale, availability, observability, cost, security, and degradation questions</td><td>end-to-end PaperLoom design</td></tr>
+      <tr><td>Mock interviews</td><td>Answer concisely, survive follow-ups, and admit boundaries without collapsing</td><td>timed project and technical rounds</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Default Sequence</h2>
+  <ol>
+    <li>Build the project spine and a two-minute explanation.</li>
+    <li>Trace one request end to end in real code.</li>
+    <li>Learn Java and Spring concepts at the point where the trace needs them.</li>
+    <li>Deep-dive the Agent loop, tool protocol, RAG, and evidence validation.</li>
+    <li>Study storage and distributed-system tradeoffs through actual design decisions.</li>
+    <li>Convert experiments, failures, and tests into behavioral interview stories.</li>
+    <li>Interleave Java trivia, code reading, system design, and hostile follow-ups.</li>
+  </ol>
+
+  <div class="callout warning">
+    <strong>Mastery rule:</strong> a topic is not learned when it looks familiar. It is learned when you can explain it without notes, locate it in the repository, predict a failure mode, and answer one counterfactual design question.
+  </div>
+</main>
+</body>
+</html>

@@ -104,8 +104,8 @@ public class ProductPdfLaunchDataSeedHttpClient implements ProductPdfLaunchDataS
                         firstText(raw, "originalFilename", "paperTitle"),
                         raw.get("uploadStatus"),
                         text(raw.get("processingStatus")),
-                        longValue(raw.get("actualEmbeddingTokens")),
-                        integerValue(raw.get("actualChunkCount")),
+                        longValue(raw.get("retrievalIndexedTokenCount")),
+                        integerValue(raw.get("retrievalIndexedLocationCount")),
                         raw
                 ));
             }

@@ -290,11 +290,15 @@ surface。
 
 - `outcome`：`answered`、`needs_clarification`、`partial` 或 `abstained`；
 - `markdown`：用户最终看到的内容；
-- `fields`：可选结构化字段。
+- `fields`：可选产品结构化字段，不自动等于 Golden Fact Contract。
 
 论文内容引用写成 `[[evidence_id]]`。`answer_validation_error()` 会拒绝未知 evidence_id、错误
 引用格式、非法 outcome，以及把最终提交和其他工具放在同一步的行为。`build_harness_run()` 再把
 内部 evidence marker 渲染成最终引用，并生成标准化结果。
+
+离线 `BehaviorScorer` 的 Content 维度默认检查用户可见 `markdown`。只有确定性 Fixture 明确声明
+`fields_schema=golden-facts/v1` 时，评分器才逐 Key 校验 `fields`。普通模型输出即使包含
+`evidence_id` 等字段，也不会因此被解释为已经承诺输出全部 Golden Facts。
 
 结构校验通过后，`orchestration/evidence_coverage.py` 还会检查当前内容研究中被明确点名的
 论文是否经过 Candidate、Read 和同论文 Cited 三个阶段。只检索未读取、读取后未引用、跨论文

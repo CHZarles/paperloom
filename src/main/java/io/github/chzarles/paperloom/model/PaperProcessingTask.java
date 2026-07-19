@@ -18,8 +18,6 @@ public class PaperProcessingTask {
     private String paperObjectUrl;
     private String paperTitle;
     private String userId;
-    private String orgTag;
-    private boolean isPublic;
     private String taskType; // 任务类型
     private String requesterId; // 发起重试的用户
 }

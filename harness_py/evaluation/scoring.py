@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
-from typing import Any
 
+from .fact_assertions import contract_sha256, evaluate_fact_assertions, fact_assertion_contract
 from .golden_case import case_expect
 from ..core.models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
 from ..core.status import (
@@ -55,7 +54,10 @@ class BehaviorScorer:
         )
         return CaseScore(
             case_id=str(case.get("id") or ""),
-            hard_pass=all(score.status != "fail" for score in dimensions.values()),
+            hard_pass=all(
+                score.status not in {"fail", "review_required"}
+                for score in dimensions.values()
+            ),
             dimensions=dimensions,
             review={
                 "status": "not_run" if criteria else "not_required",
@@ -72,6 +74,7 @@ class BehaviorScorer:
         passed = sum(1 for score in scores if score.hard_pass)
         return {
             "schema_version": SCORE_REPORT_SCHEMA_VERSION,
+            "scorer_contract": _scorer_contract(),
             "dataset_id": dataset.manifest.get("dataset_id"),
             "case_count": len(scores),
             "passed_count": passed,
@@ -116,17 +119,8 @@ class BehaviorScorer:
         facts = child_map(case_expect(case).get("facts"))
         if not facts:
             return DimensionScore("not_applicable")
-        actual = child_map(child_map(run.get("research_answer")).get("fields"))
-        if not actual:
-            return DimensionScore("not_run")
-        errors: list[str] = []
-        for key, expected in facts.items():
-            normalized = _scalar_string(expected)
-            if key in actual and _scalar_string(actual.get(key)) != normalized:
-                errors.append(f"FACT_MISMATCH:{key}")
-            elif key not in actual:
-                errors.append(f"FACT_MISSING:{key}")
-        return _dimension(errors)
+        result = evaluate_fact_assertions(facts, child_map(run.get("research_answer")))
+        return DimensionScore(result.status, result.errors)
 
     def _score_grounding(self, dataset: GoldenDataset, case: JsonMap, run: JsonMap) -> DimensionScore:
         expectation = case_expect(case)
@@ -157,6 +151,15 @@ class BehaviorScorer:
                     errors.append(f"REQUIRED_ANCHOR_NOT_CITED:{anchor_id}")
         configured = policy != "optional" or bool(cited)
         return _dimension(errors, configured or bool(errors))
+
+
+def _scorer_contract() -> JsonMap:
+    contract = {
+        "version": "behavior-scorer/v3",
+        "hard_pass_rule": "no-fail-or-review-required-v1",
+        "fact_assertions": fact_assertion_contract(),
+    }
+    return {**contract, "sha256": contract_sha256(contract)}
 
 
 def _dimension(errors: list[str], configured: bool = True) -> DimensionScore:
@@ -238,14 +241,3 @@ def _actual_outcome(run: JsonMap) -> str:
     if research_outcome_error(answer.get("status"), answer.get("outcome")):
         return "invalid"
     return explicit
-
-
-def _scalar_string(value: Any) -> str:
-    if isinstance(value, float):
-        value = f"{value:g}"
-    text = str(value).strip().replace(chr(0x2212), "-")
-    compact = re.sub(r"\s+", "", text).strip("$")
-    power = re.fullmatch(r"10\^\{?([+-]?\d+)\}?", compact)
-    if power:
-        text = f"1e{int(power.group(1))}"
-    return text.replace("e-0", "e-").replace("e+0", "e+")

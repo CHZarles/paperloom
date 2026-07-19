@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,6 +61,9 @@ class PaperCollectionServiceTest {
 
     @Mock
     private OrgTagCacheService orgTagCacheService;
+
+    @Mock
+    private PaperAccessService paperAccessService;
 
     private final List<PaperCollection> collections = new ArrayList<>();
     private final List<PaperCollectionPaper> memberships = new ArrayList<>();
@@ -158,6 +162,18 @@ class PaperCollectionServiceTest {
             Set<String> requested = new LinkedHashSet<>(paperIds);
             return papers.stream().filter(paper -> requested.contains(paper.getPaperId())).toList();
         });
+        when(paperAccessService.canAccess(anyString(), anyString())).thenAnswer(invocation -> {
+            String requesterId = invocation.getArgument(0);
+            String paperId = invocation.getArgument(1);
+            User requester = userRepository.findById(Long.parseLong(requesterId)).orElse(owner);
+            return papers.stream().filter(paper -> paperId.equals(paper.getPaperId())).anyMatch(paper ->
+                    requester.getRole() == User.Role.ADMIN
+                            || requesterId.equals(paper.getUserId())
+                            || paper.isPublic()
+                            || (paper.getOrgTag() != null
+                            && requester.getOrgTags() != null
+                            && requester.getOrgTags().contains(paper.getOrgTag())));
+        });
 
         service = new PaperCollectionService(
                 collectionRepository,
@@ -165,7 +181,8 @@ class PaperCollectionServiceTest {
                 userRepository,
                 paperRepository,
                 paperSearchabilityService,
-                orgTagCacheService
+                orgTagCacheService,
+                paperAccessService
         );
     }
 

@@ -8,6 +8,7 @@ import io.github.chzarles.paperloom.model.OrganizationTag;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.service.FileTypeValidationService;
 import io.github.chzarles.paperloom.service.ParseService;
+import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.UploadService;
 import io.github.chzarles.paperloom.service.UserService;
 import io.github.chzarles.paperloom.utils.LogUtils;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,9 @@ public class PaperUploadController {
     @Autowired
     private ParseService parseService;
 
+    @Autowired
+    private PaperSearchabilityService paperSearchabilityService;
+
     public PaperUploadController(UploadService uploadService, KafkaTemplate<String, Object> kafkaTemplate) {
         this.uploadService = uploadService;
         this.kafkaTemplate = kafkaTemplate;
@@ -65,8 +70,6 @@ public class PaperUploadController {
      * @param totalSize PDF 文件总大小
      * @param paperTitle 论文标题，当前使用 PDF 文件名
      * @param totalChunks 总分片数量
-     * @param orgTag 组织标签，如果未指定则使用用户的主组织标签
-     * @param isPublic 是否公开，默认为false
      * @param file 分片内容
      * @return 返回包含已上传分片和上传进度的响应
      * @throws IOException 当文件读写发生错误时抛出
@@ -78,8 +81,6 @@ public class PaperUploadController {
             @RequestParam("totalSize") long totalSize,
             @RequestParam("paperTitle") String paperTitle,
             @RequestParam(value = "totalChunks", required = false) Integer totalChunks,
-            @RequestParam(value = "orgTag", required = false) String orgTag,
-            @RequestParam(value = "isPublic", required = false, defaultValue = "false") boolean isPublic,
             @RequestParam("file") MultipartFile file,
             @RequestAttribute("userId") String userId) throws IOException {
 
@@ -110,28 +111,21 @@ public class PaperUploadController {
             String fileType = getFileType(paperTitle);
             String contentType = file.getContentType();
 
-            LogUtils.logBusiness("UPLOAD_CHUNK", userId, "接收到论文分片上传请求: paperId=%s, chunkIndex=%d, paperTitle=%s, fileType=%s, contentType=%s, fileSize=%d, totalSize=%d, orgTag=%s, isPublic=%s",
-                    paperId, chunkIndex, paperTitle, fileType, contentType, file.getSize(), totalSize, orgTag, isPublic);
+            LogUtils.logBusiness("UPLOAD_CHUNK", userId, "接收到个人论文分片上传请求: paperId=%s, chunkIndex=%d, paperTitle=%s, fileType=%s, contentType=%s, fileSize=%d, totalSize=%d",
+                    paperId, chunkIndex, paperTitle, fileType, contentType, file.getSize(), totalSize);
 
-            // 如果未指定组织标签，则获取用户的主组织标签
-            if (orgTag == null || orgTag.isEmpty()) {
+            String quotaOrgTag = null;
+            if (!userService.isAdminUser(userId)) {
                 try {
-                    LogUtils.logBusiness("UPLOAD_CHUNK", userId, "组织标签未指定，尝试获取用户主组织标签: paperTitle=%s", paperTitle);
-                    String primaryOrg = userService.getUserPrimaryOrg(userId);
-                    orgTag = primaryOrg;
-                    LogUtils.logBusiness("UPLOAD_CHUNK", userId, "成功获取用户主组织标签: paperTitle=%s, orgTag=%s", paperTitle, orgTag);
+                    quotaOrgTag = userService.getUserPrimaryOrg(userId);
                 } catch (Exception e) {
-                    LogUtils.logBusinessError("UPLOAD_CHUNK", userId, "获取用户主组织标签失败: paperTitle=%s", e, paperTitle);
-                    monitor.end("获取主组织标签失败: " + e.getMessage());
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-                    errorResponse.put("message", "获取用户主组织标签失败: " + e.getMessage());
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+                    LogUtils.logBusiness("UPLOAD_CHUNK", userId,
+                            "未找到用户主组织标签，跳过组织上传额度检查: paperTitle=%s", paperTitle);
                 }
             }
 
-            if (!userService.isAdminUser(userId)) {
-                OrganizationTag uploadOrg = userService.getOrganizationTag(orgTag);
+            if (quotaOrgTag != null && !quotaOrgTag.isBlank()) {
+                OrganizationTag uploadOrg = userService.getOrganizationTag(quotaOrgTag);
                 Long uploadMaxSizeBytes = uploadOrg.getUploadMaxSizeBytes();
                 long estimatedUploadedBytes = (long) chunkIndex * DEFAULT_CHUNK_SIZE_BYTES + file.getSize();
                 boolean exceedsLimit = uploadMaxSizeBytes != null
@@ -147,14 +141,13 @@ public class PaperUploadController {
                             + "，当前 PDF 大小为 " + formatSize(totalSize));
                     errorResponse.put("limitBytes", uploadMaxSizeBytes);
                     errorResponse.put("fileSizeBytes", totalSize);
-                    errorResponse.put("orgTag", orgTag);
                     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
                 }
             }
 
             LogUtils.logFileOperation(userId, "UPLOAD_CHUNK", paperTitle, paperId, "PROCESSING");
 
-            uploadService.uploadChunk(paperId, chunkIndex, totalSize, paperTitle, file, orgTag, isPublic, userId);
+            uploadService.uploadChunk(paperId, chunkIndex, totalSize, paperTitle, file, userId);
 
             List<Integer> uploadedChunks = uploadService.getUploadedChunks(paperId, userId);
             int actualTotalChunks = uploadService.getTotalChunks(paperId, userId);
@@ -322,6 +315,25 @@ public class PaperUploadController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
             }
 
+            if (paperSearchabilityService.isSearchable(request.paperId())) {
+                paper.setStatus(Paper.STATUS_COMPLETED);
+                paper.setMergedAt(LocalDateTime.now());
+                paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
+                paper.setVectorizationErrorMessage(null);
+                paperRepository.save(paper);
+                try {
+                    uploadService.deleteFileMark(request.paperId(), userId);
+                } catch (Exception cleanupError) {
+                    LogUtils.logBusiness("MERGE_FILE", userId,
+                            "复用已有论文时清理上传标记失败: paperId=%s, error=%s",
+                            request.paperId(), cleanupError.getMessage());
+                }
+                LogUtils.logBusiness("MERGE_FILE", userId,
+                        "复用已有可检索论文，不重复解析和构建索引: paperId=%s", request.paperId());
+                monitor.end("复用已有论文处理结果");
+                return buildAlreadyMergedResponse(request.paperId());
+            }
+
             int updatedRows = paperRepository.updateStatusIfCurrent(
                     paper.getId(),
                     Paper.STATUS_UPLOADING,
@@ -358,17 +370,14 @@ public class PaperUploadController {
             paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(request.paperId(), userId)
                     .orElseThrow(() -> new RuntimeException("论文记录不存在"));
 
-            // 发送任务到 Kafka，包含完整的权限信息
-            LogUtils.logBusiness("MERGE_FILE", userId, "创建论文处理任务: paperId=%s, paperTitle=%s, fileType=%s, orgTag=%s, isPublic=%s",
-                    request.paperId(), request.paperTitle(), fileType, paper.getOrgTag(), paper.isPublic());
+            LogUtils.logBusiness("MERGE_FILE", userId, "创建个人论文处理任务: paperId=%s, paperTitle=%s, fileType=%s",
+                    request.paperId(), request.paperTitle(), fileType);
 
             PaperProcessingTask task = new PaperProcessingTask(
                     request.paperId(),
                     objectUrl,
                     request.paperTitle(),
                     paper.getUserId(),
-                    paper.getOrgTag(),
-                    paper.isPublic(),
                     PaperProcessingTask.TASK_TYPE_UPLOAD_PROCESS,
                     userId
             );

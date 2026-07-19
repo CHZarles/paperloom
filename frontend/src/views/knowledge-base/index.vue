@@ -70,6 +70,7 @@ const activeProcessingStatuses = new Set<Api.Paper.UploadTask['processingStatus'
   'MAPPING_STRUCTURED_CONTENT',
   'RENDERING_VISUAL_ASSETS',
   'CHUNKING',
+  'EMBEDDING',
   'INDEXING'
 ]);
 
@@ -81,6 +82,7 @@ const processingStatusLabels: Partial<Record<NonNullable<Api.Paper.UploadTask['p
   MAPPING_STRUCTURED_CONTENT: 'Mapping',
   RENDERING_VISUAL_ASSETS: 'Rendering',
   CHUNKING: 'Chunking',
+  EMBEDDING: 'Embedding',
   INDEXING: 'Indexing'
 };
 
@@ -147,7 +149,12 @@ async function apiFn(params: PaperLibrarySearchParams = {}): Promise<FlatRespons
 }
 
 function canManageFile(row: Api.Paper.UploadTask) {
-  return authStore.isAdmin || String(row.userId) === String(authStore.userInfo.id);
+  if (row.file && !row.userId) return true;
+  return String(row.userId) === String(authStore.userInfo.id);
+}
+
+function isGlobalPaper(row: Api.Paper.UploadTask) {
+  return row.libraryScope === 'GLOBAL';
 }
 
 function paperRowMenuOptions(row: Api.Paper.UploadTask) {
@@ -159,7 +166,16 @@ function paperRowMenuOptions(row: Api.Paper.UploadTask) {
       disabled: !canManageFile(row) || !row.parserArtifact?.available
     },
     ...(canRetryVectorization(row) ? [{ label: 'Retry processing', key: 'retry' }] : []),
-    ...(canManageFile(row) ? [{ label: 'Delete paper', key: 'delete' }] : [])
+    ...(authStore.isAdmin
+      ? [
+          isGlobalPaper(row)
+            ? { label: 'Remove from global library', key: 'unpublish' }
+            : { label: 'Publish to global library', key: 'publish', disabled: !isPaperSearchable(row) }
+        ]
+      : []),
+    ...(canManageFile(row)
+      ? [{ label: isGlobalPaper(row) ? 'Remove from personal library' : 'Delete paper', key: 'delete' }]
+      : [])
   ];
 }
 
@@ -167,12 +183,22 @@ function handlePaperRowMenuAction(key: string | number, row: Api.Paper.UploadTas
   if (key === 'tables') handleOpenTables(row);
   if (key === 'parser') handleOpenParserArtifact(row);
   if (key === 'retry') handleRetryVectorization(row);
+  if (key === 'publish') handleUpdatePublication(row, true);
+  if (key === 'unpublish') {
+    window.$dialog?.warning({
+      title: 'Remove from global library?',
+      content: row.originalFilename,
+      positiveText: 'Remove',
+      negativeText: 'Cancel',
+      onPositiveClick: () => handleUpdatePublication(row, false)
+    });
+  }
   if (key !== 'delete') return;
 
   window.$dialog?.warning({
-    title: 'Delete paper?',
+    title: isGlobalPaper(row) ? 'Remove from personal library?' : 'Delete paper?',
     content: row.originalFilename,
-    positiveText: 'Delete',
+    positiveText: isGlobalPaper(row) ? 'Remove' : 'Delete',
     negativeText: 'Cancel',
     onPositiveClick: () => handleDelete(row.paperId)
   });
@@ -268,14 +294,13 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
       render: row => renderPipelineStatus(row)
     },
     {
-      key: 'orgTagName',
+      key: 'libraryScope',
       title: 'Scope',
-      width: 130,
+      width: 100,
       render: row => (
         <div class="library-scope-stack">
-          <span class="library-scope-chip">{row.orgTagName || 'Uncategorized'}</span>
-          {row.isPublic ? (
-            <span class="library-visibility library-visibility--public">Public</span>
+          {isGlobalPaper(row) ? (
+            <span class="library-visibility library-visibility--public">Global</span>
           ) : (
             <span class="library-visibility library-visibility--private">Private</span>
           )}
@@ -406,9 +431,8 @@ function syncTaskFromServer(target: Api.Paper.UploadTask, source: Api.Paper.Uplo
     status: source.status,
     uploadStatus: source.uploadStatus,
     userId: source.userId,
-    orgTag: source.orgTag,
-    orgTagName: source.orgTagName,
-    isPublic: source.isPublic,
+    libraryScope: source.libraryScope,
+    searchable: source.searchable,
     createdAt: source.createdAt,
     mergedAt: source.mergedAt,
     retrievalIndexedTokenCount: source.retrievalIndexedTokenCount,
@@ -490,6 +514,8 @@ async function handleMobilePageUpdate(page: number) {
 async function handleDelete(paperId: string) {
   const index = tasks.value.findIndex(task => task.paperId === paperId);
   const task = index !== -1 ? tasks.value[index] : null;
+  const paper = task || data.value.find(row => row.paperId === paperId);
+  const removesPersonalCopy = paper ? isGlobalPaper(paper) : false;
 
   if (task) {
     task.requestIds?.forEach(requestId => {
@@ -507,7 +533,7 @@ async function handleDelete(paperId: string) {
     if (index !== -1) {
       tasks.value.splice(index, 1);
     }
-    window.$message?.success('Paper deleted');
+    window.$message?.success(removesPersonalCopy ? 'Removed from personal library' : 'Paper deleted');
     await getData();
   }
 }
@@ -598,7 +624,7 @@ function renderPipelineStatus(row: Api.Paper.UploadTask) {
   }
 
   if (row.processingStatus === 'COMPLETED') {
-    return renderPipelineBadge('Index missing', 'warning', 'Index usage is missing; retry vectorization if needed');
+    return renderPipelineBadge('Not searchable', 'warning', 'The retrieval index is not ready');
   }
 
   return renderPipelineBadge('Pending', 'warning');
@@ -712,6 +738,7 @@ function isUploadCompleted(row: Api.Paper.UploadTask) {
 }
 
 function isPaperSearchable(row: Api.Paper.UploadTask) {
+  if (row.searchable !== undefined) return row.searchable;
   return (
     isUploadCompleted(row) &&
     row.processingStatus === 'COMPLETED' &&
@@ -746,9 +773,22 @@ async function handleRetryVectorization(row: Api.Paper.UploadTask) {
 
   row.processingStatus = 'PROCESSING';
   row.processingErrorMessage = null;
+  row.searchable = false;
   row.retrievalIndexedTokenCount = undefined;
   row.retrievalIndexedLocationCount = undefined;
   window.$message?.success('Processing retry queued');
+  await getList();
+}
+
+async function handleUpdatePublication(row: Api.Paper.UploadTask, publish: boolean) {
+  const { error } = await request({
+    url: `/admin/papers/${row.paperId}/publication`,
+    method: publish ? 'POST' : 'DELETE'
+  });
+  if (error) return;
+
+  row.libraryScope = publish ? 'GLOBAL' : 'PRIVATE';
+  window.$message?.success(publish ? 'Paper published globally' : 'Paper removed from global library');
   await getList();
 }
 
@@ -777,13 +817,6 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
           <span>completed</span>
         </div>
         <div class="library-index-line__meta">tokens unavailable</div>
-        {canRetryVectorization(row) ? (
-          <div>
-            <NButton size="tiny" secondary onClick={() => handleRetryVectorization(row)}>
-              Retry processing
-            </NButton>
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -805,23 +838,6 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
             </NButton>
           </div>
         ) : null}
-      </div>
-    );
-  }
-
-  if (canRetryVectorization(row)) {
-    return (
-      <div class="library-index-line library-index-line--pending">
-        <div class="library-index-line__top">
-          <span class="library-index-line__label">ACT</span>
-          <span>missing</span>
-        </div>
-        <div class="library-index-line__meta">retry writeback</div>
-        <div>
-          <NButton size="tiny" secondary onClick={() => handleRetryVectorization(row)}>
-            Retry processing
-          </NButton>
-        </div>
       </div>
     );
   }
@@ -1058,17 +1074,17 @@ async function onBeforeUpload(
             v-if="isMobileLibrary"
             :rows="tableTasks"
             :can-manage="canManageFile"
+            :is-admin="authStore.isAdmin"
             @preview="row => handleFilePreview(row.originalFilename, row.paperId)"
             @tables="handleOpenTables"
             @parser="handleOpenParserArtifact"
             @retry="handleRetryVectorization"
+            @publish="row => handleUpdatePublication(row, true)"
+            @unpublish="row => handleUpdatePublication(row, false)"
             @delete="handleDelete"
           />
           <NPagination
-            v-if="
-              isMobileLibrary &&
-              Number(mobilePagination.itemCount || 0) > Number(mobilePagination.pageSize || 10)
-            "
+            v-if="isMobileLibrary && Number(mobilePagination.itemCount || 0) > Number(mobilePagination.pageSize || 10)"
             class="library-mobile-pagination"
             :page="Number(mobilePagination.page || 1)"
             :page-size="Number(mobilePagination.pageSize || 10)"

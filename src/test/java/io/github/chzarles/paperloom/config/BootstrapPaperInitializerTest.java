@@ -1,7 +1,9 @@
 package io.github.chzarles.paperloom.config;
 
 import io.github.chzarles.paperloom.model.Paper;
+import io.github.chzarles.paperloom.model.PaperPublication;
 import io.github.chzarles.paperloom.model.User;
+import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
@@ -27,12 +29,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -52,6 +53,9 @@ class BootstrapPaperInitializerTest {
 
     @Mock
     private PaperRepository paperRepository;
+
+    @Mock
+    private PaperPublicationRepository publicationRepository;
 
     @Mock
     private PaperTextChunkRepository paperTextChunkRepository;
@@ -76,8 +80,8 @@ class BootstrapPaperInitializerTest {
         Paper existingFile = new Paper();
         existingFile.setPaperId(fileMd5);
         existingFile.setOriginalFilename("paperloom.pdf");
-        existingFile.setOrgTag("default");
-        existingFile.setPublic(true);
+        existingFile.setOrgTag(null);
+        existingFile.setPublic(false);
         existingFile.setStatus(1);
         existingFile.setUserId("1");
 
@@ -91,10 +95,11 @@ class BootstrapPaperInitializerTest {
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
         when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(2L);
+        when(publicationRepository.existsByPaperId(fileMd5)).thenReturn(true);
 
         initializer.run();
 
-        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyString(), anyBoolean());
+        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), any(), anyBoolean());
         verify(retrievalIndexingService, never()).index(anyString(), anyString());
         verify(paperRepository, never()).save(any(Paper.class));
         verify(minioClient, never()).putObject(any(PutObjectArgs.class));
@@ -121,7 +126,7 @@ class BootstrapPaperInitializerTest {
         initializer.run();
 
         verify(minioClient).putObject(any(PutObjectArgs.class));
-        verify(parseService).parseAndSave(eq(fileMd5), any(), eq("paperloom.pdf"), eq("1"), eq("default"), eq(true));
+        verify(parseService).parseAndSave(eq(fileMd5), any(), eq("paperloom.pdf"), eq("1"), isNull(), eq(false));
         verify(retrievalIndexingService).index(fileMd5, "system-bootstrap");
 
         ArgumentCaptor<Paper> captor = ArgumentCaptor.forClass(Paper.class);
@@ -131,8 +136,13 @@ class BootstrapPaperInitializerTest {
         assertEquals(fileMd5, savedFile.getPaperId());
         assertEquals("paperloom.pdf", savedFile.getOriginalFilename());
         assertEquals("1", savedFile.getUserId());
-        assertEquals("default", savedFile.getOrgTag());
-        assertTrue(savedFile.isPublic());
+        assertEquals(null, savedFile.getOrgTag());
+        assertEquals(false, savedFile.isPublic());
+
+        ArgumentCaptor<PaperPublication> publicationCaptor = ArgumentCaptor.forClass(PaperPublication.class);
+        verify(publicationRepository).save(publicationCaptor.capture());
+        assertEquals(fileMd5, publicationCaptor.getValue().getPaperId());
+        assertEquals("1", publicationCaptor.getValue().getPublishedBy());
     }
 
     @Test
@@ -144,8 +154,8 @@ class BootstrapPaperInitializerTest {
         newest.setId(1L);
         newest.setPaperId(fileMd5);
         newest.setOriginalFilename("paperloom.pdf");
-        newest.setOrgTag("default");
-        newest.setPublic(true);
+        newest.setOrgTag(null);
+        newest.setPublic(false);
         newest.setStatus(1);
         newest.setUserId("1");
 
@@ -153,8 +163,8 @@ class BootstrapPaperInitializerTest {
         duplicate.setId(2L);
         duplicate.setPaperId(fileMd5);
         duplicate.setOriginalFilename("paperloom.pdf");
-        duplicate.setOrgTag("default");
-        duplicate.setPublic(true);
+        duplicate.setOrgTag(null);
+        duplicate.setPublic(false);
         duplicate.setStatus(1);
         duplicate.setUserId("1");
 
@@ -168,18 +178,18 @@ class BootstrapPaperInitializerTest {
         when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
         when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
         when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(2L);
+        when(publicationRepository.existsByPaperId(fileMd5)).thenReturn(true);
 
         initializer.run();
 
         verify(paperRepository).deleteAll(List.of(duplicate));
-        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), anyString(), anyBoolean());
+        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), any(), anyBoolean());
         verify(retrievalIndexingService, never()).index(anyString(), anyString());
     }
 
     private void configureInitializer(Path pdfPath) {
         ReflectionTestUtils.setField(initializer, "bootstrapPaperPath", pdfPath.toString());
-        ReflectionTestUtils.setField(initializer, "bootstrapOrgTag", "default");
-        ReflectionTestUtils.setField(initializer, "bootstrapPublic", true);
+        ReflectionTestUtils.setField(initializer, "bootstrapPublish", true);
         ReflectionTestUtils.setField(initializer, "bootstrapUserId", "system-bootstrap");
         ReflectionTestUtils.setField(initializer, "minioBucketName", "uploads");
         ReflectionTestUtils.setField(initializer, "adminUsername", "admin");

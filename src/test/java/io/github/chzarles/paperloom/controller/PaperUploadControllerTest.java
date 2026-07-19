@@ -5,6 +5,7 @@ import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.OrganizationTag;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.service.FileTypeValidationService;
+import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.UploadService;
 import io.github.chzarles.paperloom.service.UserService;
@@ -48,6 +49,9 @@ class PaperUploadControllerTest {
     @Mock
     private ParseService parseService;
 
+    @Mock
+    private PaperSearchabilityService paperSearchabilityService;
+
     private PaperUploadController uploadController;
 
     @BeforeEach
@@ -59,6 +63,7 @@ class PaperUploadControllerTest {
         ReflectionTestUtils.setField(uploadController, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(uploadController, "fileTypeValidationService", fileTypeValidationService);
         ReflectionTestUtils.setField(uploadController, "parseService", parseService);
+        ReflectionTestUtils.setField(uploadController, "paperSearchabilityService", paperSearchabilityService);
         when(fileTypeValidationService.getSupportedFileTypes()).thenReturn(Set.of("pdf"));
     }
 
@@ -72,6 +77,7 @@ class PaperUploadControllerTest {
         when(fileTypeValidationService.validateFileType("test.pdf"))
                 .thenReturn(new FileTypeValidationService.FileTypeValidationResult(true, "ok", "PDF论文", "pdf"));
         when(userService.isAdminUser("1")).thenReturn(false);
+        when(userService.getUserPrimaryOrg("1")).thenReturn("TEAM_A");
         when(userService.getOrganizationTag("TEAM_A")).thenReturn(orgTag);
 
         var response = uploadController.uploadChunk(
@@ -80,8 +86,6 @@ class PaperUploadControllerTest {
                 2L * 1024 * 1024,
                 "test.pdf",
                 1,
-                "TEAM_A",
-                false,
                 file,
                 "1"
         );
@@ -89,7 +93,7 @@ class PaperUploadControllerTest {
         assertEquals(413, response.getStatusCode().value());
         assertEquals(413, response.getBody().get("code"));
         assertTrue(String.valueOf(response.getBody().get("message")).contains("不超过"));
-        verify(uploadService, never()).uploadChunk(anyString(), anyInt(), anyLong(), anyString(), any(), anyString(), anyBoolean(), anyString());
+        verify(uploadService, never()).uploadChunk(anyString(), anyInt(), anyLong(), anyString(), any(), anyString());
     }
 
     @Test
@@ -108,8 +112,6 @@ class PaperUploadControllerTest {
                 20L * 1024 * 1024,
                 "test.pdf",
                 1,
-                "TEAM_A",
-                false,
                 file,
                 "1"
         );
@@ -125,7 +127,7 @@ class PaperUploadControllerTest {
                 ),
                 response.getBody().get("data")
         );
-        verify(uploadService).uploadChunk("md5", 0, 20L * 1024 * 1024, "test.pdf", file, "TEAM_A", false, "1");
+        verify(uploadService).uploadChunk("md5", 0, 20L * 1024 * 1024, "test.pdf", file, "1");
         verify(userService, never()).getOrganizationTag(anyString());
     }
 
@@ -137,6 +139,7 @@ class PaperUploadControllerTest {
         orgTag.setUploadMaxSizeBytes(5L * 1024 * 1024L);
 
         when(userService.isAdminUser("1")).thenReturn(false);
+        when(userService.getUserPrimaryOrg("1")).thenReturn("TEAM_A");
         when(userService.getOrganizationTag("TEAM_A")).thenReturn(orgTag);
 
         var response = uploadController.uploadChunk(
@@ -145,14 +148,12 @@ class PaperUploadControllerTest {
                 1024L,
                 "test.pdf",
                 2,
-                "TEAM_A",
-                false,
                 file,
                 "1"
         );
 
         assertEquals(413, response.getStatusCode().value());
-        verify(uploadService, never()).uploadChunk(anyString(), anyInt(), anyLong(), anyString(), any(), anyString(), anyBoolean(), anyString());
+        verify(uploadService, never()).uploadChunk(anyString(), anyInt(), anyLong(), anyString(), any(), anyString());
     }
 
     @Test
@@ -172,6 +173,33 @@ class PaperUploadControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals("论文 PDF 已完成合并", response.getBody().get("message"));
         assertEquals("https://example.com/merged/md5", ((Map<?, ?>) response.getBody().get("data")).get("objectUrl"));
+        verify(uploadService, never()).mergeChunks(anyString(), anyString(), anyString());
+        verify(kafkaTemplate, never()).executeInTransaction(any());
+    }
+
+    @Test
+    void testMergeFileReusesExistingSearchableCanonicalPaper() throws Exception {
+        Paper paper = new Paper();
+        paper.setPaperId("md5");
+        paper.setOriginalFilename("test.pdf");
+        paper.setUserId("1");
+        paper.setStatus(Paper.STATUS_UPLOADING);
+
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5", "1"))
+                .thenReturn(Optional.of(paper));
+        when(uploadService.getUploadedChunks("md5", "1")).thenReturn(List.of(0));
+        when(uploadService.getTotalChunks("md5", "1")).thenReturn(1);
+        when(paperSearchabilityService.isSearchable("md5")).thenReturn(true);
+        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("md5"))
+                .thenReturn(Optional.of(paper));
+        when(uploadService.generateMergedObjectUrl("md5")).thenReturn("https://example.com/merged/md5");
+
+        var response = uploadController.mergeFile(new PaperUploadController.MergeRequest("md5", "test.pdf"), "1");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(Paper.STATUS_COMPLETED, paper.getStatus());
+        assertEquals(Paper.VECTORIZATION_STATUS_COMPLETED, paper.getVectorizationStatus());
+        verify(paperRepository).save(paper);
         verify(uploadService, never()).mergeChunks(anyString(), anyString(), anyString());
         verify(kafkaTemplate, never()).executeInTransaction(any());
     }

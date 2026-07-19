@@ -1,8 +1,12 @@
 # Qdrant 检索平面与 Elasticsearch 退役 Proposal
 
 日期：2026-07-15
-状态：核心 Cutover 与隔离 Qdrant 协议 Smoke 已完成，存量回填与产品端到端 Smoke 待执行
+状态：已被 2026-07-18 的 Sparse-only Qdrant BM25 产品切换取代；本文保留旧 Hybrid 路径的历史证据
 范围：产品 Reading Model 检索、Java/Python 边界、Qdrant 引入、Elasticsearch 退役
+
+> 当前产品状态见
+> [`Lexical Qdrant Product Cutover Proposal`](lexical-qdrant-product-cutover-proposal-2026-07-18.md)。
+> 本文后续的 Dense、Hybrid、Embedding Contract 和旧质量数据只描述 2026-07-15 的已删除路径。
 
 ## 结论
 
@@ -27,9 +31,9 @@ Python Harness 编排平面
 └── 通过 Corpus Gateway 搜索和读取，不管理检索基础设施
 ```
 
-Elasticsearch 可以退役，但不能直接删除。先让 Qdrant 基于 canonical
-`paper_reading_elements` 完成索引、查询、重建和删除闭环，再切换 Harness 产品 Corpus，最后删除
-旧的 `paper_chunks`、`paper_search` 及其运行依赖。
+实施顺序是先让 Qdrant 基于 canonical `paper_reading_elements` 完成索引、查询、重建和删除闭环，
+再切换 Harness 产品 Corpus，最后删除旧的 `paper_chunks`、`paper_search` 及其运行依赖。上述 Cutover
+和 Elasticsearch 生产路径退役现已完成。
 
 本 Proposal 不把 Qdrant 变成 Evidence 来源。Qdrant 只返回 Candidate `location_ref`；最终可引用
 内容仍必须从 MySQL Current Reading Model 精确读取。
@@ -47,13 +51,15 @@ Elasticsearch 可以退役，但不能直接删除。先让 Qdrant 基于 canoni
 | 模型可见 Tool 名称、Schema、Prompt、Golden Data 和 Reading Model 路径 | 未修改 |
 | Elasticsearch 生产代码、依赖、配置、Compose、脚本和主文档 | 已退役 |
 | 认证 Qdrant 协议 Smoke：创建、精确 Generation Filter、清理、维度/缺失 Collection、错误密钥 | 已通过 |
-| 现有 76 篇 Current READY Reading Model 的 Qdrant 回填 | 待显式执行；会产生 Embedding 用量 |
-| 定向产品 Research / Citation Reopen Smoke | 待回填后执行 |
+| 现有 76 篇 Current READY Reading Model 的 Qdrant 回填 | 已显式执行；产品 Collection 为 Green，共 4,467 Point |
+| 定向产品 Retrieval / MiniMax Research Smoke | 已完成；3 个 Case 每种方法各 1 次，精确 Hard Pass 为 BM25 `1/3`、Qdrant `0/3`，仅用于失败定位 |
+| Citation Reopen | 合同和确定性测试已覆盖；本轮量化探针没有单列浏览器 Reopen 结果 |
 | Shadow 对照、100x 容量、HA 与多维度 Embedding 评估 | 不属于本次快速 Cutover，保留为扩展验证 |
 
-这次实施按后续“尽快收敛、不要过度测试”的要求，完成产品边界切换和确定性验证，没有运行全量
-MiniMax Golden、100x Corpus 或多副本容量实验。因此本文后半部分的这些内容仍是扩展 Gate，不应被
-误读成已经取得的容量结论。
+这次实施按后续“尽快收敛、不要过度测试”的要求先完成产品边界切换和确定性验证。随后补做了完整
+离线算法对照、76 篇产品探针和 3 Case MiniMax-M3 Smoke，但仍没有运行全量产品 Qdrant MiniMax
+Golden、100x Corpus 或多副本容量实验。因此本文后半部分的这些内容仍是扩展 Gate，不应被误读成
+已经取得的容量或用户体验结论。
 
 ### 本轮验证数据
 
@@ -70,10 +76,60 @@ MiniMax Golden、100x Corpus 或多副本容量实验。因此本文后半部分
 | 认证 Real-Qdrant Smoke | 通过：Collection 创建、Dense/Sparse 合同、精确 Paper/Generation Filter、清理、错误密钥、缺失 Collection、维度不匹配 |
 | Script Syntax / `git diff --check` | 通过 |
 
-本轮没有调用 MiniMax 全量 Golden。原因不是用离线测试替代模型质量结论，而是这次变更位于 Corpus
-Adapter、授权、索引一致性和基础设施合同；先用确定性测试证明旧 Harness、Prompt、Golden Data、
-Anchor、Reading Model 和路径未被改动，再把真实 MiniMax 作为小范围产品 Smoke，而不是重新消费整套
-模型评测预算。
+Cutover 验证本身没有调用 MiniMax 全量 Golden。原因不是用离线测试替代模型质量结论，而是这次变更
+位于 Corpus Adapter、授权、索引一致性和基础设施合同；先用确定性测试证明旧 Harness、Prompt、
+Golden Data、Anchor、Reading Model 和路径未被改动。后续只补做了 3 Case 产品 Smoke，仍不能替代
+完整模型质量评测。
+
+### 后续量化补测
+
+离线 v5 是当前权威产物，v4 是同一批 69 次已保存 MiniMax 查询、24 个证据型 Case 和
+48 个证据义务的重复运行：
+
+下表保留各方法当时实际给模型的候选；BM25 在 24/69 条调用中包含既有候选扩展，Qdrant 严格停在
+请求 `top_k`：
+
+| 方法（实际输出语义） | 精确 Anchor（v4 -> v5） | 完整 Case（v4 -> v5） | Native MRR（v4 -> v5） | v5 人工复核 |
+| --- | ---: | ---: | ---: | ---: |
+| 内存 BM25，含候选扩展 | `44/48 -> 44/48` | `20/24 -> 20/24` | `0.365641 -> 0.365641` | `48/48`，`24/24` |
+| Qdrant Sparse | `40/48 -> 40/48` | `17/24 -> 17/24` | `0.346954 -> 0.345531` | 未全量复核 |
+| Qdrant Dense | `15/48 -> 15/48` | `4/24 -> 4/24` | `0.057522 -> 0.057522` | 未全量复核 |
+| Qdrant Hybrid RRF | `33/48 -> 33/48` | `14/24 -> 14/24` | `0.165312 -> 0.166008` | 未全量复核 |
+| 产品式 Hybrid + Coverage | `34/48 -> 34/48` | `15/24 -> 15/24` | `0.170049 -> 0.169969` | `47/48`，`23/24` |
+
+把 BM25 同样截断到请求的 `top_k` 后，v5 为 `42/48`、`20/24`、MRR `0.35923`；产品式 Hybrid +
+Coverage 为 `34/48`、`15/24`、MRR `0.16997`。实际行为差距中有 2 个命中来自旧 BM25 的候选扩展，
+但等预算质量 Gate 仍没有通过。
+
+这组数据推翻了 Proposal 中“Dense + Sparse 默认组合会更好”的隐含假设。当前 Sparse 只是 Hashed
+Log-TF，没有 IDF 和文档长度归一化；Dense 明显更弱，等权 RRF 又会压低较强的 Sparse 候选。架构
+Cutover 保留，但“Hybrid Candidate Recall 不低于 BM25”的质量 Gate 没有通过。
+
+v4/v5 的头部精确指标一致，但 Qdrant 候选顺序不稳定。Sparse、Hybrid 和产品式 Hybrid 的 Native
+Candidate 序列分别有 `34/69`、`38/69`、`36/69` 发生变化，并少数影响 `top_k` 边界候选和 MRR。
+现有产物没有保存逐候选原始分数，不能把根因直接断定为同分；后续必须同时保存分数并建立显式二级
+排序合同。
+
+离线 v5 索引 789 个 Point，消耗 `697,528` 个 Embedding Token，总时间 `61.70 s`，其中 Embedding
+`56.43 s`；v4 重复运行分别为 `62.88 s` 和 `60.33 s`。两次都使用与 Java 一致的 10 条
+Embedding Batch。
+
+产品 v3 的质量探针使用 `strict_requested_top_k`：只评分查询原始请求的 Candidate 预算，不评分
+Adapter 内部扩展的更深候选。BM25 精确命中 `6/6`、完整 Case `3/3`、MRR `0.500`；Java/Qdrant
+分别为 `2/6`、`1/3`、`0.111`。冻结的人工复核将 Qdrant 计为 `6/6`、`3/3`，但不改变低
+`top_k` 下的排名风险。
+
+76 篇产品论文上，三个查询的 BM25 轮次初始化为 `6.94-8.84 s`，Worker RSS 增量为
+`243.2-243.4 MiB`。窄查询 p50 为 BM25 `19.2-39.9 ms`、Java/Qdrant `344.6-456.0 ms`；广查询
+p50 为 BM25 `1.838-2.139 s`、Java/Qdrant `378.4-493.0 ms`。这里证明的是共享数据面的扩展性
+取舍，不是排序质量或最终用户体验提升。
+
+MiniMax-M3 Smoke 已验证两条路径的 Provider、Model、OpenAI-compatible API Style 和
+`max_completion_tokens=3000` 一致。每种方法每个 Case 只有 1 个样本，精确 Hard Pass 为 BM25 `1/3`、
+Qdrant `0/3`。这个结果只能用于连线和失败定位，不能用于排序用户体验。
+
+完整数据、人工复核和故障时间线见
+[`Qdrant 检索影响量化报告`](../../evaluation/qdrant-retrieval-impact-2026-07-15.md)。
 
 ## 为什么现在需要作出这个决定
 
@@ -97,15 +153,15 @@ Elasticsearch container RSS: about 1.61 GB
 ```text
 Papers:             about 7,600
 Reading Elements:   about 2,562,500
-2048-d float32 raw vectors: about 19.6 GiB
+1536-d float32 raw vectors: about 14.7 GiB
 ```
 
 这还没有计算 HNSW、Sparse Index、Payload、文本、分片和副本。几千篇论文不是极端规模，不能继续
 把“每轮完整加载授权 Corpus”当成长期产品边界。
 
-### 当前产品路径的扩展瓶颈
+### Cutover 前产品路径的扩展瓶颈
 
-当前一次研究回合会：
+Cutover 前，一次研究回合会：
 
 1. `ResearchHarnessService` 根据 `scope.paper_ids` 调用
    `DockerMySqlProductCorpusStore.load_dataset()`；
@@ -114,7 +170,7 @@ Reading Elements:   about 2,562,500
 4. `ReadingCorpusTools` 为本轮构建所有 `ReadingDocument`；
 5. 每次 `find_reading_locations` 再对范围内文档分词、计算 BM25 统计和排序。
 
-这个实现适合 Golden Fixture 和少量论文的本地产品验证，不适合作为多机产品 Corpus Adapter：
+这个实现适合 Golden Fixture 和少量论文的本地产品验证，但不适合作为多机产品 Corpus Adapter：
 
 - `docker exec` 依赖本机容器名，不能作为 Kubernetes/多机数据库连接方式；
 - 相同论文在每轮、每个 Harness Replica 重复读取和构造；
@@ -296,12 +352,13 @@ sparse  lexical representation
 ```
 
 Dense-only 不能替代论文检索中的公式、指标名、数据集名、缩写、引用编号和精确术语；Sparse-only 又
-难以覆盖自然语言改写。两路召回取并集，使用确定性 RRF 或等价 Fusion，再执行现有多论文覆盖、元素
-类型和 Page Grounding 选择。
+难以覆盖自然语言改写。实现采用两路召回、确定性 RRF 和多论文覆盖，但量化结果显示当前 Dense
+`15/48`，Hybrid `33/48`，都低于 Sparse 的 `40/48`。因此“两路都启用”只是当前实现，不是已经
+验证有效的设计结论。
 
-2048 维不是永久决定。迁移前应在 768、1024、2048 维上比较 Candidate Recall、延迟、磁盘和内存，
-再冻结生产 Embedding Contract。需要时采用 On-disk Vector 和 Scalar Quantization，但不能在没有
-检索质量数据时先压缩再解释损失。
+当前产品 Embedding Contract 使用 MiniMax `embo-01`、1536 维。768、1024、2048 维的质量、延迟、
+磁盘和内存对照尚未执行。需要时可以评估 On-disk Vector 和 Scalar Quantization，但不能在没有检索
+质量数据时先压缩再解释损失。
 
 ## Java 内部 Corpus API
 
@@ -515,6 +572,22 @@ Cutover 通过后删除或重写：
 
 ## 分阶段实施
 
+当前阶段状态：
+
+| Phase | 状态 |
+| --- | --- |
+| 0 合同与基线 | 已完成确定性基线，并在后续量化中补齐同查询 BM25 对照 |
+| 1 Java Corpus API | 已完成 |
+| 2 Qdrant Canonical Index | 已完成，76 篇回填为 4,467 Point |
+| 3 Shadow Retrieval | 已完成离线与产品对照，但“不低于 BM25”的退出条件未通过 |
+| 4 产品 Cutover | 已完成；产品使用 Java/Qdrant，失败时不静默回退 |
+| 5 100x 与 HA | 未完成 |
+| 6 Elasticsearch 退役 | 已完成 |
+
+实际顺序与最初 Proposal 的质量 Gate 有偏差：产品 Cutover 已发生，后续数据才证明 Phase 3 的相关性
+退出条件没有满足。当前决定是保留共享 Java/Qdrant 数据面，同时把 Sparse、Fusion 和索引粒度作为
+未完成的检索算法工作；不能把已经上线当作质量 Gate 自动通过。
+
 ### Phase 0：冻结合同与基线
 
 目标：证明迁移没有偷偷改变模型协议和 Evidence 语义。
@@ -629,7 +702,7 @@ Cutover 通过后删除或重写：
 - 多论文 Coverage；
 - 表格、图片说明、公式和跨页位置；
 - Dense-only、Sparse-only、Hybrid 对照；
-- 768/1024/2048 维度对照；
+- 768/1024/1536/2048 维度对照；
 - Scope Leak 必须为 0。
 
 Golden 用来验证回归，不用来驱动 Case-specific Rule，也不通过修改 Anchor、Prompt、路径或 Reading
@@ -687,6 +760,10 @@ Qdrant 评测字段扩散到回答对象。
 - Dense 分支至少解决一组可复现的语义漏召回，否则不进入默认路径；
 - 不以更多 Model Call、Best-of-N 或在线 Judge 掩盖检索问题。
 
+当前状态：上述前两项没有通过。实际输出语义下，精确 Case Union 为 Qdrant `34/48`、含候选扩展的
+BM25 `44/48`；把 BM25 同样截断到请求 `top_k` 后为 `42/48` 对 `34/48`。Dense 分支没有证明净收益。
+Qdrant 作为共享数据面已经保留，但当前检索算法不能标记为质量验收完成。
+
 扩展接受：
 
 - 100x 数据下 Harness 不加载全量 Scope Element；
@@ -706,8 +783,13 @@ Qdrant 评测字段扩散到回答对象。
 
 ### Qdrant 成为新的单点
 
-控制：开发环境允许单节点；生产按容量测试确定 Shard/Replica，保留 Snapshot、Restore 和 Rolling
-Restart Gate。不能因为 Harness 横向扩展就默认一个无副本 Qdrant 已经高可用。
+量化首轮已经暴露一个具体故障：产品与 Benchmark Collection 共用进程时，Qdrant 在软上限
+`nofile=1024` 处耗尽文件句柄并开始返回 `Too many open files`，而 TCP-only Health Check 仍显示
+Healthy。Compose 已固定 `nofile=65536`，Health Check 改为验证 `/healthz` HTTP 200，Benchmark 也
+改用隔离实例。
+
+剩余控制：开发环境允许单节点；生产按容量测试确定 Shard/Replica，保留 Snapshot、Restore 和
+Rolling Restart Gate。不能因为 Harness 横向扩展就默认一个无副本 Qdrant 已经高可用。
 
 ### Java -> Python -> Java 调用链
 

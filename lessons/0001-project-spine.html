@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 0001: The PaperLoom Project Spine</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+  <p class="eyebrow">Lesson 0001 · Project narrative</p>
+  <h1>The PaperLoom Project Spine</h1>
+  <p class="lead">Your first interview win is not remembering 293 Java files. It is holding one correct mental model that every deeper answer can attach to.</p>
+
+  <h2>The One-Sentence Model</h2>
+  <blockquote>
+    PaperLoom is an evidence-bounded Agentic RAG workbench for research PDFs: Java fixes the user's authorized paper scope and durable product state, Python runs a tool-using research Agent inside that scope, and an answer is accepted only when its claims cite exact locations read from the canonical Reading Model.
+  </blockquote>
+
+  <p>This sentence contains four interview-grade ideas:</p>
+  <ul>
+    <li><strong>Product:</strong> a research-paper reading workbench, not a generic chatbot.</li>
+    <li><strong>Boundary:</strong> Java owns authorization and durable state; Python owns bounded research behavior.</li>
+    <li><strong>Agent:</strong> retrieval is a model-directed sequence of tool calls, not one search followed by one generation.</li>
+    <li><strong>Invariant:</strong> citeable claims must trace to exact content that the Agent was authorized to read.</li>
+  </ul>
+
+  <h2>The Live Path</h2>
+  <div class="callout flow"><code>Vue Folio
+  -> ChatHandler
+  -> ProductReadingConversationService
+  -> PythonResearchHarnessClient
+  -> POST /v1/research/stream
+  -> ResearchHarnessService
+  -> Agents SDK Runner
+  -> Java Corpus API
+  -> Qdrant candidates
+  -> MySQL exact read
+  -> Evidence ID
+  -> validated answer
+  -> durable Java reference mapping</code></div>
+
+  <p>Do not describe this as "Java calls Python, then Python calls the LLM." That is true but too shallow. The meaningful story is the movement of <em>authority</em> and <em>evidence</em>.</p>
+
+  <h2>Why Each Store Exists</h2>
+  <table>
+    <thead><tr><th>Store</th><th>Job</th><th>What it must not become</th></tr></thead>
+    <tbody>
+      <tr><td>MySQL</td><td>Canonical Reading Model, product state, conversations, references</td><td>A disposable retrieval cache</td></tr>
+      <tr><td>Qdrant</td><td>Rebuildable sparse BM25 candidate index</td><td>The source of citeable evidence</td></tr>
+      <tr><td>MinIO</td><td>PDFs, parser artifacts, page images, visual crops</td><td>The query and authorization layer</td></tr>
+      <tr><td>Redis</td><td>Separate transient product concerns</td><td>The durable evidence record</td></tr>
+      <tr><td>Kafka</td><td>Upload-processing infrastructure</td><td>Part of the live answer evidence chain</td></tr>
+    </tbody>
+  </table>
+
+  <h2>The Defensible Two-Minute Answer</h2>
+  <div class="callout">
+    <p><strong>Problem.</strong> Typical RAG demos optimize for plausible answers, but a paper-reading product also needs every claim to reopen the supporting source location.</p>
+    <p><strong>Design.</strong> PaperLoom converts PDFs into a product-owned Reading Model with pages, sections, typed elements, locations, provenance, and visual assets. Java locks the user's paper scope and owns persistent state. A Python Agents SDK runtime performs research with narrow tools inside that scope.</p>
+    <p><strong>Control.</strong> Search results are only candidates. The Agent must disclose a paper, find a location, and read that exact location before an Evidence ID exists. Final submission is validated against the Evidence Ledger and coverage rules.</p>
+    <p><strong>Storage.</strong> MySQL is canonical, Qdrant is a rebuildable sparse candidate index, and MinIO retains original and visual artifacts. Java converts accepted evidence into durable references so old citations can reopen.</p>
+    <p><strong>Tradeoff.</strong> This adds orchestration and validation complexity, but it makes authorization and citation behavior deterministic rather than trusting model prose.</p>
+  </div>
+
+  <h2>Retrieval Drill</h2>
+  <p>Answer aloud before opening each panel. Aim for 20 to 40 seconds per question.</p>
+
+  <details><summary>1. Why is this Agentic RAG rather than ordinary RAG?</summary><p>The model chooses a sequence of actions inside one run: discover papers, resolve identity, search locations, reformulate, read exact content, consult a method guide, ask for clarification, abstain, or submit. Deterministic tools still constrain authorization, evidence creation, and final acceptance.</p></details>
+  <details><summary>2. Why can Qdrant search output not be cited directly?</summary><p>Qdrant is a rebuildable navigation index whose payload is not canonical truth. Citeable evidence is created only when Java revalidates the authorized scope and Current READY model, then reads the exact canonical location from MySQL.</p></details>
+  <details><summary>3. Why split Java and Python?</summary><p>Java holds hard product boundaries and durable state, while Python provides the fast-moving Agent runtime and tool loop. The split prevents model orchestration code from deciding its own global authorization scope, though it adds a network boundary and contract-management cost.</p></details>
+  <details><summary>4. What is the system's central invariant?</summary><p>A paper-content claim in an accepted answer must remain connected to exact evidence read from a paper that the current conversation was authorized to use.</p></details>
+  <details><summary>5. What would you improve first?</summary><p>A strong answer should start from measurement: held-out Candidate, Read, and Cited recall; lexical-miss analysis; large-scope filter latency; capacity; and failure classification. Only then justify a reranker, dense retrieval, or another storage change.</p></details>
+
+  <h2>Interview Honesty</h2>
+  <div class="callout warning">
+    <p>Do not say, "AI wrote it, so I do not know." Also do not claim intimate authorship you cannot defend.</p>
+    <p>Use: "I used AI heavily for implementation, but I owned the product constraints, selected and verified the architecture, built tests and evaluation gates, and iterated based on observed failures. I can walk you through the live path and the tradeoffs." Then prove it.</p>
+  </div>
+
+  <h2>Primary Reading</h2>
+  <p>Read the repository's <a href="../docs/architecture/overview.md">Architecture Overview</a>. Then use the <a href="../reference/interview-roadmap.html">interview roadmap</a> to see where this lesson fits.</p>
+
+  <p><strong>Next feedback loop:</strong> explain the system from memory in no more than 120 words, then give the hardest follow-up question you expect an interviewer to ask. Ask the teaching agent about anything that remains fuzzy.</p>
+</main>
+</body>
+</html>

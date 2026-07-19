@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from .fact_assertions import FACT_FIELDS_SCHEMA_VERSION
 from .golden_case import case_expect, case_question
 from ..core.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map, stable_id
 
@@ -35,6 +36,7 @@ class GoldenFixtureHarness:
             "answer_type": "golden_fixture",
             "summary": case_question(case),
             "markdown": case_question(case),
+            "fields_schema": FACT_FIELDS_SCHEMA_VERSION,
             "fields": dict(child_map(expectation.get("facts"))),
             "cited_evidence_ids": cited,
         }

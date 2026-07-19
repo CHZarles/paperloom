@@ -63,22 +63,20 @@ public class UploadService {
      * @param totalSize PDF 总大小
      * @param originalFilename 原始 PDF 文件名
      * @param file 要上传的分片文件
-     * @param orgTag 组织标签，指定文件所属的组织
-     * @param isPublic 是否公开，标识文件访问权限
      * @param userId 上传用户ID
      * @throws IOException 如果文件读取失败
      */
     public void uploadChunk(String paperId, int chunkIndex, long totalSize, String originalFilename,
-                           MultipartFile file, String orgTag, boolean isPublic, String userId) throws IOException {
+                           MultipartFile file, String userId) throws IOException {
         // 获取文件类型信息
         String fileType = getFileType(originalFilename);
         String contentType = file.getContentType();
 
-        logger.info("[uploadChunk] 开始处理分片上传请求 => paperId: {}, chunkIndex: {}, totalSize: {}, originalFilename: {}, fileType: {}, contentType: {}, fileSize: {}, orgTag: {}, isPublic: {}, userId: {}",
-                   paperId, chunkIndex, totalSize, originalFilename, fileType, contentType, file.getSize(), orgTag, isPublic, userId);
+        logger.info("[uploadChunk] 开始处理个人论文分片上传请求 => paperId: {}, chunkIndex: {}, totalSize: {}, originalFilename: {}, fileType: {}, contentType: {}, fileSize: {}, userId: {}",
+                   paperId, chunkIndex, totalSize, originalFilename, fileType, contentType, file.getSize(), userId);
 
         try {
-            Paper paper = getOrCreatePaper(paperId, totalSize, originalFilename, orgTag, isPublic, userId, fileType);
+            Paper paper = getOrCreatePaper(paperId, totalSize, originalFilename, userId, fileType);
             logger.debug("检查论文记录是否存在 => paperId: {}, originalFilename: {}, fileType: {}, status: {}", paperId, originalFilename, fileType, paper.getStatus());
 
             if (paper.getStatus() == Paper.STATUS_MERGING) {
@@ -616,8 +614,6 @@ public class UploadService {
     private Paper getOrCreatePaper(String paperId,
                                    long totalSize,
                                    String originalFilename,
-                                   String orgTag,
-                                   boolean isPublic,
                                    String userId,
                                    String fileType) {
         Optional<Paper> existingPaper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, userId);
@@ -625,8 +621,8 @@ public class UploadService {
             return existingPaper.get();
         }
 
-        logger.info("创建新的论文记录 => paperId: {}, originalFilename: {}, fileType: {}, totalSize: {}, userId: {}, orgTag: {}, isPublic: {}",
-                paperId, originalFilename, fileType, totalSize, userId, orgTag, isPublic);
+        logger.info("创建新的个人论文记录 => paperId: {}, originalFilename: {}, fileType: {}, totalSize: {}, userId: {}",
+                paperId, originalFilename, fileType, totalSize, userId);
 
         Paper paper = new Paper();
         paper.setPaperId(paperId);
@@ -635,8 +631,8 @@ public class UploadService {
         paper.setTotalSize(totalSize);
         paper.setStatus(Paper.STATUS_UPLOADING);
         paper.setUserId(userId);
-        paper.setOrgTag(orgTag);
-        paper.setPublic(isPublic);
+        paper.setOrgTag(null);
+        paper.setPublic(false);
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PENDING);
         paper.setVectorizationErrorMessage(null);
 

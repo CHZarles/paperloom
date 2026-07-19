@@ -7,8 +7,8 @@ import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.ParseService;
-import io.github.chzarles.paperloom.service.RetrievalIndexingService;
 import io.github.chzarles.paperloom.service.UploadService;
+import io.github.chzarles.paperloom.service.RetrievalIndexingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -49,10 +49,14 @@ public class PaperProcessingConsumer {
     @KafkaListener(topics = "#{kafkaConfig.getPaperProcessingTopic()}", groupId = "#{kafkaConfig.getPaperProcessingGroupId()}")
     public void processTask(PaperProcessingTask task) {
         log.info("Received task: {}", task);
-        log.info("论文权限信息: userId={}, orgTag={}, isPublic={}", 
-                task.getUserId(), task.getOrgTag(), task.isPublic());
 
         if (searchabilityService.isSearchable(task.getPaperId())) {
+            var model = readingModelRepository.findFirstByPaperIdAndIsCurrentTrue(task.getPaperId()).orElseThrow();
+            paperService.markVectorizationCompleted(task.getPaperId(), new RetrievalIndexingService.IndexingResult(
+                    0,
+                    model.getRetrievalIndexedLocationCount() == null ? 0 : model.getRetrievalIndexedLocationCount(),
+                    model.getRetrievalIndexContract() == null ? "" : model.getRetrievalIndexContract()
+            ));
             log.info("Canonical paper is already searchable; skipped duplicate processing: paperId={}", task.getPaperId());
             return;
         }
@@ -78,7 +82,7 @@ public class PaperProcessingConsumer {
 
             // 解析论文 PDF
             parseService.parseAndSave(task.getPaperId(), fileStream,
-                    task.getPaperTitle(), task.getUserId(), task.getOrgTag(), task.isPublic());
+                    task.getPaperTitle(), task.getUserId(), null, false);
             log.info("论文 PDF 解析完成，paperId: {}", task.getPaperId());
 
             RetrievalIndexingService.IndexingResult indexingResult = retrievalIndexingService.indexWithMetrics(

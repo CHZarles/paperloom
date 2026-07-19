@@ -9,7 +9,11 @@ GOLDEN_SCHEMA_VERSION = "harness-golden-data/v2"
 GOLDEN_CASE_SCHEMA_VERSION = "harness-golden-case/v2"
 PAPER_PACK_SCHEMA_VERSION = "harness-paper-pack/v2"
 RUN_TRACE_SCHEMA_VERSION = "harness-run-trace/v2"
-SCORE_REPORT_SCHEMA_VERSION = "harness-score-report/v2"
+SCORE_REPORT_SCHEMA_VERSION = "harness-score-report/v3"
+SUPPORTED_SCORE_REPORT_SCHEMA_VERSIONS = frozenset({
+    "harness-score-report/v2",
+    SCORE_REPORT_SCHEMA_VERSION,
+})
 ARTIFACT_CONTRACT_SCHEMA_VERSION = "research-harness-artifacts/v2"
 
 

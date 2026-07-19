@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -18,7 +17,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,7 +32,10 @@ class PaperServiceCandidateSearchTest {
     private UserRepository userRepository;
 
     @Mock
-    private OrgTagCacheService orgTagCacheService;
+    private PaperAccessService paperAccessService;
+
+    @Mock
+    private PaperSearchabilityService paperSearchabilityService;
 
     private PaperService paperService;
 
@@ -45,29 +46,26 @@ class PaperServiceCandidateSearchTest {
         ReflectionTestUtils.setField(paperService, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(paperService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(paperService, "userRepository", userRepository);
-        ReflectionTestUtils.setField(paperService, "orgTagCacheService", orgTagCacheService);
+        ReflectionTestUtils.setField(paperService, "paperAccessService", paperAccessService);
+        ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);
     }
 
     @Test
-    void readinessSearchableUsesRepositoryLevelSearchablePaging() {
+    void readinessSearchableFiltersAccessiblePersonalAndGlobalPapers() {
         User user = new User();
         user.setId(1L);
         user.setUsername("alice");
 
         Paper searchable = paper("paper-searchable");
+        Paper unavailable = paper("paper-unavailable");
+        searchable.setPaperTitle("Agent Searchable");
+        unavailable.setPaperTitle("Agent Unavailable");
         PageRequest pageable = PageRequest.of(0, 10);
-        Page<Paper> repositoryPage = new PageImpl<>(List.of(searchable), pageable, 1);
 
-        when(paperRepository.findAllByVectorizationStatusIsNull()).thenReturn(List.of());
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(orgTagCacheService.getUserEffectiveOrgTags("alice")).thenReturn(List.of("lab"));
-        when(paperRepository.searchAccessibleSearchablePaperCandidates(
-                "1",
-                List.of("lab"),
-                "agent",
-                pageable
-        ))
-                .thenReturn(repositoryPage);
+        when(paperAccessService.accessiblePapers("1")).thenReturn(List.of(searchable, unavailable));
+        when(paperSearchabilityService.isSearchable(searchable)).thenReturn(true);
+        when(paperSearchabilityService.isSearchable(unavailable)).thenReturn(false);
 
         Page<Paper> result = paperService.searchAccessiblePaperCandidates(
                 "1",
@@ -79,13 +77,7 @@ class PaperServiceCandidateSearchTest {
 
         assertEquals(List.of("paper-searchable"), result.getContent().stream().map(Paper::getPaperId).toList());
         assertEquals(1L, result.getTotalElements());
-        verify(paperRepository).searchAccessibleSearchablePaperCandidates(
-                "1",
-                List.of("lab"),
-                "agent",
-                pageable
-        );
-        verify(paperRepository, never()).searchAccessiblePaperCandidates("1", List.of("lab"), "agent", pageable);
+        verify(paperAccessService).accessiblePapers("1");
     }
 
     private Paper paper(String paperId) {

@@ -121,7 +121,25 @@ stable:   case_count=10, passed_count=10, failed_count=0
 expanded: case_count=24, passed_count=24, failed_count=0
 ```
 
+评分报告使用 `harness-score-report/v3`，并保存 `behavior-scorer/v3` 的完整 Scorer Contract 与
+SHA-256。Content Scorer 从用户可见 Markdown 读取 Typed Fact Assertion；只有声明
+`fields_schema=golden-facts/v1` 的确定性 Fixture 才按结构化 `fields` 评分。普通模型输出中的任意
+`fields` 不会激活隐藏 Fact Contract。不支持的 Fact 类型为 `review_required`，不能 Hard Pass。
+
 修改 Manifest、Pack、Case、Schema、Fixture 生成或确定性评分后，先运行这一层。
+
+已经保存的 Run 可以离线复评分，不调用模型：
+
+```bash
+.venv-harness/bin/python -m harness_py \
+  --manifest research/golden-data/manifest-expanded.yaml \
+  rescore \
+  --runs research/golden-data/local-runs/<run>/minimax-expanded-final \
+  --out research/golden-data/local-runs/<run>/score-report-v3.json
+```
+
+`rescore` 要求 Manifest 中每个 Case 都存在对应的 `<case_id>/harness_run.json`。报告有确定性失败时
+仍会完整写入，并以状态码 1 退出；缺文件、JSON 损坏或 Case ID 不一致时以状态码 2 退出。
 
 ## 2. Anchor 和解析器审计
 
@@ -171,6 +189,11 @@ Fixture 校验通过不代表 Anchor 审计也会通过。
 `48/48` 指定证据、`24/24` 完整 Case 和 `0.48019` MRR；内存 BM25 对照为 `35/48`、`15/24`、
 `0.37838`。稳定与扩展 MiniMax-M3 全量运行均无技术失败，严格 Hard Pass 分别为 `6/10` 和 `9/24`。
 Candidate 指标与模型最终分数必须分开解释。
+
+上面的 `6/10` 与 `9/24` 是历史 `harness-score-report/v2`。修复“任意非空 fields 激活隐藏 Fact
+Contract”的缺陷后，同一保存产物用 `behavior-scorer/v3` 离线复评分为 Stable `7/10`、Expanded
+`10/24`，没有重新调用 MiniMax。旧 MiniMax 在当前 24 个 Case 上用同一 v3 Contract 为 `11/24`。
+产物位于 `local-runs/scorer-v3-rescore-20260719/`。
 
 离线层同时报告两种口径。Native 保留迁移前后各方法实际给模型的输出：BM25 Adapter 在 `24/69`
 条广查询或多论文查询中会扩展到最多 12 个候选，产品式 Qdrant 严格停在请求的 `top_k`。固定

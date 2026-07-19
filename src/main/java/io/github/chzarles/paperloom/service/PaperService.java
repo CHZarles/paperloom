@@ -8,6 +8,13 @@ import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.paper.parser.MinerUUnavailableException;
 import io.github.chzarles.paperloom.paper.parser.PaperParsingException;
 import io.github.chzarles.paperloom.repository.ChunkInfoRepository;
+import io.github.chzarles.paperloom.repository.PaperLocationRepository;
+import io.github.chzarles.paperloom.repository.PaperPageRepository;
+import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
+import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
+import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
+import io.github.chzarles.paperloom.repository.PaperSectionRepository;
+import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
@@ -19,6 +26,7 @@ import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -26,7 +34,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * 论文管理服务。
@@ -36,11 +49,39 @@ import java.util.List;
 public class PaperService {
 
     private static final Logger logger = LoggerFactory.getLogger(PaperService.class);
+
     @Autowired
     private PaperRepository paperRepository;
 
     @Autowired
+    private PaperPublicationRepository paperPublicationRepository;
+
+    @Autowired
+    private PaperAccessService paperAccessService;
+
+    @Autowired
+    private PaperSearchabilityService paperSearchabilityService;
+
+    @Autowired
     private PaperTextChunkRepository paperTextChunkRepository;
+
+    @Autowired
+    private PaperSourceQuoteRepository paperSourceQuoteRepository;
+
+    @Autowired
+    private PaperReadingElementRepository paperReadingElementRepository;
+
+    @Autowired
+    private PaperLocationRepository paperLocationRepository;
+
+    @Autowired
+    private PaperSectionRepository paperSectionRepository;
+
+    @Autowired
+    private PaperPageRepository paperPageRepository;
+
+    @Autowired
+    private PaperReadingModelRepository paperReadingModelRepository;
 
     @Autowired
     private ChunkInfoRepository chunkInfoRepository;
@@ -52,16 +93,13 @@ public class PaperService {
     private ReadingModelQdrantIndexService qdrantIndexService;
 
     @Autowired
-    private PaperSearchabilityService paperSearchabilityService;
-
-    @Autowired
-    private OrgTagCacheService orgTagCacheService;
-
-    @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private UploadService uploadService;
+
+    @Autowired
+    private ParseService parseService;
 
     @Autowired
     private PaperParserArtifactService paperParserArtifactService;
@@ -93,8 +131,13 @@ public class PaperService {
         logger.info("开始删除论文: paperId={}, requesterId={}, role={}", paperId, requesterId, role);
 
         try {
-            Paper paper = findPaperForDeletion(paperId, requesterId, role);
+            Paper paper = findPaperForDeletion(paperId, requesterId);
             String ownerId = paper.getUserId();
+
+            if (paperRepository.countByPaperId(paperId) <= 1
+                    && paperPublicationRepository.existsByPaperId(paperId)) {
+                throw new IllegalStateException("Published paper must be unpublished before deleting its last library entry");
+            }
 
             clearUploadMarker(paperId, ownerId);
             paperRepository.delete(paper);
@@ -110,24 +153,18 @@ public class PaperService {
 
             deletePhysicalPaperArtifacts(paperId);
             logger.info("论文删除完成: paperId={}, requesterId={}, ownerId={}", paperId, requesterId, ownerId);
+        } catch (IllegalStateException e) {
+            logger.warn("删除论文被拒绝: paperId={}, reason={}", paperId, e.getMessage());
+            throw e;
         } catch (Exception e) {
             logger.error("删除论文过程中发生错误: paperId={}", paperId, e);
             throw new RuntimeException("删除论文失败: " + e.getMessage(), e);
         }
     }
 
-    private Paper findPaperForDeletion(String paperId, String requesterId, String role) {
-        if (isAdmin(role)) {
-            return paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
-                    .orElseThrow(() -> new RuntimeException("论文不存在"));
-        }
-
+    private Paper findPaperForDeletion(String paperId, String requesterId) {
         return paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, requesterId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
-    }
-
-    private boolean isAdmin(String role) {
-        return "ADMIN".equalsIgnoreCase(role);
     }
 
     private void clearUploadMarker(String paperId, String ownerId) {
@@ -141,12 +178,23 @@ public class PaperService {
     }
 
     private void deletePhysicalPaperArtifacts(String paperId) {
+        deleteReadingModelArtifacts(paperId);
         deleteSearchIndex(paperId);
         deleteMergedPaperObject(paperId);
         deleteUploadChunks(paperId);
         deleteParserArtifacts(paperId);
         deleteVisualAssets(paperId);
         deleteParsedChunks(paperId);
+    }
+
+    private void deleteReadingModelArtifacts(String paperId) {
+        paperSourceQuoteRepository.deleteByPaperId(paperId);
+        paperReadingElementRepository.deleteByPaperId(paperId);
+        paperLocationRepository.deleteByPaperId(paperId);
+        paperSectionRepository.deleteByPaperId(paperId);
+        paperPageRepository.deleteByPaperId(paperId);
+        paperReadingModelRepository.deleteByPaperId(paperId);
+        logger.info("成功删除论文 Reading Model 数据: paperId={}", paperId);
     }
 
     private void deleteSearchIndex(String paperId) {
@@ -226,7 +274,7 @@ public class PaperService {
 
     @Transactional
     public Paper enqueueAsyncVectorizationRetry(String paperId, String requesterId) {
-        Paper paper = paperRepository.findFirstByPaperIdOrderByCreatedAtDesc(paperId)
+        Paper paper = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(paperId, requesterId)
                 .orElseThrow(() -> new RuntimeException("论文不存在"));
 
         if (paperSearchabilityService.isSearchable(paper)) {
@@ -243,8 +291,6 @@ public class PaperService {
                 null,
                 paper.getOriginalFilename(),
                 paper.getUserId(),
-                paper.getOrgTag(),
-                paper.isPublic(),
                 PaperProcessingTask.TASK_TYPE_RETRY_INITIAL,
                 requesterId
         );
@@ -354,11 +400,10 @@ public class PaperService {
     }
 
     /**
-     * 获取用户可访问的所有论文列表。
-     * 包括用户自己的论文、公开论文和用户所属组织的论文（支持层级权限）。
+     * 获取用户可访问的所有论文列表：个人空间论文和管理员发布的全局论文。
      *
      * @param userId 用户ID
-     * @param orgTags 用户所属的组织标签（逗号分隔的字符串，仅供兼容性使用）
+     * @param orgTags 兼容参数，不参与论文权限判断
      * @return 用户可访问的论文列表
      */
     public List<Paper> getAccessiblePapers(String userId, String orgTags) {
@@ -367,21 +412,7 @@ public class PaperService {
         try {
             User user = resolveUser(userId);
             String userDbId = String.valueOf(user.getId());
-
-            List<String> userEffectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
-            logger.debug("用户有效组织标签: {}", userEffectiveTags);
-
-            // 使用有效标签查询论文
-            List<Paper> files;
-            if (userEffectiveTags.isEmpty()) {
-                // 如果用户没有任何组织标签，只返回自己的论文和公开论文
-                files = paperRepository.findByUserIdOrIsPublicTrue(userDbId);
-                logger.debug("用户无组织标签，仅返回个人和公开论文");
-            } else {
-                // 查询用户可访问的所有论文（考虑层级标签）
-                files = paperRepository.findAccessiblePapersWithTags(userDbId, userEffectiveTags);
-                logger.debug("使用有效组织标签查询论文");
-            }
+            List<Paper> files = paperAccessService.accessiblePapers(userDbId);
 
             logger.info("成功获取用户可访问论文列表: userId={}, paperCount={}", userId, files.size());
             return files;
@@ -402,11 +433,7 @@ public class PaperService {
         }
         User user = resolveUser(userId);
         String userDbId = String.valueOf(user.getId());
-        List<String> effectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
-        if (effectiveTags == null || effectiveTags.isEmpty()) {
-            return paperRepository.findAccessiblePapersByPaperIdIn(userDbId, requestedIds);
-        }
-        return paperRepository.findAccessiblePapersByPaperIdInWithTags(userDbId, effectiveTags, requestedIds);
+        return paperAccessService.accessiblePapers(userDbId, requestedIds);
     }
 
     public Page<Paper> getAccessiblePapersPage(String userId, String orgTags, Pageable pageable) {
@@ -420,11 +447,7 @@ public class PaperService {
             String userDbId = String.valueOf(user.getId());
             Pageable effectivePageable = pageable == null ? Pageable.ofSize(10) : pageable;
 
-            List<String> userEffectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
-            if (userEffectiveTags.isEmpty()) {
-                return paperRepository.findByUserIdOrIsPublicTrue(userDbId, effectivePageable);
-            }
-            return paperRepository.findAccessiblePapersPageWithTags(userDbId, userEffectiveTags, effectivePageable);
+            return page(paperAccessService.accessiblePapers(userDbId), effectivePageable);
         } catch (Exception e) {
             logger.error("分页获取用户可访问论文列表失败: userId={}", userId, e);
             throw new RuntimeException("分页获取可访问论文列表失败: " + e.getMessage(), e);
@@ -449,35 +472,12 @@ public class PaperService {
             Pageable effectivePageable = pageable == null ? Pageable.ofSize(10) : pageable;
             String normalizedQuery = normalizeSearchQuery(query);
 
-            List<String> userEffectiveTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
             boolean searchableOnly = isSearchableReadiness(readiness);
-            if (userEffectiveTags.isEmpty()) {
-                return searchableOnly
-                        ? paperRepository.searchAccessibleSearchablePaperCandidatesWithoutOrgTags(
-                                userDbId,
-                                normalizedQuery,
-                                effectivePageable
-                        )
-                        : paperRepository.searchAccessiblePaperCandidatesWithoutOrgTags(
-                                userDbId,
-                                normalizedQuery,
-                                effectivePageable
-                        );
-            }
-
-            return searchableOnly
-                    ? paperRepository.searchAccessibleSearchablePaperCandidates(
-                            userDbId,
-                            userEffectiveTags,
-                            normalizedQuery,
-                            effectivePageable
-                    )
-                    : paperRepository.searchAccessiblePaperCandidates(
-                            userDbId,
-                            userEffectiveTags,
-                            normalizedQuery,
-                            effectivePageable
-                    );
+            List<Paper> matches = paperAccessService.accessiblePapers(userDbId).stream()
+                    .filter(paper -> !searchableOnly || paperSearchabilityService.isSearchable(paper))
+                    .filter(paper -> matchesPaperQuery(paper, normalizedQuery))
+                    .toList();
+            return page(matches, effectivePageable);
         } catch (Exception e) {
             logger.error("分页搜索用户可访问论文候选失败: userId={}", userId, e);
             throw new RuntimeException("分页搜索可访问论文候选失败: " + e.getMessage(), e);
@@ -493,6 +493,35 @@ public class PaperService {
 
     private boolean isSearchableReadiness(String readiness) {
         return readiness != null && "searchable".equalsIgnoreCase(readiness.trim());
+    }
+
+    private Page<Paper> page(List<Paper> papers, Pageable pageable) {
+        List<Paper> sorted = new ArrayList<>(papers == null ? List.of() : papers);
+        sorted.sort(Comparator.comparing(Paper::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
+        int start = (int) Math.min(pageable.getOffset(), sorted.size());
+        int end = Math.min(start + pageable.getPageSize(), sorted.size());
+        return new PageImpl<>(sorted.subList(start, end), pageable, sorted.size());
+    }
+
+    private boolean matchesPaperQuery(Paper paper, String query) {
+        if (query == null || query.isBlank()) {
+            return true;
+        }
+        String needle = query.toLowerCase(Locale.ROOT);
+        return contains(paper.getPaperTitle(), needle)
+                || contains(paper.getOriginalFilename(), needle)
+                || contains(paper.getAuthors(), needle)
+                || contains(paper.getVenue(), needle)
+                || contains(paper.getAbstractText(), needle)
+                || contains(paper.getDoi(), needle)
+                || contains(paper.getArxivId(), needle)
+                || contains(paper.getPaperId(), needle)
+                || (paper.getPublicationYear() != null
+                && paper.getPublicationYear().toString().contains(needle));
+    }
+
+    private boolean contains(String value, String needle) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(needle);
     }
 
     /**

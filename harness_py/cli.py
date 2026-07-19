@@ -37,6 +37,12 @@ def main(argv: list[str] | None = None) -> int:
         "--out",
         default="research/golden-data/local-runs/stable-anchor-audit.json",
     )
+    rescore_parser = subcommands.add_parser(
+        "rescore",
+        help="Rescore saved harness_run.json artifacts without calling a model.",
+    )
+    rescore_parser.add_argument("--runs", required=True)
+    rescore_parser.add_argument("--out", required=True)
     agent_parser = subcommands.add_parser(
         "agent-run",
         help="Run the real tool-using agent through the Java/Qdrant product corpus.",
@@ -77,6 +83,31 @@ def main(argv: list[str] | None = None) -> int:
         target.parent.mkdir(parents=True, exist_ok=True)
         _write_json(target, report)
         print(json.dumps(report, indent=2, sort_keys=True))
+        return 0 if report["failed_count"] == 0 else 1
+    if args.command == "rescore":
+        dataset = load_dataset(args.manifest)
+        runs_root = Path(args.runs)
+        try:
+            runs = [
+                _load_saved_case_run(runs_root, str(case["id"]))
+                for case in dataset.cases
+            ]
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            print(json.dumps({
+                "error": "saved_run_rescore_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        report = BehaviorScorer().score_dataset(dataset, runs)
+        target = Path(args.out)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(target, report)
+        print(json.dumps({
+            "out": str(target),
+            "runs": str(runs_root),
+            "score_report": report,
+        }, indent=2, sort_keys=True))
         return 0 if report["failed_count"] == 0 else 1
     if args.command == "agent-run":
         dataset = load_dataset(args.manifest)
@@ -236,6 +267,19 @@ def _write_child_artifacts(case_dir: Path, run: dict) -> None:
     ):
         value = run.get(field, []) if field in {"skills_used", "react_trace", "paper_candidates"} else run[field]
         _write_json(case_dir / f"{field}.json", value)
+
+
+def _load_saved_case_run(runs_root: Path, case_id: str) -> dict:
+    path = runs_root / case_id / "harness_run.json"
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"saved run is not an object: {path}")
+    actual_case_id = str(value.get("case_id") or value.get("question_id") or "")
+    if actual_case_id != case_id:
+        raise ValueError(
+            f"saved run case mismatch: expected={case_id}, actual={actual_case_id or '<missing>'}"
+        )
+    return value
 
 
 def _write_json(path: Path, value: object) -> None:

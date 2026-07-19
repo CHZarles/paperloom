@@ -16,8 +16,9 @@ from harness_py.core.models import GoldenDataset
 from harness_py.corpus.product_db_dataset import build_product_dataset, summarize_product_corpus
 from harness_py.corpus.tools import ReadingCorpusTools
 from harness_py.evaluation.dataset import load_dataset
+from harness_py.evaluation.fact_assertions import _scalar_string
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
-from harness_py.evaluation.scoring import BehaviorScorer, _scalar_string
+from harness_py.evaluation.scoring import BehaviorScorer
 from harness_py.orchestration.conversation import ConversationState
 from harness_py.orchestration.research_contract import answer_validation_error
 from harness_py.orchestration.research_skills import ResearchSkillRegistry
@@ -43,6 +44,54 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual(0, report["failed_count"], report)
         self.assertTrue(all("evidence_ledger" in run for run in runs))
         self.assertTrue(all("citation_validation" in run for run in runs))
+
+    def test_score_report_records_the_exact_scorer_contract(self) -> None:
+        dataset = load_dataset("research/golden-data/manifest.yaml")
+        runs = [GoldenFixtureHarness().run_case(dataset, case) for case in dataset.cases]
+
+        report = BehaviorScorer().score_dataset(dataset, runs)
+
+        self.assertEqual("harness-score-report/v3", report["schema_version"])
+        contract = report["scorer_contract"]
+        self.assertEqual("behavior-scorer/v3", contract["version"])
+        self.assertEqual(
+            "typed-markdown-facts/v1",
+            contract["fact_assertions"]["version"],
+        )
+        self.assertRegex(contract["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_cli_rescore_reuses_saved_runs_without_calling_a_model(self) -> None:
+        from harness_py.cli import main
+
+        dataset = load_dataset("research/golden-data/manifest.yaml")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runs_root = root / "runs"
+            out = root / "rescored.json"
+            for case in dataset.cases:
+                case_dir = runs_root / str(case["id"])
+                case_dir.mkdir(parents=True)
+                run = GoldenFixtureHarness().run_case(dataset, case)
+                (case_dir / "harness_run.json").write_text(
+                    json.dumps(run),
+                    encoding="utf-8",
+                )
+
+            with patch("builtins.print"):
+                code = main([
+                    "--manifest",
+                    "research/golden-data/manifest.yaml",
+                    "rescore",
+                    "--runs",
+                    str(runs_root),
+                    "--out",
+                    str(out),
+                ])
+
+            report = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual(0, code)
+            self.assertEqual(10, report["passed_count"])
+            self.assertEqual("behavior-scorer/v3", report["scorer_contract"]["version"])
 
     def test_synthetic_dataset_proves_harness_is_data_driven(self) -> None:
         dataset = self._synthetic_dataset()

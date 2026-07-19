@@ -54,9 +54,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
           paperId: task.paperId,
           chunkIndex,
           totalSize: task.totalSize,
-          paperTitle: task.paperTitle,
-          orgTag: task.orgTag,
-          isPublic: task.isPublic ?? false
+          paperTitle: task.paperTitle
         },
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -139,7 +137,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
    *
    * 本函数处理上传任务的排队和初始化工作它首先检查是否存在相同的文件， 如果不存在，则创建一个新的上传任务，并将其添加到任务队列中最后启动上传流程
    *
-   * @param form 包含上传信息的表单，包括文件列表和是否公开的标签
+   * @param form 包含待上传的 PDF 文件
    * @returns 返回一个上传任务对象，无论是已存在的还是新创建的
    */
   async function enqueueUpload(form: Api.Paper.Form) {
@@ -179,16 +177,13 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
       paperTitle: file.name,
       originalFilename: file.name,
       totalSize: file.size,
-      isPublic: form.isPublic,
       uploadedChunks: [],
       progress: 0,
       status: UploadStatus.Pending,
-      orgTag: form.orgTag,
+      libraryScope: 'PRIVATE',
       processingStatus: 'PENDING',
       processingErrorMessage: null
     };
-
-    newTask.orgTagName = form.orgTagName ?? null;
 
     // 将新的上传任务添加到任务队列中
     tasks.value.push(newTask);
@@ -242,8 +237,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
 
       const success = await mergeFile(updatedTask);
       if (!success) throw new Error('文件合并失败');
-    } catch (e) {
-      console.error('%c [ 👉 upload error 👈 ]-168', 'font-size:16px; background:#94cc97; color:#d8ffdb;', e);
+    } catch {
       // 如果上传失败，则将任务状态设置为中断
       const index = tasks.value.findIndex(t => t.paperId === task.paperId);
       tasks.value[index].status = UploadStatus.Break;

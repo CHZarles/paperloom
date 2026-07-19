@@ -78,7 +78,7 @@ class UploadServiceTest {
 
         CustomException exception = assertThrows(
                 CustomException.class,
-                () -> uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "TEAM_A", false, "1")
+                () -> uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "1")
         );
 
         assertEquals("论文 PDF 已完成合并，不允许继续上传分片", exception.getMessage());
@@ -99,7 +99,7 @@ class UploadServiceTest {
 
         CustomException exception = assertThrows(
                 CustomException.class,
-                () -> uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "TEAM_A", false, "1")
+                () -> uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "1")
         );
 
         assertEquals("论文 PDF 正在合并中，请稍后重试", exception.getMessage());
@@ -115,7 +115,7 @@ class UploadServiceTest {
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
-        uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "TEAM_A", false, "1");
+        uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "1");
 
         verifyNoInteractions(chunkInfoRepository);
         verifyNoInteractions(minioClient);
@@ -131,7 +131,7 @@ class UploadServiceTest {
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
-        uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "TEAM_A", false, "1");
+        uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "1");
 
         verify(valueOperations).setBit("upload:1:md5", 0, true);
         verifyNoInteractions(minioClient);
@@ -147,7 +147,7 @@ class UploadServiceTest {
 
         MockMultipartFile file = new MockMultipartFile("file", "test.pdf", "application/pdf", "demo".getBytes());
 
-        uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "TEAM_A", false, "1");
+        uploadService.uploadChunk("md5", 0, 1024L, "test.pdf", file, "1");
 
         InOrder inOrder = inOrder(minioClient, chunkInfoRepository, valueOperations);
         inOrder.verify(minioClient).putObject(any(PutObjectArgs.class));

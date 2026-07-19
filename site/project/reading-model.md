@@ -12,8 +12,8 @@ Reading Model 是产品长期保存的论文结构。它回答页面、章节、
 检索候选、用 MySQL 精确读取；`ReadingCorpusTools` 继续向 Agents SDK 暴露不变的 Function Tool。
 Golden Fixture 才使用内存 `GoldenDataset` 和 BM25 Adapter。
 
-完整 Reading Model 比 Harness 的模型编排面更丰富，因此 Sparse、Dense Retrieval 和 Model Provider 可以
-独立变化，论文与历史引用仍保留长期身份。
+完整 Reading Model 比 Harness 的模型编排面更丰富，因此词法检索、未来的实验性 Retriever 和 Model
+Provider 可以独立变化，论文与历史引用仍保留长期身份。
 
 ## Reading Model 的构成
 
@@ -38,7 +38,8 @@ Text 与 Source Span。章节结构独立于后续的 Chunk 或 Ranker 策略。
 
 ### 4. Canonical Reading Element
 
-`paper_reading_elements` 是当前 Live Retrieval 的主要内容面。
+`paper_reading_elements` 是当前检索索引和准确读取的主要内容来源。Java 会按正式 Location 聚合 Reading
+Element，生成 Qdrant 候选 Point；原始内容继续保存在 MySQL。
 
 | 维度 | 典型字段或类型 |
 | --- | --- |
@@ -85,20 +86,20 @@ Live Harness 当前只加载 Availability。Binary Asset 仍由 Java 代码从 M
 这层模型把 Evidence 从某一次 Chunk Policy 中解耦出来。Parser 可以升级，Retriever 可以换，已经保存
 的论文结构和来源身份仍然有稳定落点。
 
-## 完整模型与 Live Projection 的差异
+## 完整模型与当前产品路径的差异
 
-| 能力 | 完整 Reading Model | 当前 Python Live Projection |
+| 能力 | 完整 Reading Model | 当前产品怎样使用 |
 | --- | --- | --- |
-| Model Metadata / Readiness | 有 | 有 |
-| Physical Page Table | 有 | 未直接加载 |
-| Section Table | 有 | 未直接加载 |
-| Typed Reading Element | 有 | 有，主要 Retrieval Surface |
-| Formal Location Table | 有 | 主要使用 Element 携带的 Location 信息 |
-| Visual Asset Record | 有 | 只加载 Availability |
-| Vector / Embedding | 不属于 Canonical Truth 的必要字段 | 当前不使用 |
+| Model Metadata / Readiness | MySQL 长期保存 | Java Corpus API 返回本轮需要的 Metadata |
+| Physical Page | MySQL 长期保存 | 参与 Page Location 与准确读取，不整表复制到 Python |
+| Section | MySQL 长期保存 | 作为候选和原文的章节信息，不整表复制到 Python |
+| Typed Reading Element | MySQL 长期保存 | 聚合成 Qdrant Point，读取时从 MySQL 返回准确内容 |
+| Formal Location | MySQL 长期保存 | 作为 Qdrant 候选、权限校验和 Evidence 的稳定身份 |
+| Visual Asset | MinIO 与 MySQL 长期保存 | 准确读取时返回 Availability，二进制仍由 Java 打开 |
+| Sparse Projection | 可重建派生数据 | Qdrant 保存 BM25 Sparse Vector 与最小路由字段 |
 
-下面的工具设计只描述当前 Python Projection 已经提供的数据，不把完整模型里的潜在能力提前写进 Live
-Answer Path。
+Python 维护 Agent 能看到哪些 Paper、Location 和 Evidence，不持有整份论文索引。Qdrant 只保存可重建
+候选，MySQL Reading Model 仍是准确内容来源。
 
 ## harness_py 怎样读取 Reading Model
 
@@ -199,21 +200,19 @@ Skill 返回 `when_to_use`、`instructions`、`evidence_standard` 与 `answer_gu
 
 ### `find_reading_locations`
 
-这个工具只接受已经公开的 Paper ID。它可以使用 Query、Section Hint、Element Type Hint、Page Range
-和 `top_k`，在请求内存中的 Reading Documents 上检索。
+这个工具只接受已经公开的 Paper ID。它可以使用 `query_text`、`section_query`、Element Type Hint、
+Page Range 和 `top_k`。产品请求会交给 `JavaCorpusGatewayReader`，再调用 Java Corpus API。
 
-当前 Product Path 的排序主要来自：
+当前产品排序经过：
 
-- Reading Element 全文 BM25；
-- Lead 与 Section BM25；
-- Exact Phrase 和 Section Hint；
-- Element Type 的轻量 Boost，Parser Label 不作为硬过滤；
-- 相邻 Paragraph 的支持；
-- Broad Query 与 Multi-paper Query 的候选扩展和 Query-term Coverage。
+- Java 用固定 Analyzer 和 Term ID 生成 BM25 Sparse Query；
+- Qdrant 在 `lexical_bm25_v1` 上执行一次全局检索；
+- Element Type Hint 只用于确定性的同分排序；
+- Java 在同一候选池中补足论文与 canonical Lead Coverage；
+- Current Reading Model 与 Index Contract 校验后，从 MySQL 补全 Preview。
 
-只有提供 Physical Page Projection 的 Dataset 才会启用 Passage Window 与 Page-grounding 补充面。当前
-Product DB Projection 以 `paper_reading_elements` 为主，没有直接加载 Page Table 作为独立 Retrieval
-Surface。
+产品 Qdrant 失败时会明确报错，不会静默切回内存检索。没有 `JavaCorpusGatewayReader` 的 Golden Fixture
+和离线工具仍可使用内存 BM25 Adapter，两条路径不会在生产请求中混用。
 
 返回值包含不可引用 Preview 与 `location_ref`。所有返回 Location 会进入
 `disclosed_location_refs`，为下一步 Exact Read 建立前置状态。
@@ -298,11 +297,17 @@ Preview 和未引用 Evidence 不会自动回灌。这个规则让 Follow-up 可
 
 当前实现把研究策略交给模型，证据资格和产品权限继续由代码判断。
 
-## Vector 还没有进入 Live Harness
+## 当前词法检索的边界
 
-当前 Harness 没有 Vector Retrieval。未来可以从 canonical Reading Element 派生 Embedding，做 Lexical
-+ Dense Candidate Fusion，或用 Eval Trace 训练 Reranker。是否进入默认链路，要看 Held-out Candidate、
-Read、Cited、Hard Pass、Latency、Cost 和 Failure 的完整变化。
+Live Harness 当前只使用 Sparse-only Qdrant BM25。69 条固定查询和 48 个指定证据上，产品 Qdrant
+命中 `48/48`，完整覆盖 `24/24` Case，MRR 为 `0.48019`；同一批查询的内存 BM25 对照为
+`35/48`、`15/24`、`0.37838`。
+
+76 篇广查询的本地 p50 为 `132.1 ms`，也省掉了每个 Python Worker 的全文加载和索引构建。剩余边界
+主要是未见论文上的泛化、模型查询质量、固定候选预算和 Agent 证据选择，而不是 Dense/Sparse 融合。
+完整 MiniMax 运行中有 `47/48` 份所需证据进入 Candidate，模型只读取 `29/48`。
+
+[阅读 Sparse Qdrant 切换与 MiniMax 证据缺口](/practice/evaluation/qdrant-bm25-cutover-minimax-evidence-gap)
 
 ## 继续阅读
 

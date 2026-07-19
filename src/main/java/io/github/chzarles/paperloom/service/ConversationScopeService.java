@@ -40,7 +40,7 @@ public class ConversationScopeService {
     private final PaperReadingModelRepository readingModelRepository;
     private final PaperCollectionService paperCollectionService;
     private final PaperSearchabilityService paperSearchabilityService;
-    private final OrgTagCacheService orgTagCacheService;
+    private final PaperAccessService paperAccessService;
     private final ObjectMapper objectMapper;
 
     public ConversationScopeService(ConversationSessionRepository sessionRepository,
@@ -49,7 +49,7 @@ public class ConversationScopeService {
                                     PaperReadingModelRepository readingModelRepository,
                                     PaperCollectionService paperCollectionService,
                                     PaperSearchabilityService paperSearchabilityService,
-                                    OrgTagCacheService orgTagCacheService,
+                                    PaperAccessService paperAccessService,
                                     ObjectMapper objectMapper) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
@@ -57,7 +57,7 @@ public class ConversationScopeService {
         this.readingModelRepository = readingModelRepository;
         this.paperCollectionService = paperCollectionService;
         this.paperSearchabilityService = paperSearchabilityService;
-        this.orgTagCacheService = orgTagCacheService;
+        this.paperAccessService = paperAccessService;
         this.objectMapper = objectMapper;
     }
 
@@ -149,10 +149,9 @@ public class ConversationScopeService {
         User user = resolveUser(userId);
         List<String> paperIds = resolveTitleMatchPaperIds(user, request, false);
         Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
         List<Map<String, Object>> papers = paperIds.stream()
                 .map(paperId -> papersByPaperId.getOrDefault(paperId, List.of()).stream()
-                        .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                        .filter(paper -> canAccessPaper(user, paper))
                         .filter(paperSearchabilityService::isSearchable)
                         .findFirst()
                         .map(this::paperPreview)
@@ -242,14 +241,13 @@ public class ConversationScopeService {
             return null;
         }
         User user = resolveUser(userId);
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
         LinkedHashSet<String> countedPaperIds = new LinkedHashSet<>();
         int count = 0;
-        for (Paper paper : accessiblePapersForTitleMatch(user, effectiveOrgTags)) {
+        for (Paper paper : accessiblePapersForTitleMatch(user)) {
             String paperId = trimToNull(paper == null ? null : paper.getPaperId());
             if (paper == null
                     || paperId == null
-                    || !canAccessPaper(user, paper, effectiveOrgTags)
+                    || !canAccessPaper(user, paper)
                     || !paperSearchabilityService.isSearchable(paper)
                     || !hasCurrentReadyReadingModel(paperId)) {
                 continue;
@@ -326,9 +324,8 @@ public class ConversationScopeService {
         if (scope != null && scope.mode() == ConversationScopeMode.SOURCE_SET_SNAPSHOT) {
             return resolveDirectPaperIds(user, scope.paperIds());
         }
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
-        return accessiblePapersForTitleMatch(user, effectiveOrgTags).stream()
-                .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+        return accessiblePapersForTitleMatch(user).stream()
+                .filter(paper -> canAccessPaper(user, paper))
                 .filter(paperSearchabilityService::isSearchable)
                 .map(Paper::getPaperId)
                 .map(this::trimToNull)
@@ -362,19 +359,18 @@ public class ConversationScopeService {
             return List.of();
         }
         Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
         List<String> resolved = new ArrayList<>();
         for (String paperId : paperIds) {
             List<Paper> papers = papersByPaperId.getOrDefault(paperId, List.of());
             if (papers.isEmpty()) {
                 throw new CustomException("Paper not found: " + paperId, HttpStatus.BAD_REQUEST);
             }
-            boolean accessible = papers.stream().anyMatch(paper -> canAccessPaper(user, paper, effectiveOrgTags));
+            boolean accessible = papers.stream().anyMatch(paper -> canAccessPaper(user, paper));
             if (!accessible) {
                 throw new CustomException("Forbidden", HttpStatus.FORBIDDEN);
             }
             boolean searchable = papers.stream()
-                    .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                    .filter(paper -> canAccessPaper(user, paper))
                     .anyMatch(paperSearchabilityService::isSearchable);
             if (!searchable) {
                 throw new CustomException("Paper is not searchable: " + paperId, HttpStatus.BAD_REQUEST);
@@ -394,10 +390,9 @@ public class ConversationScopeService {
             return List.of();
         }
         Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
         return paperIds.stream()
                 .filter(paperId -> papersByPaperId.getOrDefault(paperId, List.of()).stream()
-                        .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                        .filter(paper -> canAccessPaper(user, paper))
                         .anyMatch(paperSearchabilityService::isSearchable))
                 .toList();
     }
@@ -423,9 +418,8 @@ public class ConversationScopeService {
         }
         String query = titleQuery == null ? null : titleQuery.toLowerCase();
         Pattern safeRegex = regex;
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
-        LinkedHashSet<String> paperIds = accessiblePapersForTitleMatch(user, effectiveOrgTags).stream()
-                .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+        LinkedHashSet<String> paperIds = accessiblePapersForTitleMatch(user).stream()
+                .filter(paper -> canAccessPaper(user, paper))
                 .filter(paperSearchabilityService::isSearchable)
                 .filter(paper -> titleMatches(paper, query, safeRegex))
                 .map(Paper::getPaperId)
@@ -438,11 +432,8 @@ public class ConversationScopeService {
         return new ArrayList<>(paperIds);
     }
 
-    private List<Paper> accessiblePapersForTitleMatch(User user, List<String> effectiveOrgTags) {
-        if (user.getRole() == User.Role.ADMIN) {
-            return paperRepository.findAll();
-        }
-        return paperRepository.findAccessiblePapersWithTags(String.valueOf(user.getId()), effectiveOrgTags);
+    private List<Paper> accessiblePapersForTitleMatch(User user) {
+        return paperAccessService.accessiblePapers(String.valueOf(user.getId()));
     }
 
     private boolean titleMatches(Paper paper, String titleQuery, Pattern titleRegex) {
@@ -473,18 +464,17 @@ public class ConversationScopeService {
 
     private boolean snapshotPaperIdsStillValid(User user, List<String> paperIds) {
         Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
         for (String paperId : paperIds) {
             List<Paper> papers = papersByPaperId.getOrDefault(paperId, List.of());
             if (papers.isEmpty()) {
                 return false;
             }
-            boolean accessible = papers.stream().anyMatch(paper -> canAccessPaper(user, paper, effectiveOrgTags));
+            boolean accessible = papers.stream().anyMatch(paper -> canAccessPaper(user, paper));
             if (!accessible) {
                 return false;
             }
             boolean searchable = papers.stream()
-                    .filter(paper -> canAccessPaper(user, paper, effectiveOrgTags))
+                    .filter(paper -> canAccessPaper(user, paper))
                     .anyMatch(paperSearchabilityService::isSearchable);
             if (!searchable) {
                 return false;
@@ -517,63 +507,11 @@ public class ConversationScopeService {
                 ));
     }
 
-    private boolean canAccessPaper(User user, Paper paper, List<String> effectiveOrgTags) {
+    private boolean canAccessPaper(User user, Paper paper) {
         if (user == null || paper == null) {
             return false;
         }
-        if (user.getRole() == User.Role.ADMIN) {
-            return true;
-        }
-        if (String.valueOf(user.getId()).equals(trimToNull(paper.getUserId()))) {
-            return true;
-        }
-        if (paper.isPublic()) {
-            return true;
-        }
-        String paperOrgTag = trimToNull(paper.getOrgTag());
-        return paperOrgTag != null && effectiveOrgTags.contains(paperOrgTag);
-    }
-
-    private List<String> effectiveOrgTags(User user) {
-        LinkedHashSet<String> tags = new LinkedHashSet<>();
-        List<String> cachedTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
-        if (cachedTags != null) {
-            cachedTags.stream()
-                    .map(this::trimToNull)
-                    .filter(Objects::nonNull)
-                    .forEach(tags::add);
-        }
-        LinkedHashSet<String> rawTags = rawOrgTags(user);
-        if (tags.isEmpty() || onlyDefaultOrgTag(tags)) {
-            tags.addAll(rawTags);
-        }
-        return new ArrayList<>(tags);
-    }
-
-    private LinkedHashSet<String> rawOrgTags(User user) {
-        LinkedHashSet<String> tags = new LinkedHashSet<>();
-        addCsvTags(tags, user.getOrgTags());
-        String primaryOrg = trimToNull(user.getPrimaryOrg());
-        if (primaryOrg != null) {
-            tags.add(primaryOrg);
-        }
-        return tags;
-    }
-
-    private boolean onlyDefaultOrgTag(Set<String> tags) {
-        return tags.size() == 1 && tags.stream().anyMatch(tag -> "DEFAULT".equalsIgnoreCase(tag));
-    }
-
-    private void addCsvTags(Set<String> tags, String csv) {
-        if (csv == null || csv.isBlank()) {
-            return;
-        }
-        for (String item : csv.split(",")) {
-            String tag = trimToNull(item);
-            if (tag != null) {
-                tags.add(tag);
-            }
-        }
+        return paperAccessService.canAccess(String.valueOf(user.getId()), paper.getPaperId());
     }
 
     private List<String> normalizedPaperIds(Object rawPaperIds) {

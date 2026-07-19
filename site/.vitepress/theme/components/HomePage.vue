@@ -17,7 +17,7 @@ const pipeline = [
   ['01', '上传', '研究论文 PDF'],
   ['02', '解析', 'MinerU 与原始产物'],
   ['03', '建模', '页面、章节与阅读元素'],
-  ['04', '检索', '授权范围内的内存 BM25'],
+  ['04', '检索', 'Java/Qdrant 共享候选索引'],
   ['05', '阅读', 'Agent 读取可核验证据'],
   ['06', '回溯', '重新打开持久化引用']
 ];
@@ -145,7 +145,7 @@ const articles = practiceEntries.slice(0, 3).map(entry => ({
 
     <section class="current-focus" aria-label="Current focus">
       <span class="current-focus__label">NOW</span>
-      <p>当前工作集中在 Reading Model 投影、Evidence Selection，以及用已保存的 Trace 改进 Agent。</p>
+      <p>Qdrant 词法检索已经通过切换验收，当前工作集中在 Agent 如何选择、读取和引用已经出现的 Evidence，以及控制长研究回合的上下文增长。</p>
       <a :href="withBase('/now')">查看当前问题 <ArrowRight :size="16" aria-hidden="true" /></a>
     </section>
 
@@ -153,7 +153,7 @@ const articles = practiceEntries.slice(0, 3).map(entry => ({
       <div class="section-intro">
         <p class="section-kicker">HOW IT READS</p>
         <h2 id="pipeline-title">从 PDF 到可重新打开的证据</h2>
-        <p>解析、授权范围、内存检索、Agent 阅读和历史引用都能在同一条链路里核对。</p>
+        <p>解析、授权范围、共享候选检索、Agent 准确读取和历史引用都能在同一条链路里核对。</p>
       </div>
       <ol class="pipeline" aria-label="Paper reading pipeline">
         <li v-for="step in pipeline" :key="step[0]">
@@ -214,8 +214,8 @@ const articles = practiceEntries.slice(0, 3).map(entry => ({
         </div>
         <div class="evolution-event evolution-event--active">
           <time>NOW</time>
-          <strong>从答案评分走向行为与证据评分</strong>
-          <p>分开观察召回、阅读、引用、结果选择与成本。</p>
+          <strong>检索恢复后，继续修证据使用</strong>
+          <p>Sparse Qdrant 固定查询达到 48/48，MiniMax 实际只读取 29/48 份所需证据。</p>
         </div>
       </div>
     </section>

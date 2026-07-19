@@ -7,6 +7,7 @@ import { UploadStatus } from '@/enum';
 const props = defineProps<{
   rows: Api.Paper.UploadTask[];
   canManage: (row: Api.Paper.UploadTask) => boolean;
+  isAdmin: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -14,6 +15,8 @@ const emit = defineEmits<{
   (event: 'tables', row: Api.Paper.UploadTask): void;
   (event: 'parser', row: Api.Paper.UploadTask): void;
   (event: 'retry', row: Api.Paper.UploadTask): void;
+  (event: 'publish', row: Api.Paper.UploadTask): void;
+  (event: 'unpublish', row: Api.Paper.UploadTask): void;
   (event: 'delete', paperId: string): void;
 }>();
 
@@ -24,6 +27,7 @@ function isUploadCompleted(row: Api.Paper.UploadTask) {
 }
 
 function isSearchable(row: Api.Paper.UploadTask) {
+  if (row.searchable !== undefined) return row.searchable;
   return (
     isUploadCompleted(row) &&
     row.processingStatus === 'COMPLETED' &&
@@ -70,6 +74,10 @@ function canRetry(row: Api.Paper.UploadTask) {
   return props.canManage(row) && row.processingStatus === 'FAILED';
 }
 
+function isGlobal(row: Api.Paper.UploadTask) {
+  return row.libraryScope === 'GLOBAL';
+}
+
 function rowOptions(row: Api.Paper.UploadTask): DropdownOption[] {
   return [
     {
@@ -83,7 +91,16 @@ function rowOptions(row: Api.Paper.UploadTask): DropdownOption[] {
       disabled: !props.canManage(row) || !row.parserArtifact?.available
     },
     ...(canRetry(row) ? [{ label: 'Retry processing', key: 'retry' }] : []),
-    ...(props.canManage(row) ? [{ label: 'Delete paper', key: 'delete' }] : [])
+    ...(props.isAdmin
+      ? [
+          isGlobal(row)
+            ? { label: 'Remove from global library', key: 'unpublish' }
+            : { label: 'Publish to global library', key: 'publish', disabled: !isSearchable(row) }
+        ]
+      : []),
+    ...(props.canManage(row)
+      ? [{ label: isGlobal(row) ? 'Remove from personal library' : 'Delete paper', key: 'delete' }]
+      : [])
   ];
 }
 
@@ -91,12 +108,22 @@ function handleRowAction(key: string | number, row: Api.Paper.UploadTask) {
   if (key === 'tables') emit('tables', row);
   if (key === 'parser') emit('parser', row);
   if (key === 'retry') emit('retry', row);
+  if (key === 'publish') emit('publish', row);
+  if (key === 'unpublish') {
+    window.$dialog?.warning({
+      title: 'Remove from global library?',
+      content: row.originalFilename,
+      positiveText: 'Remove',
+      negativeText: 'Cancel',
+      onPositiveClick: () => emit('unpublish', row)
+    });
+  }
   if (key !== 'delete') return;
 
   window.$dialog?.warning({
-    title: 'Delete paper?',
+    title: isGlobal(row) ? 'Remove from personal library?' : 'Delete paper?',
     content: row.originalFilename,
-    positiveText: 'Delete',
+    positiveText: isGlobal(row) ? 'Remove' : 'Delete',
     negativeText: 'Cancel',
     onPositiveClick: () => emit('delete', row.paperId)
   });
@@ -136,8 +163,8 @@ function handleRowAction(key: string | number, row: Api.Paper.UploadTask) {
           <span />
           {{ pipelineState(row).label }}
         </span>
-        <span class="paper-mobile-visibility" :class="{ 'is-public': row.isPublic }">
-          {{ row.isPublic ? 'Public' : 'Private' }}
+        <span class="paper-mobile-visibility" :class="{ 'is-public': isGlobal(row) }">
+          {{ isGlobal(row) ? 'Global' : 'Private' }}
         </span>
       </div>
 
@@ -160,7 +187,7 @@ function handleRowAction(key: string | number, row: Api.Paper.UploadTask) {
       </div>
 
       <footer class="paper-mobile-item__footer">
-        <span>{{ row.orgTagName || 'Uncategorized' }}</span>
+        <span>{{ isGlobal(row) ? 'Global library' : 'Personal library' }}</span>
         <NButton secondary size="small" @click="emit('preview', row)">
           <template #icon>
             <icon-lucide:eye />

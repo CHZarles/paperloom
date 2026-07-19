@@ -5,7 +5,14 @@ import io.github.chzarles.paperloom.config.KafkaConfig;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.paper.parser.MinerUUnavailableException;
 import io.github.chzarles.paperloom.repository.ChunkInfoRepository;
+import io.github.chzarles.paperloom.repository.PaperLocationRepository;
+import io.github.chzarles.paperloom.repository.PaperPageRepository;
+import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
+import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
+import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
+import io.github.chzarles.paperloom.repository.PaperSectionRepository;
+import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
@@ -26,10 +33,12 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -40,7 +49,31 @@ class PaperServiceTest {
     private PaperRepository paperRepository;
 
     @Mock
+    private PaperPublicationRepository paperPublicationRepository;
+
+    @Mock
+    private PaperSearchabilityService paperSearchabilityService;
+
+    @Mock
     private PaperTextChunkRepository paperTextChunkRepository;
+
+    @Mock
+    private PaperSourceQuoteRepository paperSourceQuoteRepository;
+
+    @Mock
+    private PaperReadingElementRepository paperReadingElementRepository;
+
+    @Mock
+    private PaperLocationRepository paperLocationRepository;
+
+    @Mock
+    private PaperSectionRepository paperSectionRepository;
+
+    @Mock
+    private PaperPageRepository paperPageRepository;
+
+    @Mock
+    private PaperReadingModelRepository paperReadingModelRepository;
 
     @Mock
     private ChunkInfoRepository chunkInfoRepository;
@@ -50,9 +83,6 @@ class PaperServiceTest {
 
     @Mock
     private ReadingModelQdrantIndexService qdrantIndexService;
-
-    @Mock
-    private PaperSearchabilityService paperSearchabilityService;
 
     @Mock
     private UploadService uploadService;
@@ -76,11 +106,18 @@ class PaperServiceTest {
         MockitoAnnotations.openMocks(this);
         paperService = new PaperService();
         ReflectionTestUtils.setField(paperService, "paperRepository", paperRepository);
+        ReflectionTestUtils.setField(paperService, "paperPublicationRepository", paperPublicationRepository);
+        ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);
         ReflectionTestUtils.setField(paperService, "paperTextChunkRepository", paperTextChunkRepository);
+        ReflectionTestUtils.setField(paperService, "paperSourceQuoteRepository", paperSourceQuoteRepository);
+        ReflectionTestUtils.setField(paperService, "paperReadingElementRepository", paperReadingElementRepository);
+        ReflectionTestUtils.setField(paperService, "paperLocationRepository", paperLocationRepository);
+        ReflectionTestUtils.setField(paperService, "paperSectionRepository", paperSectionRepository);
+        ReflectionTestUtils.setField(paperService, "paperPageRepository", paperPageRepository);
+        ReflectionTestUtils.setField(paperService, "paperReadingModelRepository", paperReadingModelRepository);
         ReflectionTestUtils.setField(paperService, "chunkInfoRepository", chunkInfoRepository);
         ReflectionTestUtils.setField(paperService, "minioClient", minioClient);
         ReflectionTestUtils.setField(paperService, "qdrantIndexService", qdrantIndexService);
-        ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);
         ReflectionTestUtils.setField(paperService, "uploadService", uploadService);
         ReflectionTestUtils.setField(paperService, "paperParserArtifactService", paperParserArtifactService);
         ReflectionTestUtils.setField(paperService, "paperVisualAssetService", paperVisualAssetService);
@@ -143,21 +180,38 @@ class PaperServiceTest {
     }
 
     @Test
-    void adminDeleteUsesTargetOwnerAndKeepsSharedPhysicalArtifacts() {
-        Paper target = paper("same-hash", "2");
-        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("same-hash"))
+    void deleteKeepsSharedPhysicalArtifactsWhenAnotherLibraryEntryRemains() {
+        Paper target = paper("same-hash", "1");
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("same-hash", "1"))
                 .thenReturn(Optional.of(target));
         when(paperRepository.countByPaperId("same-hash")).thenReturn(1L);
 
         paperService.deletePaper("same-hash", "1", "ADMIN");
 
-        verify(uploadService).deleteFileMark("same-hash", "2");
+        verify(uploadService).deleteFileMark("same-hash", "1");
         verify(paperRepository).delete(target);
         verify(paperRepository).flush();
-        verify(paperRepository).countByPaperId("same-hash");
+        verify(paperRepository, times(2)).countByPaperId("same-hash");
         verifyNoInteractions(qdrantIndexService);
         verifyNoInteractions(paperTextChunkRepository);
         verifyNoInteractions(chunkInfoRepository);
+    }
+
+    @Test
+    void deleteRejectsLastLibraryEntryWhilePaperIsPublished() {
+        Paper target = paper("published-hash", "1");
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("published-hash", "1"))
+                .thenReturn(Optional.of(target));
+        when(paperRepository.countByPaperId("published-hash")).thenReturn(1L);
+        when(paperPublicationRepository.existsByPaperId("published-hash")).thenReturn(true);
+
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> paperService.deletePaper("published-hash", "1", "ADMIN")
+        );
+
+        assertEquals("Published paper must be unpublished before deleting its last library entry", error.getMessage());
+        verify(paperRepository, never()).delete(target);
     }
 
     @Test
@@ -179,6 +233,12 @@ class PaperServiceTest {
 
         verify(uploadService).deleteFileMark("only-hash", "2");
         verify(qdrantIndexService).deleteByPaperId("only-hash");
+        verify(paperSourceQuoteRepository).deleteByPaperId("only-hash");
+        verify(paperReadingElementRepository).deleteByPaperId("only-hash");
+        verify(paperLocationRepository).deleteByPaperId("only-hash");
+        verify(paperSectionRepository).deleteByPaperId("only-hash");
+        verify(paperPageRepository).deleteByPaperId("only-hash");
+        verify(paperReadingModelRepository).deleteByPaperId("only-hash");
         verify(minioClient, times(2)).removeObject(any(RemoveObjectArgs.class));
         verify(paperTextChunkRepository).deleteByPaperId("only-hash");
         verify(chunkInfoRepository).deleteByPaperId("only-hash");
@@ -212,7 +272,7 @@ class PaperServiceTest {
     void retryVectorizationSendsPaperIdAsKafkaKey() {
         Paper paper = paper("paper-md5", "1");
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_FAILED);
-        when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper-md5"))
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("paper-md5", "1"))
                 .thenReturn(Optional.of(paper));
         when(kafkaConfig.getPaperProcessingTopic()).thenReturn("paper-processing-topic");
         when(kafkaTemplate.executeInTransaction(any())).thenAnswer(invocation -> {
@@ -220,7 +280,7 @@ class PaperServiceTest {
             return callback.doInOperations(kafkaTemplate);
         });
 
-        paperService.enqueueAsyncVectorizationRetry("paper-md5", "admin");
+        paperService.enqueueAsyncVectorizationRetry("paper-md5", "1");
 
         verify(kafkaTemplate).send(eq("paper-processing-topic"), eq("paper-md5"), any());
     }

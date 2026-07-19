@@ -50,6 +50,15 @@ CREATE TABLE file_upload (
                              INDEX idx_user (user_id),
                              INDEX idx_org_tag (org_tag)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件上传记录';
+
+CREATE TABLE IF NOT EXISTS paper_publications (
+    paper_id VARCHAR(32) NOT NULL COMMENT '全局发布的论文 ID',
+    published_by VARCHAR(64) NOT NULL COMMENT '发布管理员 ID',
+    published_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+    PRIMARY KEY (paper_id),
+    INDEX idx_paper_publications_published_by (published_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员发布的全局论文';
+
 CREATE TABLE chunk_info (
                             id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '分块记录唯一标识',
                             file_md5 VARCHAR(32) NOT NULL COMMENT '关联的文件MD5值',

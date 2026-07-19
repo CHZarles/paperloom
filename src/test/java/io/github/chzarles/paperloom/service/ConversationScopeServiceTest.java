@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +57,7 @@ class ConversationScopeServiceTest {
     private PaperSearchabilityService paperSearchabilityService;
 
     @Mock
-    private OrgTagCacheService orgTagCacheService;
+    private PaperAccessService paperAccessService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private ConversationScopeService service;
@@ -67,9 +68,13 @@ class ConversationScopeServiceTest {
         MockitoAnnotations.openMocks(this);
         user = user(1L, "owner", User.Role.USER, "default", "default");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(orgTagCacheService.getUserEffectiveOrgTags("owner")).thenReturn(List.of("default"));
         when(sessionRepository.save(any(ConversationSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paperRepository.findByPaperIdIn(anyList())).thenReturn(List.of());
+        when(paperAccessService.accessiblePapers(anyString())).thenReturn(List.of());
+        when(paperAccessService.canAccess(anyString(), anyString())).thenAnswer(invocation -> {
+            String paperId = invocation.getArgument(1);
+            return !paperId.contains("inaccessible");
+        });
 
         service = new ConversationScopeService(
                 sessionRepository,
@@ -78,7 +83,7 @@ class ConversationScopeServiceTest {
                 readingModelRepository,
                 paperCollectionService,
                 paperSearchabilityService,
-                orgTagCacheService,
+                paperAccessService,
                 objectMapper
         );
     }
@@ -107,7 +112,7 @@ class ConversationScopeServiceTest {
         Paper readyDuplicate = paper("paper-ready", "1", false, "default");
         Paper building = paper("paper-building", "1", false, "default");
         Paper notSearchable = paper("paper-not-searchable", "1", false, "default");
-        when(paperRepository.findAccessiblePapersWithTags("1", List.of("default")))
+        when(paperAccessService.accessiblePapers("1"))
                 .thenReturn(List.of(ready, readyDuplicate, building, notSearchable));
         when(paperSearchabilityService.isSearchable(ready)).thenReturn(true);
         when(paperSearchabilityService.isSearchable(readyDuplicate)).thenReturn(true);
@@ -397,7 +402,7 @@ class ConversationScopeServiceTest {
         Paper unrelated = paper("paper-transformer", "1", false, "default");
         unrelated.setPaperTitle("Attention Is All You Need");
         when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
-        when(paperRepository.findAccessiblePapersWithTags("1", List.of("default")))
+        when(paperAccessService.accessiblePapers("1"))
                 .thenReturn(List.of(lora, unsearchable, unrelated));
         when(paperSearchabilityService.isSearchable(lora)).thenReturn(true);
         when(paperSearchabilityService.isSearchable(unsearchable)).thenReturn(false);
@@ -438,7 +443,7 @@ class ConversationScopeServiceTest {
         filenameMatch.setPaperTitle("Low rank adapters");
         filenameMatch.setOriginalFilename("lora-notes.pdf");
         when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
-        when(paperRepository.findAccessiblePapersWithTags("1", List.of("default"))).thenReturn(List.of(filenameMatch));
+        when(paperAccessService.accessiblePapers("1")).thenReturn(List.of(filenameMatch));
         when(paperSearchabilityService.isSearchable(filenameMatch)).thenReturn(true);
         when(paperRepository.findByPaperIdIn(List.of("paper-lora"))).thenReturn(List.of(filenameMatch));
 
@@ -468,7 +473,7 @@ class ConversationScopeServiceTest {
         Paper lora = paper("paper-lora", "1", false, "default");
         lora.setPaperTitle("LoRA: Low-Rank Adaptation of Large Language Models");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
-        when(paperRepository.findAccessiblePapersWithTags("1", List.of("default"))).thenReturn(List.of(lora));
+        when(paperAccessService.accessiblePapers("1")).thenReturn(List.of(lora));
         when(paperSearchabilityService.isSearchable(lora)).thenReturn(true);
 
         Map<String, Object> result = service.updateUnlockedScope(
@@ -547,7 +552,7 @@ class ConversationScopeServiceTest {
     void titleMatchSnapshotRejectsNoMatches() {
         ConversationSession session = ownedSession("conversation-1");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
-        when(paperRepository.findAccessiblePapersWithTags("1", List.of("default"))).thenReturn(List.of());
+        when(paperAccessService.accessiblePapers("1")).thenReturn(List.of());
 
         CustomException exception = assertThrows(CustomException.class, () -> service.updateUnlockedScope(
                 1L,

@@ -9,6 +9,7 @@ from harness_py.evaluation.adjudication_report import (
     load_adjudication_report,
     render_adjudication_markdown,
 )
+from harness_py.evaluation.fact_assertions import contract_sha256
 
 
 class AdjudicationReportTest(unittest.TestCase):
@@ -109,6 +110,60 @@ class AdjudicationReportTest(unittest.TestCase):
                 },
                 blind_map={"different_case": {"A": "one", "B": "two"}},
                 score_reports={},
+            )
+
+    def test_report_rejects_score_reports_from_different_scorer_contracts(self) -> None:
+        labels = {
+            "schema_version": "paperloom-blind-answer-labels/v1",
+            "labels": [{
+                "case_id": "case_one",
+                "answer_a": _answer("pass", "pass", "pass", "pass", "ok"),
+                "answer_b": _answer("pass", "pass", "pass", "pass", "ok"),
+                "preferred": "tie",
+            }],
+        }
+        legacy = _score_report({"case_one": True})
+        contract = {"version": "behavior-scorer/v3"}
+        current = {
+            **_score_report({"case_one": True}),
+            "schema_version": "harness-score-report/v3",
+            "scorer_contract": {
+                **contract,
+                "sha256": contract_sha256(contract),
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "different scorer contracts"):
+            build_adjudication_report(
+                labels_document=labels,
+                blind_map={"case_one": {"A": "model-alpha", "B": "model-beta"}},
+                score_reports={"model-alpha": legacy, "model-beta": current},
+            )
+
+    def test_report_rejects_a_v3_score_report_with_an_invalid_contract_hash(self) -> None:
+        labels = {
+            "schema_version": "paperloom-blind-answer-labels/v1",
+            "labels": [{
+                "case_id": "case_one",
+                "answer_a": _answer("pass", "pass", "pass", "pass", "ok"),
+                "answer_b": _answer("pass", "pass", "pass", "pass", "ok"),
+                "preferred": "tie",
+            }],
+        }
+        invalid = {
+            **_score_report({"case_one": True}),
+            "schema_version": "harness-score-report/v3",
+            "scorer_contract": {
+                "version": "behavior-scorer/v3",
+                "sha256": "0" * 64,
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "invalid scorer_contract hash"):
+            build_adjudication_report(
+                labels_document=labels,
+                blind_map={"case_one": {"A": "model-alpha", "B": "model-beta"}},
+                score_reports={"model-alpha": invalid, "model-beta": invalid},
             )
 
     def test_frozen_thirty_case_report_matches_the_committed_result(self) -> None:

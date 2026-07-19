@@ -1,0 +1,185 @@
+schema_version: harness-qdrant-impact-adjudication/v1
+source_report: research/golden-data/local-runs/2026-07-15-qdrant-impact/offline-algorithm-v5/report.json
+source_queries: research/golden-data/local-runs/2026-07-15-qdrant-impact/offline-algorithm-v5/query_results.jsonl
+review_basis: canonical Reading Models and authored Golden anchors
+review_type: manual equivalent-evidence adjudication
+review_authority: human
+
+frozen_sources:
+  source_report_sha256: 6935220e518c1a5c50bed982154e32304a2f31ee9e898e66760e56b450fd4a1e
+  source_queries_sha256: 70b9b7a8dc454820c69625eec3c5473f75847c19737b568be2dc07f6a11cc887
+  dataset_manifest: research/golden-data/manifest-expanded.yaml
+  dataset_content_sha256: c283e968432b051461c01733adaf4dd67e0d0f1334a01c3c84ed05b9dfc6b114
+
+methods:
+  bm25:
+    exact:
+      anchor_hits: 44
+      anchor_required: 48
+      full_cases: 20
+      eligible_cases: 24
+    adjudicated:
+      equivalent_additions: 4
+      insufficient: 0
+      anchor_hits: 48
+      anchor_required: 48
+      full_cases: 24
+      eligible_cases: 24
+    decisions:
+      - case_id: webarena_reproduction_protocol_001
+        anchor_id: webarena_deterministic_initial_state
+        status: equivalent
+        query_id: webarena_reproduction_protocol_001:find:02
+        rank: 1
+        location_ref: reading_element_dee9a9cc1858455d912f05535b653f36
+        reason: The returned paragraph says the Docker environment can be reset to a deterministic initial state; authored page metadata differs.
+
+      - case_id: swebench_instance_provenance_001
+        anchor_id: swebench_patch_test_construction
+        status: equivalent
+        query_id: swebench_instance_provenance_001:find:07
+        rank: 1
+        location_ref: reading_element_8de4608c81f44e31a0bdb525bc2e06c8
+        reason: The returned paragraph connects merged pull requests, resolved GitHub issues, and changed tests.
+
+      - case_id: agent_evaluation_recommendation_001
+        anchor_id: webarena_four_self_hosted_domains
+        status: equivalent
+        query_id: agent_evaluation_recommendation_001:find:01
+        rank: 8
+        location_ref: figure_ref_f91e789ede87482c80c13f653f8feb34
+        reason: The figure describes a standalone self-hostable environment spanning four realistic website categories.
+
+      - case_id: benchmark_topic_change_followup_001
+        anchor_id: swebench_patch_test_construction
+        status: equivalent
+        query_id: benchmark_topic_change_followup_001:find:01
+        rank: 5
+        location_ref: reading_element_9bdc62b54844406c9bca7021eb867354
+        reason: The returned paragraph describes resolving repository issues with patches evaluated by the repository test framework.
+
+  qdrant_production_hybrid_coverage:
+    exact:
+      anchor_hits: 34
+      anchor_required: 48
+      full_cases: 15
+      eligible_cases: 24
+    adjudicated:
+      equivalent_additions: 13
+      insufficient: 1
+      anchor_hits: 47
+      anchor_required: 48
+      full_cases: 23
+      eligible_cases: 24
+    decisions:
+      - case_id: agentbench_environment_inventory_001
+        anchor_id: agentbench_eight_environments
+        status: equivalent
+        query_id: agentbench_environment_inventory_001:find:01
+        rank: 1
+        location_ref: figure_ref_fd39b5a800e943df9edea17d4479776b
+        reason: Figure 2 states that AgentBench evaluates eight distinct environments.
+
+      - case_id: agentbench_environment_inventory_001
+        anchor_id: agentbench_failure_obstacles
+        status: equivalent
+        query_id: agentbench_environment_inventory_001:find:01
+        rank: 4
+        location_ref: page_ref_5f5c86c4eb49425797666c8fc1977d8e
+        reason: The Introduction identifies insufficient long-term reasoning, decision-making, and instruction following.
+
+      - case_id: swebench_instance_provenance_001
+        anchor_id: swebench_issue_pr_provenance
+        status: equivalent
+        query_id: swebench_instance_provenance_001:find:02
+        rank: 1
+        location_ref: table_ref_0e523a3d08b043ce8c70c4ab9a948746
+        reason: The table links resolved issue numbers to the original pull request and its extracted solution patch.
+
+      - case_id: agentboard_progress_metric_001
+        anchor_id: agentboard_final_success_rate_limit
+        status: equivalent
+        query_id: agentboard_progress_metric_001:find:01
+        rank: 7
+        location_ref: page_ref_078fb6564178450394ab22780e67a76a
+        reason: The Introduction explains why final success rate hides process detail and distinctions near zero success.
+
+      - case_id: agentboard_progress_metric_001
+        anchor_id: agentboard_progress_rate_metric
+        status: equivalent
+        query_id: agentboard_progress_metric_001:find:01
+        rank: 1
+        location_ref: page_ref_547ef0cea9d94d628321540efad594b9
+        reason: Section 2.2 defines progress rate as advancement toward the goal state at each interaction round.
+
+      - case_id: mint_vs_tau_interaction_comparison_001
+        anchor_id: mint_tools_feedback_protocol
+        status: equivalent
+        query_id: mint_vs_tau_interaction_comparison_001:find:09
+        rank: 1
+        location_ref: page_ref_28f47312ef794c3cb54bd32950b82a06
+        reason: The interaction framework describes tool-augmented tasks, natural-language feedback, two attempts, and bounded turns.
+
+      - case_id: agent_evaluation_recommendation_001
+        anchor_id: gaia_question_construction
+        status: equivalent
+        query_id: agent_evaluation_recommendation_001:find:03
+        rank: 1
+        location_ref: page_ref_01a705c504d84d34a3822004faf6fc79
+        reason: The returned GAIA construction section describes the 466 human-designed and human-annotated questions and their design process.
+
+      - case_id: agent_evaluation_recommendation_001
+        anchor_id: swebench_patch_test_construction
+        status: equivalent
+        query_id: agent_evaluation_recommendation_001:find:02
+        rank: 2
+        location_ref: page_ref_9a8d04f7f6cb47c681f113b6ea0ce602
+        reason: The returned narrative connects repository issues, generated patches, and evaluation through repository tests.
+
+      - case_id: agent_evaluation_recommendation_001
+        anchor_id: webarena_four_self_hosted_domains
+        status: equivalent
+        query_id: agent_evaluation_recommendation_001:find:01
+        rank: 10
+        location_ref: figure_ref_f91e789ede87482c80c13f653f8feb34
+        reason: The figure describes a standalone self-hostable environment spanning four realistic website categories.
+
+      - case_id: react_to_agent_evaluation_genealogy_001
+        anchor_id: agentbench_react_pioneer_relationship
+        status: insufficient
+        query_id: react_to_agent_evaluation_genealogy_001:find:01
+        rank: 1
+        location_ref: page_ref_2adaa20f92204fbfbf22ae4594e77ab0
+        reason: Returned AgentBench appendix material uses thoughts and actions but does not establish that ReAct pioneered their combination.
+
+      - case_id: react_to_agent_evaluation_genealogy_001
+        anchor_id: react_interleaved_reasoning_actions
+        status: equivalent
+        query_id: react_to_agent_evaluation_genealogy_001:find:03
+        rank: 2
+        location_ref: page_ref_504c147b5a4f4de1bab14dc2450c55b4
+        reason: The ReAct results section explicitly discusses interleaving reasoning, action, and observation steps.
+
+      - case_id: mint_tau_apparent_conflict_001
+        anchor_id: mint_tools_feedback_gains
+        status: equivalent
+        query_id: mint_tau_apparent_conflict_001:find:01
+        rank: 7
+        location_ref: page_ref_83b9758141d741fd9a083e3306a30f85
+        reason: The Introduction reports gains from additional tool-use turns and natural-language feedback.
+
+      - case_id: coding_benchmark_followup_001
+        anchor_id: swebench_issue_pr_provenance
+        status: equivalent
+        query_id: coding_benchmark_followup_001:find:01
+        rank: 3
+        location_ref: page_ref_9a8d04f7f6cb47c681f113b6ea0ce602
+        reason: The returned paragraph links GitHub issues to pull requests that resolve them and pass related tests.
+
+      - case_id: cross_benchmark_score_ranking_partial_001
+        anchor_id: swebench_claude2_baseline
+        status: equivalent
+        query_id: cross_benchmark_score_ranking_partial_001:find:03
+        rank: 10
+        location_ref: table_ref_a431d8bd7af0464299a441febb2c0930
+        reason: Table 2 reports Claude 2 with a 1.96 resolve rate under BM25 retrieval.
