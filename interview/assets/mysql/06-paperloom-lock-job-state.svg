@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1500" height="820" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">PaperLoom 的两种数据库并发控制</text>
+  <text x="55" y="92" class="s">会话范围用悲观锁；长任务归属用条件更新 + job_id</text>
+
+  <rect x="70" y="145" width="620" height="530" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="105" y="190" class="t">场景一：第一次消息冻结会话论文范围</text>
+  <rect x="120" y="235" width="210" height="82" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="225" y="270" text-anchor="middle" class="t">请求 A / 请求 B</text><text x="225" y="296" text-anchor="middle" class="s">并发首条消息</text>
+  <rect x="420" y="235" width="210" height="82" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="525" y="270" text-anchor="middle" class="t">PESSIMISTIC_WRITE</text><text x="525" y="296" text-anchor="middle" class="s">锁会话行</text>
+  <rect x="270" y="390" width="260" height="92" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="400" y="425" text-anchor="middle" class="t">校验并冻结 Scope</text><text x="400" y="455" text-anchor="middle" class="s">scope_locked = true</text>
+  <path d="M330 276 H420" class="a"/><path d="M525 317 V350 H400 V390" class="a"/>
+  <text x="380" y="550" text-anchor="middle" class="s">事务短、修改同一行、必须读取当前值</text>
+  <text x="380" y="585" text-anchor="middle" class="s">适合数据库悲观锁</text>
+
+  <rect x="810" y="145" width="620" height="530" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="845" y="190" class="t">场景二：论文索引任务可能执行很久</text>
+  <rect x="870" y="230" width="180" height="72" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="960" y="273" text-anchor="middle" class="t">PENDING/FAILED</text>
+  <rect x="1100" y="220" width="250" height="92" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="1225" y="255" text-anchor="middle" class="t">条件 UPDATE 抢占</text><text x="1225" y="283" text-anchor="middle" class="s">写 BUILDING + job_id</text>
+  <rect x="970" y="385" width="260" height="92" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="1100" y="420" text-anchor="middle" class="t">执行解析 / 索引</text><text x="1100" y="450" text-anchor="middle" class="s">不长时间持有数据库锁</text>
+  <rect x="850" y="545" width="220" height="82" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="960" y="578" text-anchor="middle" class="t">READY</text><text x="960" y="604" text-anchor="middle" class="s">状态 + job_id 匹配</text>
+  <rect x="1160" y="545" width="220" height="82" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="1270" y="578" text-anchor="middle" class="t">FAILED</text><text x="1270" y="604" text-anchor="middle" class="s">记录错误并清 owner</text>
+  <path d="M1050 266 H1100" class="a"/><path d="M1225 312 V350 H1100 V385" class="a"/><path d="M1100 477 V515 H960 V545" class="a"/><path d="M1100 477 V515 H1270 V545" class="a"/>
+
+  <rect x="245" y="725" width="1010" height="55" rx="6" fill="#ffffff" stroke="#64748b"/>
+  <text x="750" y="760" text-anchor="middle" class="s">选择原则：短事务、强当前状态用行锁；长任务用状态机和 owner token，避免一直持锁。</text>
+</svg>

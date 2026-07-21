@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="780" viewBox="0 0 1450 780">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
+    <style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 19px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.dash{stroke:#64748b;stroke-width:2;fill:none;stroke-dasharray:8 6;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1450" height="780" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">PaperLoom 的数据权威边界</text>
+  <text x="55" y="92" class="s">MySQL 是 Canonical Truth；其他存储各自承担可重建或短期职责</text>
+
+  <rect x="510" y="145" width="430" height="220" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+  <text x="725" y="195" text-anchor="middle" class="t">MySQL：权威数据源</text>
+  <text x="725" y="235" text-anchor="middle" class="s">用户、权限、会话、配额记录</text>
+  <text x="725" y="268" text-anchor="middle" class="s">Current Reading Model、Location、Element</text>
+  <text x="725" y="301" text-anchor="middle" class="s">准确正文、Evidence、Reference Mapping</text>
+  <text x="725" y="334" text-anchor="middle" class="s">任务状态与 job_id</text>
+
+  <rect x="85" y="465" width="300" height="150" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text x="235" y="510" text-anchor="middle" class="t">Qdrant</text>
+  <text x="235" y="545" text-anchor="middle" class="s">可重建 Candidate Index</text>
+  <text x="235" y="578" text-anchor="middle" class="s">不直接产生可引用 Evidence</text>
+
+  <rect x="455" y="465" width="300" height="150" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="605" y="510" text-anchor="middle" class="t">Redis</text>
+  <text x="605" y="545" text-anchor="middle" class="s">限流、Token、Bitmap、生成态</text>
+  <text x="605" y="578" text-anchor="middle" class="s">短期、可过期、可回源</text>
+
+  <rect x="825" y="465" width="300" height="150" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="975" y="510" text-anchor="middle" class="t">MinIO</text>
+  <text x="975" y="545" text-anchor="middle" class="s">原始 PDF、分片、图片、解析产物</text>
+  <text x="975" y="578" text-anchor="middle" class="s">二进制对象存储</text>
+
+  <rect x="1195" y="465" width="180" height="150" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="1285" y="510" text-anchor="middle" class="t">Kafka</text>
+  <text x="1285" y="545" text-anchor="middle" class="s">异步任务</text>
+  <text x="1285" y="578" text-anchor="middle" class="s">不是业务真相库</text>
+
+  <path d="M640 365 L270 465" class="a"/><text x="395" y="405" class="s">构建索引</text>
+  <path d="M680 365 L610 465" class="a"/><text x="615" y="415" class="s">缓存/短期状态</text>
+  <path d="M790 365 L950 465" class="a"/><text x="855" y="415" class="s">对象引用</text>
+  <path d="M850 365 L1250 465" class="a"/><text x="1070" y="405" class="s">状态变化触发任务</text>
+  <path d="M235 465 Q235 400 510 300" class="dash"/><text x="245" y="370" class="s">候选后回 MySQL 精确读取</text>
+  <path d="M605 465 Q605 420 650 365" class="dash"/><text x="455" y="390" class="s">Redis Miss 可回源</text>
+
+  <rect x="275" y="675" width="900" height="54" rx="6" fill="#ffffff" stroke="#64748b"/>
+  <text x="725" y="709" text-anchor="middle" class="s">面试结论：Qdrant 可重建，Redis 可过期，MinIO 管二进制；准确论文内容和持久状态由 MySQL 负责。</text>
+</svg>

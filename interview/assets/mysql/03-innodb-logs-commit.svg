@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="760" viewBox="0 0 1450 760">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1450" height="760" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">Undo、Redo、Binlog 与两阶段提交</text>
+  <text x="55" y="92" class="s">Q28-Q31：三个日志职责不同，Redo 与 Binlog 需要保持提交一致</text>
+
+  <rect x="65" y="180" width="170" height="88" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="150" y="215" text-anchor="middle" class="t">BEGIN</text><text x="150" y="243" text-anchor="middle" class="s">事务开始</text>
+  <rect x="285" y="180" width="190" height="88" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="380" y="215" text-anchor="middle" class="t">写 Undo Log</text><text x="380" y="243" text-anchor="middle" class="s">保留旧版本</text>
+  <rect x="525" y="180" width="200" height="88" rx="6" fill="#ecfccb" stroke="#65a30d" stroke-width="2"/><text x="625" y="215" text-anchor="middle" class="t">修改内存页</text><text x="625" y="243" text-anchor="middle" class="s">Buffer Pool 脏页</text>
+  <rect x="775" y="170" width="200" height="108" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="875" y="208" text-anchor="middle" class="t">Redo Prepare</text><text x="875" y="238" text-anchor="middle" class="s">InnoDB 预提交</text><text x="875" y="262" text-anchor="middle" class="s">WAL</text>
+  <rect x="1025" y="180" width="180" height="88" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="1115" y="215" text-anchor="middle" class="t">写 Binlog</text><text x="1115" y="243" text-anchor="middle" class="s">Server 层日志</text>
+  <rect x="1255" y="170" width="150" height="108" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="1330" y="208" text-anchor="middle" class="t">Redo Commit</text><text x="1330" y="238" text-anchor="middle" class="s">事务提交</text>
+  <path d="M235 224 H285" class="a"/><path d="M475 224 H525" class="a"/><path d="M725 224 H775" class="a"/><path d="M975 224 H1025" class="a"/><path d="M1205 224 H1255" class="a"/>
+
+  <rect x="100" y="385" width="370" height="165" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="285" y="428" text-anchor="middle" class="t">Undo Log</text>
+  <text x="285" y="465" text-anchor="middle" class="s">事务回滚</text><text x="285" y="495" text-anchor="middle" class="s">MVCC 版本链</text><text x="285" y="525" text-anchor="middle" class="s">不是崩溃后重做日志</text>
+  <rect x="540" y="385" width="370" height="165" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="725" y="428" text-anchor="middle" class="t">Redo Log</text>
+  <text x="725" y="465" text-anchor="middle" class="s">InnoDB 物理页修改记录</text><text x="725" y="495" text-anchor="middle" class="s">崩溃恢复 / 持久性</text><text x="725" y="525" text-anchor="middle" class="s">循环写</text>
+  <rect x="980" y="385" width="370" height="165" rx="8" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/>
+  <text x="1165" y="428" text-anchor="middle" class="t">Binlog</text>
+  <text x="1165" y="465" text-anchor="middle" class="s">MySQL Server 层逻辑日志</text><text x="1165" y="495" text-anchor="middle" class="s">主从复制 / 时间点恢复</text><text x="1165" y="525" text-anchor="middle" class="s">追加写</text>
+
+  <rect x="285" y="615" width="880" height="55" rx="6" fill="#ffffff" stroke="#64748b"/>
+  <text x="725" y="650" text-anchor="middle" class="s">注意：MySQL 内部两阶段提交 ≠ MySQL 与 Kafka 的分布式事务。</text>
+</svg>

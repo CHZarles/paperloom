@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="760" viewBox="0 0 1450 760">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}.dash{stroke:#64748b;stroke-width:2;fill:none;stroke-dasharray:8 6;marker-end:url(#arrow)}</style></defs>
+  <rect width="1450" height="760" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">上传 Bitmap：Redis 快路径，MySQL 事实来源</text>
+  <text x="55" y="92" class="s">Q31：不是强行让缓存和数据库永远同步，而是明确谁说了算</text>
+
+  <rect x="70" y="180" width="210" height="90" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="175" y="215" text-anchor="middle" class="t">上传 chunkIndex</text><text x="175" y="245" text-anchor="middle" class="s">例如第 17 片</text>
+  <rect x="365" y="165" width="260" height="120" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="495" y="205" text-anchor="middle" class="t">Redis Bitmap</text><text x="495" y="238" text-anchor="middle" class="s">GETBIT / SETBIT</text><text x="495" y="263" text-anchor="middle" class="s">快速进度视图</text>
+  <rect x="710" y="165" width="260" height="120" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="840" y="205" text-anchor="middle" class="t">MySQL chunk_info</text><text x="840" y="238" text-anchor="middle" class="s">唯一约束</text><text x="840" y="263" text-anchor="middle" class="s">最终可合并事实</text>
+  <rect x="1055" y="180" width="250" height="90" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="1180" y="215" text-anchor="middle" class="t">MinIO</text><text x="1180" y="245" text-anchor="middle" class="s">保存分片字节</text>
+  <path d="M280 225 H365" class="a"/><path d="M625 225 H710" class="a"/><path d="M970 225 H1055" class="a"/>
+
+  <rect x="150" y="400" width="1150" height="195" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="190" y="445" class="t">Redis Miss / 丢失时</text>
+  <rect x="210" y="480" width="230" height="70" rx="6" fill="#fee2e2" stroke="#dc2626"/><text x="325" y="523" text-anchor="middle" class="s">Bitmap 没有记录</text>
+  <rect x="610" y="480" width="230" height="70" rx="6" fill="#dcfce7" stroke="#16a34a"/><text x="725" y="523" text-anchor="middle" class="s">查询 MySQL chunk 行</text>
+  <rect x="1010" y="480" width="230" height="70" rx="6" fill="#fae8ff" stroke="#a21caf"/><text x="1125" y="523" text-anchor="middle" class="s">回填 Redis Bitmap</text>
+  <path d="M440 515 H610" class="dash"/><path d="M840 515 H1010" class="dash"/>
+  <text x="725" y="655" text-anchor="middle" class="s">一致性策略：数据库是 Source of Truth，缓存失败不阻止正确合并；Redis 只优化读路径。</text>
+</svg>

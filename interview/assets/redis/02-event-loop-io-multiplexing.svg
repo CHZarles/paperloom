@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="760" viewBox="0 0 1450 760">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1450" height="760" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">Redis 事件循环与 IO 多路复用</text>
+  <text x="55" y="92" class="s">Q4-Q7：快不只是因为内存，还因为数据结构和高效网络模型</text>
+
+  <rect x="80" y="170" width="230" height="90" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="195" y="205" text-anchor="middle" class="t">多个客户端 Socket</text><text x="195" y="235" text-anchor="middle" class="s">连接很多，活跃连接较少</text>
+  <rect x="400" y="155" width="250" height="120" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="525" y="195" text-anchor="middle" class="t">epoll / kqueue</text><text x="525" y="228" text-anchor="middle" class="s">内核返回就绪事件</text><text x="525" y="253" text-anchor="middle" class="s">不用逐连接阻塞线程</text>
+  <rect x="740" y="145" width="260" height="140" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="870" y="187" text-anchor="middle" class="t">Redis Event Loop</text><text x="870" y="220" text-anchor="middle" class="s">读取命令 -> 执行 -> 写响应</text><text x="870" y="250" text-anchor="middle" class="s">主要命令执行串行化</text>
+  <rect x="1090" y="155" width="270" height="120" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/>
+  <text x="1225" y="195" text-anchor="middle" class="t">高效数据结构</text><text x="1225" y="228" text-anchor="middle" class="s">SDS / Dict / SkipList</text><text x="1225" y="253" text-anchor="middle" class="s">紧凑编码</text>
+  <path d="M310 215 H400" class="a"/><path d="M650 215 H740" class="a"/><path d="M1000 215 H1090" class="a"/>
+
+  <rect x="125" y="390" width="1200" height="200" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="165" y="435" class="t">Redis 6 的“多线程”怎么回答</text>
+  <text x="165" y="478" class="s">网络数据读取、协议解析和响应写回可以由 IO 线程协助；核心命令执行仍保持有序，避免通用共享状态锁竞争。</text>
+  <text x="165" y="518" class="s">所以不能回答“Redis 6 以后所有命令并行执行”，也不能只用“单线程”解释整个 Redis 进程。</text>
+  <text x="165" y="558" class="s">阻塞命令、Big Key、慢 Lua、持久化压力仍然可能卡住事件循环。</text>
+
+  <text x="725" y="680" text-anchor="middle" class="s">快的组合：内存 + 合适数据结构 + IO 多路复用 + 短命令执行路径。</text>
+</svg>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="800" viewBox="0 0 1450 800">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 19px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1450" height="800" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">PaperLoom 中 Redis 的四种真实用途</text>
+  <text x="55" y="92" class="s">Redis 负责短期、高频、可过期状态；论文正文和持久引用仍由 MySQL 负责</text>
+  <rect x="555" y="145" width="340" height="120" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="3"/>
+  <text x="725" y="192" text-anchor="middle" class="t">Redis</text>
+  <text x="725" y="228" text-anchor="middle" class="s">低延迟数据结构 + TTL + 原子单命令</text>
+
+  <rect x="80" y="390" width="285" height="165" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="222" y="435" text-anchor="middle" class="t">1. 请求限流</text>
+  <text x="222" y="472" text-anchor="middle" class="s">登录 / 注册 / Chat</text>
+  <text x="222" y="503" text-anchor="middle" class="s">Embedding 次数窗口</text>
+  <text x="222" y="532" text-anchor="middle" class="s">String Counter + TTL</text>
+
+  <rect x="410" y="390" width="285" height="165" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="552" y="435" text-anchor="middle" class="t">2. Token 配额</text>
+  <text x="552" y="472" text-anchor="middle" class="s">全局分钟 / 日预算预占</text>
+  <text x="552" y="503" text-anchor="middle" class="s">用户余额检查与结算</text>
+  <text x="552" y="532" text-anchor="middle" class="s">失败时回退全局预占</text>
+
+  <rect x="740" y="390" width="285" height="165" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="882" y="435" text-anchor="middle" class="t">3. 上传 Bitmap</text>
+  <text x="882" y="472" text-anchor="middle" class="s">chunkIndex -> bit</text>
+  <text x="882" y="503" text-anchor="middle" class="s">快速查看上传进度</text>
+  <text x="882" y="532" text-anchor="middle" class="s">MySQL 是最终事实来源</text>
+
+  <rect x="1070" y="390" width="300" height="165" rx="8" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/>
+  <text x="1220" y="435" text-anchor="middle" class="t">4. 流式生成态</text>
+  <text x="1220" y="472" text-anchor="middle" class="s">content / meta / progress</text>
+  <text x="1220" y="503" text-anchor="middle" class="s">active generation / references</text>
+  <text x="1220" y="532" text-anchor="middle" class="s">统一 30 分钟 TTL</text>
+
+  <path d="M650 265 L222 390" class="a"/><path d="M700 265 L552 390" class="a"/><path d="M750 265 L882 390" class="a"/><path d="M800 265 L1220 390" class="a"/>
+
+  <rect x="230" y="655" width="990" height="62" rx="6" fill="#ffffff" stroke="#64748b"/>
+  <text x="725" y="694" text-anchor="middle" class="s">面试边界：Redis 宕机不能让论文正文消失；上传进度可从 MySQL 回填，生成态本来就允许过期。</text>
+</svg>

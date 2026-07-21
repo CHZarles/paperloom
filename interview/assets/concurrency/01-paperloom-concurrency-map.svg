@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="800" viewBox="0 0 1500 800">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 19px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1500" height="800" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">PaperLoom 并发结构：共享状态、任务和背压分开</text>
+  <text x="55" y="92" class="s">进程内结构只解决单 JVM 并发，不自动提供跨节点一致性</text>
+  <rect x="65" y="145" width="300" height="510" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="215" y="195" text-anchor="middle" class="t">请求与事件</text>
+  <text x="215" y="255" text-anchor="middle" class="s">HTTP / WebSocket</text><text x="215" y="305" text-anchor="middle" class="s">generationId</text><text x="215" y="355" text-anchor="middle" class="s">取消 / 完成</text>
+  <rect x="450" y="145" width="410" height="510" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/><text x="655" y="195" text-anchor="middle" class="t">进程内共享状态</text>
+  <rect x="505" y="235" width="300" height="75" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="655" y="280" text-anchor="middle" class="t">ConcurrentHashMap</text><text x="655" y="302" text-anchor="middle" class="s">sessions / activeRequests / state</text>
+  <rect x="505" y="355" width="300" height="75" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="655" y="400" text-anchor="middle" class="t">CopyOnWriteArrayList</text><text x="655" y="422" text-anchor="middle" class="s">用户的 WebSocket Session</text>
+  <rect x="505" y="475" width="300" height="75" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="655" y="520" text-anchor="middle" class="t">synchronized(session)</text><text x="655" y="542" text-anchor="middle" class="s">同一连接发送临界区</text>
+  <rect x="945" y="145" width="490" height="510" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/><text x="1190" y="195" text-anchor="middle" class="t">异步任务与容量</text>
+  <rect x="1000" y="235" width="380" height="75" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/><text x="1190" y="280" text-anchor="middle" class="t">FutureTask + CompletableFuture</text><text x="1190" y="302" text-anchor="middle" class="s">结果、失败、取消</text>
+  <rect x="1000" y="355" width="380" height="75" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="1190" y="400" text-anchor="middle" class="t">ThreadPoolTaskExecutor</text><text x="1190" y="422" text-anchor="middle" class="s">聊天监控：4 / 16 / 200</text>
+  <rect x="1000" y="475" width="380" height="75" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="1190" y="520" text-anchor="middle" class="t">ArrayBlockingQueue</text><text x="1190" y="542" text-anchor="middle" class="s">Trace 满了就丢弃并告警</text>
+  <path d="M365 300 H450" class="a"/><path d="M860 300 H945" class="a"/><path d="M860 515 H945" class="a"/>
+  <text x="750" y="725" text-anchor="middle" class="s">业务请求不等待磁盘；任务取消必须由 Future、中断检查和状态清理共同完成</text>
+</svg>

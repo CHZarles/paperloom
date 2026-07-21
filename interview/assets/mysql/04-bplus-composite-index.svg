@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 17px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 14px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1500" height="820" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">B+ 树、联合索引、回表与覆盖索引</text>
+  <text x="55" y="92" class="s">Q35-Q52：项目索引必须从真实查询前缀出发</text>
+
+  <text x="65" y="145" class="t">B+ 树：内部节点只存 Key，叶子节点有序相连</text>
+  <rect x="220" y="175" width="230" height="62" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="335" y="213" text-anchor="middle" class="t">[40 | 80]</text>
+  <rect x="70" y="300" width="200" height="62" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="170" y="338" text-anchor="middle" class="t">[10 | 20 | 30]</text>
+  <rect x="310" y="300" width="200" height="62" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="410" y="338" text-anchor="middle" class="t">[40 | 50 | 70]</text>
+  <rect x="550" y="300" width="200" height="62" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="650" y="338" text-anchor="middle" class="t">[80 | 90 | 99]</text>
+  <path d="M300 237 L170 300" class="a"/><path d="M335 237 L410 300" class="a"/><path d="M390 237 L650 300" class="a"/>
+  <path d="M270 331 H310" class="a"/><path d="M510 331 H550" class="a"/>
+  <text x="410" y="395" text-anchor="middle" class="s">高扇出 -> 树高低；叶子有序 -> 范围扫描方便</text>
+
+  <rect x="850" y="145" width="570" height="270" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="885" y="185" class="t">PaperLoom 联合索引示例</text>
+  <rect x="895" y="220" width="480" height="64" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="1135" y="259" text-anchor="middle" class="t">(paper_id, model_version, page_number)</text>
+  <rect x="895" y="315" width="480" height="64" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/>
+  <text x="1135" y="354" text-anchor="middle" class="t">(paper_id, model_version, element_type)</text>
+  <text x="1135" y="402" text-anchor="middle" class="s">先固定论文和版本，再按页码或类型查找</text>
+
+  <text x="65" y="500" class="t">二级索引回表</text>
+  <rect x="70" y="535" width="310" height="78" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="225" y="568" text-anchor="middle" class="t">二级索引叶子</text><text x="225" y="593" text-anchor="middle" class="s">secondary_key + primary_key</text>
+  <rect x="470" y="535" width="310" height="78" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="625" y="568" text-anchor="middle" class="t">聚簇主键索引</text><text x="625" y="593" text-anchor="middle" class="s">primary_key -> 完整行</text>
+  <path d="M380 574 H470" class="a"/><text x="425" y="555" text-anchor="middle" class="s">回表</text>
+
+  <rect x="850" y="500" width="570" height="145" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="1135" y="545" text-anchor="middle" class="t">覆盖索引</text>
+  <text x="1135" y="580" text-anchor="middle" class="s">查询所需列全部在索引中，直接返回，不再访问聚簇索引</text>
+  <text x="1135" y="615" text-anchor="middle" class="s">收益必须与索引体积、写放大一起权衡</text>
+
+  <rect x="180" y="705" width="1140" height="58" rx="6" fill="#ffffff" stroke="#64748b"/>
+  <text x="750" y="741" text-anchor="middle" class="s">最左前缀：联合索引按从左到右的键序组织；跳过 paper_id，后续列通常不能完成同样的快速定位。</text>
+</svg>

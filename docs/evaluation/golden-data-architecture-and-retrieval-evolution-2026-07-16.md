@@ -2,6 +2,11 @@
 
 Date: 2026-07-16
 
+Concrete follow-up: the answer-scoring design in
+[`Golden Claim-Evidence Scoring v4 Proposal`](golden-claim-evidence-scoring-v4-proposal-2026-07-20.md)
+supersedes this review's suggested schema direction where the two differ. The broader corpus,
+retrieval-experiment, and observation-plane analysis in this document remains applicable.
+
 ## Executive Answer
 
 PaperLoom's Golden Data is already more than a question-answer file. It is an evidence-first

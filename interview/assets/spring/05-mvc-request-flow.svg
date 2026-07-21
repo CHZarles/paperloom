@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="720" viewBox="0 0 1500 720">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
+    <style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 17px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 14px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.1;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1500" height="720" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">Spring MVC + PaperLoom 请求流程</text>
+  <text x="55" y="92" class="s">Q30-Q32：普通 HTTP 链路与 WebSocket 链路要分开回答</text>
+
+  <g>
+    <rect x="45" y="175" width="150" height="88" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="120" y="210" text-anchor="middle" class="t">HTTP 请求</text><text x="120" y="238" text-anchor="middle" class="s">JSON / 参数</text>
+    <rect x="235" y="155" width="210" height="128" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="340" y="195" text-anchor="middle" class="t">Filter Chain</text><text x="340" y="225" text-anchor="middle" class="s">JWT 身份</text><text x="340" y="250" text-anchor="middle" class="s">论文资源授权</text>
+    <rect x="485" y="175" width="190" height="88" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="580" y="210" text-anchor="middle" class="t">DispatcherServlet</text><text x="580" y="238" text-anchor="middle" class="s">前端控制器</text>
+    <rect x="715" y="175" width="180" height="88" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="805" y="210" text-anchor="middle" class="t">HandlerMapping</text><text x="805" y="238" text-anchor="middle" class="s">找到 Controller</text>
+    <rect x="935" y="175" width="180" height="88" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="1025" y="210" text-anchor="middle" class="t">HandlerAdapter</text><text x="1025" y="238" text-anchor="middle" class="s">解析并调用</text>
+    <rect x="1155" y="175" width="170" height="88" rx="6" fill="#cffafe" stroke="#0891b2" stroke-width="2"/><text x="1240" y="210" text-anchor="middle" class="t">Controller</text><text x="1240" y="238" text-anchor="middle" class="s">参数校验</text>
+    <path d="M195 219 H235" class="a"/><path d="M445 219 H485" class="a"/><path d="M675 219 H715" class="a"/><path d="M895 219 H935" class="a"/><path d="M1115 219 H1155" class="a"/>
+  </g>
+
+  <rect x="470" y="355" width="220" height="95" rx="6" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"/><text x="580" y="392" text-anchor="middle" class="t">Service</text><text x="580" y="422" text-anchor="middle" class="s">事务 / 业务规则</text>
+  <rect x="760" y="355" width="220" height="95" rx="6" fill="#ecfccb" stroke="#65a30d" stroke-width="2"/><text x="870" y="392" text-anchor="middle" class="t">Repository / Client</text><text x="870" y="422" text-anchor="middle" class="s">MySQL / Redis / HTTP</text>
+  <path d="M1240 263 V315 H580 V355" class="a"/><path d="M690 402 H760" class="a"/>
+
+  <rect x="1060" y="355" width="290" height="95" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="1205" y="392" text-anchor="middle" class="t">HttpMessageConverter</text><text x="1205" y="422" text-anchor="middle" class="s">Java 对象 -> JSON</text>
+  <rect x="1060" y="520" width="290" height="90" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="1205" y="557" text-anchor="middle" class="t">HTTP 响应</text><text x="1205" y="587" text-anchor="middle" class="s">状态码 / Header / Body</text>
+  <path d="M980 402 H1060" class="a"/><path d="M1205 450 V520" class="a"/>
+
+  <rect x="90" y="505" width="710" height="110" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="125" y="545" class="t">WebSocket 是另一条入口</text>
+  <text x="125" y="580" class="s">浏览器 -> WebSocket 握手 -> ChatWebSocketHandler -> ChatHandler -> SessionRegistry 推送</text>
+  <text x="750" y="675" text-anchor="middle" class="s">REST 记忆点：匹配 -> 参数解析 -> 业务 -> JSON 序列化；WebSocket 不走普通 Controller。</text>
+</svg>

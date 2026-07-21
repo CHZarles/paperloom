@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="800" viewBox="0 0 1500 800">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1500" height="800" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">固定窗口限流：当前实现与 Lua 强化方向</text>
+  <text x="55" y="92" class="s">Q45-Q46：单条命令原子，不代表多条命令组成的业务原子</text>
+
+  <rect x="70" y="145" width="620" height="490" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="105" y="190" class="t">当前 RateLimitService</text>
+  <rect x="130" y="235" width="180" height="72" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="220" y="278" text-anchor="middle" class="t">INCR key</text>
+  <rect x="385" y="235" width="230" height="72" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="500" y="278" text-anchor="middle" class="t">current == 1 ?</text>
+  <rect x="385" y="360" width="230" height="72" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="500" y="403" text-anchor="middle" class="t">EXPIRE key window</text>
+  <rect x="130" y="485" width="485" height="85" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="372" y="520" text-anchor="middle" class="t">风险窗口</text><text x="372" y="548" text-anchor="middle" class="s">INCR 成功后进程失败，Key 可能没有 TTL</text>
+  <path d="M310 271 H385" class="a"/><path d="M500 307 V360" class="a"/>
+
+  <rect x="810" y="145" width="620" height="490" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="845" y="190" class="t">Lua 强化方案</text>
+  <rect x="900" y="235" width="440" height="215" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="1120" y="278" text-anchor="middle" class="t">Redis 服务端一次 EVAL</text>
+  <text x="1120" y="320" text-anchor="middle" class="s">1. INCR</text><text x="1120" y="352" text-anchor="middle" class="s">2. 首次设置 TTL</text><text x="1120" y="384" text-anchor="middle" class="s">3. 判断是否超限</text><text x="1120" y="416" text-anchor="middle" class="s">4. 返回 count 与 TTL</text>
+  <rect x="900" y="500" width="440" height="75" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="1120" y="545" text-anchor="middle" class="s">多步逻辑相对其他命令原子执行</text>
+  <path d="M1120 450 V500" class="a"/>
+
+  <text x="750" y="710" text-anchor="middle" class="s">固定窗口仍有边界突发；若要更平滑，可用滑动窗口或令牌桶，但必须基于真实流量再改。</text>
+</svg>

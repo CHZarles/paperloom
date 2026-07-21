@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="800" viewBox="0 0 1450 800">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1450" height="800" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">Redis 持久化与高可用不是一回事</text>
+  <text x="55" y="92" class="s">Q10-Q28：RDB/AOF 解决重启恢复，主从/哨兵/Cluster 解决可用性与容量</text>
+
+  <rect x="75" y="145" width="600" height="250" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="110" y="190" class="t">持久化</text>
+  <rect x="120" y="225" width="220" height="120" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="230" y="265" text-anchor="middle" class="t">RDB 快照</text><text x="230" y="297" text-anchor="middle" class="s">紧凑、恢复快</text><text x="230" y="325" text-anchor="middle" class="s">可能丢最近变更</text>
+  <rect x="405" y="225" width="220" height="120" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="515" y="265" text-anchor="middle" class="t">AOF</text><text x="515" y="297" text-anchor="middle" class="s">记录写命令</text><text x="515" y="325" text-anchor="middle" class="s">更完整但更大</text>
+  <path d="M340 285 H405" class="a"/><text x="372" y="267" text-anchor="middle" class="s">混合</text>
+
+  <rect x="775" y="145" width="600" height="250" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="810" y="190" class="t">高可用 / 水平扩展</text>
+  <rect x="820" y="225" width="150" height="120" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="895" y="265" text-anchor="middle" class="t">主从</text><text x="895" y="297" text-anchor="middle" class="s">数据复制</text>
+  <rect x="1000" y="225" width="150" height="120" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="1075" y="265" text-anchor="middle" class="t">哨兵</text><text x="1075" y="297" text-anchor="middle" class="s">监控与故障转移</text>
+  <rect x="1180" y="225" width="150" height="120" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="1255" y="265" text-anchor="middle" class="t">Cluster</text><text x="1255" y="297" text-anchor="middle" class="s">16384 Slot 分片</text>
+  <path d="M970 285 H1000" class="a"/><path d="M1150 285 H1180" class="a"/>
+
+  <rect x="160" y="490" width="1130" height="160" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="200" y="535" class="t">PaperLoom 当前边界</text>
+  <text x="200" y="575" class="s">仓库只配置一个 Redis 连接，没有证明已部署哨兵或 Cluster，也没有完成 Redis HA 演练。</text>
+  <text x="200" y="610" class="s">生成态与限流数据允许过期；上传 Bitmap 可从 MySQL 回填。不要把 Redis 持久化说成论文数据安全底线。</text>
+  <text x="725" y="725" text-anchor="middle" class="s">持久化回答“重启后数据怎么恢复”；高可用回答“节点故障时服务怎么继续”。</text>
+</svg>

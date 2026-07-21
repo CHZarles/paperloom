@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="780" viewBox="0 0 1450 780">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1450" height="780" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">隔离级别与 MVCC 版本链</text>
+  <text x="55" y="92" class="s">Q60-Q65：快照读减少读写阻塞，但业务写冲突仍需要锁</text>
+
+  <rect x="75" y="155" width="340" height="160" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="245" y="198" text-anchor="middle" class="t">事务 T1：Read View</text>
+  <text x="245" y="235" text-anchor="middle" class="s">记录活跃事务范围</text>
+  <text x="245" y="267" text-anchor="middle" class="s">决定哪个版本对本次快照可见</text>
+
+  <rect x="540" y="145" width="260" height="100" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="670" y="183" text-anchor="middle" class="t">当前记录版本</text><text x="670" y="215" text-anchor="middle" class="s">value=C, trx_id=120</text>
+  <rect x="540" y="300" width="260" height="100" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="670" y="338" text-anchor="middle" class="t">Undo 旧版本</text><text x="670" y="370" text-anchor="middle" class="s">value=B, trx_id=105</text>
+  <rect x="540" y="455" width="260" height="100" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/>
+  <text x="670" y="493" text-anchor="middle" class="t">更早版本</text><text x="670" y="525" text-anchor="middle" class="s">value=A, trx_id=88</text>
+  <path d="M670 245 V300" class="a"/><path d="M670 400 V455" class="a"/>
+  <path d="M415 235 H500 V350 H540" class="a"/><text x="440" y="220" class="s">按可见性规则选择</text>
+
+  <rect x="930" y="145" width="430" height="410" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="965" y="188" class="t">四种隔离级别</text>
+  <rect x="980" y="225" width="330" height="58" rx="6" fill="#fee2e2" stroke="#dc2626"/><text x="1145" y="261" text-anchor="middle" class="s">读未提交：可能脏读</text>
+  <rect x="980" y="305" width="330" height="58" rx="6" fill="#fef3c7" stroke="#d97706"/><text x="1145" y="341" text-anchor="middle" class="s">读已提交：每次快照可变化</text>
+  <rect x="980" y="385" width="330" height="58" rx="6" fill="#dcfce7" stroke="#16a34a"/><text x="1145" y="421" text-anchor="middle" class="s">可重复读：事务内快照稳定</text>
+  <rect x="980" y="465" width="330" height="58" rx="6" fill="#dbeafe" stroke="#2563eb"/><text x="1145" y="501" text-anchor="middle" class="s">串行化：最强隔离，冲突最多</text>
+
+  <rect x="150" y="635" width="1150" height="70" rx="6" fill="#ffffff" stroke="#64748b"/>
+  <text x="725" y="667" text-anchor="middle" class="s">快照读主要依靠 MVCC；`SELECT ... FOR UPDATE` 等当前读依靠锁。MVCC 不能代替业务状态抢占。</text>
+  <text x="725" y="690" text-anchor="middle" class="s">PaperLoom 冻结会话范围时使用悲观写锁，因为决策必须基于当前状态。</text>
+</svg>

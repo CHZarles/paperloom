@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="680" viewBox="0 0 1400 680">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
+    <style>
+      .title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1400" height="680" fill="#f8fafc"/>
+  <text x="60" y="58" class="title">IoC 初始化与 Bean 生命周期</text>
+  <text x="60" y="92" class="s">Q7、Q9、Q11 一张图一起背</text>
+
+  <g>
+    <rect x="55" y="155" width="180" height="88" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="145" y="190" text-anchor="middle" class="t">扫描配置</text><text x="145" y="218" text-anchor="middle" class="s">注解 / @Bean</text>
+    <rect x="275" y="155" width="190" height="88" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="370" y="190" text-anchor="middle" class="t">BeanDefinition</text><text x="370" y="218" text-anchor="middle" class="s">注册元数据</text>
+    <rect x="505" y="155" width="180" height="88" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="595" y="190" text-anchor="middle" class="t">实例化</text><text x="595" y="218" text-anchor="middle" class="s">构造对象</text>
+    <rect x="725" y="155" width="180" height="88" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="815" y="190" text-anchor="middle" class="t">依赖注入</text><text x="815" y="218" text-anchor="middle" class="s">属性填充</text>
+    <rect x="945" y="155" width="190" height="88" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/>
+    <text x="1040" y="190" text-anchor="middle" class="t">初始化 / 代理</text><text x="1040" y="218" text-anchor="middle" class="s">BPP、AOP</text>
+    <rect x="1175" y="155" width="170" height="88" rx="6" fill="#cffafe" stroke="#0891b2" stroke-width="2"/>
+    <text x="1260" y="190" text-anchor="middle" class="t">放入容器</text><text x="1260" y="218" text-anchor="middle" class="s">正常使用</text>
+    <path d="M235 199 H275" class="a"/><path d="M465 199 H505" class="a"/><path d="M685 199 H725" class="a"/><path d="M905 199 H945" class="a"/><path d="M1135 199 H1175" class="a"/>
+  </g>
+
+  <rect x="95" y="335" width="1210" height="230" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="125" y="378" class="t">Bean 生命周期关键回调</text>
+  <path d="M160 465 H1240" stroke="#94a3b8" stroke-width="4"/>
+  <g class="s" text-anchor="middle">
+    <circle cx="180" cy="465" r="12" fill="#2563eb"/><text x="180" y="425">构造器</text>
+    <circle cx="350" cy="465" r="12" fill="#16a34a"/><text x="350" y="425">属性填充</text>
+    <circle cx="520" cy="465" r="12" fill="#d97706"/><text x="520" y="425">Aware</text>
+    <circle cx="690" cy="465" r="12" fill="#dc2626"/><text x="690" y="425">初始化前 BPP</text>
+    <circle cx="860" cy="465" r="12" fill="#a21caf"/><text x="860" y="425">初始化方法</text>
+    <circle cx="1030" cy="465" r="12" fill="#0891b2"/><text x="1030" y="425">初始化后 BPP</text>
+    <circle cx="1200" cy="465" r="12" fill="#475569"/><text x="1200" y="425">销毁回调</text>
+  </g>
+  <text x="700" y="535" text-anchor="middle" class="s">PaperLoom：AsyncDiskProductTraceSink 在 Bean 销毁时通过 @PreDestroy 停止写线程</text>
+  <text x="700" y="625" text-anchor="middle" class="s">口诀：定义 -> 实例 -> 注入 -> 初始化 -> 代理 -> 使用 -> 销毁</text>
+</svg>

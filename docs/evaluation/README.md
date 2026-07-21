@@ -83,6 +83,9 @@ fact types become `review_required` and cannot Hard Pass. Saved runs can be resc
 The implementation plan and acceptance record are in
 [`Deterministic Content Scorer v3`](deterministic-content-scorer-v3-plan-2026-07-19.md).
 
+The proposed replacement for exact-Anchor answer gating is documented in
+[`Golden Claim-Evidence Scoring v4 Proposal`](golden-claim-evidence-scoring-v4-proposal-2026-07-20.md).
+
 ## Evidence-First Golden Cases
 
 The Golden Data schema does not require one exact prose answer. It stores obligations that can be

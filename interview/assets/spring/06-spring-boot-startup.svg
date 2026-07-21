@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="680" viewBox="0 0 1450 680">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
+    <style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 17px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 14px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.1;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1450" height="680" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">Spring Boot 启动流程</text>
+  <text x="55" y="92" class="s">Q33、Q34、Q36、Q38：Boot 是基于 Spring 的装配与启动体系</text>
+
+  <g>
+    <rect x="45" y="180" width="160" height="88" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="125" y="215" text-anchor="middle" class="t">main</text><text x="125" y="243" text-anchor="middle" class="s">SpringApplication.run</text>
+    <rect x="245" y="180" width="170" height="88" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/><text x="330" y="215" text-anchor="middle" class="t">Environment</text><text x="330" y="243" text-anchor="middle" class="s">YAML / 环境变量</text>
+    <rect x="455" y="180" width="190" height="88" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/><text x="550" y="215" text-anchor="middle" class="t">创建 Context</text><text x="550" y="243" text-anchor="middle" class="s">Web ApplicationContext</text>
+    <rect x="685" y="160" width="210" height="128" rx="6" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/><text x="790" y="200" text-anchor="middle" class="t">加载配置</text><text x="790" y="230" text-anchor="middle" class="s">启动类 / 自动配置</text><text x="790" y="255" text-anchor="middle" class="s">条件 Bean</text>
+    <rect x="935" y="180" width="170" height="88" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/><text x="1020" y="215" text-anchor="middle" class="t">refresh()</text><text x="1020" y="243" text-anchor="middle" class="s">创建 Bean / 代理</text>
+    <rect x="1145" y="180" width="190" height="88" rx="6" fill="#cffafe" stroke="#0891b2" stroke-width="2"/><text x="1240" y="215" text-anchor="middle" class="t">启动 WebServer</text><text x="1240" y="243" text-anchor="middle" class="s">嵌入式 Tomcat</text>
+    <path d="M205 224 H245" class="a"/><path d="M415 224 H455" class="a"/><path d="M645 224 H685" class="a"/><path d="M895 224 H935" class="a"/><path d="M1105 224 H1145" class="a"/>
+  </g>
+
+  <rect x="145" y="390" width="1160" height="160" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="180" y="430" class="t">PaperLoom 启动时会装配</text>
+  <text x="180" y="468" class="s">SecurityFilterChain　|　RedisTemplate　|　Kafka Producer/Consumer Factory　|　JPA Repository</text>
+  <text x="180" y="500" class="s">线程池　|　PythonResearchHarnessClient　|　Qdrant Client　|　业务 Service　|　生产配置校验器</text>
+  <text x="180" y="532" class="s">任何关键 Bean 初始化失败，都可能让 ApplicationContext 启动失败。</text>
+
+  <rect x="450" y="585" width="550" height="48" rx="6" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="725" y="616" text-anchor="middle" class="s">Spring = 基础框架　Spring MVC = Web 模块　Spring Boot = 简化装配与启动</text>
+</svg>

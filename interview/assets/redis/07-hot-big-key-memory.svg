@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="800" viewBox="0 0 1450 800">
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker><style>.title{font:700 32px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.t{font:700 18px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#111827}.s{font:400 15px 'Noto Sans CJK SC','Microsoft YaHei',sans-serif;fill:#475569}.a{stroke:#334155;stroke-width:2.2;fill:none;marker-end:url(#arrow)}</style></defs>
+  <rect width="1450" height="800" fill="#f8fafc"/>
+  <text x="55" y="58" class="title">热 Key、大 Key、阻塞与内存淘汰</text>
+  <text x="55" y="92" class="s">Q33-Q42：先识别问题类型，再决定拆分、限流、删除或淘汰策略</text>
+
+  <rect x="75" y="155" width="390" height="210" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="270" y="200" text-anchor="middle" class="t">热 Key</text>
+  <text x="270" y="240" text-anchor="middle" class="s">请求集中到一个 Key / 一个分片</text>
+  <text x="270" y="276" text-anchor="middle" class="s">节点 CPU / 网络成为瓶颈</text>
+  <text x="270" y="315" text-anchor="middle" class="s">本地缓存、拆 Key、请求合并、限流</text>
+
+  <rect x="530" y="155" width="390" height="210" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="725" y="200" text-anchor="middle" class="t">大 Key</text>
+  <text x="725" y="240" text-anchor="middle" class="s">单 Value 或集合元素过多</text>
+  <text x="725" y="276" text-anchor="middle" class="s">命令、网络、复制、删除耗时</text>
+  <text x="725" y="315" text-anchor="middle" class="s">拆分、渐进删除、限制单任务规模</text>
+
+  <rect x="985" y="155" width="390" height="210" rx="8" fill="#fae8ff" stroke="#a21caf" stroke-width="2"/>
+  <text x="1180" y="200" text-anchor="middle" class="t">事件循环阻塞</text>
+  <text x="1180" y="240" text-anchor="middle" class="s">Big Key 命令、慢 Lua、持久化</text>
+  <text x="1180" y="276" text-anchor="middle" class="s">客户端超时后继续重试会放大故障</text>
+  <text x="1180" y="315" text-anchor="middle" class="s">慢日志、latency、内存和网络诊断</text>
+
+  <rect x="130" y="455" width="1190" height="185" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+  <text x="170" y="500" class="t">内存满时的选择</text>
+  <text x="170" y="542" class="s">noeviction：拒绝写入　|　allkeys-lru/lfu：全 Key 淘汰　|　volatile-lru/lfu：只淘汰带 TTL Key</text>
+  <text x="170" y="580" class="s">LRU 看最近使用时间；LFU 看访问频率。策略必须匹配“哪些数据允许丢”。</text>
+  <text x="170" y="615" class="s">PaperLoom 的生成态有 TTL，适合被视为短期状态；Token 余额和准确论文内容不能只依赖淘汰型缓存。</text>
+
+  <text x="725" y="720" text-anchor="middle" class="s">不要只调 maxmemory：先找到是谁占内存、哪些命令阻塞、数据是否可以拆分或回源。</text>
+</svg>

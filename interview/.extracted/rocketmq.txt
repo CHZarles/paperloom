@@ -1,0 +1,762 @@
+ 图⽂详解 RocketMQ ⾯试⾼频题，这次吊打⾯试官，我觉得稳了（⼿动 dog）。整理：沉默王⼆，戳转载链
+ 接，作者：三分恶，戳原⽂链接。
+
+
+基础
+1.为什么要使⽤消息队列呢？
+消息队列主要有三⼤⽤途，我们拿⼀个电商系统的下单举例：
+
+  解耦：引⼊消息队列之前，下单完成之后，需要订单服务去调⽤库存服务减库存，调⽤营销服务加营销数
+  据……引⼊消息队列之后，可以把订单完成的消息丢进队列⾥，下游服务⾃⼰去调⽤就⾏了，这样就完成了订
+  单服务和其它服务的解耦合。
+
+
+
+
+  异步：订单⽀付之后，我们要扣减库存、增加积分、发送消息等等，这样⼀来这个链路就⻓了，链路⼀⻓，
+  响应时间就变⻓了。引⼊消息队列，除了 更新订单状态 ，其它的都可以异步去做，这样⼀来就来，就能降低
+  响应时间。
+  削峰：消息队列合⼀⽤来削峰，例如秒杀系统，平时流量很低，但是要做秒杀活动，秒杀的时候流量疯狂怼
+  进来，我们的服务器，Redis，MySQL各⾃的承受能⼒都不⼀样，直接全部流量照单全收肯定有问题啊，严重
+  点可能直接打挂了。
+
+我们可以把请求扔到队列⾥⾯，只放出我们服务能处理的流量，这样就能抗住短时间的⼤流量了。
+解耦、异步、削峰，是消息队列最主要的三⼤作⽤。
+
+
+2.为什么要选择RocketMQ?
+市场上⼏⼤消息队列对⽐如下：
+总结⼀下：
+
+选择中间件的可以从这些维度来考虑：可靠性，性能，功能，可运维⾏，可拓展性，社区活跃度。⽬前常⽤的⼏个
+中间件，ActiveMQ作为“⽼古董”，市⾯上⽤的已经不多，其它⼏种：
+
+   RabbitMQ：
+   优点：轻量，迅捷，容易部署和使⽤，拥有灵活的路由配置
+   缺点：性能和吞吐量不太理想，不易进⾏⼆次开发
+   RocketMQ：
+   优点：性能好，⾼吞吐量，稳定可靠，有活跃的中⽂社区
+   缺点：兼容性上不是太好
+   Kafka：
+   优点：拥有强⼤的性能及吞吐量，兼容性很好
+   缺点：由于“攒⼀波再处理”导致延迟⽐较⾼
+
+我们的系统是⾯向⽤户的C端系统，具有⼀定的并发量，对性能也有⽐较⾼的要求，所以选择了低延迟、吞吐量⽐
+较⾼，可⽤性⽐较好的RocketMQ。
+
+
+3.RocketMQ有什么优缺点？
+RocketMQ优点：
+
+   单机吞吐量：⼗万级
+   可⽤性：⾮常⾼，分布式架构
+   消息可靠性：经过参数优化配置，消息可以做到0丢失
+   功能⽀持：MQ功能较为完善，还是分布式的，扩展性好
+   ⽀持10亿级别的消息堆积，不会因为堆积导致性能下降
+   源码是Java，⽅便结合公司⾃⼰的业务⼆次开发
+   天⽣为⾦融互联⽹领域⽽⽣，对于可靠性要求很⾼的场景，尤其是电商⾥⾯的订单扣款，以及业务削峰，在
+   ⼤量交易涌⼊时，后端可能⽆法及时处理的情况
+   RoketMQ在稳定性上可能更值得信赖，这些业务场景在阿⾥双11已经经历了多次考验，如果你的业务有上述
+   并发场景，建议可以选择RocketMQ
+
+RocketMQ缺点：
+
+   ⽀持的客户端语⾔不多，⽬前是Java及c++，其中c++不成熟
+   没有在 MQ核⼼中去实现JMS等接⼝，有些系统要迁移需要修改⼤量代码
+4.消息队列有哪些消息模型？
+消息队列有两种模型：队列模型和发布/订阅模型。
+
+  队列模型
+
+这是最初的⼀种消息队列模型，对应着消息队列“发-存-收”的模型。⽣产者往某个队列⾥⾯发送消息，⼀个队列可
+以存储多个⽣产者的消息，⼀个队列也可以有多个消费者，但是消费者之间是竞争关系，也就是说每条消息只能被
+⼀个消费者消费。
+
+
+
+
+  发布/订阅模型
+
+如果需要将⼀份消息数据分发给多个消费者，并且每个消费者都要求收到全量的消息。很显然，队列模型⽆法满⾜
+这个需求。解决的⽅式就是发布/订阅模型。
+
+在发布 - 订阅模型中，消息的发送⽅称为发布者（Publisher），消息的接收⽅称为订阅者（Subscriber），服务
+端存放消息的容器称为主题（Topic）。发布者将消息发送到主题中，订阅者在接收消息之前需要先“订阅主题”。
+“订阅”在这⾥既是⼀个动作，同时还可以认为是主题在消费时的⼀个逻辑副本，每份订阅中，订阅者都可以接收到
+主题的所有消息。
+
+
+
+
+它和 “队列模式” 的异同：⽣产者就是发布者，队列就是主题，消费者就是订阅者，⽆本质区别。唯⼀的不同点在
+于：⼀份消息数据是否可以被多次消费。
+5.那RocketMQ的消息模型呢？
+RocketMQ使⽤的消息模型是标准的发布-订阅模型，在RocketMQ的术语表中，⽣产者、消费者和主题，与发布-
+订阅模型中的概念是完全⼀样的。
+
+RocketMQ本身的消息是由下⾯⼏部分组成：
+
+
+
+
+  Message
+
+Message（消息）就是要传输的信息。
+
+⼀条消息必须有⼀个主题（Topic），主题可以看做是你的信件要邮寄的地址。
+
+⼀条消息也可以拥有⼀个可选的标签（Tag）和额处的键值对，它们可以⽤于设置⼀个业务 Key 并在 Broker 上查
+找此消息以便在开发期间查找问题。
+
+  Topic
+
+Topic（主题）可以看做消息的归类，它是消息的第⼀级类型。⽐如⼀个电商系统可以分为：交易消息、物流消息
+等，⼀条消息必须有⼀个 Topic 。
+
+Topic 与⽣产者和消费者的关系⾮常松散，⼀个 Topic 可以有0个、1个、多个⽣产者向其发送消息，⼀个⽣产者也
+可以同时向不同的 Topic 发送消息。
+
+⼀个 Topic 也可以被 0个、1个、多个消费者订阅。
+
+  Tag
+
+Tag（标签）可以看作⼦主题，它是消息的第⼆级类型，⽤于为⽤户提供额外的灵活性。使⽤标签，同⼀业务模块
+不同⽬的的消息就可以⽤相同 Topic ⽽不同的 Tag 来标识。⽐如交易消息⼜可以分为：交易创建消息、交易完成
+消息等，⼀条消息可以没有 Tag 。
+
+标签有助于保持你的代码⼲净和连贯，并且还可以为 RocketMQ 提供的查询系统提供帮助。
+
+  Group
+RocketMQ中，订阅者的概念是通过消费组（Consumer Group）来体现的。每个消费组都消费主题中⼀份完整的
+消息，不同消费组之间消费进度彼此不受影响，也就是说，⼀条消息被Consumer Group1消费过，也会再给
+Consumer Group2消费。
+
+消费组中包含多个消费者，同⼀个组内的消费者是竞争消费的关系，每个消费者负责消费组内的⼀部分消息。默认
+情况，如果⼀条消息被消费者Consumer1消费了，那同组的其他消费者就不会再收到这条消息。
+
+   Message Queue
+
+Message Queue（消息队列），⼀个 Topic 下可以设置多个消息队列，Topic 包括多个 Message Queue ，如果
+⼀个 Consumer 需要获取 Topic下所有的消息，就要遍历所有的 Message Queue。
+
+RocketMQ还有⼀些其它的Queue——例如ConsumerQueue。
+
+   Offset
+
+在Topic的消费过程中，由于消息需要被不同的组进⾏多次消费，所以消费完的消息并不会⽴即被删除，这就需要
+RocketMQ为每个消费组在每个队列上维护⼀个消费位置（Consumer Offset），这个位置之前的消息都被消费
+过，之后的消息都没有被消费过，每成功消费⼀条消息，消费位置就加⼀。
+
+也可以这么说， Queue 是⼀个⻓度⽆限的数组，Offset 就是下标。
+
+RocketMQ的消息模型中，这些就是⽐较关键的概念了。画张图总结⼀下：
+
+
+
+
+6.消息的消费模式了解吗？
+消息消费模式有两种：Clustering（集群消费）和Broadcasting（⼴播消费）。
+默认情况下就是集群消费，这种模式下 ⼀个消费者组共同消费⼀个主题的多个队列，⼀个队列只会被⼀个消费者消费 ，
+如果某个消费者挂掉，分组内其它消费者会接替挂掉的消费者继续消费。
+
+⽽⼴播消费消息会发给消费者组中的每⼀个消费者进⾏消费。
+
+7.RoctetMQ基本架构了解吗？
+先看图，RocketMQ的基本架构：
+RocketMQ ⼀共有四个部分组成：NameServer，Broker，Producer ⽣产者，Consumer 消费者，它们对应了：
+发现、发、存、收，为了保证⾼可⽤，⼀般每⼀部分都是集群部署的。
+
+8.那能介绍⼀下这四部分吗？
+类⽐⼀下我们⽣活的邮政系统——
+
+邮政系统要正常运⾏，离不开下⾯这四个⻆⾊， ⼀是发信者，⼆ 是收信者， 三是负责暂存传输的邮局， 四是负责
+协调各个地⽅邮局的管理机构。对应到 RocketMQ 中，这四个⻆⾊就是 Producer、 Consumer、 Broker 、
+NameServer。
+NameServer
+
+NameServer 是⼀个⽆状态的服务器，⻆⾊类似于 Kafka使⽤的 Zookeeper，但⽐ Zookeeper 更轻量。
+
+特点：
+
+    每个 NameServer 结点之间是相互独⽴，彼此没有任何信息交互。
+    Nameserver 被设计成⼏乎是⽆状态的，通过部署多个结点来标识⾃⼰是⼀个伪集群，Producer 在发送消息
+    前从 NameServer 中获取 Topic 的路由信息也就是发往哪个 Broker，Consumer 也会定时从 NameServer
+    获取 Topic 的路由信息，Broker 在启动时会向 NameServer 注册，并定时进⾏⼼跳连接，且定时同步维护的
+    Topic 到 NameServer。
+
+功能主要有两个：
+
+    1、和Broker 结点保持⻓连接。
+    2、维护 Topic 的路由信息。
+
+Broker
+
+消息存储和中转⻆⾊，负责存储和转发消息。
+
+    Broker 内部维护着⼀个个 Consumer Queue，⽤来存储消息的索引，真正存储消息的地⽅是
+    CommitLog（⽇志⽂件）。
+    单个 Broker 与所有的 Nameserver 保持着⻓连接和⼼跳，并会定时将 Topic 信息同步到 NameServer，和
+    NameServer 的通信底层是通过 Netty 实现的。
+
+Producer
+
+消息⽣产者，业务端负责发送消息，由⽤户⾃⾏实现和分布式部署。
+
+    Producer由⽤户进⾏分布式部署，消息由Producer通过多种负载均衡模式发送到Broker集群，发送低延
+    时，⽀持快速失败。
+    RocketMQ 提供了三种⽅式发送消息：同步、异步和单向
+    同步发送：同步发送指消息发送⽅发出数据后会在收到接收⽅发回响应之后才发下⼀个数据包。⼀般⽤于重
+    要通知消息，例如重要通知邮件、营销短信。
+    异步发送：异步发送指发送⽅发出数据后，不等接收⽅发回响应，接着发送下个数据包，⼀般⽤于可能链路
+    耗时较⻓⽽对响应时间敏感的业务场景，例如⽤户视频上传后通知启动转码服务。
+    单向发送：单向发送是指只负责发送消息⽽不等待服务器回应且没有回调函数触发，适⽤于某些耗时⾮常短
+    但对可靠性要求并不⾼的场景，例如⽇志收集。
+Consumer
+
+消息消费者，负责消费消息，⼀般是后台系统负责异步消费。
+
+   Consumer也由⽤户部署，⽀持PUSH和PULL两种消费模式，⽀持集群消费和⼴播消费，提供实时的消息订
+   阅机制。
+   Pull：拉取型消费者（Pull Consumer）主动从消息服务器拉取信息，只要批量拉取到消息，⽤户应⽤就会启
+   动消费过程，所以 Pull 称为主动消费型。
+   Push：推送型消费者（Push Consumer）封装了消息的拉取、消费进度和其他的内部维护⼯作，将消息到达
+   时执⾏的回调接⼝留给⽤户应⽤程序来实现。所以 Push 称为被动消费类型，但其实从实现上看还是从消息服
+   务器中拉取消息，不同于 Pull 的是 Push ⾸先要注册消费监听器，当监听器处触发后才开始消费消息。
+
+
+
+
+进阶
+9.如何保证消息的可⽤性/可靠性/不丢失呢？
+消息可能在哪些阶段丢失呢？可能会在这三个阶段发⽣丢失：⽣产阶段、存储阶段、消费阶段。
+
+所以要从这三个阶段考虑：
+⽣产
+
+在⽣产阶段，主要通过请求确认机制，来保证消息的可靠传递。
+
+     1、同步发送的时候，要注意处理响应结果和异常。如果返回响应OK，表示消息成功发送到了Broker，如果
+     响应失败，或者发⽣其它异常，都应该重试。
+     2、异步发送的时候，应该在回调⽅法⾥检查，如果发送失败或者异常，都应该进⾏重试。
+     3、如果发⽣超时的情况，也可以通过查询⽇志的API，来检查是否在Broker存储成功。
+
+存储
+
+存储阶段，可以通过配置可靠性优先的 Broker 参数来避免因为宕机丢消息，简单说就是可靠性优先的场景都应该
+使⽤同步。
+
+     1、消息只要持久化到CommitLog（⽇志⽂件）中，即使Broker宕机，未消费的消息也能重新恢复再消费。
+     2、Broker的刷盘机制：同步刷盘和异步刷盘，不管哪种刷盘都可以保证消息⼀定存储在pagecache中（内存
+     中），但是同步刷盘更可靠，它是Producer发送消息后等数据持久化到磁盘之后再返回响应给Producer。
+     3、Broker通过主从模式来保证⾼可⽤，Broker⽀持Master和Slave同步复制、Master和Slave异步复制模
+     式，⽣产者的消息都是发送给Master，但是消费既可以从Master消费，也可以从Slave消费。同步复制模式
+     可以保证即使Master宕机，消息肯定在Slave中有备份，保证了消息不会丢失。
+
+消费
+
+从Consumer⻆度分析，如何保证消息被成功消费？
+
+     Consumer保证消息成功消费的关键在于确认的时机，不要在收到消息后就⽴即发送消费确认，⽽是应该在执
+     ⾏完所有消费业务逻辑之后，再发送消费确认。因为消息队列维护了消费的位置，逻辑执⾏失败了，没有确
+     认，再去队列拉取消息，就还是之前的⼀条。
+
+10.如何处理消息重复的问题呢？
+对分布式消息队列来说，同时做到确保⼀定投递和不重复投递是很难的，就是所谓的“有且仅有⼀次” 。RocketMQ
+择了确保⼀定投递，保证消息不丢失，但有可能造成消息重复。
+
+处理消息重复问题，主要有业务端⾃⼰保证，主要的⽅式有两种：业务幂等和消息去重。
+
+
+
+
+业务幂等：第⼀种是保证消费逻辑的幂等性，也就是多次调⽤和⼀次调⽤的效果是⼀样的。这样⼀来，不管消息消
+费多少次，对业务都没有影响。
+
+消息去重：第⼆种是业务端，对重复的消息就不再消费了。这种⽅法，需要保证每条消息都有⼀个惟⼀的编号，通
+常是业务相关的，⽐如订单号，消费的记录需要落库，⽽且需要保证和消息确认这⼀步的原⼦性。
+
+具体做法是可以建⽴⼀个消费记录表，拿到这个消息做数据库的insert操作。给这个消息做⼀个唯⼀主键
+（primary key）或者唯⼀约束，那么就算出现重复消费的情况，就会导致主键冲突，那么就不再处理这条消息。
+
+11.怎么处理消息积压？
+发⽣了消息积压，这时候就得想办法赶紧把积压的消息消费完，就得考虑提⾼消费能⼒，⼀般有两种办法：
+消费者扩容：如果当前Topic的Message Queue的数量⼤于消费者数量，就可以对消费者进⾏扩容，增加消
+费者，来提⾼消费能⼒，尽快把积压的消息消费玩。
+消息迁移Queue扩容：如果当前Topic的Message Queue的数量⼩于或者等于消费者数量，这种情况，再扩
+容消费者就没什么⽤，就得考虑扩容Message Queue。可以新建⼀个临时的Topic，临时的Topic多设置⼀些
+Message Queue，然后先⽤⼀些消费者把消费的数据丢到临时的Topic，因为不⽤业务处理，只是转发⼀下
+消息，还是很快的。接下来⽤扩容的消费者去消费新的Topic⾥的数据，消费完了之后，恢复原状。
+12.顺序消息如何实现？
+顺序消息是指消息的消费顺序和产⽣顺序相同，在有些业务逻辑下，必须保证顺序，⽐如订单的⽣成、付款、发
+货，这个消息必须按顺序处理才⾏。
+顺序消息分为全局顺序消息和部分顺序消息，全局顺序消息指某个 Topic 下的所有消息都要保证顺序；
+
+部分顺序消息只要保证每⼀组消息被顺序消费即可，⽐如订单消息，只要保证同⼀个订单 ID 个消息能按顺序消费
+即可。
+
+部分顺序消息
+
+部分顺序消息相对⽐较好实现，⽣产端需要做到把同 ID 的消息发送到同⼀个 Message Queue ；在消费过程中，
+要做到从同⼀个Message Queue读取的消息顺序处理——消费端不能并发处理顺序消息，这样才能达到部分有
+序。
+发送端使⽤ MessageQueueSelector 类来控制 把消息发往哪个 Message Queue 。
+消费端通过使⽤ MessageListenerOrderly 来解决单 Message Queue 的消息被并发处理的问题。
+全局顺序消息
+
+RocketMQ 默认情况下不保证顺序，⽐如创建⼀个 Topic ，默认⼋个写队列，⼋个读队列，这时候⼀条消息可能被
+写⼊任意⼀个队列⾥；在数据的读取过程中，可能有多个 Consumer ，每个 Consumer 也可能启动多个线程并⾏
+处理，所以消息被哪个 Consumer 消费，被消费的顺序和写⼈的顺序是否⼀致是不确定的。
+要保证全局顺序消息， 需要先把 Topic 的读写队列数设置为 ⼀，然后Producer Consumer 的并发设置，也要是
+⼀。简单来说，为了保证整个 Topic全局消息有序，只能消除所有的并发处理，各部分都设置成单线程处理 ，这时
+候就完全牺牲RocketMQ的⾼并发、⾼吞吐的特性了。
+
+
+
+
+13.如何实现消息过滤？
+有两种⽅案：
+
+  ⼀种是在 Broker 端按照 Consumer 的去重逻辑进⾏过滤，这样做的好处是避免了⽆⽤的消息传输到
+  Consumer 端，缺点是加重了 Broker 的负担，实现起来相对复杂。
+  另⼀种是在 Consumer 端过滤，⽐如按照消息设置的 tag 去重，这样的好处是实现起来简单，缺点是有⼤量
+  ⽆⽤的消息到达了 Consumer 端只能丢弃不处理。
+
+⼀般采⽤Cosumer端过滤，如果希望提⾼吞吐量，可以采⽤Broker过滤。
+
+对消息的过滤有三种⽅式：
+
+
+
+
+  根据Tag过滤：这是最常⻅的⼀种，⽤起来⾼效简单
+ DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("CID_EXAMPLE");
+ consumer.subscribe("TOPIC", "TAGA || TAGB || TAGC");
+
+
+     SQL 表达式过滤：SQL表达式过滤更加灵活
+
+
+ DefaultMQPushConsumer consumer = new
+ DefaultMQPushConsumer("please_rename_unique_group_name_4");
+ // 只有订阅的消息有这个属性a, a >=0 and a <= 3
+ consumer.subscribe("TopicTest", MessageSelector.bySql("a between 0 and 3");
+ consumer.registerMessageListener(new MessageListenerConcurrently() {
+       @Override
+       public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs,
+ ConsumeConcurrentlyContext context) {
+              return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
+       }
+ });
+ consumer.start();
+
+
+
+
+     Filter Server ⽅式：最灵活，也是最复杂的⼀种⽅式，允许⽤户⾃定义函数进⾏过滤
+
+14.延时消息了解吗？
+电商的订单超时⾃动取消，就是⼀个典型的利⽤延时消息的例⼦，⽤户提交了⼀个订单，就可以发送⼀个延时消
+息，1h后去检查这个订单的状态，如果还是未付款就取消订单释放库存。
+
+RocketMQ是⽀持延时消息的，只需要在⽣产消息的时候设置消息的延时级别：
+
+
+ // 实例化⼀个⽣产者来产⽣延时消息
+ DefaultMQProducer producer = new DefaultMQProducer("ExampleProducerGroup");
+ // 启动⽣产者
+ producer.start();
+ int totalMessagesToSend = 100;
+ for (int i = 0; i < totalMessagesToSend; i++) {
+           Message message = new Message("TestTopic", ("Hello scheduled message " +
+ i).getBytes());
+           // 设置延时等级3,这个消息将在10s之后发送(现在只⽀持固定的⼏个时间,详看delayTimeLevel)
+           message.setDelayTimeLevel(3);
+           // 发送消息
+           producer.send(message);
+ }
+
+
+但是⽬前RocketMQ⽀持的延时级别是有限的：
+
+
+ private String messageDelayLevel = "1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m
+ 30m 1h 2h";
+RocketMQ怎么实现延时消息的？
+
+简单，⼋个字： 临时存储 + 定时任务 。
+
+Broker收到延时消息了，会先发送到主题（SCHEDULE_TOPIC_XXXX）的相应时间段的Message Queue中，然后
+通过⼀个定时任务轮询这些队列，到期后，把消息投递到⽬标Topic的队列中，然后消费者就可以正常消费这些消
+息。
+
+
+
+
+15.怎么实现分布式消息事务的？半消息？
+半消息：是指暂时还不能被 Consumer 消费的消息，Producer 成功发送到 Broker 端的消息，但是此消息被标记
+为 “暂不可投递” 状态，只有等 Producer 端执⾏完本地事务后经过⼆次确认了之后，Consumer 才能消费此条消
+息。
+
+依赖半消息，可以实现分布式消息事务，其中的关键在于⼆次确认以及消息回查：
+  1、Producer 向 broker 发送半消息
+  2、Producer 端收到响应，消息发送成功，此时消息是半消息，标记为 “不可投递” 状态，Consumer 消费不
+  了。
+  3、Producer 端执⾏本地事务。
+  4、正常情况本地事务执⾏完成，Producer 向 Broker 发送 Commit/Rollback，如果是 Commit，Broker 端
+  将半消息标记为正常消息，Consumer 可以消费，如果是 Rollback，Broker 丢弃此消息。
+  5、异常情况，Broker 端迟迟等不到⼆次确认。在⼀定时间后，会查询所有的半消息，然后到 Producer 端查
+  询半消息的执⾏情况。
+  6、Producer 端查询本地事务的状态
+  7、根据事务的状态提交 commit/rollback 到 broker 端。（5，6，7 是消息回查）
+  8、消费者段消费到消息之后，执⾏本地事务，执⾏本地事务。
+
+16.死信队列知道吗？
+死信队列⽤于处理⽆法被正常消费的消息，即死信消息。
+
+当⼀条消息初次消费失败，消息队列 RocketMQ 会⾃动进⾏消息重试；达到最⼤重试次数后，若消费依然失败，
+则表明消费者在正常情况下⽆法正确地消费该消息，此时，消息队列 RocketMQ 不会⽴刻将消息丢弃，⽽是将其
+发送到该消费者对应的特殊队列中，该特殊队列称为死信队列。
+
+死信消息的特点：
+
+  不会再被消费者正常消费。
+  有效期与正常消息相同，均为 3 天，3 天后会被⾃动删除。因此，需要在死信消息产⽣后的 3 天内及时处
+  理。
+
+死信队列的特点：
+
+  ⼀个死信队列对应⼀个 Group ID， ⽽不是对应单个消费者实例。
+  如果⼀个 Group ID 未产⽣死信消息，消息队列 RocketMQ 不会为其创建相应的死信队列。
+  ⼀个死信队列包含了对应 Group ID 产⽣的所有死信消息，不论该消息属于哪个 Topic。
+
+RocketMQ 控制台提供对死信消息的查询、导出和重发的功能。
+17.如何保证RocketMQ的⾼可⽤？
+NameServer因为是⽆状态，且不相互通信的，所以只要集群部署就可以保证⾼可⽤。
+
+
+
+
+RocketMQ的⾼可⽤主要是在体现在Broker的读和写的⾼可⽤，Broker的⾼可⽤是通过 集群 和 主从 实现的。
+Broker可以配置两种⻆⾊：Master和Slave，Master⻆⾊的Broker⽀持读和写，Slave⻆⾊的Broker只⽀持读，
+Master会向Slave同步消息。
+
+也就是说Producer只能向Master⻆⾊的Broker写⼊消息，Cosumer可以从Master和Slave⻆⾊的Broker读取消
+息。
+
+Consumer 的配置⽂件中，并不需要设置是从 Master 读还是从 Slave读，当 Master 不可⽤或者繁忙的时候，
+Consumer 的读请求会被⾃动切换到从 Slave。有了⾃动切换 Consumer 这种机制，当⼀个 Master ⻆⾊的机器出
+现故障后，Consumer 仍然可以从 Slave 读取消息，不影响 Consumer 读取消息，这就实现了读的⾼可⽤。
+
+如何达到发送端写的⾼可⽤性呢？在创建 Topic 的时候，把 Topic 的多个Message Queue 创建在多个 Broker 组
+上（相同 Broker 名称，不同 brokerId机器组成 Broker 组），这样当 Broker 组的 Master 不可⽤后，其他组
+Master 仍然可⽤， Producer 仍然可以发送消息 RocketMQ ⽬前还不⽀持把Slave⾃动转成 Master ，如果机器资
+源不⾜，需要把 Slave 转成 Master ，则要⼿动停⽌ Slave ⾊的 Broker ，更改配置⽂件，⽤新的配置⽂件启动
+Broker。
+原理
+18.说⼀下RocketMQ的整体⼯作流程？
+简单来说，RocketMQ是⼀个分布式消息队列，也就是 消息队列 + 分布式系统 。
+
+作为消息队列，它是 发 - 存 - 收 的⼀个模型，对应的就是Producer、Broker、Cosumer；作为分布式系统，它要
+有服务端、客户端、注册中⼼，对应的就是Broker、Producer/Consumer、NameServer
+
+所以我们看⼀下它主要的⼯作流程：RocketMQ由NameServer注册中⼼集群、Producer⽣产者集群、Consumer
+消费者集群和若⼲Broker（RocketMQ进程）组成：
+
+ 1. Broker在启动的时候去向所有的NameServer注册，并保持⻓连接，每30s发送⼀次⼼跳
+ 2. Producer在发送消息的时候从NameServer获取Broker服务器地址，根据负载均衡算法选择⼀台服务器来发
+   送消息
+ 3. Conusmer消费消息的时候同样从NameServer获取Broker地址，然后主动拉取消息来消费
+19.为什么RocketMQ不使⽤Zookeeper作为注册中⼼呢？
+Kafka我们都知道采⽤Zookeeper作为注册中⼼——当然也开始逐渐去Zookeeper，RocketMQ不使⽤Zookeeper
+其实主要可能从这⼏⽅⾯来考虑：
+
+ 1. 基于可⽤性的考虑，根据CAP理论，同时最多只能满⾜两个点，⽽Zookeeper满⾜的是CP，也就是说
+   Zookeeper并不能保证服务的可⽤性，Zookeeper在进⾏选举的时候，整个选举的时间太⻓，期间整个集群
+   都处于不可⽤的状态，⽽这对于⼀个注册中⼼来说肯定是不能接受的，作为服务发现来说就应该是为可⽤性
+   ⽽设计。
+ 2. 基于性能的考虑，NameServer本身的实现⾮常轻量，⽽且可以通过增加机器的⽅式⽔平扩展，增加集群的抗
+   压能⼒，⽽Zookeeper的写是不可扩展的，Zookeeper要解决这个问题只能通过划分领域，划分多个
+   Zookeeper集群来解决，⾸先操作起来太复杂，其次这样还是⼜违反了CAP中的A的设计，导致服务之间是不
+   连通的。
+ 3. 持久化的机制来带的问题，ZooKeeper 的 ZAB 协议对每⼀个写请求，会在每个 ZooKeeper 节点上保持写⼀
+   个事务⽇志，同时再加上定期的将内存数据镜像（Snapshot）到磁盘来保证数据的⼀致性和持久性，⽽对于
+   ⼀个简单的服务发现的场景来说，这其实没有太⼤的必要，这个实现⽅案太重了。⽽且本身存储的数据应该
+   是⾼度定制化的。
+ 4. 消息发送应该弱依赖注册中⼼，⽽RocketMQ的设计理念也正是基于此，⽣产者在第⼀次发送消息的时候从
+   NameServer获取到Broker地址后缓存到本地，如果NameServer整个集群不可⽤，短时间内对于⽣产者和消
+   费者并不会产⽣太⼤影响。
+
+20.Broker是怎么保存数据的呢？
+RocketMQ主要的存储⽂件包括CommitLog⽂件、ConsumeQueue⽂件、Indexfile⽂件。
+消息存储的整体的设计：
+
+
+
+
+  CommitLog：消息主体以及元数据的存储主体，存储Producer端写⼊的消息主体内容,消息内容不是定⻓
+  的。单个⽂件⼤⼩默认1G, ⽂件名⻓度为20位，左边补零，剩余为起始偏移量，⽐如
+  00000000000000000000代表了第⼀个⽂件，起始偏移量为0，⽂件⼤⼩为1G=1073741824；当第⼀个⽂件
+  写满了，第⼆个⽂件为00000000001073741824，起始偏移量为1073741824，以此类推。消息主要是顺序
+  写⼊⽇志⽂件，当⽂件满了，写⼊下⼀个⽂件。
+CommitLog⽂件保存于${Rocket_Home}/store/commitlog⽬录中，从图中我们可以明显看出来⽂件名的偏移
+量，每个⽂件默认1G，写满后⾃动⽣成⼀个新的⽂件。
+
+
+
+
+   ConsumeQueue：消息消费队列，引⼊的⽬的主要是提⾼消息消费的性能，由于RocketMQ是基于主题
+   topic的订阅模式，消息消费是针对主题进⾏的，如果要遍历commitlog⽂件中根据topic检索消息是⾮常低效
+   的。
+
+Consumer即可根据ConsumeQueue来查找待消费的消息。其中，ConsumeQueue（逻辑消费队列）作为消费消
+息的索引，保存了指定Topic下的队列消息在CommitLog中的起始物理偏移量offset，消息⼤⼩size和消息Tag的
+HashCode值。
+
+ConsumeQueue⽂件可以看成是基于Topic的CommitLog索引⽂件，故ConsumeQueue⽂件夹的组织⽅式如下：
+topic/queue/file三层组织结构，具体存储路径为：
+$HOME/store/consumequeue/{topic}/{queueId}/{fileName}。同样ConsumeQueue⽂件采取定⻓设计，每⼀
+个条⽬共20个字节，分别为8字节的CommitLog物理偏移量、4字节的消息⻓度、8字节tag hashcode，单个⽂件
+由30W个条⽬组成，可以像数组⼀样随机访问每⼀个条⽬，每个ConsumeQueue⽂件⼤⼩约5.72M；
+
+
+
+
+   IndexFile：IndexFile（索引⽂件）提供了⼀种可以通过key或时间区间来查询消息的⽅法。Index⽂件的存
+   储位置是： {fileName}，⽂件名fileName是以创建时的时间戳命名的，固定的单个IndexFile⽂件⼤⼩约为
+   400M，⼀个IndexFile可以保存 2000W个索引，IndexFile的底层存储设计为在⽂件系统中实现HashMap结
+   构，故RocketMQ的索引⽂件其底层实现为hash索引。
+总结⼀下：RocketMQ采⽤的是混合型的存储结构，即为Broker单个实例下所有的队列共⽤⼀个⽇志数据⽂件（即
+为CommitLog）来存储。
+
+RocketMQ的混合型存储结构(多个Topic的消息实体内容都存储于⼀个CommitLog中)针对Producer和Consumer
+分别采⽤了数据和索引部分相分离的存储结构，Producer发送消息⾄Broker端，然后Broker端使⽤同步或者异步
+的⽅式对消息刷盘持久化，保存⾄CommitLog中。
+
+只要消息被刷盘持久化⾄磁盘⽂件CommitLog中，那么Producer发送的消息就不会丢失。正因为如此，
+Consumer也就肯定有机会去消费这条消息。当⽆法拉取到消息后，可以等下⼀次消息拉取，同时服务端也⽀持⻓
+轮询模式，如果⼀个消息拉取请求未拉取到消息，Broker允许等待30s的时间，只要这段时间内有新消息到达，将
+直接返回给消费端。
+
+这⾥，RocketMQ的具体做法是，使⽤Broker端的后台服务线程—ReputMessageService不停地分发请求并异步构
+建ConsumeQueue（逻辑消费队列）和IndexFile（索引⽂件）数据。
+21.说说RocketMQ怎么对⽂件进⾏读写的？
+RocketMQ对⽂件的读写巧妙地利⽤了操作系统的⼀些⾼效⽂件读写⽅式—— PageCache 、 顺序读写 、 零拷⻉ 。
+
+   PageCache、顺序读取
+
+在RocketMQ中，ConsumeQueue逻辑消费队列存储的数据较少，并且是顺序读取，在page cache机制的预读取
+作⽤下，Consume Queue⽂件的读性能⼏乎接近读内存，即使在有消息堆积情况下也不会影响性能。⽽对于
+CommitLog消息存储的⽇志数据⽂件来说，读取消息内容时候会产⽣较多的随机访问读取，严重影响性能。如果
+选择合适的系统IO调度算法，⽐如设置调度算法为“Deadline”（此时块存储采⽤SSD的话），随机读的性能也会有
+所提升。
+
+⻚缓存（PageCache)是OS对⽂件的缓存，⽤于加速对⽂件的读写。⼀般来说，程序对⽂件进⾏顺序读写的速度⼏
+乎接近于内存的读写速度，主要原因就是由于OS使⽤PageCache机制对读写访问操作进⾏了性能优化，将⼀部分
+的内存⽤作PageCache。对于数据的写⼊，OS会先写⼊⾄Cache内，随后通过异步的⽅式由pdflush内核线程将
+Cache内的数据刷盘⾄物理磁盘上。对于数据的读取，如果⼀次读取⽂件时出现未命中PageCache的情况，OS从
+物理磁盘上访问读取⽂件的同时，会顺序对其他相邻块的数据⽂件进⾏预读取。
+
+   零拷⻉
+
+另外，RocketMQ主要通过MappedByteBuffer对⽂件进⾏读写操作。其中，利⽤了NIO中的FileChannel模型将磁
+盘上的物理⽂件直接映射到⽤户态的内存地址中（这种Mmap的⽅式减少了传统IO，将磁盘⽂件数据在操作系统内
+核地址空间的缓冲区，和⽤户应⽤程序地址空间的缓冲区之间来回进⾏拷⻉的性能开销），将对⽂件的操作转化为
+直接对内存地址进⾏操作，从⽽极⼤地提⾼了⽂件的读写效率（正因为需要使⽤内存映射机制，故RocketMQ的⽂
+件存储都使⽤定⻓结构来存储，⽅便⼀次将整个⽂件映射⾄内存）。
+
+说说什么是零拷⻉?
+
+在操作系统中，使⽤传统的⽅式，数据需要经历⼏次拷⻉，还要经历⽤户态/内核态切换。
+ 1. 从磁盘复制数据到内核态内存；
+ 2. 从内核态内存复制到⽤户态内存；
+ 3. 然后从⽤户态内存复制到⽹络驱动的内核态内存；
+ 4. 最后是从⽹络驱动的内核态内存复制到⽹卡中进⾏传输。
+
+所以，可以通过零拷⻉的⽅式，减少⽤户态与内核态的上下⽂切换和内存拷⻉的次数，⽤来提升I/O的性能。零拷
+⻉⽐较常⻅的实现⽅式是mmap，这种机制在Java中是通过MappedByteBuffer实现的。
+
+
+
+
+22.消息刷盘怎么实现的呢？
+RocketMQ提供了两种刷盘策略：同步刷盘和异步刷盘
+
+  同步刷盘：在消息达到Broker的内存之后，必须刷到commitLog⽇志⽂件中才算成功，然后返回Producer数
+  据已经发送成功。
+  异步刷盘：异步刷盘是指消息达到Broker内存后就返回Producer数据已经发送成功，会唤醒⼀个线程去将数
+  据持久化到CommitLog⽇志⽂件中。
+
+Broker 在消息的存取时直接操作的是内存（内存映射⽂件），这可以提供系统的吞吐量，但是⽆法避免机器掉电
+时数据丢失，所以需要持久化到磁盘中。
+
+刷盘的最终实现都是使⽤NIO中的 MappedByteBuffer.force() 将映射区的数据写⼊到磁盘，如果是同步刷盘的
+话，在Broker把消息写到CommitLog映射区后，就会等待写⼊完成。
+
+异步⽽⾔，只是唤醒对应的线程，不保证执⾏的时机，流程如图所示。
+22.能说下 RocketMQ 的负载均衡是如何实现的？
+RocketMQ中的负载均衡都在Client端完成，具体来说的话，主要可以分为Producer端发送消息时候的负载均衡和
+Consumer端订阅消息的负载均衡。
+
+Producer的负载均衡
+
+Producer端在发送消息的时候，会先根据Topic找到指定的TopicPublishInfo，在获取了TopicPublishInfo路由信
+息后，RocketMQ的客户端在默认⽅式下selectOneMessageQueue()⽅法会从TopicPublishInfo中的
+messageQueueList中选择⼀个队列（MessageQueue）进⾏发送消息。具这⾥有⼀个sendLatencyFaultEnable
+开关变量，如果开启，在随机递增取模的基础上，再过滤掉not available的Broker代理。
+所谓的"latencyFaultTolerance"，是指对之前失败的，按⼀定的时间做退避。例如，如果上次请求的latency超过
+550Lms，就退避3000Lms；超过1000L，就退避60000L；如果关闭，采⽤随机递增取模的⽅式选择⼀个队列
+（MessageQueue）来发送消息，latencyFaultTolerance机制是实现消息发送⾼可⽤的核⼼关键所在。
+
+Consumer的负载均衡
+
+在RocketMQ中，Consumer端的两种消费模式（Push/Pull）都是基于拉模式来获取消息的，⽽在Push模式只是
+对pull模式的⼀种封装，其本质实现为消息拉取线程在从服务器拉取到⼀批消息后，然后提交到消息消费线程池
+后，⼜“⻢不停蹄”的继续向服务器再次尝试拉取消息。如果未拉取到消息，则延迟⼀下⼜继续拉取。在两种基于拉
+模式的消费⽅式（Push/Pull）中，均需要Consumer端知道从Broker端的哪⼀个消息队列中去获取消息。因此，
+有必要在Consumer端来做负载均衡，即Broker端中多个MessageQueue分配给同⼀个ConsumerGroup中的哪些
+Consumer消费。
+
+ 1. Consumer端的⼼跳包发送
+
+在Consumer启动后，它就会通过定时任务不断地向RocketMQ集群中的所有Broker实例发送⼼跳包（其中包含
+了，消息消费分组名称、订阅关系集合、消息通信模式和客户端id的值等信息）。Broker端在收到Consumer的⼼
+跳消息后，会将它维护在ConsumerManager的本地缓存变量—consumerTable，同时并将封装后的客户端⽹络
+通道信息保存在本地缓存变量—channelInfoTable中，为之后做Consumer端的负载均衡提供可以依据的元数据信
+息。
+
+ 2. Consumer端实现负载均衡的核⼼类—RebalanceImpl
+
+在Consumer实例的启动流程中的启动MQClientInstance实例部分，会完成负载均衡服务线程—
+RebalanceService的启动（每隔20s执⾏⼀次）。
+
+通过查看源码可以发现，RebalanceService线程的run()⽅法最终调⽤的是RebalanceImpl类的rebalanceByTopic()
+⽅法，这个⽅法是实现Consumer端负载均衡的核⼼。
+
+rebalanceByTopic()⽅法会根据消费者通信类型为“⼴播模式”还是“集群模式”做不同的逻辑处理。这⾥主要来看下
+集群模式下的主要处理流程：
+(1) 从rebalanceImpl实例的本地缓存变量—topicSubscribeInfoTable中，获取该Topic主题下的消息消费队列集合
+（mqSet）；
+(2) 根据topic和consumerGroup为参数调⽤mQClientFactory.findConsumerIdList()⽅法向Broker端发送通信请
+求，获取该消费组下消费者Id列表；
+
+(3) 先对Topic下的消息消费队列、消费者Id排序，然后⽤消息队列分配策略算法（默认为：消息队列的平均分配算
+法），计算出待拉取的消息队列。这⾥的平均分配算法，类似于分⻚的算法，将所有MessageQueue排好序类似
+于记录，将所有消费端Consumer排好序类似⻚数，并求出每⼀⻚需要包含的平均size和每个⻚⾯记录的范围
+range，最后遍历整个range⽽计算出当前Consumer端应该分配到的的MessageQueue。
+
+
+
+
+(4) 然后，调⽤updateProcessQueueTableInRebalance()⽅法，具体的做法是，先将分配到的消息队列集合
+（mqSet）与processQueueTable做⼀个过滤⽐对。
+    上图中processQueueTable标注的红⾊部分，表示与分配到的消息队列集合mqSet互不包含。将这些队列设
+    置Dropped属性为true，然后查看这些队列是否可以移除出processQueueTable缓存变量，这⾥具体执⾏
+    removeUnnecessaryMessageQueue()⽅法，即每隔1s 查看是否可以获取当前消费处理队列的锁，拿到的话
+    返回true。如果等待1s后，仍然拿不到当前消费处理队列的锁则返回false。如果返回true，则从
+    processQueueTable缓存变量中移除对应的Entry；
+    上图中processQueueTable的绿⾊部分，表示与分配到的消息队列集合mqSet的交集。判断该
+    ProcessQueue是否已经过期了，在Pull模式的不⽤管，如果是Push模式的，设置Dropped属性为true，并且
+    调⽤removeUnnecessaryMessageQueue()⽅法，像上⾯⼀样尝试移除Entry；
+    最后，为过滤后的消息队列集合（mqSet）中的每个MessageQueue创建⼀个ProcessQueue对象并存⼊
+    RebalanceImpl的processQueueTable队列中（其中调⽤RebalanceImpl实例的
+    computePullFromWhere(MessageQueue mq)⽅法获取该MessageQueue对象的下⼀个进度消费值
+    offset，随后填充⾄接下来要创建的pullRequest对象属性中），并创建拉取请求对象—pullRequest添加到拉
+    取列表—pullRequestList中，最后执⾏dispatchPullRequest()⽅法，将Pull消息的请求对象PullRequest依次
+    放⼊PullMessageService服务线程的阻塞队列pullRequestQueue中，待该服务线程取出后向Broker端发起
+    Pull消息的请求。其中，可以重点对⽐下，RebalancePushImpl和RebalancePullImpl两个实现类的
+    dispatchPullRequest()⽅法不同，RebalancePullImpl类⾥⾯的该⽅法为空。
+
+消息消费队列在同⼀消费组不同消费者之间的负载均衡，其核⼼设计理念是在⼀个消息消费队列在同⼀时间只允许
+被同⼀消费组内的⼀个消费者消费，⼀个消息消费者能同时消费多个消息队列。
+
+
+23.RocketMQ消息⻓轮询了解吗？
+所谓的⻓轮询，就是Consumer 拉取消息，如果对应的 Queue 如果没有数据，Broker 不会⽴即返回，⽽是把
+PullReuqest hold起来，等待 queue 有了消息后，或者⻓轮询阻塞时间到了，再重新处理该 queue 上的所有
+PullRequest。
+     PullMessageProcessor#processRequest
+
+
+ //如果没有拉到数据
+ case ResponseCode.PULL_NOT_FOUND:
+ // broker 和 consumer 都允许 suspend，默认开启
+ if (brokerAllowSuspend && hasSuspendFlag) {
+      long pollingTimeMills = suspendTimeoutMillisLong;
+      if (!this.brokerController.getBrokerConfig().isLongPollingEnable()) {
+           pollingTimeMills =
+ this.brokerController.getBrokerConfig().getShortPollingTimeMills();
+      }
+
+
+      String topic = requestHeader.getTopic();
+      long offset = requestHeader.getQueueOffset();
+      int queueId = requestHeader.getQueueId();
+      //封装⼀个PullRequest
+      PullRequest pullRequest = new PullRequest(request, channel, pollingTimeMills,
+               this.brokerController.getMessageStore().now(), offset, subscriptionData,
+ messageFilter);
+      //把PullRequest挂起来
+      this.brokerController.getPullRequestHoldService().suspendPullRequest(topic,
+ queueId, pullRequest);
+      response = null;
+      break;
+ }
+
+
+挂起的请求，有⼀个服务线程会不停地检查，看queue中是否有数据，或者超时。
+
+     PullRequestHoldService#run()
+
+
+ @Override
+ public void run() {
+      log.info("{} service started", this.getServiceName());
+      while (!this.isStopped()) {
+          try {
+              if (this.brokerController.getBrokerConfig().isLongPollingEnable()) {
+                  this.waitForRunning(5 * 1000);
+              } else {
+
+
+ this.waitForRunning(this.brokerController.getBrokerConfig().getShortPollingTimeMills())
+ ;
+              }
+
+
+              long beginLockTimestamp = this.systemClock.now();
+              //检查hold住的请求
+              this.checkHoldRequest();
+              long costTime = this.systemClock.now() - beginLockTimestamp;
+              if (costTime > 5 * 1000) {
+                  log.info("[NOTIFYME] check hold request cost {} ms.", costTime);
+              }
+          } catch (Throwable e) {
+              log.warn(this.getServiceName() + " service has exception. ", e);
+          }
+      }
+
+
+      log.info("{} service end", this.getServiceName());
+ }
+
+
+
+
+没有什么使我停留——除了⽬的，纵然岸旁有玫瑰、有绿荫、有宁静的港湾，我是不系之⾈。
+
+系列内容：
+
+     ⾯渣逆袭 Java SE 篇                     !
+     ⾯渣逆袭 Java 集合框架篇                            !
+     ⾯渣逆袭 Java 并发编程篇                            !
+     ⾯渣逆袭 JVM 篇               !
+     ⾯渣逆袭 Spring 篇                  !
+     ⾯渣逆袭 Redis 篇                   !
+     ⾯渣逆袭 MyBatis 篇                     !
+     ⾯渣逆袭 MySQL 篇                       !
+     ⾯渣逆袭操作系统篇                          !
+     ⾯渣逆袭计算机⽹络篇                             !
+     ⾯渣逆袭RocketMQ篇                          !
+图⽂详解 RocketMQ ⾯试⾼频题，这次吊打⾯试官，我觉得稳了（⼿动 dog）。整理：沉默王⼆，戳转载链
+接，作者：三分恶，戳原⽂链接。
+
