@@ -7,6 +7,7 @@ import yaml
 from .golden_case import CITATION_POLICIES, OUTCOMES
 from .paths import display_repo_path, reading_model_path, resolve_authoring_path
 from ..core.models import (
+    GOLDEN_CLAIM_SCHEMA_VERSION,
     GOLDEN_CASE_SCHEMA_VERSION,
     GOLDEN_SCHEMA_VERSION,
     PAPER_PACK_SCHEMA_VERSION,
@@ -31,6 +32,9 @@ REMOVED_CASE_FIELDS = {
     "compatibility_projection",
 }
 
+REMOVED_EXPECTATION_FIELDS = {"papers", "evidence", "claims"}
+SUPPORTED_LOCATION_PREFIXES = ("page_ref_", "section_ref_", "table_ref_", "figure_ref_")
+
 
 def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None) -> GoldenDataset:
     manifest_path = Path(manifest_path).resolve()
@@ -51,7 +55,12 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
         cases.extend(child_map(case) for case in as_list(loaded.get("cases")))
 
     _validate_packs(packs)
-    _validate_cases(cases, packs)
+    claim_documents = [
+        _load_yaml(resolve_authoring_path(manifest_path, path))
+        for path in as_list(manifest.get("claim_files"))
+    ]
+    claims = _normalized_claims(claim_documents, packs)
+    _validate_cases(cases, packs, claims)
     paper_records = _normalized_paper_records(packs, manifest_path, root)
     anchors = _normalized_anchors(packs)
     citation_edges = [edge for pack in packs for edge in as_list(pack.get("citation_edges"))]
@@ -67,6 +76,7 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
         anchors_by_id=anchors,
         citation_edges=citation_edges,
         reading_models_by_paper_id=reading_models,
+        claims_by_id=claims,
         load_warnings=warnings,
     )
 
@@ -123,12 +133,12 @@ def _validate_packs(packs: list[JsonMap]) -> None:
                 )
 
 
-def _validate_cases(cases: list[JsonMap], packs: list[JsonMap]) -> None:
+def _validate_cases(
+    cases: list[JsonMap],
+    packs: list[JsonMap],
+    claims_by_id: dict[str, JsonMap],
+) -> None:
     packs_by_id = {str(pack["id"]): pack for pack in packs}
-    anchors_by_pack = {
-        pack_id: {str(child_map(anchor).get("id")) for anchor in as_list(pack.get("anchors"))}
-        for pack_id, pack in packs_by_id.items()
-    }
     papers_by_pack = {
         pack_id: {str(child_map(paper).get("id")) for paper in as_list(pack.get("papers"))}
         for pack_id, pack in packs_by_id.items()
@@ -158,24 +168,137 @@ def _validate_cases(cases: list[JsonMap], packs: list[JsonMap]) -> None:
             if not str(message.get("content") or "").strip():
                 raise ValueError(f"case {case_id} has an empty message")
         expectation = child_map(case.get("expect"))
+        removed_expectations = sorted(REMOVED_EXPECTATION_FIELDS & set(expectation))
+        if removed_expectations:
+            raise ValueError(
+                f"case {case_id} contains removed v2 expectations: {removed_expectations}"
+            )
         if expectation.get("outcome") not in OUTCOMES:
             raise ValueError(f"case {case_id} has invalid outcome {expectation.get('outcome')!r}")
         if expectation.get("citations", "optional") not in CITATION_POLICIES:
             raise ValueError(f"case {case_id} has invalid citation policy")
-        for bucket in ("required", "forbidden"):
-            for paper_id in as_list(child_map(expectation.get("papers")).get(bucket)):
-                if paper_id not in papers_by_pack[pack_id]:
-                    raise ValueError(f"case {case_id} references unknown paper {paper_id}")
-            for anchor_id in as_list(child_map(expectation.get("evidence")).get(bucket)):
-                if anchor_id not in anchors_by_pack[pack_id]:
-                    raise ValueError(f"case {case_id} references unknown anchor {anchor_id}")
-        for raw_claim in as_list(expectation.get("claims")):
+        required_claims = [
+            str(claim_id).strip()
+            for claim_id in as_list(expectation.get("required_claims"))
+            if str(claim_id).strip()
+        ]
+        if not required_claims:
+            raise ValueError(f"case {case_id} requires at least one Golden claim")
+        if len(set(required_claims)) != len(required_claims):
+            raise ValueError(f"case {case_id} contains duplicate required claims")
+        for claim_id in required_claims:
+            claim = claims_by_id.get(claim_id)
+            if claim is None:
+                raise ValueError(f"case {case_id} references unknown claim {claim_id}")
+            claim_papers = {
+                str(child_map(item).get("paper_id") or "")
+                for item in as_list(claim.get("required_evidence"))
+            }
+            if not claim_papers <= papers_by_pack[pack_id]:
+                raise ValueError(
+                    f"case {case_id} claim {claim_id} uses papers outside pack {pack_id}"
+                )
+
+
+def _normalized_claims(
+    documents: list[JsonMap],
+    packs: list[JsonMap],
+) -> dict[str, JsonMap]:
+    if not documents:
+        raise ValueError("manifest requires at least one claim_files entry")
+    known_papers = {
+        str(child_map(paper).get("id"))
+        for pack in packs
+        for paper in as_list(pack.get("papers"))
+        if child_map(paper).get("id")
+    }
+    claims: dict[str, JsonMap] = {}
+    for document in documents:
+        if document.get("schema_version") != GOLDEN_CLAIM_SCHEMA_VERSION:
+            raise ValueError(
+                f"unsupported Golden claim schema: {document.get('schema_version')!r}"
+            )
+        raw_claims = document.get("claims")
+        if not isinstance(raw_claims, dict) or not raw_claims:
+            raise ValueError("Golden claim file requires a non-empty claims mapping")
+        for raw_claim_id, raw_claim in raw_claims.items():
+            claim_id = str(raw_claim_id).strip()
             claim = child_map(raw_claim)
-            if not str(claim.get("text") or "").strip():
-                raise ValueError(f"case {case_id} contains a claim without text")
-            for anchor_id in as_list(claim.get("evidence")):
-                if anchor_id not in anchors_by_pack[pack_id]:
-                    raise ValueError(f"case {case_id} claim references unknown anchor {anchor_id}")
+            if not claim_id or claim_id in claims:
+                raise ValueError(f"invalid or duplicate Golden claim id: {claim_id!r}")
+            statement = str(claim.get("statement") or "").strip()
+            if not statement:
+                raise ValueError(f"Golden claim {claim_id} requires a statement")
+            requirements: list[JsonMap] = []
+            for index, raw_requirement in enumerate(
+                as_list(claim.get("required_evidence")), start=1
+            ):
+                requirement = child_map(raw_requirement)
+                paper_id = str(requirement.get("paper_id") or "").strip()
+                if paper_id not in known_papers:
+                    raise ValueError(
+                        f"Golden claim {claim_id} requirement {index} references unknown paper {paper_id}"
+                    )
+                locations = [
+                    str(item).strip()
+                    for item in as_list(requirement.get("accepted_locations"))
+                    if str(item).strip()
+                ]
+                if not locations or len(locations) != len(set(locations)):
+                    raise ValueError(
+                        f"Golden claim {claim_id} requirement {index} requires unique accepted locations"
+                    )
+                invalid = [
+                    location
+                    for location in locations
+                    if not location.startswith(SUPPORTED_LOCATION_PREFIXES)
+                ]
+                if invalid:
+                    raise ValueError(
+                        f"Golden claim {claim_id} has unsupported locations: {invalid}"
+                    )
+                requirements.append({
+                    "paper_id": paper_id,
+                    "accepted_locations": locations,
+                })
+            if not requirements:
+                raise ValueError(f"Golden claim {claim_id} requires evidence")
+            requirement_papers = [str(item["paper_id"]) for item in requirements]
+            if len(requirement_papers) != len(set(requirement_papers)):
+                raise ValueError(
+                    f"Golden claim {claim_id} has duplicate paper evidence requirements"
+                )
+            forbidden = [
+                str(item).strip()
+                for item in as_list(claim.get("forbidden_paper_ids"))
+                if str(item).strip()
+            ]
+            unknown_forbidden = sorted(set(forbidden) - known_papers)
+            if unknown_forbidden:
+                raise ValueError(
+                    f"Golden claim {claim_id} has unknown forbidden papers: {unknown_forbidden}"
+                )
+            required_papers = {str(item["paper_id"]) for item in requirements}
+            overlap = sorted(required_papers & set(forbidden))
+            if overlap:
+                raise ValueError(
+                    f"Golden claim {claim_id} both requires and forbids papers: {overlap}"
+                )
+            fact_keys = [
+                str(item).strip()
+                for item in as_list(claim.get("fact_keys"))
+                if str(item).strip()
+            ]
+            if len(fact_keys) != len(set(fact_keys)):
+                raise ValueError(f"Golden claim {claim_id} has duplicate fact keys")
+            claims[claim_id] = {
+                "claim_id": claim_id,
+                "statement": statement,
+                "required_evidence": requirements,
+                "forbidden_paper_ids": list(dict.fromkeys(forbidden)),
+                "fact_keys": fact_keys,
+            }
+    return claims
 
 
 def _normalized_paper_records(

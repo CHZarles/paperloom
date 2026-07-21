@@ -75,6 +75,7 @@ class QdrantImpactBenchmarkTest(unittest.TestCase):
             cls.config.saved_query_fills,
             cls.config.default_native_top_k,
             cls.config.max_top_k,
+            cls.config.required_anchor_ids_by_case,
         )
 
     def test_frozen_workload_combines_primary_and_explicit_fill(self) -> None:
@@ -183,7 +184,7 @@ class QdrantImpactBenchmarkTest(unittest.TestCase):
         eligible_case_count = 0
         for case in self.dataset.cases:
             case_id = str(case["id"])
-            required = set(case.get("expect", {}).get("evidence", {}).get("required", []))
+            required = set(self.config.required_anchor_ids_by_case.get(case_id, ()))
             if not required or case_id not in cases_with_queries:
                 continue
             matched = required & hits_by_case[case_id]
@@ -552,6 +553,7 @@ class QdrantImpactBenchmarkTest(unittest.TestCase):
             "query_id": "bert_transformer_role_001:find:01",
             "case_id": "bert_transformer_role_001",
             "relevant_anchor_ids": [anchor_id],
+            "case_required_anchor_ids": [anchor_id],
             "modes": {
                 "bm25": mode(hit),
                 "qdrant_sparse": mode(miss),

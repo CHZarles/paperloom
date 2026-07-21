@@ -8,7 +8,6 @@ import yaml
 
 from ..core.models import GoldenDataset, JsonMap, as_list, child_map
 from ..corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
-from ..corpus.pages import contains_normalized_phrase, normalize_text, page_matches
 from .golden_case import paper_ids_for_case
 
 
@@ -114,7 +113,7 @@ def product_reader_for_case(
         scope_paper_ids=list(mapping.values()),
         cancel_check=cancel_check,
     )
-    return GoldenJavaCorpusReader(delegate=delegate, dataset=dataset, mapping=mapping)
+    return GoldenJavaCorpusReader(delegate=delegate, mapping=mapping)
 
 
 @dataclass
@@ -122,7 +121,6 @@ class GoldenJavaCorpusReader:
     """Translate stable Golden identities around the product Java/Qdrant corpus path."""
 
     delegate: JavaCorpusGatewayReader
-    dataset: GoldenDataset
     mapping: dict[str, str]
     reverse_mapping: dict[str, str] = field(init=False)
 
@@ -149,9 +147,6 @@ class GoldenJavaCorpusReader:
         for raw in as_list(response.get("items")):
             item = dict(child_map(raw))
             item["paper_id"] = self._golden_id(item.get("paper_id"))
-            matched = self._matched_anchor_ids(item)
-            item["matched_anchor_ids"] = matched
-            item["matched_anchor_id"] = matched[0] if matched else None
             items.append(item)
         return {
             **response,
@@ -193,22 +188,6 @@ class GoldenJavaCorpusReader:
                 f"Java returned a paper outside the mapped product scope: {product_id}"
             )
         return self.reverse_mapping[product_id]
-
-    def _matched_anchor_ids(self, evidence: JsonMap) -> list[str]:
-        paper_id = str(evidence.get("paper_id") or "")
-        page = evidence.get("page")
-        text = normalize_text(str(evidence.get("span_text") or ""))
-        return [
-            anchor_id
-            for anchor_id, anchor in self.dataset.anchors_by_id.items()
-            if str(anchor.get("paper_id") or "") == paper_id
-            and page_matches(child_map(anchor.get("element")).get("page"), page)
-            and contains_normalized_phrase(
-                text,
-                normalize_text(str(child_map(anchor.get("selector")).get("exact_text") or "")),
-            )
-        ]
-
 
 def _positive_int(value: object, field_name: str) -> int:
     try:

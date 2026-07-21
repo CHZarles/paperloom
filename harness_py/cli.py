@@ -8,14 +8,27 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
+from .core.models import as_list, child_map
 from .corpus.gateway import JavaCorpusGateway
 from .evaluation.audit import audit_dataset
+from .evaluation.claim_audit import audit_claim_locations
+from .evaluation.claim_evidence import (
+    generate_semantic_judgments,
+    load_judge_gate,
+    load_semantic_judgments,
+)
 from .evaluation.dataset import load_dataset
 from .evaluation.golden_fixture import GoldenFixtureHarness
 from .evaluation.golden_case import case_question, conversation_state_for_case
-from .evaluation.judge import LLMJudge, evaluate_calibration, load_calibration_cases
+from .evaluation.judge import (
+    JUDGE_PROMPT_VERSION,
+    LLMJudge,
+    evaluate_calibration,
+    load_calibration_cases,
+)
 from .evaluation.judge_model import MiniMaxJudgeModel
 from .evaluation.product_runner import (
+    GoldenJavaCorpusReader,
     load_product_corpus_map,
     product_reader_for_case,
     validate_product_scope,
@@ -37,12 +50,30 @@ def main(argv: list[str] | None = None) -> int:
         "--out",
         default="research/golden-data/local-runs/stable-anchor-audit.json",
     )
+    claim_audit_parser = subcommands.add_parser(
+        "claim-audit",
+        help="Resolve every accepted Golden claim location through the product corpus API.",
+    )
+    claim_audit_parser.add_argument("--product-corpus-map", required=True)
+    claim_audit_parser.add_argument("--out", required=True)
     rescore_parser = subcommands.add_parser(
         "rescore",
         help="Rescore saved harness_run.json artifacts without calling a model.",
     )
     rescore_parser.add_argument("--runs", required=True)
     rescore_parser.add_argument("--out", required=True)
+    rescore_parser.add_argument("--semantic-judgments")
+    rescore_parser.add_argument("--calibration-report")
+    rescore_parser.add_argument("--holdout-report")
+    rescore_parser.add_argument("--candidates-out")
+    semantic_parser = subcommands.add_parser(
+        "judge-saved-runs",
+        help="Generate offline claim/block judgments for saved runs without rerunning the agent.",
+    )
+    semantic_parser.add_argument("--runs", required=True)
+    semantic_parser.add_argument("--out", required=True)
+    semantic_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    semantic_parser.add_argument("--max-tokens", type=int, default=1200)
     agent_parser = subcommands.add_parser(
         "agent-run",
         help="Run the real tool-using agent through the Java/Qdrant product corpus.",
@@ -76,13 +107,52 @@ def main(argv: list[str] | None = None) -> int:
         runs = [harness.run_case(dataset, case) for case in dataset.cases]
         report = BehaviorScorer().score_dataset(dataset, runs)
         print(json.dumps(report, indent=2, sort_keys=True))
-        return 0 if report["failed_count"] == 0 else 1
+        return 0 if report["failed_count"] == 0 and report["review_required_count"] == 0 else 1
     if args.command == "audit":
         report = audit_dataset(load_dataset(args.manifest))
         target = Path(args.out)
         target.parent.mkdir(parents=True, exist_ok=True)
         _write_json(target, report)
         print(json.dumps(report, indent=2, sort_keys=True))
+        return 0 if report["failed_count"] == 0 else 1
+    if args.command == "claim-audit":
+        try:
+            target = Path(args.out)
+            _require_new_path(target)
+            dataset = load_dataset(args.manifest)
+            corpus_map = load_product_corpus_map(args.product_corpus_map, dataset)
+            required_papers = {
+                str(child_map(item).get("paper_id") or "")
+                for claim in dataset.claims_by_id.values()
+                for item in as_list(claim.get("required_evidence"))
+            }
+            missing = sorted(
+                required_papers - set(corpus_map.product_paper_ids_by_golden_id)
+            )
+            if missing:
+                raise ValueError(f"product corpus map is missing claim papers: {missing}")
+            mapping = {
+                paper_id: corpus_map.product_paper_ids_by_golden_id[paper_id]
+                for paper_id in required_papers
+            }
+            delegate = JavaCorpusGateway().reader(
+                request_id=f"golden-claim-audit-{uuid4().hex}",
+                conversation_id=f"golden-claim-audit-{uuid4().hex}",
+                user_id=corpus_map.user_id,
+                scope_paper_ids=list(mapping.values()),
+            )
+            reader = GoldenJavaCorpusReader(delegate, mapping)
+            report = audit_claim_locations(dataset, reader)
+        except Exception as error:
+            print(json.dumps({
+                "error": "claim_location_audit_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(target, report)
+        print(json.dumps({"out": str(target), "claim_location_audit": report}, indent=2))
         return 0 if report["failed_count"] == 0 else 1
     if args.command == "rescore":
         dataset = load_dataset(args.manifest)
@@ -92,6 +162,27 @@ def main(argv: list[str] | None = None) -> int:
                 _load_saved_case_run(runs_root, str(case["id"]))
                 for case in dataset.cases
             ]
+            semantic = None
+            gate = None
+            semantic_options = (
+                args.semantic_judgments,
+                args.calibration_report,
+                args.holdout_report,
+            )
+            if any(semantic_options) and not all(semantic_options):
+                raise ValueError(
+                    "--semantic-judgments, --calibration-report, and --holdout-report "
+                    "must be supplied together"
+                )
+            if args.semantic_judgments:
+                semantic = load_semantic_judgments(args.semantic_judgments, dataset, runs)
+                gate = load_judge_gate(args.calibration_report, args.holdout_report)
+            target = Path(args.out)
+            _require_new_path(target)
+            if args.candidates_out:
+                _require_new_path(Path(args.candidates_out))
+            report = BehaviorScorer(semantic, gate).score_dataset(dataset, runs)
+            report["source_run_directory"] = str(runs_root.resolve())
         except (OSError, ValueError, json.JSONDecodeError) as error:
             print(json.dumps({
                 "error": "saved_run_rescore_failed",
@@ -99,16 +190,57 @@ def main(argv: list[str] | None = None) -> int:
                 "message": str(error),
             }, indent=2, sort_keys=True), file=sys.stderr)
             return 2
-        report = BehaviorScorer().score_dataset(dataset, runs)
-        target = Path(args.out)
         target.parent.mkdir(parents=True, exist_ok=True)
         _write_json(target, report)
+        if args.candidates_out:
+            candidate_target = Path(args.candidates_out)
+            candidate_target.parent.mkdir(parents=True, exist_ok=True)
+            _write_json(candidate_target, {
+                "schema_version": "harness-claim-location-candidates/v1",
+                "dataset_id": dataset.manifest.get("dataset_id"),
+                "score_report": str(target),
+                "candidates": report["review_candidates"],
+            })
         print(json.dumps({
             "out": str(target),
             "runs": str(runs_root),
             "score_report": report,
         }, indent=2, sort_keys=True))
-        return 0 if report["failed_count"] == 0 else 1
+        return 0 if report["failed_count"] == 0 and report["review_required_count"] == 0 else 1
+    if args.command == "judge-saved-runs":
+        dataset = load_dataset(args.manifest)
+        runs_root = Path(args.runs)
+        target = Path(args.out)
+        try:
+            _require_new_path(target)
+            runs = [
+                _load_saved_case_run(runs_root, str(case["id"]))
+                for case in dataset.cases
+            ]
+            provider, model = _judge_model(args.provider_source)
+            report = generate_semantic_judgments(
+                dataset,
+                runs,
+                LLMJudge(model, max_tokens=args.max_tokens),
+                judge_metadata=provider.public_diagnostics(),
+                prompt_version=JUDGE_PROMPT_VERSION,
+            )
+        except Exception as error:
+            print(json.dumps({
+                "error": "saved_run_judgment_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(target, report)
+        print(json.dumps({
+            "out": str(target),
+            "runs": str(runs_root),
+            "case_count": len(report["cases"]),
+            "judge": report["judge"],
+        }, indent=2, sort_keys=True))
+        return 0
     if args.command == "agent-run":
         dataset = load_dataset(args.manifest)
         selected = set(args.case_id)
@@ -122,6 +254,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         cases = [case for case in dataset.cases if not selected or case.get("id") in selected]
         try:
+            _require_new_path(Path(args.out))
             corpus_map = load_product_corpus_map(args.product_corpus_map, dataset)
             validate_product_scope(dataset, cases, corpus_map)
             corpus_gateway = JavaCorpusGateway()
@@ -172,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
         }, indent=2, sort_keys=True))
         if args.eval_dump and harness.eval_capture_failures:
             return 2
-        return 0 if report["failed_count"] == 0 else 1
+        return 0 if report["failed_count"] == 0 and report["review_required_count"] == 0 else 1
     if args.command == "serve":
         serve(
             host=args.host,
@@ -183,6 +316,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "judge-calibrate":
         try:
+            out = Path(args.out)
+            _require_new_path(out)
             calibration = load_calibration_cases(args.labels)
             provider, model = _judge_model(args.provider_source)
         except Exception as error:
@@ -197,7 +332,6 @@ def main(argv: list[str] | None = None) -> int:
             LLMJudge(model, max_tokens=args.max_tokens),
             judge_metadata=provider.public_diagnostics(),
         )
-        out = Path(args.out)
         out.mkdir(parents=True, exist_ok=True)
         report_path = out / "agreement_report.json"
         _write_json(report_path, report)
@@ -246,7 +380,7 @@ def _dataset_with_cases(dataset, cases):
 
 def _write_runs(out_path: str, runs: list[dict], report: dict) -> Path:
     out = Path(out_path)
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=False)
     for run in runs:
         case_dir = out / str(run["case_id"])
         case_dir.mkdir(parents=True, exist_ok=True)
@@ -286,3 +420,8 @@ def _write_json(path: Path, value: object) -> None:
     with path.open("w", encoding="utf-8") as handle:
         json.dump(value, handle, indent=2, sort_keys=True, ensure_ascii=False)
         handle.write("\n")
+
+
+def _require_new_path(path: Path) -> None:
+    if path.exists():
+        raise ValueError(f"refusing to overwrite existing artifact: {path}")

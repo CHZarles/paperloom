@@ -168,7 +168,7 @@ Java 使用 `/v1/research/stream` 获取 NDJSON Progress 和最终结果；`/v1/
   --manifest research/golden-data/manifest-expanded.yaml \
   rescore \
   --runs research/golden-data/local-runs/<run>/minimax-expanded-final \
-  --out research/golden-data/local-runs/<run>/score-report-v3.json
+  --out research/golden-data/local-runs/<run>/score-report-v4.json
 
 # 运行 Java Corpus/Qdrant 与全仓后端回归
 mvn test
@@ -176,8 +176,9 @@ mvn test
 
 Golden Data 的结构和离线校验方式见
 [`research/golden-data/README.md`](../research/golden-data/README.md)。
-当前 Score Report 为 `harness-score-report/v3`，包含 `behavior-scorer/v3` Contract Hash。Content
-默认从用户可见 Markdown 检查 Typed Facts；普通模型输出的任意 `fields` 不作为隐藏评分合同。
+当前 Score Report 为 `harness-score-report/v4`，包含 `behavior-scorer/v4` Contract Hash。答案按
+Golden Claim、同一 Markdown Block 的 accepted product location 引用和 Typed Facts 评分；Anchor
+只用于离线审计。普通模型输出的任意 `fields` 不作为隐藏评分合同。
 
 真实 Qdrant 协议可用 `QdrantClientRealSmokeTest` 显式验证。测试默认跳过；只有同时设置
 `QDRANT_REAL_SMOKE_URL`、`QDRANT_REAL_SMOKE_API_KEY` 和 `QDRANT_REAL_SMOKE_COLLECTION` 时才会运行，

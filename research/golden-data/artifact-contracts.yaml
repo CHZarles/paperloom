@@ -75,20 +75,27 @@ artifacts:
       - "User-visible prose does not expose tool names, skill ids, schema labels, or internal statuses."
       - "A corpus-grounded answered or partial result contains at least one valid citation."
   - id: ScoreReport
-    purpose: "Eval-only deterministic behavior scoring against golden expectations."
+    purpose: "Eval-only claim/evidence scoring against Golden v3 expectations."
     required_fields:
       - schema_version
       - dataset_id
       - case_count
       - passed_count
       - failed_count
+      - review_required_count
+      - resolved_count
+      - resolved_pass_rate
+      - review_coverage
       - scores
     dimensions:
       - outcome
-      - retrieval
-      - content
+      - required_claims
+      - facts
       - grounding
+      - source_policy
+      - additional_claims
     invariants:
       - "Scoring does not grade skill selection, tool order, tool count, or exact prose."
-      - "Structured fields are checked when present; semantic correctness of prose is an LLM-judge concern."
-      - "LLM-as-judge remains a separate offline evaluation step."
+      - "Exact Anchors are audit-only and cannot change answer status."
+      - "Unknown correct-paper locations require review and are not automatically accepted."
+      - "Semantic judgments remain offline and require accepted calibration and holdout gates."

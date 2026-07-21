@@ -8,14 +8,32 @@ from ..core.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, as_l
 
 
 class GoldenFixtureHarness:
-    harness_id = "golden_fixture_v2"
+    harness_id = "golden_fixture_v4"
 
     def run_case(self, dataset: GoldenDataset, case: JsonMap) -> JsonMap:
         expectation = case_expect(case)
-        evidence = [
-            _fixture_evidence(dataset, str(anchor_id))
-            for anchor_id in as_list(child_map(expectation.get("evidence")).get("required"))
+        claims = [
+            dataset.claims_by_id[str(claim_id)]
+            for claim_id in as_list(expectation.get("required_claims"))
         ]
+        evidence_by_location: dict[tuple[str, str], JsonMap] = {}
+        claim_evidence: dict[str, list[JsonMap]] = {}
+        for claim in claims:
+            claim_id = str(claim["claim_id"])
+            items: list[JsonMap] = []
+            for raw_requirement in as_list(claim.get("required_evidence")):
+                requirement = child_map(raw_requirement)
+                paper_id = str(requirement["paper_id"])
+                location_ref = str(as_list(requirement.get("accepted_locations"))[0])
+                key = (paper_id, location_ref)
+                item = evidence_by_location.setdefault(
+                    key,
+                    _fixture_evidence(dataset, claim, paper_id, location_ref),
+                )
+                if item not in items:
+                    items.append(item)
+            claim_evidence[claim_id] = items
+        evidence = list(evidence_by_location.values())
         outcome = str(expectation.get("outcome"))
         status = {
             "answered": "COMPLETED",
@@ -26,6 +44,18 @@ class GoldenFixtureHarness:
         cited = []
         if expectation.get("citations", "optional") != "forbidden":
             cited = [str(item["evidence_id"]) for item in evidence]
+        citation_numbers = {
+            evidence_id: index
+            for index, evidence_id in enumerate(cited, start=1)
+        }
+        markdown = "\n\n".join(
+            str(claim["statement"]) + " " + " ".join(
+                f"[{citation_numbers[item['evidence_id']]}]"
+                for item in claim_evidence[str(claim["claim_id"])]
+                if item["evidence_id"] in citation_numbers
+            )
+            for claim in claims
+        ).strip()
         case_id = str(case["id"])
         answer = {
             "answer_id": stable_id("answer", case_id),
@@ -35,7 +65,7 @@ class GoldenFixtureHarness:
             "outcome_reason": str(expectation.get("reason") or ""),
             "answer_type": "golden_fixture",
             "summary": case_question(case),
-            "markdown": case_question(case),
+            "markdown": markdown or case_question(case),
             "fields_schema": FACT_FIELDS_SCHEMA_VERSION,
             "fields": dict(child_map(expectation.get("facts"))),
             "cited_evidence_ids": cited,
@@ -43,23 +73,26 @@ class GoldenFixtureHarness:
         return _fixture_run(case_id, status, evidence, answer)
 
 
-def _fixture_evidence(dataset: GoldenDataset, anchor_id: str) -> JsonMap:
-    anchor = dataset.anchors_by_id[anchor_id]
-    paper_id = str(anchor["paper_id"])
+def _fixture_evidence(
+    dataset: GoldenDataset,
+    claim: JsonMap,
+    paper_id: str,
+    location_ref: str,
+) -> JsonMap:
     identity = child_map(dataset.paper_records_by_id[paper_id].get("identity"))
-    element = child_map(anchor.get("element"))
+    element_type = location_ref.split("_ref_", 1)[0]
     return {
-        "evidence_id": stable_id("fixture_evidence", anchor_id),
-        "matched_anchor_id": anchor_id,
+        "evidence_id": stable_id("fixture_evidence", f"{paper_id}_{location_ref}"),
         "paper_id": paper_id,
         "title": identity.get("title") or paper_id,
         "paper_version": identity.get("version_label") or identity.get("year") or "unknown",
-        "section": element.get("section") or "unsectioned",
-        "page": element.get("page") or "unknown",
-        "location": f"golden_anchor:{anchor_id}",
-        "element_type": element.get("type") or "paragraph",
-        "span_text": child_map(anchor.get("selector")).get("exact_text") or "",
-        "retrieval_strategy": "golden_fixture",
+        "section": "golden claim fixture",
+        "page": "unknown",
+        "location": location_ref,
+        "location_ref": location_ref,
+        "element_type": element_type,
+        "span_text": str(claim.get("statement") or ""),
+        "retrieval_strategy": "golden_claim_fixture",
         "relevance_score": 1.0,
         "evidence_quality": "verified",
         "supports_claim_ids": [],

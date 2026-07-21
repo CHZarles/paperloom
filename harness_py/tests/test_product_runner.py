@@ -85,7 +85,7 @@ class FakeJavaGateway:
 
 
 class ProductRunnerTest(unittest.TestCase):
-    def test_product_reader_translates_identity_and_restores_golden_anchor_scoring(self) -> None:
+    def test_product_reader_translates_identity_and_preserves_location_grounding(self) -> None:
         dataset = self._dataset()
         gateway = FakeJavaGateway()
         delegate = JavaCorpusGatewayReader(
@@ -97,7 +97,6 @@ class ProductRunnerTest(unittest.TestCase):
         )
         reader = GoldenJavaCorpusReader(
             delegate=delegate,
-            dataset=dataset,
             mapping={"golden-a": "product-a"},
         )
         tools = ReadingCorpusTools(dataset, reader=reader)
@@ -114,7 +113,7 @@ class ProductRunnerTest(unittest.TestCase):
         self.assertEqual("golden-a", location_result["locations"][0]["paper_id"])
         evidence = read_result["items"][0]
         self.assertEqual("golden-a", evidence["paper_id"])
-        self.assertEqual(["anchor-a"], evidence["matched_anchor_ids"])
+        self.assertNotIn("matched_anchor_ids", evidence)
         self.assertTrue(all(
             call[1]["scope_paper_ids"] == ["product-a"]
             for call in gateway.calls
@@ -127,17 +126,19 @@ class ProductRunnerTest(unittest.TestCase):
         )
 
         run = {
+            "harness_id": "golden_fixture_v4",
             "status": "COMPLETED",
             "result_status": "COMPLETED",
             "research_answer": {
                 "status": "COMPLETED",
                 "outcome": "answered",
+                "markdown": "The canonical content is exact. [1]",
                 "cited_evidence_ids": [evidence["evidence_id"]],
             },
             "evidence_ledger": {"items": [evidence]},
         }
         score = BehaviorScorer().score_case(dataset, dataset.cases[0], run)
-        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertTrue(score.case_status == "pass", score.to_dict())
 
     def test_mapping_validation_rejects_wrong_dataset_duplicates_and_missing_scope(self) -> None:
         dataset = self._dataset()
@@ -229,7 +230,6 @@ class ProductRunnerTest(unittest.TestCase):
         )
         reader = GoldenJavaCorpusReader(
             delegate=delegate,
-            dataset=dataset,
             mapping={"golden-a": "product-a", "golden-b": "product-b"},
         )
 
@@ -281,10 +281,7 @@ class ProductRunnerTest(unittest.TestCase):
             payload["scope_paper_ids"] == ["product-a", "product-b"]
             for _, payload in requests
         ))
-        self.assertEqual(
-            ["anchor-a"],
-            run["evidence_ledger"]["items"][0]["matched_anchor_ids"],
-        )
+        self.assertNotIn("matched_anchor_ids", run["evidence_ledger"]["items"][0])
 
     def test_cli_passes_a_product_reader_to_the_golden_runner(self) -> None:
         dataset = self._dataset()
@@ -419,7 +416,7 @@ class ProductRunnerTest(unittest.TestCase):
             root=Path(".").resolve(),
             manifest_path=Path("manifest.yaml"),
             manifest={
-                "schema_version": "harness-golden-data/v2",
+                "schema_version": "harness-golden-data/v3",
                 "dataset_id": "dataset-a",
             },
             paper_packs=[{
@@ -432,8 +429,7 @@ class ProductRunnerTest(unittest.TestCase):
                 "messages": [{"role": "user", "content": "Read the canonical content."}],
                 "expect": {
                     "outcome": "answered",
-                    "papers": {"required": ["golden-a"]},
-                    "evidence": {"required": ["anchor-a"]},
+                    "required_claims": ["canonical_content"],
                     "citations": "required",
                 },
             }],
@@ -457,6 +453,18 @@ class ProductRunnerTest(unittest.TestCase):
             },
             citation_edges=[],
             reading_models_by_paper_id={},
+            claims_by_id={
+                "canonical_content": {
+                    "claim_id": "canonical_content",
+                    "statement": "The canonical content is exact.",
+                    "required_evidence": [{
+                        "paper_id": "golden-a",
+                        "accepted_locations": ["location-a"],
+                    }],
+                    "forbidden_paper_ids": [],
+                    "fact_keys": [],
+                }
+            },
         )
 
 

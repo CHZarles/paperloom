@@ -198,6 +198,7 @@ class BenchmarkConfig:
     cutoffs: tuple[int, ...]
     default_native_top_k: int
     max_top_k: int
+    required_anchor_ids_by_case: Mapping[str, tuple[str, ...]]
     rrf_k: int
     candidate_limit_min: int
     candidate_limit_multiplier: int
@@ -298,6 +299,16 @@ class BenchmarkConfig:
                 1, int(retrieval.get("default_native_top_k") or 8)
             ),
             max_top_k=max_top_k,
+            required_anchor_ids_by_case={
+                str(case_id): tuple(
+                    str(anchor_id)
+                    for anchor_id in as_list(anchor_ids)
+                    if anchor_id
+                )
+                for case_id, anchor_ids in child_map(
+                    retrieval.get("audit_anchor_ids_by_case")
+                ).items()
+            },
             rrf_k=max(1, int(retrieval.get("rrf_k") or 60)),
             candidate_limit_min=max(
                 1, int(retrieval.get("candidate_limit_min") or 40)
@@ -359,6 +370,10 @@ class BenchmarkConfig:
                 "cutoffs": list(self.cutoffs),
                 "default_native_top_k": self.default_native_top_k,
                 "max_top_k": self.max_top_k,
+                "audit_anchor_ids_by_case": {
+                    case_id: list(anchor_ids)
+                    for case_id, anchor_ids in self.required_anchor_ids_by_case.items()
+                },
                 "rrf_k": self.rrf_k,
                 "candidate_limit_min": self.candidate_limit_min,
                 "candidate_limit_multiplier": self.candidate_limit_multiplier,
@@ -565,17 +580,12 @@ def load_saved_query_tasks(
     saved_query_fills: Mapping[str, Path],
     default_native_top_k: int,
     max_top_k: int,
+    required_anchor_ids_by_case: Mapping[str, tuple[str, ...]],
 ) -> list[QueryTask]:
     tasks: list[QueryTask] = []
     for case in dataset.cases:
         case_id = str(case.get("id") or "")
-        required = tuple(
-            str(value)
-            for value in as_list(
-                child_map(child_map(case.get("expect")).get("evidence")).get("required")
-            )
-            if value
-        )
+        required = tuple(required_anchor_ids_by_case.get(case_id, ()))
         source_run_root = saved_runs
         trace = _load_case_trace(source_run_root, case_id)
         if not _find_location_events(trace) and case_id in saved_query_fills:
@@ -642,12 +652,15 @@ def preflight_summary(
     }
     all_anchors = set(dataset.anchors_by_id)
     cases_with_saved_queries = {task.case_id for task in tasks}
+    required_by_case = {
+        task.case_id: set(task.case_required_anchor_ids)
+        for task in tasks
+        if task.case_required_anchor_ids
+    }
     evidence_cases = [
         case
         for case in dataset.cases
-        if as_list(
-            child_map(child_map(case.get("expect")).get("evidence")).get("required")
-        )
+        if str(case.get("id") or "") in required_by_case
         and str(case.get("id") or "") in cases_with_saved_queries
     ]
     source_counts: dict[str, int] = defaultdict(int)
@@ -667,13 +680,7 @@ def preflight_summary(
         "scored_query_count": sum(bool(task.relevant_anchor_ids) for task in tasks),
         "evidence_case_count": len(evidence_cases),
         "required_anchor_obligation_count": sum(
-            len(
-                as_list(
-                    child_map(child_map(case.get("expect")).get("evidence")).get(
-                        "required"
-                    )
-                )
-            )
+            len(required_by_case[str(case.get("id") or "")])
             for case in evidence_cases
         ),
         "saved_query_count_by_source": dict(sorted(source_counts.items())),
@@ -1997,14 +2004,13 @@ def _full_case_coverage(
     required_count = 0
     for case in dataset.cases:
         case_id = str(case.get("id") or "")
+        case_rows = rows_by_case.get(case_id, [])
         required = {
             str(value)
-            for value in as_list(
-                child_map(child_map(case.get("expect")).get("evidence")).get("required")
-            )
+            for row in case_rows
+            for value in as_list(row.get("case_required_anchor_ids"))
             if value
         }
-        case_rows = rows_by_case.get(case_id, [])
         if not required or not case_rows:
             continue
         hits = {
@@ -2103,9 +2109,8 @@ def _case_union_miss_transitions(
         case_rows = rows_by_case.get(case_id, [])
         required = {
             str(value)
-            for value in as_list(
-                child_map(child_map(case.get("expect")).get("evidence")).get("required")
-            )
+            for row in case_rows
+            for value in as_list(row.get("case_required_anchor_ids"))
             if value
         }
         if not required or not case_rows:
@@ -2701,6 +2706,7 @@ def main() -> int:
         config.saved_query_fills,
         config.default_native_top_k,
         config.max_top_k,
+        config.required_anchor_ids_by_case,
     )
     preflight = preflight_summary(dataset, documents, tasks)
     if preflight["missing_indexed_anchor_ids"]:

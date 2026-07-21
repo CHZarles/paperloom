@@ -35,6 +35,54 @@ qdrant:
   upsert_batch_size: 64
 
 retrieval:
+  # Frozen retrieval diagnostic only. These exact Anchors never affect v4 answer scoring.
+  audit_anchor_ids_by_case:
+    transformer_adam_params_001: [transformer_adam_training_params_span]
+    bert_transformer_role_001: [bert_transformer_encoder_background]
+    bert_vs_transformer_comparison_001:
+      - transformer_encoder_decoder_architecture
+      - bert_transformer_encoder_background
+      - bert_masked_lm_pretraining
+    transformer_to_bert_genealogy_001: [bert_transformer_encoder_background]
+    adam_beta2_conflict_001: [transformer_adam_training_params_span, adam_default_beta2_span]
+    transformer_optimizer_reproduction_001: [transformer_adam_training_params_span]
+    gpt3_to_transformer_multihop_001: [gpt3_uses_gpt2_architecture, gpt2_transformer_language_model]
+    bert_choice_followup_001: [bert_transformer_encoder_background]
+    transformer_bert_confirmation_followup_001:
+      - transformer_encoder_decoder_architecture
+      - bert_transformer_encoder_background
+      - bert_masked_lm_pretraining
+    adam_constraint_refinement_followup_001: [transformer_adam_training_params_span]
+    agentbench_environment_inventory_001: [agentbench_eight_environments, agentbench_failure_obstacles]
+    gaia_dataset_gap_001: [gaia_question_construction, gaia_human_gpt4_gap]
+    webarena_reproduction_protocol_001:
+      - webarena_four_self_hosted_domains
+      - webarena_deterministic_initial_state
+      - webarena_functional_correctness_tasks
+    swebench_instance_provenance_001: [swebench_issue_pr_provenance, swebench_patch_test_construction]
+    agentboard_progress_metric_001: [agentboard_final_success_rate_limit, agentboard_progress_rate_metric]
+    mint_vs_tau_interaction_comparison_001:
+      - mint_tools_feedback_protocol
+      - tau_database_end_state_evaluation
+      - tau_passk_reliability
+    toolsandbox_constraint_selection_001: [toolsandbox_stateful_on_policy_design, toolsandbox_challenge_categories]
+    cross_benchmark_human_agent_gap_001: [gaia_human_gpt4_gap, webarena_gpt4_human_gap]
+    agent_evaluation_recommendation_001:
+      - gaia_question_construction
+      - webarena_four_self_hosted_domains
+      - swebench_patch_test_construction
+      - tau_database_end_state_evaluation
+    react_to_agent_evaluation_genealogy_001:
+      - react_interleaved_reasoning_actions
+      - agentbench_react_pioneer_relationship
+      - tau_react_baseline_relationship
+    mint_tau_apparent_conflict_001: [mint_tools_feedback_gains, tau_passk_reliability]
+    coding_benchmark_followup_001: [swebench_issue_pr_provenance]
+    cross_benchmark_score_ranking_partial_001:
+      - gaia_human_gpt4_gap
+      - webarena_gpt4_human_gap
+      - swebench_claude2_baseline
+    benchmark_topic_change_followup_001: [swebench_patch_test_construction]
   cutoffs: [1, 5, 8, 12]
   default_native_top_k: 8
   max_top_k: 20

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -109,6 +110,8 @@ class CalibrationCase:
 class CalibrationSet:
     dataset_id: str
     source_baseline: str
+    source_path: str
+    source_sha256: str
     cases: list[CalibrationCase]
 
 
@@ -242,6 +245,8 @@ def load_calibration_cases(
     return CalibrationSet(
         dataset_id=dataset_id,
         source_baseline=str(raw.get("source_baseline") or ""),
+        source_path=str(labels_path),
+        source_sha256=hashlib.sha256(labels_path.read_bytes()).hexdigest(),
         cases=cases,
     )
 
@@ -314,6 +319,8 @@ def evaluate_calibration(
         "schema_version": AGREEMENT_REPORT_SCHEMA_VERSION,
         "dataset_id": calibration.dataset_id,
         "source_baseline": calibration.source_baseline,
+        "source_path": calibration.source_path,
+        "source_sha256": calibration.source_sha256,
         "judge": metadata,
         "case_count": case_count,
         "full_agreement_count": full_agreement_count,

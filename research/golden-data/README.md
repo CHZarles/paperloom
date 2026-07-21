@@ -1,4 +1,4 @@
-# Harness Golden Data V2
+# Harness Golden Data V3
 
 这个目录是 Python 研究 Harness 的线下评测工作区。运行时代码只负责生成完整的 Run 产物，
 并在明确要求时保存原始、有序的评测事件。评分、审计、Judge 校准、结果对比和研究分析
@@ -36,16 +36,16 @@ Manifest 的旧 Case。
 人工编写的数据分为：
 
 - `manifest*.yaml`：Paper Pack 和 Case 文件的索引。
-- `paper-packs/*.yaml`：论文身份、引用边、解析器/模型路径和稳定证据 Anchor。
-- `cases/*.yaml`：会话历史，以及可观察的结果、检索、内容和引用预期。
+- `paper-packs/*.yaml`：论文身份、引用边、解析器/模型路径和审计用 Anchor。
+- `claims/*.yaml`：可复用的事实陈述，以及每篇必需论文可接受的产品 `location_ref`。
+- `cases/*.yaml`：会话历史、结果、Typed Fact、引用策略和 `required_claims`。
 - `human-labels*.yaml`：针对已保存真实 Run 的固定人工判断，用于 Judge 校准。
 - `validation-runs/`：供线下审核使用的已提交或本地 Baseline Run。
 - `judge-calibration/`：保存 Judge 校准报告和分析。
 
-运行阶段、Skill 选择、工具顺序、工具次数和逐字措辞都不是 Golden 预期。每个证据 Anchor
-必须提供可解析的正数 `page`。审计和运行时匹配共用 `harness_py/corpus/pages.py`，可读性
-重构不能只改其中一边。Case ID、预期、Paradigm 标签和人工 Anchor 质量信号都不会暴露
-给模型。
+运行阶段、Skill 选择、工具顺序、工具次数和逐字措辞都不是 Golden 预期。Answer Scorer 只按
+Golden Claim、产品位置、同一 Markdown Block 的引用和 Typed Fact 判分。Anchor 仅用于离线解析器/
+索引完整性审计，不能改变答案分数。Case ID、预期和 Paradigm 标签都不会暴露给模型。
 
 本轮 Reading Model 对齐、检索恢复和错误方案复盘见
 [`2026-07-13-reading-model-retrieval-practice.md`](2026-07-13-reading-model-retrieval-practice.md)。
@@ -113,7 +113,8 @@ python3 -m harness_py \
   validate
 ```
 
-命令把评分报告打印到标准输出。只有 `failed_count` 为零时才以状态码 0 退出。当前版本的
+命令把评分报告打印到标准输出。只有 `failed_count` 和 `review_required_count` 都为零时才以状态码
+0 退出。当前版本的
 预期摘要是：
 
 ```text
@@ -121,10 +122,10 @@ stable:   case_count=10, passed_count=10, failed_count=0
 expanded: case_count=24, passed_count=24, failed_count=0
 ```
 
-评分报告使用 `harness-score-report/v3`，并保存 `behavior-scorer/v3` 的完整 Scorer Contract 与
-SHA-256。Content Scorer 从用户可见 Markdown 读取 Typed Fact Assertion；只有声明
+评分报告使用 `harness-score-report/v4`，并保存 `behavior-scorer/v4` 的完整 Scorer Contract 与
+SHA-256。Fact Scorer 从用户可见 Markdown 读取 Typed Fact Assertion；只有声明
 `fields_schema=golden-facts/v1` 的确定性 Fixture 才按结构化 `fields` 评分。普通模型输出中的任意
-`fields` 不会激活隐藏 Fact Contract。不支持的 Fact 类型为 `review_required`，不能 Hard Pass。
+`fields` 不会激活隐藏 Fact Contract。不支持的 Fact 类型为 `review_required`，不能发布为最终结果。
 
 修改 Manifest、Pack、Case、Schema、Fixture 生成或确定性评分后，先运行这一层。
 
@@ -135,16 +136,32 @@ SHA-256。Content Scorer 从用户可见 Markdown 读取 Typed Fact Assertion；
   --manifest research/golden-data/manifest-expanded.yaml \
   rescore \
   --runs research/golden-data/local-runs/<run>/minimax-expanded-final \
-  --out research/golden-data/local-runs/<run>/score-report-v3.json
+  --out research/golden-data/local-runs/<run>/score-report-v4.json
 ```
 
 `rescore` 要求 Manifest 中每个 Case 都存在对应的 `<case_id>/harness_run.json`。报告有确定性失败时
-仍会完整写入，并以状态码 1 退出；缺文件、JSON 损坏或 Case ID 不一致时以状态码 2 退出。
+仍会完整写入，并以状态码 1 退出；存在 `review_required` 时同样返回 1。它拒绝覆盖已有报告。
+语义复评分还必须同时提供 `--semantic-judgments`、`--calibration-report` 和 `--holdout-report`。
 
-## 2. Anchor 和解析器审计
+已保存 Run 的离线语义判断通过 `judge-saved-runs --runs RUNS --out NEW.json` 生成；该命令不会
+重新调用回答模型。Judge 结果只有在校准与 Holdout 都通过、且模型和 Prompt 完全一致时才能影响
+最终 v4 分数。
+
+## 2. Claim Location 与 Anchor 审计
+
+`claim-audit` 通过 Java 产品 Corpus API 读取 Claim Catalog 中每个 accepted location，并检查论文、
+位置类型和 canonical text。它不调用模型，也不会自动修改 Catalog：
+
+```bash
+.venv-harness/bin/python -m harness_py \
+  --manifest research/golden-data/manifest-expanded.yaml \
+  claim-audit \
+  --product-corpus-map research/golden-data/product-corpus-map-expanded.local.yaml \
+  --out research/golden-data/local-runs/claim-location-audit-<timestamp>.json
+```
 
 `audit` 检查每个人工证据 Anchor 是否能在指定正页码上匹配对应的 Reading Model。它不会
-调用模型。
+调用模型。它只是检索/解析诊断，不能改变 `case_status`。
 
 稳定的旧 Golden Data：
 

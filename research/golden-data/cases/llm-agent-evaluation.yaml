@@ -1,5 +1,5 @@
 cases:
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: agentbench_environment_inventory_001
     split: seed
     paradigm: data_benchmark_provenance
@@ -9,22 +9,14 @@ cases:
         content: "What does AgentBench evaluate, how many environments does it contain, and which agent weaknesses does the paper identify?"
     expect:
       outcome: answered
-      papers:
-        required: [agentbench_2024]
-        forbidden: [agentboard_2024]
-      evidence:
-        required: [agentbench_eight_environments, agentbench_failure_obstacles]
-        forbidden: [agentboard_progress_rate_metric]
+      required_claims:
+        - agentbench_eight_environments
+        - agentbench_identified_weaknesses
       facts:
         environment_count: "8"
-      claims:
-        - text: "AgentBench evaluates LLM agents in eight interactive environments."
-          evidence: [agentbench_eight_environments]
-        - text: "The paper identifies weak long-term reasoning, decision-making, and instruction following as major obstacles."
-          evidence: [agentbench_failure_obstacles]
       citations: required
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: gaia_dataset_gap_001
     split: seed
     paradigm: data_benchmark_provenance
@@ -34,12 +26,9 @@ cases:
         content: "Explain how the GAIA benchmark was constructed and give the reported human versus GPT-4-with-plugins result."
     expect:
       outcome: answered
-      papers:
-        required: [gaia_2024]
-        forbidden: [webarena_2024]
-      evidence:
-        required: [gaia_question_construction, gaia_human_gpt4_gap]
-        forbidden: [webarena_gpt4_human_gap]
+      required_claims:
+        - gaia_question_construction
+        - gaia_human_gpt4_plugins_gap
       facts:
         question_count: "466"
         human_success_rate: "92%"
@@ -48,7 +37,7 @@ cases:
     review:
       - "Attributes the 92% and 15% figures to GAIA rather than treating them as general agent performance numbers."
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: webarena_reproduction_protocol_001
     split: seed
     paradigm: methodology_reproduction
@@ -58,22 +47,17 @@ cases:
         content: "Give me a concise WebArena reproduction checklist covering its web domains, environment reset, task execution, and evaluation criterion."
     expect:
       outcome: answered
-      papers:
-        required: [webarena_2024]
-        forbidden: [gaia_2024]
-      evidence:
-        required:
-          - webarena_four_self_hosted_domains
-          - webarena_deterministic_initial_state
-          - webarena_functional_correctness_tasks
-        forbidden: [gaia_question_construction]
+      required_claims:
+        - webarena_four_self_hosted_applications
+        - webarena_deterministic_reset
+        - webarena_functional_correctness
       facts:
         application_count: "4"
       citations: required
     review:
       - "Presents an executable checklist rather than a general summary of WebArena."
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: swebench_instance_provenance_001
     split: seed
     paradigm: data_benchmark_provenance
@@ -83,18 +67,12 @@ cases:
         content: "Trace how an original SWE-bench task is created from GitHub data and explain how a generated patch is evaluated."
     expect:
       outcome: answered
-      papers:
-        required: [swebench_2024]
-        forbidden: [react_2023]
-      evidence:
-        required: [swebench_issue_pr_provenance, swebench_patch_test_construction]
-        forbidden: [react_interleaved_reasoning_actions]
-      claims:
-        - text: "SWE-bench connects GitHub issues with merged pull-request solutions and evaluates generated patches against tests."
-          evidence: [swebench_issue_pr_provenance, swebench_patch_test_construction]
+      required_claims:
+        - swebench_issue_pull_request_provenance
+        - swebench_patch_test_evaluation
       citations: required
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: agentboard_progress_metric_001
     split: seed
     paradigm: contribution_summary_critical_assessment
@@ -104,18 +82,10 @@ cases:
         content: "Why does AgentBoard argue that final success rate is insufficient, and what does its progress-rate metric add?"
     expect:
       outcome: answered
-      papers:
-        required: [agentboard_2024]
-        forbidden: [agentbench_2024]
-      evidence:
-        required: [agentboard_final_success_rate_limit, agentboard_progress_rate_metric]
-        forbidden: [agentbench_eight_environments]
-      claims:
-        - text: "Final success rate exposes little about intermediate behavior, while progress rate captures incremental task advancement."
-          evidence: [agentboard_final_success_rate_limit, agentboard_progress_rate_metric]
+      required_claims: [agentboard_progress_metric]
       citations: required
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: mint_vs_tau_interaction_comparison_001
     split: stress
     paradigm: deep_comparison
@@ -125,20 +95,15 @@ cases:
         content: "Compare MINT and tau-bench on interaction design, tool use, feedback, environment state, and reliability measurement."
     expect:
       outcome: answered
-      papers:
-        required: [mint_2024, tau_bench_2024]
-        forbidden: [agentbench_2024]
-      evidence:
-        required:
-          - mint_tools_feedback_protocol
-          - tau_database_end_state_evaluation
-          - tau_passk_reliability
-        forbidden: [agentbench_eight_environments]
+      required_claims:
+        - mint_tools_and_feedback_protocol
+        - tau_bench_database_end_state
+        - tau_bench_multi_trial_reliability
       citations: required
     review:
       - "Uses aligned comparison axes and distinguishes MINT's feedback protocol from tau-bench's state and reliability evaluation."
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: toolsandbox_constraint_selection_001
     split: stress
     paradigm: complex_constraint_combination
@@ -148,18 +113,10 @@ cases:
         content: "Choose the benchmark in this corpus that combines stateful tools, on-policy conversation, intermediate milestones, and insufficient-information scenarios. Explain why it fits."
     expect:
       outcome: answered
-      papers:
-        required: [toolsandbox_2024]
-        forbidden: [mint_2024, tau_bench_2024]
-      evidence:
-        required: [toolsandbox_stateful_on_policy_design, toolsandbox_challenge_categories]
-        forbidden: [mint_tools_feedback_protocol, tau_database_end_state_evaluation]
-      claims:
-        - text: "ToolSandbox satisfies the combined stateful, on-policy, milestone-based, and insufficient-information constraints."
-          evidence: [toolsandbox_stateful_on_policy_design, toolsandbox_challenge_categories]
+      required_claims: [toolsandbox_combined_design]
       citations: required
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: cross_benchmark_human_agent_gap_001
     split: stress
     paradigm: boundaries_failures_counterexamples
@@ -169,17 +126,15 @@ cases:
         content: "Compare the reported human-agent gaps in GAIA and WebArena, but do not imply that their percentages are directly interchangeable."
     expect:
       outcome: answered
-      papers:
-        required: [gaia_2024, webarena_2024]
-        forbidden: [swebench_2024]
-      evidence:
-        required: [gaia_human_gpt4_gap, webarena_gpt4_human_gap]
-        forbidden: [swebench_claude2_baseline]
+      required_claims:
+        - gaia_human_gpt4_plugins_gap
+        - webarena_human_gpt4_gap
+        - gaia_webarena_results_are_not_interchangeable
       citations: required
     review:
       - "Reports both gaps accurately and explains that the benchmarks use different tasks and evaluation settings."
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: agent_evaluation_recommendation_001
     split: stress
     paradigm: meta_analysis_systematic_review
@@ -189,19 +144,16 @@ cases:
         content: "Recommend one benchmark each for general assistants, realistic web tasks, software engineering, and policy-constrained tool-agent interaction."
     expect:
       outcome: answered
-      papers:
-        required: [gaia_2024, webarena_2024, swebench_2024, tau_bench_2024]
-      evidence:
-        required:
-          - gaia_question_construction
-          - webarena_four_self_hosted_domains
-          - swebench_patch_test_construction
-          - tau_database_end_state_evaluation
+      required_claims:
+        - gaia_general_assistant_selection
+        - webarena_realistic_web_task_selection
+        - swebench_software_engineering_selection
+        - tau_bench_policy_constrained_tool_agent_selection
       citations: required
     review:
       - "Maps GAIA, WebArena, SWE-bench, and tau-bench to the four requested scenarios with grounded reasons."
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: react_to_agent_evaluation_genealogy_001
     split: stress
     paradigm: association_influence_genealogy
@@ -211,21 +163,13 @@ cases:
         content: "Trace only directly verified relationships from ReAct into later agent-evaluation papers in this corpus. Do not infer influence from topical similarity."
     expect:
       outcome: answered
-      papers:
-        required: [react_2023, agentbench_2024, tau_bench_2024]
-      evidence:
-        required:
-          - react_interleaved_reasoning_actions
-          - agentbench_react_pioneer_relationship
-          - tau_react_baseline_relationship
-      claims:
-        - text: "AgentBench describes ReAct as combining reasoning and actions for agent tasks."
-          evidence: [agentbench_react_pioneer_relationship]
-        - text: "tau-bench directly evaluates ReAct as a simple agent construction."
-          evidence: [tau_react_baseline_relationship]
+      required_claims:
+        - react_interleaves_reasoning_and_actions
+        - agentbench_react_relationship
+        - tau_bench_react_baseline
       citations: required
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: mint_tau_apparent_conflict_001
     split: stress
     paradigm: contradiction_resolution
@@ -235,18 +179,12 @@ cases:
         content: "MINT reports gains from tools and language feedback, while tau-bench reports poor multi-trial reliability. Are these findings contradictory?"
     expect:
       outcome: answered
-      papers:
-        required: [mint_2024, tau_bench_2024]
-      evidence:
-        required: [mint_tools_feedback_gains, tau_passk_reliability]
-      claims:
-        - text: "The findings are not contradictory because MINT measures gains from interaction support while tau-bench measures repeated-trial reliability in stateful tasks."
-          evidence: [mint_tools_feedback_gains, tau_passk_reliability]
+      required_claims: [mint_tau_results_are_not_contradictory]
       citations: required
     review:
       - "Does not invent a shared model, task distribution, or metric that would make the reported numbers directly comparable."
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: coding_benchmark_followup_001
     split: stress
     paradigm: context_specific_brainstorming
@@ -260,15 +198,10 @@ cases:
         content: "The coding one."
     expect:
       outcome: answered
-      papers:
-        required: [swebench_2024]
-        forbidden: [gaia_2024, webarena_2024]
-      evidence:
-        required: [swebench_issue_pr_provenance]
-        forbidden: [gaia_question_construction, webarena_four_self_hosted_domains]
+      required_claims: [swebench_coding_benchmark_selection]
       citations: required
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: cross_benchmark_score_ranking_partial_001
     split: stress
     paradigm: uncertainty_knowledge_boundary
@@ -278,15 +211,16 @@ cases:
         content: "Rank GAIA, WebArena, and SWE-bench from easiest to hardest using only their reported model success percentages."
     expect:
       outcome: partial
-      papers:
-        required: [gaia_2024, webarena_2024, swebench_2024]
-      evidence:
-        required: [gaia_human_gpt4_gap, webarena_gpt4_human_gap, swebench_claude2_baseline]
+      required_claims:
+        - gaia_human_gpt4_plugins_gap
+        - webarena_human_gpt4_gap
+        - swebench_claude2_baseline
+        - cross_benchmark_percentages_are_not_difficulty_ranks
       citations: required
     review:
       - "Provides the reported figures but declines a strict difficulty ranking because the models, tasks, and metrics differ."
 
-  - schema_version: harness-golden-case/v2
+  - schema_version: harness-golden-case/v3
     id: benchmark_topic_change_followup_001
     split: stress
     paradigm: context_specific_brainstorming
@@ -300,12 +234,7 @@ cases:
         content: "Actually, I need to evaluate an agent that fixes GitHub issues."
     expect:
       outcome: answered
-      papers:
-        required: [swebench_2024]
-        forbidden: [gaia_2024]
-      evidence:
-        required: [swebench_patch_test_construction]
-        forbidden: [gaia_question_construction]
+      required_claims: [swebench_coding_benchmark_selection]
       citations: required
     review:
       - "Follows the topic change to SWE-bench instead of continuing the GAIA recommendation."

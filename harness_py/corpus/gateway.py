@@ -188,8 +188,6 @@ class JavaCorpusGatewayReader:
             source_object_id = str(item.get("source_object_id") or "") or None
             items.append({
                 "evidence_id": evidence_id,
-                "matched_anchor_id": None,
-                "matched_anchor_ids": [],
                 "paper_id": item.get("paper_id"),
                 "title": item.get("title"),
                 "paper_version": item.get("paper_version"),

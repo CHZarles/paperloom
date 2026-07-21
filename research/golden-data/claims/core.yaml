@@ -1,0 +1,105 @@
+schema_version: harness-golden-claims/v1
+
+claims:
+  transformer_adam_hyperparameters:
+    statement: >-
+      Attention Is All You Need used Adam with beta1 = 0.9, beta2 = 0.98, and epsilon = 1e-9.
+    fact_keys: [beta1, beta2, epsilon]
+    required_evidence:
+      - paper_id: attention_is_all_you_need_2017
+        accepted_locations:
+          - page_ref_f08f9d21661f41e880f4297c134a6e7a
+          - section_ref_2ccab834b2a546689edffb041d667ba1
+
+  transformer_optimizer_configuration:
+    statement: >-
+      A strict optimizer reproduction of Attention Is All You Need uses Adam with beta1 = 0.9,
+      beta2 = 0.98, and epsilon = 1e-9 rather than generic Adam defaults.
+    fact_keys: [optimizer, beta1, beta2, epsilon]
+    required_evidence:
+      - paper_id: attention_is_all_you_need_2017
+        accepted_locations:
+          - page_ref_f08f9d21661f41e880f4297c134a6e7a
+          - section_ref_2ccab834b2a546689edffb041d667ba1
+    forbidden_paper_ids: [adam_2014, bert_2018]
+
+  transformer_adam_beta2:
+    statement: The Transformer paper used beta2 = 0.98 in its Adam training setup.
+    fact_keys: [beta2]
+    required_evidence:
+      - paper_id: attention_is_all_you_need_2017
+        accepted_locations:
+          - page_ref_f08f9d21661f41e880f4297c134a6e7a
+          - section_ref_2ccab834b2a546689edffb041d667ba1
+    forbidden_paper_ids: [adam_2014]
+
+  adam_default_and_transformer_beta2_are_not_conflicting:
+    statement: >-
+      Adam's recommended beta2 default of 0.999 and the Transformer's paper-specific beta2 setting
+      of 0.98 are not contradictory because a general default need not equal one experiment's setting.
+    required_evidence:
+      - paper_id: adam_2014
+        accepted_locations:
+          - page_ref_39f3231d5f9642acbc4cfea4351f98c4
+      - paper_id: attention_is_all_you_need_2017
+        accepted_locations:
+          - page_ref_f08f9d21661f41e880f4297c134a6e7a
+          - section_ref_2ccab834b2a546689edffb041d667ba1
+    forbidden_paper_ids: [bert_2018]
+
+  bert_bidirectional_transformer_encoder:
+    statement: BERT uses a multi-layer bidirectional Transformer encoder.
+    fact_keys: [transformer_role]
+    required_evidence:
+      - paper_id: bert_2018
+        accepted_locations:
+          - page_ref_a7ca49f6192c4a90a25abadfeb4e430d
+          - section_ref_56d5d4a6abd540bd9d76971b39e310f7
+
+  bert_masked_language_model_objective:
+    statement: BERT is pre-trained with a masked language-model objective.
+    required_evidence:
+      - paper_id: bert_2018
+        accepted_locations:
+          - page_ref_157c28658bf54d6aa87172977735d261
+          - section_ref_69bcbf933c9f4cd4a244a11c8830d0a8
+
+  transformer_bert_architecture_comparison:
+    statement: >-
+      The original Transformer is presented as an encoder-decoder architecture, whereas BERT uses
+      a bidirectional Transformer encoder.
+    required_evidence:
+      - paper_id: attention_is_all_you_need_2017
+        accepted_locations:
+          - page_ref_a038174f6e0a42d7bc19d78426e57201
+          - section_ref_4486e8a394a04b7aaca050a2226b61ea
+      - paper_id: bert_2018
+        accepted_locations:
+          - page_ref_a7ca49f6192c4a90a25abadfeb4e430d
+          - section_ref_56d5d4a6abd540bd9d76971b39e310f7
+    forbidden_paper_ids: [gpt2_2019]
+
+  bert_transformer_lineage:
+    statement: >-
+      BERT's direct technical relationship to Attention Is All You Need is its use of a
+      bidirectional Transformer encoder.
+    required_evidence:
+      - paper_id: bert_2018
+        accepted_locations:
+          - page_ref_a7ca49f6192c4a90a25abadfeb4e430d
+          - section_ref_56d5d4a6abd540bd9d76971b39e310f7
+
+  gpt3_gpt2_transformer_lineage:
+    statement: >-
+      GPT-3 uses the GPT-2 model and architecture family, and GPT-2 uses a Transformer-based
+      language-model architecture, so the supported chain is GPT-3 to GPT-2 to the Transformer.
+    required_evidence:
+      - paper_id: gpt3_2020
+        accepted_locations:
+          - page_ref_7bf945a6e01e42a6adce776aa397a412
+          - section_ref_6b6ca3871992488eb42e5c6cfb8cb0a9
+      - paper_id: gpt2_2019
+        accepted_locations:
+          - page_ref_c9c98edc4a3a4cbd9af4906247884e7f
+          - section_ref_724289904f994a1d96c3a9d10bf9cbf7
+    forbidden_paper_ids: [bert_2018]

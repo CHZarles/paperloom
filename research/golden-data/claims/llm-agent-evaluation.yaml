@@ -1,0 +1,251 @@
+schema_version: harness-golden-claims/v1
+
+claims:
+  react_interleaves_reasoning_and_actions:
+    statement: ReAct interleaves reasoning traces with task-specific actions.
+    required_evidence:
+      - paper_id: react_2023
+        accepted_locations:
+          - section_ref_a0fc7f3458934b72a643e2f0c15a49da
+
+  agentbench_eight_environments:
+    statement: AgentBench evaluates LLM agents in eight distinct interactive environments.
+    fact_keys: [environment_count]
+    required_evidence:
+      - paper_id: agentbench_2024
+        accepted_locations:
+          - section_ref_a44f92a917db49d2a07917adbcff7b63
+    forbidden_paper_ids: [agentboard_2024]
+
+  agentbench_identified_weaknesses:
+    statement: >-
+      AgentBench identifies weak long-term reasoning, decision-making, and instruction following as
+      major obstacles to usable LLM agents.
+    required_evidence:
+      - paper_id: agentbench_2024
+        accepted_locations:
+          - section_ref_a44f92a917db49d2a07917adbcff7b63
+    forbidden_paper_ids: [agentboard_2024]
+
+  agentbench_react_relationship:
+    statement: AgentBench describes ReAct as pioneering the combination of reasoning and actions in agent tasks.
+    required_evidence:
+      - paper_id: agentbench_2024
+        accepted_locations:
+          - page_ref_542b5c618f624f998fe35d4c482d8c3e
+          - section_ref_f631497b69ea4ca9bf642ed862ecc67d
+
+  gaia_question_construction:
+    statement: GAIA's methodology produced 466 questions and their answers.
+    fact_keys: [question_count]
+    required_evidence:
+      - paper_id: gaia_2024
+        accepted_locations:
+          - page_ref_83f6d2b55ceb4c348e35245c174a2a0b
+
+  gaia_human_gpt4_plugins_gap:
+    statement: GAIA reports 92% for human respondents versus 15% for GPT-4 equipped with plugins.
+    fact_keys: [human_success_rate, gpt4_plugins_success_rate]
+    required_evidence:
+      - paper_id: gaia_2024
+        accepted_locations:
+          - page_ref_83f6d2b55ceb4c348e35245c174a2a0b
+
+  gaia_general_assistant_selection:
+    statement: GAIA is the appropriate corpus benchmark for evaluating general AI assistants.
+    required_evidence:
+      - paper_id: gaia_2024
+        accepted_locations:
+          - page_ref_83f6d2b55ceb4c348e35245c174a2a0b
+
+  webarena_four_self_hosted_applications:
+    statement: WebArena contains four fully operational, self-hosted web applications.
+    fact_keys: [application_count]
+    required_evidence:
+      - paper_id: webarena_2024
+        accepted_locations:
+          - page_ref_69795b78216a41be862a1a2c94dcf8f9
+
+  webarena_deterministic_reset:
+    statement: WebArena provides scripts that reset its containerized environment to a deterministic initial state.
+    required_evidence:
+      - paper_id: webarena_2024
+        accepted_locations:
+          - page_ref_8587553c7f1a49a49022c8c8f783b663
+
+  webarena_functional_correctness:
+    statement: WebArena evaluates the functional correctness of task completion.
+    required_evidence:
+      - paper_id: webarena_2024
+        accepted_locations:
+          - page_ref_f45045a14a3b4595a9b0d438eb325e86
+          - section_ref_2a1ecd37bf7b484c88c02009d194e8f3
+
+  webarena_human_gpt4_gap:
+    statement: WebArena reports 78.24% human success versus 14.41% for its best GPT-4-based agent.
+    required_evidence:
+      - paper_id: webarena_2024
+        accepted_locations:
+          - page_ref_f45045a14a3b4595a9b0d438eb325e86
+          - section_ref_2a1ecd37bf7b484c88c02009d194e8f3
+
+  webarena_realistic_web_task_selection:
+    statement: WebArena is the appropriate corpus benchmark for agents performing realistic web tasks.
+    required_evidence:
+      - paper_id: webarena_2024
+        accepted_locations:
+          - page_ref_69795b78216a41be862a1a2c94dcf8f9
+
+  swebench_issue_pull_request_provenance:
+    statement: >-
+      SWE-bench draws software-engineering tasks from real GitHub issues and their corresponding
+      pull requests in Python repositories.
+    required_evidence:
+      - paper_id: swebench_2024
+        accepted_locations:
+          - page_ref_e36c1f65adae4b948df0c1ba8293f9e4
+          - section_ref_5949bb933a114ae984eb1544a016b4b1
+    forbidden_paper_ids: [react_2023]
+
+  swebench_patch_test_evaluation:
+    statement: >-
+      SWE-bench creates tasks by connecting GitHub issues to merged pull-request solutions and
+      evaluates generated patches with repository tests.
+    required_evidence:
+      - paper_id: swebench_2024
+        accepted_locations:
+          - figure_ref_11f5a934f39043408ffd1241e5677291
+          - page_ref_e36c1f65adae4b948df0c1ba8293f9e4
+          - section_ref_d82c7cbf23e340db8eecbe1171734bcf
+
+  swebench_coding_benchmark_selection:
+    statement: SWE-bench is the corpus benchmark designed for agents that resolve real GitHub software issues.
+    required_evidence:
+      - paper_id: swebench_2024
+        accepted_locations:
+          - page_ref_e36c1f65adae4b948df0c1ba8293f9e4
+          - section_ref_5949bb933a114ae984eb1544a016b4b1
+    forbidden_paper_ids: [gaia_2024, webarena_2024]
+
+  swebench_software_engineering_selection:
+    statement: SWE-bench is the appropriate corpus benchmark for software-engineering agents.
+    required_evidence:
+      - paper_id: swebench_2024
+        accepted_locations:
+          - figure_ref_11f5a934f39043408ffd1241e5677291
+          - page_ref_e36c1f65adae4b948df0c1ba8293f9e4
+          - section_ref_d82c7cbf23e340db8eecbe1171734bcf
+
+  swebench_claude2_baseline:
+    statement: SWE-bench reports that Claude 2 resolved 1.96% of issues.
+    required_evidence:
+      - paper_id: swebench_2024
+        accepted_locations:
+          - page_ref_e36c1f65adae4b948df0c1ba8293f9e4
+          - section_ref_5949bb933a114ae984eb1544a016b4b1
+
+  agentboard_progress_metric:
+    statement: >-
+      Final success rate reveals little about intermediate behavior, while AgentBoard's progress-rate
+      metric captures incremental task advancement.
+    required_evidence:
+      - paper_id: agentboard_2024
+        accepted_locations:
+          - section_ref_e74a25f038bb4bc2bac94141bc60aaad
+    forbidden_paper_ids: [agentbench_2024]
+
+  mint_tools_and_feedback_protocol:
+    statement: MINT evaluates multi-turn task solving with tool use and natural-language feedback.
+    required_evidence:
+      - paper_id: mint_2024
+        accepted_locations:
+          - page_ref_0b16c362b57c4816b694c3ccfda56228
+          - section_ref_3f05816c6b0642d095d9cb662fb3c605
+
+  tau_bench_database_end_state:
+    statement: tau-bench evaluates task completion by comparing the final database state with an annotated goal state.
+    required_evidence:
+      - paper_id: tau_bench_2024
+        accepted_locations:
+          - page_ref_ce86133d0542480ab351566257651337
+          - section_ref_c1d81f27919a41b0a40f65a696abe7de
+
+  tau_bench_multi_trial_reliability:
+    statement: tau-bench measures repeated-trial reliability and reports retail pass^8 below 25%.
+    required_evidence:
+      - paper_id: tau_bench_2024
+        accepted_locations:
+          - page_ref_ce86133d0542480ab351566257651337
+          - section_ref_c1d81f27919a41b0a40f65a696abe7de
+
+  tau_bench_react_baseline:
+    statement: tau-bench evaluates simple agent constructions such as function calling and ReAct and reports poor performance.
+    required_evidence:
+      - paper_id: tau_bench_2024
+        accepted_locations:
+          - page_ref_6c1e78d3f0b94a4ba598269368397f8d
+
+  tau_bench_policy_constrained_tool_agent_selection:
+    statement: >-
+      tau-bench is the appropriate corpus benchmark for policy-constrained tool agents operating
+      over stateful task environments.
+    required_evidence:
+      - paper_id: tau_bench_2024
+        accepted_locations:
+          - page_ref_ce86133d0542480ab351566257651337
+          - section_ref_c1d81f27919a41b0a40f65a696abe7de
+
+  toolsandbox_combined_design:
+    statement: >-
+      ToolSandbox combines stateful tools, on-policy conversation, intermediate milestone evaluation,
+      and insufficient-information scenarios.
+    required_evidence:
+      - paper_id: toolsandbox_2024
+        accepted_locations:
+          - section_ref_c88d05e058a04863a99504e06a4a3f26
+    forbidden_paper_ids: [mint_2024, tau_bench_2024]
+
+  mint_tau_results_are_not_contradictory:
+    statement: >-
+      MINT's gains from interaction support do not contradict tau-bench's poor repeated-trial
+      reliability because the two results measure different properties in different settings.
+    required_evidence:
+      - paper_id: mint_2024
+        accepted_locations:
+          - page_ref_0b16c362b57c4816b694c3ccfda56228
+          - section_ref_3f05816c6b0642d095d9cb662fb3c605
+      - paper_id: tau_bench_2024
+        accepted_locations:
+          - page_ref_ce86133d0542480ab351566257651337
+          - section_ref_c1d81f27919a41b0a40f65a696abe7de
+
+  gaia_webarena_results_are_not_interchangeable:
+    statement: >-
+      GAIA's and WebArena's reported human-agent percentages are not directly interchangeable because
+      the benchmarks use different tasks and evaluation settings.
+    required_evidence:
+      - paper_id: gaia_2024
+        accepted_locations:
+          - page_ref_83f6d2b55ceb4c348e35245c174a2a0b
+      - paper_id: webarena_2024
+        accepted_locations:
+          - page_ref_f45045a14a3b4595a9b0d438eb325e86
+          - section_ref_2a1ecd37bf7b484c88c02009d194e8f3
+    forbidden_paper_ids: [swebench_2024]
+
+  cross_benchmark_percentages_are_not_difficulty_ranks:
+    statement: >-
+      GAIA, WebArena, and SWE-bench percentages cannot support a strict easiest-to-hardest ranking
+      because their tasks, systems, and evaluation settings differ.
+    required_evidence:
+      - paper_id: gaia_2024
+        accepted_locations:
+          - page_ref_83f6d2b55ceb4c348e35245c174a2a0b
+      - paper_id: webarena_2024
+        accepted_locations:
+          - page_ref_f45045a14a3b4595a9b0d438eb325e86
+          - section_ref_2a1ecd37bf7b484c88c02009d194e8f3
+      - paper_id: swebench_2024
+        accepted_locations:
+          - page_ref_e36c1f65adae4b948df0c1ba8293f9e4
+          - section_ref_5949bb933a114ae984eb1544a016b4b1

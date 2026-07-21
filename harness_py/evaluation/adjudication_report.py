@@ -10,8 +10,6 @@ import yaml
 
 from .fact_assertions import contract_sha256
 from ..core.models import (
-    SCORE_REPORT_SCHEMA_VERSION,
-    SUPPORTED_SCORE_REPORT_SCHEMA_VERSIONS,
     JsonMap,
     child_map,
 )
@@ -23,6 +21,10 @@ _BINARY_LABELS = {"pass", "fail"}
 _GROUNDING_LABELS = {"pass", "fail", "not_applicable"}
 _PREFERENCES = {"A", "B", "tie"}
 _SEMANTIC_FIELDS = ("decision", "task_fulfillment", "grounding", "overall")
+_HISTORICAL_SCORE_REPORT_SCHEMAS = {
+    "harness-score-report/v2",
+    "harness-score-report/v3",
+}
 
 
 def load_adjudication_report(
@@ -417,15 +419,15 @@ def _validate_score_reports(
     for model_id in models:
         report = child_map(score_reports[model_id])
         schema_version = str(report.get("schema_version") or "")
-        if schema_version not in SUPPORTED_SCORE_REPORT_SCHEMA_VERSIONS:
+        if schema_version not in _HISTORICAL_SCORE_REPORT_SCHEMAS:
             raise ValueError(
                 f"unsupported score-report schema for {model_id}: "
                 f"{report.get('schema_version')!r}"
             )
         scorer_contract = child_map(report.get("scorer_contract"))
-        if schema_version == SCORE_REPORT_SCHEMA_VERSION and not scorer_contract.get("sha256"):
+        if schema_version == "harness-score-report/v3" and not scorer_contract.get("sha256"):
             raise ValueError(f"score report for {model_id} is missing scorer_contract")
-        if schema_version == SCORE_REPORT_SCHEMA_VERSION:
+        if schema_version == "harness-score-report/v3":
             contract_payload = dict(scorer_contract)
             claimed_hash = str(contract_payload.pop("sha256"))
             if contract_sha256(contract_payload) != claimed_hash:

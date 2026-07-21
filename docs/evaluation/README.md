@@ -69,10 +69,11 @@ These files separate raw facts from derived scoring. A later analyzer can change
 without rerunning every model call, as long as the original observable events and run artifacts were
 retained.
 
-Current deterministic reports use `harness-score-report/v3`. Each report contains the complete
-`behavior-scorer/v3` contract and its SHA-256. Expected scalar facts are checked against normalized,
-user-visible Markdown; arbitrary model `fields` are not treated as a hidden fact schema. Unsupported
-fact types become `review_required` and cannot Hard Pass. Saved runs can be rescored with:
+Current reports use `harness-score-report/v4`. Each report contains the complete
+`behavior-scorer/v4` contract and its SHA-256. Required claims are grounded by accepted current-product
+locations attached to the same Markdown block. Exact Anchors are audit-only. Expected scalar facts are
+still checked deterministically against normalized, user-visible Markdown; arbitrary model `fields`
+are not treated as a hidden fact schema. Saved runs can be rescored with:
 
 ```bash
 .venv-harness/bin/python -m harness_py \
@@ -80,11 +81,8 @@ fact types become `review_required` and cannot Hard Pass. Saved runs can be resc
   rescore --runs RUN_DIR --out SCORE_REPORT.json
 ```
 
-The implementation plan and acceptance record are in
-[`Deterministic Content Scorer v3`](deterministic-content-scorer-v3-plan-2026-07-19.md).
-
-The proposed replacement for exact-Anchor answer gating is documented in
-[`Golden Claim-Evidence Scoring v4 Proposal`](golden-claim-evidence-scoring-v4-proposal-2026-07-20.md).
+The contract and acceptance record are documented in
+[`Golden Claim-Evidence Scoring v4`](golden-claim-evidence-scoring-v4-proposal-2026-07-20.md).
 
 ## Evidence-First Golden Cases
 
@@ -92,9 +90,10 @@ The Golden Data schema does not require one exact prose answer. It stores obliga
 checked across different valid phrasings:
 
 - conversation messages and fixed paper pack;
-- required and forbidden papers;
-- evidence anchors and required or forbidden evidence;
-- expected facts and claim obligations;
+- reusable required claims;
+- paper-specific accepted `PAGE`, `SECTION`, `TABLE`, and `FIGURE` locations;
+- claim-scoped forbidden papers;
+- deterministic typed facts;
 - expected outcome and citation policy;
 - answer-structure and visible-trace requirements;
 - human labels and LLM-judge calibration results.

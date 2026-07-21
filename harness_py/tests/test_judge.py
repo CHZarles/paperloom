@@ -186,14 +186,15 @@ class AgreementReportTest(unittest.TestCase):
             "harness_py.cli._judge_model",
             return_value=(StubProvider(), model),
         ), patch("builtins.print"):
+            out = Path(tmp) / "judge-report"
             code = main([
                 "judge-calibrate",
                 "--labels",
                 str(LABELS_PATH),
                 "--out",
-                tmp,
+                str(out),
             ])
-            report_path = Path(tmp) / "agreement_report.json"
+            report_path = out / "agreement_report.json"
             report = json.loads(report_path.read_text(encoding="utf-8"))
 
         self.assertEqual(0, code)

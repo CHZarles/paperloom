@@ -51,9 +51,9 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         report = BehaviorScorer().score_dataset(dataset, runs)
 
-        self.assertEqual("harness-score-report/v3", report["schema_version"])
+        self.assertEqual("harness-score-report/v4", report["schema_version"])
         contract = report["scorer_contract"]
-        self.assertEqual("behavior-scorer/v3", contract["version"])
+        self.assertEqual("behavior-scorer/v4", contract["version"])
         self.assertEqual(
             "typed-markdown-facts/v1",
             contract["fact_assertions"]["version"],
@@ -91,7 +91,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             report = json.loads(out.read_text(encoding="utf-8"))
             self.assertEqual(0, code)
             self.assertEqual(10, report["passed_count"])
-            self.assertEqual("behavior-scorer/v3", report["scorer_contract"]["version"])
+            self.assertEqual("behavior-scorer/v4", report["scorer_contract"]["version"])
 
     def test_synthetic_dataset_proves_harness_is_data_driven(self) -> None:
         dataset = self._synthetic_dataset()
@@ -99,10 +99,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         run = GoldenFixtureHarness().run_case(dataset, case)
         score = BehaviorScorer().score_case(dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertIn(
-            "synthetic_anchor",
-            {item.get("matched_anchor_id") for item in run["evidence_ledger"]["items"]},
+        self.assertTrue(score.case_status == "pass", score.to_dict())
+        self.assertEqual(
+            {"section_ref_synthetic"},
+            {item.get("location_ref") for item in run["evidence_ledger"]["items"]},
         )
         self.assertEqual("42", run["research_answer"]["fields"]["answer"])
 
@@ -505,15 +505,14 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             "selector": {"exact_text": "structured value forty two"},
         }
         case = {
-            "schema_version": "harness-golden-case/v2",
+            "schema_version": "harness-golden-case/v3",
             "id": "synthetic_case",
             "paradigm": "precision_fact_extraction",
             "paper_pack": "synthetic_pack",
             "messages": [{"role": "user", "content": "What is the synthetic answer?"}],
             "expect": {
                 "outcome": "answered",
-                "papers": {"required": ["synthetic_paper"]},
-                "evidence": {"required": ["synthetic_anchor"]},
+                "required_claims": ["synthetic_answer"],
                 "facts": {"answer": "42"},
                 "citations": "required",
             },
@@ -550,6 +549,18 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                         "sectionTitle": "Result",
                         "searchableText": "The structured value forty two is the answer.",
                     }],
+                }
+            },
+            claims_by_id={
+                "synthetic_answer": {
+                    "claim_id": "synthetic_answer",
+                    "statement": "The synthetic answer is 42.",
+                    "required_evidence": [{
+                        "paper_id": "synthetic_paper",
+                        "accepted_locations": ["section_ref_synthetic"],
+                    }],
+                    "forbidden_paper_ids": [],
+                    "fact_keys": ["answer"],
                 }
             },
         )

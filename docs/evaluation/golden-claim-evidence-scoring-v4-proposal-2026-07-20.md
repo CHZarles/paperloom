@@ -2,7 +2,7 @@
 
 Date: 2026-07-20
 
-Status: proposed, not implemented
+Status: implementation complete; final benchmark publication blocked by the semantic-judge holdout gate
 
 ## 1. Decision
 
@@ -528,3 +528,32 @@ The v4 rule is:
 This changes the evaluation from "did the model cite the one sentence selected by the author?" to
 "did the model answer the required claim correctly with acceptable evidence from every required
 paper?"
+
+## 17. Implementation Record (2026-07-22)
+
+The Python scoring and Golden authoring migration are complete:
+
+- both active manifests use `harness-golden-data/v3`;
+- all 10 stable and 24 expanded cases use reusable `required_claims` and no v2 paper/Anchor/inline-claim obligations;
+- the catalog contains current `PAGE`, `SECTION`, `TABLE`, and `FIGURE` location references only;
+- v4 reconstructs numbered citations by Markdown block, enforces same-block multi-paper evidence and
+  claim-scoped forbidden papers, exports unknown-location candidates, and preserves deterministic facts;
+- saved-run judgment and rescore commands require immutable input hashes and matching calibration and
+  holdout judge identities;
+- live product reads no longer attach Anchor IDs; exact Anchors remain retrieval diagnostics only;
+- historical v2/v3 runs and reports were not modified.
+
+Verification results:
+
+```text
+stable fixture:   10 pass, 0 fail, 0 review_required
+expanded fixture: 24 pass, 0 fail, 0 review_required
+product claim-location audit: 73/73 claim references resolved, 33 unique locations, 0 failures
+```
+
+MiniMax-M3 was rerun twice against the frozen semantic gate. In the first run calibration passed
+`4/4`, while holdout achieved `1/8` full agreement with `4` false passes. In the second run calibration
+fell to `2/4` with `1` false pass, while holdout again achieved `1/8` with `3` false passes. There were
+no technical errors. The gate therefore correctly rejects those semantic judgments. A new full model
+benchmark was not run: under this proposal it could not be published while calibration or holdout has
+false passes. This is an empirical publication blocker, not a fallback to exact-Anchor scoring.

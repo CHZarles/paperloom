@@ -25,18 +25,19 @@ from harness_py.orchestration.research_contract import research_agent_instructio
 from harness_py.orchestration.research_skills import ResearchSkillRegistry
 
 
-class GoldenV2Test(unittest.TestCase):
+class GoldenV4Test(unittest.TestCase):
     def setUp(self) -> None:
         self.dataset = load_dataset("research/golden-data/manifest.yaml")
 
-    def test_committed_dataset_is_v2_and_has_ten_retrieval_cases(self) -> None:
-        self.assertEqual("harness-golden-data/v2", self.dataset.manifest["schema_version"])
+    def test_committed_dataset_is_v3_and_has_ten_claim_cases(self) -> None:
+        self.assertEqual("harness-golden-data/v3", self.dataset.manifest["schema_version"])
         self.assertEqual(10, len(self.dataset.cases))
         self.assertEqual(5, len(self.dataset.paper_records_by_id))
         self.assertEqual(7, len(self.dataset.anchors_by_id))
         self.assertEqual(5, len(self.dataset.reading_models_by_paper_id))
+        self.assertEqual(9, len(self.dataset.claims_by_id))
         for case in self.dataset.cases:
-            self.assertEqual("harness-golden-case/v2", case["schema_version"])
+            self.assertEqual("harness-golden-case/v3", case["schema_version"])
             self.assertEqual("user", case["messages"][-1]["role"])
             for removed in (
                 "question",
@@ -73,7 +74,7 @@ class GoldenV2Test(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             manifest = Path(tmp) / "manifest.yaml"
             manifest.write_text(
-                "schema_version: harness-golden-data/v2\n",
+                "schema_version: harness-golden-data/v3\n",
                 encoding="utf-8",
             )
 
@@ -84,7 +85,7 @@ class GoldenV2Test(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             manifest = Path(tmp) / "manifest.yaml"
             manifest.write_text(
-                "schema_version: harness-golden-data/v2\n"
+                "schema_version: harness-golden-data/v3\n"
                 "dataset_id: fixture\n"
                 "paper_packs: [../pack.yaml]\n"
                 "case_files: []\n",
@@ -177,7 +178,7 @@ class GoldenV2Test(unittest.TestCase):
         self.assertEqual(10, len(self.dataset.cases))
         self.assertEqual(24, len(expanded.cases))
         for case in expanded.cases:
-            required = case.get("expect", {}).get("evidence", {}).get("required", [])
+            required = case.get("expect", {}).get("required_claims", [])
             self.assertTrue(required, case["id"])
 
     def test_expanded_dataset_does_not_change_the_harness_contract(self) -> None:
@@ -218,7 +219,8 @@ class GoldenV2Test(unittest.TestCase):
 
         self.assertEqual(10, report["case_count"])
         self.assertEqual(0, report["failed_count"], report)
-        self.assertTrue(all(score["hard_pass"] for score in report["scores"]))
+        self.assertEqual(0, report["review_required_count"], report)
+        self.assertTrue(all(score["case_status"] == "pass" for score in report["scores"]))
 
     def test_committed_reading_models_use_the_authored_pack_data_directory(self) -> None:
         pack = self.dataset.paper_packs[0]
@@ -369,29 +371,6 @@ class GoldenV2Test(unittest.TestCase):
             ("summary_limit", "progress_metric"),
             _match_anchors(document, anchors),
         )
-
-    def test_scorer_accepts_multiple_required_anchors_from_one_evidence_item(self) -> None:
-        case = deepcopy(next(
-            case for case in self.dataset.cases
-            if case["id"] == "transformer_bert_confirmation_followup_001"
-        ))
-        run = GoldenFixtureHarness().run_case(self.dataset, case)
-        anchor_ids = {
-            "bert_transformer_encoder_background",
-            "bert_masked_lm_pretraining",
-        }
-        items = run["evidence_ledger"]["items"]
-        bert_items = [item for item in items if item.get("matched_anchor_id") in anchor_ids]
-        self.assertEqual(2, len(bert_items))
-        retained, removed = bert_items
-        retained["matched_anchor_ids"] = sorted(anchor_ids)
-        items.remove(removed)
-        cited = run["research_answer"]["cited_evidence_ids"]
-        cited.remove(removed["evidence_id"])
-
-        score = BehaviorScorer().score_case(self.dataset, case, run)
-
-        self.assertTrue(score.hard_pass, score.to_dict())
 
     def test_loader_rejects_an_anchor_without_a_positive_parseable_page(self) -> None:
         manifest = deepcopy(self.dataset.manifest)
@@ -677,70 +656,6 @@ class GoldenV2Test(unittest.TestCase):
             self.assertEqual(1, code)
             self.assertEqual(report, json.loads(output.read_text(encoding="utf-8")))
 
-    def test_scorer_rejects_a_missing_required_anchor(self) -> None:
-        case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
-        run = GoldenFixtureHarness().run_case(self.dataset, case)
-        broken = deepcopy(run)
-        broken["evidence_ledger"]["items"] = []
-
-        score = BehaviorScorer().score_case(self.dataset, case, broken)
-
-        self.assertFalse(score.hard_pass)
-        self.assertIn(
-            "REQUIRED_ANCHOR_MISSING:transformer_adam_training_params_span",
-            score.dimensions["retrieval"].errors,
-        )
-        self.assertIn(
-            "REQUIRED_PAPER_MISSING:attention_is_all_you_need_2017",
-            score.dimensions["retrieval"].errors,
-        )
-
-    def test_scorer_rejects_forbidden_papers_anchors_and_citations(self) -> None:
-        source_case = next(
-            case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001"
-        )
-        case = deepcopy(source_case)
-        case["expect"]["papers"]["forbidden"] = ["attention_is_all_you_need_2017"]
-        case["expect"]["evidence"]["forbidden"] = ["transformer_adam_training_params_span"]
-        case["expect"]["citations"] = "forbidden"
-        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
-
-        score = BehaviorScorer().score_case(self.dataset, case, run)
-
-        self.assertFalse(score.hard_pass)
-        self.assertIn(
-            "FORBIDDEN_PAPER_ACCEPTED:attention_is_all_you_need_2017",
-            score.dimensions["retrieval"].errors,
-        )
-        self.assertIn(
-            "FORBIDDEN_ANCHOR_ACCEPTED:transformer_adam_training_params_span",
-            score.dimensions["retrieval"].errors,
-        )
-        self.assertIn("CITATIONS_FORBIDDEN", score.dimensions["grounding"].errors)
-
-    def test_scorer_rejects_a_forged_anchor_paper_pairing(self) -> None:
-        source_case = next(
-            case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001"
-        )
-        run = GoldenFixtureHarness().run_case(self.dataset, source_case)
-        case = deepcopy(source_case)
-        case["expect"]["papers"] = {}
-        case["expect"]["evidence"] = {}
-        case["expect"]["citations"] = "optional"
-        broken = deepcopy(run)
-        broken["evidence_ledger"]["items"][0]["paper_id"] = "bert_2018"
-        broken["research_answer"]["cited_evidence_ids"] = []
-
-        score = BehaviorScorer().score_case(self.dataset, case, broken)
-
-        error = (
-            "MATCHED_ANCHOR_PAPER_MISMATCH:transformer_adam_training_params_span:"
-            "expected=attention_is_all_you_need_2017:actual=bert_2018"
-        )
-        self.assertFalse(score.hard_pass)
-        self.assertIn(error, score.dimensions["retrieval"].errors)
-        self.assertIn(error, score.dimensions["grounding"].errors)
-
     def test_scorer_rejects_a_wrong_structured_fact(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
         run = GoldenFixtureHarness().run_case(self.dataset, case)
@@ -749,8 +664,8 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, broken)
 
-        self.assertFalse(score.hard_pass)
-        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+        self.assertFalse(score.case_status == "pass")
+        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["facts"].errors)
 
     def test_scorer_reads_user_visible_facts_instead_of_treating_arbitrary_fields_as_fact_contract(self) -> None:
         case = next(
@@ -767,8 +682,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_rejects_a_wrong_user_visible_fact_even_when_arbitrary_fields_are_empty(self) -> None:
         case = next(
@@ -782,9 +696,9 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
-        self.assertEqual("fail", score.dimensions["content"].status)
-        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+        self.assertFalse(score.case_status == "pass")
+        self.assertEqual("fail", score.dimensions["facts"].status)
+        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["facts"].errors)
 
     def test_scorer_does_not_match_an_expected_value_from_an_unrelated_claim(self) -> None:
         case = next(
@@ -801,8 +715,8 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
-        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+        self.assertFalse(score.case_status == "pass")
+        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["facts"].errors)
 
     def test_scorer_normalizes_user_visible_scientific_notation(self) -> None:
         source_case = next(
@@ -818,8 +732,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_normalizes_arbitrary_power_of_ten_exponents(self) -> None:
         source_case = next(
@@ -835,8 +748,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_matches_a_complete_optimizer_fact_set_in_user_visible_markdown(self) -> None:
         case = next(
@@ -857,8 +769,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_matches_a_normalized_phrase_fact_in_user_visible_markdown(self) -> None:
         case = next(
@@ -874,8 +785,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_matches_a_labeled_count_written_as_a_word(self) -> None:
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
@@ -892,8 +802,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_matches_multiple_labeled_counts_and_percentages(self) -> None:
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
@@ -911,8 +820,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_rejects_percentages_attached_to_the_wrong_subjects(self) -> None:
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
@@ -930,9 +838,9 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
-        self.assertIn("FACT_MISMATCH:human_success_rate", score.dimensions["content"].errors)
-        self.assertIn("FACT_MISMATCH:gpt4_plugins_success_rate", score.dimensions["content"].errors)
+        self.assertFalse(score.case_status == "pass")
+        self.assertIn("FACT_MISMATCH:human_success_rate", score.dimensions["facts"].errors)
+        self.assertIn("FACT_MISMATCH:gpt4_plugins_success_rate", score.dimensions["facts"].errors)
 
     def test_scorer_matches_a_versus_comparison_with_qualified_model_name(self) -> None:
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
@@ -950,8 +858,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_matches_an_application_count_expressed_as_domains(self) -> None:
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
@@ -968,8 +875,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_matches_an_application_count_expressed_as_apps(self) -> None:
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
@@ -986,8 +892,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
-        self.assertEqual("pass", score.dimensions["content"].status)
+        self.assertEqual("pass", score.dimensions["facts"].status, score.to_dict())
 
     def test_scorer_requires_review_instead_of_passing_an_unsupported_fact_type(self) -> None:
         source_case = next(
@@ -1003,11 +908,11 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
-        self.assertEqual("review_required", score.dimensions["content"].status)
+        self.assertFalse(score.case_status == "pass")
+        self.assertEqual("review_required", score.dimensions["facts"].status)
         self.assertIn(
             "FACT_ASSERTION_UNSUPPORTED:unsupported_semantic_relation",
-            score.dimensions["content"].errors,
+            score.dimensions["facts"].errors,
         )
 
     def test_scorer_preserves_a_definite_fact_failure_when_another_fact_needs_review(self) -> None:
@@ -1027,12 +932,12 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
-        self.assertEqual("fail", score.dimensions["content"].status)
-        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["content"].errors)
+        self.assertFalse(score.case_status == "pass")
+        self.assertEqual("fail", score.dimensions["facts"].status)
+        self.assertIn("FACT_MISMATCH:beta2", score.dimensions["facts"].errors)
         self.assertIn(
             "FACT_ASSERTION_UNSUPPORTED:unsupported_semantic_relation",
-            score.dimensions["content"].errors,
+            score.dimensions["facts"].errors,
         )
 
     def test_scorer_rejects_an_unknown_declared_fact_fields_schema(self) -> None:
@@ -1046,11 +951,11 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
-        self.assertEqual("review_required", score.dimensions["content"].status)
+        self.assertFalse(score.case_status == "pass")
+        self.assertEqual("review_required", score.dimensions["facts"].status)
         self.assertIn(
             "FACT_FIELDS_SCHEMA_UNSUPPORTED:golden-facts/v999",
-            score.dimensions["content"].errors,
+            score.dimensions["facts"].errors,
         )
 
     def test_scorer_rejects_a_missing_structured_fact_with_matching_nested_value(self) -> None:
@@ -1063,8 +968,8 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, broken)
 
-        self.assertFalse(score.hard_pass)
-        self.assertIn("FACT_MISSING:beta2", score.dimensions["content"].errors)
+        self.assertFalse(score.case_status == "pass")
+        self.assertIn("FACT_MISSING:beta2", score.dimensions["facts"].errors)
 
     def test_scorer_does_not_grade_skill_selection_or_tool_order(self) -> None:
         case = next(case for case in self.dataset.cases if case["id"] == "transformer_adam_params_001")
@@ -1074,7 +979,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertTrue(score.case_status == "pass", score.to_dict())
 
     def test_scorer_does_not_grade_outcome_reason_prose(self) -> None:
         source_case = next(
@@ -1090,7 +995,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, broken)
 
-        self.assertTrue(score.hard_pass, score.to_dict())
+        self.assertTrue(score.case_status == "pass", score.to_dict())
         self.assertEqual("pass", score.dimensions["outcome"].status)
 
     def test_scorer_requires_an_explicit_runtime_outcome(self) -> None:
@@ -1102,7 +1007,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
+        self.assertFalse(score.case_status == "pass")
         self.assertIn(
             "OUTCOME_MISMATCH:expected=answered:actual=missing",
             score.dimensions["outcome"].errors,
@@ -1118,7 +1023,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
+        self.assertFalse(score.case_status == "pass")
         self.assertIn(
             "OUTCOME_MISMATCH:expected=answered:actual=technical_failure",
             score.dimensions["outcome"].errors,
@@ -1143,7 +1048,7 @@ class GoldenV2Test(unittest.TestCase):
 
         score = BehaviorScorer().score_case(self.dataset, case, run)
 
-        self.assertFalse(score.hard_pass)
+        self.assertFalse(score.case_status == "pass")
         self.assertIn(
             "OUTCOME_MISMATCH:expected=needs_clarification:actual=invalid",
             score.dimensions["outcome"].errors,
