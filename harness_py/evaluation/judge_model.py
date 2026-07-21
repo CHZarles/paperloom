@@ -41,6 +41,9 @@ class MiniMaxJudgeModel:
         tool: JsonMap,
         max_tokens: int,
     ) -> list[JsonMap]:
+        function_name = str(child_map(tool.get("function")).get("name") or "")
+        if not function_name:
+            raise ValueError("judge tool requires a function name")
         payload: JsonMap = {
             "model": self.provider.model,
             "messages": messages,
@@ -51,7 +54,7 @@ class MiniMaxJudgeModel:
             "tools": [tool],
             "tool_choice": {
                 "type": "function",
-                "function": {"name": "submit_judgment"},
+                "function": {"name": function_name},
             },
         }
         if self.provider.model.casefold() == "minimax-m3":

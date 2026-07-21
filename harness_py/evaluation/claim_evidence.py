@@ -3,17 +3,22 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from ..core.models import GoldenDataset, JsonMap, as_list, child_map
-from .golden_case import case_expect, case_messages, case_question
+from .claim_judge import (
+    CLAIM_JUDGE_CONTRACT_VERSION,
+    CLAIM_JUDGE_PROMPT_VERSION,
+    claim_judge_definition_sha256,
+)
+from .golden_case import case_expect, case_question
 
 
 SEMANTIC_JUDGMENT_SCHEMA_VERSION = "harness-semantic-judgments/v1"
 _NUMERIC_CITATION = re.compile(r"(?<!\[)\[(\d+)\]")
 _EVIDENCE_CITATION = re.compile(r"\[\[(ev_[A-Za-z0-9_-]+)\]\]")
+_LEGACY_EVIDENCE_CITATION = re.compile(r"(?<!\[)\[(ev_[A-Za-z0-9_-]+)\](?!\])")
 _LIST_ITEM = re.compile(r"^\s*(?:[-+*]|\d+[.)])\s+")
 _TABLE_SEPARATOR = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$")
 
@@ -30,7 +35,10 @@ def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
     errors: list[str] = []
     for index, raw in enumerate(raw_blocks, start=1):
         evidence_ids: list[str] = []
-        for direct in _EVIDENCE_CITATION.findall(raw):
+        for direct in [
+            *_EVIDENCE_CITATION.findall(raw),
+            *_LEGACY_EVIDENCE_CITATION.findall(raw),
+        ]:
             if direct not in evidence_ids:
                 evidence_ids.append(direct)
         for raw_number in _NUMERIC_CITATION.findall(raw):
@@ -42,6 +50,7 @@ def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
             if evidence_id not in evidence_ids:
                 evidence_ids.append(evidence_id)
         text = _EVIDENCE_CITATION.sub("", raw)
+        text = _LEGACY_EVIDENCE_CITATION.sub("", text)
         text = _NUMERIC_CITATION.sub("", text)
         text = re.sub(r"\s+", " ", text).strip(" |\t")
         if not text and not evidence_ids:
@@ -94,6 +103,8 @@ def load_semantic_judgments(
         raise ValueError(
             f"unsupported semantic judgment schema: {value.get('schema_version')!r}"
         )
+    if value.get("judgment_contract") != CLAIM_JUDGE_CONTRACT_VERSION:
+        raise ValueError("semantic judgment report uses the wrong judgment contract")
     expected_dataset = str(dataset.manifest.get("dataset_id") or "")
     if str(value.get("dataset_id") or "") != expected_dataset:
         raise ValueError("semantic judgment dataset_id mismatch")
@@ -143,6 +154,8 @@ def load_semantic_judgments(
             },
         })
     prompt_version = str(value.get("prompt_version") or "")
+    if child_map(value.get("judge")).get("definition_sha256") != claim_judge_definition_sha256():
+        raise ValueError("semantic judgment report uses a stale judge definition")
     identity = judge_identity(child_map(value.get("judge")), prompt_version)
     return {
         **value,
@@ -165,6 +178,8 @@ def load_judge_gate(calibration_path: str | Path, holdout_path: str | Path) -> J
         report = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(report, dict) or report.get("accepted") is not True:
             raise ValueError(f"semantic judge {label} gate is not accepted: {path}")
+        if report.get("judgment_contract") != CLAIM_JUDGE_CONTRACT_VERSION:
+            raise ValueError(f"semantic judge {label} gate uses the wrong contract: {path}")
         if int(report.get("technical_error_count") or 0) != 0:
             raise ValueError(f"semantic judge {label} gate has technical errors: {path}")
         if int(report.get("false_pass_count") or 0) != 0:
@@ -174,6 +189,8 @@ def load_judge_gate(calibration_path: str | Path, holdout_path: str | Path) -> J
             raise ValueError(f"semantic judge {label} gate lacks a frozen source hash: {path}")
         dataset_ids.append(str(report.get("dataset_id") or ""))
         judge = child_map(report.get("judge"))
+        if judge.get("definition_sha256") != claim_judge_definition_sha256():
+            raise ValueError(f"semantic judge {label} gate uses a stale judge definition: {path}")
         identity = judge_identity(judge, str(judge.get("prompt_version") or ""))
         if not all(identity.values()):
             raise ValueError(f"semantic judge {label} gate has incomplete judge identity: {path}")
@@ -184,6 +201,7 @@ def load_judge_gate(calibration_path: str | Path, holdout_path: str | Path) -> J
             "sha256": file_sha256(path),
             "source_path": report.get("source_path"),
             "source_sha256": source_sha256,
+            "judgment_contract": report.get("judgment_contract"),
             "judge": judge,
         })
     if identities[0] != identities[1]:
@@ -202,6 +220,7 @@ def judge_identity(judge: JsonMap, prompt_version: str) -> JsonMap:
         "provider": str(judge.get("provider") or ""),
         "model": str(judge.get("model") or ""),
         "prompt_version": prompt_version,
+        "definition_sha256": str(judge.get("definition_sha256") or ""),
     }
 
 
@@ -213,149 +232,112 @@ def generate_semantic_judgments(
     judge_metadata: JsonMap,
     prompt_version: str,
 ) -> JsonMap:
+    if prompt_version != CLAIM_JUDGE_PROMPT_VERSION:
+        raise ValueError("semantic judgment generation requires the current claim-judge prompt")
     runs_by_case = {
         str(run.get("case_id") or run.get("question_id")): run
         for run in runs
     }
     reports: list[JsonMap] = []
+    technical_error_count = 0
     for case in dataset.cases:
         case_id = str(case.get("id") or "")
         run = child_map(runs_by_case.get(case_id))
-        answer = child_map(run.get("research_answer"))
-        blocks, block_errors = answer_blocks(answer)
-        evidence_by_id = {
-            str(item.get("evidence_id")): item
-            for raw_item in as_list(child_map(run.get("evidence_ledger")).get("items"))
-            if (item := child_map(raw_item)).get("evidence_id")
-        }
-        claim_reports: list[JsonMap] = []
-        for raw_claim_id in as_list(case_expect(case).get("required_claims")):
-            claim_id = str(raw_claim_id)
-            claim = dataset.claims_by_id[claim_id]
-            matched: list[str] = []
-            errors: list[JsonMap] = []
-            for block in blocks:
-                block_id = str(block.get("block_id") or "")
-                cited = [
-                    _judge_evidence(evidence_by_id[evidence_id])
-                    for evidence_id in as_list(block.get("evidence_ids"))
-                    if evidence_id in evidence_by_id
-                ]
-                packet = _JudgePacket(
-                    case_id=case_id,
-                    review={
-                        "user_request": (
-                            "Determine whether this answer block expresses the required claim: "
-                            + str(claim.get("statement") or "")
-                        ),
-                        "expected_behavior": [str(claim.get("statement") or "")],
-                        "conversation": [
-                            *case_messages(case),
-                            {"role": "system", "content": "Evaluate this block only."},
-                        ],
-                    },
-                    answer={
-                        "status": answer.get("status"),
-                        "outcome": answer.get("outcome"),
-                        "markdown": str(block.get("text") or ""),
-                        "cited_evidence_ids": [
-                            str(item.get("evidence_id"))
-                            for item in cited
-                        ],
-                    },
-                    cited_evidence=cited,
-                    integrity_errors=block_errors,
-                )
-                try:
-                    verdict = judge.judge(packet).to_dict()
-                    if verdict.get("task_fulfillment") == "pass":
-                        matched.append(block_id)
-                except Exception as error:
-                    errors.append({
-                        "block_id": block_id,
-                        "error_type": type(error).__name__,
-                        "error": str(error),
-                    })
-            verdict = "expressed" if matched else "uncertain" if errors else "missing"
-            claim_report: JsonMap = {
-                "claim_id": claim_id,
-                "verdict": verdict,
-                "matched_block_ids": matched,
-            }
-            if errors:
-                claim_report["technical_errors"] = errors
-            claim_reports.append(claim_report)
-
-        full_packet = _JudgePacket(
-            case_id=case_id,
-            review={
-                "user_request": case_question(case),
-                "expected_behavior": [
-                    str(dataset.claims_by_id[str(claim_id)].get("statement") or "")
-                    for claim_id in as_list(case_expect(case).get("required_claims"))
-                ],
-                "conversation": case_messages(case),
-            },
-            answer=answer,
-            cited_evidence=[
-                _judge_evidence(evidence_by_id[evidence_id])
-                for evidence_id in as_list(answer.get("cited_evidence_ids"))
-                if evidence_id in evidence_by_id
-            ],
-            integrity_errors=block_errors,
-        )
+        packet = build_claim_judge_packet(dataset, case, run)
         try:
-            verdict = judge.judge(full_packet).to_dict()
-            grounding = str(verdict.get("grounding") or "")
-            additional: JsonMap = {
-                "verdict": "fail" if grounding == "fail" else "pass",
-                "grounding_issues": as_list(verdict.get("grounding_issues")),
+            verdict = judge.judge(packet).to_dict()
+            report = {
+                "case_id": case_id,
+                **verdict,
             }
         except Exception as error:
-            additional = {
-                "verdict": "uncertain",
-                "technical_error": {
-                    "error_type": type(error).__name__,
-                    "error": str(error),
+            technical_error_count += 1
+            report = {
+                "case_id": case_id,
+                "claims": [
+                    {
+                        "claim_id": str(claim_id),
+                        "verdict": "uncertain",
+                        "matched_block_ids": [],
+                    }
+                    for claim_id in as_list(case_expect(case).get("required_claims"))
+                ],
+                "additional_claims": {
+                    "verdict": "uncertain",
+                    "grounding_issues": [],
+                    "technical_error": {
+                        "error_type": type(error).__name__,
+                        "error": str(error),
+                    },
                 },
             }
-        reports.append({
-            "case_id": case_id,
-            "claims": claim_reports,
-            "additional_claims": additional,
-        })
+        reports.append(report)
 
     metadata = dict(judge_metadata)
     metadata["prompt_version"] = prompt_version
+    metadata["definition_sha256"] = claim_judge_definition_sha256()
     return {
         "schema_version": SEMANTIC_JUDGMENT_SCHEMA_VERSION,
+        "judgment_contract": CLAIM_JUDGE_CONTRACT_VERSION,
         "dataset_id": dataset.manifest.get("dataset_id"),
         "dataset_content_sha256": dataset_content_sha256(dataset),
         "claim_catalog_sha256": canonical_sha256(dataset.claims_by_id),
         "runs_content_sha256": canonical_sha256(runs),
         "judge": metadata,
         "prompt_version": prompt_version,
+        "technical_error_count": technical_error_count,
         "cases": reports,
     }
 
 
-@dataclass(frozen=True)
-class _JudgePacket:
-    case_id: str
-    review: JsonMap
-    answer: JsonMap
-    cited_evidence: list[JsonMap]
-    integrity_errors: list[str]
-
-    def judge_packet(self) -> JsonMap:
-        return {
-            "case_id": self.case_id,
-            "attempt": 1,
-            "review": self.review,
-            "answer": self.answer,
-            "cited_evidence": self.cited_evidence,
-            "citation_integrity_errors": self.integrity_errors,
-        }
+def build_claim_judge_packet(
+    dataset: GoldenDataset,
+    case: JsonMap,
+    run: JsonMap,
+) -> JsonMap:
+    answer = child_map(run.get("research_answer"))
+    blocks, block_errors = answer_blocks(answer)
+    evidence_by_id = {
+        str(item.get("evidence_id")): item
+        for raw_item in as_list(child_map(run.get("evidence_ledger")).get("items"))
+        if (item := child_map(raw_item)).get("evidence_id")
+    }
+    return {
+        "contract_version": "claim-evidence-semantic-judgment/v1",
+        "case_id": str(case.get("id") or ""),
+        "user_request": case_question(case),
+        "required_claims": [
+            {
+                "claim_id": str(claim_id),
+                "statement": str(
+                    dataset.claims_by_id[str(claim_id)].get("statement") or ""
+                ),
+            }
+            for claim_id in as_list(case_expect(case).get("required_claims"))
+        ],
+        "answer_outcome": answer.get("outcome"),
+        "answer_blocks": [
+            {
+                "block_id": block.get("block_id"),
+                "text": block.get("text"),
+                "evidence": [
+                    _judge_evidence(evidence_by_id[evidence_id])
+                    for evidence_id in as_list(block.get("evidence_ids"))
+                    if evidence_id in evidence_by_id
+                ],
+            }
+            for block in blocks
+        ],
+        "citation_integrity_errors": [
+            *block_errors,
+            *[
+                f"UNKNOWN_CITED_EVIDENCE:{evidence_id}"
+                for block in blocks
+                for evidence_id in as_list(block.get("evidence_ids"))
+                if evidence_id not in evidence_by_id
+            ],
+        ],
+    }
 
 
 def _judge_evidence(item: JsonMap) -> JsonMap:

@@ -147,6 +147,21 @@ SHA-256。Fact Scorer 从用户可见 Markdown 读取 Typed Fact Assertion；只
 重新调用回答模型。Judge 结果只有在校准与 Holdout 都通过、且模型和 Prompt 完全一致时才能影响
 最终 v4 分数。
 
+The dedicated v4 claim judge is checked against the frozen claim/block labels before it can score a
+saved run:
+
+```bash
+.venv-harness/bin/python -m harness_py \
+  --manifest research/golden-data/manifest-expanded.yaml \
+  claim-judge-calibrate \
+  --provider-source env \
+  --labels research/golden-data/human-labels-claim-judge-calibration.yaml \
+  --out research/golden-data/local-runs/claim-judge-calibration-<timestamp>.json
+```
+
+Run the holdout label file only after calibration is accepted. Both outputs are immutable gate inputs;
+the CLI refuses to overwrite them.
+
 ## 2. Claim Location 与 Anchor 审计
 
 `claim-audit` 通过 Java 产品 Corpus API 读取 Claim Catalog 中每个 accepted location，并检查论文、

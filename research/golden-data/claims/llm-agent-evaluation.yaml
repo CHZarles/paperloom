@@ -67,7 +67,7 @@ claims:
           - page_ref_69795b78216a41be862a1a2c94dcf8f9
 
   webarena_deterministic_reset:
-    statement: WebArena provides scripts that reset its containerized environment to a deterministic initial state.
+    statement: WebArena's containerized websites can be reset to their original state between relevant test cases.
     required_evidence:
       - paper_id: webarena_2024
         accepted_locations:
@@ -144,10 +144,16 @@ claims:
           - page_ref_e36c1f65adae4b948df0c1ba8293f9e4
           - section_ref_5949bb933a114ae984eb1544a016b4b1
 
-  agentboard_progress_metric:
-    statement: >-
-      Final success rate reveals little about intermediate behavior, while AgentBoard's progress-rate
-      metric captures incremental task advancement.
+  agentboard_success_rate_limited_insight:
+    statement: Final success rate gives limited insight into an agent's behavior during a task.
+    required_evidence:
+      - paper_id: agentboard_2024
+        accepted_locations:
+          - section_ref_e74a25f038bb4bc2bac94141bc60aaad
+    forbidden_paper_ids: [agentbench_2024]
+
+  agentboard_progress_metric_incremental_advancement:
+    statement: AgentBoard's progress-rate metric captures incremental progress during a task.
     required_evidence:
       - paper_id: agentboard_2024
         accepted_locations:
@@ -195,10 +201,32 @@ claims:
           - page_ref_ce86133d0542480ab351566257651337
           - section_ref_c1d81f27919a41b0a40f65a696abe7de
 
-  toolsandbox_combined_design:
-    statement: >-
-      ToolSandbox combines stateful tools, on-policy conversation, intermediate milestone evaluation,
-      and insufficient-information scenarios.
+  toolsandbox_stateful_tools:
+    statement: ToolSandbox includes stateful tool execution with implicit dependencies between tools.
+    required_evidence:
+      - paper_id: toolsandbox_2024
+        accepted_locations:
+          - section_ref_c88d05e058a04863a99504e06a4a3f26
+    forbidden_paper_ids: [mint_2024, tau_bench_2024]
+
+  toolsandbox_on_policy_conversation:
+    statement: ToolSandbox uses a built-in user simulator for on-policy conversational evaluation.
+    required_evidence:
+      - paper_id: toolsandbox_2024
+        accepted_locations:
+          - section_ref_c88d05e058a04863a99504e06a4a3f26
+    forbidden_paper_ids: [mint_2024, tau_bench_2024]
+
+  toolsandbox_intermediate_milestones:
+    statement: ToolSandbox dynamically evaluates intermediate and final milestones over a trajectory.
+    required_evidence:
+      - paper_id: toolsandbox_2024
+        accepted_locations:
+          - section_ref_c88d05e058a04863a99504e06a4a3f26
+    forbidden_paper_ids: [mint_2024, tau_bench_2024]
+
+  toolsandbox_insufficient_information:
+    statement: ToolSandbox explicitly includes insufficient-information scenarios.
     required_evidence:
       - paper_id: toolsandbox_2024
         accepted_locations:
@@ -221,8 +249,8 @@ claims:
 
   gaia_webarena_results_are_not_interchangeable:
     statement: >-
-      GAIA's and WebArena's reported human-agent percentages are not directly interchangeable because
-      the benchmarks use different tasks and evaluation settings.
+      GAIA evaluates multi-step question answering, whereas WebArena evaluates long-horizon browser
+      task completion.
     required_evidence:
       - paper_id: gaia_2024
         accepted_locations:

@@ -82,7 +82,9 @@ cases:
         content: "Why does AgentBoard argue that final success rate is insufficient, and what does its progress-rate metric add?"
     expect:
       outcome: answered
-      required_claims: [agentboard_progress_metric]
+      required_claims:
+        - agentboard_success_rate_limited_insight
+        - agentboard_progress_metric_incremental_advancement
       citations: required
 
   - schema_version: harness-golden-case/v3
@@ -113,7 +115,11 @@ cases:
         content: "Choose the benchmark in this corpus that combines stateful tools, on-policy conversation, intermediate milestones, and insufficient-information scenarios. Explain why it fits."
     expect:
       outcome: answered
-      required_claims: [toolsandbox_combined_design]
+      required_claims:
+        - toolsandbox_stateful_tools
+        - toolsandbox_on_policy_conversation
+        - toolsandbox_intermediate_milestones
+        - toolsandbox_insufficient_information
       citations: required
 
   - schema_version: harness-golden-case/v3

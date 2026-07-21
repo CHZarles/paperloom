@@ -543,17 +543,26 @@ The Python scoring and Golden authoring migration are complete:
 - live product reads no longer attach Anchor IDs; exact Anchors remain retrieval diagnostics only;
 - historical v2/v3 runs and reports were not modified.
 
-Verification results:
+Verification results after the dedicated claim/block judge replaced the reused v5 answer judge:
 
 ```text
 stable fixture:   10 pass, 0 fail, 0 review_required
 expanded fixture: 24 pass, 0 fail, 0 review_required
-product claim-location audit: 73/73 claim references resolved, 33 unique locations, 0 failures
+product claim-location audit: 77/77 claim references resolved, 33 unique locations, 0 failures
+Harness test suite: 175 passed, 1 skipped
 ```
 
-MiniMax-M3 was rerun twice against the frozen semantic gate. In the first run calibration passed
-`4/4`, while holdout achieved `1/8` full agreement with `4` false passes. In the second run calibration
-fell to `2/4` with `1` false pass, while holdout again achieved `1/8` with `3` false passes. There were
-no technical errors. The gate therefore correctly rejects those semantic judgments. A new full model
-benchmark was not run: under this proposal it could not be published while calibration or holdout has
-false passes. This is an empirical publication blocker, not a fallback to exact-Anchor scoring.
+New product runs now write a content-addressed `run_manifest.json` for the observed corpus locations
+and retrieval trace. This records one corpus/index observation without introducing paper versions or
+changing the Java, Qdrant, MySQL, or MiniMax contracts.
+
+MiniMax-M3 was then evaluated against six frozen v4 calibration cases using the dedicated
+`claim-evidence-semantic-judgment/v1` contract. The final run achieved `4/6` full case agreement, with
+one unsafe false pass and zero technical errors. It inferred SWE-bench generated-patch test evaluation
+from a block that only described task construction; it also returned `uncertain` instead of the human
+WebArena reset label. Calibration was therefore rejected.
+The immutable local report is
+`research/golden-data/local-runs/claim-judge-calibration-20260722-031819.json`.
+The holdout and full answering benchmark were not run because the proposal explicitly requires the
+calibration gate to pass first. This remains an empirical MiniMax publication blocker, not a fallback
+to exact-Anchor answer scoring.

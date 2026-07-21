@@ -89,8 +89,13 @@ class DockerMySqlProviderConfigStore(ProviderConfigStore):
         default_container: str = "paperloom-mysql",
     ):
         self.env_path = Path(env_path)
-        self.container = os.getenv(container_env, default_container)
         self.env = _read_env_file(self.env_path)
+        self.container = (
+            os.getenv(container_env)
+            or os.getenv("PAPERLOOM_MYSQL_CONTAINER")
+            or self.env.get("PAPERLOOM_MYSQL_CONTAINER")
+            or default_container
+        )
 
     def load_active_provider(self, scope: str = "llm") -> ProviderConfig:
         db_name = _database_name(self.env.get("SPRING_DATASOURCE_URL", ""))

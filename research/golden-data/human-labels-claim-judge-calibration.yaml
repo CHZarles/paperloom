@@ -1,0 +1,65 @@
+schema_version: harness-claim-judge-labels/v1
+dataset_id: harness_golden_expanded
+manifest: research/golden-data/manifest-expanded.yaml
+
+labels:
+  - case_id: bert_vs_transformer_comparison_001
+    run_id: run_live_chat_a1c234fbe7b3
+    answer_path: research/golden-data/judge-calibration/runs/bert_vs_transformer_comparison_001/attempt-1/research_answer.json
+    evidence_path: research/golden-data/judge-calibration/runs/bert_vs_transformer_comparison_001/attempt-1/evidence_ledger.json
+    claims:
+      transformer_bert_architecture_comparison: {verdict: expressed, matched_block_ids: [block_3, block_7]}
+      bert_masked_language_model_objective: {verdict: expressed, matched_block_ids: [block_4, block_5]}
+    additional_claims: fail
+    note: The requested comparison is present, but unsupported objective details make the extra material fail.
+
+  - case_id: agentbench_environment_inventory_001
+    run_id: run_0a109034cbcc488dbe49f8faca548a16
+    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentbench_environment_inventory_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentbench_environment_inventory_001/evidence_ledger.json
+    claims:
+      agentbench_eight_environments: {verdict: expressed, matched_block_ids: [block_3]}
+      agentbench_identified_weaknesses: {verdict: expressed, matched_block_ids: [block_10]}
+    additional_claims: fail
+    note: Both required facts are explicit; the unsupported Chain-of-Thought assertion is additional material.
+
+  - case_id: gaia_dataset_gap_001
+    run_id: run_c619d068910843fb9a3bb2acc8981f76
+    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/gaia_dataset_gap_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/gaia_dataset_gap_001/evidence_ledger.json
+    claims:
+      gaia_question_construction: {verdict: expressed, matched_block_ids: [block_4]}
+      gaia_human_gpt4_plugins_gap: {verdict: expressed, matched_block_ids: [block_20]}
+    additional_claims: fail
+    note: The required construction and reported gap are explicit, but several list continuations and result details lack same-block support.
+
+  - case_id: webarena_reproduction_protocol_001
+    run_id: run_bb15fe705e84464cbb5031d19474fa78
+    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/webarena_reproduction_protocol_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/webarena_reproduction_protocol_001/evidence_ledger.json
+    claims:
+      webarena_four_self_hosted_applications: {verdict: expressed, matched_block_ids: [block_2]}
+      webarena_deterministic_reset: {verdict: expressed, matched_block_ids: [block_11]}
+      webarena_functional_correctness: {verdict: missing, matched_block_ids: []}
+    additional_claims: fail
+    note: The reset procedure is stated before truncation, while the evaluation criterion is missing and unsupported details remain.
+
+  - case_id: swebench_instance_provenance_001
+    run_id: run_c0c1fe1c6a7646c589bdbb4b2f1ffa1a
+    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/swebench_instance_provenance_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/swebench_instance_provenance_001/evidence_ledger.json
+    claims:
+      swebench_issue_pull_request_provenance: {verdict: expressed, matched_block_ids: [block_2]}
+      swebench_patch_test_evaluation: {verdict: missing, matched_block_ids: []}
+    additional_claims: fail
+    note: The provenance appears before truncation, but generated-patch test evaluation is not stated and unsupported details remain.
+
+  - case_id: agentboard_progress_metric_001
+    run_id: run_233cd7ba23f74308bff3bf05fdaf125b
+    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentboard_progress_metric_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agentboard_progress_metric_001/evidence_ledger.json
+    claims:
+      agentboard_success_rate_limited_insight: {verdict: expressed, matched_block_ids: [block_3, block_4, block_18]}
+      agentboard_progress_metric_incremental_advancement: {verdict: expressed, matched_block_ids: [block_9, block_10, block_11, block_18]}
+    additional_claims: fail
+    note: The final synthesis expresses the required contrast, while uncited operational details are additional failures.

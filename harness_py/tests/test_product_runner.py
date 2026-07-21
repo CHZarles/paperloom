@@ -337,10 +337,21 @@ class ProductRunnerTest(unittest.TestCase):
             saved_run = json.loads(
                 (out / "case-a" / "harness_run.json").read_text(encoding="utf-8")
             )
+            run_manifest = json.loads(
+                (out / "run_manifest.json").read_text(encoding="utf-8")
+            )
 
         self.assertEqual(0, code)
         self.assertIsInstance(harness.reader, GoldenJavaCorpusReader)
         self.assertEqual("java-qdrant", saved_run["diagnostics"]["corpus_backend"])
+        self.assertEqual(
+            "content-addressed-run-observation/v1",
+            run_manifest["corpus_index_generation"]["scheme"],
+        )
+        self.assertRegex(
+            run_manifest["corpus_index_generation"]["sha256"],
+            r"^[0-9a-f]{64}$",
+        )
 
     def test_cli_rejects_missing_java_qdrant_map_before_loading_the_provider(self) -> None:
         dataset = self._dataset()

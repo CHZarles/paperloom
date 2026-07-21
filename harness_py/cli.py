@@ -13,9 +13,17 @@ from .corpus.gateway import JavaCorpusGateway
 from .evaluation.audit import audit_dataset
 from .evaluation.claim_audit import audit_claim_locations
 from .evaluation.claim_evidence import (
+    canonical_sha256,
+    dataset_content_sha256,
+    file_sha256,
     generate_semantic_judgments,
     load_judge_gate,
     load_semantic_judgments,
+)
+from .evaluation.claim_judge import CLAIM_JUDGE_PROMPT_VERSION, ClaimEvidenceJudge
+from .evaluation.claim_judge_calibration import (
+    evaluate_claim_judge_calibration,
+    load_claim_judge_labels,
 )
 from .evaluation.dataset import load_dataset
 from .evaluation.golden_fixture import GoldenFixtureHarness
@@ -73,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     semantic_parser.add_argument("--runs", required=True)
     semantic_parser.add_argument("--out", required=True)
     semantic_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
-    semantic_parser.add_argument("--max-tokens", type=int, default=1200)
+    semantic_parser.add_argument("--max-tokens", type=int, default=2200)
     agent_parser = subcommands.add_parser(
         "agent-run",
         help="Run the real tool-using agent through the Java/Qdrant product corpus.",
@@ -99,6 +107,14 @@ def main(argv: list[str] | None = None) -> int:
     judge_parser.add_argument("--out", default="eval/rag/runs/llm-judge-calibration")
     judge_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
     judge_parser.add_argument("--max-tokens", type=int, default=1200)
+    claim_judge_parser = subcommands.add_parser(
+        "claim-judge-calibrate",
+        help="Evaluate the v4 claim/block judge against frozen labels.",
+    )
+    claim_judge_parser.add_argument("--labels", required=True)
+    claim_judge_parser.add_argument("--out", required=True)
+    claim_judge_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    claim_judge_parser.add_argument("--max-tokens", type=int, default=2200)
     args = parser.parse_args(argv)
 
     if args.command == "validate":
@@ -221,9 +237,9 @@ def main(argv: list[str] | None = None) -> int:
             report = generate_semantic_judgments(
                 dataset,
                 runs,
-                LLMJudge(model, max_tokens=args.max_tokens),
+                ClaimEvidenceJudge(model, max_tokens=args.max_tokens),
                 judge_metadata=provider.public_diagnostics(),
-                prompt_version=JUDGE_PROMPT_VERSION,
+                prompt_version=CLAIM_JUDGE_PROMPT_VERSION,
             )
         except Exception as error:
             print(json.dumps({
@@ -238,9 +254,10 @@ def main(argv: list[str] | None = None) -> int:
             "out": str(target),
             "runs": str(runs_root),
             "case_count": len(report["cases"]),
+            "technical_error_count": report["technical_error_count"],
             "judge": report["judge"],
         }, indent=2, sort_keys=True))
-        return 0
+        return 2 if report["technical_error_count"] else 0
     if args.command == "agent-run":
         dataset = load_dataset(args.manifest)
         selected = set(args.case_id)
@@ -294,7 +311,12 @@ def main(argv: list[str] | None = None) -> int:
             dataset if not selected else _dataset_with_cases(dataset, cases),
             runs,
         )
-        out = _write_runs(args.out, runs, report)
+        run_manifest = _product_run_manifest(
+            dataset if not selected else _dataset_with_cases(dataset, cases),
+            args.product_corpus_map,
+            runs,
+        )
+        out = _write_runs(args.out, runs, report, run_manifest=run_manifest)
         print(json.dumps({
             "out": str(out),
             "provider": provider.public_diagnostics(),
@@ -342,6 +364,33 @@ def main(argv: list[str] | None = None) -> int:
         if report["technical_error_count"]:
             return 2
         return 0 if report["accepted"] else 1
+    if args.command == "claim-judge-calibrate":
+        try:
+            target = Path(args.out)
+            _require_new_path(target)
+            labels = load_claim_judge_labels(args.labels)
+            provider, model = _judge_model(args.provider_source)
+            report = evaluate_claim_judge_calibration(
+                labels,
+                ClaimEvidenceJudge(model, max_tokens=args.max_tokens),
+                judge_metadata=provider.public_diagnostics(),
+            )
+        except Exception as error:
+            print(json.dumps({
+                "error": "claim_judge_calibration_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(target, report)
+        print(json.dumps({
+            "out": str(target),
+            "claim_judge_agreement": report,
+        }, indent=2, sort_keys=True))
+        if report["technical_error_count"]:
+            return 2
+        return 0 if report["accepted"] else 1
     return 2
 
 
@@ -378,7 +427,13 @@ def _dataset_with_cases(dataset, cases):
     return replace(dataset, cases=cases)
 
 
-def _write_runs(out_path: str, runs: list[dict], report: dict) -> Path:
+def _write_runs(
+    out_path: str,
+    runs: list[dict],
+    report: dict,
+    *,
+    run_manifest: dict | None = None,
+) -> Path:
     out = Path(out_path)
     out.mkdir(parents=True, exist_ok=False)
     for run in runs:
@@ -386,8 +441,62 @@ def _write_runs(out_path: str, runs: list[dict], report: dict) -> Path:
         case_dir.mkdir(parents=True, exist_ok=True)
         _write_json(case_dir / "harness_run.json", run)
         _write_child_artifacts(case_dir, run)
+    if run_manifest is not None:
+        manifest_path = out / "run_manifest.json"
+        _write_json(manifest_path, run_manifest)
+        report["run_manifest"] = {
+            "path": str(manifest_path.resolve()),
+            "sha256": file_sha256(manifest_path),
+        }
     _write_json(out / "score_report.json", report)
     return out
+
+
+def _product_run_manifest(dataset, corpus_map_path: str, runs: list[dict]) -> dict:
+    locations: dict[tuple[str, str], dict] = {}
+    retrieval_observations = []
+    for run in runs:
+        case_id = str(run.get("case_id") or run.get("question_id") or "")
+        for raw_item in as_list(child_map(run.get("evidence_ledger")).get("items")):
+            item = child_map(raw_item)
+            paper_id = str(item.get("paper_id") or "")
+            location_ref = str(item.get("location_ref") or item.get("location") or "")
+            if not paper_id or not location_ref:
+                continue
+            locations[(paper_id, location_ref)] = {
+                "paper_id": paper_id,
+                "location_ref": location_ref,
+                "element_type": item.get("element_type"),
+                "text_sha256": canonical_sha256(str(item.get("span_text") or "")),
+            }
+        retrieval_observations.append({
+            "case_id": case_id,
+            "paper_candidates": as_list(run.get("paper_candidates")),
+            "react_trace": as_list(run.get("react_trace")),
+        })
+    corpus_map_sha256 = file_sha256(corpus_map_path)
+    generation_material = {
+        "product_corpus_map_sha256": corpus_map_sha256,
+        "locations": [locations[key] for key in sorted(locations)],
+        "retrieval_observations": retrieval_observations,
+    }
+    return {
+        "schema_version": "harness-benchmark-run-manifest/v1",
+        "dataset_id": dataset.manifest.get("dataset_id"),
+        "dataset_content_sha256": dataset_content_sha256(dataset),
+        "claim_catalog_sha256": canonical_sha256(dataset.claims_by_id),
+        "case_ids": [str(run.get("case_id") or run.get("question_id") or "") for run in runs],
+        "corpus_backend": "java-qdrant",
+        "product_corpus_map": {
+            "path": str(Path(corpus_map_path).resolve()),
+            "sha256": corpus_map_sha256,
+        },
+        "corpus_index_generation": {
+            "scheme": "content-addressed-run-observation/v1",
+            "sha256": canonical_sha256(generation_material),
+            "observed_location_count": len(locations),
+        },
+    }
 
 
 def _write_child_artifacts(case_dir: Path, run: dict) -> None:

@@ -6,6 +6,7 @@ from pathlib import Path
 from harness_py.core.models import GoldenDataset
 from harness_py.evaluation.claim_audit import audit_claim_locations
 from harness_py.evaluation.claim_evidence import answer_blocks, generate_semantic_judgments
+from harness_py.evaluation.claim_judge import CLAIM_JUDGE_PROMPT_VERSION
 from harness_py.evaluation.dataset import load_dataset
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
 from harness_py.evaluation.scoring import BehaviorScorer
@@ -27,6 +28,15 @@ class ClaimEvidenceV4Test(unittest.TestCase):
             [("block_1", ["ev_a"]), ("block_2", ["ev_b"])],
             [(block["block_id"], block["evidence_ids"]) for block in blocks],
         )
+
+    def test_legacy_direct_evidence_citation_is_reconstructed_for_saved_runs(self) -> None:
+        blocks, errors = answer_blocks({
+            "markdown": "Saved claim. [ev_a]",
+            "cited_evidence_ids": ["ev_a"],
+        })
+
+        self.assertEqual([], errors)
+        self.assertEqual(["ev_a"], blocks[0]["evidence_ids"])
 
     def test_accepted_location_passes_and_forbidden_paper_elsewhere_is_allowed(self) -> None:
         dataset, case = _dataset()
@@ -176,16 +186,22 @@ class ClaimEvidenceV4Test(unittest.TestCase):
         run = _run("This is a faithful paraphrase. [1]", [evidence])
 
         class Verdict:
-            def __init__(self, task: str, grounding: str = "pass") -> None:
-                self.task = task
-                self.grounding = grounding
-
             def to_dict(self):
                 return {
-                    "decision": "pass",
-                    "task_fulfillment": self.task,
-                    "grounding": self.grounding,
-                    "grounding_issues": [],
+                    "claims": [{
+                        "claim_id": "required_claim",
+                        "verdict": "expressed",
+                        "matched_block_ids": ["block_1"],
+                    }],
+                    "blocks": [{
+                        "block_id": "block_1",
+                        "verdict": "not_material",
+                        "issues": [],
+                    }],
+                    "additional_claims": {
+                        "verdict": "pass",
+                        "grounding_issues": [],
+                    },
                 }
 
         class Judge:
@@ -193,17 +209,16 @@ class ClaimEvidenceV4Test(unittest.TestCase):
                 self.packets = []
 
             def judge(self, packet):
-                value = packet.judge_packet()
-                self.packets.append(value)
-                self.assert_clean(value)
-                is_block = value["review"]["user_request"].startswith("Determine whether")
-                return Verdict("pass" if is_block else "pass")
+                self.packets.append(packet)
+                self.assert_clean(packet)
+                return Verdict()
 
             @staticmethod
             def assert_clean(value):
                 assert all(
                     "matched_anchor_ids" not in item
-                    for item in value["cited_evidence"]
+                    for block in value["answer_blocks"]
+                    for item in block["evidence"]
                 )
 
         judge = Judge()
@@ -212,13 +227,15 @@ class ClaimEvidenceV4Test(unittest.TestCase):
             [run],
             judge,
             judge_metadata={"provider": "test", "model": "judge"},
-            prompt_version="prompt-v1",
+            prompt_version=CLAIM_JUDGE_PROMPT_VERSION,
         )
 
         self.assertEqual("expressed", report["cases"][0]["claims"][0]["verdict"])
         self.assertEqual(["block_1"], report["cases"][0]["claims"][0]["matched_block_ids"])
         self.assertEqual("pass", report["cases"][0]["additional_claims"]["verdict"])
-        self.assertEqual(2, len(judge.packets))
+        self.assertEqual("claim-evidence-semantic-judgment/v1", report["judgment_contract"])
+        self.assertEqual(0, report["technical_error_count"])
+        self.assertEqual(1, len(judge.packets))
 
     def test_committed_manifests_are_v4_and_fixture_cleanly_passes(self) -> None:
         for manifest, expected_count in (

@@ -233,7 +233,7 @@ class BehaviorScorer:
 
         for claim in claims:
             claim_id = str(claim.get("claim_id") or "")
-            deterministic = _deterministic_claim_blocks(case, claim, blocks)
+            deterministic = deterministic_claim_blocks(case, claim, blocks)
             if deterministic:
                 matched[claim_id] = deterministic
                 states[claim_id] = "pass"
@@ -455,7 +455,7 @@ def _accepted_evidence(run: JsonMap) -> list[JsonMap]:
     ]
 
 
-def _deterministic_claim_blocks(
+def deterministic_claim_blocks(
     case: JsonMap,
     claim: JsonMap,
     blocks: list[JsonMap],

@@ -63,3 +63,12 @@ they are never promoted automatically.
 Typed facts are deterministic. Paraphrased claims and additional material claims require an offline
 semantic judgment whose exact model and prompt passed both frozen calibration and holdout gates.
 Historical v2/v3 runs and score reports remain immutable.
+
+The offline report uses `claim-evidence-semantic-judgment/v1`. For each required claim it records one
+strongest self-contained answer block, or a non-expressed verdict. Additional material is judged once
+for the whole answer. Calibration labels may list several human-acceptable blocks; a judge may choose
+any one of them, while a returned block outside that set is an unsafe false pass.
+
+Every new product `agent-run` directory also contains `run_manifest.json`. It content-addresses the
+Golden/product corpus map, observed canonical locations, and retrieval trace, providing one immutable
+corpus/index observation without adding paper versions or changing the Java, Qdrant, or MySQL schemas.
