@@ -2,7 +2,7 @@ schema_version: harness-golden-claims/v1
 
 claims:
   react_interleaves_reasoning_and_actions:
-    statement: ReAct interleaves reasoning traces with task-specific actions.
+    statement: ReAct combines reasoning traces with task-specific actions.
     required_evidence:
       - paper_id: react_2023
         accepted_locations:
@@ -119,7 +119,7 @@ claims:
           - section_ref_d82c7cbf23e340db8eecbe1171734bcf
 
   swebench_coding_benchmark_selection:
-    statement: SWE-bench is the corpus benchmark designed for agents that resolve real GitHub software issues.
+    statement: SWE-bench is the corpus benchmark for models that address real GitHub software issues.
     required_evidence:
       - paper_id: swebench_2024
         accepted_locations:
@@ -193,8 +193,8 @@ claims:
 
   tau_bench_policy_constrained_tool_agent_selection:
     statement: >-
-      tau-bench is the appropriate corpus benchmark for policy-constrained tool agents operating
-      over stateful task environments.
+      tau-bench is appropriate for evaluating agents that use domain APIs while following policy
+      guidelines.
     required_evidence:
       - paper_id: tau_bench_2024
         accepted_locations:

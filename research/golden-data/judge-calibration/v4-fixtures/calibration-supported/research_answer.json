@@ -1,0 +1,8 @@
+{
+  "status": "COMPLETED",
+  "outcome": "answered",
+  "markdown": "SWE-bench is the corpus benchmark for models that address real GitHub software issues. [1]",
+  "cited_evidence_ids": [
+    "ev_v4_calibration_supported"
+  ]
+}

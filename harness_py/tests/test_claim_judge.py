@@ -16,19 +16,22 @@ class ClaimJudgeTest(unittest.TestCase):
     def test_claim_judge_enforces_complete_claim_and_block_coverage(self) -> None:
         class Model:
             def complete_judgment(self, _messages, tool, _max_tokens):
-                self.tool = tool
-                return [{
-                    "name": "submit_claim_judgment",
-                    "arguments": {
-                        "claims": [{
+                self.tools = getattr(self, "tools", []) + [tool]
+                name = tool["function"]["name"]
+                if name == "submit_claim_match":
+                    return [{
+                        "name": name,
+                        "arguments": {
                             "claim_id": "claim_a",
                             "verdict": "expressed",
                             "matched_block_ids": ["block_1"],
-                        }],
-                        "additional_claims": {
-                            "verdict": "fail",
-                            "grounding_issues": ["Extra unsupported statement."],
                         },
+                    }]
+                return [{
+                    "name": name,
+                    "arguments": {
+                        "verdict": "fail",
+                        "grounding_issues": ["Extra unsupported statement."],
                     },
                 }]
 
@@ -42,24 +45,29 @@ class ClaimJudgeTest(unittest.TestCase):
         })
 
         self.assertEqual("fail", verdict.additional_claims["verdict"])
-        function = model.tool["function"]
-        self.assertEqual("submit_claim_judgment", function["name"])
+        self.assertEqual(
+            ["submit_claim_match", "submit_additional_grounding"],
+            [tool["function"]["name"] for tool in model.tools],
+        )
 
     def test_claim_judge_conservatively_normalizes_issues_on_non_failing_block(self) -> None:
         class Model:
-            def complete_judgment(self, _messages, _tool, _max_tokens):
-                return [{
-                    "name": "submit_claim_judgment",
-                    "arguments": {
-                        "claims": [{
+            def complete_judgment(self, _messages, tool, _max_tokens):
+                name = tool["function"]["name"]
+                if name == "submit_claim_match":
+                    return [{
+                        "name": name,
+                        "arguments": {
                             "claim_id": "claim_a",
                             "verdict": "expressed",
                             "matched_block_ids": ["block_1"],
-                        }],
-                        "additional_claims": {
-                            "verdict": "pass",
-                            "grounding_issues": ["This extra clause lacks evidence."],
                         },
+                    }]
+                return [{
+                    "name": name,
+                    "arguments": {
+                        "verdict": "pass",
+                        "grounding_issues": ["This extra clause lacks evidence."],
                     },
                 }]
 
@@ -70,10 +78,32 @@ class ClaimJudgeTest(unittest.TestCase):
 
         self.assertEqual("fail", verdict.additional_claims["verdict"])
 
+    def test_exact_required_only_answer_has_no_additional_material(self) -> None:
+        class Model:
+            def complete_judgment(self, _messages, tool, _max_tokens):
+                name = tool["function"]["name"]
+                if name != "submit_claim_match":
+                    raise AssertionError("exact required-only answer should not need another call")
+                return [{
+                    "name": name,
+                    "arguments": {
+                        "claim_id": "claim_a",
+                        "verdict": "expressed",
+                        "matched_block_ids": ["block_1"],
+                    },
+                }]
+
+        verdict = ClaimEvidenceJudge(Model()).judge({
+            "required_claims": [{"claim_id": "claim_a", "statement": "Claim A."}],
+            "answer_blocks": [{"block_id": "block_1", "text": "Claim A.", "evidence": []}],
+        })
+
+        self.assertEqual("pass", verdict.additional_claims["verdict"])
+
     def test_committed_claim_judge_labels_are_valid_and_can_pass_exact_judgments(self) -> None:
         for path, expected_count in (
-            ("research/golden-data/human-labels-claim-judge-calibration.yaml", 6),
-            ("research/golden-data/human-labels-claim-judge-holdout.yaml", 11),
+            ("research/golden-data/human-labels-claim-judge-calibration.yaml", 7),
+            ("research/golden-data/human-labels-claim-judge-holdout.yaml", 7),
         ):
             with self.subTest(path=path):
                 label_set = load_claim_judge_labels(path)

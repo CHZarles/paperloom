@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "evidence_id": "ev_v4_holdout_supported",
+      "paper_id": "swebench_2024",
+      "location_ref": "section_ref_5949bb933a114ae984eb1544a016b4b1",
+      "element_type": "section",
+      "span_text": "SWE-bench is an evaluation framework of real-world software engineering problems drawn from GitHub issues. A language model edits a codebase to address the issue.",
+      "citeable": true,
+      "evidence_quality": "verified"
+    }
+  ]
+}

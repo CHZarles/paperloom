@@ -104,7 +104,9 @@ cases:
         content: "Using only the available papers, build the two-hop architecture chain from GPT-3 through GPT-2 to Attention Is All You Need. State what each hop establishes and do not invent a direct GPT-3-to-Transformer citation."
     expect:
       outcome: answered
-      required_claims: [gpt3_gpt2_transformer_lineage]
+      required_claims:
+        - gpt3_uses_gpt2_architecture
+        - gpt2_uses_transformer_architecture
       citations: required
 
   - schema_version: harness-golden-case/v3

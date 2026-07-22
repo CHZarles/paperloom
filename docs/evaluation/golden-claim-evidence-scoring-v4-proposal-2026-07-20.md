@@ -549,20 +549,25 @@ Verification results after the dedicated claim/block judge replaced the reused v
 stable fixture:   10 pass, 0 fail, 0 review_required
 expanded fixture: 24 pass, 0 fail, 0 review_required
 product claim-location audit: 77/77 claim references resolved, 33 unique locations, 0 failures
-Harness test suite: 175 passed, 1 skipped
+Harness test suite: 176 passed, 1 skipped
 ```
 
 New product runs now write a content-addressed `run_manifest.json` for the observed corpus locations
 and retrieval trace. This records one corpus/index observation without introducing paper versions or
 changing the Java, Qdrant, MySQL, or MiniMax contracts.
 
-MiniMax-M3 was then evaluated against six frozen v4 calibration cases using the dedicated
-`claim-evidence-semantic-judgment/v1` contract. The final run achieved `4/6` full case agreement, with
-one unsafe false pass and zero technical errors. It inferred SWE-bench generated-patch test evaluation
-from a block that only described task construction; it also returned `uncertain` instead of the human
-WebArena reset label. Calibration was therefore rejected.
-The immutable local report is
-`research/golden-data/local-runs/claim-judge-calibration-20260722-031819.json`.
-The holdout and full answering benchmark were not run because the proposal explicitly requires the
-calibration gate to pass first. This remains an empirical MiniMax publication blocker, not a fallback
-to exact-Anchor answer scoring.
+The MiniMax judge was narrowed further: each required claim is matched in its own text-only call, then
+additional grounding is checked separately. This prevents attached evidence or another claim from
+changing the claim-expression decision. MiniMax-M3 passed the resulting seven-case calibration gate
+at `7/7`, with zero false passes and zero technical errors:
+`research/golden-data/local-runs/claim-judge-calibration-20260722-192202.json`.
+
+A fresh seven-case holdout was then frozen from different saved answers that were not used while
+developing the prompt. MiniMax-M3 achieved `2/7` full case agreement, with one false pass and zero
+technical errors. It missed an explicit contradiction when an answer ranked incomparable benchmark
+percentages, and it rejected several human-supported additional-grounding examples. The immutable
+report is `research/golden-data/local-runs/claim-judge-holdout-20260722-192327.json`.
+
+The holdout gate therefore remains rejected. The full answering benchmark was not run because the
+proposal explicitly requires both gates to pass first. This is an empirical MiniMax publication
+blocker, not a fallback to exact-Anchor answer scoring.

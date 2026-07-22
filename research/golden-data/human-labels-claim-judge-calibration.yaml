@@ -63,3 +63,12 @@ labels:
       agentboard_progress_metric_incremental_advancement: {verdict: expressed, matched_block_ids: [block_9, block_10, block_11, block_18]}
     additional_claims: fail
     note: The final synthesis expresses the required contrast, while uncited operational details are additional failures.
+
+  - case_id: benchmark_topic_change_followup_001
+    run_id: run_v4_calibration_supported
+    answer_path: research/golden-data/judge-calibration/v4-fixtures/calibration-supported/research_answer.json
+    evidence_path: research/golden-data/judge-calibration/v4-fixtures/calibration-supported/evidence_ledger.json
+    claims:
+      swebench_coding_benchmark_selection: {verdict: expressed, matched_block_ids: [block_1]}
+    additional_claims: pass
+    note: A supported paraphrase selects SWE-bench without adding material beyond the required claim.

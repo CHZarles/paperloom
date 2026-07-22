@@ -13,8 +13,7 @@ claims:
 
   transformer_optimizer_configuration:
     statement: >-
-      A strict optimizer reproduction of Attention Is All You Need uses Adam with beta1 = 0.9,
-      beta2 = 0.98, and epsilon = 1e-9 rather than generic Adam defaults.
+      Attention Is All You Need uses Adam with beta1 = 0.9, beta2 = 0.98, and epsilon = 1e-9.
     fact_keys: [optimizer, beta1, beta2, epsilon]
     required_evidence:
       - paper_id: attention_is_all_you_need_2017
@@ -89,15 +88,18 @@ claims:
           - page_ref_a7ca49f6192c4a90a25abadfeb4e430d
           - section_ref_56d5d4a6abd540bd9d76971b39e310f7
 
-  gpt3_gpt2_transformer_lineage:
-    statement: >-
-      GPT-3 uses the GPT-2 model and architecture family, and GPT-2 uses a Transformer-based
-      language-model architecture, so the supported chain is GPT-3 to GPT-2 to the Transformer.
+  gpt3_uses_gpt2_architecture:
+    statement: GPT-3 uses the same model and architecture family as GPT-2.
     required_evidence:
       - paper_id: gpt3_2020
         accepted_locations:
           - page_ref_7bf945a6e01e42a6adce776aa397a412
           - section_ref_6b6ca3871992488eb42e5c6cfb8cb0a9
+    forbidden_paper_ids: [bert_2018]
+
+  gpt2_uses_transformer_architecture:
+    statement: GPT-2 uses a Transformer-based language-model architecture.
+    required_evidence:
       - paper_id: gpt2_2019
         accepted_locations:
           - page_ref_c9c98edc4a3a4cbd9af4906247884e7f

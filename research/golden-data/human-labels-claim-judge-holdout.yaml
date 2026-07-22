@@ -3,116 +3,72 @@ dataset_id: harness_golden_expanded
 manifest: research/golden-data/manifest-expanded.yaml
 
 labels:
-  - case_id: transformer_adam_params_001
-    run_id: run_live_chat_e14469c7ef18
-    answer_path: research/golden-data/judge-calibration/holdout-runs/transformer_adam_params_001/attempt-1/research_answer.json
-    evidence_path: research/golden-data/judge-calibration/holdout-runs/transformer_adam_params_001/attempt-1/evidence_ledger.json
+  - case_id: gpt3_to_transformer_multihop_001
+    run_id: run_1c0c7bd6506d4092b51a5c5c9df960f6
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/gpt3_to_transformer_multihop_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/gpt3_to_transformer_multihop_001/evidence_ledger.json
     claims:
-      transformer_adam_hyperparameters: {verdict: missing, matched_block_ids: []}
+      gpt3_uses_gpt2_architecture: {verdict: expressed, matched_block_ids: [block_3, block_6]}
+      gpt2_uses_transformer_architecture: {verdict: expressed, matched_block_ids: [block_5, block_6]}
     additional_claims: pass
-    note: The answer abstains and makes no additional research claim.
+    note: Both architecture hops are explicit and the supporting details are grounded in their attached papers.
 
-  - case_id: bert_choice_followup_001
-    run_id: run_live_chat_ed5dd7cd3d93
-    answer_path: research/golden-data/judge-calibration/holdout-runs/bert_choice_followup_001/attempt-1/research_answer.json
-    evidence_path: research/golden-data/judge-calibration/holdout-runs/bert_choice_followup_001/attempt-1/evidence_ledger.json
+  - case_id: transformer_bert_confirmation_followup_001
+    run_id: run_6f730361b7f943a18329ec3d1386c2c3
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/transformer_bert_confirmation_followup_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/transformer_bert_confirmation_followup_001/evidence_ledger.json
     claims:
-      bert_bidirectional_transformer_encoder: {verdict: expressed, matched_block_ids: [block_9]}
-    additional_claims: fail
-    note: The required BERT role is explicit; several masking, stack, and GPT-2 details exceed attached evidence.
-
-  - case_id: mint_vs_tau_interaction_comparison_001
-    run_id: run_74f7eeaff4dc4fc2945fa0af314d01a9
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_vs_tau_interaction_comparison_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_vs_tau_interaction_comparison_001/evidence_ledger.json
-    claims:
-      mint_tools_and_feedback_protocol: {verdict: expressed, matched_block_ids: [block_11]}
-      tau_bench_database_end_state: {verdict: missing, matched_block_ids: []}
-      tau_bench_multi_trial_reliability: {verdict: missing, matched_block_ids: []}
-    additional_claims: fail
-    note: MINT's protocol is present, but the two authored tau-bench conclusions are not fully stated and extras overreach.
-
-  - case_id: toolsandbox_constraint_selection_001
-    run_id: run_b3dfad701ad142ba8c7d7b83865ec916
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/toolsandbox_constraint_selection_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/toolsandbox_constraint_selection_001/evidence_ledger.json
-    claims:
-      toolsandbox_stateful_tools: {verdict: expressed, matched_block_ids: [block_3, block_7]}
-      toolsandbox_on_policy_conversation: {verdict: expressed, matched_block_ids: [block_4, block_7]}
-      toolsandbox_intermediate_milestones: {verdict: expressed, matched_block_ids: [block_5, block_7]}
-      toolsandbox_insufficient_information: {verdict: expressed, matched_block_ids: [block_6, block_7]}
+      transformer_bert_architecture_comparison: {verdict: expressed, matched_block_ids: [block_4, block_9]}
+      bert_masked_language_model_objective: {verdict: expressed, matched_block_ids: [block_5, block_6, block_9]}
     additional_claims: pass
-    note: Each requested ToolSandbox property is stated in its own supported block.
+    note: The architecture comparison and MLM objective are explicit and the additional comparison axes are supported.
 
-  - case_id: cross_benchmark_human_agent_gap_001
-    run_id: run_51261825caf045518f80402b06da860c
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_human_agent_gap_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_human_agent_gap_001/evidence_ledger.json
+  - case_id: transformer_optimizer_reproduction_001
+    run_id: run_5de1453e279a470580b588047b568ac0
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/transformer_optimizer_reproduction_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/transformer_optimizer_reproduction_001/evidence_ledger.json
     claims:
-      gaia_human_gpt4_plugins_gap: {verdict: expressed, matched_block_ids: [block_2]}
-      webarena_human_gpt4_gap: {verdict: expressed, matched_block_ids: [block_3]}
-      gaia_webarena_results_are_not_interchangeable: {verdict: expressed, matched_block_ids: [block_5]}
-    additional_claims: fail
-    note: Both gaps and the task-setting difference are explicit, but a truncated uncited caveat remains unsupported.
+      transformer_optimizer_configuration: {verdict: expressed, matched_block_ids: [block_7]}
+    additional_claims: pass
+    note: The complete optimizer configuration is stated in one supported block without unsupported additions.
 
-  - case_id: agent_evaluation_recommendation_001
-    run_id: run_d94484fb62b84fffaf55fc0be3562679
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agent_evaluation_recommendation_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/agent_evaluation_recommendation_001/evidence_ledger.json
+  - case_id: transformer_to_bert_genealogy_001
+    run_id: run_f5a402d726e042adab96a266f0dd8b18
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/transformer_to_bert_genealogy_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/transformer_to_bert_genealogy_001/evidence_ledger.json
     claims:
-      gaia_general_assistant_selection: {verdict: expressed, matched_block_ids: [block_2, block_3]}
-      webarena_realistic_web_task_selection: {verdict: expressed, matched_block_ids: [block_4, block_5]}
-      swebench_software_engineering_selection: {verdict: expressed, matched_block_ids: [block_6, block_7]}
-      tau_bench_policy_constrained_tool_agent_selection: {verdict: expressed, matched_block_ids: [block_8, block_9]}
-    additional_claims: fail
-    note: The recommendations are explicit, but raw location markers provide no block-attached evidence.
-
-  - case_id: react_to_agent_evaluation_genealogy_001
-    run_id: run_44b59d60f5e24af09cd69797253b44aa
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/react_to_agent_evaluation_genealogy_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/react_to_agent_evaluation_genealogy_001/evidence_ledger.json
-    claims:
-      react_interleaves_reasoning_and_actions: {verdict: expressed, matched_block_ids: [block_6]}
-      agentbench_react_relationship: {verdict: expressed, matched_block_ids: [block_6]}
-      tau_bench_react_baseline: {verdict: expressed, matched_block_ids: [block_11]}
-    additional_claims: fail
-    note: The required relationships are stated, while unsupported corpus-wide exclusions and metadata claims remain.
-
-  - case_id: mint_tau_apparent_conflict_001
-    run_id: run_839e97e2d5794ab49d1992efca8c169a
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_tau_apparent_conflict_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/mint_tau_apparent_conflict_001/evidence_ledger.json
-    claims:
-      mint_tau_results_are_not_contradictory: {verdict: expressed, matched_block_ids: [block_1]}
-    additional_claims: fail
-    note: The required conclusion is explicit, but the answer invents unsupported causal links between the benchmarks.
+      bert_transformer_lineage: {verdict: expressed, matched_block_ids: [block_4, block_6]}
+    additional_claims: pass
+    note: The direct encoder relationship and the described inheritance and changes are supported.
 
   - case_id: coding_benchmark_followup_001
-    run_id: run_4ef894c74e894f3d9f84b90a6554157a
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/coding_benchmark_followup_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/coding_benchmark_followup_001/evidence_ledger.json
+    run_id: run_9606dc32301347a3b3b6ee7a6b5eccb4
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/coding_benchmark_followup_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/coding_benchmark_followup_001/evidence_ledger.json
     claims:
-      swebench_coding_benchmark_selection: {verdict: expressed, matched_block_ids: [block_2, block_15]}
-    additional_claims: fail
-    note: SWE-bench is selected correctly, but numerous scope and contamination claims are unsupported.
+      swebench_coding_benchmark_selection: {verdict: expressed, matched_block_ids: [block_2]}
+    additional_claims: pass
+    note: SWE-bench is selected for real GitHub issue resolution and the comparison with alternatives is supported.
+
+  - case_id: webarena_reproduction_protocol_001
+    run_id: run_b995cebaede94a7785e4147fba998925
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/webarena_reproduction_protocol_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/webarena_reproduction_protocol_001/evidence_ledger.json
+    claims:
+      webarena_four_self_hosted_applications: {verdict: expressed, matched_block_ids: [block_2]}
+      webarena_deterministic_reset: {verdict: expressed, matched_block_ids: [block_4]}
+      webarena_functional_correctness: {verdict: expressed, matched_block_ids: [block_7]}
+    additional_claims: pass
+    note: The reproduction checklist covers the required domains, reset, and correctness with attached evidence.
 
   - case_id: cross_benchmark_score_ranking_partial_001
-    run_id: run_ccddbf66d43e4893a95fd3ee73397bd1
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_score_ranking_partial_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/cross_benchmark_score_ranking_partial_001/evidence_ledger.json
+    run_id: run_80353c6e56934419ba7e1a6366711400
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/cross_benchmark_score_ranking_partial_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/cross_benchmark_score_ranking_partial_001/evidence_ledger.json
     claims:
       gaia_human_gpt4_plugins_gap: {verdict: missing, matched_block_ids: []}
       webarena_human_gpt4_gap: {verdict: missing, matched_block_ids: []}
-      swebench_claude2_baseline: {verdict: expressed, matched_block_ids: [block_5]}
+      swebench_claude2_baseline: {verdict: expressed, matched_block_ids: [block_4]}
       cross_benchmark_percentages_are_not_difficulty_ranks: {verdict: contradicted, matched_block_ids: []}
     additional_claims: fail
-    note: The answer omits both human gaps and directly makes the forbidden strict difficulty ranking.
-
-  - case_id: benchmark_topic_change_followup_001
-    run_id: run_005f380c7c56478ca800e8e3781c6316
-    answer_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/benchmark_topic_change_followup_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-13-llm-agent-evaluation-v1/benchmark_topic_change_followup_001/evidence_ledger.json
-    claims:
-      swebench_coding_benchmark_selection: {verdict: expressed, matched_block_ids: [block_1]}
-    additional_claims: pass
-    note: The answer follows the topic change and its additional details are supported.
+    note: The human gaps are absent and the answer directly makes the invalid strict ranking.
