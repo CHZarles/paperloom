@@ -1,0 +1,17 @@
+{
+  "answer_id": "answer_cross_benchmark_score_ranking_partial_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_98aed9f79fec08e0",
+    "ev_99ae39014986ddaa",
+    "ev_2d04596e11d47ace",
+    "ev_9dff9f9f7ae3d481",
+    "ev_89822820c1910a8c"
+  ],
+  "fields": {},
+  "markdown": "Based on the reported model success percentages from each paper, here is the ranking from **easiest to hardest** (higher model success = easier benchmark):\n\n## Ranking: Easiest → Hardest\n\n**1. GAIA (easiest)** — Best reported model success: ≤30% (GPT-4 with plugins, on Level 1 only; 0% on Level 3). [1]\n\n**2. WebArena** — Best reported model success: 14.41% (GPT-4 with CoT prompting + UA hint); 11.70% for GPT-4 with CoT only. [2] [3]\n\n**3. SWE-bench (hardest)** — Best reported model success: 1.96% (Claude 2, BM25 retrieval at 13k context); 4.8% with \"oracle\" retrieval. [4] [5]\n\n## Summary Table\n\n| Rank | Benchmark | Best Model | Reported Success % |\n|------|-----------|------------|--------------------|\n| 1 (easiest) | GAIA | GPT-4 + plugins (Level 1) | ≤30% |\n| 2 | WebArena | GPT-4 + CoT + UA hint | 14.41% |\n| 3 (hardest) | SWE-bench | Claude 2 | 1.96% |\n\nThe ranking is driven entirely by the cited success-rate figures: GAIA's best headline number is the highest, WebArena's best is mid-range, and SWE-bench's best is by far the lowest — so SWE-bench is the hardest of the three for current models.\n\nSources\n[1] GAIA:, Level 3, p. 3\n[2] WE BAR E N A: A REALISTIC WEB ENVIRONMENT FOR BUILDING AUTONOMOUS AGENTS, 5 RESULTS, p. 8\n[3] WE BAR E N A: A REALISTIC WEB ENVIRONMENT FOR BUILDING AUTONOMOUS AGENTS, 5 RESULTS, p. 8\n[4] SWE-BENCH: CAN LANGUAGE MODELS RESOLVE REAL-WORLD GITHUB ISSUES?, ABSTRACT, p. 1\n[5] SWE-BENCH: CAN LANGUAGE MODELS RESOLVE REAL-WORLD GITHUB ISSUES?, 4.3 MODELS, p. 6",
+  "outcome": "answered",
+  "question_id": "cross_benchmark_score_ranking_partial_001",
+  "status": "COMPLETED",
+  "summary": "Based on the reported model success percentages from each paper, here is the ranking from **easiest to hardest** (higher model success = easier benchmark):\n\n## Ranking: Easiest → Hardest\n\n**1. GAIA (easiest)** — Best reported model success: ≤30% (GPT-4 with plugins, on Level 1 only; 0% on Level 3). [1]\n\n**2. WebArena** — Best reported model success: 14.41% (GPT-4 with CoT prompting + UA hint); 11."
+}

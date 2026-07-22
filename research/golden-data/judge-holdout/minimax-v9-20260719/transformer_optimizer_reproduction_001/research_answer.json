@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_transformer_optimizer_reproduction_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_07f6cc721a8f6053",
+    "ev_b9c3362bf8b6a857"
+  ],
+  "fields": {},
+  "markdown": "## Optimizer — Reproduction Checklist (Attention Is All You Need, §5.3)\n\n| Field | Value (as used in the paper) |\n|---|---|\n| Optimizer | Adam [1] [2] |\n| β₁ | `0.9` [1] |\n| β₂ | `0.98` [1] |\n| ε | `1e-9` [1] |\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION, ABSTRACT, p. 1",
+  "outcome": "answered",
+  "question_id": "transformer_optimizer_reproduction_001",
+  "status": "COMPLETED",
+  "summary": "## Optimizer — Reproduction Checklist (Attention Is All You Need, §5.3)\n\n| Field | Value (as used in the paper) |\n|---|---|\n| Optimizer | Adam [1] [2] |\n| β₁ | `0.9` [1] |\n| β₂ | `0.98` [1] |\n| ε | `1e-9` [1] |\n\nSources\n[1] Attention Is All You Need, 5.3 Optimizer, p. 7\n[2] ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION, ABSTRACT, p. 1"
+}

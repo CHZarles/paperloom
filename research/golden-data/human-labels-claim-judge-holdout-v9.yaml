@@ -1,0 +1,73 @@
+schema_version: harness-claim-judge-labels/v1
+dataset_id: harness_golden_expanded
+manifest: research/golden-data/manifest-expanded.yaml
+
+labels:
+  - case_id: adam_beta2_conflict_001
+    run_id: run_cac9ab814b404e338048da3047556ad1
+    answer_path: research/golden-data/judge-holdout/minimax-v9-20260719/adam_beta2_conflict_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v9-20260719/adam_beta2_conflict_001/evidence_ledger.json
+    claims:
+      adam_default_and_transformer_beta2_are_not_conflicting: {verdict: expressed, matched_block_ids: [block_1]}
+    additional_claims: pass
+    note: The single cited block distinguishes Adam's recommended default from the Transformer's experiment-specific setting and explains why they are compatible.
+
+  - case_id: adam_constraint_refinement_followup_001
+    run_id: run_cbd1a87ec5cb4d49819db06ddda23a2d
+    answer_path: research/golden-data/judge-holdout/minimax-v9-20260719/adam_constraint_refinement_followup_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v9-20260719/adam_constraint_refinement_followup_001/evidence_ledger.json
+    claims:
+      transformer_adam_beta2: {verdict: missing, matched_block_ids: []}
+    additional_claims: pass
+    note: The cited block gives beta2 = 0.98 but does not itself identify either the Transformer or Adam.
+
+  - case_id: transformer_optimizer_reproduction_001
+    run_id: run_d177c622b8534242a350f2da8e02be50
+    answer_path: research/golden-data/judge-holdout/minimax-v9-20260719/transformer_optimizer_reproduction_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v9-20260719/transformer_optimizer_reproduction_001/evidence_ledger.json
+    claims:
+      transformer_optimizer_configuration: {verdict: missing, matched_block_ids: []}
+    additional_claims: pass
+    note: Each cited table row is supported, but no single row states the complete optimizer configuration; the uncited heading and table header are structural.
+
+  - case_id: benchmark_topic_change_followup_001
+    run_id: run_5b0bd670af204ad4be1bc066a31781b7
+    answer_path: research/golden-data/judge-holdout/minimax-v9-20260719/benchmark_topic_change_followup_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v9-20260719/benchmark_topic_change_followup_001/evidence_ledger.json
+    claims:
+      swebench_coding_benchmark_selection: {verdict: expressed, matched_block_ids: [block_1]}
+    additional_claims: fail
+    note: The uncited opening block makes the complete benchmark-selection claim, while the later cited details do not support that opening block in place.
+
+  - case_id: bert_transformer_role_001
+    run_id: run_b80bdf7175ff4b52b3b3917039df0b2d
+    answer_path: research/golden-data/judge-holdout/minimax-v9-20260719/bert_transformer_role_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v9-20260719/bert_transformer_role_001/evidence_ledger.json
+    claims:
+      bert_bidirectional_transformer_encoder: {verdict: expressed, matched_block_ids: [block_2]}
+    additional_claims: fail
+    note: The cited second block completely states BERT's architecture, but the uncited opening architecture statement remains unsupported material.
+
+  - case_id: toolsandbox_constraint_selection_001
+    run_id: run_332b74c1b94e46678eb622ffb5abe5eb
+    answer_path: research/golden-data/judge-holdout/minimax-v9-20260719/toolsandbox_constraint_selection_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v9-20260719/toolsandbox_constraint_selection_001/evidence_ledger.json
+    claims:
+      toolsandbox_stateful_tools: {verdict: expressed, matched_block_ids: [block_2]}
+      toolsandbox_on_policy_conversation: {verdict: expressed, matched_block_ids: [block_3]}
+      toolsandbox_intermediate_milestones: {verdict: expressed, matched_block_ids: [block_4]}
+      toolsandbox_insufficient_information: {verdict: expressed, matched_block_ids: [block_5]}
+    additional_claims: fail
+    note: Four cited list items state the required properties, while the uncited opening selection is a material claim about ToolSandbox.
+
+  - case_id: cross_benchmark_score_ranking_partial_001
+    run_id: run_9ce73dfe3fe5481e8eb3350fcc845a1f
+    answer_path: research/golden-data/judge-holdout/minimax-v9-20260719/cross_benchmark_score_ranking_partial_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v9-20260719/cross_benchmark_score_ranking_partial_001/evidence_ledger.json
+    claims:
+      gaia_human_gpt4_plugins_gap: {verdict: missing, matched_block_ids: []}
+      webarena_human_gpt4_gap: {verdict: missing, matched_block_ids: []}
+      swebench_claude2_baseline: {verdict: expressed, matched_block_ids: [block_5]}
+      cross_benchmark_percentages_are_not_difficulty_ranks: {verdict: contradicted, matched_block_ids: []}
+    additional_claims: fail
+    note: The answer omits both complete human-agent gaps, states the Claude 2 baseline, and explicitly turns incomparable percentages into a strict ranking; several uncited data rows and conclusions also fail grounding.

@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_bert_transformer_role_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_2a68a45a3cd8ba50",
+    "ev_24717e375afea8d9"
+  ],
+  "fields": {},
+  "markdown": "BERT uses the Transformer **as an encoder**, not a decoder.\n\nIn the Model Architecture description, the BERT paper states that \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017).\" [1] The \"E\" in the name BERT itself stands for \"Bidirectional Encoder Representations from Transformers,\" reflecting this design choice. [2]\n\nA key distinction noted in the paper is that the BERT Transformer uses **bidirectional self-attention** (every token can attend to both left and right context), whereas decoder-style Transformers like OpenAI GPT use constrained self-attention where every token can only attend to context to its left. [1]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 3 BERT, p. 3\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, Abstract, p. 1",
+  "outcome": "answered",
+  "question_id": "bert_transformer_role_001",
+  "status": "COMPLETED",
+  "summary": "BERT uses the Transformer **as an encoder**, not a decoder.\n\nIn the Model Architecture description, the BERT paper states that \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017).\" [1] The \"E\" in the name BERT itself stands for \"Bidirectional Encoder Representations from Transformers,\" reflecting this"
+}

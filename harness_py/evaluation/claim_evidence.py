@@ -33,7 +33,8 @@ def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
     raw_blocks = _markdown_blocks(markdown)
     blocks: list[JsonMap] = []
     errors: list[str] = []
-    for index, raw in enumerate(raw_blocks, start=1):
+    for index, raw_block in enumerate(raw_blocks, start=1):
+        raw = str(raw_block["text"])
         evidence_ids: list[str] = []
         for direct in [
             *_EVIDENCE_CITATION.findall(raw),
@@ -57,6 +58,7 @@ def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
             continue
         blocks.append({
             "block_id": f"block_{index}",
+            "kind": raw_block["kind"],
             "text": text,
             "evidence_ids": evidence_ids,
         })
@@ -319,6 +321,7 @@ def build_claim_judge_packet(
         "answer_blocks": [
             {
                 "block_id": block.get("block_id"),
+                "kind": block.get("kind"),
                 "text": block.get("text"),
                 "evidence": [
                     _judge_evidence(evidence_by_id[evidence_id])
@@ -362,13 +365,16 @@ def _answer_body(markdown: str) -> str:
     return markdown[:marker.start()].rstrip() if marker else markdown
 
 
-def _markdown_blocks(markdown: str) -> list[str]:
-    blocks: list[str] = []
+def _markdown_blocks(markdown: str) -> list[JsonMap]:
+    blocks: list[JsonMap] = []
     paragraph: list[str] = []
 
     def flush() -> None:
         if paragraph:
-            blocks.append("\n".join(paragraph).strip())
+            blocks.append({
+                "kind": "paragraph",
+                "text": "\n".join(paragraph).strip(),
+            })
             paragraph.clear()
 
     for line in markdown.splitlines():
@@ -378,14 +384,23 @@ def _markdown_blocks(markdown: str) -> list[str]:
             continue
         if _TABLE_SEPARATOR.match(stripped):
             flush()
+            if blocks and "|" in str(blocks[-1]["text"]):
+                blocks[-1]["kind"] = "table_header"
             continue
-        if _LIST_ITEM.match(line) or ("|" in stripped and stripped.startswith("|")):
+        if _LIST_ITEM.match(line):
             flush()
-            blocks.append(stripped)
+            blocks.append({"kind": "list_item", "text": stripped})
+            continue
+        if "|" in stripped and stripped.startswith("|"):
+            flush()
+            blocks.append({"kind": "table_row", "text": stripped})
             continue
         if stripped.startswith("#"):
             flush()
-            blocks.append(stripped.lstrip("#").strip())
+            blocks.append({
+                "kind": "heading",
+                "text": stripped.lstrip("#").strip(),
+            })
             continue
         paragraph.append(stripped)
     flush()

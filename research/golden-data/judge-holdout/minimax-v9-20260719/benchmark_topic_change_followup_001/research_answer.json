@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_benchmark_topic_change_followup_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_9dff9f9f7ae3d481",
+    "ev_5329c0afebfc01f0"
+  ],
+  "fields": {},
+  "markdown": "Use **SWE-bench**. It is built specifically for evaluating systems that resolve real GitHub issues.\n\n- SWE-bench contains 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. [1]\n- Each task gives a model the issue text and a codebase snapshot; the model must produce a patch that is evaluated against the repository's real unit tests. [2]\n- Tasks frequently require coordinating changes across multiple functions, classes, and files, and interacting with execution environments — i.e., exactly what an issue-fixing agent does. [1]\n- It also includes SWE-bench-train (≈19,000 non-testing task instances from 37 repositories) if you want a training set for fine-tuning a GitHub-issue-fixing agent. [2]\n\nSources\n[1] SWE-BENCH: CAN LANGUAGE MODELS RESOLVE REAL-WORLD GITHUB ISSUES?, ABSTRACT, p. 1\n[2] SWE-BENCH: CAN LANGUAGE MODELS RESOLVE REAL-WORLD GITHUB ISSUES?, 1 INTRODUCTION, p. 1",
+  "outcome": "answered",
+  "question_id": "benchmark_topic_change_followup_001",
+  "status": "COMPLETED",
+  "summary": "Use **SWE-bench**. It is built specifically for evaluating systems that resolve real GitHub issues.\n\n- SWE-bench contains 2,294 software engineering problems drawn from real GitHub issues and corresponding pull requests across 12 popular Python repositories. [1]\n- Each task gives a model the issue text and a codebase snapshot; the model must produce a patch that is evaluated against the repository"
+}

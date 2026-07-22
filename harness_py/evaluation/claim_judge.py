@@ -10,7 +10,7 @@ from .judge_model import JudgeModel
 from ..core.models import JsonMap, as_list, child_map
 
 
-CLAIM_JUDGE_PROMPT_VERSION = "claim-evidence-judge/v8"
+CLAIM_JUDGE_PROMPT_VERSION = "claim-evidence-judge/v9"
 CLAIM_JUDGE_CONTRACT_VERSION = "claim-evidence-semantic-judgment/v1"
 CLAIM_JUDGE_PROTOCOL_ATTEMPTS = 2
 CLAIM_JUDGE_BLOCK_BATCH_SIZE = 8
@@ -180,7 +180,7 @@ class ClaimEvidenceJudge:
     ) -> JsonMap:
         block_id = str(block.get("block_id") or "")
         if not as_list(block.get("evidence")):
-            if not self._judge_materiality(packet, block):
+            if _is_structural_block(block):
                 return {"block_id": block_id, "verdict": "not_material", "issues": []}
             return {
                 "block_id": block_id,
@@ -202,26 +202,6 @@ class ClaimEvidenceJudge:
             "submit_block_grounding",
         )
         return _parse_additional_block(arguments, block_id)
-
-    def _judge_materiality(self, packet: JsonMap, block: JsonMap) -> bool:
-        block_id = str(block.get("block_id") or "")
-        request = {
-            "contract_version": CLAIM_JUDGE_CONTRACT_VERSION,
-            "case_id": packet.get("case_id"),
-            "answer_block": {
-                "block_id": block_id,
-                "text": str(block.get("text") or ""),
-            },
-        }
-        arguments = self._complete_arguments(
-            [
-                {"role": "system", "content": _materiality_prompt()},
-                {"role": "user", "content": _json(request)},
-            ],
-            _materiality_tool(block_id),
-            "submit_block_materiality",
-        )
-        return _parse_materiality(arguments, block_id)
 
     def _complete_arguments(
         self,
@@ -322,12 +302,8 @@ def _parse_additional_block(value: JsonMap, expected_block_id: str) -> JsonMap:
     return {"block_id": block_id, "verdict": verdict, "issues": issues}
 
 
-def _parse_materiality(value: JsonMap, expected_block_id: str) -> bool:
-    block_id = str(value.get("block_id") or "")
-    material = value.get("material")
-    if block_id != expected_block_id or not isinstance(material, bool):
-        raise JudgeProtocolError("block materiality judge returned an invalid result")
-    return material
+def _is_structural_block(block: JsonMap) -> bool:
+    return str(block.get("kind") or "") in {"heading", "table_header"}
 
 
 def _claim_prompt() -> str:
@@ -387,17 +363,6 @@ unsupported when one clause is absent from the attached evidence, contradicted, 
 partly supported, and name the material defect in issues. Use uncertain only when the supplied text
 genuinely cannot resolve support. Familiar facts, plausible inference, facts cited in another block,
 and citation-like text are not evidence."""
-
-
-def _materiality_prompt() -> str:
-    return """ANSWER_BLOCK_MATERIALITY_JUDGE
-Decide only whether the supplied answer block asserts any externally checkable factual claim. Return
-exactly one submit_block_materiality tool call.
-
-Direct answers, conclusions, summaries, comparisons, numbers, source descriptions, and bibliographic
-details are material factual claims. Headings, table headers, pure transition or organizational text,
-offers to help, and clearly labelled opinions are not material. Judge what the block itself asserts;
-do not borrow facts from the question, another block, or outside knowledge."""
 
 
 def _claim_tool(claim_id: str, block_ids: list[str]) -> JsonMap:
@@ -473,25 +438,6 @@ def _additional_tool(block_id: str) -> JsonMap:
     }
 
 
-def _materiality_tool(block_id: str) -> JsonMap:
-    return {
-        "type": "function",
-        "function": {
-            "name": "submit_block_materiality",
-            "description": "Classify whether one uncited answer block makes a factual assertion.",
-            "parameters": {
-                "type": "object",
-                "required": ["block_id", "material"],
-                "properties": {
-                    "block_id": {"type": "string", "enum": [block_id]},
-                    "material": {"type": "boolean"},
-                },
-                "additionalProperties": False,
-            },
-        },
-    }
-
-
 def claim_judge_definition_sha256() -> str:
     definition = {
         "contract_version": CLAIM_JUDGE_CONTRACT_VERSION,
@@ -505,8 +451,10 @@ def claim_judge_definition_sha256() -> str:
         "contradiction_tool": _contradiction_tool("<claim_id>", ["<block_id>"]),
         "additional_prompt": _additional_prompt(),
         "additional_tool": _additional_tool("<block_id>"),
-        "materiality_prompt": _materiality_prompt(),
-        "materiality_tool": _materiality_tool("<block_id>"),
+        "uncited_block_rule": {
+            "not_material_kinds": ["heading", "table_header"],
+            "all_other_kinds": "unsupported",
+        },
         "deterministic_exact_required_only_rule": {
             "version": "deterministic-pass/v1",
             "normalization": "casefold, collapse whitespace, strip, remove trailing periods",

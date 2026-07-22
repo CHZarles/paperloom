@@ -556,7 +556,7 @@ New product runs now write a content-addressed `run_manifest.json` for the obser
 and retrieval trace. This records one corpus/index observation without introducing paper versions or
 changing the Java, Qdrant, MySQL, or MiniMax contracts.
 
-The current v8 MiniMax judge keeps the decisions narrow but adds safety-oriented orchestration around
+The v8 MiniMax judge kept the decisions narrow but added safety-oriented orchestration around
 the model:
 
 - required-claim matching uses batches of at most eight text-only answer blocks so long answers cannot
@@ -590,3 +590,34 @@ the v8 definition hash makes them stale; they were not used as publication evide
 v8 holdout is rejected, no current semantic rescore was published and the full stable and expanded
 MiniMax answering benchmarks were not run. The holdout remains an empirical MiniMax publication
 blocker, not a fallback to exact-Anchor answer scoring.
+
+### v9 Gate Result
+
+v9 removes the unreliable model-based materiality stage. Markdown parsing now records each answer
+block as a paragraph, list item, heading, table header, or table row. An uncited heading or table
+header is ignored as structural; every other uncited block fails deterministically. MiniMax remains
+responsible only for required-claim expression, contradiction, and cited whole-block grounding.
+
+MiniMax-M3 passed the unchanged seven-case calibration set at `7/7`, with zero false passes and zero
+technical errors. The report is
+`research/golden-data/local-runs/claim-judge-calibration-20260722-213825.json`.
+
+A new seven-case holdout was frozen before the first v9 holdout call at
+`research/golden-data/human-labels-claim-judge-holdout-v9.yaml`. It uses different MiniMax answer
+artifacts under `research/golden-data/judge-holdout/minimax-v9-20260719/` and covers supported cited
+answers, missing claim elements, uncited material, structural table blocks, and a direct ranking
+contradiction.
+
+That untouched holdout rejected v9: `5/7` full case agreement, two false passes, and zero technical
+errors. MiniMax selected an `Optimizer | Adam` table row for a claim that also required three parameter
+values, and selected a descriptive SWE-bench row for a claim that required an explicit benchmark
+selection. The immutable rejected report is
+`research/golden-data/local-runs/claim-judge-holdout-v9-20260722-214617.json`.
+
+A narrower v10 prompt experiment addressed those two patterns but then failed the original calibration
+at `6/7` by missing WebArena's explicit container-reset procedure. It was not adopted. Because the v9
+holdout gate is rejected, no v9 semantic rescore or full stable/expanded MiniMax benchmark was run.
+
+Final v9 regression verification was `10/10` stable fixtures, `24/24` expanded fixtures, and `182`
+Harness tests passed with one real-Qdrant smoke test skipped. Claim locations and the product corpus
+path were unchanged from the preceding `77/77` product claim-location audit.

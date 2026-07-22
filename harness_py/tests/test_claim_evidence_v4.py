@@ -28,6 +28,30 @@ class ClaimEvidenceV4Test(unittest.TestCase):
             [("block_1", ["ev_a"]), ("block_2", ["ev_b"])],
             [(block["block_id"], block["evidence_ids"]) for block in blocks],
         )
+        self.assertEqual(["paragraph", "list_item"], [block["kind"] for block in blocks])
+
+    def test_markdown_structure_is_preserved_as_block_kinds(self) -> None:
+        blocks, errors = answer_blocks({
+            "markdown": (
+                "# Comparison\n\n"
+                "| Benchmark | Result |\n"
+                "| --- | --- |\n"
+                "| A | 10 [1] |\n\n"
+                "Conclusion. [2]\n\n"
+                "Sources\n[1] Paper A\n[2] Paper B"
+            ),
+            "cited_evidence_ids": ["ev_a", "ev_b"],
+        })
+
+        self.assertEqual([], errors)
+        self.assertEqual(
+            ["heading", "table_header", "table_row", "paragraph"],
+            [block["kind"] for block in blocks],
+        )
+        self.assertEqual(
+            [[], [], ["ev_a"], ["ev_b"]],
+            [block["evidence_ids"] for block in blocks],
+        )
 
     def test_legacy_direct_evidence_citation_is_reconstructed_for_saved_runs(self) -> None:
         blocks, errors = answer_blocks({

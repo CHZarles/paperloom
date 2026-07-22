@@ -36,12 +36,6 @@ class ClaimJudgeTest(unittest.TestCase):
                             "contradicting_block_id": "",
                         },
                     }]
-                if name == "submit_block_materiality":
-                    block_id = tool["function"]["parameters"]["properties"]["block_id"]["enum"][0]
-                    return [{
-                        "name": name,
-                        "arguments": {"block_id": block_id, "material": True},
-                    }]
                 block_id = tool["function"]["parameters"]["properties"]["block_id"]["enum"][0]
                 return [{
                     "name": name,
@@ -71,7 +65,6 @@ class ClaimJudgeTest(unittest.TestCase):
                 "submit_claim_match",
                 "submit_claim_contradiction",
                 "submit_block_grounding",
-                "submit_block_materiality",
             ],
             [tool["function"]["name"] for tool in model.tools],
         )
@@ -134,8 +127,6 @@ class ClaimJudgeTest(unittest.TestCase):
                         "contradicted": False,
                         "contradicting_block_id": "",
                     }
-                elif name == "submit_block_materiality":
-                    arguments = {"block_id": "block_2", "material": False}
                 else:
                     arguments = {
                         "block_id": "block_1",
@@ -152,6 +143,7 @@ class ClaimJudgeTest(unittest.TestCase):
                 "evidence": [{"span_text": "Claim A."}],
             }, {
                 "block_id": "block_2",
+                "kind": "heading",
                 "text": "Here is the requested comparison.",
                 "evidence": [],
             }],
@@ -273,8 +265,6 @@ class ClaimJudgeTest(unittest.TestCase):
                         "contradicted": False,
                         "contradicting_block_id": "",
                     }
-                elif name == "submit_block_materiality":
-                    arguments = {"block_id": "block_1", "material": True}
                 else:
                     arguments = {
                         "block_id": "block_2",
@@ -369,6 +359,7 @@ class ClaimJudgeTest(unittest.TestCase):
         for path, expected_count in (
             ("research/golden-data/human-labels-claim-judge-calibration.yaml", 7),
             ("research/golden-data/human-labels-claim-judge-holdout.yaml", 7),
+            ("research/golden-data/human-labels-claim-judge-holdout-v9.yaml", 7),
         ):
             with self.subTest(path=path):
                 label_set = load_claim_judge_labels(path)
