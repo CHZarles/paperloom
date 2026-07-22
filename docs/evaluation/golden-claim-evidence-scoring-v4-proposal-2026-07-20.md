@@ -543,31 +543,47 @@ The Python scoring and Golden authoring migration are complete:
 - live product reads no longer attach Anchor IDs; exact Anchors remain retrieval diagnostics only;
 - historical v2/v3 runs and reports were not modified.
 
-Verification results after the dedicated claim/block judge replaced the reused v5 answer judge:
+Final local verification after the dedicated claim/block judge replaced the reused v5 answer judge:
 
 ```text
 stable fixture:   10 pass, 0 fail, 0 review_required
 expanded fixture: 24 pass, 0 fail, 0 review_required
 product claim-location audit: 77/77 claim references resolved, 33 unique locations, 0 failures
-Harness test suite: 176 passed, 1 skipped
+Harness test suite: 178 passed, 1 skipped
 ```
 
 New product runs now write a content-addressed `run_manifest.json` for the observed corpus locations
 and retrieval trace. This records one corpus/index observation without introducing paper versions or
 changing the Java, Qdrant, MySQL, or MiniMax contracts.
 
-The MiniMax judge was narrowed further: each required claim is matched in its own text-only call, then
-additional grounding is checked separately. This prevents attached evidence or another claim from
-changing the claim-expression decision. MiniMax-M3 passed the resulting seven-case calibration gate
-at `7/7`, with zero false passes and zero technical errors:
-`research/golden-data/local-runs/claim-judge-calibration-20260722-192202.json`.
+The MiniMax judge now matches each required claim in its own text-only call. A narrow contradiction
+call follows a `missing` or `uncertain` result, while additional grounding is judged independently for
+each answer block. Required-claim content is excluded from that additional-material check even when it
+is repeated, partial, or matched elsewhere. One bounded retry handles a missing structured tool call;
+it does not retry or alter a semantic decision.
 
-A fresh seven-case holdout was then frozen from different saved answers that were not used while
-developing the prompt. MiniMax-M3 achieved `2/7` full case agreement, with one false pass and zero
-technical errors. It missed an explicit contradiction when an answer ranked incomparable benchmark
-percentages, and it rejected several human-supported additional-grounding examples. The immutable
-report is `research/golden-data/local-runs/claim-judge-holdout-20260722-192327.json`.
+MiniMax-M3 passed the resulting seven-case calibration gate at `7/7`, with zero false passes and zero
+technical errors. The immutable accepted report is
+`research/golden-data/local-runs/claim-judge-calibration-20260722-195656.json`.
 
-The holdout gate therefore remains rejected. The full answering benchmark was not run because the
-proposal explicitly requires both gates to pass first. This is an empirical MiniMax publication
-blocker, not a fallback to exact-Anchor answer scoring.
+After calibration passed, a new seven-case holdout was frozen from previously saved MiniMax-M3 answers
+under `2026-07-14-single-path-model-comparison-v1/minimax-m3`. It includes supported answers, missing
+claim material, unsupported additions, and an explicit cross-benchmark ranking contradiction. This
+holdout was not run while the v4 prompt was being developed.
+
+The untouched holdout rejected the judge: `4/7` full case agreement, three false passes, and zero
+technical errors. The three unsafe decisions were:
+
+- treating an uncited statement about the original Transformer's encoder and decoder as if it were
+  wholly contained in the required BERT-encoder claim;
+- accepting an optimizer block that lists all numeric values but never names Adam as the complete
+  authored optimizer claim;
+- accepting a closing comparability caveat as the non-ranking claim even though the answer explicitly
+  declares an easiest-to-hardest ranking earlier. Because the first matcher returned `expressed`, the
+  missing/uncertain contradiction fallback did not run.
+
+The immutable rejected report is
+`research/golden-data/local-runs/claim-judge-holdout-20260722-200212.json`. No semantic judgments were
+generated for publication, no preserved product runs were rescored with this rejected judge, and the
+full stable and expanded MiniMax answering benchmarks were not run. The holdout remains an empirical
+MiniMax publication blocker, not a fallback to exact-Anchor answer scoring.
