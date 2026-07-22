@@ -10,9 +10,11 @@ from .judge_model import JudgeModel
 from ..core.models import JsonMap, as_list, child_map
 
 
-CLAIM_JUDGE_PROMPT_VERSION = "claim-evidence-judge/v9"
+CLAIM_JUDGE_PROMPT_VERSION = "claim-evidence-judge/v15"
 CLAIM_JUDGE_CONTRACT_VERSION = "claim-evidence-semantic-judgment/v1"
-CLAIM_JUDGE_PROTOCOL_ATTEMPTS = 2
+CLAIM_JUDGE_GATE_POLICY_VERSION = "claim-judge-gate/case-disposition-v3"
+CLAIM_JUDGE_PROTOCOL_ATTEMPTS = 3
+CLAIM_JUDGE_SEMANTIC_ATTEMPTS = 2
 CLAIM_JUDGE_BLOCK_BATCH_SIZE = 8
 CLAIM_VERDICTS = {"expressed", "contradicted", "missing", "uncertain"}
 
@@ -77,7 +79,7 @@ class ClaimEvidenceJudge:
                 "statement": str(claim.get("statement") or ""),
             },
         }
-        result = self._match_claim_batches(request_base, claim_id, text_blocks)
+        result = self._select_claim_candidate(request_base, claim_id, text_blocks)
         cited_block_ids = {
             str(block.get("block_id") or "")
             for block in as_list(packet.get("answer_blocks"))
@@ -94,13 +96,40 @@ class ClaimEvidenceJudge:
                 if str(block.get("block_id") or "") in cited_block_ids
             ]
             if cited_text_blocks:
-                cited_result = self._match_claim_batches(
+                cited_result = self._select_claim_candidate(
                     request_base,
                     claim_id,
                     cited_text_blocks,
                 )
+                cited_result = self._verify_claim_candidate(
+                    request_base,
+                    claim_id,
+                    cited_result,
+                    cited_text_blocks,
+                )
                 if cited_result.get("verdict") == "expressed":
                     result = cited_result
+                else:
+                    result = self._verify_claim_candidate(
+                        request_base,
+                        claim_id,
+                        result,
+                        text_blocks,
+                    )
+            else:
+                result = self._verify_claim_candidate(
+                    request_base,
+                    claim_id,
+                    result,
+                    text_blocks,
+                )
+        else:
+            result = self._verify_claim_candidate(
+                request_base,
+                claim_id,
+                result,
+                text_blocks,
+            )
         contradiction = self._judge_contradiction(
             {**request_base, "answer_blocks": text_blocks},
             claim_id,
@@ -113,6 +142,69 @@ class ClaimEvidenceJudge:
                 "matched_block_ids": [],
             }
         return result
+
+    def _select_claim_candidate(
+        self,
+        request_base: JsonMap,
+        claim_id: str,
+        text_blocks: list[JsonMap],
+    ) -> JsonMap:
+        results = []
+        for _attempt in range(CLAIM_JUDGE_SEMANTIC_ATTEMPTS):
+            result = self._match_claim_batches(request_base, claim_id, text_blocks)
+            results.append(result)
+            if result.get("verdict") == "expressed":
+                return result
+        verdict = (
+            "uncertain"
+            if any(result.get("verdict") == "uncertain" for result in results)
+            else "missing"
+        )
+        return {"claim_id": claim_id, "verdict": verdict, "matched_block_ids": []}
+
+    def _verify_claim_candidate(
+        self,
+        request_base: JsonMap,
+        claim_id: str,
+        result: JsonMap,
+        text_blocks: list[JsonMap],
+    ) -> JsonMap:
+        if result.get("verdict") != "expressed":
+            return result
+        matched = [str(item) for item in as_list(result.get("matched_block_ids"))]
+        if len(matched) != 1:
+            return {"claim_id": claim_id, "verdict": "missing", "matched_block_ids": []}
+        block_id = matched[0]
+        candidate = next(
+            (
+                block for block in text_blocks
+                if str(block.get("block_id") or "") == block_id
+            ),
+            None,
+        )
+        if candidate is None:
+            return {"claim_id": claim_id, "verdict": "missing", "matched_block_ids": []}
+        arguments = self._complete_arguments(
+            [
+                {"role": "system", "content": _claim_verification_prompt()},
+                {
+                    "role": "user",
+                    "content": _json({**request_base, "answer_blocks": [candidate]}),
+                },
+            ],
+            _claim_tool(claim_id, [block_id]),
+            "submit_claim_match",
+        )
+        verified = _parse_claim(arguments, claim_id, [block_id])
+        if verified.get("verdict") == "expressed":
+            return verified
+        return {
+            "claim_id": claim_id,
+            "verdict": (
+                "uncertain" if verified.get("verdict") == "uncertain" else "missing"
+            ),
+            "matched_block_ids": [],
+        }
 
     def _match_claim_batches(
         self,
@@ -348,6 +440,26 @@ it later adds a comparability caveat. Otherwise return contradicted=false and om
 contradicting_block_id or return it as an empty string."""
 
 
+def _claim_verification_prompt() -> str:
+    return """CLAIM_COMPLETENESS_VERIFIER
+Evaluate whether the single supplied answer block, by itself, explicitly expresses the entire required
+claim. This is a conservative verification step, not a search for a plausible connection. Never use
+the question, a heading, adjacent blocks, attached evidence, or outside knowledge. Return exactly one
+submit_claim_match tool call.
+
+Use expressed only when every entity, relation, comparison side, value, and qualifier in the required
+claim appears in the block or a faithful paraphrase. A row naming only an optimizer does not express a
+configuration claim that also requires parameter values from other rows. A descriptive property does
+not express a recommendation or selection unless the block itself makes that choice. Partial support,
+topical overlap, and implications are missing. For example, "SWE-bench contains problems from real
+GitHub issues" does not itself say "Use SWE-bench" or select it as the benchmark. Use uncertain only
+for genuinely ambiguous wording. A block that directly gives a mechanism or procedure for performing
+an action does express that capability without repeating the surrounding use occasion. For a claim
+that reconciles two results because they measure different properties in different settings, the block
+must identify the measured property or setting on both sides; naming only different feedback sources
+is incomplete."""
+
+
 def _additional_prompt() -> str:
     return """ANSWER_BLOCK_GROUNDING_JUDGE
 Evaluate only the supplied answer_block and evidence attached to that block. Never use outside
@@ -443,10 +555,13 @@ def claim_judge_definition_sha256() -> str:
         "contract_version": CLAIM_JUDGE_CONTRACT_VERSION,
         "prompt_version": CLAIM_JUDGE_PROMPT_VERSION,
         "protocol_attempts": CLAIM_JUDGE_PROTOCOL_ATTEMPTS,
+        "semantic_attempts": CLAIM_JUDGE_SEMANTIC_ATTEMPTS,
         "claim_block_batch_size": CLAIM_JUDGE_BLOCK_BATCH_SIZE,
         "claim_block_selection": "prefer-complete-block-with-attached-evidence/v1",
         "claim_prompt": _claim_prompt(),
         "claim_tool": _claim_tool("<claim_id>", ["<block_id>"]),
+        "claim_candidate_verification": "isolated-block/v1",
+        "claim_verification_prompt": _claim_verification_prompt(),
         "contradiction_prompt": _contradiction_prompt(),
         "contradiction_tool": _contradiction_tool("<claim_id>", ["<block_id>"]),
         "additional_prompt": _additional_prompt(),

@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_adam_beta2_conflict_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_5002ef57989db06d",
+    "ev_5c22680f3317a304"
+  ],
+  "fields": {},
+  "markdown": "Both sources are correct — they describe different things, so there is no real conflict.\n\nThe original Adam paper (Kingma & Ba, 2014) specifies β₂ = 0.999 as its recommended default: \"Good default settings for the tested machine learning problems are α = 0.001, β₁ = 0.9, β₂ = 0.999 and ε = 10⁻⁸.\" [1]\n\nThe Transformer paper (Vaswani et al., 2017) explicitly used β₂ = 0.98 in its experiments, deviating from Adam's default: \"We used the Adam optimizer with β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹.\" [2]\n\nThe Adam paper's 0.999 is the recommended default across the machine learning problems the Adam authors tested. The Transformer paper's 0.98 is the tuned setting the Transformer authors actually chose for their architecture. The Transformer authors adopted the Adam algorithm but overrode its defaults — they also changed ε from Adam's default of 10⁻⁸ to 10⁻⁹, indicating the entire hyperparameter set was tuned for their model. When a source says β₂ = 0.999, it is repeating Adam's recommendation; when a source says β₂ = 0.98, it is reporting the Transformer's experimental choice.\n\nSources\n[1] ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION, 1 INTRODUCTION, p. 2\n[2] Attention Is All You Need, 4 Why Self-Attention, p. 7",
+  "outcome": "answered",
+  "question_id": "adam_beta2_conflict_001",
+  "status": "COMPLETED",
+  "summary": "Both sources are correct — they describe different things, so there is no real conflict.\n\nThe original Adam paper (Kingma & Ba, 2014) specifies β₂ = 0.999 as its recommended default: \"Good default settings for the tested machine learning problems are α = 0.001, β₁ = 0.9, β₂ = 0.999 and ε = 10⁻⁸.\" [1]\n\nThe Transformer paper (Vaswani et al., 2017) explicitly used β₂ = 0.98 in its experiments, deviat"
+}

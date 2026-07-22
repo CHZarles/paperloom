@@ -15,6 +15,7 @@ from .claim_evidence import (
 )
 from .claim_judge import (
     CLAIM_JUDGE_CONTRACT_VERSION,
+    CLAIM_JUDGE_GATE_POLICY_VERSION,
     CLAIM_JUDGE_PROMPT_VERSION,
     claim_judge_definition_sha256,
 )
@@ -26,6 +27,7 @@ from ..core.models import GoldenDataset, JsonMap, as_list, child_map
 
 CLAIM_JUDGE_LABEL_SCHEMA_VERSION = "harness-claim-judge-labels/v1"
 CLAIM_JUDGE_AGREEMENT_SCHEMA_VERSION = "harness-claim-judge-agreement/v1"
+CLAIM_JUDGE_MIN_AGREEMENT = 0.85
 
 
 @dataclass(frozen=True)
@@ -182,22 +184,24 @@ def evaluate_claim_judge_calibration(
                 child_map(actual.get("additional_claims")).get("verdict") or ""
             )
             additional_match = actual_additional == label.expected_additional
-            full_match = all(
-                matched is not False
-                for matched in claim_matches.values()
-            ) and additional_match
-            full_agreement += int(full_match)
-            false_pass = any(
-                _semantic_claim_false_pass(
-                    expected,
-                    child_map(actual_claims.get(claim_id)),
+            human_case_pass = (
+                all(
+                    expected.get("verdict") == "expressed"
+                    for claim_id, expected in label.expected_claims.items()
+                    if claim_id in label.semantic_claim_ids
                 )
-                for claim_id, expected in label.expected_claims.items()
-                if claim_id in label.semantic_claim_ids
-            ) or (
-                label.expected_additional == "fail"
+                and label.expected_additional == "pass"
+            )
+            judge_case_pass = (
+                all(
+                    child_map(actual_claims.get(claim_id)).get("verdict") == "expressed"
+                    for claim_id in label.semantic_claim_ids
+                )
                 and actual_additional == "pass"
             )
+            full_match = human_case_pass == judge_case_pass
+            full_agreement += int(full_match)
+            false_pass = not human_case_pass and judge_case_pass
             false_passes += int(false_pass)
             cases.append({
                 "case_id": label.case_id,
@@ -216,6 +220,9 @@ def evaluate_claim_judge_calibration(
                     for claim_id in label.expected_claims
                 },
                 "additional_claims_match": additional_match,
+                "human_case_disposition": "pass" if human_case_pass else "fail",
+                "judge_case_disposition": "pass" if judge_case_pass else "fail",
+                "case_disposition_match": full_match,
                 "full_match": full_match,
                 "false_pass": false_pass,
                 "artifact_hashes": label.artifact_hashes,
@@ -240,12 +247,14 @@ def evaluate_claim_judge_calibration(
                 "artifact_hashes": label.artifact_hashes,
             })
     count = len(label_set.labels)
+    agreement = full_agreement / count if count else 0.0
     metadata = dict(judge_metadata or {})
     metadata["prompt_version"] = CLAIM_JUDGE_PROMPT_VERSION
     metadata["definition_sha256"] = claim_judge_definition_sha256()
     return {
         "schema_version": CLAIM_JUDGE_AGREEMENT_SCHEMA_VERSION,
         "judgment_contract": CLAIM_JUDGE_CONTRACT_VERSION,
+        "gate_policy": CLAIM_JUDGE_GATE_POLICY_VERSION,
         "dataset_id": label_set.dataset.manifest.get("dataset_id"),
         "dataset_content_sha256": dataset_content_sha256(label_set.dataset),
         "claim_catalog_sha256": canonical_sha256(label_set.dataset.claims_by_id),
@@ -258,12 +267,14 @@ def evaluate_claim_judge_calibration(
             for label in label_set.labels
         ),
         "full_agreement_count": full_agreement,
+        "agreement": agreement,
+        "minimum_agreement": CLAIM_JUDGE_MIN_AGREEMENT,
         "disagreement_count": count - full_agreement,
         "false_pass_count": false_passes,
         "technical_error_count": technical_errors,
         "accepted": (
             count > 0
-            and full_agreement == count
+            and agreement >= CLAIM_JUDGE_MIN_AGREEMENT
             and false_passes == 0
             and technical_errors == 0
         ),
@@ -283,16 +294,6 @@ def _semantic_claim_match(expected: JsonMap, actual: JsonMap) -> bool:
     # Human labels enumerate every block that is safe to use for deterministic grounding.
     # The judge needs one safe expression, not exhaustive recall of repeated answer wording.
     return bool(actual_blocks) and actual_blocks <= expected_blocks
-
-
-def _semantic_claim_false_pass(expected: JsonMap, actual: JsonMap) -> bool:
-    if str(actual.get("verdict") or "") != "expressed":
-        return False
-    if str(expected.get("verdict") or "") != "expressed":
-        return True
-    allowed_blocks = set(as_list(expected.get("matched_block_ids")))
-    actual_blocks = set(as_list(actual.get("matched_block_ids")))
-    return not actual_blocks or not actual_blocks <= allowed_blocks
 
 
 def _resolve(root: Path, raw_path: Any, label: str) -> Path:

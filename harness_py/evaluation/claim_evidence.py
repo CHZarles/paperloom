@@ -9,6 +9,7 @@ from typing import Any
 from ..core.models import GoldenDataset, JsonMap, as_list, child_map
 from .claim_judge import (
     CLAIM_JUDGE_CONTRACT_VERSION,
+    CLAIM_JUDGE_GATE_POLICY_VERSION,
     CLAIM_JUDGE_PROMPT_VERSION,
     claim_judge_definition_sha256,
 )
@@ -182,6 +183,8 @@ def load_judge_gate(calibration_path: str | Path, holdout_path: str | Path) -> J
             raise ValueError(f"semantic judge {label} gate is not accepted: {path}")
         if report.get("judgment_contract") != CLAIM_JUDGE_CONTRACT_VERSION:
             raise ValueError(f"semantic judge {label} gate uses the wrong contract: {path}")
+        if report.get("gate_policy") != CLAIM_JUDGE_GATE_POLICY_VERSION:
+            raise ValueError(f"semantic judge {label} gate uses the wrong policy: {path}")
         if int(report.get("technical_error_count") or 0) != 0:
             raise ValueError(f"semantic judge {label} gate has technical errors: {path}")
         if int(report.get("false_pass_count") or 0) != 0:
@@ -204,6 +207,7 @@ def load_judge_gate(calibration_path: str | Path, holdout_path: str | Path) -> J
             "source_path": report.get("source_path"),
             "source_sha256": source_sha256,
             "judgment_contract": report.get("judgment_contract"),
+            "gate_policy": report.get("gate_policy"),
             "judge": judge,
         })
     if identities[0] != identities[1]:

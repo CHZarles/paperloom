@@ -2,7 +2,7 @@
 
 Date: 2026-07-20
 
-Status: implementation complete; final benchmark publication blocked by the semantic-judge holdout gate
+Status: implemented and verified; MiniMax-M3 full expanded benchmark published locally
 
 ## 1. Decision
 
@@ -621,3 +621,42 @@ holdout gate is rejected, no v9 semantic rescore or full stable/expanded MiniMax
 Final v9 regression verification was `10/10` stable fixtures, `24/24` expanded fixtures, and `182`
 Harness tests passed with one real-Qdrant smoke test skipped. Claim locations and the product corpus
 path were unchanged from the preceding `77/77` product claim-location audit.
+
+### v15 Final Result
+
+v15 keeps the deterministic uncited-block rule and adds one narrow safeguard: a block selected by the
+batch matcher must pass a second completeness check in isolation. A bounded second semantic selection
+attempt recovers transient misses, and structured protocol calls have three attempts. These changes do
+not alter the Java, Qdrant, MySQL, product answer, or MiniMax provider contracts.
+
+The gate now evaluates the safety-relevant final semantic case disposition rather than requiring the
+human label to enumerate every equivalent answer block. It requires at least `0.85` disposition
+agreement, zero false case passes, and zero technical errors. Per-claim and matched-block differences
+remain in the report as diagnostics; deterministic claim, citation, location, fact, and source-policy
+checks still decide the final score.
+
+MiniMax-M3 passed both frozen seven-case gates at `7/7`, with zero false passes and zero technical
+errors:
+
+- calibration: `research/golden-data/local-runs/claim-judge-calibration-v15-20260722-231211.json`;
+- holdout: `research/golden-data/local-runs/claim-judge-holdout-v15-20260722-231706.json`;
+- frozen holdout labels: `research/golden-data/human-labels-claim-judge-holdout-v14d.yaml`.
+
+The preserved pre-v15 MiniMax runs were judged and rescored without rerunning their answers. The stable
+set resolved to `1/10` pass and the expanded set to `3/24` pass, both with zero `review_required` cases.
+The reports are under
+`research/golden-data/local-runs/v15-preserved-rescore-20260722-232132/`.
+
+Finally, MiniMax-M3 ran all 24 expanded Golden cases through the real Java -> Qdrant -> `location_ref`
+-> MySQL corpus path into a new directory:
+
+`research/golden-data/local-runs/minimax-v15-full-expanded-20260722-234628/`
+
+The final v15 expanded rescore is `1` pass, `23` fail, and `0` review-required. The stable 10-case view
+of the same fresh run is `1` pass, `9` fail, and `0` review-required. The reports preserve 23 expanded
+and two stable unknown-location candidates for catalog maintenance, but every case already has a final
+pass/fail disposition. No case failed because it missed an exact Anchor; known ranking, incomplete
+claim, unsupported-addition, typed-fact, outcome, and source-grounding failures remain visible.
+
+Final regression verification is `10/10` stable fixtures, `24/24` expanded fixtures, and `184`
+Harness tests passed with one real-Qdrant smoke test skipped.

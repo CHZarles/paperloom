@@ -1,0 +1,14 @@
+{
+  "answer_id": "answer_transformer_optimizer_reproduction_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_5c22680f3317a304",
+    "ev_5002ef57989db06d"
+  ],
+  "fields": {},
+  "markdown": "## Optimizer portion — strict reproduction checklist (Attention Is All You Need, §5.3)\n\nThe optimizer block from §5.3 of the Transformer paper reads verbatim:\n\n> \"We used the Adam optimizer with β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹.\" [1]\n\n| Field | Exact value used in the paper |\n|---|---|\n| Optimizer | Adam |\n| β₁ | 0.9 |\n| β₂ | 0.98 |\n| ε (epsilon) | 10⁻⁹ |\n\n### Strict-reproduction checklist items\n\n1. **Optimizer family:** Adam, as specified in §5.3 of the Transformer paper. [1]\n2. **β₁ = 0.9** — set this exactly; do not omit or substitute. [1]\n3. **β₂ = 0.98** — set this exactly. The original Adam paper specifies good defaults of β₁ = 0.9, β₂ = 0.999 and ε = 10⁻⁸ [2], so the Transformer's β₂ = 0.98 is a deliberate deviation from the published Adam defaults. [1]\n4. **ε = 10⁻⁹** — set this exactly. The original Adam paper specifies ε = 10⁻⁸ as a good default [2], so the Transformer's ε = 10⁻⁹ is a deliberate deviation from the published Adam defaults. [1]\n5. These four fields are the only optimizer hyperparameters listed in §5.3. The LR-schedule formula and the warmup-step setting belong to the schedule block, not the optimizer block, and should be tracked separately. [1]\n\nOnly the four fields above constitute the optimizer portion of the checklist; the LR schedule is intentionally excluded from this block.\n\nSources\n[1] Attention Is All You Need, 4 Why Self-Attention, p. 7\n[2] ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION, 1 INTRODUCTION, p. 2",
+  "outcome": "answered",
+  "question_id": "transformer_optimizer_reproduction_001",
+  "status": "COMPLETED",
+  "summary": "## Optimizer portion — strict reproduction checklist (Attention Is All You Need, §5.3)\n\nThe optimizer block from §5.3 of the Transformer paper reads verbatim:\n\n> \"We used the Adam optimizer with β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹.\" [1]\n\n| Field | Exact value used in the paper |\n|---|---|\n| Optimizer | Adam |\n| β₁ | 0.9 |\n| β₂ | 0.98 |\n| ε (epsilon) | 10⁻⁹ |\n\n### Strict-reproduction checklist items\n\n"
+}

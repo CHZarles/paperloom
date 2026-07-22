@@ -1,0 +1,69 @@
+schema_version: harness-claim-judge-labels/v1
+dataset_id: harness_golden_expanded
+manifest: research/golden-data/manifest-expanded.yaml
+
+labels:
+  - case_id: transformer_adam_params_001
+    run_id: run_baf0ad570a334b6e9199e2435dbec88b
+    answer_path: research/golden-data/judge-holdout/minimax-v14d-20260718/transformer_adam_params_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v14d-20260718/transformer_adam_params_001/evidence_ledger.json
+    claims:
+      transformer_adam_hyperparameters: {verdict: missing, matched_block_ids: []}
+    additional_claims: fail
+    note: The cited quotation omits the optimizer name and the uncited blocks split the three values.
+
+  - case_id: adam_beta2_conflict_001
+    run_id: run_56fd4fef2533465fb6c094449dc0b89a
+    answer_path: research/golden-data/judge-holdout/minimax-v14d-20260718/adam_beta2_conflict_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v14d-20260718/adam_beta2_conflict_001/evidence_ledger.json
+    claims:
+      adam_default_and_transformer_beta2_are_not_conflicting: {verdict: expressed, matched_block_ids: [block_4]}
+    additional_claims: fail
+    note: The final block distinguishes the recommended default from the experiment setting, but it and the opening conclusion are uncited.
+
+  - case_id: adam_constraint_refinement_followup_001
+    run_id: run_c8fb963738214a719e81852201fe2459
+    answer_path: research/golden-data/judge-holdout/minimax-v14d-20260718/adam_constraint_refinement_followup_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v14d-20260718/adam_constraint_refinement_followup_001/evidence_ledger.json
+    claims:
+      transformer_adam_beta2: {verdict: missing, matched_block_ids: []}
+    additional_claims: pass
+    note: The cited block identifies the Transformer and beta2 value but calls it only an optimizer setting, not Adam.
+
+  - case_id: bert_transformer_role_001
+    run_id: run_82ae97764f7140549b98eaf36b4d5349
+    answer_path: research/golden-data/judge-holdout/minimax-v14d-20260718/bert_transformer_role_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v14d-20260718/bert_transformer_role_001/evidence_ledger.json
+    claims:
+      bert_bidirectional_transformer_encoder: {verdict: expressed, matched_block_ids: [block_1, block_2]}
+    additional_claims: fail
+    note: Both opening and cited architecture blocks state the claim, but the opening is uncited.
+
+  - case_id: bert_vs_transformer_comparison_001
+    run_id: run_fba0b9209e384ccd96ba3c9b9b9fcf39
+    answer_path: research/golden-data/judge-holdout/minimax-v14d-20260718/bert_vs_transformer_comparison_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v14d-20260718/bert_vs_transformer_comparison_001/evidence_ledger.json
+    claims:
+      transformer_bert_architecture_comparison: {verdict: expressed, matched_block_ids: [block_29]}
+      bert_masked_language_model_objective: {verdict: expressed, matched_block_ids: [block_25, block_29]}
+    additional_claims: fail
+    note: The uncited summary makes the complete comparison and the cited MLM block states the objective; many uncited table and synthesis blocks remain material.
+
+  - case_id: transformer_optimizer_reproduction_001
+    run_id: run_f4005da1db6241b09a5e9d667153b84f
+    answer_path: research/golden-data/judge-holdout/minimax-v14d-20260718/transformer_optimizer_reproduction_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v14d-20260718/transformer_optimizer_reproduction_001/evidence_ledger.json
+    claims:
+      transformer_optimizer_configuration: {verdict: expressed, matched_block_ids: [block_3]}
+    additional_claims: fail
+    note: The cited quotation states Adam and all values, while uncited table rows and the closing restriction remain material.
+
+  - case_id: gpt3_to_transformer_multihop_001
+    run_id: run_eebdd5bf14de4cebbfc30102081ea2cc
+    answer_path: research/golden-data/judge-holdout/minimax-v14d-20260718/gpt3_to_transformer_multihop_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v14d-20260718/gpt3_to_transformer_multihop_001/evidence_ledger.json
+    claims:
+      gpt3_uses_gpt2_architecture: {verdict: expressed, matched_block_ids: [block_4, block_16]}
+      gpt2_uses_transformer_architecture: {verdict: expressed, matched_block_ids: [block_8, block_17]}
+    additional_claims: fail
+    note: Cited quotation and table-row blocks state both architecture hops, while uncited explanations remain material.

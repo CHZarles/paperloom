@@ -1,0 +1,15 @@
+{
+  "answer_id": "answer_bert_transformer_role_001",
+  "answer_type": "conversation",
+  "cited_evidence_ids": [
+    "ev_24f5eee01be82792",
+    "ev_704b650cc5a74d22",
+    "ev_075222a1bd9cbb25"
+  ],
+  "fields": {},
+  "markdown": "BERT uses the Transformer as an **encoder**, specifically a multi-layer bidirectional Transformer encoder.\n\nAccording to the original BERT paper, \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017).\" [1] This is reinforced by the paper's own description that \"BERT stands for Bidirectional Encoder Representations from Transformers.\" [1]\n\nA key distinction from decoder-based models like OpenAI GPT is also made explicit: \"the BERT Transformer uses bidirectional self-attention, while the GPT Transformer uses constrained self-attention where every token can only attend to context to its left.\" [1] Figure 3 in the paper reiterates this: \"BERT uses a bidirectional Transformer. OpenAI GPT uses a left-to-right Transformer.\" [2]\n\nThe paper also notes that BERT's encoder-only design has practical implications: \"not all tasks can be easily represented by a Transformer encoder architecture, and therefore require a task-specific model architecture to be added.\" [3]\n\nSources\n[1] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 2.2 Unsupervised Fine-tuning Approaches, p. 3\n[2] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, A.1 Illustration of the Pre-training Tasks, p. 13\n[3] BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding, 5.3 Feature-based Approach with BERT, p. 9",
+  "outcome": "answered",
+  "question_id": "bert_transformer_role_001",
+  "status": "COMPLETED",
+  "summary": "BERT uses the Transformer as an **encoder**, specifically a multi-layer bidirectional Transformer encoder.\n\nAccording to the original BERT paper, \"BERT's model architecture is a multi-layer bidirectional Transformer encoder based on the original implementation described in Vaswani et al. (2017).\" [1] This is reinforced by the paper's own description that \"BERT stands for Bidirectional Encoder Repr"
+}

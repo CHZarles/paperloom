@@ -63,6 +63,7 @@ class ClaimJudgeTest(unittest.TestCase):
         self.assertEqual(
             [
                 "submit_claim_match",
+                "submit_claim_match",
                 "submit_claim_contradiction",
                 "submit_block_grounding",
             ],
@@ -195,6 +196,7 @@ class ClaimJudgeTest(unittest.TestCase):
         self.assertEqual([], verdict.claims[0]["matched_block_ids"])
         self.assertEqual(
             [
+                "submit_claim_match",
                 "submit_claim_match",
                 "submit_claim_contradiction",
                 "submit_block_grounding",
@@ -353,13 +355,56 @@ class ClaimJudgeTest(unittest.TestCase):
         })
 
         self.assertEqual("expressed", verdict.claims[0]["verdict"])
-        self.assertEqual(3, model.call_count)
+        self.assertEqual(4, model.call_count)
+
+    def test_claim_candidate_requires_isolated_completeness_verification(self) -> None:
+        class Model:
+            def complete_judgment(self, messages, tool, _max_tokens):
+                name = tool["function"]["name"]
+                if name == "submit_claim_contradiction":
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "contradicted": False,
+                        "contradicting_block_id": "",
+                    }
+                elif str(messages[0]["content"]).startswith(
+                    "CLAIM_COMPLETENESS_VERIFIER"
+                ):
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "verdict": "missing",
+                        "matched_block_id": "",
+                    }
+                else:
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "verdict": "expressed",
+                        "matched_block_id": "block_1",
+                    }
+                return [{"name": name, "arguments": arguments}]
+
+        verdict = ClaimEvidenceJudge(Model()).judge({
+            "required_claims": [{
+                "claim_id": "claim_a",
+                "statement": "Adam uses beta1, beta2, and epsilon.",
+            }],
+            "answer_blocks": [{
+                "block_id": "block_1",
+                "kind": "table_row",
+                "text": "Optimizer | Adam",
+                "evidence": [],
+            }],
+        })
+
+        self.assertEqual("missing", verdict.claims[0]["verdict"])
+        self.assertEqual([], verdict.claims[0]["matched_block_ids"])
 
     def test_committed_claim_judge_labels_are_valid_and_can_pass_exact_judgments(self) -> None:
         for path, expected_count in (
             ("research/golden-data/human-labels-claim-judge-calibration.yaml", 7),
             ("research/golden-data/human-labels-claim-judge-holdout.yaml", 7),
             ("research/golden-data/human-labels-claim-judge-holdout-v9.yaml", 7),
+            ("research/golden-data/human-labels-claim-judge-holdout-v14d.yaml", 7),
         ):
             with self.subTest(path=path):
                 label_set = load_claim_judge_labels(path)
@@ -414,7 +459,7 @@ class ClaimJudgeTest(unittest.TestCase):
         )
         self.assertIsNone(agentbench["claim_matches"]["agentbench_eight_environments"])
 
-    def test_calibration_rejects_an_unsafe_semantic_block_as_false_pass(self) -> None:
+    def test_calibration_does_not_call_an_alternate_expressed_block_a_false_pass(self) -> None:
         label_set = load_claim_judge_labels(
             "research/golden-data/human-labels-claim-judge-calibration.yaml"
         )
@@ -427,6 +472,30 @@ class ClaimJudgeTest(unittest.TestCase):
 
         report = evaluate_claim_judge_calibration(label_set, judge)
 
+        self.assertTrue(report["accepted"])
+        self.assertEqual(0, report["false_pass_count"])
+
+    def test_calibration_rejects_an_unexpected_expressed_claim_as_false_pass(self) -> None:
+        label_set = load_claim_judge_labels(
+            "research/golden-data/human-labels-claim-judge-calibration.yaml"
+        )
+        judge = _LabelJudge(label_set)
+        judge.claim_overrides = {
+            "webarena_reproduction_protocol_001": {
+                "webarena_functional_correctness": ["block_17"],
+            },
+        }
+        judge.verdict_overrides = {
+            "webarena_reproduction_protocol_001": {
+                "webarena_functional_correctness": "expressed",
+            },
+        }
+        judge.additional_overrides = {
+            "webarena_reproduction_protocol_001": "pass",
+        }
+
+        report = evaluate_claim_judge_calibration(label_set, judge)
+
         self.assertFalse(report["accepted"])
         self.assertEqual(1, report["false_pass_count"])
 
@@ -435,23 +504,27 @@ class _LabelJudge:
     def __init__(self, label_set) -> None:
         self.labels = {label.case_id: label for label in label_set.labels}
         self.claim_overrides = {}
+        self.verdict_overrides = {}
+        self.additional_overrides = {}
 
     def judge(self, packet):
         label = self.labels[str(packet["case_id"])]
         overrides = self.claim_overrides.get(label.case_id, {})
+        verdicts = self.verdict_overrides.get(label.case_id, {})
         claims = []
         for claim_id, expected in label.expected_claims.items():
             matched = overrides.get(claim_id, expected["matched_block_ids"])
             claims.append({
                 "claim_id": claim_id,
-                "verdict": expected["verdict"],
+                "verdict": verdicts.get(claim_id, expected["verdict"]),
                 "matched_block_ids": matched,
             })
+        additional = self.additional_overrides.get(label.case_id, label.expected_additional)
         return ClaimEvidenceJudgeVerdict(claims, {
-            "verdict": label.expected_additional,
+            "verdict": additional,
             "grounding_issues": (
                 ["Human-labelled unsupported addition."]
-                if label.expected_additional == "fail"
+                if additional == "fail"
                 else []
             ),
         })
