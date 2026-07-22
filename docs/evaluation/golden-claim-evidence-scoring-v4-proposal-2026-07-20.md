@@ -549,41 +549,44 @@ Final local verification after the dedicated claim/block judge replaced the reus
 stable fixture:   10 pass, 0 fail, 0 review_required
 expanded fixture: 24 pass, 0 fail, 0 review_required
 product claim-location audit: 77/77 claim references resolved, 33 unique locations, 0 failures
-Harness test suite: 178 passed, 1 skipped
+Harness test suite: 181 passed, 1 skipped
 ```
 
 New product runs now write a content-addressed `run_manifest.json` for the observed corpus locations
 and retrieval trace. This records one corpus/index observation without introducing paper versions or
 changing the Java, Qdrant, MySQL, or MiniMax contracts.
 
-The MiniMax judge now matches each required claim in its own text-only call. A narrow contradiction
-call follows a `missing` or `uncertain` result, while additional grounding is judged independently for
-each answer block. Required-claim content is excluded from that additional-material check even when it
-is repeated, partial, or matched elsewhere. One bounded retry handles a missing structured tool call;
-it does not retry or alter a semantic decision.
+The current v8 MiniMax judge keeps the decisions narrow but adds safety-oriented orchestration around
+the model:
 
-MiniMax-M3 passed the resulting seven-case calibration gate at `7/7`, with zero false passes and zero
+- required-claim matching uses batches of at most eight text-only answer blocks so long answers cannot
+  hide a later complete expression;
+- if the selected expression is uncited, the matcher gets a second text-only pass over cited blocks and
+  prefers a complete cited expression when one exists;
+- a separate contradiction call always checks the full answer and overrides an apparent expression;
+- uncited blocks first receive a factual-materiality decision, and factual blocks without evidence fail
+  deterministically;
+- cited blocks receive an independent whole-block evidence-support decision;
+- one bounded retry handles a missing structured tool call without retrying a semantic decision.
+
+MiniMax-M3 passed the active seven-case calibration gate at `7/7`, with zero false passes and zero
 technical errors. The immutable accepted report is
-`research/golden-data/local-runs/claim-judge-calibration-20260722-195656.json`.
+`research/golden-data/local-runs/claim-judge-calibration-20260722-211527.json`.
 
-After calibration passed, a new seven-case holdout was frozen from previously saved MiniMax-M3 answers
-under `2026-07-14-single-path-model-comparison-v1/minimax-m3`. It includes supported answers, missing
-claim material, unsupported additions, and an explicit cross-benchmark ranking contradiction. This
-holdout was not run while the v4 prompt was being developed.
+The active seven-case holdout uses different saved answers and includes supported answers, uncited
+additional claims, missing claim elements, and an explicit cross-benchmark ranking contradiction. Its
+answer and evidence artifacts are content-hashed by the label loader; the one local MiniMax artifact
+needed by the active labels is copied under `research/golden-data/judge-holdout/` so the gate is
+reproducible from a clean checkout.
 
-The untouched holdout rejected the judge: `4/7` full case agreement, three false passes, and zero
-technical errors. The three unsafe decisions were:
+The active holdout still rejects MiniMax-M3: `4/7` full case agreement, two false passes, and zero
+technical errors. Both unsafe decisions came from the materiality stage treating an uncited factual
+summary as non-material, once for AgentBoard and once for the MINT/tau-bench reconciliation. It also
+called an omitted GAIA headline result contradicted rather than missing. The immutable rejected report
+is `research/golden-data/local-runs/claim-judge-holdout-20260722-212538.json`.
 
-- treating an uncited statement about the original Transformer's encoder and decoder as if it were
-  wholly contained in the required BERT-encoder claim;
-- accepting an optimizer block that lists all numeric values but never names Adam as the complete
-  authored optimizer claim;
-- accepting a closing comparability caveat as the non-ranking claim even though the answer explicitly
-  declares an easiest-to-hardest ranking earlier. Because the first matcher returned `expressed`, the
-  missing/uncertain contradiction fallback did not run.
-
-The immutable rejected report is
-`research/golden-data/local-runs/claim-judge-holdout-20260722-200212.json`. No semantic judgments were
-generated for publication, no preserved product runs were rescored with this rejected judge, and the
-full stable and expanded MiniMax answering benchmarks were not run. The holdout remains an empirical
-MiniMax publication blocker, not a fallback to exact-Anchor answer scoring.
+A diagnostic v7 semantic judgment and stable rescore were generated after an earlier gate passed, but
+the v8 definition hash makes them stale; they were not used as publication evidence. Because the active
+v8 holdout is rejected, no current semantic rescore was published and the full stable and expanded
+MiniMax answering benchmarks were not run. The holdout remains an empirical MiniMax publication
+blocker, not a fallback to exact-Anchor answer scoring.

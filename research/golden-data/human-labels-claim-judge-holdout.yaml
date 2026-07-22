@@ -3,69 +3,75 @@ dataset_id: harness_golden_expanded
 manifest: research/golden-data/manifest-expanded.yaml
 
 labels:
-  - case_id: adam_constraint_refinement_followup_001
-    run_id: run_3fbbb8d7055d474db4de853f12481013
-    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/adam_constraint_refinement_followup_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/adam_constraint_refinement_followup_001/evidence_ledger.json
-    claims:
-      transformer_adam_beta2: {verdict: expressed, matched_block_ids: [block_1]}
-    additional_claims: pass
-    note: The single cited block states beta2 = 0.98 and its other optimizer values are directly supported by the same evidence.
-
   - case_id: adam_beta2_conflict_001
-    run_id: run_f34653d420194286b953fecfa97e1f77
-    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/adam_beta2_conflict_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/adam_beta2_conflict_001/evidence_ledger.json
+    run_id: run_e1705fa379ed479d990e5d3db3e3aa4c
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/adam_beta2_conflict_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/adam_beta2_conflict_001/evidence_ledger.json
     claims:
-      adam_default_and_transformer_beta2_are_not_conflicting: {verdict: expressed, matched_block_ids: [block_7]}
+      adam_default_and_transformer_beta2_are_not_conflicting: {verdict: expressed, matched_block_ids: [block_1, block_4]}
+    additional_claims: fail
+    note: The opening conclusion and final block both resolve the scoped conflict in answer context, but both are uncited material factual blocks.
+
+  - case_id: adam_constraint_refinement_followup_001
+    run_id: run_f507330c406b473ead244a7fb1ce9e88
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/adam_constraint_refinement_followup_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/adam_constraint_refinement_followup_001/evidence_ledger.json
+    claims:
+      transformer_adam_beta2: {verdict: missing, matched_block_ids: []}
     additional_claims: pass
-    note: The final block fully resolves the scoped values, while the supporting value blocks attach evidence for every additional optimizer detail.
+    note: The cited answer gives the Transformer beta2 value but does not itself name Adam, while every factual clause it states is supported.
 
-  - case_id: bert_transformer_role_001
-    run_id: run_ed055e2d88f34ebdaeb51c2d67dc9ff8
-    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/bert_transformer_role_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/bert_transformer_role_001/evidence_ledger.json
+  - case_id: agentboard_progress_metric_001
+    run_id: run_deeba4ebb678406d90e1c5b89b2b7b8f
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/agentboard_progress_metric_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/agentboard_progress_metric_001/evidence_ledger.json
     claims:
-      bert_bidirectional_transformer_encoder: {verdict: expressed, matched_block_ids: [block_1, block_3]}
+      agentboard_success_rate_limited_insight: {verdict: expressed, matched_block_ids: [block_1]}
+      agentboard_progress_metric_incremental_advancement: {verdict: expressed, matched_block_ids: [block_2]}
     additional_claims: fail
-    note: The required BERT role is explicit, but the final uncited synthesis adds a claim about the original Transformer's two halves.
+    note: The required AgentBoard contrast is explicit and supported, but the uncited closing summary is material factual content.
 
-  - case_id: transformer_adam_params_001
-    run_id: run_ef1e60f50b174682a1165c4814a19b16
-    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/transformer_adam_params_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/transformer_adam_params_001/evidence_ledger.json
+  - case_id: toolsandbox_constraint_selection_001
+    run_id: run_d3854ff4a8b040e1b09bd653e9955354
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/toolsandbox_constraint_selection_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/toolsandbox_constraint_selection_001/evidence_ledger.json
     claims:
-      transformer_adam_hyperparameters: {verdict: expressed, matched_block_ids: [block_1]}
+      toolsandbox_stateful_tools: {verdict: expressed, matched_block_ids: [block_3]}
+      toolsandbox_on_policy_conversation: {verdict: expressed, matched_block_ids: [block_4]}
+      toolsandbox_intermediate_milestones: {verdict: expressed, matched_block_ids: [block_5]}
+      toolsandbox_insufficient_information: {verdict: expressed, matched_block_ids: [block_6]}
     additional_claims: fail
-    note: The required values are explicit, but the final comparative conclusion has no evidence attached to its answer block.
+    note: All four required properties are explicit and supported, while the uncited opening selection and closing combined-design conclusion are material.
 
-  - case_id: gpt3_to_transformer_multihop_001
-    run_id: run_09ce20aba2e8460f8022737b3f9ca916
-    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/gpt3_to_transformer_multihop_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/gpt3_to_transformer_multihop_001/evidence_ledger.json
+  - case_id: agent_evaluation_recommendation_001
+    run_id: run_87c5aa473f2e42ae9501cceb57dc00ea
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/agent_evaluation_recommendation_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/agent_evaluation_recommendation_001/evidence_ledger.json
     claims:
-      gpt3_uses_gpt2_architecture: {verdict: expressed, matched_block_ids: [block_2]}
-      gpt2_uses_transformer_architecture: {verdict: expressed, matched_block_ids: [block_3]}
-    additional_claims: fail
-    note: Both architecture hops are explicit, but the uncited final block asserts absence and exclusivity in the citation graph.
+      gaia_general_assistant_selection: {verdict: expressed, matched_block_ids: [block_2]}
+      webarena_realistic_web_task_selection: {verdict: expressed, matched_block_ids: [block_3]}
+      swebench_software_engineering_selection: {verdict: expressed, matched_block_ids: [block_4]}
+      tau_bench_policy_constrained_tool_agent_selection: {verdict: expressed, matched_block_ids: [block_5]}
+    additional_claims: pass
+    note: Every recommendation and explanation is directly supported by evidence attached to its table row; the first row is only a header.
 
-  - case_id: transformer_optimizer_reproduction_001
-    run_id: run_983be536c2554db99e149968dd1784dc
-    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/transformer_optimizer_reproduction_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/transformer_optimizer_reproduction_001/evidence_ledger.json
+  - case_id: mint_tau_apparent_conflict_001
+    run_id: run_e79744a4ddfe46f190708338db9838fc
+    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/mint_tau_apparent_conflict_001/research_answer.json
+    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/gpt-5.5/mint_tau_apparent_conflict_001/evidence_ledger.json
     claims:
-      transformer_optimizer_configuration: {verdict: missing, matched_block_ids: []}
+      mint_tau_results_are_not_contradictory: {verdict: expressed, matched_block_ids: [block_4]}
     additional_claims: fail
-    note: No block names Adam together with all required values, and the answer adds uncited framework defaults and a causal schedule explanation.
+    note: The final cited block states the complete reconciliation, while the uncited opening answer is itself a material factual conclusion.
 
   - case_id: cross_benchmark_score_ranking_partial_001
-    run_id: run_2d1a64b0f6b2498dad9db0bdb42c93d3
-    answer_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/cross_benchmark_score_ranking_partial_001/research_answer.json
-    evidence_path: research/golden-data/validation-runs/2026-07-14-single-path-model-comparison-v1/minimax-m3/cross_benchmark_score_ranking_partial_001/evidence_ledger.json
+    run_id: run_b6452366a81e46d2829cc18a893e75a8
+    answer_path: research/golden-data/judge-holdout/minimax-v8-20260718/cross_benchmark_score_ranking_partial_001/research_answer.json
+    evidence_path: research/golden-data/judge-holdout/minimax-v8-20260718/cross_benchmark_score_ranking_partial_001/evidence_ledger.json
     claims:
-      gaia_human_gpt4_plugins_gap: {verdict: expressed, matched_block_ids: [block_7]}
-      webarena_human_gpt4_gap: {verdict: expressed, matched_block_ids: [block_8]}
-      swebench_claude2_baseline: {verdict: expressed, matched_block_ids: [block_9]}
+      gaia_human_gpt4_plugins_gap: {verdict: missing, matched_block_ids: []}
+      webarena_human_gpt4_gap: {verdict: expressed, matched_block_ids: [block_3]}
+      swebench_claude2_baseline: {verdict: expressed, matched_block_ids: [block_4]}
       cross_benchmark_percentages_are_not_difficulty_ranks: {verdict: contradicted, matched_block_ids: []}
     additional_claims: fail
-    note: The three figures are explicit, but the answer still declares a strict easiest-to-hardest ranking despite its closing caveat.
+    note: The answer omits GAIA's complete 92-versus-15 gap, states the WebArena and SWE-bench figures, and still declares a strict ranking despite its caveat.

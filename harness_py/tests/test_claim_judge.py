@@ -24,21 +24,31 @@ class ClaimJudgeTest(unittest.TestCase):
                         "arguments": {
                             "claim_id": "claim_a",
                             "verdict": "expressed",
-                            "matched_block_ids": ["block_1"],
+                            "matched_block_id": "block_1",
                         },
+                    }]
+                if name == "submit_claim_contradiction":
+                    return [{
+                        "name": name,
+                        "arguments": {
+                            "claim_id": "claim_a",
+                            "contradicted": False,
+                            "contradicting_block_id": "",
+                        },
+                    }]
+                if name == "submit_block_materiality":
+                    block_id = tool["function"]["parameters"]["properties"]["block_id"]["enum"][0]
+                    return [{
+                        "name": name,
+                        "arguments": {"block_id": block_id, "material": True},
                     }]
                 block_id = tool["function"]["parameters"]["properties"]["block_id"]["enum"][0]
                 return [{
                     "name": name,
                     "arguments": {
                         "block_id": block_id,
-                        "verdict": (
-                            "unsupported" if block_id == "block_2" else "not_material"
-                        ),
-                        "issues": (
-                            ["Extra unsupported statement."]
-                            if block_id == "block_2" else []
-                        ),
+                        "verdict": "supported",
+                        "issues": [],
                     },
                 }]
 
@@ -46,14 +56,23 @@ class ClaimJudgeTest(unittest.TestCase):
         verdict = ClaimEvidenceJudge(model).judge({
             "required_claims": [{"claim_id": "claim_a", "statement": "Claim A."}],
             "answer_blocks": [
-                {"block_id": "block_1", "text": "Claim A.", "evidence": []},
+                {
+                    "block_id": "block_1",
+                    "text": "Claim A.",
+                    "evidence": [{"span_text": "Claim A."}],
+                },
                 {"block_id": "block_2", "text": "Extra.", "evidence": []},
             ],
         })
 
         self.assertEqual("fail", verdict.additional_claims["verdict"])
         self.assertEqual(
-            ["submit_claim_match", "submit_block_grounding", "submit_block_grounding"],
+            [
+                "submit_claim_match",
+                "submit_claim_contradiction",
+                "submit_block_grounding",
+                "submit_block_materiality",
+            ],
             [tool["function"]["name"] for tool in model.tools],
         )
 
@@ -67,7 +86,16 @@ class ClaimJudgeTest(unittest.TestCase):
                         "arguments": {
                             "claim_id": "claim_a",
                             "verdict": "expressed",
-                            "matched_block_ids": ["block_1"],
+                            "matched_block_id": "block_1",
+                        },
+                    }]
+                if name == "submit_claim_contradiction":
+                    return [{
+                        "name": name,
+                        "arguments": {
+                            "claim_id": "claim_a",
+                            "contradicted": False,
+                            "contradicting_block_id": "",
                         },
                     }]
                 return [{
@@ -81,12 +109,57 @@ class ClaimJudgeTest(unittest.TestCase):
 
         verdict = ClaimEvidenceJudge(Model()).judge({
             "required_claims": [{"claim_id": "claim_a", "statement": "Claim A."}],
-            "answer_blocks": [{"block_id": "block_1", "text": "Claim A and extra.", "evidence": []}],
+            "answer_blocks": [{
+                "block_id": "block_1",
+                "text": "Claim A and extra.",
+                "evidence": [{"span_text": "Claim A."}],
+            }],
         })
 
         self.assertEqual("fail", verdict.additional_claims["verdict"])
 
-    def test_missing_claim_runs_narrow_contradiction_fallback(self) -> None:
+    def test_uncited_organizational_block_is_not_material(self) -> None:
+        class Model:
+            def complete_judgment(self, _messages, tool, _max_tokens):
+                name = tool["function"]["name"]
+                if name == "submit_claim_match":
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "verdict": "expressed",
+                        "matched_block_id": "block_1",
+                    }
+                elif name == "submit_claim_contradiction":
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "contradicted": False,
+                        "contradicting_block_id": "",
+                    }
+                elif name == "submit_block_materiality":
+                    arguments = {"block_id": "block_2", "material": False}
+                else:
+                    arguments = {
+                        "block_id": "block_1",
+                        "verdict": "supported",
+                        "issues": [],
+                    }
+                return [{"name": name, "arguments": arguments}]
+
+        verdict = ClaimEvidenceJudge(Model()).judge({
+            "required_claims": [{"claim_id": "claim_a", "statement": "Claim A."}],
+            "answer_blocks": [{
+                "block_id": "block_1",
+                "text": "Claim A.",
+                "evidence": [{"span_text": "Claim A."}],
+            }, {
+                "block_id": "block_2",
+                "text": "Here is the requested comparison.",
+                "evidence": [],
+            }],
+        })
+
+        self.assertEqual("pass", verdict.additional_claims["verdict"])
+
+    def test_contradiction_overrides_an_expressed_match(self) -> None:
         class Model:
             def complete_judgment(self, _messages, tool, _max_tokens):
                 self.tools = getattr(self, "tools", []) + [tool]
@@ -94,8 +167,8 @@ class ClaimJudgeTest(unittest.TestCase):
                 if name == "submit_claim_match":
                     arguments = {
                         "claim_id": "claim_a",
-                        "verdict": "missing",
-                        "matched_block_ids": [],
+                        "verdict": "expressed",
+                        "matched_block_id": "block_2",
                     }
                 elif name == "submit_claim_contradiction":
                     arguments = {
@@ -104,9 +177,10 @@ class ClaimJudgeTest(unittest.TestCase):
                         "contradicting_block_id": "block_1",
                     }
                 else:
+                    block_id = tool["function"]["parameters"]["properties"]["block_id"]["enum"][0]
                     arguments = {
-                        "block_id": "block_1",
-                        "verdict": "not_material",
+                        "block_id": block_id,
+                        "verdict": "supported",
                         "issues": [],
                     }
                 return [{"name": name, "arguments": arguments}]
@@ -117,7 +191,11 @@ class ClaimJudgeTest(unittest.TestCase):
             "answer_blocks": [{
                 "block_id": "block_1",
                 "text": "Benchmark A ranks above benchmark B.",
-                "evidence": [],
+                "evidence": [{"span_text": "Benchmark A ranks above benchmark B."}],
+            }, {
+                "block_id": "block_2",
+                "text": "The benchmarks are not directly comparable.",
+                "evidence": [{"span_text": "The benchmarks are not directly comparable."}],
             }],
         })
 
@@ -128,14 +206,111 @@ class ClaimJudgeTest(unittest.TestCase):
                 "submit_claim_match",
                 "submit_claim_contradiction",
                 "submit_block_grounding",
+                "submit_block_grounding",
             ],
             [tool["function"]["name"] for tool in model.tools],
         )
+
+    def test_claim_matching_checks_later_answer_block_batches(self) -> None:
+        class Model:
+            def complete_judgment(self, _messages, tool, _max_tokens):
+                name = tool["function"]["name"]
+                if name == "submit_claim_match":
+                    block_ids = tool["function"]["parameters"]["properties"][
+                        "matched_block_id"
+                    ]["enum"]
+                    matched = "block_9" if "block_9" in block_ids else ""
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "verdict": "expressed" if matched else "missing",
+                        "matched_block_id": matched,
+                    }
+                elif name == "submit_claim_contradiction":
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "contradicted": False,
+                        "contradicting_block_id": "",
+                    }
+                else:
+                    block_id = tool["function"]["parameters"]["properties"]["block_id"][
+                        "enum"
+                    ][0]
+                    arguments = {"block_id": block_id, "material": False}
+                return [{"name": name, "arguments": arguments}]
+
+        verdict = ClaimEvidenceJudge(Model()).judge({
+            "required_claims": [{"claim_id": "claim_a", "statement": "Final answer."}],
+            "answer_blocks": [
+                {
+                    "block_id": f"block_{index}",
+                    "text": "Final answer." if index == 9 else f"Heading {index}",
+                    "evidence": [],
+                }
+                for index in range(1, 10)
+            ],
+        })
+
+        self.assertEqual("expressed", verdict.claims[0]["verdict"])
+        self.assertEqual(["block_9"], verdict.claims[0]["matched_block_ids"])
+
+    def test_claim_matching_prefers_a_complete_cited_block(self) -> None:
+        class Model:
+            def complete_judgment(self, _messages, tool, _max_tokens):
+                name = tool["function"]["name"]
+                if name == "submit_claim_match":
+                    block_ids = tool["function"]["parameters"]["properties"][
+                        "matched_block_id"
+                    ]["enum"]
+                    matched = "block_1" if "block_1" in block_ids else "block_2"
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "verdict": "expressed",
+                        "matched_block_id": matched,
+                    }
+                elif name == "submit_claim_contradiction":
+                    arguments = {
+                        "claim_id": "claim_a",
+                        "contradicted": False,
+                        "contradicting_block_id": "",
+                    }
+                elif name == "submit_block_materiality":
+                    arguments = {"block_id": "block_1", "material": True}
+                else:
+                    arguments = {
+                        "block_id": "block_2",
+                        "verdict": "supported",
+                        "issues": [],
+                    }
+                return [{"name": name, "arguments": arguments}]
+
+        verdict = ClaimEvidenceJudge(Model()).judge({
+            "required_claims": [{"claim_id": "claim_a", "statement": "Claim A."}],
+            "answer_blocks": [{
+                "block_id": "block_1",
+                "text": "Claim A.",
+                "evidence": [],
+            }, {
+                "block_id": "block_2",
+                "text": "Claim A.",
+                "evidence": [{"span_text": "Claim A."}],
+            }],
+        })
+
+        self.assertEqual(["block_2"], verdict.claims[0]["matched_block_ids"])
 
     def test_exact_required_only_answer_has_no_additional_material(self) -> None:
         class Model:
             def complete_judgment(self, _messages, tool, _max_tokens):
                 name = tool["function"]["name"]
+                if name == "submit_claim_contradiction":
+                    return [{
+                        "name": name,
+                        "arguments": {
+                            "claim_id": "claim_a",
+                            "contradicted": False,
+                            "contradicting_block_id": "",
+                        },
+                    }]
                 if name != "submit_claim_match":
                     raise AssertionError("exact required-only answer should not need another call")
                 return [{
@@ -143,7 +318,7 @@ class ClaimJudgeTest(unittest.TestCase):
                     "arguments": {
                         "claim_id": "claim_a",
                         "verdict": "expressed",
-                        "matched_block_ids": ["block_1"],
+                        "matched_block_id": "block_1",
                     },
                 }]
 
@@ -163,12 +338,21 @@ class ClaimJudgeTest(unittest.TestCase):
                 if self.call_count == 1:
                     return []
                 name = tool["function"]["name"]
+                if name == "submit_claim_contradiction":
+                    return [{
+                        "name": name,
+                        "arguments": {
+                            "claim_id": "claim_a",
+                            "contradicted": False,
+                            "contradicting_block_id": "",
+                        },
+                    }]
                 return [{
                     "name": name,
                     "arguments": {
                         "claim_id": "claim_a",
                         "verdict": "expressed",
-                        "matched_block_ids": ["block_1"],
+                        "matched_block_id": "block_1",
                     },
                 }]
 
@@ -179,7 +363,7 @@ class ClaimJudgeTest(unittest.TestCase):
         })
 
         self.assertEqual("expressed", verdict.claims[0]["verdict"])
-        self.assertEqual(2, model.call_count)
+        self.assertEqual(3, model.call_count)
 
     def test_committed_claim_judge_labels_are_valid_and_can_pass_exact_judgments(self) -> None:
         for path, expected_count in (

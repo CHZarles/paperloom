@@ -10,9 +10,10 @@ from .judge_model import JudgeModel
 from ..core.models import JsonMap, as_list, child_map
 
 
-CLAIM_JUDGE_PROMPT_VERSION = "claim-evidence-judge/v4"
+CLAIM_JUDGE_PROMPT_VERSION = "claim-evidence-judge/v8"
 CLAIM_JUDGE_CONTRACT_VERSION = "claim-evidence-semantic-judgment/v1"
 CLAIM_JUDGE_PROTOCOL_ATTEMPTS = 2
+CLAIM_JUDGE_BLOCK_BATCH_SIZE = 8
 CLAIM_VERDICTS = {"expressed", "contradicted", "missing", "uncertain"}
 
 
@@ -68,35 +69,74 @@ class ClaimEvidenceJudge:
         block_ids: list[str],
     ) -> JsonMap:
         claim_id = str(claim.get("claim_id") or "")
-        request = {
+        request_base = {
             "contract_version": CLAIM_JUDGE_CONTRACT_VERSION,
             "case_id": packet.get("case_id"),
-            "user_request": packet.get("user_request"),
             "required_claim": {
                 "claim_id": claim_id,
                 "statement": str(claim.get("statement") or ""),
             },
-            "answer_outcome": packet.get("answer_outcome"),
-            "answer_blocks": text_blocks,
         }
-        arguments = self._complete_arguments(
-            [
-                {"role": "system", "content": _claim_prompt()},
-                {"role": "user", "content": _json(request)},
-            ],
-            _claim_tool(claim_id, block_ids),
-            "submit_claim_match",
+        result = self._match_claim_batches(request_base, claim_id, text_blocks)
+        cited_block_ids = {
+            str(block.get("block_id") or "")
+            for block in as_list(packet.get("answer_blocks"))
+            if as_list(child_map(block).get("evidence"))
+        }
+        matched_ids = as_list(result.get("matched_block_ids"))
+        if (
+            result.get("verdict") == "expressed"
+            and matched_ids
+            and str(matched_ids[0]) not in cited_block_ids
+        ):
+            cited_text_blocks = [
+                block for block in text_blocks
+                if str(block.get("block_id") or "") in cited_block_ids
+            ]
+            if cited_text_blocks:
+                cited_result = self._match_claim_batches(
+                    request_base,
+                    claim_id,
+                    cited_text_blocks,
+                )
+                if cited_result.get("verdict") == "expressed":
+                    result = cited_result
+        contradiction = self._judge_contradiction(
+            {**request_base, "answer_blocks": text_blocks},
+            claim_id,
+            block_ids,
         )
-        result = _parse_claim(arguments, claim_id, block_ids)
-        if result["verdict"] in {"missing", "uncertain"}:
-            contradiction = self._judge_contradiction(request, claim_id, block_ids)
-            if contradiction:
-                result = {
-                    "claim_id": claim_id,
-                    "verdict": "contradicted",
-                    "matched_block_ids": [],
-                }
+        if contradiction:
+            result = {
+                "claim_id": claim_id,
+                "verdict": "contradicted",
+                "matched_block_ids": [],
+            }
         return result
+
+    def _match_claim_batches(
+        self,
+        request_base: JsonMap,
+        claim_id: str,
+        text_blocks: list[JsonMap],
+    ) -> JsonMap:
+        batch_results = []
+        for offset in range(0, len(text_blocks), CLAIM_JUDGE_BLOCK_BATCH_SIZE):
+            batch = text_blocks[offset:offset + CLAIM_JUDGE_BLOCK_BATCH_SIZE]
+            batch_ids = [str(block["block_id"]) for block in batch]
+            arguments = self._complete_arguments(
+                [
+                    {"role": "system", "content": _claim_prompt()},
+                    {
+                        "role": "user",
+                        "content": _json({**request_base, "answer_blocks": batch}),
+                    },
+                ],
+                _claim_tool(claim_id, batch_ids),
+                "submit_claim_match",
+            )
+            batch_results.append(_parse_claim(arguments, claim_id, batch_ids))
+        return _combine_claim_batches(claim_id, batch_results)
 
     def _judge_contradiction(
         self,
@@ -118,7 +158,7 @@ class ClaimEvidenceJudge:
         if _contains_only_exact_required_claims(packet, claims):
             return {"verdict": "pass", "grounding_issues": []}
         results = [
-            self._judge_additional_block(packet, claims, child_map(block))
+            self._judge_additional_block(packet, child_map(block))
             for block in as_list(packet.get("answer_blocks"))
         ]
         issues = [
@@ -136,16 +176,20 @@ class ClaimEvidenceJudge:
     def _judge_additional_block(
         self,
         packet: JsonMap,
-        claims: list[JsonMap],
         block: JsonMap,
     ) -> JsonMap:
         block_id = str(block.get("block_id") or "")
+        if not as_list(block.get("evidence")):
+            if not self._judge_materiality(packet, block):
+                return {"block_id": block_id, "verdict": "not_material", "issues": []}
+            return {
+                "block_id": block_id,
+                "verdict": "unsupported",
+                "issues": ["Factual answer block has no attached evidence."],
+            }
         request = {
             "contract_version": CLAIM_JUDGE_CONTRACT_VERSION,
             "case_id": packet.get("case_id"),
-            "user_request": packet.get("user_request"),
-            "required_claims": packet.get("required_claims"),
-            "required_claim_results": claims,
             "answer_block": block,
             "citation_integrity_errors": packet.get("citation_integrity_errors"),
         }
@@ -158,6 +202,26 @@ class ClaimEvidenceJudge:
             "submit_block_grounding",
         )
         return _parse_additional_block(arguments, block_id)
+
+    def _judge_materiality(self, packet: JsonMap, block: JsonMap) -> bool:
+        block_id = str(block.get("block_id") or "")
+        request = {
+            "contract_version": CLAIM_JUDGE_CONTRACT_VERSION,
+            "case_id": packet.get("case_id"),
+            "answer_block": {
+                "block_id": block_id,
+                "text": str(block.get("text") or ""),
+            },
+        }
+        arguments = self._complete_arguments(
+            [
+                {"role": "system", "content": _materiality_prompt()},
+                {"role": "user", "content": _json(request)},
+            ],
+            _materiality_tool(block_id),
+            "submit_block_materiality",
+        )
+        return _parse_materiality(arguments, block_id)
 
     def _complete_arguments(
         self,
@@ -188,15 +252,14 @@ def _one_tool_arguments(calls: list[JsonMap], expected_name: str) -> JsonMap:
 def _parse_claim(value: JsonMap, expected_claim_id: str, block_ids: list[str]) -> JsonMap:
     claim_id = str(value.get("claim_id") or "")
     verdict = str(value.get("verdict") or "")
-    matched = [str(item) for item in as_list(value.get("matched_block_ids"))]
+    matched_block_id = str(value.get("matched_block_id") or "")
+    matched = [matched_block_id] if matched_block_id else []
     if claim_id != expected_claim_id:
         raise JudgeProtocolError(f"claim judge returned invalid claim ID: {claim_id}")
     if verdict not in CLAIM_VERDICTS:
         raise JudgeProtocolError(f"claim judge returned invalid verdict for {claim_id}")
-    if len(matched) != len(set(matched)) or not set(matched) <= set(block_ids):
+    if not set(matched) <= set(block_ids):
         raise JudgeProtocolError(f"claim judge returned invalid blocks for {claim_id}")
-    if len(matched) > 1:
-        raise JudgeProtocolError(f"claim judge returned multiple blocks for {claim_id}")
     if verdict == "expressed" and not matched:
         verdict = "missing"
     elif verdict != "expressed" and matched:
@@ -206,6 +269,21 @@ def _parse_claim(value: JsonMap, expected_claim_id: str, block_ids: list[str]) -
         "verdict": verdict,
         "matched_block_ids": matched,
     }
+
+
+def _combine_claim_batches(claim_id: str, results: list[JsonMap]) -> JsonMap:
+    expressed = next(
+        (result for result in results if result.get("verdict") == "expressed"),
+        None,
+    )
+    if expressed is not None:
+        return expressed
+    verdict = (
+        "uncertain"
+        if any(result.get("verdict") == "uncertain" for result in results)
+        else "missing"
+    )
+    return {"claim_id": claim_id, "verdict": verdict, "matched_block_ids": []}
 
 
 def _parse_contradiction(
@@ -235,13 +313,21 @@ def _parse_additional_block(value: JsonMap, expected_block_id: str) -> JsonMap:
     ]
     if block_id != expected_block_id:
         raise JudgeProtocolError("block grounding judge returned the wrong block")
-    if verdict not in {"supported", "unsupported", "not_material", "uncertain"}:
+    if verdict not in {"supported", "unsupported", "uncertain"}:
         raise JudgeProtocolError("block grounding judge returned an invalid verdict")
     if verdict == "unsupported" and not issues:
         raise JudgeProtocolError("unsupported block requires an issue")
-    if verdict in {"supported", "not_material"} and issues:
+    if verdict == "supported" and issues:
         verdict = "unsupported"
     return {"block_id": block_id, "verdict": verdict, "issues": issues}
+
+
+def _parse_materiality(value: JsonMap, expected_block_id: str) -> bool:
+    block_id = str(value.get("block_id") or "")
+    material = value.get("material")
+    if block_id != expected_block_id or not isinstance(material, bool):
+        raise JudgeProtocolError("block materiality judge returned an invalid result")
+    return material
 
 
 def _claim_prompt() -> str:
@@ -256,6 +342,9 @@ statement, or plausible implication is missing. Use contradicted only for a clea
 conclusion. A required claim that rejects a comparison or ranking is contradicted when the answer
 explicitly makes that comparison or ranking. Use uncertain only when a block's own wording genuinely
 has two meanings.
+
+Do not fill an unnamed actor, method, system, or value from the authored claim itself. For example, a
+block that lists parameters for "the adaptive optimizer" does not state that the optimizer is Adam.
 
 Treat a Markdown table row as one block and read its cells together. A comparison row can express a
 complete claim when its cells explicitly state every required side and qualifier.
@@ -272,12 +361,15 @@ Evaluate only whether the answer text clearly asserts the opposite of, or an inc
 with, the one required claim. Never use outside knowledge or attached evidence. Return exactly one
 submit_claim_contradiction tool call.
 
-Set contradicted=true only when a specific answer block makes the required claim false; identify that
-one block. A missing detail, partial answer, omission, different topic, weak implication, or uncertainty
-is not a contradiction. Pay close attention to negation and relation direction. If the required claim
-says values from different benchmarks are not directly comparable or must not be ranked, an answer
-that explicitly compares or ranks those values is a contradiction. Otherwise return contradicted=false
-and omit contradicting_block_id or return it as an empty string."""
+Set contradicted=true when the answer adopts a conclusion that makes the required claim false; identify
+one block that asserts it. Check the entire answer even when another block appears to express the
+required claim. An answer that asserts both positions is internally inconsistent and is contradicted.
+A quotation, rejected position, hypothetical, missing detail, partial answer, omission, different
+topic, weak implication, or uncertainty is not a contradiction. Pay close attention to negation and
+relation direction. If the required claim says values from different benchmarks are not directly
+comparable or must not be ranked, an answer that declares such a ranking is a contradiction even when
+it later adds a comparability caveat. Otherwise return contradicted=false and omit
+contradicting_block_id or return it as an empty string."""
 
 
 def _additional_prompt() -> str:
@@ -285,18 +377,27 @@ def _additional_prompt() -> str:
 Evaluate only the supplied answer_block and evidence attached to that block. Never use outside
 knowledge or evidence from another block. Return exactly one submit_block_grounding tool call.
 
-This is not a second required-claim grade. First subtract every clause whose whole factual meaning is
-contained in any required claim statement. Subtract it even when it is a paraphrase, repetition, or
-only one component of a required claim, and even when the claim result is missing, contradicted,
-uncertain, or matched to another block. Do not decide here whether a required claim is complete,
-correct, or properly cited; the claim and deterministic source checks do that elsewhere.
+Audit every factual clause actually asserted in the block, including conclusions, summaries, repeated
+answer claims, comparisons, and bibliographic details. Do not assume a clause is supported because it
+resembles a required answer. Do not decide whether the answer completely fulfills a required claim and
+do not invent omitted facts; only judge the factual text present in this block.
 
-Also ignore headings, formatting, transition text, and clearly labelled opinion. If nothing material
-remains, return not_material. For each remaining factual clause, require direct support in evidence
-attached to this block. Return supported when all such clauses are supported. Return unsupported when
-one is absent from the evidence, contradicted, overstated, only partly supported, or uncited, and name
-the material defect in issues. Use uncertain only when the supplied text genuinely cannot resolve
-support. Familiar facts, plausible inference, and citation-like text are not evidence."""
+Return supported only when the attached evidence directly supports every factual clause. Return
+unsupported when one clause is absent from the attached evidence, contradicted, overstated, or only
+partly supported, and name the material defect in issues. Use uncertain only when the supplied text
+genuinely cannot resolve support. Familiar facts, plausible inference, facts cited in another block,
+and citation-like text are not evidence."""
+
+
+def _materiality_prompt() -> str:
+    return """ANSWER_BLOCK_MATERIALITY_JUDGE
+Decide only whether the supplied answer block asserts any externally checkable factual claim. Return
+exactly one submit_block_materiality tool call.
+
+Direct answers, conclusions, summaries, comparisons, numbers, source descriptions, and bibliographic
+details are material factual claims. Headings, table headers, pure transition or organizational text,
+offers to help, and clearly labelled opinions are not material. Judge what the block itself asserts;
+do not borrow facts from the question, another block, or outside knowledge."""
 
 
 def _claim_tool(claim_id: str, block_ids: list[str]) -> JsonMap:
@@ -307,15 +408,13 @@ def _claim_tool(claim_id: str, block_ids: list[str]) -> JsonMap:
             "description": "Judge one required claim and select its strongest complete block.",
             "parameters": {
                 "type": "object",
-                "required": ["claim_id", "verdict", "matched_block_ids"],
+                "required": ["claim_id", "verdict", "matched_block_id"],
                 "properties": {
                     "claim_id": {"type": "string", "enum": [claim_id]},
                     "verdict": {"type": "string", "enum": sorted(CLAIM_VERDICTS)},
-                    "matched_block_ids": {
-                        "type": "array",
-                        "maxItems": 1,
-                        "uniqueItems": True,
-                        "items": {"type": "string", "enum": block_ids},
+                    "matched_block_id": {
+                        "type": "string",
+                        "enum": ["", *block_ids],
                     },
                 },
                 "additionalProperties": False,
@@ -360,7 +459,7 @@ def _additional_tool(block_id: str) -> JsonMap:
                     "block_id": {"type": "string", "enum": [block_id]},
                     "verdict": {
                         "type": "string",
-                        "enum": ["supported", "unsupported", "not_material", "uncertain"],
+                        "enum": ["supported", "unsupported", "uncertain"],
                     },
                     "issues": {
                         "type": "array",
@@ -374,17 +473,40 @@ def _additional_tool(block_id: str) -> JsonMap:
     }
 
 
+def _materiality_tool(block_id: str) -> JsonMap:
+    return {
+        "type": "function",
+        "function": {
+            "name": "submit_block_materiality",
+            "description": "Classify whether one uncited answer block makes a factual assertion.",
+            "parameters": {
+                "type": "object",
+                "required": ["block_id", "material"],
+                "properties": {
+                    "block_id": {"type": "string", "enum": [block_id]},
+                    "material": {"type": "boolean"},
+                },
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
 def claim_judge_definition_sha256() -> str:
     definition = {
         "contract_version": CLAIM_JUDGE_CONTRACT_VERSION,
         "prompt_version": CLAIM_JUDGE_PROMPT_VERSION,
         "protocol_attempts": CLAIM_JUDGE_PROTOCOL_ATTEMPTS,
+        "claim_block_batch_size": CLAIM_JUDGE_BLOCK_BATCH_SIZE,
+        "claim_block_selection": "prefer-complete-block-with-attached-evidence/v1",
         "claim_prompt": _claim_prompt(),
         "claim_tool": _claim_tool("<claim_id>", ["<block_id>"]),
         "contradiction_prompt": _contradiction_prompt(),
         "contradiction_tool": _contradiction_tool("<claim_id>", ["<block_id>"]),
         "additional_prompt": _additional_prompt(),
         "additional_tool": _additional_tool("<block_id>"),
+        "materiality_prompt": _materiality_prompt(),
+        "materiality_tool": _materiality_tool("<block_id>"),
         "deterministic_exact_required_only_rule": {
             "version": "deterministic-pass/v1",
             "normalization": "casefold, collapse whitespace, strip, remove trailing periods",
