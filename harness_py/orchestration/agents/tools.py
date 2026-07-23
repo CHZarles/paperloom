@@ -237,7 +237,6 @@ def _invoke_final(
         validation_error = answer_validation_error(
             draft,
             known_evidence,
-            bool(context.corpus.observations_by_evidence_id),
         )
     accepted = not validation_error
     visible = {"accepted": accepted}

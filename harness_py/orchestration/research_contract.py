@@ -63,7 +63,7 @@ def final_answer_tool_definition() -> JsonMap:
                         "type": "string",
                         "maxLength": 16000,
                         "description": (
-                            "Natural user-facing answer. Paper-content claims must be supported by cited passages. "
+                            "Natural user-facing answer. Cite paper-content evidence when the answer relies on it. "
                             "Corpus metadata may be answered directly from paper cards without citations. Do not add "
                             "defaults, comparisons, or causal explanations from general knowledge."
                         ),
@@ -82,7 +82,6 @@ def final_answer_tool_definition() -> JsonMap:
 def answer_validation_error(
     final: JsonMap,
     known_evidence: dict[str, JsonMap],
-    used_paper_evidence: bool,
 ) -> str:
     outcome = str(final.get("outcome") or "")
     markdown = final.get("markdown")
@@ -100,8 +99,6 @@ def answer_validation_error(
     unknown = sorted(cited - citeable)
     if unknown:
         return "unknown cited evidence ids: " + ", ".join(unknown)
-    if used_paper_evidence and outcome in {"answered", "partial"} and not cited:
-        return "paper-content evidence was read, so cite a returned evidence item; do not mention this validation rule"
     if final.get("fields") is not None and not isinstance(final.get("fields"), dict):
         return "fields must be an object"
     return ""

@@ -223,7 +223,7 @@ OpenAI-compatible API。它说明了接入兼容供应商的一般方法：
 4. 一个 `Runner.run()` 执行模型与工具循环。
 5. 每次工具调用都会经过 Harness 的确定性授权检查。
 6. 模型用 `submit_research_answer` 提交用户可见答案。
-7. Harness 校验 outcome、Markdown、引用格式、evidence_id，以及读过论文内容却完全没有引用的答案。
+7. Harness 校验 outcome、Markdown、引用格式和 evidence_id。
 8. 校验失败会作为工具错误返回同一个 Runner；校验通过才形成 `final_output`。
 9. `build_harness_run()` 生成统一 Run；`ConversationState.updated_from_run()` 只把已接受答案和
    已验证证据带入下一轮。
@@ -293,9 +293,8 @@ surface。
 - `fields`：可选产品结构化字段，不自动等于 Golden Fact Contract。
 
 论文内容引用写成 `[[evidence_id]]`。`answer_validation_error()` 会拒绝未知 evidence_id、错误
-引用格式、非法 outcome、空 Markdown，以及读过论文内容却完全没有引用的答案；最终提交和其他工具
-放在同一步也会被 Runtime 拒绝。`build_harness_run()` 再把内部 evidence marker 渲染成最终引用，
-并生成标准化结果。
+引用格式、非法 outcome 和空 Markdown；最终提交和其他工具放在同一步也会被 Runtime 拒绝。
+`build_harness_run()` 再把内部 evidence marker 渲染成最终引用，并生成标准化结果。
 
 离线 `BehaviorScorer` 的 Content 维度默认检查用户可见 `markdown`。只有确定性 Fixture 明确声明
 `fields_schema=golden-facts/v1` 时，评分器才逐 Key 校验 `fields`。普通模型输出即使包含

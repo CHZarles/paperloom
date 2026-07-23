@@ -130,19 +130,17 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         error = answer_validation_error(
             {"outcome": "answered", "markdown": "There are five papers."},
             {},
-            used_paper_evidence=False,
         )
 
         self.assertEqual("", error)
 
-    def test_answer_after_reading_paper_evidence_still_requires_citation(self) -> None:
+    def test_answer_after_reading_paper_evidence_can_submit_without_citation(self) -> None:
         error = answer_validation_error(
             {"outcome": "answered", "markdown": "The paper proposes a new method."},
             {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
-            used_paper_evidence=True,
         )
 
-        self.assertIn("paper-content evidence was read", error)
+        self.assertEqual("", error)
 
     def test_answer_after_reading_allows_uncited_blocks_once_a_known_citation_exists(self) -> None:
         error = answer_validation_error(
@@ -154,7 +152,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 ),
             },
             {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
-            used_paper_evidence=True,
         )
 
         self.assertEqual("", error)
@@ -171,7 +168,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 ),
             },
             {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
-            used_paper_evidence=True,
         )
 
         self.assertEqual("", error)

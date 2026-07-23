@@ -128,8 +128,8 @@ Java-authorized scope
 诊断可以区分“Retriever 没找到”“Agent 没读”“读了没引用”和“只引用弱 Evidence”。
 
 `submit_research_answer` 必须独占最终 Tool Step。校验失败不会直接结束 Run，而是把结构化错误返回给
-同一个 Agent，让它修正非法 outcome、空 Markdown、手写数字引用、未知 evidence_id，或读过论文
-内容却完全没有引用的答案。更细的跨论文 Coverage 和逐 Block 语义支撑留给离线 Scorer/Judge。
+同一个 Agent，让它修正非法 outcome、空 Markdown、手写数字引用或未知 evidence_id。更细的跨论文
+Coverage、无引用内容和逐 Block 语义支撑留给离线 Scorer/Judge。
 
 ## 快速开始
 
