@@ -94,7 +94,7 @@ class AgentsToolsTest(unittest.TestCase):
         self.assertIn("only tool call", payload["validation_error"])
         self.assertFalse(context.trace[-1]["result"]["accepted"])
 
-    def test_final_submission_rejects_missing_same_paper_citation(self) -> None:
+    def test_final_submission_keeps_cross_paper_coverage_as_offline_diagnostic(self) -> None:
         original = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
         dataset = replace(
             original,
@@ -156,6 +156,5 @@ class AgentsToolsTest(unittest.TestCase):
             "markdown": "Synthetic Paper is supported [[ev_synthetic]], while Other Paper differs.",
         }))
 
-        self.assertFalse(payload["accepted"])
-        self.assertIn("Other Paper", payload["validation_error"])
-        self.assertIn("does not cite evidence", payload["validation_error"])
+        self.assertTrue(payload["accepted"])
+        self.assertIsNone(payload["validation_error"])

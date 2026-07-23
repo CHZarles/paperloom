@@ -223,7 +223,7 @@ OpenAI-compatible API。它说明了接入兼容供应商的一般方法：
 4. 一个 `Runner.run()` 执行模型与工具循环。
 5. 每次工具调用都会经过 Harness 的确定性授权检查。
 6. 模型用 `submit_research_answer` 提交用户可见答案。
-7. Harness 校验 outcome、Markdown、引用格式、evidence_id 和跨论文 Evidence Coverage。
+7. Harness 校验 outcome、Markdown、引用格式、evidence_id，以及读过论文内容却完全没有引用的答案。
 8. 校验失败会作为工具错误返回同一个 Runner；校验通过才形成 `final_output`。
 9. `build_harness_run()` 生成统一 Run；`ConversationState.updated_from_run()` 只把已接受答案和
    已验证证据带入下一轮。
@@ -293,18 +293,17 @@ surface。
 - `fields`：可选产品结构化字段，不自动等于 Golden Fact Contract。
 
 论文内容引用写成 `[[evidence_id]]`。`answer_validation_error()` 会拒绝未知 evidence_id、错误
-引用格式、非法 outcome，以及把最终提交和其他工具放在同一步的行为。`build_harness_run()` 再把
-内部 evidence marker 渲染成最终引用，并生成标准化结果。
+引用格式、非法 outcome、空 Markdown，以及读过论文内容却完全没有引用的答案；最终提交和其他工具
+放在同一步也会被 Runtime 拒绝。`build_harness_run()` 再把内部 evidence marker 渲染成最终引用，
+并生成标准化结果。
 
 离线 `BehaviorScorer` 的 Content 维度默认检查用户可见 `markdown`。只有确定性 Fixture 明确声明
 `fields_schema=golden-facts/v1` 时，评分器才逐 Key 校验 `fields`。普通模型输出即使包含
 `evidence_id` 等字段，也不会因此被解释为已经承诺输出全部 Golden Facts。
 
-结构校验通过后，`orchestration/evidence_coverage.py` 还会检查当前内容研究中被明确点名的
-论文是否经过 Candidate、Read 和同论文 Cited 三个阶段。只检索未读取、读取后未引用、跨论文
-借证据，以及只用 HEADING 导航文本支撑内容声明，都会让最终工具返回可行动的错误并继续同一个
-Runner 循环。该 Policy 不读取 Golden Case、Anchor 或 Expected Fact，也不影响只使用论文卡片
-回答的元数据问题。
+`orchestration/evidence_coverage.py` 保留为离线诊断辅助：它可以检查当前内容研究中被明确点名的
+论文是否经过 Candidate、Read 和同论文 Cited 三个阶段，用来分析“检索、读取、引用”链路问题。
+这些诊断不再作为在线最终提交闸门；逐 Block 语义支撑留给离线 Scorer/Judge。
 
 ### Transport 契约
 

@@ -22,7 +22,6 @@ from agents.tool_context import ToolContext
 
 from ...core.models import JsonMap, child_map
 from ...corpus.tools import model_facing_payload
-from ..evidence_coverage import coverage_validation_error, evaluate_evidence_coverage
 from ..research_contract import (
     FINAL_TOOL_NAME,
     answer_validation_error,
@@ -240,17 +239,6 @@ def _invoke_final(
             known_evidence,
             bool(context.corpus.observations_by_evidence_id),
         )
-        if not validation_error:
-            validation_error = coverage_validation_error(
-                evaluate_evidence_coverage(
-                    draft=draft,
-                    question=context.turn.question,
-                    paper_records_by_id=context.turn.dataset.paper_records_by_id,
-                    trace=context.trace,
-                    known_evidence=known_evidence,
-                ),
-                context.turn.dataset.paper_records_by_id,
-            )
     accepted = not validation_error
     visible = {"accepted": accepted}
     if validation_error:

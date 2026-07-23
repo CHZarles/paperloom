@@ -54,7 +54,7 @@ corpus/
 orchestration/
   live_chat.py                单回合产品边界与 Eval Recorder 生命周期
   conversation.py             跨回合研究记忆
-  evidence_coverage.py        `evaluate_evidence_coverage` 与提交错误生成
+  evidence_coverage.py        离线检查 Candidate/Read/Cited 覆盖链路
   research_contract.py        Agent 指令和最终提交契约
   run_output.py               标准 Run、引用渲染和进度投影
   agents/
@@ -124,13 +124,12 @@ Java-authorized scope
 -> submit_research_answer 针对 Known Evidence 校验
 ```
 
-这几个集合在 `ResearchRunContext` 中独立记录。Tool Capture 同时保存调用前后的授权快照，因此可以
-区分“Retriever 没找到”“Agent 没读”“读了没引用”和“只引用弱 Evidence”。
+这几个集合在 `ResearchRunContext` 中独立记录。Tool Capture 同时保存调用前后的授权快照，因此离线
+诊断可以区分“Retriever 没找到”“Agent 没读”“读了没引用”和“只引用弱 Evidence”。
 
 `submit_research_answer` 必须独占最终 Tool Step。校验失败不会直接结束 Run，而是把结构化错误返回给
-同一个 Agent，让它补读、补引或删除无证据声明。读取过论文证据后，每个事实段落、列表项和表格
-数据行都必须在自身 Block 内引用证据；标题和表头可以不引用。这与离线 v4 Scorer 使用同一个
-Markdown Block 解析器和同一条无引用 Block 规则。
+同一个 Agent，让它修正非法 outcome、空 Markdown、手写数字引用、未知 evidence_id，或读过论文
+内容却完全没有引用的答案。更细的跨论文 Coverage 和逐 Block 语义支撑留给离线 Scorer/Judge。
 
 ## 快速开始
 

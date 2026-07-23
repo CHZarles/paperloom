@@ -144,7 +144,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         self.assertIn("paper-content evidence was read", error)
 
-    def test_answer_after_reading_rejects_an_uncited_factual_block(self) -> None:
+    def test_answer_after_reading_allows_uncited_blocks_once_a_known_citation_exists(self) -> None:
         error = answer_validation_error(
             {
                 "outcome": "answered",
@@ -157,8 +157,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             used_paper_evidence=True,
         )
 
-        self.assertIn("uncited paragraph block", error)
-        self.assertIn("Unsupported summary", error)
+        self.assertEqual("", error)
 
     def test_answer_after_reading_allows_uncited_structure(self) -> None:
         error = answer_validation_error(

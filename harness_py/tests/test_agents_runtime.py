@@ -54,7 +54,7 @@ class AgentsRuntimeTest(unittest.TestCase):
         ]
         self.assertEqual(2, len(submissions))
         self.assertFalse(submissions[0]["result"]["accepted"])
-        self.assertIn("uncited paragraph block", submissions[0]["result"]["error"])
+        self.assertIn("unknown cited evidence ids", submissions[0]["result"]["error"])
         self.assertTrue(submissions[1]["result"]["accepted"])
         self.assertIn("run.started", {event["kind"] for event in events})
         self.assertIn("tool.completed", {event["kind"] for event in events})
@@ -184,13 +184,9 @@ class _ScriptedAgentsModel(Model):
             locations = outputs["call_3"]["locations"]
             name, arguments = "read_locations", {"location_refs": [locations[0]["location_ref"]]}
         elif self.call_count == 5:
-            evidence_id = outputs["call_4"]["items"][0]["evidence_id"]
             name, arguments = "submit_research_answer", {
                 "outcome": "answered",
-                "markdown": (
-                    "Uncited summary.\n\n"
-                    f"The structured value is 42. [[{evidence_id}]]"
-                ),
+                "markdown": "The structured value is 42. [[ev_fake]]",
                 "fields": {"answer": "42"},
             }
         else:
