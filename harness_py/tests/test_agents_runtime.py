@@ -48,6 +48,14 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertTrue(run["run_id"].startswith("run_"))
         self.assertEqual(1, state.turn_index)
         self.assertIn("answer.validation", _event_kinds(progress, run))
+        submissions = [
+            item for item in run["react_trace"]
+            if item.get("tool_name") == "submit_research_answer"
+        ]
+        self.assertEqual(2, len(submissions))
+        self.assertFalse(submissions[0]["result"]["accepted"])
+        self.assertIn("uncited paragraph block", submissions[0]["result"]["error"])
+        self.assertTrue(submissions[1]["result"]["accepted"])
         self.assertIn("run.started", {event["kind"] for event in events})
         self.assertIn("tool.completed", {event["kind"] for event in events})
         self.assertTrue(result["capture_ok"])
@@ -175,6 +183,16 @@ class _ScriptedAgentsModel(Model):
         elif self.call_count == 4:
             locations = outputs["call_3"]["locations"]
             name, arguments = "read_locations", {"location_refs": [locations[0]["location_ref"]]}
+        elif self.call_count == 5:
+            evidence_id = outputs["call_4"]["items"][0]["evidence_id"]
+            name, arguments = "submit_research_answer", {
+                "outcome": "answered",
+                "markdown": (
+                    "Uncited summary.\n\n"
+                    f"The structured value is 42. [[{evidence_id}]]"
+                ),
+                "fields": {"answer": "42"},
+            }
         else:
             evidence_id = outputs["call_4"]["items"][0]["evidence_id"]
             name, arguments = "submit_research_answer", {

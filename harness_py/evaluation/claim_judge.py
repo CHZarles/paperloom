@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from .judge import JudgeProtocolError
 from .judge_model import JudgeModel
+from ..core.answer_blocks import NON_MATERIAL_UNCITED_BLOCK_KINDS
 from ..core.models import JsonMap, as_list, child_map
 
 
@@ -395,7 +396,7 @@ def _parse_additional_block(value: JsonMap, expected_block_id: str) -> JsonMap:
 
 
 def _is_structural_block(block: JsonMap) -> bool:
-    return str(block.get("kind") or "") in {"heading", "table_header"}
+    return str(block.get("kind") or "") in NON_MATERIAL_UNCITED_BLOCK_KINDS
 
 
 def _claim_prompt() -> str:
@@ -567,7 +568,7 @@ def claim_judge_definition_sha256() -> str:
         "additional_prompt": _additional_prompt(),
         "additional_tool": _additional_tool("<block_id>"),
         "uncited_block_rule": {
-            "not_material_kinds": ["heading", "table_header"],
+            "not_material_kinds": sorted(NON_MATERIAL_UNCITED_BLOCK_KINDS),
             "all_other_kinds": "unsupported",
         },
         "deterministic_exact_required_only_rule": {

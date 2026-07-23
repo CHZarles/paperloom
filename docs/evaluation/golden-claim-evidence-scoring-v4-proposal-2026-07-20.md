@@ -660,3 +660,22 @@ claim, unsupported-addition, typed-fact, outcome, and source-grounding failures 
 
 Final regression verification is `10/10` stable fixtures, `24/24` expanded fixtures, and `184`
 Harness tests passed with one real-Qdrant smoke test skipped.
+
+### Online Validation Alignment (2026-07-23)
+
+The live `submit_research_answer` validator and offline scorer now share the same Markdown block parser
+and structural-block policy. After paper evidence has been used, every paragraph, list item, and table
+data row must carry an evidence citation in that same block; headings and table headers may remain
+uncited. A violating submission is rejected inside the existing Agent loop with the first offending
+block in the repair message, so MiniMax can cite it or remove it before the run completes. Metadata-only
+answers remain citation-free. This closes the measured gap where online validation accepted verbose
+uncited summaries that later caused `additional_claims` to fail in 22 of 24 benchmark cases.
+
+A real MiniMax-M3 smoke run completed through Java, Qdrant, `location_ref`, and MySQL at
+`research/golden-data/local-runs/online-block-validation-smoke-20260723-201337/`. MiniMax's first
+three uncited submissions were rejected by the existing citation requirement. Its fourth submission
+cited only the first of two factual paragraphs; the new block validator identified the uncited second
+paragraph. MiniMax repaired that paragraph on the fifth submission and the run completed. All offline
+deterministic dimensions passed; `additional_claims` remained `review_required` because this focused
+smoke did not invoke the offline semantic judge. Full regression verification is 186 Harness tests
+passed, with one real-Qdrant test skipped.

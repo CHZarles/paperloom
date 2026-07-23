@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from ..core.answer_blocks import uncited_material_blocks
 from ..core.models import JsonMap
 from .research_skills import ResearchSkillRegistry
 
@@ -103,6 +104,16 @@ def answer_validation_error(
         return "unknown cited evidence ids: " + ", ".join(unknown)
     if used_paper_evidence and outcome in {"answered", "partial"} and not cited:
         return "paper-content evidence was read, so cite a returned evidence item; do not mention this validation rule"
+    if outcome in {"answered", "partial"} and (used_paper_evidence or cited):
+        uncited_blocks = uncited_material_blocks({"markdown": markdown})
+        if uncited_blocks:
+            first = uncited_blocks[0]
+            preview = str(first.get("text") or "")[:160]
+            return (
+                "every factual paragraph, list item, and table row must contain its own citation; "
+                f"uncited {first.get('kind')} block: {preview!r}; attach a returned evidence id "
+                "to that block or remove it"
+            )
     if final.get("fields") is not None and not isinstance(final.get("fields"), dict):
         return "fields must be an object"
     return ""
