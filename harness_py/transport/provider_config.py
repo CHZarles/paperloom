@@ -42,11 +42,15 @@ class EnvProviderConfigStore(ProviderConfigStore):
         api_base_url_env: str = "MINIMAX_API_BASE_URL",
         api_key_env: str = "MINIMAX_API_KEY",
         model_env: str = "MINIMAX_MODEL",
+        provider: str = "minimax",
+        api_style: str = "openai-compatible",
         env_path: str | Path = ".env",
     ):
         self.api_base_url_env = api_base_url_env
         self.api_key_env = api_key_env
         self.model_env = model_env
+        self.provider = provider
+        self.api_style = api_style
         self.env_path = Path(env_path)
 
     def load_active_provider(self, scope: str = "llm") -> ProviderConfig:
@@ -67,8 +71,8 @@ class EnvProviderConfigStore(ProviderConfigStore):
             raise RuntimeError(f"missing environment provider config: {', '.join(missing)}")
         return ProviderConfig(
             scope=scope,
-            provider="minimax",
-            api_style="openai-compatible",
+            provider=self.provider,
+            api_style=self.api_style,
             api_base_url=normalize_openai_base_url(api_base_url),
             model=model,
             api_key=api_key,

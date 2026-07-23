@@ -351,7 +351,9 @@ python3 -m venv .venv-harness
 
 模型配置默认使用 `--provider-source db`。需要从环境变量读取
 `MINIMAX_API_BASE_URL`、`MINIMAX_API_KEY` 和 `MINIMAX_MODEL` 时，传入
-`--provider-source env`。
+`--provider-source env`。需要用 OpenAI-compatible 环境变量做模型对照时，传入
+`--provider-source openai-env`，它读取 `OPENAI_BASE_URL`、`OPENAI_API_KEY` 和
+`OPENAI_MODEL`，Provider 元数据记录为 `openai`。
 
 真实运行的硬评分失败与 Fixture 或 Anchor 失败不是一回事。模型行为会波动，建议先运行
 一两个有代表性的 Case，检查保存的 Run，再决定是否为完整 Manifest 消耗 Token。

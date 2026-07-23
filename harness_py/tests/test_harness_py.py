@@ -22,7 +22,7 @@ from harness_py.evaluation.scoring import BehaviorScorer
 from harness_py.orchestration.conversation import ConversationState
 from harness_py.orchestration.research_contract import answer_validation_error
 from harness_py.orchestration.research_skills import ResearchSkillRegistry
-from harness_py.transport.provider_config import decrypt_provider_key
+from harness_py.transport.provider_config import EnvProviderConfigStore, decrypt_provider_key
 
 
 class PythonHarnessPrototypeTest(unittest.TestCase):
@@ -184,6 +184,50 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         encoded = f"{base64.b64encode(iv).decode()}:{base64.b64encode(ciphertext).decode()}"
 
         self.assertEqual("sk-test", decrypt_provider_key(encoded, base64.b64encode(key).decode()))
+
+    def test_env_provider_store_can_label_openai_env_without_reusing_minimax_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            env_file = Path(tmp) / ".env"
+            env_file.write_text(
+                "\n".join([
+                    "HARNESS_TEST_OPENAI_BASE_URL=https://example.invalid/v1/chat/completions",
+                    "HARNESS_TEST_OPENAI_API_KEY=sk-test",
+                    "HARNESS_TEST_OPENAI_MODEL=gpt-5.5",
+                ]),
+                encoding="utf-8",
+            )
+            provider = EnvProviderConfigStore(
+                api_base_url_env="HARNESS_TEST_OPENAI_BASE_URL",
+                api_key_env="HARNESS_TEST_OPENAI_API_KEY",
+                model_env="HARNESS_TEST_OPENAI_MODEL",
+                provider="openai",
+                api_style="openai-compatible",
+                env_path=env_file,
+            ).load_active_provider("llm")
+
+        self.assertEqual("openai", provider.provider)
+        self.assertEqual("openai-compatible", provider.api_style)
+        self.assertEqual("https://example.invalid/v1", provider.api_base_url)
+        self.assertEqual("gpt-5.5", provider.model)
+        self.assertNotIn("sk-test", str(provider.public_diagnostics()))
+
+    def test_openai_env_provider_source_uses_openai_environment_names(self) -> None:
+        from harness_py.cli import _provider
+
+        with patch("harness_py.cli.EnvProviderConfigStore") as store_class:
+            store_class.return_value.load_active_provider.return_value = "provider"
+
+            provider = _provider("openai-env")
+
+        self.assertEqual("provider", provider)
+        store_class.assert_called_once_with(
+            api_base_url_env="OPENAI_BASE_URL",
+            api_key_env="OPENAI_API_KEY",
+            model_env="OPENAI_MODEL",
+            provider="openai",
+            api_style="openai-compatible",
+        )
+        store_class.return_value.load_active_provider.assert_called_once_with("llm")
 
     def test_product_db_rows_build_generic_reading_corpus(self) -> None:
         dataset = build_product_dataset(

@@ -48,6 +48,9 @@ from .transport.provider_config import DockerMySqlProviderConfigStore, EnvProvid
 from .transport.service import serve
 
 
+PROVIDER_SOURCE_CHOICES = ("db", "env", "openai-env")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Python research harness prototype.")
     parser.add_argument("--manifest", default="research/golden-data/manifest.yaml")
@@ -80,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     semantic_parser.add_argument("--runs", required=True)
     semantic_parser.add_argument("--out", required=True)
-    semantic_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    semantic_parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     semantic_parser.add_argument("--max-tokens", type=int, default=2200)
     agent_parser = subcommands.add_parser(
         "agent-run",
@@ -105,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     judge_parser.add_argument("--labels", default="research/golden-data/human-labels.yaml")
     judge_parser.add_argument("--out", default="eval/rag/runs/llm-judge-calibration")
-    judge_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    judge_parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     judge_parser.add_argument("--max-tokens", type=int, default=1200)
     claim_judge_parser = subcommands.add_parser(
         "claim-judge-calibrate",
@@ -113,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     claim_judge_parser.add_argument("--labels", required=True)
     claim_judge_parser.add_argument("--out", required=True)
-    claim_judge_parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    claim_judge_parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     claim_judge_parser.add_argument("--max-tokens", type=int, default=2200)
     args = parser.parse_args(argv)
 
@@ -395,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--provider-source", choices=["db", "env"], default="db")
+    parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
     parser.add_argument("--max-tokens", type=int, default=3000)
 
@@ -419,7 +422,18 @@ def _judge_model(provider_source: str):
 
 
 def _provider(provider_source: str):
-    store = DockerMySqlProviderConfigStore() if provider_source == "db" else EnvProviderConfigStore()
+    if provider_source == "db":
+        store = DockerMySqlProviderConfigStore()
+    elif provider_source == "openai-env":
+        store = EnvProviderConfigStore(
+            api_base_url_env="OPENAI_BASE_URL",
+            api_key_env="OPENAI_API_KEY",
+            model_env="OPENAI_MODEL",
+            provider="openai",
+            api_style="openai-compatible",
+        )
+    else:
+        store = EnvProviderConfigStore()
     return store.load_active_provider("llm")
 
 

@@ -144,6 +144,11 @@ export MINIMAX_API_BASE_URL=https://api.minimaxi.com/v1
 export MINIMAX_API_KEY=...
 export MINIMAX_MODEL=MiniMax-M3
 
+# 可选：用 OpenAI-compatible 环境变量跑同一套 Harness
+export OPENAI_BASE_URL=https://api.openai.com/v1
+export OPENAI_API_KEY=...
+export OPENAI_MODEL=gpt-5.5
+
 .venv-harness/bin/python -m harness_py serve \
   --host 127.0.0.1 \
   --port 8091
@@ -151,6 +156,9 @@ export MINIMAX_MODEL=MiniMax-M3
 
 Java 使用 `/v1/research/stream` 获取 NDJSON Progress 和最终结果；`/v1/research/turn` 提供同步
 边界。Corpus 固定经过 Java/Qdrant；Health Endpoint 是 `/health`。
+
+`--provider-source env` 读取 `MINIMAX_*`；`--provider-source openai-env` 读取
+`OPENAI_BASE_URL`、`OPENAI_API_KEY` 和 `OPENAI_MODEL`，并在产物里记录为 `openai`。
 
 ## 常用命令
 
