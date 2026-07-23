@@ -231,7 +231,11 @@ onBeforeUnmount(() => {
               Source Evidence
             </button>
           </div>
-          <ResearchProcessPanel v-if="activeReviewTab === 'process'" :message="processMessage" />
+          <ResearchProcessPanel
+            v-if="activeReviewTab === 'process'"
+            :message="processMessage"
+            @open-reference="handleOpenReference"
+          />
           <SourceEvidencePanel
             v-else-if="referencePayload"
             :key="referenceEvidenceKey"

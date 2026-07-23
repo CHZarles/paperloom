@@ -172,6 +172,14 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         self.assertEqual("", error)
 
+    def test_answer_rejects_literal_evidence_id_placeholder(self) -> None:
+        error = answer_validation_error(
+            {"outcome": "answered", "markdown": "Supported claim. [[evidence_id]]"},
+            {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
+        )
+
+        self.assertIn("[[evidence_id]]", error)
+
     def test_provider_key_decrypts_java_secret_crypto_format(self) -> None:
         key = AESGCM.generate_key(bit_length=128)
         iv = b"123456789012"

@@ -371,7 +371,8 @@ class CorpusRetrievalServiceTest {
             String paperId, String modelVersion, String locationRef, String elementType) {
         return new CanonicalReadingLocationService.CanonicalLocation(
                 paperId, paperId, modelVersion, locationRef, elementType, 1, 1, "Methods",
-                "Canonical content for " + paperId, "", "mineru", "1", locationRef);
+                "Canonical content for " + paperId, "", "mineru", "1", locationRef,
+                false, false, false, false, List.of());
     }
 
     private static final class Fixture {

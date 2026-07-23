@@ -266,6 +266,9 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   if (payload.readingStatePatch && typeof payload.readingStatePatch === 'object') {
     assistant.readingStatePatch = payload.readingStatePatch;
   }
+  if (payload.researchAuditTrail && typeof payload.researchAuditTrail === 'object') {
+    assistant.researchAuditTrail = payload.researchAuditTrail as Api.Chat.ResearchAuditTrail;
+  }
   assistant.route = normalizeChatRoute(payload.route) || assistant.route;
   assistant.route = normalizeChatRoute(payload.diagnostics?.route) || assistant.route;
   markExecutingToolsAsSuccess(assistant);

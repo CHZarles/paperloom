@@ -186,7 +186,7 @@ class GoldenV4Test(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "03b8316148bacf5fdc44254038cdb1260c5db716d79f4c8b79f862ccf379fa0a",
+            "6028f98ef73a09c8ecc6387abca45c61d43f501ba4a99af071ded76cd67b34c1",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )
@@ -221,6 +221,18 @@ class GoldenV4Test(unittest.TestCase):
         self.assertEqual(0, report["failed_count"], report)
         self.assertEqual(0, report["review_required_count"], report)
         self.assertTrue(all(score["case_status"] == "pass" for score in report["scores"]))
+
+    def test_score_report_exposes_trace_metrics_separately_from_correctness(self) -> None:
+        runs = [GoldenFixtureHarness().run_case(self.dataset, case) for case in self.dataset.cases]
+        report = BehaviorScorer().score_dataset(self.dataset, runs)
+
+        self.assertIn("trace_metrics", report)
+        self.assertEqual(10, report["trace_metrics"]["case_count"])
+        self.assertEqual(1.0, report["trace_metrics"]["read_recall"])
+        self.assertEqual(1.0, report["trace_metrics"]["citation_recall"])
+        first_score = report["scores"][0]
+        self.assertEqual(1, first_score["trace_metrics"]["required_evidence_count"])
+        self.assertIn("candidate_recall", first_score["trace_metrics"])
 
     def test_committed_reading_models_use_the_authored_pack_data_directory(self) -> None:
         pack = self.dataset.paper_packs[0]

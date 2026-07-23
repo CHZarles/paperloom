@@ -7,6 +7,17 @@ const props = defineProps<{
   message?: Api.Chat.Message | null;
 }>();
 
+const emit = defineEmits<{
+  (
+    e: 'openReference',
+    payload: Api.Chat.ReferenceEvidence & { paperTitle: string; referenceNumber: number; conversationRecordId?: number }
+  ): void;
+}>();
+
+const auditTrail = computed(() => props.message?.researchAuditTrail || null);
+const auditEvidence = computed(() => auditTrail.value?.evidence || []);
+const auditSteps = computed(() => auditTrail.value?.steps || []);
+const hasAuditTrail = computed(() => auditSteps.value.length > 0 || auditEvidence.value.length > 0);
 const events = computed(() => props.message?.researchEvents || []);
 const legacyTools = computed(() => props.message?.toolEvents || []);
 const isRunning = computed(() => ['pending', 'loading'].includes(props.message?.status || ''));
@@ -151,9 +162,95 @@ const presentedEvents = computed(() =>
   events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => presentEvent(event, index))
 );
 const latestPresentedEvent = computed(() => presentedEvents.value[presentedEvents.value.length - 1]);
+const latestAuditStep = computed(() => auditSteps.value[auditSteps.value.length - 1]);
+
+const auditDiagnostics = computed(() => auditTrail.value?.diagnostics || {});
+
+const auditGroups = computed(() => [
+  {
+    key: 'cited',
+    title: 'Cited',
+    rows: auditEvidence.value.filter(row => row.status === 'cited')
+  },
+  {
+    key: 'read',
+    title: 'Read but not cited',
+    rows: auditEvidence.value.filter(row => row.status === 'read' || row.status === 'unavailable_visual')
+  },
+  {
+    key: 'candidate',
+    title: 'Candidate only',
+    rows: auditEvidence.value.filter(row => !row.status || row.status === 'candidate')
+  }
+]);
 
 function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
   return toolLabel(event.tool, event.status === 'executing');
+}
+
+function auditStepTitle(step: Api.Chat.ResearchAuditStep) {
+  return toolLabel(step.kind || '', step.status === 'running');
+}
+
+function auditStepDetail(step: Api.Chat.ResearchAuditStep) {
+  const parts = [
+    step.query,
+    step.paperIds?.length ? `${step.paperIds.length} papers` : '',
+    step.locationRefs?.length ? `${step.locationRefs.length} locations` : '',
+    step.evidenceRefs?.length ? `${step.evidenceRefs.length} evidence` : '',
+    step.durationMs ? `${step.durationMs} ms` : '',
+    step.message
+  ];
+  return parts.filter(Boolean).join(' · ');
+}
+
+function evidenceTitle(row: Api.Chat.ResearchAuditEvidence) {
+  return [row.paperTitle || row.originalFilename || row.paperId || 'Evidence', row.pageNumber ? `p. ${row.pageNumber}` : '']
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function evidenceText(row: Api.Chat.ResearchAuditEvidence) {
+  return row.content || row.evidenceSnippet || row.matchedChunkText || row.anchorText || row.sectionTitle || '';
+}
+
+function evidenceMeta(row: Api.Chat.ResearchAuditEvidence) {
+  return [row.citationRef, row.sourceQuoteRef, row.evidenceRef, row.locationRef, row.sectionTitle]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function evidenceKey(row: Api.Chat.ResearchAuditEvidence, index: number) {
+  return String(row.auditEvidenceId || row.sourceQuoteRef || row.evidenceRef || row.locationRef || row.paperId || index);
+}
+
+function evidenceVisualLabel(row: Api.Chat.ResearchAuditEvidence) {
+  if (row.pageScreenshotAvailable) return row.bboxJson ? 'PDF page + bbox' : 'PDF page';
+  if (row.tableScreenshotAvailable) return 'Table image';
+  if (row.figureScreenshotAvailable) return 'Figure image';
+  return 'Text only';
+}
+
+function canOpenEvidence(row: Api.Chat.ResearchAuditEvidence) {
+  return Boolean(row.paperId || row.sourceQuoteRef || evidenceText(row));
+}
+
+function referenceNumber(row: Api.Chat.ResearchAuditEvidence) {
+  if (typeof row.referenceNumber === 'number' && row.referenceNumber > 0) return row.referenceNumber;
+  const matched = String(row.citationRef || '').match(/\[(\d+)]/);
+  return matched ? Number.parseInt(matched[1], 10) : 0;
+}
+
+function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
+  if (!canOpenEvidence(row)) return;
+  emit('openReference', {
+    ...row,
+    referenceNumber: referenceNumber(row),
+    paperTitle: row.paperTitle || row.originalFilename || row.paperId || 'Evidence',
+    evidenceSnippet: row.evidenceSnippet || row.content || row.anchorText || '',
+    matchedChunkText: row.matchedChunkText || row.content || row.anchorText || '',
+    conversationRecordId: props.message?.conversationRecordId
+  });
 }
 </script>
 
@@ -163,15 +260,89 @@ function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
       <span class="research-process__status-dot" :class="{ 'is-running': isRunning }" />
       <div>
         <div class="research-process__status-title">
-          {{ latestPresentedEvent ? latestPresentedEvent.title : isRunning ? 'Researching' : 'No process selected' }}
+          {{
+            hasAuditTrail
+              ? latestAuditStep
+                ? auditStepTitle(latestAuditStep)
+                : 'Research audit trail'
+              : latestPresentedEvent
+                ? latestPresentedEvent.title
+                : isRunning
+                  ? 'Researching'
+                  : 'No process selected'
+          }}
         </div>
-        <div v-if="latestPresentedEvent?.detail" class="research-process__status-detail">
+        <div v-if="hasAuditTrail && latestAuditStep" class="research-process__status-detail">
+          {{ auditStepDetail(latestAuditStep) }}
+        </div>
+        <div v-else-if="latestPresentedEvent?.detail" class="research-process__status-detail">
           {{ latestPresentedEvent.detail }}
         </div>
       </div>
     </div>
 
-    <div v-if="events.length" class="research-process__timeline">
+    <div v-if="hasAuditTrail" class="research-process__audit">
+      <div class="research-process__metrics">
+        <div>
+          <strong>{{ auditDiagnostics.searchedPaperCount || 0 }}</strong>
+          <span>Papers</span>
+        </div>
+        <div>
+          <strong>{{ auditDiagnostics.readEvidenceCount || 0 }}</strong>
+          <span>Read</span>
+        </div>
+        <div>
+          <strong>{{ auditDiagnostics.citedEvidenceCount || 0 }}</strong>
+          <span>Cited</span>
+        </div>
+        <div>
+          <strong>{{ auditDiagnostics.visualEvidenceAvailableCount || 0 }}</strong>
+          <span>Visual</span>
+        </div>
+      </div>
+
+      <div v-if="auditSteps.length" class="research-process__timeline">
+        <article
+          v-for="step in auditSteps"
+          :key="step.stepId || `${step.kind}:${step.query}`"
+          class="research-process__event"
+          :class="`is-${step.status || 'completed'}`"
+        >
+          <span class="research-process__marker" />
+          <div class="research-process__event-body">
+            <div class="research-process__event-heading">
+              <strong>{{ auditStepTitle(step) }}</strong>
+              <span v-if="step.durationMs">{{ step.durationMs }} ms</span>
+            </div>
+            <div v-if="auditStepDetail(step)" class="research-process__event-detail">{{ auditStepDetail(step) }}</div>
+          </div>
+        </article>
+      </div>
+
+      <div v-if="auditEvidence.length" class="research-process__ledger">
+        <section v-for="group in auditGroups" :key="group.key" class="research-process__ledger-group">
+          <div class="research-process__ledger-heading">
+            <strong>{{ group.title }}</strong>
+            <span>{{ group.rows.length }}</span>
+          </div>
+          <button
+            v-for="(row, rowIndex) in group.rows"
+            :key="evidenceKey(row, rowIndex)"
+            type="button"
+            class="research-process__evidence-row"
+            :disabled="!canOpenEvidence(row)"
+            @click="openEvidence(row)"
+          >
+            <div class="research-process__evidence-title">{{ evidenceTitle(row) }}</div>
+            <p v-if="evidenceText(row)" class="research-process__result-text">{{ evidenceText(row) }}</p>
+            <div class="research-process__evidence-meta">{{ evidenceMeta(row) }}</div>
+            <div class="research-process__visual-state">{{ evidenceVisualLabel(row) }}</div>
+          </button>
+        </section>
+      </div>
+    </div>
+
+    <div v-else-if="events.length" class="research-process__timeline">
       <article
         v-for="event in presentedEvents"
         :key="event.key"
@@ -275,6 +446,39 @@ function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
   padding-top: 8px;
 }
 
+.research-process__audit {
+  display: grid;
+  gap: 14px;
+  padding-top: 12px;
+}
+
+.research-process__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.research-process__metrics > div {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-alt);
+  padding: 8px;
+}
+
+.research-process__metrics strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.research-process__metrics span {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
 .research-process__event {
   position: relative;
   display: grid;
@@ -343,6 +547,72 @@ function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
 .research-process__result-ref {
   overflow-wrap: anywhere;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.research-process__ledger {
+  display: grid;
+  gap: 12px;
+}
+
+.research-process__ledger-group {
+  display: grid;
+  gap: 7px;
+}
+
+.research-process__ledger-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.research-process__ledger-heading span {
+  color: var(--color-text-muted);
+}
+
+.research-process__evidence-row {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  padding: 9px 10px;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.research-process__evidence-row:hover:not(:disabled),
+.research-process__evidence-row:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-accent-soft-bg);
+}
+
+.research-process__evidence-row:disabled {
+  cursor: default;
+}
+
+.research-process__evidence-title {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.research-process__evidence-meta,
+.research-process__visual-state {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.research-process__visual-state {
+  font-family: inherit;
 }
 
 .research-process__empty {

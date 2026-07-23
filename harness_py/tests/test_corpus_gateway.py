@@ -60,10 +60,17 @@ class FakeGateway:
                     "location_ref": "location_ref_a",
                     "element_type": "section",
                     "page": 3,
+                    "page_end": 4,
                     "section": "Methods",
                     "span_text": "Exact canonical content.",
+                    "bbox_json": "{\"coordinateSystem\":\"top_left_1000\"}",
                     "parser_name": "mineru",
                     "parser_version": "1",
+                    "page_screenshot_available": True,
+                    "pdf_evidence_available": True,
+                    "table_screenshot_available": False,
+                    "figure_screenshot_available": False,
+                    "asset_warnings": [],
                 }],
                 "missing_location_refs": [],
             }
@@ -148,6 +155,11 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertEqual("ev_e04a65dc77b9655f", evidence_id)
         self.assertIn(evidence_id, tools.observations_by_evidence_id)
         self.assertEqual("section", read_result["items"][0]["element_type"])
+        self.assertEqual("TEXT", read_result["items"][0]["source_kind"])
+        self.assertEqual(4, read_result["items"][0]["page_end"])
+        self.assertTrue(read_result["items"][0]["pdf_evidence_available"])
+        self.assertTrue(read_result["items"][0]["page_screenshot_available"])
+        self.assertEqual("{\"coordinateSystem\":\"top_left_1000\"}", read_result["items"][0]["bbox_json"])
         self.assertTrue(all(payload["user_id"] == 7 for _, payload in gateway.calls))
         self.assertTrue(all(payload["scope_paper_ids"] == ["paper-a"] for _, payload in gateway.calls))
 

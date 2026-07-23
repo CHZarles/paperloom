@@ -30,6 +30,7 @@ public class ChatGenerationStateService {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final ResearchAuditTrailProjector researchAuditTrailProjector = new ResearchAuditTrailProjector();
 
     public ChatGenerationStateService(RedisTemplate<String, String> redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
@@ -423,6 +424,11 @@ public class ChatGenerationStateService {
                 readingArtifacts == null ? Collections.emptyMap() : readingArtifacts,
                 readingStatePatch == null ? Collections.emptyMap() : readingStatePatch,
                 progressEvents == null ? List.of() : progressEvents,
+                researchAuditTrailProjector.project(
+                        meta.status() == null ? "" : meta.status().name(),
+                        referenceMappings,
+                        progressEvents
+                ),
                 meta.conversationRecordId()
         );
     }
@@ -507,6 +513,7 @@ public class ChatGenerationStateService {
             Map<String, Object> readingArtifacts,
             Map<String, Object> readingStatePatch,
             List<Map<String, Object>> progressEvents,
+            ResearchAuditTrail researchAuditTrail,
             Long conversationRecordId
     ) {
         public GenerationSnapshot(String generationId,
@@ -525,7 +532,7 @@ public class ChatGenerationStateService {
                                   Long conversationRecordId) {
             this(generationId, userId, conversationId, question, status, content, createdAt, updatedAt,
                     errorMessage, referenceMappings, diagnostics, readingArtifacts, readingStatePatch,
-                    List.of(), conversationRecordId);
+                    List.of(), null, conversationRecordId);
         }
     }
 }

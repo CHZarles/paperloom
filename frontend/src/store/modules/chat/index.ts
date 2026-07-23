@@ -135,6 +135,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (snapshot.readingStatePatch) {
         assistant.readingStatePatch = snapshot.readingStatePatch;
       }
+      if (snapshot.researchAuditTrail) {
+        assistant.researchAuditTrail = snapshot.researchAuditTrail;
+      }
       if (snapshot.progressEvents) {
         assistant.researchEvents = snapshot.progressEvents.slice(-MAX_RETAINED_RESEARCH_EVENTS);
       }
@@ -161,6 +164,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       diagnostics: snapshot.diagnostics,
       readingArtifacts: snapshot.readingArtifacts,
       readingStatePatch: snapshot.readingStatePatch,
+      researchAuditTrail: snapshot.researchAuditTrail,
       researchEvents: snapshot.progressEvents?.slice(-MAX_RETAINED_RESEARCH_EVENTS),
       route: normalizeChatRoute(snapshot.diagnostics?.route)
     });

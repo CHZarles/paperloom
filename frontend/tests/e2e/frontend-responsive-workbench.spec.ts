@@ -153,7 +153,8 @@ test('mobile chat opens the evidence sheet from an inline citation', async ({ pa
       {
         role: 'assistant',
         conversationId: 'visual-session',
-        content: 'The comparison is tied to a stable reading location [1].',
+        content:
+          'The comparison is tied to a stable reading location [1].\n\nInline math $d_k$ should render.\n\n$$\\alpha=\\text{softmax}(qk^T)$$',
         status: 'finished',
         timestamp: '2026-07-13T09:00:10',
         referenceMappings: {
@@ -181,6 +182,8 @@ test('mobile chat opens the evidence sheet from an inline citation', async ({ pa
   await expect(composerInput).toHaveCSS('box-shadow', 'none');
 
   const inlineCitation = page.locator('.source-citation-chip');
+  await expect(inlineCitation).toBeVisible();
+  await expect(page.locator('.assistant-content .katex').first()).toBeVisible();
   await inlineCitation.focus();
   await expect(inlineCitation).toHaveClass(/source-citation-chip--active/);
   await inlineCitation.click();
@@ -191,6 +194,7 @@ test('mobile chat opens the evidence sheet from an inline citation', async ({ pa
   await expect(page.getByRole('button', { name: 'Close research review' })).toBeVisible();
   await expect(sheet).toContainText('Source Evidence');
   await expect(sheet).toContainText('Evidence-Grounded Research Agents');
+  await expect(sheet.getByRole('button', { name: 'View PDF evidence' })).toBeEnabled();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   const bounds = await sheet.boundingBox();

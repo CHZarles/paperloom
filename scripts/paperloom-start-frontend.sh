@@ -165,12 +165,12 @@ start_frontend() {
     echo "frontend_pid_file=${PID_FILE}"
     echo "frontend_log_file=${LOG_FILE}"
     echo "frontend_url=${FRONTEND_URL}"
-    echo "frontend_command=pnpm --dir ${FRONTEND_DIR} dev -- --host ${HOST} --port ${PORT} --strictPort --open=false"
+    echo "frontend_command=pnpm --dir ${FRONTEND_DIR} exec vite --mode test --host ${HOST} --port ${PORT} --strictPort --open=false"
     return 0
   fi
 
   mkdir -p "$(dirname "$PID_FILE")" "$(dirname "$LOG_FILE")"
-  BROWSER=none nohup pnpm --dir "$FRONTEND_DIR" dev -- \
+  BROWSER=none nohup pnpm --dir "$FRONTEND_DIR" exec vite --mode test \
     --host "$HOST" \
     --port "$PORT" \
     --strictPort \

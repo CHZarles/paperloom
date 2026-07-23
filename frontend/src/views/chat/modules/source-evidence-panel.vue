@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { request } from '@/service/request';
+import PdfDocumentViewer from '@/components/custom/pdf-document-viewer.vue';
+import { getServiceBaseURL } from '@/utils/service';
 
 defineOptions({ name: 'SourceEvidencePanel' });
 
@@ -40,6 +42,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
+const { baseURL: serviceBaseUrl } = getServiceBaseURL(import.meta.env, isHttpProxy);
 
 const openingOriginal = ref(false);
 const openingTableScreenshot = ref(false);
@@ -53,6 +57,7 @@ const evidenceImageBboxJson = ref<string | null>('');
 const evidenceImageKind = ref<'page' | 'asset'>('asset');
 const evidenceImageElement = ref<HTMLImageElement | null>(null);
 const evidenceImageDisplaySize = ref({ width: 0, height: 0 });
+const pdfViewerVisible = ref(false);
 
 const assetWarningLabels: Record<string, string> = {
   pdf_page_visual_evidence_unavailable: 'PDF page visual evidence is unavailable.',
@@ -87,6 +92,7 @@ const readableAssetWarnings = computed(() =>
   (props.assetWarnings || []).map(warning => assetWarningLabels[warning] || warning)
 );
 const canDownloadOriginalPdf = computed(() => Boolean(props.paperId));
+const canOpenPdfEvidence = computed(() => Boolean(props.paperId));
 const canOpenPageEvidence = computed(() =>
   Boolean(props.paperId && props.pageNumber && props.pageScreenshotAvailable === true)
 );
@@ -106,6 +112,14 @@ const pageSnapshotTitle = computed(() => {
   const file = displayFilename.value || displayPaper.value;
   return `${page} · ${file}`;
 });
+const pdfEvidenceTitle = computed(() => {
+  const page = props.pageNumber ? `Page ${props.pageNumber}` : 'PDF evidence';
+  const file = displayFilename.value || displayPaper.value;
+  return `${page} · ${file}`;
+});
+const pdfPreviewUrl = computed(() =>
+  props.paperId ? resolveFileAccessUrl(`/api/v1/papers/${encodeURIComponent(props.paperId)}/preview/pdf-data`) : ''
+);
 
 const evidenceModalEyebrow = computed(() =>
   evidenceImageKind.value === 'page' ? 'Page Evidence' : 'Evidence Snapshot'
@@ -157,6 +171,40 @@ function showEvidenceImage(options: {
   evidenceImageDisplaySize.value = { width: 0, height: 0 };
   evidenceImageVisible.value = true;
   nextTick(updateEvidenceImageSize);
+}
+
+function resolveFileAccessUrl(url: string) {
+  if (!url) return '';
+  if (/^(https?:)?\/\//i.test(url) || /^(blob:|data:)/i.test(url)) {
+    return url;
+  }
+
+  if (url.startsWith('/api/')) {
+    if (serviceBaseUrl.startsWith('/proxy-')) {
+      return `${serviceBaseUrl}${url.replace(/^\/api\/v\d+/, '')}`;
+    }
+
+    if (/^https?:\/\//i.test(serviceBaseUrl)) {
+      return `${new URL(serviceBaseUrl).origin}${url}`;
+    }
+
+    const serviceOrigin = serviceBaseUrl.replace(/\/api(?:\/v\d+)?\/?$/, '');
+    return `${serviceOrigin}${url}`;
+  }
+
+  if (url.startsWith('/')) {
+    return url;
+  }
+
+  return `${serviceBaseUrl.replace(/\/$/, '')}/${url.replace(/^\//, '')}`;
+}
+
+function openPdfEvidence() {
+  if (!props.paperId) {
+    window.$message?.warning('Missing paper id.');
+    return;
+  }
+  pdfViewerVisible.value = true;
 }
 
 async function openPageScreenshot() {
@@ -469,6 +517,12 @@ onBeforeUnmount(() => {
         </template>
         View page evidence
       </NButton>
+      <NButton secondary :disabled="!canOpenPdfEvidence" @click="openPdfEvidence">
+        <template #icon>
+          <icon-lucide:file-text />
+        </template>
+        View PDF evidence
+      </NButton>
       <NButton v-if="canDownloadOriginalPdf" secondary :loading="openingOriginal" @click="downloadOriginalPdf">
         <template #icon>
           <icon-lucide:download />
@@ -530,6 +584,53 @@ onBeforeUnmount(() => {
         </div>
         <div v-else class="evidence-image-modal__fallback">
           {{ evidenceImageFallback }}
+        </div>
+      </div>
+    </NModal>
+
+    <NModal v-model:show="pdfViewerVisible" class="evidence-pdf-modal-shell" :auto-focus="false">
+      <div class="evidence-pdf-modal">
+        <header class="evidence-image-modal__header">
+          <div class="evidence-image-modal__title-wrap">
+            <div class="evidence-image-modal__eyebrow">PDF Evidence</div>
+            <div class="evidence-image-modal__title">{{ pdfEvidenceTitle }}</div>
+          </div>
+          <div class="evidence-image-modal__tools">
+            <NButton
+              v-if="canDownloadOriginalPdf"
+              secondary
+              size="small"
+              :loading="openingOriginal"
+              @click="downloadOriginalPdf"
+            >
+              <template #icon>
+                <icon-lucide:download />
+              </template>
+              Download original PDF
+            </NButton>
+            <NButton quaternary circle size="small" @click="pdfViewerVisible = false">
+              <template #icon>
+                <icon-lucide:x />
+              </template>
+            </NButton>
+          </div>
+        </header>
+        <div class="evidence-pdf-modal__body">
+          <PdfDocumentViewer
+            v-if="pdfPreviewUrl"
+            :url="pdfPreviewUrl"
+            :paper-title="displayPaper"
+            :page-number="pageNumber || undefined"
+            :source-page-number="pageNumber || undefined"
+            :single-page-mode="Boolean(pageNumber)"
+            :anchor-text="matchedText"
+            :search-text="matchedText"
+            :bbox-json="bboxJson || undefined"
+            :visible="pdfViewerVisible"
+          />
+          <div v-else class="evidence-image-modal__fallback">
+            PDF evidence is not available for this citation.
+          </div>
         </div>
       </div>
     </NModal>
@@ -709,6 +810,10 @@ onBeforeUnmount(() => {
   width: min(1040px, calc(100vw - 32px));
 }
 
+.evidence-pdf-modal-shell {
+  width: min(1180px, calc(100vw - 28px));
+}
+
 .evidence-image-modal {
   display: flex;
   max-height: calc(100vh - 48px);
@@ -719,6 +824,24 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   background: var(--color-bg);
   box-shadow: var(--shadow-card);
+}
+
+.evidence-pdf-modal {
+  display: flex;
+  height: min(900px, calc(100vh - 32px));
+  min-height: 520px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  box-shadow: var(--shadow-card);
+}
+
+.evidence-pdf-modal__body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .evidence-image-modal__header {
@@ -820,6 +943,11 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
   .source-evidence__grid {
     grid-template-columns: 1fr;
+  }
+
+  .evidence-pdf-modal {
+    height: calc(100vh - 20px);
+    min-height: 0;
   }
 
   .evidence-image-modal__header {

@@ -18,6 +18,7 @@ interface Props {
   sourcePageNumber?: number;
   anchorText?: string;
   searchText?: string;
+  bboxJson?: string | null;
   visible?: boolean;
   embeddedHeader?: boolean;
 }
@@ -53,6 +54,14 @@ interface HighlightFragment {
   div: HTMLElement;
 }
 
+interface EvidenceBoundingBox {
+  left?: number;
+  top?: number;
+  right?: number;
+  bottom?: number;
+  coordinateSystem?: string;
+}
+
 interface TextLine {
   rect: HighlightRect;
   rawText: string;
@@ -80,6 +89,7 @@ const zoom = ref(1);
 const highlightCount = ref(0);
 const highlightRects = ref<HighlightRect[]>([]);
 const pageSummaries = ref<PageSummary[]>([]);
+const canvasDisplaySize = ref({ width: 0, height: 0 });
 
 const stageRef = ref<HTMLDivElement | null>(null);
 const pageShellRef = ref<HTMLDivElement | null>(null);
@@ -89,6 +99,33 @@ const textLayerRef = ref<HTMLDivElement | null>(null);
 const targetPageNumber = computed(() => clampPage(props.pageNumber || 1, totalPages.value || 1));
 const matchCandidates = computed(() => buildMatchCandidates(props.searchText || props.anchorText || ''));
 const singlePagePreviewActive = computed(() => Boolean(props.singlePageMode && props.sourcePageNumber));
+const bboxHighlightRect = computed(() => {
+  if (!props.bboxJson || currentPage.value !== targetPageNumber.value) {
+    return null;
+  }
+
+  const { width, height } = canvasDisplaySize.value;
+  if (!width || !height) {
+    return null;
+  }
+
+  const box = parseEvidenceBoundingBox(props.bboxJson);
+  if (!box || box.coordinateSystem !== 'top_left_1000') {
+    return null;
+  }
+
+  const left = clampNumber(box.left ?? 0, 0, 999);
+  const top = clampNumber(box.top ?? 0, 0, 999);
+  const right = clampNumber(box.right ?? 0, left + 1, 1000);
+  const bottom = clampNumber(box.bottom ?? 0, top + 1, 1000);
+
+  return {
+    left: (left / 1000) * width,
+    top: (top / 1000) * height,
+    width: ((right - left) / 1000) * width,
+    height: ((bottom - top) / 1000) * height
+  };
+});
 const viewerKicker = computed(() => {
   if (singlePagePreviewActive.value) {
     return '当前是定位页快照，支持缩放核对。';
@@ -204,6 +241,30 @@ onBeforeUnmount(() => {
 
 function clampPage(page: number, maxPage: number) {
   return Math.min(Math.max(page, 1), Math.max(maxPage, 1));
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  if (max < min) {
+    return min;
+  }
+  return Math.min(Math.max(value, min), max);
+}
+
+function parseEvidenceBoundingBox(raw: string): EvidenceBoundingBox | null {
+  try {
+    const parsed = JSON.parse(raw) as EvidenceBoundingBox;
+    if (
+      typeof parsed.left !== 'number' ||
+      typeof parsed.top !== 'number' ||
+      typeof parsed.right !== 'number' ||
+      typeof parsed.bottom !== 'number'
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeForMatch(value: string) {
@@ -449,6 +510,7 @@ async function loadDocument(url: string) {
   currentPage.value = 1;
   highlightCount.value = 0;
   highlightRects.value = [];
+  canvasDisplaySize.value = { width: 0, height: 0 };
   pageSummaries.value = [];
   lastObservedStageWidth = 0;
   lastSuccessfulRenderSignature = '';
@@ -641,6 +703,7 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
     canvas.height = Math.floor(viewport.height * devicePixelRatio);
     canvas.style.width = `${viewport.width}px`;
     canvas.style.height = `${viewport.height}px`;
+    canvasDisplaySize.value = { width: viewport.width, height: viewport.height };
 
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -1379,6 +1442,7 @@ async function cleanupPdfState() {
   }
 
   highlightRects.value = [];
+  canvasDisplaySize.value = { width: 0, height: 0 };
 }
 </script>
 
@@ -1468,6 +1532,17 @@ async function cleanupPdfState() {
                   top: `${rect.top}px`,
                   width: `${rect.width}px`,
                   height: `${rect.height}px`
+                }"
+              />
+            </div>
+            <div v-if="bboxHighlightRect" class="pdf-bbox-highlight-overlay">
+              <div
+                class="pdf-bbox-highlight-rect"
+                :style="{
+                  left: `${bboxHighlightRect.left}px`,
+                  top: `${bboxHighlightRect.top}px`,
+                  width: `${bboxHighlightRect.width}px`,
+                  height: `${bboxHighlightRect.height}px`
                 }"
               />
             </div>
@@ -1610,6 +1685,35 @@ async function cleanupPdfState() {
   background: linear-gradient(180deg, rgba(38, 54, 74, 0.12) 0%, rgba(38, 54, 74, 0.28) 100%);
   box-shadow: 0 0 0 1px rgba(38, 54, 74, 0.16);
   opacity: 0.92;
+}
+
+.pdf-bbox-highlight-overlay {
+  position: absolute;
+  z-index: 6;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  overflow: hidden;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.pdf-viewer-body.is-single-page .pdf-bbox-highlight-overlay {
+  top: 4px;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+}
+
+.pdf-bbox-highlight-rect {
+  position: absolute;
+  border: 2px solid var(--color-citation, #2563eb);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--color-citation, #2563eb) 18%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.86),
+    0 10px 28px color-mix(in srgb, var(--color-citation, #2563eb) 18%, transparent);
 }
 
 .pdf-text-layer {

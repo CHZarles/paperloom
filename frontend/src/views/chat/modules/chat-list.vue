@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
 import { NScrollbar } from 'naive-ui';
+import { researchMarkdownOptions } from '@/utils/research-markdown';
 import InputBox from './input-box.vue';
 
 const ChatMessage = defineAsyncComponent(() => import('./chat-message.vue'));
@@ -53,6 +54,7 @@ const emit = defineEmits<{
       anchorText?: string | null;
       conversationRecordId?: number;
       referenceNumber: number;
+      sourceQuoteRef?: string | null;
     }
   ): void;
   (e: 'openProcess', message: Api.Chat.Message): void;
@@ -210,7 +212,10 @@ function messageKey(item: Api.Chat.Message, index: number) {
                 Load earlier messages
               </NButton>
             </div>
-            <component :is="hasRichMarkdown ? MarkdownProvider : 'div'">
+            <component
+              :is="hasRichMarkdown ? MarkdownProvider : 'div'"
+              v-bind="hasRichMarkdown ? { options: researchMarkdownOptions } : {}"
+            >
               <ChatMessage
                 v-for="(item, index) in list"
                 :key="messageKey(item, index)"

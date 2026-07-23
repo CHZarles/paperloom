@@ -10,12 +10,14 @@ import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperSection;
+import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperPageRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
+import io.github.chzarles.paperloom.repository.PaperVisualAssetRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ public class CanonicalReadingLocationService {
     private final PaperSectionRepository sectionRepository;
     private final PaperReadingElementRepository elementRepository;
     private final PaperRepository paperRepository;
+    private final PaperVisualAssetRepository visualAssetRepository;
     private final ObjectMapper objectMapper;
 
     public CanonicalReadingLocationService(PaperLocationRepository locationRepository,
@@ -44,6 +47,7 @@ public class CanonicalReadingLocationService {
                                            PaperSectionRepository sectionRepository,
                                            PaperReadingElementRepository elementRepository,
                                            PaperRepository paperRepository,
+                                           PaperVisualAssetRepository visualAssetRepository,
                                            ObjectMapper objectMapper) {
         this.locationRepository = locationRepository;
         this.modelRepository = modelRepository;
@@ -51,6 +55,7 @@ public class CanonicalReadingLocationService {
         this.sectionRepository = sectionRepository;
         this.elementRepository = elementRepository;
         this.paperRepository = paperRepository;
+        this.visualAssetRepository = visualAssetRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -140,6 +145,12 @@ public class CanonicalReadingLocationService {
                                    String parserName,
                                    String parserVersion,
                                    String sourceObjectId) {
+        VisualAvailability visual = visualAvailability(
+                location.getPaperId(),
+                location.getPageNumber(),
+                elementType,
+                trim(sourceObjectId)
+        );
         return new CanonicalLocation(
                 location.getPaperId(),
                 title,
@@ -153,8 +164,62 @@ public class CanonicalReadingLocationService {
                 trim(bboxJson),
                 firstNonBlank(parserName, model.getParserName()),
                 firstNonBlank(parserVersion, model.getParserVersion()),
-                trim(sourceObjectId)
+                trim(sourceObjectId),
+                visual.pageScreenshotAvailable(),
+                visual.pdfEvidenceAvailable(),
+                visual.tableScreenshotAvailable(),
+                visual.figureScreenshotAvailable(),
+                visual.assetWarnings()
         );
+    }
+
+    private VisualAvailability visualAvailability(String paperId,
+                                                  Integer pageNumber,
+                                                  String elementType,
+                                                  String sourceObjectId) {
+        boolean pageScreenshot = pageNumber != null
+                && visualAssetRepository.findFirstByPaperIdAndAssetTypeAndPageNumber(
+                        paperId,
+                        PaperVisualAsset.TYPE_PAGE_SCREENSHOT,
+                        pageNumber
+                ).filter(this::availableAsset).isPresent();
+        boolean tableScreenshot = "table".equalsIgnoreCase(elementType)
+                && !sourceObjectId.isBlank()
+                && visualAssetRepository.findFirstByPaperIdAndAssetTypeAndReadingElementId(
+                        paperId,
+                        PaperVisualAsset.TYPE_TABLE_CROP,
+                        sourceObjectId
+                ).or(() -> visualAssetRepository.findFirstByPaperIdAndAssetTypeAndReadingElementId(
+                        paperId,
+                        PaperVisualAsset.TYPE_PARSER_IMAGE,
+                        sourceObjectId
+                )).filter(this::availableAsset).isPresent();
+        boolean figureScreenshot = ("figure".equalsIgnoreCase(elementType) || "chart".equalsIgnoreCase(elementType))
+                && !sourceObjectId.isBlank()
+                && visualAssetRepository.findFirstByPaperIdAndAssetTypeAndReadingElementId(
+                        paperId,
+                        PaperVisualAsset.TYPE_FIGURE_CROP,
+                        sourceObjectId
+                ).or(() -> visualAssetRepository.findFirstByPaperIdAndAssetTypeAndReadingElementId(
+                        paperId,
+                        PaperVisualAsset.TYPE_CHART_CROP,
+                        sourceObjectId
+                )).or(() -> visualAssetRepository.findFirstByPaperIdAndAssetTypeAndReadingElementId(
+                        paperId,
+                        PaperVisualAsset.TYPE_PARSER_IMAGE,
+                        sourceObjectId
+                )).filter(this::availableAsset).isPresent();
+        return new VisualAvailability(
+                pageScreenshot,
+                pageScreenshot,
+                tableScreenshot,
+                figureScreenshot,
+                pageScreenshot ? List.of() : List.of("pdf_page_visual_evidence_unavailable")
+        );
+    }
+
+    private boolean availableAsset(PaperVisualAsset asset) {
+        return asset != null && PaperVisualAsset.STATUS_AVAILABLE.equals(asset.getAssetStatus());
     }
 
     private Map<String, PaperReadingModel> currentModels(List<String> paperIds) {
@@ -236,7 +301,25 @@ public class CanonicalReadingLocationService {
                                     String bboxJson,
                                     String parserName,
                                     String parserVersion,
-                                    String sourceObjectId) {
+                                    String sourceObjectId,
+                                    boolean pageScreenshotAvailable,
+                                    boolean pdfEvidenceAvailable,
+                                    boolean tableScreenshotAvailable,
+                                    boolean figureScreenshotAvailable,
+                                    List<String> assetWarnings) {
+        public CanonicalLocation {
+            assetWarnings = assetWarnings == null ? List.of() : List.copyOf(assetWarnings);
+        }
+    }
+
+    public record VisualAvailability(boolean pageScreenshotAvailable,
+                                     boolean pdfEvidenceAvailable,
+                                     boolean tableScreenshotAvailable,
+                                     boolean figureScreenshotAvailable,
+                                     List<String> assetWarnings) {
+        public VisualAvailability {
+            assetWarnings = assetWarnings == null ? List.of() : List.copyOf(assetWarnings);
+        }
     }
 
     public record ReadBatch(List<CanonicalLocation> items, List<String> missingLocationRefs) {

@@ -151,7 +151,7 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
             "resultCount": len(candidates),
             "papers": [
                 {"paperId": item.get("paper_id"), "title": item.get("title")}
-                for item in candidates[:10]
+                for item in candidates[:50]
             ],
         }
     if tool_name == "find_reading_locations":
@@ -166,7 +166,7 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
                     "page": item.get("page"),
                     "locationRef": item.get("location_ref"),
                 }
-                for item in locations[:10]
+                for item in locations[:50]
             ],
         }
     if tool_name == "read_locations":
@@ -181,13 +181,30 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
             "evidence": [
                 {
                     "evidenceId": item.get("evidence_id"),
+                    "evidenceRef": item.get("evidence_id"),
                     "paperId": item.get("paper_id"),
                     "title": item.get("title"),
+                    "originalFilename": item.get("original_filename"),
                     "section": item.get("section"),
                     "page": item.get("page"),
+                    "pageEndNumber": item.get("page_end"),
+                    "locationRef": item.get("location_ref"),
+                    "elementType": item.get("element_type"),
+                    "sourceKind": item.get("source_kind"),
+                    "bboxJson": item.get("bbox_json") or item.get("bbox_or_cell_ref"),
+                    "parserName": item.get("parser_name"),
+                    "parserVersion": item.get("parser_version"),
+                    "tableId": item.get("table_id"),
+                    "figureId": item.get("figure_id"),
+                    "formulaId": item.get("formula_id"),
+                    "pdfEvidenceAvailable": item.get("pdf_evidence_available"),
+                    "pageScreenshotAvailable": item.get("page_screenshot_available"),
+                    "tableScreenshotAvailable": item.get("table_screenshot_available"),
+                    "figureScreenshotAvailable": item.get("figure_screenshot_available"),
+                    "assetWarnings": item.get("asset_warnings") or [],
                     "quote": str(item.get("span_text") or "")[:300],
                 }
-                for item in items[:10]
+                for item in items[:50]
             ],
         }
     if tool_name == "get_citation_edges":

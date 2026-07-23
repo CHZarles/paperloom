@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it';
+import { configureResearchMarkdown } from '@/utils/research-markdown';
 
 defineOptions({ name: 'StreamingMarkdown' });
 
@@ -12,6 +13,7 @@ const markdown = new MarkdownIt({
   html: false,
   linkify: true
 });
+configureResearchMarkdown(markdown);
 
 const defaultLinkOpen = markdown.renderer.rules.link_open;
 // markdown-it renderer rules use this five-argument signature.

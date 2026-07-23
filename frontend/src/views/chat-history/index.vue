@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
 import type { NScrollbar } from 'naive-ui';
+import { researchMarkdownOptions } from '@/utils/research-markdown';
 
 const ChatMessage = defineAsyncComponent(() => import('../chat/modules/chat-message.vue'));
 const MarkdownProvider = defineAsyncComponent(() =>
@@ -100,7 +101,10 @@ async function getList() {
 
       <NScrollbar ref="scrollbarRef" class="chat-history-scroll">
         <NSpin :show="loading" class="h-full">
-          <component :is="list.length ? MarkdownProvider : 'div'">
+          <component
+            :is="list.length ? MarkdownProvider : 'div'"
+            v-bind="list.length ? { options: researchMarkdownOptions } : {}"
+          >
             <div class="chat-history-list">
               <ChatMessage
                 v-for="(item, index) in list"

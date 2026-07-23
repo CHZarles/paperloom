@@ -61,6 +61,8 @@ public class ConversationService {
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
+    private final ResearchAuditTrailProjector researchAuditTrailProjector = new ResearchAuditTrailProjector();
+
     public Long recordConversation(String username, String question, String answer) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
@@ -551,20 +553,25 @@ public class ConversationService {
                             parseEffectiveScope(conversation.getEffectiveScopeJson()),
                             null,
                             null,
+                            null,
                             null
                     ));
+                    Map<String, Map<String, Object>> referenceMappings =
+                            parseReferenceMappings(conversation.getReferenceMappingsJson());
+                    List<Map<String, Object>> researchEvents = parseResearchEvents(conversation.getResearchEventsJson());
                     messages.add(buildMessage(
                             "assistant",
                             conversation.getAnswer(),
                             timestamp,
                             messageConversationId,
                             conversation.getId(),
-                            parseReferenceMappings(conversation.getReferenceMappingsJson()),
+                            referenceMappings,
                             includeUsername ? conversation.getUser().getUsername() : null,
                             null,
                             parseJsonObject(conversation.getReadingArtifactsJson(), "reading artifacts"),
                             parseJsonObject(conversation.getReadingStatePatchJson(), "reading state patch"),
-                            parseResearchEvents(conversation.getResearchEventsJson())
+                            researchEvents,
+                            researchAuditTrailProjector.project("COMPLETED", referenceMappings, researchEvents)
                     ));
                 });
 
@@ -578,7 +585,8 @@ public class ConversationService {
                                              Map<String, Object> effectiveScope,
                                              Map<String, Object> readingArtifacts,
                                              Map<String, Object> readingStatePatch,
-                                             List<Map<String, Object>> researchEvents) {
+                                             List<Map<String, Object>> researchEvents,
+                                             ResearchAuditTrail researchAuditTrail) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
         message.put("content", content);
@@ -608,6 +616,9 @@ public class ConversationService {
         }
         if (researchEvents != null && !researchEvents.isEmpty()) {
             message.put("researchEvents", researchEvents);
+        }
+        if (researchAuditTrail != null && researchAuditTrail.hasContent()) {
+            message.put("researchAuditTrail", researchAuditTrail);
         }
         return message;
     }

@@ -33,6 +33,7 @@ class CaseScore:
     case_id: str
     case_status: str
     dimensions: dict[str, DimensionScore]
+    trace_metrics: JsonMap = field(default_factory=dict)
     review_candidates: list[JsonMap] = field(default_factory=list)
 
     def to_dict(self) -> JsonMap:
@@ -41,6 +42,8 @@ class CaseScore:
             "case_status": self.case_status,
             "dimensions": {key: score.to_dict() for key, score in self.dimensions.items()},
         }
+        if self.trace_metrics:
+            value["trace_metrics"] = self.trace_metrics
         if self.review_candidates:
             value["review_candidates"] = self.review_candidates
         return value
@@ -133,6 +136,7 @@ class BehaviorScorer:
             case_id=case_id,
             case_status=_case_status(dimensions),
             dimensions=dimensions,
+            trace_metrics=_trace_metrics(case, claims, run, cited_ids),
             review_candidates=review_candidates,
         )
 
@@ -181,6 +185,7 @@ class BehaviorScorer:
             "resolved_pass_rate": passed / resolved if resolved else None,
             "review_coverage": resolved / len(scores) if scores else 1.0,
             "review_candidates": review_candidates,
+            "trace_metrics": _aggregate_trace_metrics(scores),
             "scores": [score.to_dict() for score in scores],
         }
         if self.semantic_judgments:
@@ -453,6 +458,152 @@ def _accepted_evidence(run: JsonMap) -> list[JsonMap]:
         and item.get("evidence_quality") != "rejected"
         and item.get("element_type") != "paper_candidate"
     ]
+
+
+def _trace_metrics(
+    case: JsonMap,
+    claims: list[JsonMap],
+    run: JsonMap,
+    cited_ids: list[str],
+) -> JsonMap:
+    requirements = _required_evidence_requirements(claims)
+    if not requirements:
+        return {}
+    candidate_locations = _candidate_locations(run)
+    candidate_papers = _candidate_papers(run)
+    evidence_items = [
+        item
+        for raw in as_list(child_map(run.get("evidence_ledger")).get("items"))
+        if (item := child_map(raw)).get("evidence_id")
+        and item.get("element_type") != "paper_candidate"
+    ]
+    cited = set(cited_ids)
+
+    candidate_hits = 0
+    read_hits = 0
+    citation_hits = 0
+    visual_hits = 0
+    details: list[JsonMap] = []
+    for requirement in requirements:
+        paper_id = str(requirement.get("paper_id") or "")
+        accepted = {
+            str(item)
+            for item in as_list(requirement.get("accepted_locations"))
+            if str(item or "").strip()
+        }
+        candidate_hit = paper_id in candidate_papers or any(
+            location in accepted
+            for location in candidate_locations.get(paper_id, set())
+        )
+        matching_evidence = [
+            item
+            for item in evidence_items
+            if str(item.get("paper_id") or "") == paper_id
+            and (not accepted or _location_ref(item) in accepted)
+        ]
+        read_hit = bool(matching_evidence)
+        citation_hit = any(str(item.get("evidence_id") or "") in cited for item in matching_evidence)
+        visual_hit = any(_has_visual_evidence(item) for item in matching_evidence)
+        candidate_hits += int(candidate_hit)
+        read_hits += int(read_hit)
+        citation_hits += int(citation_hit)
+        visual_hits += int(visual_hit)
+        details.append({
+            "paper_id": paper_id,
+            "accepted_locations": sorted(accepted),
+            "candidate": candidate_hit,
+            "read": read_hit,
+            "cited": citation_hit,
+            "visual_evidence": visual_hit,
+        })
+
+    total = len(requirements)
+    return {
+        "case_id": str(case.get("id") or ""),
+        "required_evidence_count": total,
+        "candidate_count": len(candidate_papers),
+        "read_count": len(evidence_items),
+        "cited_count": len(cited),
+        "candidate_recall": candidate_hits / total,
+        "read_recall": read_hits / total,
+        "citation_recall": citation_hits / total,
+        "visual_evidence_coverage": visual_hits / total,
+        "requirements": details,
+    }
+
+
+def _aggregate_trace_metrics(scores: list[CaseScore]) -> JsonMap:
+    metrics = [score.trace_metrics for score in scores if score.trace_metrics]
+    if not metrics:
+        return {}
+    fields = [
+        "candidate_recall",
+        "read_recall",
+        "citation_recall",
+        "visual_evidence_coverage",
+    ]
+    return {
+        "case_count": len(metrics),
+        **{
+            field: sum(float(item.get(field) or 0) for item in metrics) / len(metrics)
+            for field in fields
+        },
+        "candidate_count": sum(int(item.get("candidate_count") or 0) for item in metrics),
+        "read_count": sum(int(item.get("read_count") or 0) for item in metrics),
+        "cited_count": sum(int(item.get("cited_count") or 0) for item in metrics),
+    }
+
+
+def _required_evidence_requirements(claims: list[JsonMap]) -> list[JsonMap]:
+    requirements: list[JsonMap] = []
+    for claim in claims:
+        for raw_requirement in as_list(claim.get("required_evidence")):
+            requirement = child_map(raw_requirement)
+            if requirement.get("paper_id"):
+                requirements.append(requirement)
+    return requirements
+
+
+def _candidate_locations(run: JsonMap) -> dict[str, set[str]]:
+    by_paper: dict[str, set[str]] = {}
+    for trace_item in as_list(run.get("react_trace")):
+        result = child_map(child_map(trace_item).get("result"))
+        for raw_location in as_list(result.get("locations")):
+            location = child_map(raw_location)
+            paper_id = str(location.get("paper_id") or "")
+            location_ref = _location_ref(location)
+            if paper_id and location_ref:
+                by_paper.setdefault(paper_id, set()).add(location_ref)
+    return by_paper
+
+
+def _candidate_papers(run: JsonMap) -> set[str]:
+    papers = {
+        str(item.get("paper_id") or "")
+        for raw in as_list(run.get("paper_candidates"))
+        if (item := child_map(raw)).get("paper_id")
+    }
+    for trace_item in as_list(run.get("react_trace")):
+        result = child_map(child_map(trace_item).get("result"))
+        for key in ("candidates", "matches", "papers"):
+            for raw_paper in as_list(result.get(key)):
+                paper = child_map(raw_paper)
+                paper_id = str(paper.get("paper_id") or "")
+                if paper_id:
+                    papers.add(paper_id)
+    return papers
+
+
+def _has_visual_evidence(item: JsonMap) -> bool:
+    return any(
+        bool(item.get(key))
+        for key in (
+            "pdf_evidence_available",
+            "page_screenshot_available",
+            "table_screenshot_available",
+            "figure_screenshot_available",
+        )
+    )
 
 
 def deterministic_claim_blocks(

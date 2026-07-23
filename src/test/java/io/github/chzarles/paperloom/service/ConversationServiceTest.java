@@ -305,6 +305,61 @@ class ConversationServiceTest {
     }
 
     @Test
+    void messageHistoryIncludesResearchAuditTrailForPersistedResearchEvents() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setQuestion("Question");
+        conversation.setAnswer("Answer [1]");
+        conversation.setConversationId("conversation-1");
+        conversation.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "paperId": "paper-1",
+                    "paperTitle": "Agent Benchmark",
+                    "pageNumber": 5,
+                    "evidenceRef": "ev_1",
+                    "citationRef": "[1]",
+                    "matchedChunkText": "AgentBench reports progress metrics.",
+                    "pageScreenshotAvailable": true
+                  }
+                }
+                """);
+        conversation.setResearchEventsJson("""
+                [
+                  {
+                    "eventType": "tool_completed",
+                    "tool": "read_locations",
+                    "status": "completed",
+                    "input": {"locationRefs": ["section_ref_1"]},
+                    "output": {
+                      "evidence": [
+                        {
+                          "evidenceId": "ev_1",
+                          "paperId": "paper-1",
+                          "title": "Agent Benchmark",
+                          "locationRef": "section_ref_1",
+                          "page": 5,
+                          "quote": "AgentBench reports progress metrics.",
+                          "pageScreenshotAvailable": true
+                        }
+                      ]
+                    }
+                  }
+                ]
+                """);
+
+        List<Map<String, Object>> messages = conversationService.toMessageHistory(List.of(conversation), false);
+
+        Map<String, Object> assistantMessage = messages.get(1);
+        assertTrue(assistantMessage.get("researchAuditTrail") instanceof ResearchAuditTrail);
+        ResearchAuditTrail trail = (ResearchAuditTrail) assistantMessage.get("researchAuditTrail");
+        assertEquals(1, trail.diagnostics().citedEvidenceCount());
+        assertEquals(1, trail.diagnostics().visualEvidenceAvailableCount());
+        assertEquals("cited", trail.evidence().get(0).status());
+    }
+
+    @Test
     void switchCurrentConversationRejectsConversationNotOwnedByCurrentUser() {
         when(sessionRepository.findByConversationIdAndUserId("other-conversation", 2L))
                 .thenReturn(Optional.empty());

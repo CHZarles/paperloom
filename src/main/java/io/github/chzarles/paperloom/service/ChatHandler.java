@@ -1329,6 +1329,10 @@ public class ChatHandler {
             if (readingStatePatch != null && !readingStatePatch.isEmpty()) {
                 notification.put("readingStatePatch", readingStatePatch);
             }
+            chatGenerationStateService.getGeneration(generationId)
+                    .map(ChatGenerationStateService.GenerationSnapshot::researchAuditTrail)
+                    .filter(ResearchAuditTrail::hasContent)
+                    .ifPresent(trail -> notification.put("researchAuditTrail", trail));
             Long conversationRecordId = generationConversationRecordIds.get(generationId);
             if (conversationRecordId != null) {
                 notification.put("conversationRecordId", conversationRecordId);

@@ -199,6 +199,11 @@ public class InternalCorpusController {
         put(result, "parser_name", item.parserName());
         put(result, "parser_version", item.parserVersion());
         put(result, "source_object_id", item.sourceObjectId());
+        put(result, "page_screenshot_available", item.pageScreenshotAvailable());
+        put(result, "pdf_evidence_available", item.pdfEvidenceAvailable());
+        put(result, "table_screenshot_available", item.tableScreenshotAvailable());
+        put(result, "figure_screenshot_available", item.figureScreenshotAvailable());
+        put(result, "asset_warnings", item.assetWarnings());
         return result;
     }
 

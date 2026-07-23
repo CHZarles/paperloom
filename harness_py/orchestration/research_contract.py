@@ -8,6 +8,7 @@ from .research_skills import ResearchSkillRegistry
 
 
 CITATION_RE = re.compile(r"\[\[(ev_[A-Za-z0-9_-]+)\]\]")
+_DOUBLE_BRACKET_MARKER_RE = re.compile(r"\[\[([^\]]+)]]")
 _NUMERIC_CITATION_RE = re.compile(r"(?<!\[)\[(\d+)\]")
 FINAL_TOOL_NAME = "submit_research_answer"
 
@@ -32,9 +33,10 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "combined. Candidate metadata and navigation previews are not citeable as paper content. Read exact locations "
         "before making paper-content claims. A citation does not license related general knowledge: every factual "
         "sentence, comparison, default value, and causal explanation must be directly entailed by a cited span_text. "
-        "Cite with the exact syntax [[evidence_id]] and cite only evidence returned by read_locations or supplied as "
-        "previous evidence. Never write numeric citations or a Sources section yourself; the harness renders those "
-        "from evidence ids. For an exact-fact request, give the requested facts and source without extra rationale. "
+        "Cite with the exact syntax [[ev_...]], replacing ev_... with an actual evidence_id returned by "
+        "read_locations or supplied as previous evidence. Never write the placeholder [[evidence_id]], numeric "
+        "citations, or a Sources section yourself; the harness renders those from evidence ids. For an exact-fact "
+        "request, give the requested facts and source without extra rationale. "
         "Never substitute adjacent papers when the corpus lacks the requested topic; state the gap plainly.\n\n"
         "When you are ready to finish the turn, call submit_research_answer as the only tool call. Put all text the "
         "user should see in markdown. Use needs_clarification only for a genuinely blocking question. Use partial or "
@@ -90,7 +92,14 @@ def answer_validation_error(
     if not isinstance(markdown, str) or not markdown.strip():
         return "markdown is required"
     if _NUMERIC_CITATION_RE.search(markdown):
-        return "use [[evidence_id]] markers instead of numeric citations or a manually written Sources section"
+        return "use exact [[ev_...]] evidence id markers instead of numeric citations or a manually written Sources section"
+    invalid_markers = sorted({
+        marker.strip()
+        for marker in _DOUBLE_BRACKET_MARKER_RE.findall(markdown)
+        if not re.fullmatch(r"ev_[A-Za-z0-9_-]+", marker.strip())
+    })
+    if invalid_markers:
+        return "invalid evidence markers: " + ", ".join(f"[[{marker}]]" for marker in invalid_markers)
     cited = set(CITATION_RE.findall(markdown))
     citeable = {
         evidence_id for evidence_id, item in known_evidence.items()

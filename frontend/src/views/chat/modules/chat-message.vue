@@ -164,7 +164,8 @@ const showResearchDetails = computed(
     (assistantIsGenerating.value ||
       researchEvents.value.length > 0 ||
       toolEvents.value.length > 0 ||
-      hasReadingArtifacts.value)
+      hasReadingArtifacts.value ||
+      Boolean(props.msg.researchAuditTrail?.steps?.length || props.msg.researchAuditTrail?.evidence?.length))
 );
 
 function progressEventTitle(event: Api.Chat.ResearchProgressEvent) {

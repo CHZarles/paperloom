@@ -179,6 +179,7 @@ class JavaCorpusGatewayReader:
             location_ref = str(item.get("location_ref") or "")
             element_type = str(item.get("element_type") or "paragraph")
             page = item.get("page")
+            source_kind = str(item.get("source_kind") or _source_kind(element_type))
             evidence_id = _evidence_id(
                 str(item.get("paper_id") or ""),
                 location_ref,
@@ -190,9 +191,11 @@ class JavaCorpusGatewayReader:
                 "evidence_id": evidence_id,
                 "paper_id": item.get("paper_id"),
                 "title": item.get("title"),
+                "original_filename": item.get("original_filename"),
                 "paper_version": item.get("paper_version"),
                 "section": item.get("section") or "unsectioned",
                 "page": page if page is not None else "unknown",
+                "page_end": item.get("page_end"),
                 "location": location_ref,
                 "location_ref": location_ref,
                 "element_type": element_type,
@@ -201,14 +204,16 @@ class JavaCorpusGatewayReader:
                 "bbox_json": item.get("bbox_json"),
                 "parser_name": item.get("parser_name"),
                 "parser_version": item.get("parser_version"),
-                "source_kind": "canonical_location_read",
+                "source_kind": source_kind,
+                "source_object_id": source_object_id,
                 "table_id": source_object_id if element_type == "table" else None,
                 "figure_id": source_object_id if element_type in {"figure", "chart"} else None,
                 "formula_id": source_object_id if element_type == "formula" else None,
-                "page_screenshot_available": False,
-                "pdf_evidence_available": False,
-                "table_screenshot_available": False,
-                "figure_screenshot_available": False,
+                "page_screenshot_available": _bool(item.get("page_screenshot_available")),
+                "pdf_evidence_available": _bool(item.get("pdf_evidence_available")),
+                "table_screenshot_available": _bool(item.get("table_screenshot_available")),
+                "figure_screenshot_available": _bool(item.get("figure_screenshot_available")),
+                "asset_warnings": _strings(item.get("asset_warnings")),
                 "retrieval_strategy": "source_quote_reading",
                 "relevance_score": 1.0,
                 "evidence_quality": "verified",
@@ -285,6 +290,24 @@ def _positive_int(value: object, fallback: int) -> int:
     except (TypeError, ValueError):
         return fallback
     return parsed if parsed > 0 else fallback
+
+
+def _bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value or "").strip().lower()
+    return text in {"1", "true", "yes"}
+
+
+def _source_kind(element_type: str) -> str:
+    normalized = str(element_type or "").strip().lower()
+    if normalized == "table":
+        return "TABLE"
+    if normalized in {"figure", "chart"}:
+        return "FIGURE"
+    if normalized == "formula":
+        return "FORMULA"
+    return "TEXT"
 
 
 def _env_file_value(path: Path, name: str) -> str:

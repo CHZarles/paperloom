@@ -2,10 +2,12 @@ package io.github.chzarles.paperloom.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -108,6 +110,67 @@ class ChatGenerationStateServiceTest {
                 .get("interpretedGoal"));
         assertEquals("paper_handle_abc", ((java.util.Map<?, ?>) snapshot.readingStatePatch().get("selectedPaper"))
                 .get("paperHandle"));
+    }
+
+    @Test
+    void generationSnapshotProjectsResearchAuditTrailFromReferencesAndProgressEvents() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        ListOperations<String, String> listOperations = mock(ListOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForList()).thenReturn(listOperations);
+        when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn("""
+                {
+                  "generationId": "generation-1",
+                  "userId": "1",
+                  "conversationId": "conversation-1",
+                  "question": "question",
+                  "status": "COMPLETED",
+                  "createdAt": "2026-07-07T12:00:00",
+                  "updatedAt": "2026-07-07T12:00:05",
+                  "errorMessage": null,
+                  "clientId": "client-a"
+                }
+                """);
+        when(valueOperations.get("chat:generation:generation-1:content")).thenReturn("answer [1]");
+        when(valueOperations.get("chat:generation:generation-1:refs")).thenReturn("""
+                {
+                  "1": {
+                    "paperId": "paper-1",
+                    "paperTitle": "Paper One",
+                    "evidenceRef": "ev_1",
+                    "citationRef": "[1]",
+                    "matchedChunkText": "Quoted evidence.",
+                    "pageScreenshotAvailable": true
+                  }
+                }
+                """);
+        when(listOperations.range("chat:generation:generation-1:progress", 0, -1)).thenReturn(List.of("""
+                {
+                  "eventType": "tool_completed",
+                  "tool": "read_locations",
+                  "status": "completed",
+                  "output": {
+                    "evidence": [
+                      {
+                        "evidenceId": "ev_1",
+                        "paperId": "paper-1",
+                        "title": "Paper One",
+                        "locationRef": "location_ref_1",
+                        "quote": "Quoted evidence.",
+                        "pageScreenshotAvailable": true
+                      }
+                    ]
+                  }
+                }
+                """));
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
+
+        var snapshot = service.getGeneration("generation-1").orElseThrow();
+
+        assertTrue(snapshot.researchAuditTrail().hasContent());
+        assertEquals(1, snapshot.researchAuditTrail().diagnostics().citedEvidenceCount());
+        assertEquals("cited", snapshot.researchAuditTrail().evidence().get(0).status());
     }
 
     private static String generationMetaJson() {

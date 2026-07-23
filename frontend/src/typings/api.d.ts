@@ -550,6 +550,49 @@ declare namespace Api {
       timestamp?: number | string;
     }
 
+    type ResearchAuditEvidenceStatus = 'candidate' | 'read' | 'cited' | 'inspected' | 'unavailable_visual';
+
+    interface ResearchAuditTrail {
+      schemaVersion: 'research-audit-trail/v1' | string;
+      answer?: {
+        status?: string | null;
+        citationRefs?: string[] | null;
+      } | null;
+      steps?: ResearchAuditStep[] | null;
+      evidence?: ResearchAuditEvidence[] | null;
+      diagnostics?: ResearchAuditDiagnostics | null;
+    }
+
+    interface ResearchAuditStep {
+      stepId?: string | null;
+      kind?: string | null;
+      status?: string | null;
+      query?: string | null;
+      paperIds?: string[] | null;
+      locationRefs?: string[] | null;
+      evidenceRefs?: string[] | null;
+      durationMs?: number | null;
+      message?: string | null;
+    }
+
+    interface ResearchAuditEvidence extends ReferenceEvidence {
+      auditEvidenceId?: string | null;
+      status?: ResearchAuditEvidenceStatus | string | null;
+      referenceNumber?: number | null;
+      locationRef?: string | null;
+      pageEndNumber?: number | null;
+      content?: string | null;
+    }
+
+    interface ResearchAuditDiagnostics {
+      searchedPaperCount?: number | null;
+      readLocationCount?: number | null;
+      readEvidenceCount?: number | null;
+      citedEvidenceCount?: number | null;
+      uncitedReadEvidenceCount?: number | null;
+      visualEvidenceAvailableCount?: number | null;
+    }
+
     interface ReadingPaperChoiceItem {
       kind: 'READING_PAPER_CHOICE';
       sourceTool: 'list_papers' | 'search_paper_candidates' | 'find_papers_by_identity';
@@ -732,6 +775,7 @@ declare namespace Api {
       productStateItems?: ProductStateItem[];
       readingArtifacts?: ReadingTurnArtifacts;
       readingStatePatch?: Record<string, any>;
+      researchAuditTrail?: ResearchAuditTrail | null;
       toolEvents?: AgentToolEvent[];
       researchEvents?: ResearchProgressEvent[];
       feedbackRating?: 'good' | 'bad';
@@ -834,6 +878,7 @@ declare namespace Api {
       diagnostics?: Diagnostics;
       readingArtifacts?: ReadingTurnArtifacts;
       readingStatePatch?: Record<string, any>;
+      researchAuditTrail?: ResearchAuditTrail | null;
       progressEvents?: ResearchProgressEvent[];
     }
 
