@@ -1,0 +1,135 @@
+@startuml review_02_reading_evidence_contracts
+!pragma layout smetana
+title 02 Reading and Evidence Contracts: code-shaped flow
+
+top to bottom direction
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor #334155
+hide circle
+hide empty methods
+
+class ParsedPaper <<parser DTO>> #DCFCE7 {
+  +metadata: ParsedPaperMetadata
+  +pages: list[ParsedPaperPage]
+  +elements: list[ParsedPaperElement]
+  +artifacts: ParsedPaperArtifactPayload
+}
+
+class PaperReadingModel <<JPA entity>> #DCFCE7 {
+  +paperId: String
+  +modelVersion: String
+  +modelStatus: READING_MODEL_READY
+  +isCurrent: boolean
+  +diagnosticsJson: String
+}
+
+class PaperPage <<JPA entity>> #DCFCE7 {
+  +paperId: String
+  +modelVersion: String
+  +pageNumber: Integer
+  +pageText: String
+  +textStatus: String
+}
+
+class PaperSection <<JPA entity>> #DCFCE7 {
+  +sectionId: String
+  +sectionTitle: String
+  +pageNumberFrom: Integer
+  +pageNumberTo: Integer
+  +sectionText: String
+}
+
+class PaperReadingElement <<JPA entity>> #DCFCE7 {
+  +readingElementId: String
+  +elementType: String
+  +pageNumber: Integer
+  +sectionTitle: String
+  +bodyText: String
+  +captionText: String
+  +searchableText: String
+}
+
+class PaperLocation <<JPA entity>> #DCFCE7 {
+  +locationRef: String
+  +locationType: PAGE | SECTION | TABLE | FIGURE
+  +paperId: String
+  +modelVersion: String
+  +pageNumber: Integer
+  +contentKind: String
+}
+
+class PaperVisualAsset <<JPA entity>> #DCFCE7 {
+  +assetType: PAGE_SCREENSHOT | TABLE_CROP | FIGURE_CROP
+  +assetStatus: AVAILABLE | MISSING | FAILED
+  +objectKey: String
+  +bboxJson: String
+}
+
+class QdrantPoint <<candidate index>> #EEF2FF {
+  +id: locationRef
+  +sparseVector: BM25 tokens
+  +payload.paper_id: String
+  +payload.model_version: String
+  +payload.location_ref: String
+}
+
+class LocationCandidate <<navigation preview>> #FEF3C7 {
+  +paper_id: String
+  +location_ref: String
+  +section: String
+  +page: Integer
+  +preview: String
+  +sparse_score: double
+}
+
+class CanonicalLocation <<exact read>> #FEF3C7 {
+  +paper_id: String
+  +paper_version: String
+  +location_ref: String
+  +element_type: String
+  +span_text: String
+  +parser_name: String
+}
+
+class EvidenceItem <<harness ledger>> #FEF3C7 {
+  +evidence_id: String
+  +paper_id: String
+  +location_ref: String
+  +span_text: String
+  +citeable: true
+}
+
+class PaperConversationReference <<product reference>> #FEF3C7 {
+  +refId: String
+  +conversationId: String
+  +turnId: String
+  +refType: EVIDENCE | PAGE | CITATION
+  +sourcePayloadJson: String
+}
+
+ParsedPaper -[#16A34A,thickness=3]-> PaperReadingModel : replaceFromParsedPaper(...)
+PaperReadingModel -[#16A34A,thickness=3]-> PaperPage : persists pages
+PaperReadingModel -[#16A34A,thickness=3]-> PaperSection : persists sections
+PaperReadingModel -[#16A34A,thickness=3]-> PaperReadingElement : persists typed content
+PaperReadingModel -[#16A34A,thickness=3]-> PaperLocation : creates stable refs
+PaperReadingElement -[#16A34A,thickness=3]-> PaperVisualAsset : owns crop/page availability
+
+PaperLocation -[#4F46E5,thickness=3]-> QdrantPoint : indexCurrentModel(...)
+QdrantPoint -[#D97706,thickness=3]-> LocationCandidate : find_reading_locations
+LocationCandidate -[#D97706,thickness=3]-> CanonicalLocation : read_locations reopens MySQL
+CanonicalLocation -[#D97706,thickness=3]-> EvidenceItem : evidence_id()
+EvidenceItem -[#D97706,thickness=3]-> PaperConversationReference : cited answer persists mapping
+
+note right of QdrantPoint
+Qdrant is rebuildable navigation.
+It never becomes citeable evidence.
+end note
+
+note bottom of EvidenceItem
+Evidence exists only after exact canonical content is read.
+Candidate previews and paper cards are not enough.
+end note
+@enduml
+

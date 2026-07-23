@@ -1,0 +1,110 @@
+@startuml review_03_reading_model_ingestion
+!pragma layout smetana
+title 03 Reading Model Ingestion Runtime Collaboration: UML sequence with data contracts
+
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor #334155
+skinparam sequence {
+  LifeLineBorderColor #94A3B8
+  LifeLineBackgroundColor #F8FAFC
+  ParticipantBorderColor #CBD5E1
+  ParticipantBackgroundColor #F8FAFC
+  BoxBorderColor #CBD5E1
+  BoxBackgroundColor #F8FAFC
+}
+
+actor "Kafka\npaper-processing" as Entry
+participant "PaperProcessingConsumer" as Consumer #DBEAFE
+participant "PaperSearchabilityService" as Searchability #DBEAFE
+participant "UploadService" as Upload #DBEAFE
+participant "ParseService" as Parse #DCFCE7
+participant "PaperPdfParser" as Parser #DCFCE7
+participant "PaperParserArtifactService" as Artifact #DCFCE7
+participant "PaperReadingModelService" as ModelService #DCFCE7
+participant "PaperVisualAssetService" as Visuals #DCFCE7
+participant "PaperChunkBuilder" as Chunker #DCFCE7
+participant "RetrievalIndexingService" as Indexing #EEF2FF
+participant "ReadingModelQdrantIndexService" as QdrantIndex #EEF2FF
+participant "QdrantClient" as Qdrant #FEF3C7
+participant "PaperService" as PaperService #DBEAFE
+
+Entry -> Consumer : I1 processTask(task: PaperProcessingTask)
+activate Consumer
+
+Consumer -> Searchability : I1a isSearchable(task.paperId)
+activate Searchability
+Searchability --> Consumer : searchable: bool
+deactivate Searchability
+
+alt I1b already current READY and indexed
+  Consumer -> PaperService : markVectorizationCompleted(existing metrics)
+  Consumer --> Entry : skipped duplicate processing
+  deactivate Consumer
+else I1c parse and index
+  Consumer -> PaperService : markVectorizationProcessing(paperId)
+  Consumer -> Upload : I2 getMergedFileStream(paperId)
+  activate Upload
+  Upload --> Consumer : fileStream: InputStream
+  deactivate Upload
+
+  Consumer -> Parse : I3 parseAndSave(paperId, fileStream, title, userId, orgTag, isPublic)
+  activate Parse
+  Parse -> Parse : read pdfBytes + physicalPageCount
+
+  Parse -> Parser : I4 parse(pdfBytes, originalFilename)
+  activate Parser
+  Parser --> Parse : parsedPaper: ParsedPaper
+  deactivate Parser
+
+  Parse -> Artifact : I5 saveParserArtifact(paperId, parsedPaper, ...)
+  activate Artifact
+  Artifact --> Parse : artifact persisted
+  deactivate Artifact
+
+  Parse -> ModelService : I6 replaceFromParsedPaper(paperId, parsedPaper, physicalPageCount, ...)
+  activate ModelService
+  ModelService --> Parse : readingModel: PaperReadingModel
+  deactivate ModelService
+
+  alt I6a modelStatus != READING_MODEL_READY
+    Parse --> Consumer : PaperReadingModelNotReadyException
+    deactivate Parse
+    Consumer -> PaperService : markVectorizationFailed(paperId, error)
+    Consumer --> Entry : failed
+    deactivate Consumer
+  else I6b current model ready
+    Parse -> Visuals : I7 replaceVisualAssets(pdfBytes, parsedPaper, modelVersion, ...)
+    activate Visuals
+    Visuals --> Parse : visual assets persisted
+    deactivate Visuals
+
+    Parse -> Chunker : I8 buildChunks(parsedPaper, chunkSize)
+    activate Chunker
+    Chunker --> Parse : chunks: List<PaperChunkCandidate>
+    deactivate Chunker
+
+    Parse -> Parse : saveStructuredChunks(paperId, chunks)
+    Parse --> Consumer : parse complete
+    deactivate Parse
+
+    Consumer -> Indexing : I9 indexWithMetrics(paperId, requesterId)
+    activate Indexing
+    Indexing -> QdrantIndex : I9a indexCurrentModel(current READY model)
+    activate QdrantIndex
+    QdrantIndex -> QdrantIndex : build IndexedLocation[]\n+ BM25 sparse vectors
+    QdrantIndex -> Qdrant : I9b upsert(points: QdrantPoint[])
+    activate Qdrant
+    Qdrant --> QdrantIndex : written count
+    deactivate Qdrant
+    QdrantIndex --> Indexing : IndexResult(tokens, locations, contract)
+    deactivate QdrantIndex
+    Indexing --> Consumer : IndexingResult
+    deactivate Indexing
+
+    Consumer -> PaperService : markVectorizationCompleted(indexingResult)
+    Consumer --> Entry : searchable paper ready
+    deactivate Consumer
+  end
+end
+@enduml

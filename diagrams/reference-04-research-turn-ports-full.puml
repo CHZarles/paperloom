@@ -1,0 +1,105 @@
+@startuml reference_04_research_turn_ports_full
+!pragma layout smetana
+title Reference 04: Research turn dependency structure with data contracts
+
+top to bottom direction
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor #334155
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam component {
+  BorderColor #CBD5E1
+  BackgroundColor #F8FAFC
+}
+
+component "Folio / Chat API\nQ0 user message + source selection" as Folio #EEF2FF
+component "ChatHandler\nQ1 userId + locked SourceScope" as Chat #DBEAFE
+component "ProductReadingConversationService\nQ2 ProductTurnRequest" as PRCS #DBEAFE
+component "PythonResearchHarnessClient\nQ3 POST /v1/research/stream" as Client #DBEAFE
+
+package "Java product boundary\nowns auth, quota, conversation, references" #DBEAFE {
+  component "ConversationScopeService\nsource-set snapshot / paper IDs" as Scope
+  component "ConversationService\nhistory + durable assistant message" as Conversation
+  component "RateLimitService\nreserve LLM usage" as Rate
+  component "UsageQuotaService\nsettle / abort reservation" as Quota
+  component "ConversationReferenceRegistry\ncitations -> PaperConversationReference" as RefRegistry
+}
+
+package "Python harness boundary\nrequest-local agent runtime" #DCFCE7 {
+  component "ResearchHarnessService\nQ4 validate request + CorpusReader" as RHS
+  component "LiveResearchChatHarness\nQ5 ConversationState + run_id" as Live
+  component "AgentsSdkHarnessRuntime\nQ6 Agent, Session, Tools, Runner" as Runtime
+  component "ResearchRunContext\nQ6a trace + authorization state" as Context
+  component "ReadingCorpusTools\nQ7 model-visible paper tools" as Tools
+  component "RequestBackedSession\nrequest-local SDK history" as Session
+  component "submit_research_answer\nQ8 final validation gate" as Submit
+}
+
+package "Internal Java Corpus API\nnarrow data plane behind harness tools" #FEF3C7 {
+  component "JavaCorpusGateway\ninternal bearer token + cancel check" as Gateway
+  component "InternalCorpusController\n/papers/search\n/locations/search\n/locations/read" as Controller
+  component "CorpusRetrievalService\nscope checks + retrieval orchestration" as Corpus
+  component "PaperService\naccessible papers by user" as PaperSvc
+  component "PaperSearchabilityService\ncurrent READY + index availability" as Searchable
+  component "ReadingLocationRetriever\ninterface" as Retriever
+  component "QdrantReadingLocationRetriever\nsparse BM25 candidate search" as QdrantRetriever
+  component "CanonicalReadingLocationService\nhydrate previews + exact reads" as Canonical
+}
+
+package "Stores" #F8FAFC {
+  component "MySQL\npapers, Reading Model, conversations, references" as MySQL
+  component "Qdrant\nrebuildable sparse candidate index" as Qdrant
+  component "Model Provider\nAgents SDK chat/responses transport" as Provider
+}
+
+Folio --> Chat : Q0
+Chat --> Scope : Q1 compute locked paper IDs
+Chat --> PRCS : Q2 runTurn(...)
+PRCS --> Conversation : compact history + previous research memory
+PRCS --> Client : ProductTurnRequest
+Client --> Rate : reserve prompt/completion budget
+Client --> RHS : Q3 NDJSON stream
+
+RHS --> Gateway : Q4 reader(request_id, user_id, scope_paper_ids)
+RHS --> Live : Q5 run_turn(dataset shells, state, message)
+Live --> Runtime : TurnExecutionInput
+Runtime --> Context : create one per Runner.run
+Runtime --> Session
+Runtime --> Provider : model-tool loop
+Runtime --> Tools : serialized FunctionTool execution
+Tools --> Submit : final answer must be sole tool call
+
+Tools --> Gateway : search / identity / locations / reads
+Gateway --> Controller : internal Corpus API
+Controller --> Corpus
+Corpus --> PaperSvc : user + scope paper access
+Corpus --> Searchable : current READY/index gate
+Corpus --> Retriever : find_reading_locations
+Retriever <|.. QdrantRetriever
+QdrantRetriever --> Qdrant : sparse query + scoped payload filter
+Corpus --> Canonical : hydrate preview / read exact location_ref
+Canonical --> MySQL : canonical Reading Model content
+PaperSvc --> MySQL
+
+Submit --> Context : known Evidence IDs + coverage state
+Client --> Quota : settle actual total tokens
+Client --> RefRegistry : cited evidence -> persistent refs
+Client --> Conversation : durable assistant message
+
+note right of PRCS
+The fixed paper scope is a Java product decision.
+Python can narrow within it, not expand beyond it.
+end note
+
+note right of Tools
+Tool ladder:
+paper candidate -> location candidate -> exact read -> Evidence ID -> accepted answer.
+end note
+
+note right of Canonical
+Candidate previews are navigation.
+Only read_locations creates citeable paper-content evidence.
+end note
+@enduml
+

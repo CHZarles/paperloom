@@ -1,0 +1,96 @@
+@startuml reference_03_reading_model_ingestion_full
+!pragma layout smetana
+title Reference 03: Reading Model ingestion dependency structure with data contracts
+
+top to bottom direction
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor #334155
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam component {
+  BorderColor #CBD5E1
+  BackgroundColor #F8FAFC
+}
+
+component "Kafka paper-processing topic\nI1 PaperProcessingTask" as Entry #EEF2FF
+component "PaperProcessingConsumer\nI1 task -> processing status" as Consumer #DBEAFE
+component "ParseService\nI2 PDF bytes -> ParsedPaper + Reading Model" as Parse #DBEAFE
+component "RetrievalIndexingService\nI9 paperId -> IndexingResult" as Indexing #DBEAFE
+
+package "Parsing and model-building capabilities\n能力接口，不是网络端口" #DCFCE7 {
+  component "UploadService\nI2a paperId -> merged PDF stream" as Upload
+  component "PaperPdfParser\nI3 PDF -> ParsedPaper\ndefault: MinerU / OpenDataLoader adapter" as Parser
+  component "PaperParserArtifactService\nI4 ParsedPaper -> parser artifact row/object" as Artifact
+  component "PaperReadingModelService\nI5 replace current model transaction" as ModelService
+  component "PaperReadingModelBuilder\nI5a ParsedPaper -> pages/sections/elements/locations" as Builder
+  component "PaperVisualAssetService\nI6 PDF + parser assets -> MinIO visual assets" as Visuals
+  component "PaperChunkBuilder\nI7 ParsedPaper -> legacy PaperTextChunk[]" as Chunker
+}
+
+package "Persistence surfaces\nMySQL canonical state and object storage" #FEF3C7 {
+  component "PaperReadingModelRepository\ncurrent READY model metadata" as ModelRepo
+  component "PaperPageRepository\nphysical page text/status" as PageRepo
+  component "PaperSectionRepository\nreadable paper structure" as SectionRepo
+  component "PaperReadingElementRepository\ntyped content surface" as ElementRepo
+  component "PaperLocationRepository\nstable navigation refs" as LocationRepo
+  component "PaperVisualAssetRepository\nasset availability and object keys" as VisualRepo
+  component "MinIO\noriginal PDF, parser artifacts, crops/screenshots" as MinIO
+}
+
+package "Retrieval index capabilities\nrebuildable navigation index" #EEF2FF {
+  component "ReadingModelQdrantIndexService\nI9a current model -> QdrantPoint[]" as QdrantIndex
+  component "LexicalBm25Encoder\nI9b searchable text -> sparse vectors" as BM25
+  component "RetrievalIndexContractService\nactive avg doc length / index contract" as Contract
+  component "QdrantClient\nI9c upsert lexical sparse points" as Qdrant
+  component "PaperSearchabilityService\nREADY + index status gate" as Searchability
+}
+
+Entry --> Consumer : I1 consume task
+Consumer --> Searchability : skip duplicate searchable paper
+Consumer --> Upload : I2a getMergedFileStream(paperId)
+Consumer --> Parse : I2 parseAndSave(...)
+
+Parse --> Parser : I3 parse PDF
+Parse --> Artifact : I4 save parser artifact
+Parse --> ModelService : I5 replaceFromParsedPaper(...)
+ModelService --> Builder : I5a build PaperReadingModelBuildResult
+Builder --> ModelRepo
+Builder --> PageRepo
+Builder --> SectionRepo
+Builder --> ElementRepo
+Builder --> LocationRepo
+Parse --> Visuals : I6 replaceVisualAssets(...)
+Visuals --> VisualRepo
+Visuals --> MinIO
+Parse --> Chunker : I7 buildChunks(...)
+
+Consumer --> Indexing : I9 indexWithMetrics(paperId, userId)
+Indexing --> QdrantIndex : I9a indexCurrentModel(...)
+QdrantIndex --> ModelRepo : current READY model
+QdrantIndex --> LocationRepo : indexable locations
+QdrantIndex --> ElementRepo : searchable location text
+QdrantIndex --> BM25 : I9b encode text/query vocabulary
+QdrantIndex --> Contract : ensureActiveContract(...)
+QdrantIndex --> Qdrant : I9c upsert(points)
+QdrantIndex --> ModelRepo : mark retrieval index READY/FAILED
+
+Consumer --> Consumer : markVectorizationCompleted / Failed
+
+note right of Parse
+Parser output is retained for reproducibility,
+but the durable product contract is the Reading Model.
+end note
+
+note right of QdrantIndex
+Qdrant stores location candidates only.
+Exact evidence is later reopened from MySQL by location_ref.
+end note
+
+legend right
+Line legend:
+solid arrow --> : runtime call / main dependency
+Packages group capability interfaces and storage surfaces.
+endlegend
+@enduml
+

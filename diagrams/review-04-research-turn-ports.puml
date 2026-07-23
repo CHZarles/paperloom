@@ -1,0 +1,173 @@
+@startuml review_04_research_turn_ports
+!pragma layout smetana
+title 04 Research Turn Runtime Collaboration: UML sequence with data contracts
+
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor #334155
+skinparam sequence {
+  LifeLineBorderColor #94A3B8
+  LifeLineBackgroundColor #F8FAFC
+  ParticipantBorderColor #CBD5E1
+  ParticipantBackgroundColor #F8FAFC
+  BoxBorderColor #CBD5E1
+  BoxBackgroundColor #F8FAFC
+}
+
+actor "Folio / Chat API" as Folio
+participant "ChatHandler" as Chat #DBEAFE
+participant "ProductReadingConversationService" as PRCS #DBEAFE
+participant "ConversationService" as Conv #DBEAFE
+participant "PythonResearchHarnessClient" as Client #DBEAFE
+participant "ResearchHarnessService" as RHS #DCFCE7
+participant "LiveResearchChatHarness" as Live #DCFCE7
+participant "AgentsSdkHarnessRuntime" as Runtime #DCFCE7
+participant "Agent Runner" as Runner #DCFCE7
+participant "ReadingCorpusTools" as Tools #DCFCE7
+participant "JavaCorpusGateway" as Gateway #FEF3C7
+participant "InternalCorpusController" as Controller #FEF3C7
+participant "CorpusRetrievalService" as Corpus #FEF3C7
+participant "QdrantReadingLocationRetriever" as Retriever #FEF3C7
+participant "CanonicalReadingLocationService" as Canonical #FEF3C7
+database "Qdrant" as Qdrant #F8FAFC
+database "MySQL" as MySQL #F8FAFC
+
+Folio -> Chat : Q0 message + selected source set
+activate Chat
+Chat -> Chat : Q1 authenticate user\n+ compute locked SourceScope
+Chat -> PRCS : Q2 runTurn(userId, conversationId, generationId, message, lockedScope)
+activate PRCS
+
+PRCS -> Conv : Q2a conversationHistory + latest research memory
+activate Conv
+Conv --> PRCS : history + previous evidence
+deactivate Conv
+
+PRCS -> Client : Q3 submit(ProductTurnRequest, progressListener)
+activate Client
+Client -> Client : reserveLlmUsage(estimated prompt, max completion)
+Client -> RHS : Q3a POST /v1/research/stream\nscope.paper_ids + user_id
+activate RHS
+
+RHS -> Gateway : Q4 reader(request_id, conversation_id, user_id, scope_paper_ids)
+activate Gateway
+Gateway --> RHS : JavaCorpusGatewayReader
+deactivate Gateway
+RHS -> Gateway : Q4a load_metadata_dataset()
+activate Gateway
+Gateway --> RHS : GoldenDataset metadata shells
+deactivate Gateway
+
+RHS -> Live : Q5 run_turn(dataset, ConversationState, userMessage)
+activate Live
+Live -> Runtime : Q6 run_turn(TurnExecutionInput)
+activate Runtime
+Runtime -> Runtime : create ResearchRunContext\n+ ReadingCorpusTools + Session + Agent
+Runtime -> Runner : Q6a Runner.run(agent, context)
+activate Runner
+
+loop required tool-use loop
+  Runner -> Tools : Q7 function call
+  activate Tools
+  alt search_paper_candidates / find_papers_by_identity
+    Tools -> Gateway : /papers/search
+    activate Gateway
+    Gateway -> Controller : POST /internal/v1/corpus/papers/search
+    activate Controller
+    Controller -> Corpus : searchPapers / findPapersByIdentity
+    activate Corpus
+    Corpus -> MySQL : authorized papers + current READY models
+    MySQL --> Corpus : PaperCard[]
+    Corpus --> Controller : paper candidates
+    deactivate Corpus
+    Controller --> Gateway : candidates
+    deactivate Controller
+    Gateway --> Tools : model-facing paper cards
+    deactivate Gateway
+    Tools -> Tools : disclose authorized_paper_ids
+  else find_reading_locations
+    Tools -> Gateway : /locations/search
+    activate Gateway
+    Gateway -> Controller : POST /locations/search
+    activate Controller
+    Controller -> Corpus : searchLocations
+    activate Corpus
+    Corpus -> Retriever : sparse BM25 query + active model filter
+    activate Retriever
+    Retriever -> Qdrant : searchLexical(vector, filter)
+    Qdrant --> Retriever : QdrantSearchHit[]
+    Retriever --> Corpus : ranked location refs
+    deactivate Retriever
+    Corpus -> Canonical : hydrate selected previews
+    activate Canonical
+    Canonical -> MySQL : current Reading Model content
+    MySQL --> Canonical : CanonicalLocation[]
+    Canonical --> Corpus : preview content
+    deactivate Canonical
+    Corpus --> Controller : LocationCandidate[]
+    deactivate Corpus
+    Controller --> Gateway : non-citeable previews
+    deactivate Controller
+    Gateway --> Tools : location refs
+    deactivate Gateway
+    Tools -> Tools : disclose location_refs
+  else read_locations
+    Tools -> Gateway : /locations/read
+    activate Gateway
+    Gateway -> Controller : POST /locations/read
+    activate Controller
+    Controller -> Corpus : readLocations
+    activate Corpus
+    Corpus -> Canonical : read(location_refs, authorizedIds)
+    activate Canonical
+    Canonical -> MySQL : exact canonical span_text
+    MySQL --> Canonical : CanonicalLocation[]
+    Canonical --> Corpus : ReadBatch
+    deactivate Canonical
+    Corpus --> Controller : exact reads
+    deactivate Corpus
+    Controller --> Gateway : items
+    deactivate Controller
+    Gateway --> Tools : CanonicalLocation[]
+    deactivate Gateway
+    Tools -> Tools : create Evidence IDs\nobservations_by_evidence_id
+  else submit_research_answer
+    Tools -> Tools : validate sole final tool call\n+ known evidence + coverage
+    Tools --> Runner : accepted final output
+  end
+  Tools --> Runner : model-facing result
+  deactivate Tools
+end
+
+Runner --> Runtime : accepted run
+deactivate Runner
+Runtime --> Live : TurnExecutionResult
+deactivate Runtime
+Live --> RHS : run + next ConversationState
+deactivate Live
+RHS --> Client : result NDJSON payload
+deactivate RHS
+
+Client -> Client : settle actual token usage
+Client --> PRCS : ProductTurnResult(answer, citations, trace)
+deactivate Client
+PRCS --> Chat : answer + references + product state
+deactivate PRCS
+Chat --> Folio : streamed progress + final message
+deactivate Chat
+
+note right of PRCS
+Java fixes user_id and scope.paper_ids before Python runs.
+The harness never expands global paper access.
+end note
+
+note right of Tools
+Authorization ladder:
+paper disclosed -> location disclosed -> exact read -> Evidence ID -> accepted submission.
+end note
+
+note right of Qdrant
+Navigation only.
+Citeable text is reopened from MySQL by read_locations.
+end note
+@enduml

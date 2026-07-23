@@ -1,0 +1,90 @@
+@startuml review_05_observability_evaluation
+!pragma layout smetana
+title 05 Observability, Evaluation, and Review Slices
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor #334155
+
+package "Runtime emitters" {
+  class PythonResearchHarnessClient #DBEAFE
+  class ResearchHarnessService #DCFCE7
+  class ResearchRunContext #DCFCE7 {
+    +model_call_count
+    +prompt_tokens
+    +completion_tokens
+    +model_latency_ms
+    +state_snapshot()
+  }
+  class ReadingCorpusTools #DCFCE7
+  class AgentsSdkHarnessRuntime #DCFCE7
+}
+
+package "Per-run capture" {
+  class EvalRecorder #FEF3C7 {
+    +append(kind, operation_id, payload, attempt)
+    +finish(result)
+  }
+  class "events.jsonl" as events <<artifact>> #FEF3C7
+  class "result.json" as result <<artifact>> #FEF3C7
+}
+
+package "Java product traces" {
+  interface ProductTraceSink #EEF2FF
+  class AsyncDiskProductTraceSink #EEF2FF
+  class ReadingResearchTrace #EEF2FF
+  class ReadingTurnArtifacts #EEF2FF
+  class ReadingStatePatch #EEF2FF
+  class ProductTurnResult #EEF2FF
+}
+
+package "Offline evaluation" {
+  class GoldenCase #F8FAFC
+  class GoldenJavaCorpusReader #F8FAFC
+  class BehaviorScorer #F8FAFC {
+    +score_case(dataset, case, run)
+    +score_dataset(dataset, runs)
+  }
+  class FactAssertions #F8FAFC
+  class JudgeModel #F8FAFC
+  class "score_report.json" as scoreReport <<artifact>> #F8FAFC
+}
+
+PythonResearchHarnessClient --> ResearchHarnessService : stream progress/result
+ResearchHarnessService --> AgentsSdkHarnessRuntime
+AgentsSdkHarnessRuntime --> ResearchRunContext : model, token, latency totals
+AgentsSdkHarnessRuntime --> EvalRecorder : transport + final submission events
+ReadingCorpusTools --> EvalRecorder : tool args/results + before/after auth state
+EvalRecorder --> events : append-only, sequenced, fsync
+EvalRecorder --> result : atomic final write
+
+PythonResearchHarnessClient --> ProductTurnResult : map answer/citations/usage/trace
+ProductTurnResult --> ReadingResearchTrace
+ProductTurnResult --> ReadingTurnArtifacts
+ProductTurnResult --> ReadingStatePatch
+ProductTraceSink <|.. AsyncDiskProductTraceSink
+ReadingResearchTrace --> ProductTraceSink
+
+GoldenCase --> GoldenJavaCorpusReader : product paper map
+GoldenJavaCorpusReader --> ResearchHarnessService : same Java/Qdrant corpus path
+BehaviorScorer --> GoldenCase
+BehaviorScorer --> FactAssertions
+BehaviorScorer --> scoreReport
+JudgeModel ..> scoreReport : calibrated supplement
+
+note right of EvalRecorder
+Capture is sensitive local data:
+questions, tool payloads, model traffic, and paper text.
+end note
+
+note bottom of BehaviorScorer
+Scores Candidate, Read, Cited, grounding, outcome, content, trace, and efficiency.
+Hard pass is not just answer wording.
+end note
+
+note bottom of ProductTraceSink
+Trace, cache, and eval failures are diagnostic failures.
+They must not change authorization or accepted product answers.
+end note
+@enduml

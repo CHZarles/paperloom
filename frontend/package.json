@@ -16,7 +16,15 @@
   "bugs": {
     "url": "https://github.com/CHZarles/paperloom/issues"
   },
-  "keywords": ["ai", "rag", "llm", "research-papers", "evidence", "folio", "paperloom"],
+  "keywords": [
+    "ai",
+    "rag",
+    "llm",
+    "research-papers",
+    "evidence",
+    "folio",
+    "paperloom"
+  ],
   "engines": {
     "node": ">=18.20.0",
     "pnpm": ">=8.7.0"
@@ -75,6 +83,7 @@
   "devDependencies": {
     "@elegant-router/vue": "0.3.8",
     "@iconify/json": "2.2.337",
+    "@iconify/utils": "^3.1.4",
     "@playwright/test": "^1.61.1",
     "@sa/scripts": "workspace:*",
     "@sa/uno-preset": "workspace:*",

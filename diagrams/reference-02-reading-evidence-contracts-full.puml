@@ -1,0 +1,243 @@
+@startuml reference_02_reading_evidence_contracts_full
+!pragma layout smetana
+title Reference 02: PaperLoom reading and evidence contracts full field map
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor #334155
+
+class ParsedPaper <<parser DTO>> {
+  +metadata: ParsedPaperMetadata
+  +pages: List<ParsedPaperPage>
+  +elements: List<ParsedPaperElement>
+  +tables: List<ParsedPaperTable>
+  +figures: List<ParsedPaperFigure>
+  +formulas: List<ParsedPaperFormula>
+  +artifactPayload: ParsedPaperArtifactPayload
+}
+
+class PaperReadingModel <<JPA entity>> {
+  +paperId: String
+  +modelVersion: String
+  +modelStatus: PaperReadingModelStatus
+  +isCurrent: boolean
+  +parserName: String
+  +parserVersion: String
+  +pageCount: Integer
+  +readablePageCount: Integer
+  +readableCharCount: Integer
+  +retrievalIndexStatus: PaperRetrievalIndexStatus
+  +retrievalIndexContract: String
+  +diagnosticsJson: String
+}
+
+class PaperPage <<JPA entity>> {
+  +paperId: String
+  +modelVersion: String
+  +pageNumber: Integer
+  +pageText: String
+  +textHash: String
+  +charCount: Integer
+  +textStatus: READABLE | TEXTLESS | PARSER_MISSING
+  +sourceSpanJson: String
+}
+
+class PaperSection <<JPA entity>> {
+  +sectionId: String
+  +sectionTitle: String
+  +sectionLevel: Integer
+  +pageNumberFrom: Integer
+  +pageNumberTo: Integer
+  +readingOrderFrom: Integer
+  +readingOrderTo: Integer
+  +sectionText: String
+  +sourceSpanJson: String
+}
+
+class PaperReadingElement <<JPA entity>> {
+  +readingElementId: String
+  +parserElementId: String
+  +sourceObjectId: String
+  +elementType: heading | paragraph | table | figure | chart | formula
+  +pageNumber: Integer
+  +readingOrder: Integer
+  +sectionTitle: String
+  +bodyText: String
+  +captionText: String
+  +searchableText: String
+  +bboxJson: String
+  +rawAttributesJson: String
+  +parentElementId: String
+  +attachmentRole: String
+  +associationStatus: String
+}
+
+class PaperLocation <<JPA entity>> {
+  +locationRef: String
+  +paperId: String
+  +modelVersion: String
+  +locationType: PAGE | SECTION | TABLE | FIGURE
+  +pageNumber: Integer
+  +pageEndNumber: Integer
+  +sectionTitle: String
+  +sourceObjectId: String
+  +displayOrder: Integer
+  +contentKind: String
+  +sourceSpanJson: String
+}
+
+class PaperVisualAsset <<JPA entity>> {
+  +paperId: String
+  +assetType: PAGE_SCREENSHOT | TABLE_CROP | FIGURE_CROP | CHART_CROP
+  +assetStatus: AVAILABLE | MISSING_IN_ARTIFACT | STORAGE_FAILED | RENDER_FAILED
+  +modelVersion: String
+  +pageNumber: Integer
+  +sourceObjectId: String
+  +readingElementId: String
+  +parserImagePath: String
+  +bboxJson: String
+  +objectKey: String
+  +contentType: String
+  +sha256: String
+}
+
+class PaperSearchRequest <<Corpus API input>> {
+  +request_id: String
+  +conversation_id: String
+  +user_id: Long
+  +scope_paper_ids: List<String>
+  +query_text: String
+  +paper_ids: List<String>
+  +identity: Map<String,Object>
+}
+
+class LocationSearchRequest <<Corpus API input>> {
+  +request_id: String
+  +user_id: Long
+  +scope_paper_ids: List<String>
+  +paper_ids: List<String>
+  +query_text: String
+  +section_query: String
+  +element_types: List<String>
+  +page_from: Integer
+  +page_to: Integer
+  +top_k: Integer
+}
+
+class QdrantPoint <<candidate payload>> {
+  +id: location_ref hash
+  +sparseVector: QdrantSparseVector
+  +payload.paper_id: String
+  +payload.model_version: String
+  +payload.location_ref: String
+  +payload.location_type: String
+  +payload.page_number: Integer
+  +payload.section_path: String
+  +payload.element_types: List<String>
+}
+
+class PaperCard <<metadata candidate>> {
+  +paper_id: String
+  +title: String
+  +authors: List<String>
+  +year: Integer
+  +venue: String
+  +doi: String
+  +arxiv_id: String
+  +filename: String
+  +preview: String
+}
+
+class LocationCandidate <<navigation preview>> {
+  +paper_id: String
+  +title: String
+  +paper_version: String
+  +location_ref: String
+  +section: String
+  +page: Integer
+  +element_type: String
+  +preview: String
+  +sparse_score: double
+  +fused_score: double
+}
+
+class CanonicalLocation <<exact read>> {
+  +paper_id: String
+  +title: String
+  +paper_version: String
+  +location_ref: String
+  +element_type: String
+  +page: Integer
+  +page_end: Integer
+  +section: String
+  +span_text: String
+  +bbox_json: String
+  +parser_name: String
+  +parser_version: String
+  +source_object_id: String
+}
+
+class EvidenceItem <<harness ledger>> {
+  +evidence_id: String
+  +paper_id: String
+  +title: String
+  +paper_version: String
+  +location_ref: String
+  +element_type: String
+  +page: Integer | unknown
+  +section: String
+  +span_text: String
+  +citeable: true
+  +evidence_quality: verified
+}
+
+class ResearchAnswer <<final tool payload>> {
+  +outcome: answer | partial_answer | clarify | abstain | technical_failure
+  +markdown: String
+  +fields: JsonMap
+  +cited_evidence_ids: List<String>
+  +status: accepted | rejected
+}
+
+class ProductTurnResult <<Java output>> {
+  +finalAnswerMarkdown: String
+  +envelope: AnswerEnvelope
+  +references: List<Map<String,Object>>
+  +progressEvents: List<ToolProgressEvent>
+  +readingArtifacts: ReadingTurnArtifacts
+  +readingStatePatch: ReadingStatePatch
+  +researchTrace: ReadingResearchTrace
+  +resultStatus: ProductResultStatus
+}
+
+class PaperConversationReference <<JPA entity>> {
+  +refId: String
+  +conversationId: String
+  +scopeSnapshotId: String
+  +turnId: String
+  +refType: PAPER | EVIDENCE | PAGE | CITATION
+  +sourceEntityId: String
+  +sourcePayloadJson: String
+  +displayPayloadJson: String
+}
+
+ParsedPaper "1" --> "1" PaperReadingModel : builder creates version
+PaperReadingModel "1" --> "*" PaperPage
+PaperReadingModel "1" --> "*" PaperSection
+PaperReadingModel "1" --> "*" PaperReadingElement
+PaperReadingModel "1" --> "*" PaperLocation
+PaperReadingElement "1" --> "*" PaperVisualAsset
+PaperLocation "1" --> "1" QdrantPoint : indexed as rebuildable candidate
+
+PaperSearchRequest --> PaperCard : searchPapers / identity
+LocationSearchRequest --> QdrantPoint : sparse query filter
+QdrantPoint --> LocationCandidate : hydrated preview
+LocationCandidate --> CanonicalLocation : read_locations
+CanonicalLocation --> EvidenceItem : evidence_id()
+EvidenceItem --> ResearchAnswer : cited_evidence_ids
+ResearchAnswer --> ProductTurnResult
+EvidenceItem --> PaperConversationReference : durable source mapping
+ProductTurnResult --> PaperConversationReference : references
+@enduml
+
