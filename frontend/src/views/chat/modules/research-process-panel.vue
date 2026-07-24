@@ -57,12 +57,17 @@ function stateOf(input: PhaseInput): 'running' | 'completed' | 'failed' {
   return 'completed';
 }
 
-function headlineOf(phase: Phase): string {
+function headlineOf(input: PhaseInput, phase: Phase): string {
+  const inputData = input.input || {};
   switch (phase) {
-    case 'search':
-      return 'Searched papers';
-    case 'locate':
-      return 'Located sections';
+    case 'search': {
+      const query = String(inputData.query || '').trim();
+      return query ? `Searched papers · "${query}"` : 'Searched papers';
+    }
+    case 'locate': {
+      const query = String(inputData.query || '').trim();
+      return query ? `Located sections · "${query}"` : 'Located sections';
+    }
     case 'read':
       return 'Read passages';
     case 'cite':
@@ -167,7 +172,7 @@ function buildPhaseView(input: PhaseInput, allEvents: PhaseInput[], index: numbe
     key: `${phase}:${index}:${input.attempt ?? ''}`,
     phase,
     state,
-    headline: headlineOf(phase),
+    headline: headlineOf(input, phase),
     decision: phase === 'think' ? decisionOf(input, allEvents, index) : '',
     detail: detailOf(input, phase),
     items: itemsOf(input, phase)
@@ -210,9 +215,27 @@ function toolLabel(tool?: string, running = false) {
 }
 
 // Introduced for the phase-card template migration in Task 2.
-const presentedPhaseCards = computed(() =>
-  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index, all) => buildPhaseView(event, all, index))
-);
+const presentedPhaseCards = computed<PhaseView[]>(() => {
+  // Step A: filter out *_started events so each tool/model call shows once as completion.
+  const completed = events.value.slice(-MAX_VISIBLE_EVENTS).filter(event => {
+    const type = eventTypeOf(event);
+    return type !== 'tool_started' && type !== 'model_call_started';
+  });
+
+  // Step B: collapse consecutive same-phase events, keeping the LAST in each run.
+  // The decision is derived from the event's actual next event in the unfiltered view.
+  const collapsed: PhaseView[] = [];
+  for (const event of completed) {
+    const last = collapsed[collapsed.length - 1];
+    const view = buildPhaseView(event, completed, completed.indexOf(event));
+    if (last && last.phase === view.phase) {
+      collapsed[collapsed.length - 1] = view;
+    } else {
+      collapsed.push(view);
+    }
+  }
+  return collapsed;
+});
 
 function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
   return {
