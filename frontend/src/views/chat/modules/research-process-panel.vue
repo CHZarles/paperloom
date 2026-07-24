@@ -59,7 +59,6 @@ function stateOf(input: PhaseInput): 'running' | 'completed' | 'failed' {
 }
 
 // Introduced for the phase-card template migration in Task 2.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getPhaseIcon(phase: Phase): string {
   switch (phase) {
     case 'search':
@@ -359,7 +358,6 @@ const presentedEvents = computed(() =>
   events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => presentEvent(event, index))
 );
 // Introduced for the phase-card template migration in Task 2.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const presentedPhaseCards = computed(() =>
   events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => buildPhaseView(event, index))
 );
@@ -551,27 +549,38 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
 
     <div v-else-if="events.length" class="research-process__timeline">
       <article
-        v-for="event in presentedEvents"
-        :key="event.key"
-        class="research-process__event"
-        :class="`is-${event.state}`"
+        v-for="card in presentedPhaseCards"
+        :key="card.key"
+        class="phase-card"
+        :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
       >
-        <span class="research-process__marker" />
-        <div class="research-process__event-body">
-          <div class="research-process__event-heading">
-            <strong>{{ event.title }}</strong>
-            <span v-if="event.durationMs">{{ event.durationMs }} ms</span>
+        <div class="phase-card__icon">
+          <SvgIcon :icon="getPhaseIcon(card.phase)" class="text-16" />
+        </div>
+        <div class="phase-card__body">
+          <div class="phase-card__heading">
+            <strong>{{ card.headline }}</strong>
+            <span class="phase-card__state-pill" :class="`is-${card.state}`">
+              {{ card.state }}
+            </span>
+            <span v-if="card.badge" class="phase-card__badge">{{ card.badge }}</span>
           </div>
-          <div v-if="event.detail" class="research-process__event-detail">{{ event.detail }}</div>
-          <div v-if="event.items.length" class="research-process__results">
-            <div v-for="item in event.items" :key="item.key" class="research-process__result">
-              <div v-if="item.title" class="research-process__result-title">{{ item.title }}</div>
-              <p v-if="item.text" class="research-process__result-text">{{ item.text }}</p>
-              <div v-if="item.reference" class="research-process__result-ref">
-                {{ item.reference }}
-              </div>
+          <div v-if="card.oneLiner" class="phase-card__one-liner">{{ card.oneLiner }}</div>
+          <div v-if="card.items.length && card.phase !== 'read'" class="phase-card__items">
+            <div v-for="item in card.items" :key="item.key" class="phase-card__item">
+              <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
             </div>
           </div>
+          <details
+            v-if="card.items.length && card.phase === 'read'"
+            class="phase-card__items phase-card__items--collapsed"
+          >
+            <summary>{{ card.items.length }} passage{{ card.items.length === 1 ? '' : 's' }}</summary>
+            <div v-for="item in card.items" :key="item.key" class="phase-card__item">
+              <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
+              <p v-if="item.text" class="phase-card__item-text">{{ item.text }}</p>
+            </div>
+          </details>
         </div>
       </article>
     </div>
@@ -830,5 +839,153 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   color: var(--color-text-muted);
   padding: 24px;
   text-align: center;
+}
+
+.phase-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.phase-card:not(:last-child)::after {
+  position: absolute;
+  top: 44px;
+  bottom: -4px;
+  left: 15px;
+  width: 1px;
+  background: var(--color-border);
+  content: '';
+}
+
+.phase-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--color-research-soft-bg);
+  color: var(--color-research);
+}
+
+.phase-card.is-completed .phase-card__icon {
+  background: var(--color-surface-alt);
+  color: var(--color-success);
+}
+
+.phase-card.is-failed .phase-card__icon {
+  background: var(--color-surface-alt);
+  color: var(--color-error);
+}
+
+.phase-card.is-running .phase-card__icon {
+  animation: phase-card-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes phase-card-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.phase-card__body {
+  min-width: 0;
+}
+
+.phase-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.phase-card__heading strong {
+  font-weight: 700;
+}
+
+.phase-card__state-pill {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.phase-card__state-pill.is-running {
+  background: rgba(183, 121, 31, 0.15);
+  color: var(--color-warning);
+}
+
+.phase-card__state-pill.is-completed {
+  background: rgba(22, 128, 57, 0.12);
+  color: var(--color-success);
+}
+
+.phase-card__state-pill.is-failed {
+  background: rgba(217, 45, 32, 0.12);
+  color: var(--color-error);
+}
+
+.phase-card__badge {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-primary-soft-bg);
+  color: var(--color-text);
+  font-family: var(--font-utility);
+  font-size: 11px;
+}
+
+.phase-card__one-liner {
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.phase-card__items {
+  margin-top: 8px;
+  border-left: 2px solid var(--color-border);
+  padding-left: 10px;
+}
+
+.phase-card__items--collapsed > summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  list-style: none;
+}
+
+.phase-card__items--collapsed > summary::-webkit-details-marker {
+  display: none;
+}
+
+.phase-card__item {
+  padding: 4px 0;
+}
+
+.phase-card__item-title {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.phase-card__item-text {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>
