@@ -57,28 +57,6 @@ function stateOf(input: PhaseInput): 'running' | 'completed' | 'failed' {
   return 'completed';
 }
 
-// Introduced for the phase-card template migration in Task 2.
-function getPhaseIcon(phase: Phase): string {
-  switch (phase) {
-    case 'search':
-      return 'lucide:search';
-    case 'locate':
-      return 'lucide:map-pin';
-    case 'read':
-      return 'lucide:book-open';
-    case 'cite':
-      return 'lucide:link';
-    case 'think':
-      return 'lucide:sparkles';
-    case 'answer':
-      return 'lucide:check-circle';
-    case 'error':
-      return 'lucide:alert-triangle';
-    default:
-      return 'lucide:sparkles';
-  }
-}
-
 function headlineOf(phase: Phase): string {
   switch (phase) {
     case 'search':
@@ -100,17 +78,43 @@ function headlineOf(phase: Phase): string {
   }
 }
 
-function decisionOf(allEvents: PhaseInput[], index: number): string {
+function searchDecisionText(input: Record<string, any>): string {
+  const query = String(input.query || '').trim();
+  return query ? `→ Search for "${query}"` : '→ Search papers';
+}
+
+function locateDecisionText(input: Record<string, any>): string {
+  const query = String(input.query || '').trim();
+  return query ? `→ Locate sections about "${query}"` : '→ Locate sections';
+}
+
+function readDecisionText(input: Record<string, any>, output: Record<string, any>): string {
+  const count = Number(output.evidenceCount || output.readCount || input.locationCount || 0);
+  return count > 0 ? `→ Read ${count} passage${count === 1 ? '' : 's'}` : '→ Read passages';
+}
+
+function decisionOf(_input: PhaseInput, allEvents: PhaseInput[], index: number): string {
   const next = allEvents[index + 1];
-  if (!next) return '';
+  if (!next) return '→ Reasoning';
   const tool = next.tool || '';
   const type = next.eventType || next.type || '';
-  if (tool === 'search_paper_candidates') return 'Decided to search papers';
-  if (tool === 'find_reading_locations') return 'Decided to locate sections';
-  if (tool === 'read_locations') return 'Decided to read passages';
-  if (tool === 'get_citation_edges') return 'Decided to trace citations';
-  if (type === 'answer_completed') return 'Decided to answer';
-  return '';
+  const nextInput = next.input || {};
+  const nextOutput = next.output || {};
+
+  switch (tool) {
+    case 'search_paper_candidates':
+      return searchDecisionText(nextInput);
+    case 'find_reading_locations':
+      return locateDecisionText(nextInput);
+    case 'read_locations':
+      return readDecisionText(nextInput, nextOutput);
+    case 'get_citation_edges':
+      return '→ Trace citation edges';
+    default:
+      break;
+  }
+  if (type === 'answer_completed') return '→ Final answer';
+  return '→ Reasoning';
 }
 
 function detailOf(input: PhaseInput, phase: Phase): string {
@@ -164,7 +168,7 @@ function buildPhaseView(input: PhaseInput, allEvents: PhaseInput[], index: numbe
     phase,
     state,
     headline: headlineOf(phase),
-    decision: phase === 'think' ? decisionOf(allEvents, index) : '',
+    decision: phase === 'think' ? decisionOf(input, allEvents, index) : '',
     detail: detailOf(input, phase),
     items: itemsOf(input, phase)
   };
@@ -192,40 +196,6 @@ const legacyTools = computed(() => props.message?.toolEvents || []);
 const isRunning = computed(() => ['pending', 'loading'].includes(props.message?.status || ''));
 const MAX_VISIBLE_EVENTS = 100;
 
-interface PresentedEvent {
-  key: string | number;
-  title: string;
-  detail: string;
-  durationMs?: number;
-  state: string;
-  items: Array<{
-    key: string | number;
-    title: string;
-    text: string;
-    reference: string;
-  }>;
-}
-
-const presentationCache = new WeakMap<Api.Chat.ResearchProgressEvent, PresentedEvent>();
-
-function eventType(event: Api.Chat.ResearchProgressEvent) {
-  return event.eventType || event.type;
-}
-
-function eventTitle(event: Api.Chat.ResearchProgressEvent) {
-  const type = eventType(event);
-  if (type === 'job_started') return 'Research started';
-  if (type === 'model_call_started')
-    return `Thinking${event.attempt && event.attempt > 1 ? `, pass ${event.attempt}` : ''}`;
-  if (type === 'model_call_completed') return `Model pass ${event.attempt || ''} completed`.trim();
-  if (type === 'answer_completed') return 'Answer prepared';
-  if (type === 'job_failed') return 'Research failed';
-  if (type === 'job_cancelled') return 'Research cancelled';
-  if (type === 'tool_started') return toolLabel(event.tool, true);
-  if (type === 'tool_completed') return toolLabel(event.tool, false);
-  return 'Research progress';
-}
-
 function toolLabel(tool?: string, running = false) {
   const labels: Record<string, [string, string]> = {
     search_paper_candidates: ['Searching papers', 'Searched papers'],
@@ -239,97 +209,6 @@ function toolLabel(tool?: string, running = false) {
   return running ? `Running ${tool || 'tool'}` : `Completed ${tool || 'tool'}`;
 }
 
-// Runtime events are intentionally rendered by tool-specific deterministic branches.
-// eslint-disable-next-line complexity
-function eventDetail(event: Api.Chat.ResearchProgressEvent) {
-  const input = event.input || {};
-  const output = event.output || {};
-  const type = eventType(event);
-  if (type === 'model_call_completed') {
-    const usage = event.usage || {};
-    const tokens = Number(usage.totalTokens || 0);
-    return [event.durationMs ? `${event.durationMs} ms` : '', tokens ? `${tokens.toLocaleString()} tokens` : '']
-      .filter(Boolean)
-      .join(' · ');
-  }
-  if (type === 'job_failed') {
-    const message = event.message || 'The harness stopped before completing the answer.';
-    return event.errorType ? `${event.errorType}: ${message}` : message;
-  }
-  if (event.tool === 'search_paper_candidates') {
-    const query = String(input.query || '').trim();
-    const count = Number(output.resultCount || 0);
-    return type === 'tool_completed'
-      ? `${count} paper${count === 1 ? '' : 's'} returned${query ? ` for “${query}”` : ''}`
-      : query || 'Searching the authorized paper set';
-  }
-  if (event.tool === 'find_reading_locations') {
-    const query = String(input.query || '').trim();
-    const count = Number(output.resultCount || 0);
-    return type === 'tool_completed'
-      ? `${count} location${count === 1 ? '' : 's'} found${event.durationMs ? ` · ${event.durationMs} ms` : ''}`
-      : query || 'Locating relevant sections and pages';
-  }
-  if (event.tool === 'read_locations') {
-    const count = Number(output.readCount || input.locationCount || 0);
-    const evidenceCount = Number(output.evidenceCount || 0);
-    const pages = Array.isArray(output.pages) ? output.pages.join(', ') : '';
-    return type === 'tool_completed'
-      ? `${count} location${count === 1 ? '' : 's'} read · ${evidenceCount} evidence passage${evidenceCount === 1 ? '' : 's'}${pages ? ` · pages ${pages}` : ''}`
-      : `${count} location${count === 1 ? '' : 's'} selected`;
-  }
-  if (event.tool === 'get_citation_edges') return `${Number(output.edgeCount || 0)} citation edges`;
-  if (event.tool === 'get_research_skill') return String(input.skillId || output.skillId || '');
-  return event.durationMs ? `${event.durationMs} ms` : '';
-}
-
-function eventItems(event: Api.Chat.ResearchProgressEvent) {
-  const output = event.output || {};
-  if (Array.isArray(output.evidence)) return output.evidence.slice(0, 10);
-  if (Array.isArray(output.locations)) return output.locations.slice(0, 10);
-  if (Array.isArray(output.papers)) return output.papers.slice(0, 10);
-  return [];
-}
-
-function itemTitle(item: Record<string, any>) {
-  return [item.title, item.section, item.page ? `p. ${item.page}` : ''].filter(Boolean).join(' · ');
-}
-
-function itemText(item: Record<string, any>) {
-  return String(item.quote || '').trim();
-}
-
-function eventState(event: Api.Chat.ResearchProgressEvent) {
-  const type = eventType(event);
-  if (type === 'job_failed' || event.status === 'failed') return 'failed';
-  if (type === 'tool_started' || type === 'model_call_started') return 'running';
-  return 'completed';
-}
-
-function presentEvent(event: Api.Chat.ResearchProgressEvent, index: number): PresentedEvent {
-  const cached = presentationCache.get(event);
-  if (cached) return cached;
-
-  const presented: PresentedEvent = {
-    key: event.sequence || `${event.type}:${event.timestamp}:${index}`,
-    title: eventTitle(event),
-    detail: eventDetail(event),
-    durationMs: event.durationMs,
-    state: eventState(event),
-    items: eventItems(event).map((item, itemIndex) => ({
-      key: item.evidenceId || item.locationRef || item.paperId || itemIndex,
-      title: itemTitle(item),
-      text: itemText(item),
-      reference: String(item.evidenceId || item.locationRef || '')
-    }))
-  };
-  presentationCache.set(event, presented);
-  return presented;
-}
-
-const presentedEvents = computed(() =>
-  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => presentEvent(event, index))
-);
 // Introduced for the phase-card template migration in Task 2.
 const presentedPhaseCards = computed(() =>
   events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index, all) => buildPhaseView(event, all, index))
@@ -350,8 +229,14 @@ const presentedAuditPhaseCards = computed(() => {
   const inputs = auditSteps.value.map(auditStepToPhaseInput);
   return inputs.map((input, index, all) => buildPhaseView(input, all, index));
 });
-const latestPresentedEvent = computed(() => presentedEvents.value[presentedEvents.value.length - 1]);
-const latestAuditStep = computed(() => auditSteps.value[auditSteps.value.length - 1]);
+const latestPresentedPhase = computed<PhaseView | undefined>(() => {
+  if (hasAuditTrail.value && auditSteps.value.length) {
+    const inputs = auditSteps.value.map(auditStepToPhaseInput);
+    return buildPhaseView(inputs[inputs.length - 1], inputs, inputs.length - 1);
+  }
+  const cards = presentedPhaseCards.value;
+  return cards[cards.length - 1];
+});
 
 const auditDiagnostics = computed(() => auditTrail.value?.diagnostics || {});
 
@@ -375,22 +260,6 @@ const auditGroups = computed(() => [
 
 function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
   return toolLabel(event.tool, event.status === 'executing');
-}
-
-function auditStepTitle(step: Api.Chat.ResearchAuditStep) {
-  return toolLabel(step.kind || '', step.status === 'running');
-}
-
-function auditStepDetail(step: Api.Chat.ResearchAuditStep) {
-  const parts = [
-    step.query,
-    step.paperIds?.length ? `${step.paperIds.length} papers` : '',
-    step.locationRefs?.length ? `${step.locationRefs.length} locations` : '',
-    step.evidenceRefs?.length ? `${step.evidenceRefs.length} evidence` : '',
-    step.durationMs ? `${step.durationMs} ms` : '',
-    step.message
-  ];
-  return parts.filter(Boolean).join(' · ');
 }
 
 function evidenceTitle(row: Api.Chat.ResearchAuditEvidence) {
@@ -451,27 +320,16 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
 <template>
   <section class="research-process">
     <div class="research-process__status">
-      <span class="research-process__status-dot" :class="{ 'is-running': isRunning }" />
-      <div>
-        <div class="research-process__status-title">
-          {{
-            hasAuditTrail
-              ? latestAuditStep
-                ? auditStepTitle(latestAuditStep)
-                : 'Research audit trail'
-              : latestPresentedEvent
-                ? latestPresentedEvent.title
-                : isRunning
-                  ? 'Researching'
-                  : 'No process selected'
-          }}
-        </div>
-        <div v-if="hasAuditTrail && latestAuditStep" class="research-process__status-detail">
-          {{ auditStepDetail(latestAuditStep) }}
-        </div>
-        <div v-else-if="latestPresentedEvent?.detail" class="research-process__status-detail">
-          {{ latestPresentedEvent.detail }}
-        </div>
+      <span
+        class="research-process__status-dot"
+        :class="{ 'is-running': isRunning, 'is-failed': latestPresentedPhase?.phase === 'error' }"
+      />
+      <div class="research-process__status-title">
+        {{
+          latestPresentedPhase?.phase === 'error'
+            ? 'Research failed'
+            : (latestPresentedPhase?.headline ?? (isRunning ? 'Researching…' : 'Research complete'))
+        }}
       </div>
     </div>
 
@@ -502,9 +360,6 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
           class="phase-card"
           :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
         >
-          <div class="phase-card__icon">
-            <SvgIcon :icon="getPhaseIcon(card.phase)" class="text-16" />
-          </div>
           <div class="phase-card__body">
             <div class="phase-card__heading">
               <strong>{{ card.headline }}</strong>
@@ -560,9 +415,6 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
         class="phase-card"
         :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
       >
-        <div class="phase-card__icon">
-          <SvgIcon :icon="getPhaseIcon(card.phase)" class="text-16" />
-        </div>
         <div class="phase-card__body">
           <div class="phase-card__heading">
             <strong>{{ card.headline }}</strong>
@@ -625,27 +477,36 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   padding: 2px 0 14px;
 }
 
-.research-process__status-dot,
-.research-process__marker {
-  display: block;
+.research-process__status-dot {
+  display: inline-block;
   width: 8px;
   height: 8px;
-  flex: 0 0 auto;
   border-radius: 999px;
   background: var(--color-success);
+  flex: 0 0 auto;
 }
 
-.research-process__status-dot {
-  margin-top: 6px;
+.research-process__status-dot.is-running {
+  background: var(--color-research);
+  animation: research-process-pulse 1.4s ease-in-out infinite;
 }
 
-.research-process__status-dot.is-running,
-.research-process__event.is-running .research-process__marker {
-  background: var(--color-warning);
-}
-
-.research-process__event.is-failed .research-process__marker {
+.research-process__status-dot.is-failed {
   background: var(--color-error);
+}
+
+@keyframes research-process-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.research-process__marker {
+  display: none;
 }
 
 .research-process__status-title {
@@ -653,7 +514,6 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   font-weight: 700;
 }
 
-.research-process__status-detail,
 .research-process__event-detail,
 .research-process__result-ref {
   margin-top: 3px;
@@ -845,56 +705,7 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
 }
 
 .phase-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 12px;
   padding: 12px 0;
-}
-
-.phase-card:not(:last-child)::after {
-  position: absolute;
-  top: 44px;
-  bottom: -4px;
-  left: 15px;
-  width: 1px;
-  background: var(--color-border);
-  content: '';
-}
-
-.phase-card__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--color-research-soft-bg);
-  color: var(--color-research);
-}
-
-.phase-card.is-completed .phase-card__icon {
-  background: var(--color-surface-alt);
-  color: var(--color-success);
-}
-
-.phase-card.is-failed .phase-card__icon {
-  background: var(--color-surface-alt);
-  color: var(--color-error);
-}
-
-.phase-card.is-running .phase-card__icon {
-  animation: phase-card-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes phase-card-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
 }
 
 .phase-card__body {
