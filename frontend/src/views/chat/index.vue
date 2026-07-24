@@ -17,7 +17,7 @@ const chatStore = useChatStore();
 const { connectionStatus, conversationId, currentScope, list, sessions } = storeToRefs(chatStore);
 const referencePanelVisible = ref(false);
 const referencePanelRef = ref<HTMLElement | null>(null);
-const reviewOverlayMode = ref(typeof window !== 'undefined' ? window.innerWidth < 1200 : false);
+const reviewOverlayMode = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 let reviewReturnFocus: HTMLElement | null = null;
 const activeReviewTab = ref<'process' | 'evidence'>('evidence');
 const processMessage = ref<Api.Chat.Message | null>(null);
