@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'preview', row: Api.Paper.UploadTask): void;
   (event: 'tables', row: Api.Paper.UploadTask): void;
+  (event: 'figures', row: Api.Paper.UploadTask): void;
   (event: 'parser', row: Api.Paper.UploadTask): void;
   (event: 'retry', row: Api.Paper.UploadTask): void;
   (event: 'publish', row: Api.Paper.UploadTask): void;
@@ -81,6 +82,11 @@ function isGlobal(row: Api.Paper.UploadTask) {
 function rowOptions(row: Api.Paper.UploadTask): DropdownOption[] {
   return [
     {
+      label: 'Extracted figures',
+      key: 'figures',
+      disabled: !Number(row.figureAsset?.figureCount || 0)
+    },
+    {
       label: 'Extracted tables',
       key: 'tables',
       disabled: !Number(row.tableAsset?.tableCount || 0)
@@ -105,6 +111,7 @@ function rowOptions(row: Api.Paper.UploadTask): DropdownOption[] {
 }
 
 function handleRowAction(key: string | number, row: Api.Paper.UploadTask) {
+  if (key === 'figures') emit('figures', row);
   if (key === 'tables') emit('tables', row);
   if (key === 'parser') emit('parser', row);
   if (key === 'retry') emit('retry', row);

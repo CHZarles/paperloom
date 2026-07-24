@@ -74,6 +74,8 @@ public class ProductReadingSourceQuoteTraceService {
         put(output, "sectionTitle", quote.getSectionTitle());
         put(output, "contentKind", quote.getContentKind());
         put(output, "content", quote.getContent());
+        put(output, "sourceSpanJson", quote.getSourceSpanJson());
+        put(output, "visualRegions", SourceQuoteVisualRegionContract.visualRegions(quote));
         return output;
     }
 

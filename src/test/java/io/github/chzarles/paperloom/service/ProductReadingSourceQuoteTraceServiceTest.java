@@ -85,6 +85,13 @@ class ProductReadingSourceQuoteTraceServiceTest {
         assertEquals("paper_handle_a", result.sourceQuotes().get(0).get("paperHandle"));
         assertEquals("Readable Paper", result.sourceQuotes().get(0).get("paperTitle"));
         assertEquals("Stored quote content with score.", result.sourceQuotes().get(0).get("content"));
+        assertTrue(result.sourceQuotes().get(0).containsKey("sourceSpanJson"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> visualRegions =
+                (List<Map<String, Object>>) result.sourceQuotes().get(0).get("visualRegions");
+        assertEquals(1, visualRegions.size());
+        assertEquals("mineru_1000", visualRegions.get(0).get("unit"));
+        assertEquals("top_left_1000", visualRegions.get(0).get("coordinateSystem"));
         assertEquals(List.of(Map.of("sourceQuoteRef", "source_quote_abc", "status", "OK")), result.traceStatus());
 
         String json = objectMapper.writeValueAsString(result);
@@ -207,7 +214,13 @@ class ProductReadingSourceQuoteTraceServiceTest {
         quote.setContentHash("hidden-hash");
         quote.setSplitPolicyVersion("read_locations_v1");
         quote.setSplitIndex(0);
-        quote.setSourceSpanJson("{}");
+        quote.setSourceSpanJson("""
+                {
+                  "pageNumber": 3,
+                  "locationType": "PAGE",
+                  "bbox": {"pageNumber":3,"left":100,"top":120,"right":300,"bottom":180,"unit":"mineru_1000","coordinateSystem":"top_left_1000"}
+                }
+                """);
         return quote;
     }
 

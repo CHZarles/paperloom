@@ -12,7 +12,6 @@ defineOptions({ name: 'ChatMessage' });
 
 const props = defineProps<{
   msg: Api.Chat.Message;
-  sessionId?: string;
   retrievalQueryFallback?: string;
   evidenceMode?: 'page' | 'drawer';
 }>();
@@ -51,6 +50,7 @@ const emit = defineEmits<{
       pageScreenshotAvailable?: boolean | null;
       figureScreenshotAvailable?: boolean | null;
       assetWarnings?: string[] | null;
+      visualRegions?: Api.Chat.EvidenceVisualRegion[] | null;
       paperTitle: string;
       originalFilename?: string | null;
       paperId?: string | null;
@@ -62,58 +62,11 @@ const emit = defineEmits<{
     }
   ): void;
   (e: 'openProcess', message: Api.Chat.Message): void;
-  (e: 'retry'): void;
 }>();
 
 function handleCopy(content: string) {
   navigator.clipboard.writeText(content);
   window.$message?.success('已复制');
-}
-
-const feedbackSubmitting = ref<Record<string, boolean>>({});
-
-function getMessageFeedbackKey(message: Api.Chat.Message) {
-  return message.generationId || `${message.conversationId || 'unknown'}:${message.timestamp || ''}`;
-}
-
-async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad') {
-  if (message.role !== 'assistant') {
-    return;
-  }
-
-  const key = getMessageFeedbackKey(message);
-  if (feedbackSubmitting.value[key]) {
-    return;
-  }
-
-  feedbackSubmitting.value = {
-    ...feedbackSubmitting.value,
-    [key]: true
-  };
-
-  const { error } = await request({
-    url: 'chat/feedback',
-    method: 'POST',
-    data: {
-      rating,
-      reason: rating === 'good' ? '用户点击点赞，表示认可本次回答' : '用户点击点踩，表示不满意本次回答',
-      conversationId: message.conversationId || props.sessionId,
-      generationId: message.generationId
-    }
-  });
-
-  feedbackSubmitting.value = {
-    ...feedbackSubmitting.value,
-    [key]: false
-  };
-
-  if (error) {
-    window.$message?.error('反馈记录失败');
-    return;
-  }
-
-  message.feedbackRating = rating;
-  window.$message?.success(rating === 'good' ? '已记录点赞反馈' : '已记录点踩反馈');
 }
 
 type MessageSourceFile = {
@@ -143,7 +96,6 @@ const assistantIsGenerating = computed(
   () => props.msg.role === 'assistant' && ['pending', 'loading'].includes(props.msg.status || '')
 );
 const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
-const canRetry = computed(() => props.msg.role === 'assistant' && Boolean(props.retrievalQueryFallback?.trim()));
 const hasReadingArtifacts = computed(() => {
   const artifacts = props.msg.readingArtifacts;
   if (!artifacts) return false;
@@ -462,6 +414,7 @@ function openReferenceEvidencePage(payload: {
   pageScreenshotAvailable?: boolean | null;
   figureScreenshotAvailable?: boolean | null;
   assetWarnings?: string[] | null;
+  visualRegions?: Api.Chat.EvidenceVisualRegion[] | null;
   paperTitle: string;
   originalFilename?: string | null;
   paperId?: string | null;
@@ -597,7 +550,8 @@ async function handleSourceFileClick(fileInfo: {
       evidenceSnippet: persistedDetail?.evidenceSnippet || fileInfo.evidenceSnippet,
       matchedChunkText: persistedDetail?.matchedChunkText || fileInfo.matchedChunkText,
       referenceNumber,
-      sourceQuoteRef: sourceQuoteRefForDetail
+      sourceQuoteRef: sourceQuoteRefForDetail,
+      visualRegions: persistedDetail?.visualRegions
     });
     return;
   }
@@ -673,6 +627,7 @@ async function handleSourceFileClick(fileInfo: {
         pageScreenshotAvailable: persistedDetail.pageScreenshotAvailable,
         figureScreenshotAvailable: persistedDetail.figureScreenshotAvailable,
         assetWarnings: persistedDetail.assetWarnings,
+        visualRegions: persistedDetail.visualRegions,
         conversationRecordId,
         referenceNumber,
         sourceQuoteRef: persistedDetail.sourceQuoteRef || extractedSourceQuoteRef
@@ -717,6 +672,7 @@ async function handleSourceFileClick(fileInfo: {
       pageScreenshotAvailable: detail?.pageScreenshotAvailable,
       figureScreenshotAvailable: detail?.figureScreenshotAvailable,
       assetWarnings: detail?.assetWarnings,
+      visualRegions: detail?.visualRegions,
       conversationRecordId,
       referenceNumber,
       sourceQuoteRef: detail?.sourceQuoteRef || persistedDetail?.sourceQuoteRef || extractedSourceQuoteRef
@@ -781,37 +737,6 @@ async function handleSourceFileClick(fileInfo: {
           <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
             <template #icon>
               <icon-lucide:copy />
-            </template>
-          </NButton>
-          <NButton v-if="canRetry" quaternary title="重新生成" aria-label="重新生成" @click="emit('retry')">
-            <template #icon>
-              <icon-lucide:rotate-ccw />
-            </template>
-          </NButton>
-          <NButton
-            v-if="msg.role === 'assistant'"
-            quaternary
-            title="点赞"
-            aria-label="点赞"
-            :type="msg.feedbackRating === 'good' ? 'primary' : 'default'"
-            :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
-            @click="handleFeedback(msg, 'good')"
-          >
-            <template #icon>
-              <icon-lucide:thumbs-up />
-            </template>
-          </NButton>
-          <NButton
-            v-if="msg.role === 'assistant'"
-            quaternary
-            title="点踩"
-            aria-label="点踩"
-            :type="msg.feedbackRating === 'bad' ? 'error' : 'default'"
-            :loading="feedbackSubmitting[getMessageFeedbackKey(msg)]"
-            @click="handleFeedback(msg, 'bad')"
-          >
-            <template #icon>
-              <icon-lucide:thumbs-down />
             </template>
           </NButton>
         </div>

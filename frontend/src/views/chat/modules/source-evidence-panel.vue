@@ -39,6 +39,7 @@ interface Props {
   assetWarnings?: string[] | null;
   conversationRecordId?: number | null;
   sourceQuoteRef?: string | null;
+  visualRegions?: Api.Chat.EvidenceVisualRegion[] | null;
 }
 
 const props = defineProps<Props>();
@@ -48,7 +49,6 @@ const { baseURL: serviceBaseUrl } = getServiceBaseURL(import.meta.env, isHttpPro
 const openingOriginal = ref(false);
 const openingTableScreenshot = ref(false);
 const openingFigureScreenshot = ref(false);
-const openingPageScreenshot = ref(false);
 const evidenceImageVisible = ref(false);
 const evidenceImageTitle = ref('');
 const evidenceImageUrl = ref('');
@@ -84,18 +84,11 @@ const displaySourceKind = computed(() => {
 const matchedText = computed(() => props.matchedChunkText || props.evidenceSnippet || '');
 const tableEvidenceText = computed(() => props.tableMarkdown || props.tableText || '');
 const sourceTypeLabel = computed(() => props.sourceType || 'PDF');
-const evidenceReadinessLabel = computed(() => {
-  if (props.pdfEvidenceAvailable || props.evidenceAssetLevel === 'PDF_VISUAL') return 'PDF visual evidence available';
-  return 'PDF visual assets unavailable';
-});
 const readableAssetWarnings = computed(() =>
   (props.assetWarnings || []).map(warning => assetWarningLabels[warning] || warning)
 );
 const canDownloadOriginalPdf = computed(() => Boolean(props.paperId));
 const canOpenPdfEvidence = computed(() => Boolean(props.paperId));
-const canOpenPageEvidence = computed(() =>
-  Boolean(props.paperId && props.pageNumber && props.pageScreenshotAvailable === true)
-);
 const tableImageUnavailable = computed(() => isTableSource.value && props.tableScreenshotAvailable === false);
 const figureImageUnavailable = computed(() => isFigureSource.value && props.figureScreenshotAvailable === false);
 const evidenceRows = computed(() =>
@@ -107,11 +100,6 @@ const evidenceRows = computed(() =>
   ].filter(row => row.value)
 );
 
-const pageSnapshotTitle = computed(() => {
-  const page = props.pageNumber ? `Page ${props.pageNumber}` : 'Page snapshot';
-  const file = displayFilename.value || displayPaper.value;
-  return `${page} · ${file}`;
-});
 const pdfEvidenceTitle = computed(() => {
   const page = props.pageNumber ? `Page ${props.pageNumber}` : 'PDF evidence';
   const file = displayFilename.value || displayPaper.value;
@@ -205,55 +193,6 @@ function openPdfEvidence() {
     return;
   }
   pdfViewerVisible.value = true;
-}
-
-async function openPageScreenshot() {
-  if (!props.paperId) {
-    window.$message?.warning('Missing paper id.');
-    return;
-  }
-
-  if (!props.pageNumber) {
-    window.$message?.warning('Page number was not captured for this reference.');
-    return;
-  }
-
-  openingPageScreenshot.value = true;
-  try {
-    const { error, data } = await request<Api.Paper.VisualAssetResponse>({
-      url: `/papers/${props.paperId}/pages/${props.pageNumber}/screenshot`
-    });
-
-    if (error || !data?.downloadUrl) {
-      showEvidenceImage({
-        title: pageSnapshotTitle.value,
-        imageUrl: '',
-        fallbackText:
-          'Page evidence is not available. You can download the original PDF to inspect the source document.',
-        bboxJson: props.bboxJson,
-        imageKind: 'page'
-      });
-      return;
-    }
-
-    showEvidenceImage({
-      title: pageSnapshotTitle.value,
-      imageUrl: data.downloadUrl,
-      fallbackText: 'Page evidence is not available. You can download the original PDF to inspect the source document.',
-      bboxJson: props.bboxJson,
-      imageKind: 'page'
-    });
-  } catch {
-    showEvidenceImage({
-      title: pageSnapshotTitle.value,
-      imageUrl: '',
-      fallbackText: 'Page evidence is not available. You can download the original PDF to inspect the source document.',
-      bboxJson: props.bboxJson,
-      imageKind: 'page'
-    });
-  } finally {
-    openingPageScreenshot.value = false;
-  }
 }
 
 async function openTableScreenshot() {
@@ -443,16 +382,7 @@ onBeforeUnmount(() => {
       </template>
     </dl>
 
-    <div class="source-evidence__asset-state">
-      <span
-        class="source-evidence__asset-pill"
-        :class="{
-          'source-evidence__asset-pill--ok': pdfEvidenceAvailable || evidenceAssetLevel === 'PDF_VISUAL',
-          'source-evidence__asset-pill--warning': !pdfEvidenceAvailable
-        }"
-      >
-        {{ evidenceReadinessLabel }}
-      </span>
+    <div v-if="readableAssetWarnings.length" class="source-evidence__asset-state">
       <span
         v-for="warning in readableAssetWarnings"
         :key="warning"
@@ -505,18 +435,6 @@ onBeforeUnmount(() => {
         </template>
         View figure screenshot
       </NButton>
-      <NButton
-        :type="isTableSource || isFigureSource ? 'default' : 'primary'"
-        secondary
-        :loading="openingPageScreenshot"
-        :disabled="!canOpenPageEvidence"
-        @click="openPageScreenshot"
-      >
-        <template #icon>
-          <icon-lucide:image />
-        </template>
-        View page evidence
-      </NButton>
       <NButton secondary :disabled="!canOpenPdfEvidence" @click="openPdfEvidence">
         <template #icon>
           <icon-lucide:file-text />
@@ -530,9 +448,6 @@ onBeforeUnmount(() => {
         Download original PDF
       </NButton>
     </div>
-    <p v-if="paperId && pageNumber && !canOpenPageEvidence" class="source-evidence__empty-text">
-      A page image is not available for this citation. Use the quoted text or download the original PDF.
-    </p>
 
     <NModal v-model:show="evidenceImageVisible" class="evidence-image-modal-shell" :auto-focus="false">
       <div class="evidence-image-modal">
@@ -626,6 +541,7 @@ onBeforeUnmount(() => {
             :anchor-text="matchedText"
             :search-text="matchedText"
             :bbox-json="bboxJson || undefined"
+            :visual-regions="visualRegions || undefined"
             :visible="pdfViewerVisible"
           />
           <div v-else class="evidence-image-modal__fallback">
@@ -728,18 +644,9 @@ onBeforeUnmount(() => {
   line-height: 1.25;
 }
 
-.source-evidence__asset-pill--ok {
-  border-color: var(--color-success);
-  color: var(--color-success);
-}
-
 .source-evidence__asset-pill--warning {
   border-color: var(--color-warning);
   color: var(--color-warning);
-}
-
-.source-evidence__asset-pill--muted {
-  color: var(--color-text-muted);
 }
 
 .source-evidence__text-block {

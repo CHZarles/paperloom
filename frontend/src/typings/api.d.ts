@@ -419,6 +419,23 @@ declare namespace Api {
       screenshotAvailable?: boolean;
     }
 
+    interface FigureItem {
+      paperId: string;
+      figureId: string;
+      elementType?: 'IMAGE' | 'CHART' | null;
+      pageNumber?: number | null;
+      caption?: string | null;
+      sectionTitle?: string | null;
+      figureText?: string | null;
+      searchableText?: string | null;
+      bboxJson?: string | null;
+      detectionSource?: string | null;
+      confidence?: string | null;
+      parserName?: string | null;
+      parserVersion?: string | null;
+      screenshotAvailable?: boolean;
+    }
+
     interface VisualAssetResponse {
       paperId: string;
       assetType: 'PAGE_SCREENSHOT' | 'TABLE_CROP' | 'FIGURE_CROP' | 'CHART_CROP';
@@ -469,13 +486,25 @@ declare namespace Api {
     type ScopeMode = 'AUTO_LIBRARY' | 'SOURCE_SET_SNAPSHOT';
     type ScopeStatus = 'READY' | 'DEGRADED' | 'INVALID';
 
+    interface EvidenceVisualRegion {
+      pageNumber: number;
+      left: number;
+      top: number;
+      right: number;
+      bottom: number;
+      unit: 'mineru_1000';
+      coordinateSystem: 'top_left_1000';
+      targetKind?: 'QUOTE' | 'ELEMENT' | 'LOCATION' | string | null;
+      confidence?: 'EXACT' | 'APPROXIMATE' | string | null;
+    }
+
     interface ReferenceEvidence {
       paperId?: string | null;
       paperTitle?: string | null;
       originalFilename?: string | null;
       pageNumber?: number | null;
       anchorText?: string | null;
-      retrievalMode?: 'HYBRID' | 'TEXT_ONLY' | null;
+      retrievalMode?: 'HYBRID' | 'TEXT_ONLY' | 'PRODUCT_READING_REACT' | null;
       retrievalLabel?: string | null;
       retrievalQuery?: string | null;
       matchedChunkText?: string | null;
@@ -508,6 +537,7 @@ declare namespace Api {
       citationRef?: string | null;
       evidenceRef?: string | null;
       sourceQuoteRef?: string | null;
+      visualRegions?: EvidenceVisualRegion[] | null;
       assetWarnings?: string[] | null;
     }
 

@@ -16,7 +16,6 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -884,6 +883,8 @@ public class ChatHandler {
                 stringDetail(reference, "citationRef"),
                 stringDetail(reference, "evidenceRef"),
                 stringDetail(reference, "sourceQuoteRef"),
+                stringDetail(reference, "sourceSpanJson"),
+                mapListValue(reference.get("visualRegions")),
                 stringListValue(reference.get("assetWarnings"))
         );
     }
@@ -1060,46 +1061,6 @@ public class ChatHandler {
         return history;
     }
 
-    private String buildRecentFeedbackGuidance(String userId) {
-        if (userId == null || userId.isBlank()) {
-            return "";
-        }
-        try {
-            Map<Object, Object> feedbackEntries = redisTemplate.opsForHash().entries("feedback:" + userId);
-            if (feedbackEntries == null || feedbackEntries.isEmpty()) {
-                return "";
-            }
-
-            StringBuilder guidance = new StringBuilder("近期用户对回答的显式反馈如下，按时间倒序排列，越靠前越新。")
-                    .append("后续回答需要参考这些偏好：good 表示用户认可这类回答方式，bad 表示需要避免类似问题；")
-                    .append("如果同一轮回答既有 good 又有 bad，以最新一条为准。\n");
-            feedbackEntries.entrySet().stream()
-                    .sorted(Comparator.comparingLong(entry -> -parseFeedbackTimestamp(entry.getKey())))
-                    .limit(5)
-                    .forEach(entry -> guidance.append("- ")
-                            .append("feedbackTime=")
-                            .append(entry.getKey())
-                            .append("; ")
-                            .append(entry.getValue())
-                            .append("\n"));
-            return guidance.toString().trim();
-        } catch (Exception exception) {
-            logger.warn("读取用户反馈上下文失败: userId={}", userId, exception);
-            return "";
-        }
-    }
-
-    private long parseFeedbackTimestamp(Object value) {
-        if (value == null) {
-            return 0L;
-        }
-        try {
-            return Long.parseLong(String.valueOf(value));
-        } catch (NumberFormatException exception) {
-            return 0L;
-        }
-    }
-
     private List<Map<String, Object>> getConversationHistoryRecords(String conversationId) {
         String key = "conversation:" + conversationId;
         String json = redisTemplate.opsForValue().get(key);
@@ -1214,6 +1175,8 @@ public class ChatHandler {
             item.put("citationRef", detail.citationRef());
             item.put("evidenceRef", detail.evidenceRef());
             item.put("sourceQuoteRef", detail.sourceQuoteRef());
+            item.put("sourceSpanJson", detail.sourceSpanJson());
+            item.put("visualRegions", detail.visualRegions());
             item.put("assetWarnings", detail.assetWarnings());
             serialized.put(String.valueOf(entry.getKey()), item);
         }
@@ -1554,10 +1517,34 @@ public class ChatHandler {
                     (String) item.get("citationRef"),
                     (String) item.get("evidenceRef"),
                     (String) item.get("sourceQuoteRef"),
+                    (String) item.get("sourceSpanJson"),
+                    mapListValue(item.get("visualRegions")),
                     stringListValue(item.get("assetWarnings"))
             ));
         }
         return referenceMap;
+    }
+
+    private List<Map<String, Object>> mapListValue(Object raw) {
+        if (!(raw instanceof List<?> rawList)) {
+            return List.of();
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object item : rawList) {
+            if (!(item instanceof Map<?, ?> rawMap)) {
+                continue;
+            }
+            Map<String, Object> normalized = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    normalized.put(key, entry.getValue());
+                }
+            }
+            if (!normalized.isEmpty()) {
+                result.add(normalized);
+            }
+        }
+        return List.copyOf(result);
     }
 
     private List<String> stringListValue(Object raw) {
@@ -1678,6 +1665,8 @@ public class ChatHandler {
             String citationRef,
             String evidenceRef,
             String sourceQuoteRef,
+            String sourceSpanJson,
+            List<Map<String, Object>> visualRegions,
             List<String> assetWarnings
     ) {
         public ReferenceInfo {
@@ -1691,6 +1680,8 @@ public class ChatHandler {
             citationRef = citationRef == null || citationRef.isBlank() ? null : citationRef.trim();
             evidenceRef = evidenceRef == null || evidenceRef.isBlank() ? null : evidenceRef.trim();
             sourceQuoteRef = sourceQuoteRef == null || sourceQuoteRef.isBlank() ? null : sourceQuoteRef.trim();
+            sourceSpanJson = sourceSpanJson == null || sourceSpanJson.isBlank() ? null : sourceSpanJson.trim();
+            visualRegions = normalizedVisualRegions(visualRegions);
             evidenceAssetLevel = "PDF_VISUAL".equals(evidenceAssetLevel) || pdfEvidenceAvailable
                     ? "PDF_VISUAL"
                     : "PDF_PENDING_ASSETS";
@@ -1700,8 +1691,104 @@ public class ChatHandler {
                     .toList();
         }
 
+        private static List<Map<String, Object>> normalizedVisualRegions(List<Map<String, Object>> regions) {
+            if (regions == null || regions.isEmpty()) {
+                return List.of();
+            }
+            List<Map<String, Object>> normalized = new ArrayList<>();
+            for (Map<String, Object> region : regions) {
+                if (region == null || region.isEmpty()) {
+                    continue;
+                }
+                normalized.add(new LinkedHashMap<>(region));
+            }
+            return List.copyOf(normalized);
+        }
+
         private static boolean isLegacyImportWarning(String value) {
             return value.startsWith("structured_") && value.endsWith("_text_only");
+        }
+
+        public ReferenceInfo(String paperId,
+                             String paperTitle,
+                             String originalFilename,
+                             Integer pageNumber,
+                             String anchorText,
+                             String retrievalMode,
+                             String retrievalLabel,
+                             String retrievalQuery,
+                             String matchedChunkText,
+                             String evidenceSnippet,
+                             Double score,
+                             Integer chunkId,
+                             String elementType,
+                             String sectionTitle,
+                             Integer sectionLevel,
+                             String bboxJson,
+                             String parserName,
+                             String parserVersion,
+                             String sourceKind,
+                             String tableId,
+                             String figureId,
+                             String formulaId,
+                             String evidenceRole,
+                             String retrievalRoute,
+                             String intent,
+                             String rankReason,
+                             String tableText,
+                             String tableMarkdown,
+                             Boolean tableScreenshotAvailable,
+                             String sourceType,
+                             String evidenceAssetLevel,
+                             Boolean pdfEvidenceAvailable,
+                             Boolean pageScreenshotAvailable,
+                             Boolean figureScreenshotAvailable,
+                             String citationRef,
+                             String evidenceRef,
+                             String sourceQuoteRef,
+                             List<String> assetWarnings) {
+            this(
+                    paperId,
+                    paperTitle,
+                    originalFilename,
+                    pageNumber,
+                    anchorText,
+                    retrievalMode,
+                    retrievalLabel,
+                    retrievalQuery,
+                    matchedChunkText,
+                    evidenceSnippet,
+                    score,
+                    chunkId,
+                    elementType,
+                    sectionTitle,
+                    sectionLevel,
+                    bboxJson,
+                    parserName,
+                    parserVersion,
+                    sourceKind,
+                    tableId,
+                    figureId,
+                    formulaId,
+                    evidenceRole,
+                    retrievalRoute,
+                    intent,
+                    rankReason,
+                    tableText,
+                    tableMarkdown,
+                    tableScreenshotAvailable,
+                    sourceType,
+                    evidenceAssetLevel,
+                    pdfEvidenceAvailable,
+                    pageScreenshotAvailable,
+                    figureScreenshotAvailable,
+                    citationRef,
+                    evidenceRef,
+                    sourceQuoteRef,
+                    null,
+                    List.of(),
+                    assetWarnings
+            );
         }
 
         public ReferenceInfo(String paperId,

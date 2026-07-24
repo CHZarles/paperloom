@@ -47,6 +47,7 @@ const emit = defineEmits<{
       pageScreenshotAvailable?: boolean | null;
       figureScreenshotAvailable?: boolean | null;
       assetWarnings?: string[] | null;
+      visualRegions?: Api.Chat.EvidenceVisualRegion[] | null;
       paperTitle: string;
       originalFilename?: string | null;
       paperId?: string | null;
@@ -58,11 +59,10 @@ const emit = defineEmits<{
     }
   ): void;
   (e: 'openProcess', message: Api.Chat.Message): void;
-  (e: 'retryMessage', message: string): void;
 }>();
 
 const chatStore = useChatStore();
-const { conversationId, hasOlderMessages, list, messagesLoadingOlder, sessionId } = storeToRefs(chatStore);
+const { conversationId, hasOlderMessages, list, messagesLoadingOlder } = storeToRefs(chatStore);
 
 const loading = ref(false);
 const scrollbarRef = ref<InstanceType<typeof NScrollbar>>();
@@ -175,14 +175,6 @@ onBeforeUnmount(() => {
 
 const showEmpty = computed(() => !loading.value && list.value.length === 0);
 
-function handleRetry(index: number) {
-  const message = getRetrievalQueryFallback(index).trim();
-  if (!message) {
-    return;
-  }
-  emit('retryMessage', message);
-}
-
 function messageKey(item: Api.Chat.Message, index: number) {
   if (item.conversationRecordId) return `${item.conversationRecordId}:${item.role}`;
   if (item.generationId) return `${item.generationId}:${item.role}`;
@@ -220,12 +212,10 @@ function messageKey(item: Api.Chat.Message, index: number) {
                 v-for="(item, index) in list"
                 :key="messageKey(item, index)"
                 :msg="item"
-                :session-id="sessionId"
                 :retrieval-query-fallback="getRetrievalQueryFallback(index)"
                 evidence-mode="drawer"
                 @open-reference="emit('openReference', $event)"
                 @open-process="emit('openProcess', $event)"
-                @retry="handleRetry(index)"
               />
             </component>
           </div>

@@ -50,6 +50,11 @@ const tableModalVisible = ref(false);
 const tableModalLoading = ref(false);
 const tableModalTitle = ref('');
 const tableModalRows = ref<Api.Paper.TableItem[]>([]);
+const figureModalVisible = ref(false);
+const figureModalLoading = ref(false);
+const figureModalTitle = ref('');
+const figureModalRows = ref<Api.Paper.FigureItem[]>([]);
+const figureModalPaperId = ref('');
 const paperLibraryQuery = ref('');
 const activePaperLibraryQuery = ref('');
 
@@ -159,6 +164,7 @@ function isGlobalPaper(row: Api.Paper.UploadTask) {
 
 function paperRowMenuOptions(row: Api.Paper.UploadTask) {
   return [
+    { label: 'Extracted figures', key: 'figures', disabled: !Number(row.figureAsset?.figureCount || 0) },
     { label: 'Extracted tables', key: 'tables', disabled: !Number(row.tableAsset?.tableCount || 0) },
     {
       label: 'Parser JSON',
@@ -180,6 +186,7 @@ function paperRowMenuOptions(row: Api.Paper.UploadTask) {
 }
 
 function handlePaperRowMenuAction(key: string | number, row: Api.Paper.UploadTask) {
+  if (key === 'figures') handleOpenFigures(row);
   if (key === 'tables') handleOpenTables(row);
   if (key === 'parser') handleOpenParserArtifact(row);
   if (key === 'retry') handleRetryVectorization(row);
@@ -569,6 +576,37 @@ async function handleOpenTables(row: Api.Paper.UploadTask) {
   tableModalRows.value = tables || [];
 }
 
+async function handleOpenFigures(row: Api.Paper.UploadTask) {
+  figureModalVisible.value = true;
+  figureModalLoading.value = true;
+  figureModalTitle.value = row.paperTitle || row.originalFilename;
+  figureModalRows.value = [];
+  figureModalPaperId.value = row.paperId;
+
+  const { error, data: figures } = await request<Api.Paper.FigureItem[]>({
+    url: `/papers/${row.paperId}/figures`
+  });
+
+  figureModalLoading.value = false;
+  if (error) {
+    window.$message?.error(error.message || 'Could not load extracted figures');
+    return;
+  }
+  figureModalRows.value = figures || [];
+}
+
+async function handleFigureScreenshot(figureId: string) {
+  if (!figureModalPaperId.value || !figureId) return;
+  const { error, data: asset } = await request<Api.Paper.VisualAssetResponse>({
+    url: `/papers/${figureModalPaperId.value}/figures/${figureId}/screenshot`
+  });
+  if (error || !asset?.downloadUrl) {
+    window.$message?.error(error?.message || 'No image available for this figure');
+    return;
+  }
+  openExternalUrl(asset.downloadUrl);
+}
+
 function openExternalUrl(url: string) {
   const link = document.createElement('a');
   link.href = url;
@@ -657,6 +695,33 @@ function renderIndexUsage(row: Api.Paper.UploadTask) {
   );
 }
 
+function renderAssetPillAction(
+  row: Api.Paper.UploadTask,
+  label: string,
+  count: number,
+  onClick: () => void,
+  variant: 'ok' | 'default' = 'default'
+) {
+  if (!count) {
+    return (
+      <span
+        class={variant === 'ok' ? 'library-asset-pill library-asset-pill--muted' : 'library-asset-pill library-asset-pill--muted'}
+      >
+        {label}: 0
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      class={variant === 'ok' ? 'library-asset-pill library-asset-pill--ok library-asset-pill--action' : 'library-asset-pill library-asset-pill--action'}
+      onClick={onClick}
+    >
+      {label}: {count}
+    </button>
+  );
+}
+
 function renderAssetStatus(row: Api.Paper.UploadTask) {
   const parserSaved = Boolean(row.parserArtifact?.available);
   const tableCount = Number(row.tableAsset?.tableCount || 0);
@@ -672,6 +737,8 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
       <span class={parserSaved ? 'library-asset-pill library-asset-pill--ok' : 'library-asset-pill'}>
         Parser: {parserSaved ? 'saved' : 'missing'}
       </span>
+      {renderAssetPillAction(row, 'Figures', figureCount, () => handleOpenFigures(row), 'ok')}
+      {renderAssetPillAction(row, 'Tables', tableCount, () => handleOpenTables(row))}
       <span class="library-asset-pill" title={assetTitle}>
         Assets: {totalAssets}
       </span>
@@ -1077,6 +1144,7 @@ async function onBeforeUpload(
             :is-admin="authStore.isAdmin"
             @preview="row => handleFilePreview(row.originalFilename, row.paperId)"
             @tables="handleOpenTables"
+            @figures="handleOpenFigures"
             @parser="handleOpenParserArtifact"
             @retry="handleRetryVectorization"
             @publish="row => handleUpdatePublication(row, true)"
@@ -1148,6 +1216,50 @@ async function onBeforeUpload(
               <span>{{ table.screenshotAvailable ? 'screenshot saved' : 'no screenshot' }}</span>
             </div>
             <pre>{{ table.tableMarkdown || table.tableText || 'No table text captured.' }}</pre>
+          </article>
+        </div>
+      </div>
+    </NModal>
+
+    <NModal v-model:show="figureModalVisible" class="paper-figure-modal-shell" :auto-focus="false">
+      <div class="paper-figure-modal">
+        <header class="paper-table-modal__header">
+          <div>
+            <div class="paper-table-modal__title">Extracted Figures</div>
+            <div class="paper-table-modal__subtitle">{{ figureModalTitle }}</div>
+          </div>
+          <NButton quaternary circle size="small" @click="figureModalVisible = false">
+            <template #icon>
+              <icon-lucide:x />
+            </template>
+          </NButton>
+        </header>
+
+        <div v-if="figureModalLoading" class="paper-table-modal__state">Loading figures...</div>
+        <div v-else-if="!figureModalRows.length" class="paper-table-modal__state">No extracted figures.</div>
+        <div v-else class="paper-figure-modal__list">
+          <article v-for="figure in figureModalRows" :key="figure.figureId" class="paper-figure-modal__item">
+            <div class="paper-figure-modal__head">
+              <div>
+                <strong>{{ figure.caption || figure.figureId }}</strong>
+                <div class="paper-figure-modal__meta">
+                  <span>Page {{ figure.pageNumber || 'N/A' }}</span>
+                  <span>{{ figure.elementType || 'IMAGE' }}</span>
+                  <span v-if="figure.sectionTitle">{{ figure.sectionTitle }}</span>
+                  <span v-if="figure.confidence">confidence: {{ figure.confidence }}</span>
+                </div>
+              </div>
+              <NButton
+                v-if="figure.screenshotAvailable"
+                size="tiny"
+                secondary
+                @click="handleFigureScreenshot(figure.figureId)"
+              >
+                Open image
+              </NButton>
+            </div>
+            <p v-if="figure.searchableText" class="paper-figure-modal__caption">{{ figure.searchableText }}</p>
+            <p v-else class="paper-figure-modal__caption paper-figure-modal__caption--empty">No caption captured.</p>
           </article>
         </div>
       </div>
@@ -1652,6 +1764,16 @@ async function onBeforeUpload(
   color: var(--color-text-muted);
 }
 
+.library-asset-pill--action {
+  cursor: pointer;
+  transition: transform 80ms ease, background-color 120ms ease;
+}
+
+.library-asset-pill--action:hover {
+  background: var(--color-card-band-pressed);
+  transform: translateY(-1px);
+}
+
 .library-pipeline-status {
   gap: 7px;
 }
@@ -1951,5 +2073,73 @@ async function onBeforeUpload(
   .library-summary__item:nth-child(2n) {
     border-right: 0;
   }
+}
+
+.paper-figure-modal-shell {
+  width: min(92vw, 860px);
+}
+
+.paper-figure-modal {
+  max-height: min(82vh, 760px);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  box-shadow: 10px 10px 0 var(--color-border);
+}
+
+.paper-figure-modal__list {
+  display: grid;
+  max-height: calc(min(82vh, 760px) - 62px);
+  gap: 12px;
+  overflow: auto;
+  padding: 14px 16px 18px;
+}
+
+.paper-figure-modal__item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 12px;
+}
+
+.paper-figure-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.paper-figure-modal__head strong {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.paper-figure-modal__meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.paper-figure-modal__caption {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-reading);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.paper-figure-modal__caption--empty {
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 </style>

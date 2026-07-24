@@ -383,6 +383,16 @@ class ChatHandlerProductHarnessTest {
                                 "content", "quoted source content",
                                 "paperHandle", "paper_handle_answer",
                                 "paperTitle", "LoRA",
+                                "sourceSpanJson", "{\"bbox\":{\"pageNumber\":3}}",
+                                "visualRegions", List.of(Map.of(
+                                        "pageNumber", 3,
+                                        "left", 100,
+                                        "top", 120,
+                                        "right", 300,
+                                        "bottom", 180,
+                                        "unit", "mineru_1000",
+                                        "coordinateSystem", "top_left_1000"
+                                )),
                                 "retrievalRoute", "PRODUCT_READING"
                         ))
                 ));
@@ -590,6 +600,11 @@ class ChatHandlerProductHarnessTest {
         assertEquals("quoted source content", item.get("matchedChunkText"));
         assertEquals("quoted source content", item.get("evidenceSnippet"));
         assertEquals("quoted source content", item.get("anchorText"));
+        assertEquals("{\"bbox\":{\"pageNumber\":3}}", item.get("sourceSpanJson"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> visualRegions = (List<Map<String, Object>>) item.get("visualRegions");
+        assertEquals(1, visualRegions.size());
+        assertEquals("mineru_1000", visualRegions.get(0).get("unit"));
     }
 
     private static Map<String, Object> completionPayload(ChatFixture fixture, String status) {

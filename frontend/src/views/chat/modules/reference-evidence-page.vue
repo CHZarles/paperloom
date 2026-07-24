@@ -48,6 +48,7 @@ const pageScreenshotAvailable = ref<boolean | null>(null);
 const figureScreenshotAvailable = ref<boolean | null>(null);
 const assetWarnings = ref<string[]>([]);
 const sourceQuoteRef = ref('');
+const visualRegions = ref<Api.Chat.EvidenceVisualRegion[]>([]);
 const referenceNumber = ref<number | undefined>(undefined);
 const conversationRecordId = ref<number | undefined>(undefined);
 const evidenceKey = computed(() => String(route.query.evidenceKey || ''));
@@ -86,6 +87,7 @@ function syncFromStorage() {
       conversationRecordId?: number | null;
       referenceNumber?: number | null;
       sourceQuoteRef?: string | null;
+      visualRegions?: Api.Chat.EvidenceVisualRegion[] | null;
     };
 
     paperTitle.value = payload.paperTitle || paperTitle.value;
@@ -124,6 +126,7 @@ function syncFromStorage() {
     figureScreenshotAvailable.value = payload.figureScreenshotAvailable ?? figureScreenshotAvailable.value;
     assetWarnings.value = payload.assetWarnings || assetWarnings.value;
     sourceQuoteRef.value = payload.sourceQuoteRef || sourceQuoteRef.value;
+    visualRegions.value = payload.visualRegions || visualRegions.value;
     conversationRecordId.value = payload.conversationRecordId || conversationRecordId.value;
     referenceNumber.value = payload.referenceNumber || referenceNumber.value;
     return true;
@@ -199,6 +202,7 @@ async function loadReferenceDetail() {
     figureScreenshotAvailable.value = data.figureScreenshotAvailable ?? null;
     assetWarnings.value = data.assetWarnings || [];
     sourceQuoteRef.value = data.sourceQuoteRef || '';
+    visualRegions.value = data.visualRegions || [];
   } catch (error: any) {
     loadError.value = error?.message || '引用详情加载失败';
   } finally {
@@ -264,6 +268,7 @@ watch(
         :asset-warnings="assetWarnings"
         :conversation-record-id="conversationRecordId"
         :source-quote-ref="sourceQuoteRef || undefined"
+        :visual-regions="visualRegions"
       />
       <NButton secondary class="evidence-page-back" @click="handleBack">
         <template #icon>

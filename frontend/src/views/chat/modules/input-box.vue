@@ -601,10 +601,6 @@ const handleSend = async (messageOverride?: string) => {
   startGenerationStatusMonitor();
 };
 
-defineExpose({
-  sendMessage: handleSend
-});
-
 const inputRef = ref();
 const insertNewline = () => {
   const textarea = inputRef.value;

@@ -23,7 +23,6 @@ const activeReviewTab = ref<'process' | 'evidence'>('evidence');
 const processMessage = ref<Api.Chat.Message | null>(null);
 const settingsVisible = ref(false);
 const settingsModalHostStyle = { width: 'min(1480px, calc(100vw - 32px))' };
-const inputBoxRef = ref<InstanceType<typeof InputBox> | null>(null);
 type ReferencePanelPayload = Partial<Omit<Api.Chat.ReferenceEvidence, 'paperId' | 'paperTitle'>> & {
   paperTitle: string;
   paperId?: string | null;
@@ -111,10 +110,6 @@ watch(referencePanelVisible, async visible => {
   reviewReturnFocus = null;
 });
 
-function handleRetryMessage(message: string) {
-  inputBoxRef.value?.sendMessage(message);
-}
-
 function syncSidebarForViewport() {
   const nextNavigationNarrow = window.innerWidth <= 960;
   if (nextNavigationNarrow !== chatNavigationNarrow) sidebarCollapsed.value = nextNavigationNarrow;
@@ -177,9 +172,8 @@ onBeforeUnmount(() => {
           <ChatList
             @open-reference="handleOpenReference"
             @open-process="handleOpenProcess"
-            @retry-message="handleRetryMessage"
           />
-          <InputBox v-if="showDockInput" ref="inputBoxRef" />
+          <InputBox v-if="showDockInput" />
         </div>
 
         <div
@@ -263,6 +257,7 @@ onBeforeUnmount(() => {
             :asset-warnings="referencePayload.assetWarnings"
             :conversation-record-id="referencePayload.conversationRecordId"
             :source-quote-ref="referencePayload.sourceQuoteRef || undefined"
+            :visual-regions="referencePayload.visualRegions"
           />
           <div v-else class="reference-panel__empty">
             <icon-lucide:file-text class="text-34px" />

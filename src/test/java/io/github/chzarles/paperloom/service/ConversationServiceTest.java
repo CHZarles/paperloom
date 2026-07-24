@@ -736,6 +736,119 @@ class ConversationServiceTest {
     }
 
     @Test
+    void findReferenceDetailDoesNotKeepStaleBboxForSourceQuoteWithoutSingleSpanBox() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setConversationId("conversation-1");
+        conversation.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "sourceQuoteRef": "source_quote_abc",
+                    "bboxJson": "{\\"pageNumber\\":99,\\"left\\":1,\\"top\\":1,\\"right\\":2,\\"bottom\\":2,\\"coordinateSystem\\":\\"top_left_1000\\"}"
+                  }
+                }
+                """);
+        PaperSourceQuote quote = new PaperSourceQuote();
+        quote.setSourceQuoteRef("source_quote_abc");
+        quote.setPaperId("paper-1");
+        quote.setModelVersion("model-v1");
+        quote.setLocationRef("section_ref_3");
+        quote.setLocationType("SECTION");
+        quote.setPageNumber(3);
+        quote.setContentKind("TEXT");
+        quote.setContent("The method uses a two-stage evaluator.");
+        quote.setSourceSpanJson("""
+                {
+                  "pageNumber": 3,
+                  "locationType": "SECTION",
+                  "bbox": [
+                    {"pageNumber":3,"left":100,"top":120,"right":300,"bottom":180,"coordinateSystem":"top_left_1000"},
+                    {"pageNumber":3,"left":110,"top":220,"right":310,"bottom":280,"coordinateSystem":"top_left_1000"}
+                  ]
+                }
+                """);
+        Paper paper = new Paper();
+        paper.setPaperId("paper-1");
+        paper.setPaperTitle("Parsed Paper Title");
+        when(conversationRepository.findByIdAndUserId(10L, 2L)).thenReturn(Optional.of(conversation));
+        when(sourceQuoteResolver.resolveRegisteredCurrentQuote(
+                "conversation-1",
+                "source_quote_abc"
+        )).thenReturn(new ProductReadingSourceQuoteResolver.Resolution(
+                ProductReadingSourceQuoteResolver.STATUS_OK,
+                Optional.of(quote),
+                Optional.of(paper)
+        ));
+
+        Optional<Map<String, Object>> detailOpt = conversationService.findReferenceDetail(2L, 10L, 1);
+
+        assertTrue(detailOpt.isPresent());
+        Map<String, Object> detail = detailOpt.get();
+        assertEquals("source_quote_abc", detail.get("sourceQuoteRef"));
+        assertEquals(false, detail.containsKey("bboxJson"));
+        assertEquals(List.of(), detail.get("visualRegions"));
+        assertEquals(quote.getSourceSpanJson(), detail.get("sourceSpanJson"));
+    }
+
+    @Test
+    void findReferenceDetailReturnsAuthoritativeVisualRegionsForSingleSourceQuoteBox() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation conversation = new Conversation();
+        conversation.setId(10L);
+        conversation.setConversationId("conversation-1");
+        conversation.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "sourceQuoteRef": "source_quote_abc"
+                  }
+                }
+                """);
+        PaperSourceQuote quote = new PaperSourceQuote();
+        quote.setSourceQuoteRef("source_quote_abc");
+        quote.setPaperId("paper-1");
+        quote.setModelVersion("model-v1");
+        quote.setLocationRef("table_ref_3");
+        quote.setLocationType("TABLE");
+        quote.setPageNumber(3);
+        quote.setContentKind("TABLE");
+        quote.setContent("Table evidence.");
+        quote.setSourceSpanJson("""
+                {
+                  "pageNumber": 3,
+                  "locationType": "TABLE",
+                  "bbox": {"pageNumber":3,"left":100,"top":120,"right":300,"bottom":180,"unit":"mineru_1000","coordinateSystem":"top_left_1000"}
+                }
+                """);
+        Paper paper = new Paper();
+        paper.setPaperId("paper-1");
+        paper.setPaperTitle("Parsed Paper Title");
+        when(conversationRepository.findByIdAndUserId(10L, 2L)).thenReturn(Optional.of(conversation));
+        when(sourceQuoteResolver.resolveRegisteredCurrentQuote(
+                "conversation-1",
+                "source_quote_abc"
+        )).thenReturn(new ProductReadingSourceQuoteResolver.Resolution(
+                ProductReadingSourceQuoteResolver.STATUS_OK,
+                Optional.of(quote),
+                Optional.of(paper)
+        ));
+
+        Optional<Map<String, Object>> detailOpt = conversationService.findReferenceDetail(2L, 10L, 1);
+
+        assertTrue(detailOpt.isPresent());
+        Map<String, Object> detail = detailOpt.get();
+        assertEquals(false, detail.containsKey("bboxJson"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> regions = (List<Map<String, Object>>) detail.get("visualRegions");
+        assertEquals(1, regions.size());
+        assertEquals(3, regions.get(0).get("pageNumber"));
+        assertEquals("mineru_1000", regions.get(0).get("unit"));
+        assertEquals("top_left_1000", regions.get(0).get("coordinateSystem"));
+        assertEquals("LOCATION", regions.get(0).get("targetKind"));
+        assertEquals("EXACT", regions.get(0).get("confidence"));
+    }
+
+    @Test
     void findReferenceDetailFailsClosedWhenMappedSourceQuoteIsNotRegisteredForConversation() {
         ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
         Conversation conversation = new Conversation();

@@ -1587,6 +1587,8 @@ public class ProductReadingReActHarness {
             copyIfPresent(reference, sourceQuotePayload, "sectionTitle");
             copyIfPresent(reference, sourceQuotePayload, "contentKind");
             copyIfPresent(reference, sourceQuotePayload, "content");
+            copyIfPresent(reference, sourceQuotePayload, "sourceSpanJson");
+            copyIfPresent(reference, sourceQuotePayload, "visualRegions");
         }
         return reference;
     }
