@@ -361,6 +361,21 @@ const presentedEvents = computed(() =>
 const presentedPhaseCards = computed(() =>
   events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => buildPhaseView(event, index))
 );
+
+function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
+  return {
+    tool: step.kind || undefined,
+    status: step.status || undefined,
+    durationMs: step.durationMs || undefined,
+    message: step.message || undefined,
+    input: step.query ? { query: step.query } : {},
+    output: {}
+  };
+}
+
+const presentedAuditPhaseCards = computed(() =>
+  auditSteps.value.map((step, index) => buildPhaseView(auditStepToPhaseInput(step), index))
+);
 const latestPresentedEvent = computed(() => presentedEvents.value[presentedEvents.value.length - 1]);
 const latestAuditStep = computed(() => auditSteps.value[auditSteps.value.length - 1]);
 
@@ -506,20 +521,22 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
         </div>
       </div>
 
-      <div v-if="auditSteps.length" class="research-process__timeline">
+      <div v-if="presentedAuditPhaseCards.length" class="research-process__timeline">
         <article
-          v-for="step in auditSteps"
-          :key="step.stepId || `${step.kind}:${step.query}`"
-          class="research-process__event"
-          :class="`is-${step.status || 'completed'}`"
+          v-for="card in presentedAuditPhaseCards"
+          :key="card.key"
+          class="phase-card"
+          :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
         >
-          <span class="research-process__marker" />
-          <div class="research-process__event-body">
-            <div class="research-process__event-heading">
-              <strong>{{ auditStepTitle(step) }}</strong>
-              <span v-if="step.durationMs">{{ step.durationMs }} ms</span>
+          <div class="phase-card__icon">
+            <SvgIcon :icon="getPhaseIcon(card.phase)" class="text-16" />
+          </div>
+          <div class="phase-card__body">
+            <div class="phase-card__heading">
+              <strong>{{ card.headline }}</strong>
+              <span v-if="card.badge" class="phase-card__badge">{{ card.badge }}</span>
             </div>
-            <div v-if="auditStepDetail(step)" class="research-process__event-detail">{{ auditStepDetail(step) }}</div>
+            <div v-if="card.oneLiner" class="phase-card__one-liner">{{ card.oneLiner }}</div>
           </div>
         </article>
       </div>

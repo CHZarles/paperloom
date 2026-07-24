@@ -1,139 +1,149 @@
 # Research Process Display — Design
 
-**Date:** 2026-07-24
+**Date:** 2026-07-24 (revised after first user feedback)
 **Scope:** Frontend only. No backend, no API, no schema changes.
 **Target file:** `frontend/src/views/chat/modules/research-process-panel.vue`
-**Status:** Approved by user (2026-07-24). Ready for plan.
+**Status:** Revised per user feedback 2026-07-24. Goal shifted from "visually distinct phase cards" to "less chrome, more useful content".
 
 ## Problem
 
-The current `ResearchProcessPanel` renders every research step as a flat vertical
-timeline of bullet rows. Each row has the same shape regardless of what the agent
-did, so a search, a location lookup, a passage read, and an internal LLM pass all
-look like the same line. The raw detail text (`"5 locations selected · 5
-evidence passages · pages 1, 2, 3, 5, 10"`, `"3098 ms · 3,125 tokens"`) is the
-only differentiator, which makes the panel feel abstract and hard to scan.
+The original implementation showed each research step as a phase card with a count badge ("1 paper", "5 passages"), a state pill ("running", "completed"), and metric plumbing ("3098 ms · 3,125 tokens", "Thinking · pass 3"). The user found this abstract: the metrics are internal plumbing and the badges duplicate information that should just appear as the result.
 
-The backend already classifies events by tool/type and supplies structured inputs
-and outputs — the front end just isn't using that structure visually.
+The user wants the panel to answer one question — *what did the agent do, and what did it find?* — without parsing metric strings.
 
 ## Goal
 
-Make each research phase visually distinct so a user can read the panel top-to-
-bottom and immediately understand what the agent did, in what order, and what it
-found at each step — without parsing metric strings.
+Show the useful information of the agentic RAG process:
+
+- For each **search**: just the paper names found.
+- For each **locate**: just the section names.
+- For each **read**: just the page list and a collapsed passage list (user expands manually).
+- For each **think**: a one-line decision summary ("Decided to search papers") — not duration, not tokens, not pass numbers.
+- For the **status header**: a pulse animation while running; a check when done. No verbose activity label.
+
+Drop:
+- Count badges (`"1 paper"`, `"5 passages"`)
+- State pills (`"running"` / `"completed"` / `"failed"` text — replaced by icon + animation only)
+- Duration suffixes (`"3098 ms"`)
+- Token counts (`"3,125 tokens"`)
+- Pass counters (`"Thinking · pass 3"`)
 
 ## Non-Goals
 
 - No changes to backend contracts, store, router, or websocket handling.
 - No new components, no new utils, no global style tokens.
 - No extraction of a reusable `<PhaseCard>` until a second consumer appears.
-- No new unit tests for this component (the panel has none today; adding one
-  for this change would be inconsistent with the rest of the codebase).
+- No new unit tests for this component.
+- No expansion of read passages by default — the user wants them collapsed.
 
 ## Architecture
 
-Single-file change. Everything happens inside `research-process-panel.vue`:
-
-1. **Phase classifier** — a pure function `phaseOf(event): PhaseView` that maps a
-   `ResearchProgressEvent` (or `ResearchAuditStep`) into one of seven phases
-   (`search`, `locate`, `read`, `cite`, `think`, `answer`, `error`). Returns the
-   icon, headline, badge text, one-line summary, and the items preview.
-
-2. **Renderer** — replaces the existing `eventTitle` / `eventDetail` /
-   `eventItems` helpers and the three-branch template (`hasAuditTrail` →
-   `events` → `legacyTools` → empty) with a single card loop that consumes
-   `PhaseView[]`.
-
-3. **Three branches preserved** — audit-trail-first, then live events, then
-   legacy tools, then empty. The branch only changes which source array feeds
-   the classifier.
-
-4. **Audit ledger** (cited / read / candidate groups) — kept as-is structurally,
-   re-skinned so each row uses the same card shape as the phase cards.
-
-## Phase Model
-
-Each event is classified into exactly one phase. The classifier lives in the
-script setup as `phaseOf(event)` and returns a typed shape:
+Single-file change in `research-process-panel.vue`. The phase classifier from Tasks 1–3 stays; its output shape is simplified:
 
 ```ts
 type Phase = 'search' | 'locate' | 'read' | 'cite' | 'think' | 'answer' | 'error';
 
+interface PhaseItem {
+  key: string | number;
+  title: string;
+  text: string;
+}
+
 interface PhaseView {
-  key: string;
+  key: string | number;
   phase: Phase;
   state: 'running' | 'completed' | 'failed';
-  headline: string;       // e.g. "Searching papers", "Thinking · pass 3"
-  badge: string;          // e.g. "1 paper", "5 passages", "346 ms"
-  oneLiner: string;       // context line: query, page list, token count
-  durationMs?: number;    // shown as muted suffix on the badge
-  items: PhaseItem[];     // up to 10, with optional text/title for preview
+  headline: string;       // e.g. "Searched papers"
+  decision: string;       // think-only: "Decided to search papers"
+  detail: string;         // read-only: page list; error-only: error message
+  items: PhaseItem[];
 }
 ```
 
-### Phase rules
+Differences from the previous model:
+- **Drop** `badge` field (count info now lives in `items`).
+- **Drop** `durationMs` field (internal plumbing, never shown).
+- **Add** `decision` field (think phase only).
+- **Add** `detail` field for the page list / error message (used by read and error).
 
-| Phase | Trigger | Headline | Badge | OneLiner |
-|---|---|---|---|---|
-| `search` | `tool in {search_paper_candidates}` | "Searching papers" / "Searched papers" | paper count | query (or paper title if exactly one) |
-| `locate` | `tool in {find_reading_locations}` | "Locating sections" / "Located sections" | location count | query + `· Xms` if available |
-| `read` | `tool in {read_locations}` | "Reading passages" / "Read passages" | passage count | "pages 1, 2, 3" |
-| `cite` | `tool in {get_citation_edges}` | "Tracing citations" / "Traced citations" | edge count | — |
-| `think` | `type in {model_call_started, model_call_completed}` | "Thinking · pass N" / "Thinking completed" | duration | tokens (only if > 0) |
-| `answer` | `type in {answer_completed}` | "Answer prepared" | — | — |
-| `error` | `type in {job_failed, job_cancelled}` | "Research failed" / "Research cancelled" | error type | error message |
+The rendering pipeline stays the same:
 
-Anything that does not match falls through to a neutral `research-progress`
-card (preserves current behavior for unknown tools).
+1. `buildPhaseView(event, index)` returns a `PhaseView`.
+2. `presentedPhaseCards` / `presentedAuditPhaseCards` computeds feed the two template branches.
+3. The audit ledger (cited / read / candidate groups) keeps its three-group structure but uses the same minimal card shape.
 
-### Item previews
+## Phase Model
 
-- `search` → `output.papers[]` → title + (page / section if present)
-- `locate` → `output.locations[]` → section + page
-- `read` → `output.evidence[]` → section + first 3 lines of quote
-- `cite` → `output.edges[]` → short label
-- others → empty
+| Phase | Headline | Items content | Detail |
+|---|---|---|---|
+| `search` | "Searched papers" | `output.papers[].title` | — |
+| `locate` | "Located sections" | `output.locations[].section` (+ page) | — |
+| `read` | "Read passages" | `output.evidence[]` (collapsed) | "pages 1, 2, 3" |
+| `cite` | "Traced citations" | `output.edges[].label` | — |
+| `think` | "Reasoning" | — | `decision` (derived from next event) |
+| `answer` | "Answer prepared" | — | — |
+| `error` | "Research failed" | — | error message |
 
-Max 10 items. Max 3 lines of quote text with ellipsis. Collapsed by default for
-reads; expanded on click. Search/locate previews are always visible (short).
+The "running" variants are kept in the data model so the icon can pulse, but the headlines shown to the user are the completed form. There is no "Searching papers…" / "Searched papers" split — just "Searched papers" once a result arrives, with the icon pulsing while it runs.
+
+### Decision derivation for think
+
+The model_call_completed event itself does not say what was decided — the decision is implicit in what the model did next. Derive:
+
+- If next event is `search_paper_candidates` → "Decided to search papers"
+- If next event is `find_reading_locations` → "Decided to locate sections"
+- If next event is `read_locations` → "Decided to read passages"
+- If next event is `get_citation_edges` → "Decided to trace citations"
+- If next event is `answer_completed` → "Decided to answer"
+- Otherwise → "Reasoning" (no decision available yet)
+
+Helper: `decisionOf(event, allEvents, index)` looks at `allEvents[index + 1]`.
 
 ## Layout
 
 ```
-┌───────────────────────────────────────────────────────────────┐
-│  [icon] Reading passages                       [5 passages]   │
-│         Reading passages · 5 evidence                         │
-│         pages 1, 2, 3, 5, 10                                 │
-│  ─────────────────────────────────────────────────────────────│
-│  ▸ Abstract · p. 1                                           │
-│    The dominant sequence transduction models…                 │
-│  ▸ 3 Model Architecture · p. 2                               │
-│    Most competitive neural sequence…                         │
-│  ▸ 3.1 Encoder and Decoder Stacks · p. 3                     │
-│    Encoder: The encoder is composed of a stack of N=6…        │
-└───────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│ ✨ Decided to search papers                         │  ← think: minimal decision line
+├─────────────────────────────────────────────────────┤
+│ 🔍 Searched papers                                  │  ← search: just paper name(s)
+│    Attention Is All You Need                         │
+├─────────────────────────────────────────────────────┤
+│ 📍 Located sections                                 │  ← locate: just section names
+│    3 Model Architecture · p. 2                       │
+│    3.1 Encoder and Decoder Stacks · p. 3             │
+│    3.2 Attention · p. 4                              │
+├─────────────────────────────────────────────────────┤
+│ 📖 Read passages                                    │  ← read: collapsed passage list
+│    pages 1, 2, 3, 5, 10                              │
+│    ▸ 5 passages                                      │
+├─────────────────────────────────────────────────────┤
+│ ✅ Answer prepared                                   │
+└─────────────────────────────────────────────────────┘
 ```
 
-Each phase card has:
+Each card has only:
 
-- **Icon** — left rail, 28px square with phase-specific background tint using
-  `--color-research-soft-bg` for active, `--color-surface-alt` for completed.
-- **Headline + state pill** — "Reading passages" with `running` / `done` /
-  `failed` badge.
-- **Count badge** — right-aligned, monospace count.
-- **One-liner** — muted, below headline.
-- **Item list** — collapsible, optional, only for phases with items.
-- **Connector** — vertical line between cards (kept from current CSS), now
-  spanning the icon column instead of a generic dot.
+- **Icon** — left rail, 24×24, with `--color-research` for active, `--color-success` for completed, `--color-error` for failed.
+- **Headline** — short action name (no badges, no counts).
+- **Items / detail / decision** — the actual useful content. No metric plumbing.
 
-### Audit ledger re-skin
+For `read` the items are inside a `<details>` element so they start collapsed and only expand on click.
 
-The cited / read / candidate groups stay. Each evidence row becomes the same
-card shape with a `ledger` variant (no icon, count badge moved to title row).
-Click-to-open-reference behavior preserved.
+For `think` the headline is "Reasoning" and the `decision` text appears below.
+
+## Status header
+
+A single line above the timeline:
+
+- **Running**: pulse animation + current activity (e.g. "Searching papers"). The activity comes from the latest event's headline.
+- **Idle / completed**: a check icon + "Research complete".
+- **Failed**: a warning icon + "Research failed".
+
+No counts, no metrics, no "X events processed".
 
 ## State Mapping
+
+The card state stays on the data model but is only used for icon color and the running pulse animation — never rendered as text.
 
 | Source state | Card state |
 |---|---|
@@ -143,53 +153,41 @@ Click-to-open-reference behavior preserved.
 
 Color tokens (existing, no additions):
 
-- `running` → `--color-warning`
+- `running` → `--color-research` (pulsing)
 - `completed` → `--color-success`
 - `failed` → `--color-error`
 
 ## Edge Cases
 
-- **No events + not running** → existing empty state, copy unchanged.
-- **Running with no events yet** → single "Researching…" card with pulse
-  animation on the icon.
-- **Long evidence quote** → max 3 lines, ellipsis, click to expand.
-- **Unknown tool/type** → falls through to neutral `research-progress` card.
-- **Streaming → audit transition** — when `researchAuditTrail` arrives,
-  replace the timeline; preserve the user's scroll position by anchoring to the
-  last phase card (use `scrollIntoView({ block: 'nearest' })` on the last
-  card's key change).
-- **Same phase repeated** — consecutive `think` events collapse to one card
-  showing the latest pass + a `· pass 3 of 5` hint. Implemented as a post-
-  process step on `presentedPhases`; does not change backend semantics.
+- **No events + not running** → existing empty state.
+- **Running with no events yet** → status header pulses; timeline area shows a single pulsing card.
+- **Long evidence quote** → 3-line clamp, ellipsis, manual click to expand.
+- **Unknown tool/type** → falls through to a "Research progress" card with the icon and items if available.
+- **Streaming → audit transition** → audit replaces the live timeline; same card shape.
+- **Multiple think events** → all are shown (no collapsing — each is its own decision line).
 
 ## Out of Scope (intentionally)
 
 - Animations beyond the existing pulse on the running state.
 - Sound or haptic feedback.
-- New i18n keys (the panel currently uses hard-coded English; preserving that
-  keeps the diff small and avoids a separate locale review).
+- New i18n keys (the panel uses hard-coded English; preserving that keeps the diff small).
 - New global tokens or theme changes.
+- Re-introducing any of the dropped metrics anywhere in the panel.
 
 ## Verification
 
 Run in dev mode and walk through:
 
-1. Open a chat answer that has a live research trace — confirm each phase
-   renders as a distinct card with the correct icon, badge, and items.
-2. Wait for `answer_completed` — confirm the audit trail replaces the live
-   timeline and the ledger groups (cited / read / candidate) render as cards.
-3. Trigger a `job_failed` (or replay a fixture) — confirm the error card shows
-   the full error message.
+1. Open a chat answer with a live research trace — confirm: no badges, no state pills, no duration/tokens, paper names visible for search, sections visible for locate, page list and collapsed passages for read, decision line for think.
+2. Wait for `answer_completed` — confirm the audit trail replaces the live timeline and the ledger groups (cited / read / candidate) render with the same minimal shape.
+3. Trigger a `job_failed` (or replay a fixture) — confirm the error card shows the error message.
 4. Confirm dark mode parity — only existing tokens are referenced.
 5. Run `pnpm typecheck` and `pnpm lint` from `frontend/`.
 
 ## Risks
 
-- **Low**: Vue template restructure is local. The risk is visual regression,
-  not functional. Mitigated by preserving the data flow exactly.
-- **Low**: Phase classifier must not miss any current event type. Mitigated by
-  the fallthrough rule and by keeping the existing `eventTitle` string
-  contracts for the top status strip during a transition window.
+- **Low**: visual redesign is local. The data model stays compatible — only the rendering shape changes.
+- **Low**: existing helpers (`eventTitle`, `eventDetail`, etc.) become unused and are deleted in Task 5.
 
 ## Rollback
 

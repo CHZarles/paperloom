@@ -2,316 +2,182 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers-extended-cc:subagent-driven-development (recommended) or superpowers-extended-cc:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Refactor `frontend/src/views/chat/modules/research-process-panel.vue` so each research phase (search, locate, read, cite, think, answer, error) renders as a visually distinct card with icon, count badge, and item preview, replacing the current flat bullet timeline.
+**Goal:** Drop chrome (badges, state pills, duration tokens, pass counters) from the research process panel. Each card shows only the useful info: paper names for search, sections for locate, page list and collapsed passages for read, and a one-line decision for think.
 
-**Architecture:** Single-file Vue 3 `<script setup lang="ts">` change. A pure helper `phaseOf()` + `buildPhaseView()` classifies each `ResearchProgressEvent` (and `ResearchAuditStep`) into a typed `PhaseView`. The template replaces the three-branch `<article>` loop with a single phase-card loop driven by `presentedPhaseCards` / `presentedAuditPhaseCards`. Scoped CSS adds `.phase-card` anatomy (icon rail, headline + state pill, count badge, one-liner, items list, connector). No new components, no new utils, no new dependencies.
+**Architecture:** Single-file Vue 3 `<script setup lang="ts">` change in `frontend/src/views/chat/modules/research-process-panel.vue`. Simplify the existing `PhaseView` type (drop `badge` and `durationMs`, add `decision` and `detail`). Adjust `buildPhaseView`, `presentedPhaseCards`, and `presentedAuditPhaseCards`. Simplify the live-events and audit-step template branches. Refresh the top status strip. No new components, no new dependencies.
 
 **Tech Stack:** Vue 3 (`<script setup lang="ts">`), UnoCSS tokens, Iconify via `SvgIcon`. TypeScript. No new dependencies.
 
-**User Verification:** YES — user opens dev mode (`pnpm dev` in `frontend/` with backend running on `:8081`) and walks through the spec's verification checklist after Task 5 (verification gated by Task 6).
+**User Verification:** YES — user opens dev mode (`pnpm dev` in `frontend/` with backend on `:8081`) and walks through the spec's verification checklist after Task 5.7 (verification gated by Task 6).
 
 ---
 
 ## File Structure
 
-**Modify:** `frontend/src/views/chat/modules/research-process-panel.vue` (one file, ~620 lines → ~770 lines)
+**Modify:** `frontend/src/views/chat/modules/research-process-panel.vue` (one file, currently ~830 lines after Tasks 1–3, will shrink by ~30 lines after simplifications).
 
-No new files. The component will grow, but it has one responsibility (render the research process panel) and remains under 800 lines. Extracting `<PhaseCard>` would be premature until a second consumer appears (YAGNI).
+No new files. The component has one responsibility and stays focused.
 
 ---
 
 ## Conventions for every task
 
-- **Verify command:** `cd frontend && pnpm typecheck && pnpm lint`
-- **Commit subject:** `feat(chat): …` (matches `pnpm sa git-commit -l=zh-cn` style — but use plain English here, the implementer can run `pnpm commit` if they want translation)
-- **Pre-commit hook:** `simple-git-hooks` runs `cd frontend && pnpm typecheck && pnpm lint && git diff --exit-code` before every commit. If `pnpm lint --fix` rewrites files, re-stage and retry.
+- **Verify command:** `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint`
+- **Commit subject:** `feat(chat): …`
+- **Pre-commit hook:** `simple-git-hooks` runs `cd frontend && pnpm typecheck && pnpm lint && git diff --exit-code` before every commit.
+- The orchestrator commits work (subagents stage but do not commit) because the `pre-commit-check-tasks` hook blocks commits while pending tasks exist in this multi-task plan. Subagents should leave changes staged and report back.
 
 ---
 
-## Task 1: Add phase classifier and PhaseView type
+## Task 3.5: Simplify phase cards
 
-**Goal:** Introduce a typed `Phase` / `PhaseView` model and a pure `buildPhaseView()` helper. Add a `presentedPhaseCards` computed alongside the existing `presentedEvents`. The template still uses the old shape — no visual change yet.
+**Goal:** Drop count badges, state pills, duration suffix, and token counts from the rendered cards. For think phase, derive a one-line decision from the next event. Update the `PhaseView` type to match.
 
 **Files:**
 - Modify: `frontend/src/views/chat/modules/research-process-panel.vue`
 
 **Acceptance Criteria:**
-- [ ] `Phase` and `PhaseView` types defined at the top of `<script setup>`
-- [ ] `buildPhaseView(input, index)` returns a `PhaseView` for all 7 phases
-- [ ] `getPhaseIcon(phase)` returns an Iconify name (e.g. `lucide:search`)
-- [ ] `presentedPhaseCards` computed produces one `PhaseView` per event
+- [ ] `PhaseView` no longer has `badge` or `durationMs` fields
+- [ ] `PhaseView` has new `decision` and `detail` fields
+- [ ] `buildPhaseView` no longer calls `badgeOf`; `headlineOf` drops pass-number suffix; think populates `decision`
+- [ ] Live-events template has no count badge, no state pill, no duration span
+- [ ] Audit-step template matches the same simplification
+- [ ] Think events render a "Decided to …" line derived from the next event
+- [ ] Read events render the page list in `detail`
+- [ ] Search events render paper titles in `items`
+- [ ] Locate events render section names in `items`
+- [ ] Read events keep `<details>` collapsed by default (already in place)
 - [ ] `pnpm typecheck` passes
-- [ ] `pnpm lint` passes
-- [ ] Template still renders the old `presentedEvents` — no visual change
+- [ ] `pnpm lint` passes for the modified file
 
-**Verify:** `cd frontend && pnpm typecheck && pnpm lint` → both exit 0.
+**Verify:** `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint` → both exit 0.
 
 **Steps:**
 
-- [ ] **Step 1: Add types and classifier helpers**
+- [ ] **Step 1: Update the `PhaseView` interface**
 
-Add the following block at the top of `<script setup lang="ts">`, immediately after the existing imports and before `const props = defineProps<…>`:
+In `frontend/src/views/chat/modules/research-process-panel.vue`, find the `PhaseView` interface and replace it with:
 
 ```ts
-type Phase = 'search' | 'locate' | 'read' | 'cite' | 'think' | 'answer' | 'error';
-
-interface PhaseItem {
-  key: string | number;
-  title: string;
-  text: string;
-  reference: string;
-}
-
 interface PhaseView {
   key: string | number;
   phase: Phase;
   state: 'running' | 'completed' | 'failed';
-  headline: string;
-  badge: string;
-  oneLiner: string;
-  durationMs?: number;
+  headline: string;       // e.g. "Searched papers", "Reasoning"
+  decision: string;       // think-only: "Decided to search papers"
+  detail: string;         // read-only: "pages 1, 2, 3"; error-only: error message
   items: PhaseItem[];
 }
+```
 
-interface PhaseInput {
-  type?: string;
-  eventType?: string;
-  tool?: string;
-  status?: string;
-  attempt?: number;
-  durationMs?: number;
-  message?: string;
-  errorType?: string;
-  input?: Record<string, any>;
-  output?: Record<string, any>;
-  usage?: { totalTokens?: number };
-}
+Keep `Phase` and `PhaseItem` as-is.
 
-function eventTypeOf(input: PhaseInput): string {
-  return input.eventType || input.type || '';
-}
+- [ ] **Step 2: Replace `headlineOf` and add `decisionOf`**
 
-function phaseOf(input: PhaseInput): Phase {
-  const type = eventTypeOf(input);
-  if (type === 'job_failed' || type === 'job_cancelled') return 'error';
-  if (input.tool === 'search_paper_candidates') return 'search';
-  if (input.tool === 'find_reading_locations') return 'locate';
-  if (input.tool === 'read_locations') return 'read';
-  if (input.tool === 'get_citation_edges') return 'cite';
-  if (type === 'model_call_started' || type === 'model_call_completed') return 'think';
-  if (type === 'answer_completed') return 'answer';
-  return 'think';
-}
+Find the existing `headlineOf` function (in the helpers block at the top of `<script setup>`). Replace it with:
 
-function stateOf(input: PhaseInput): 'running' | 'completed' | 'failed' {
-  const type = eventTypeOf(input);
-  if (type === 'job_failed' || input.status === 'failed') return 'failed';
-  if (type === 'tool_started' || type === 'model_call_started') return 'running';
-  return 'completed';
-}
-
-function getPhaseIcon(phase: Phase): string {
+```ts
+function headlineOf(phase: Phase, _state: 'running' | 'completed' | 'failed'): string {
   switch (phase) {
-    case 'search': return 'lucide:search';
-    case 'locate': return 'lucide:map-pin';
-    case 'read': return 'lucide:book-open';
-    case 'cite': return 'lucide:link';
-    case 'think': return 'lucide:sparkles';
-    case 'answer': return 'lucide:check-circle';
-    case 'error': return 'lucide:alert-triangle';
-  }
-}
-
-function headlineOf(input: PhaseInput, phase: Phase, state: 'running' | 'completed' | 'failed'): string {
-  if (phase === 'search') return state === 'running' ? 'Searching papers' : 'Searched papers';
-  if (phase === 'locate') return state === 'running' ? 'Locating sections' : 'Located sections';
-  if (phase === 'read') return state === 'running' ? 'Reading passages' : 'Read passages';
-  if (phase === 'cite') return state === 'running' ? 'Tracing citations' : 'Traced citations';
-  if (phase === 'think') {
-    const attempt = input.attempt && input.attempt > 1 ? ` · pass ${input.attempt}` : '';
-    return `Thinking${attempt}`;
-  }
-  if (phase === 'answer') return 'Answer prepared';
-  if (phase === 'error') {
-    return eventTypeOf(input) === 'job_cancelled' ? 'Research cancelled' : 'Research failed';
+    case 'search': return 'Searched papers';
+    case 'locate': return 'Located sections';
+    case 'read': return 'Read passages';
+    case 'cite': return 'Traced citations';
+    case 'think': return 'Reasoning';
+    case 'answer': return 'Answer prepared';
+    case 'error': return 'Research failed';
   }
   return 'Research progress';
 }
+```
 
-function pluralize(n: number, singular: string): string {
-  return `${n} ${singular}${n === 1 ? '' : 's'}`;
-}
+Note: dropped the pass-number suffix. The second argument is kept for signature compatibility but unused.
 
-function badgeOf(input: PhaseInput, phase: Phase): string {
-  const output = input.output || {};
-  switch (phase) {
-    case 'search': return pluralize(Number(output.resultCount || 0), 'paper');
-    case 'locate': return pluralize(Number(output.resultCount || 0), 'location');
-    case 'read': return pluralize(Number(output.evidenceCount || output.readCount || 0), 'passage');
-    case 'cite': return pluralize(Number(output.edgeCount || 0), 'edge');
-    case 'think': return input.durationMs ? `${input.durationMs} ms` : '';
-    case 'error': return input.errorType || '';
-    default: return '';
+Add a new `decisionOf` helper just below:
+
+```ts
+function decisionOf(allEvents: PhaseInput[], index: number): string {
+  const next = allEvents[index + 1];
+  if (!next) return '';
+  const tool = next.tool || '';
+  const type = next.eventType || next.type || '';
+  if (tool === 'search_paper_candidates' || type === 'tool_started' && tool === 'search_paper_candidates') {
+    return 'Decided to search papers';
   }
+  if (tool === 'find_reading_locations') return 'Decided to locate sections';
+  if (tool === 'read_locations') return 'Decided to read passages';
+  if (tool === 'get_citation_edges') return 'Decided to trace citations';
+  if (type === 'answer_completed') return 'Decided to answer';
+  return '';
 }
+```
 
-function oneLinerOf(input: PhaseInput, phase: Phase): string {
-  const inputData = input.input || {};
+- [ ] **Step 3: Simplify `oneLinerOf` → `detailOf`**
+
+Find `oneLinerOf` and rename it to `detailOf`. Drop the search paper-title branch (moved into items), drop the duration/token branch (deleted), drop the think oneLiner (now `decision`), and drop the error branch (now in `detail`). Keep only the read page-list branch and the error branch:
+
+```ts
+function detailOf(input: PhaseInput, phase: Phase): string {
   const output = input.output || {};
   switch (phase) {
-    case 'search': {
-      const query = String(inputData.query || '').trim();
-      const count = Number(output.resultCount || 0);
-      if (count === 1 && Array.isArray(output.papers) && output.papers.length) {
-        return String(output.papers[0].title || query);
-      }
-      return query;
-    }
-    case 'locate': {
-      const query = String(inputData.query || '').trim();
-      return query || 'Locating relevant sections';
-    }
     case 'read': {
       const pages = Array.isArray(output.pages) ? output.pages : [];
       return pages.length ? `pages ${pages.join(', ')}` : '';
-    }
-    case 'think': {
-      const tokens = Number(input.usage?.totalTokens || 0);
-      return tokens > 0 ? `${tokens.toLocaleString()} tokens` : '';
     }
     case 'error': return input.message || 'The harness stopped before completing the answer.';
     default: return '';
   }
 }
+```
 
-function itemsOf(input: PhaseInput, phase: Phase): PhaseItem[] {
-  const output = input.output || {};
-  if (phase === 'search' && Array.isArray(output.papers)) {
-    return output.papers.slice(0, 10).map((p: any, i: number) => ({
-      key: p.paperId || i,
-      title: String(p.title || ''),
-      text: '',
-      reference: String(p.paperId || '')
-    }));
-  }
-  if (phase === 'locate' && Array.isArray(output.locations)) {
-    return output.locations.slice(0, 10).map((l: any, i: number) => ({
-      key: l.locationRef || i,
-      title: [l.section, l.page ? `p. ${l.page}` : ''].filter(Boolean).join(' · '),
-      text: '',
-      reference: String(l.locationRef || '')
-    }));
-  }
-  if (phase === 'read' && Array.isArray(output.evidence)) {
-    return output.evidence.slice(0, 10).map((e: any, i: number) => ({
-      key: e.evidenceId || i,
-      title: [e.section, e.page ? `p. ${e.page}` : ''].filter(Boolean).join(' · '),
-      text: String(e.quote || '').slice(0, 240),
-      reference: String(e.evidenceId || '')
-    }));
-  }
-  return [];
-}
+- [ ] **Step 4: Delete `badgeOf` and the duration-token plumbing**
 
-function buildPhaseView(input: PhaseInput, index: number): PhaseView {
+Delete the entire `badgeOf` function. Also remove any reference to `pluralize` if it becomes unused.
+
+- [ ] **Step 5: Update `buildPhaseView` to use the new helpers**
+
+Find `buildPhaseView` and replace it with:
+
+```ts
+function buildPhaseView(input: PhaseInput, allEvents: PhaseInput[], index: number): PhaseView {
   const phase = phaseOf(input);
   const state = stateOf(input);
   return {
     key: `${phase}:${index}:${input.attempt ?? ''}`,
     phase,
     state,
-    headline: headlineOf(input, phase, state),
-    badge: badgeOf(input, phase),
-    oneLiner: oneLinerOf(input, phase),
-    durationMs: input.durationMs,
+    headline: headlineOf(phase, state),
+    decision: phase === 'think' ? decisionOf(allEvents, index) : '',
+    detail: detailOf(input, phase),
     items: itemsOf(input, phase)
   };
 }
 ```
 
-- [ ] **Step 2: Add `presentedPhaseCards` computed**
+Note: `buildPhaseView` now takes `allEvents` so it can look ahead for the think decision.
 
-Below the existing `presentedEvents` computed, add:
+- [ ] **Step 6: Update `presentedPhaseCards` and `presentedAuditPhaseCards`**
+
+Find both computeds and update them to pass the events array:
 
 ```ts
 const presentedPhaseCards = computed(() =>
-  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => buildPhaseView(event, index))
+  events.value
+    .slice(-MAX_VISIBLE_EVENTS)
+    .map((event, index, all) => buildPhaseView(event, all, index))
 );
+
+const presentedAuditPhaseCards = computed(() => {
+  const inputs = auditSteps.value.map(auditStepToPhaseInput);
+  return inputs.map((input, index, all) => buildPhaseView(input, all, index));
+});
 ```
 
-Template still references `presentedEvents`. This is intentional — Task 2 swaps the binding.
+- [ ] **Step 7: Simplify the live-events template branch**
 
-- [ ] **Step 3: Run verification**
-
-Run: `cd frontend && pnpm typecheck && pnpm lint`
-Expected: both exit 0, no template change visible in browser.
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /home/charles/PaiSmart
-git add frontend/src/views/chat/modules/research-process-panel.vue
-git commit -m "feat(chat): add phase classifier for research process panel"
-```
-
----
-
-## Task 2: Render phase cards for live events
-
-**Goal:** Replace the `v-else-if="events.length"` branch of the template with a phase-card loop driven by `presentedPhaseCards`. Add scoped CSS for `.phase-card` anatomy.
-
-**Files:**
-- Modify: `frontend/src/views/chat/modules/research-process-panel.vue`
-
-**Acceptance Criteria:**
-- [ ] Live-events branch renders one `.phase-card` per event
-- [ ] Each card shows icon, headline, state pill, count badge, one-liner
-- [ ] Read/search/locate cards show items list (collapsed for read, visible for search/locate)
-- [ ] Other branches (audit, legacy, empty) unchanged
-- [ ] `pnpm typecheck` passes
-- [ ] `pnpm lint` passes
-
-**Verify:** `cd frontend && pnpm typecheck && pnpm lint` → both exit 0. Manual: open a chat answer with live research events in dev mode (`pnpm dev` in `frontend/`) and confirm each phase renders as a distinct card.
-
-**Steps:**
-
-- [ ] **Step 1: Replace the events branch template**
-
-Find this block in the template:
+Find the `<div v-else-if="events.length" class="research-process__timeline">` block. Replace its inner content (the `<article>` loop) with:
 
 ```vue
-    <div v-else-if="events.length" class="research-process__timeline">
-      <article
-        v-for="event in presentedEvents"
-        :key="event.key"
-        class="research-process__event"
-        :class="`is-${event.state}`"
-      >
-        <span class="research-process__marker" />
-        <div class="research-process__event-body">
-          <div class="research-process__event-heading">
-            <strong>{{ event.title }}</strong>
-            <span v-if="event.durationMs">{{ event.durationMs }} ms</span>
-          </div>
-          <div v-if="event.detail" class="research-process__event-detail">{{ event.detail }}</div>
-          <div v-if="event.items.length" class="research-process__results">
-            <div v-for="item in event.items" :key="item.key" class="research-process__result">
-              <div v-if="item.title" class="research-process__result-title">{{ item.title }}</div>
-              <p v-if="item.text" class="research-process__result-text">{{ item.text }}</p>
-              <div v-if="item.reference" class="research-process__result-ref">
-                {{ item.reference }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </article>
-    </div>
-```
-
-Replace it with:
-
-```vue
-    <div v-else-if="events.length" class="research-process__timeline">
       <article
         v-for="card in presentedPhaseCards"
         :key="card.key"
@@ -324,12 +190,9 @@ Replace it with:
         <div class="phase-card__body">
           <div class="phase-card__heading">
             <strong>{{ card.headline }}</strong>
-            <span class="phase-card__state-pill" :class="`is-${card.state}`">
-              {{ card.state }}
-            </span>
-            <span v-if="card.badge" class="phase-card__badge">{{ card.badge }}</span>
           </div>
-          <div v-if="card.oneLiner" class="phase-card__one-liner">{{ card.oneLiner }}</div>
+          <div v-if="card.decision" class="phase-card__decision">{{ card.decision }}</div>
+          <div v-if="card.detail" class="phase-card__detail">{{ card.detail }}</div>
           <div v-if="card.items.length && card.phase !== 'read'" class="phase-card__items">
             <div v-for="item in card.items" :key="item.key" class="phase-card__item">
               <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
@@ -344,335 +207,265 @@ Replace it with:
           </details>
         </div>
       </article>
-    </div>
 ```
 
-- [ ] **Step 2: Add scoped CSS for `.phase-card`**
+Differences from the previous template:
+- No `.phase-card__state-pill`
+- No `.phase-card__badge`
+- New `.phase-card__decision` (for think)
+- New `.phase-card__detail` (replaces `.phase-card__one-liner`, only used for read and error)
+- `.phase-card__one-liner` removed
 
-Find the closing `</style>` tag. Just before it, add:
+- [ ] **Step 8: Simplify the audit-step template branch**
+
+Find the `<div v-if="presentedAuditPhaseCards.length" class="research-process__timeline">` block inside the audit branch. Replace its `<article>` loop with the same simplified shape:
+
+```vue
+      <article
+        v-for="card in presentedAuditPhaseCards"
+        :key="card.key"
+        class="phase-card"
+        :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
+      >
+        <div class="phase-card__icon">
+          <SvgIcon :icon="getPhaseIcon(card.phase)" class="text-16" />
+        </div>
+        <div class="phase-card__body">
+          <div class="phase-card__heading">
+            <strong>{{ card.headline }}</strong>
+          </div>
+          <div v-if="card.decision" class="phase-card__decision">{{ card.decision }}</div>
+          <div v-if="card.detail" class="phase-card__detail">{{ card.detail }}</div>
+          <div v-if="card.items.length && card.phase !== 'read'" class="phase-card__items">
+            <div v-for="item in card.items" :key="item.key" class="phase-card__item">
+              <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
+            </div>
+          </div>
+          <details v-if="card.items.length && card.phase === 'read'" class="phase-card__items phase-card__items--collapsed">
+            <summary>{{ card.items.length }} passage{{ card.items.length === 1 ? '' : 's' }}</summary>
+            <div v-for="item in card.items" :key="item.key" class="phase-card__item">
+              <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
+              <p v-if="item.text" class="phase-card__item-text">{{ item.text }}</p>
+            </div>
+          </details>
+        </div>
+      </article>
+```
+
+- [ ] **Step 9: Update scoped CSS**
+
+Find the `.phase-card__state-pill`, `.phase-card__badge`, and `.phase-card__one-liner` rules in `<style scoped>`. **Delete** them.
+
+Add new rules for `.phase-card__decision` and `.phase-card__detail`:
 
 ```css
-.phase-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px 0;
-}
-
-.phase-card:not(:last-child)::after {
-  position: absolute;
-  top: 44px;
-  bottom: -4px;
-  left: 15px;
-  width: 1px;
-  background: var(--color-border);
-  content: '';
-}
-
-.phase-card__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--color-research-soft-bg);
+.phase-card__decision {
+  margin-top: 2px;
   color: var(--color-research);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.phase-card.is-completed .phase-card__icon {
-  background: var(--color-surface-alt);
-  color: var(--color-success);
-}
-
-.phase-card.is-failed .phase-card__icon {
-  background: var(--color-surface-alt);
-  color: var(--color-error);
-}
-
-.phase-card.is-running .phase-card__icon {
-  animation: phase-card-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes phase-card-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-
-.phase-card__body {
-  min-width: 0;
-}
-
-.phase-card__heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 13px;
-}
-
-.phase-card__heading strong {
-  font-weight: 700;
-}
-
-.phase-card__state-pill {
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.phase-card__state-pill.is-running {
-  background: rgba(183, 121, 31, 0.15);
-  color: var(--color-warning);
-}
-
-.phase-card__state-pill.is-completed {
-  background: rgba(22, 128, 57, 0.12);
-  color: var(--color-success);
-}
-
-.phase-card__state-pill.is-failed {
-  background: rgba(217, 45, 32, 0.12);
-  color: var(--color-error);
-}
-
-.phase-card__badge {
-  margin-left: auto;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--color-primary-soft-bg);
-  color: var(--color-text);
-  font-family: var(--font-utility);
-  font-size: 11px;
-}
-
-.phase-card__one-liner {
+.phase-card__detail {
   margin-top: 4px;
   color: var(--color-text-muted);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+```
 
-.phase-card__items {
-  margin-top: 8px;
-  border-left: 2px solid var(--color-border);
-  padding-left: 10px;
-}
+Also update the running-state CSS so the icon pulses:
 
-.phase-card__items--collapsed > summary {
-  cursor: pointer;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  list-style: none;
-}
-
-.phase-card__items--collapsed > summary::-webkit-details-marker {
-  display: none;
-}
-
-.phase-card__item {
-  padding: 4px 0;
-}
-
-.phase-card__item-title {
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.phase-card__item-text {
-  margin: 2px 0 0;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 1.55;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+```css
+.phase-card.is-running .phase-card__icon {
+  animation: phase-card-pulse 1.6s ease-in-out infinite;
 }
 ```
 
-- [ ] **Step 3: Run verification**
+(Already in place from Task 2 — verify it is still there.)
 
-Run: `cd frontend && pnpm typecheck && pnpm lint`
+- [ ] **Step 10: Run verification**
+
+Run: `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint`
 Expected: both exit 0.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 11: Commit**
+
+The orchestrator commits (subagents leave changes staged).
 
 ```bash
 cd /home/charles/PaiSmart
 git add frontend/src/views/chat/modules/research-process-panel.vue
-git commit -m "feat(chat): render research phases as distinct cards"
+git commit -m "feat(chat): simplify phase cards, drop badges and metrics"
 ```
 
 ---
 
-## Task 3: Render phase cards for audit steps
+## Task 3.6: Simplify top status strip
 
-**Goal:** Reuse the same phase-card shape for `ResearchAuditStep` (post-hoc audit trail). Add `presentedAuditPhaseCards` and replace the audit timeline template.
+**Goal:** Status header shows only a pulse + current activity while running, a check when complete. No counts, no verbose activity labels with metrics.
 
 **Files:**
 - Modify: `frontend/src/views/chat/modules/research-process-panel.vue`
 
 **Acceptance Criteria:**
-- [ ] Audit steps render as `.phase-card` (same shape as live events)
-- [ ] Audit step `kind` (e.g. `find_reading_locations`) is mapped to a `tool` name before classification
+- [ ] Header has a small icon (pulse when running, check when complete, warning when failed)
+- [ ] Header shows the latest event's headline (or "Researching…" / "Research complete" / "Research failed")
+- [ ] No badge, no count, no metrics anywhere in the header
 - [ ] `pnpm typecheck` passes
-- [ ] `pnpm lint` passes
+- [ ] `pnpm lint` passes for the modified file
 
-**Verify:** `cd frontend && pnpm typecheck && pnpm lint` → both exit 0. Manual: open a chat answer with a complete audit trail (after answer completes) and confirm phase cards render.
+**Verify:** `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint` → both exit 0.
 
 **Steps:**
 
-- [ ] **Step 1: Add `auditStepToPhaseInput` adapter**
+- [ ] **Step 1: Replace the status strip template**
 
-Below the existing `presentedPhaseCards` computed, add:
-
-```ts
-function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
-  return {
-    tool: step.kind || undefined,
-    status: step.status || undefined,
-    durationMs: step.durationMs || undefined,
-    message: step.message || undefined,
-    input: step.query ? { query: step.query } : {},
-    output: {}
-  };
-}
-
-const presentedAuditPhaseCards = computed(() =>
-  auditSteps.value.map((step, index) => buildPhaseView(auditStepToPhaseInput(step), index))
-);
-```
-
-- [ ] **Step 2: Replace the audit timeline template**
-
-Find this block:
+Find the `<div class="research-process__status">` block in the template. Replace it with:
 
 ```vue
-      <div v-if="auditSteps.length" class="research-process__timeline">
-        <article
-          v-for="step in auditSteps"
-          :key="step.stepId || `${step.kind}:${step.query}`"
-          class="research-process__event"
-          :class="`is-${step.status || 'completed'}`"
-        >
-          <span class="research-process__marker" />
-          <div class="research-process__event-body">
-            <div class="research-process__event-heading">
-              <strong>{{ auditStepTitle(step) }}</strong>
-              <span v-if="step.durationMs">{{ step.durationMs }} ms</span>
-            </div>
-            <div v-if="auditStepDetail(step)" class="research-process__event-detail">{{ auditStepDetail(step) }}</div>
-          </div>
-        </article>
+    <div class="research-process__status">
+      <div class="research-process__status-icon" :class="`is-${latestPresentedPhase?.state ?? (isRunning ? 'running' : 'idle')}`">
+        <SvgIcon
+          :icon="latestPresentedPhase?.phase === 'error' ? 'lucide:alert-triangle' : (latestPresentedPhase?.phase === 'answer' ? 'lucide:check-circle' : (isRunning ? 'lucide:loader' : 'lucide:sparkles'))"
+          class="text-16"
+        />
       </div>
+      <div class="research-process__status-title">
+        {{
+          latestPresentedPhase?.headline
+            ?? (isRunning ? 'Researching…' : 'Research complete')
+        }}
+      </div>
+    </div>
 ```
 
-Replace it with:
+- [ ] **Step 2: Update `.research-process__status` CSS**
 
-```vue
-      <div v-if="presentedAuditPhaseCards.length" class="research-process__timeline">
-        <article
-          v-for="card in presentedAuditPhaseCards"
-          :key="card.key"
-          class="phase-card"
-          :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
-        >
-          <div class="phase-card__icon">
-            <SvgIcon :icon="getPhaseIcon(card.phase)" class="text-16" />
-          </div>
-          <div class="phase-card__body">
-            <div class="phase-card__heading">
-              <strong>{{ card.headline }}</strong>
-              <span v-if="card.badge" class="phase-card__badge">{{ card.badge }}</span>
-            </div>
-            <div v-if="card.oneLiner" class="phase-card__one-liner">{{ card.oneLiner }}</div>
-          </div>
-        </article>
-      </div>
+Find the existing `.research-process__status-dot`, `.research-process__status-icon`, and `.research-process__marker` rules in `<style scoped>`. Replace the icon rules with:
+
+```css
+.research-process__status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--color-research-soft-bg);
+  color: var(--color-research);
+  flex: 0 0 auto;
+}
+
+.research-process__status-icon.is-running {
+  animation: phase-card-pulse 1.6s ease-in-out infinite;
+}
+
+.research-process__status-icon.is-completed {
+  background: rgba(22, 128, 57, 0.12);
+  color: var(--color-success);
+}
+
+.research-process__status-icon.is-failed {
+  background: rgba(217, 45, 32, 0.12);
+  color: var(--color-error);
+}
+
+.research-process__status-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.research-process__marker {
+  display: none;
+}
 ```
 
-The old `auditStepTitle` and `auditStepDetail` helpers are now unused. **Delete them** along with this replacement:
+- [ ] **Step 3: Update `latestPresentedPhase` if needed**
+
+`latestPresentedPhase` was added in Task 5 of the previous plan; if it doesn't exist yet, add it just below `presentedAuditPhaseCards`:
 
 ```ts
-// DELETE these two functions (they are now unused)
-function auditStepTitle(step: Api.Chat.ResearchAuditStep) {
-  return toolLabel(step.kind || '', step.status === 'running');
-}
-
-function auditStepDetail(step: Api.Chat.ResearchAuditStep) {
-  const parts = [
-    step.query,
-    step.paperIds?.length ? `${step.paperIds.length} papers` : '',
-    step.locationRefs?.length ? `${step.locationRefs.length} locations` : '',
-    step.evidenceRefs?.length ? `${step.evidenceRefs.length} evidence` : '',
-    step.durationMs ? `${step.durationMs} ms` : '',
-    step.message
-  ];
-  return parts.filter(Boolean).join(' · ');
-}
+const latestPresentedPhase = computed<PhaseView | undefined>(() => {
+  if (hasAuditTrail.value && auditSteps.value.length) {
+    const inputs = auditSteps.value.map(auditStepToPhaseInput);
+    return buildPhaseView(inputs[inputs.length - 1], inputs, inputs.length - 1);
+  }
+  const cards = presentedPhaseCards.value;
+  return cards[cards.length - 1];
+});
 ```
 
-Also remove the `latestAuditStep` and `auditStepTitle(step)` reference in the top status strip **only if** you choose to do so in Task 5 (for now, keep `latestAuditStep` but drop the `auditStepTitle` call — replace it with `auditStepToPhaseInput(latestAuditStep).tool` lookup if needed). To keep Task 3 surgical, **leave `latestAuditStep` alone** and only delete `auditStepTitle` / `auditStepDetail`. The top status strip will be reworked in Task 5.
+- [ ] **Step 4: Delete the old status-detail helpers**
 
-- [ ] **Step 3: Run verification**
+Delete `latestPresentedEvent` (no longer referenced). Delete the `.research-process__status-detail`, `.research-process__status-title` unused styles if any are left over.
 
-Run: `cd frontend && pnpm typecheck && pnpm lint`
+- [ ] **Step 5: Run verification**
+
+Run: `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint`
 Expected: both exit 0.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 cd /home/charles/PaiSmart
 git add frontend/src/views/chat/modules/research-process-panel.vue
-git commit -m "feat(chat): render audit steps as phase cards"
+git commit -m "feat(chat): simplify status strip to pulse + activity"
 ```
 
 ---
 
 ## Task 4: Re-skin audit ledger rows as cards
 
-**Goal:** Update each `.research-process__evidence-row` to use the same card shape (count badge in title row, consistent spacing) so the visual language is unified across streaming and post-hoc views. Preserve click-to-open-reference behavior.
+**Goal:** Update each `.research-process__evidence-row` to use the same minimal `.phase-card` shape. Preserve the three audit groups (cited / read but not cited / candidate only) and click-to-open-reference behavior.
 
 **Files:**
 - Modify: `frontend/src/views/chat/modules/research-process-panel.vue`
 
 **Acceptance Criteria:**
-- [ ] Ledger rows show a count badge in the title row (per-group total only — already there)
-- [ ] Rows use the same hover/focus border color as phase cards
+- [ ] Ledger rows render with the same minimal card visual
+- [ ] Three groups preserved
 - [ ] Click on row still emits `openReference`
+- [ ] No count badges, no metrics in ledger row headings
 - [ ] `pnpm typecheck` passes
-- [ ] `pnpm lint` passes
+- [ ] `pnpm lint` passes for the modified file
 
-**Verify:** `cd frontend && pnpm typecheck && pnpm lint` → both exit 0. Manual: open an answer with cited/read/candidate groups and click a row — the reference opens as before.
+**Verify:** `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint` → both exit 0. Manual: click a ledger row, confirm reference opens.
 
 **Steps:**
 
-- [ ] **Step 1: Update ledger row class**
+- [ ] **Step 1: Replace ledger row class binding**
 
-Find `<button class="research-process__evidence-row"`. Replace `class="research-process__evidence-row"` with `class="phase-card phase-card--ledger"` and the row's class binding `:class="\`is-\${step.status || 'completed'}\`"` is not applicable here. Keep all other attributes unchanged.
+Find `<button class="research-process__evidence-row"` and replace `class="research-process__evidence-row"` with `class="phase-card phase-card--ledger"`. Keep all other attributes unchanged.
 
-The exact change inside the `<button>` element:
+- [ ] **Step 2: Simplify the ledger row body**
+
+Inside each ledger button, the current content is:
 
 ```vue
-          <button
-            v-for="(row, rowIndex) in group.rows"
-            :key="evidenceKey(row, rowIndex)"
-            type="button"
-            class="phase-card phase-card--ledger"
-            :disabled="!canOpenEvidence(row)"
-            @click="openEvidence(row)"
-          >
+            <div class="research-process__evidence-title">{{ evidenceTitle(row) }}</div>
+            <p v-if="evidenceText(row)" class="research-process__result-text">{{ evidenceText(row) }}</p>
+            <div class="research-process__evidence-meta">{{ evidenceMeta(row) }}</div>
+            <div class="research-process__visual-state">{{ evidenceVisualLabel(row) }}</div>
 ```
 
-- [ ] **Step 2: Add `.phase-card--ledger` CSS**
+Replace with:
 
-Just before the closing `</style>` tag, add:
+```vue
+            <div class="phase-card__heading">
+              <strong>{{ evidenceTitle(row) }}</strong>
+            </div>
+            <p v-if="evidenceText(row)" class="phase-card__item-text">{{ evidenceText(row) }}</p>
+            <div v-if="evidenceMeta(row)" class="phase-card__detail">{{ evidenceMeta(row) }}</div>
+```
+
+Differences:
+- Drop `research-process__visual-state` (the "PDF page + bbox" / "Table image" label) — too noisy
+- Reuse `.phase-card__heading`, `.phase-card__item-text`, `.phase-card__detail` from Task 3.5
+
+- [ ] **Step 3: Adjust `.phase-card--ledger` CSS**
+
+Find the existing `.phase-card--ledger` rules in `<style scoped>`. Replace with:
 
 ```css
 .phase-card--ledger {
@@ -703,9 +496,53 @@ Just before the closing `</style>` tag, add:
 }
 ```
 
+- [ ] **Step 4: Delete obsolete ledger CSS**
+
+Delete the now-unused `.research-process__evidence-row`, `.research-process__evidence-title`, `.research-process__evidence-meta`, `.research-process__visual-state`, `.research-process__result-text` rules if any remain in the file.
+
+- [ ] **Step 5: Run verification**
+
+Run: `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint`
+Expected: both exit 0.
+
+- [ ] **Step 6: Commit**
+
+```bash
+cd /home/charles/PaiSmart
+git add frontend/src/views/chat/modules/research-process-panel.vue
+git commit -m "feat(chat): re-skin audit ledger rows with minimal card shape"
+```
+
+---
+
+## Task 5: Delete now-unused legacy helpers
+
+**Goal:** Clean up the old helpers that were retained during the migration: `eventTitle`, `eventDetail`, `eventItems`, `itemTitle`, `itemText`, `eventState`, `presentEvent`, `presentationCache`, `PresentedEvent` interface, `presentedEvents`, `latestPresentedEvent`, `latestAuditStep`, `auditStepTitle`, `auditStepDetail`, `MAX_VISIBLE_EVENTS` (if no longer referenced).
+
+**Files:**
+- Modify: `frontend/src/views/chat/modules/research-process-panel.vue`
+
+**Acceptance Criteria:**
+- [ ] All referenced helpers above are deleted
+- [ ] `pnpm typecheck` passes
+- [ ] `pnpm lint` passes for the modified file
+- [ ] `toolLabel` and `legacyToolLabel` retained for the legacy branch
+
+**Verify:** `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint` → both exit 0.
+
+**Steps:**
+
+- [ ] **Step 1: Identify retained references**
+
+Grep for the helpers listed above. Confirm which are now dead.
+
+- [ ] **Step 2: Delete dead helpers**
+
+Delete each confirmed-dead helper, the `PresentedEvent` interface, and the `presentationCache` constant.
+
 - [ ] **Step 3: Run verification**
 
-Run: `cd frontend && pnpm typecheck && pnpm lint`
+Run: `cd /home/charles/PaiSmart/frontend && pnpm typecheck && pnpm lint`
 Expected: both exit 0.
 
 - [ ] **Step 4: Commit**
@@ -713,308 +550,7 @@ Expected: both exit 0.
 ```bash
 cd /home/charles/PaiSmart
 git add frontend/src/views/chat/modules/research-process-panel.vue
-git commit -m "feat(chat): re-skin audit ledger rows as phase cards"
-```
-
----
-
-## Task 5: Top status strip + edge cases
-
-**Goal:** Refresh the top status strip to use the latest phase's icon and headline. Add a "Researching…" pulse card for the empty-but-running state. Collapse consecutive `think` events into a single card with a "pass N of M" hint.
-
-**Files:**
-- Modify: `frontend/src/views/chat/modules/research-process-panel.vue`
-
-**Acceptance Criteria:**
-- [ ] Top status strip shows the latest phase's icon + headline (replacing the bullet dot)
-- [ ] When `isRunning` is true but no events yet, a single "Researching…" pulse card renders
-- [ ] Consecutive `think` events collapse into a single card showing the latest pass + `(N passes)` hint
-- [ ] `pnpm typecheck` passes
-- [ ] `pnpm lint` passes
-
-**Verify:** `cd frontend && pnpm typecheck && pnpm lint` → both exit 0. Manual: walk through the three states — running with no events yet, running with multiple thinking passes, audit trail after completion.
-
-**Steps:**
-
-- [ ] **Step 1: Update top status strip**
-
-Find this block:
-
-```vue
-    <div class="research-process__status">
-      <span class="research-process__status-dot" :class="{ 'is-running': isRunning }" />
-      <div>
-        <div class="research-process__status-title">
-          {{
-            hasAuditTrail
-              ? latestAuditStep
-                ? auditStepTitle(latestAuditStep)
-                : 'Research audit trail'
-              : latestPresentedEvent
-                ? latestPresentedEvent.title
-                : isRunning
-                  ? 'Researching'
-                  : 'No process selected'
-          }}
-        </div>
-        <div v-if="hasAuditTrail && latestAuditStep" class="research-process__status-detail">
-          {{ auditStepDetail(latestAuditStep) }}
-        </div>
-        <div v-else-if="latestPresentedEvent?.detail" class="research-process__status-detail">
-          {{ latestPresentedEvent.detail }}
-        </div>
-      </div>
-    </div>
-```
-
-Replace it with:
-
-```vue
-    <div class="research-process__status">
-      <div class="research-process__status-icon" :class="{ 'is-running': isRunning }">
-        <SvgIcon
-          :icon="getPhaseIcon(latestPresentedPhase?.phase ?? (isRunning ? 'think' : 'answer'))"
-          class="text-16"
-        />
-      </div>
-      <div>
-        <div class="research-process__status-title">
-          {{
-            latestPresentedPhase?.headline
-              ?? (isRunning ? 'Researching' : 'No process selected')
-          }}
-        </div>
-        <div v-if="latestPresentedPhase?.oneLiner" class="research-process__status-detail">
-          {{ latestPresentedPhase.oneLiner }}
-        </div>
-        <div v-else-if="latestPresentedPhase?.badge" class="research-process__status-detail">
-          {{ latestPresentedPhase.badge }}
-        </div>
-      </div>
-    </div>
-```
-
-- [ ] **Step 2: Add `latestPresentedPhase` and empty-running card computeds**
-
-Below `latestPresentedEvent`, replace it with:
-
-```ts
-const latestPresentedPhase = computed<PhaseView | undefined>(() => {
-  if (hasAuditTrail.value && auditSteps.value.length) {
-    const last = auditSteps.value[auditSteps.value.length - 1];
-    return buildPhaseView(auditStepToPhaseInput(last), auditSteps.value.length - 1);
-  }
-  return presentedPhaseCards.value[presentedPhaseCards.value.length - 1];
-});
-
-const collapsedPhaseCards = computed<PhaseView[]>(() => {
-  const cards = presentedPhaseCards.value;
-  const out: PhaseView[] = [];
-  for (const card of cards) {
-    const prev = out[out.length - 1];
-    if (prev && prev.phase === 'think' && card.phase === 'think') {
-      prev.headline = card.headline;
-      prev.badge = card.badge;
-      prev.oneLiner = card.oneLiner;
-      prev.durationMs = card.durationMs;
-      prev.state = card.state;
-      const match = prev.headline.match(/· pass (\d+)/);
-      if (match) {
-        const total = Number(match[1]);
-        if (total > 1) prev.headline = prev.headline.replace(/· pass \d+/, `· pass ${total} of ${cards.length}`);
-      }
-      continue;
-    }
-    out.push({ ...card });
-  }
-  return out;
-});
-```
-
-Replace the binding in the events-branch template from `presentedPhaseCards` to `collapsedPhaseCards`:
-
-```vue
-        v-for="card in collapsedPhaseCards"
-```
-
-- [ ] **Step 3: Add empty-running pulse card**
-
-In the template, just before the `events.length` branch, add:
-
-```vue
-    <div v-else-if="isRunning" class="research-process__timeline">
-      <article class="phase-card is-running">
-        <div class="phase-card__icon">
-          <SvgIcon icon="lucide:sparkles" class="text-16" />
-        </div>
-        <div class="phase-card__body">
-          <div class="phase-card__heading">
-            <strong>Researching</strong>
-            <span class="phase-card__state-pill is-running">running</span>
-          </div>
-          <div class="phase-card__one-liner">Waiting for the first research step…</div>
-        </div>
-      </article>
-    </div>
-```
-
-The existing `v-else-if="events.length"` becomes the third branch in the chain — Vue's `v-else-if` order handles this automatically.
-
-- [ ] **Step 4: Remove now-unused helpers**
-
-The following functions from the old implementation are no longer referenced:
-- `eventTitle` — delete
-- `eventDetail` — delete
-- `eventItems` — delete
-- `itemTitle` — delete
-- `itemText` — delete
-- `eventState` — delete
-- `presentEvent` — delete
-- `legacyToolLabel` — delete (only used by old legacy branch — keep the legacy branch as it was, this function is no longer needed since the legacy branch still uses `legacyToolLabel`. Wait — actually the legacy branch still uses it. Keep `legacyToolLabel` if `legacyTools.length` branch still references it. Yes, line 381 still uses `legacyToolLabel(event)`. Keep it.)
-- `PresentationCache` (`presentationCache` const) and `PresentedEvent` interface — delete
-- `presentationCache` const — delete
-- `PresentedEvent` interface — delete
-
-Delete:
-
-```ts
-interface PresentedEvent {
-  key: string | number;
-  title: string;
-  detail: string;
-  durationMs?: number;
-  state: string;
-  items: Array<{
-    key: string | number;
-    title: string;
-    text: string;
-    reference: string;
-  }>;
-}
-
-const presentationCache = new WeakMap<Api.Chat.ResearchProgressEvent, PresentedEvent>();
-
-function eventType(event: Api.Chat.ResearchProgressEvent) {
-  return event.eventType || event.type;
-}
-
-function eventTitle(event: Api.Chat.ResearchProgressEvent) { /* … */ }
-function toolLabel(tool?: string, running = false) { /* … */ }
-function eventDetail(event: Api.Chat.ResearchProgressEvent) { /* … */ }
-function eventItems(event: Api.Chat.ResearchProgressEvent) { /* … */ }
-function itemTitle(item: Record<string, any>) { /* … */ }
-function itemText(item: Record<string, any>) { /* … */ }
-function eventState(event: Api.Chat.ResearchProgressEvent) { /* … */ }
-function presentEvent(event: Api.Chat.ResearchProgressEvent, index: number): PresentedEvent { /* … */ }
-```
-
-(Leave `toolLabel` in place — it's used by `legacyToolLabel`.)
-
-The `presentedEvents` computed is no longer referenced by the template. **Delete it:**
-
-```ts
-// DELETE
-const presentedEvents = computed(() =>
-  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => presentEvent(event, index))
-);
-```
-
-Also delete the unused `MAX_VISIBLE_EVENTS` constant if no other reference remains:
-
-```ts
-// DELETE if no other references
-const MAX_VISIBLE_EVENTS = 100;
-```
-
-The `latestPresentedEvent` computed is also no longer referenced by the template (replaced by `latestPresentedPhase`). **Delete it too:**
-
-```ts
-// DELETE
-const latestPresentedEvent = computed(() => presentedEvents.value[presentedEvents.value.length - 1]);
-```
-
-`latestAuditStep` is still referenced by the audit-ledger section via `auditStepTitle(latestAuditStep)`. Wait — `auditStepTitle` was deleted in Task 3. Let me re-check what references `latestAuditStep` in the remaining template. After Task 3 deletion, `latestAuditStep` is only used by the top status strip, which we just rewrote in Step 1 to use `latestPresentedPhase`. So `latestAuditStep` is now unused. **Delete:**
-
-```ts
-// DELETE
-const latestAuditStep = computed(() => auditSteps.value[auditSteps.value.length - 1]);
-```
-
-- [ ] **Step 5: Update `.research-process__status` styles**
-
-Find these styles and adjust the icon styles:
-
-```css
-.research-process__status-dot,
-.research-process__marker {
-  display: block;
-  width: 8px;
-  height: 8px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--color-success);
-}
-
-.research-process__status-dot {
-  margin-top: 6px;
-}
-
-.research-process__status-dot.is-running,
-.research-process__event.is-running .research-process__marker {
-  background: var(--color-warning);
-}
-
-.research-process__event.is-failed .research-process__marker {
-  background: var(--color-error);
-}
-```
-
-Replace with:
-
-```css
-.research-process__status-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--color-research-soft-bg);
-  color: var(--color-research);
-  flex: 0 0 auto;
-}
-
-.research-process__status-icon.is-running {
-  animation: phase-card-pulse 1.6s ease-in-out infinite;
-}
-
-.research-process__marker {
-  display: none;
-}
-```
-
-The `.research-process__marker` is no longer rendered (we replaced it with `.phase-card__icon`), so hiding it via `display: none` is safe.
-
-- [ ] **Step 6: Run verification**
-
-Run: `cd frontend && pnpm typecheck && pnpm lint`
-Expected: both exit 0.
-
-- [ ] **Step 7: Manual smoke test**
-
-In a browser, open the chat with backend running:
-
-1. Open an existing chat answer with audit trail — confirm the top status strip shows the latest phase's icon + headline.
-2. Start a new research answer and watch the empty-running pulse card render before the first event arrives.
-3. Trigger a multi-pass query (or replay a fixture with multiple `model_call_started`) — confirm consecutive thinking cards collapse into one with `pass N of M`.
-4. Trigger a `job_failed` event — confirm the error card renders with the full error message.
-
-- [ ] **Step 8: Commit**
-
-```bash
-cd /home/charles/PaiSmart
-git add frontend/src/views/chat/modules/research-process-panel.vue
-git commit -m "feat(chat): refresh status strip and add running/collapse states"
+git commit -m "refactor(chat): remove legacy research-event helpers"
 ```
 
 ---
@@ -1023,25 +559,23 @@ git commit -m "feat(chat): refresh status strip and add running/collapse states"
 
 **Goal:** User confirms in dev mode that the redesigned panel meets the spec.
 
-**Files:** none
-
 **User Verification Required:**
 Before marking this task complete, you MUST call AskUserQuestion:
 ```yaml
 AskUserQuestion:
-  question: "Did the redesigned research process panel render each phase as a visually distinct card (search / locate / read / cite / think / answer / error), with the audit ledger rows opening references correctly and no regressions in streaming or error states?"
+  question: "Does the redesigned research process panel now show useful info (paper names for search, sections for locate, page list + collapsed passages for read, one-line decisions for think) with no metric plumbing (no badges, no state pills, no duration/tokens, no pass counters), and the audit ledger rows still open references on click?"
   header: "Verification"
   options:
     - label: "Looks good"
-      description: "Phase cards are visually distinct, references open on click, streaming and error states behave correctly"
+      description: "Cards are minimal, the agentic RAG flow is easy to scan, references still open"
     - label: "Needs rework"
-      description: "Some phase cards still look abstract, references don't open, or a regression was noticed"
+      description: "Something still looks wrong, or a piece of useful info is hidden"
 ```
 
-**If the user selects the negative option:** The task is NOT complete. Investigate which area failed (icons, badges, references, collapse, error card), fix in a follow-up commit, then re-verify with AskUserQuestion again.
+**If the user selects the negative option:** Investigate which area failed, fix in a follow-up commit, re-verify.
 
 **Acceptance Criteria:**
-- [ ] User confirms cards are visually distinct
+- [ ] User confirms cards are minimal and useful
 - [ ] User confirms evidence rows open references
 - [ ] User confirms no regression in streaming flow
 
@@ -1063,21 +597,23 @@ Open `http://localhost:9527` in a browser.
 - [ ] **Step 2: Walk through the verification checklist**
 
 - [ ] Open a chat answer with a complete audit trail. Confirm:
-  - [ ] Each phase (search / locate / read / cite / think / answer) renders as a visually distinct card with its own icon
-  - [ ] Count badges show meaningful numbers (papers / locations / passages / edges)
-  - [ ] Read cards have an expandable list of evidence with page numbers
-  - [ ] Search/locate cards show titles inline
-  - [ ] Audit ledger (cited / read / candidate) renders as cards and clicking opens the reference
+  - [ ] No count badges anywhere
+  - [ ] No state pills (`running` / `completed` / `failed` text)
+  - [ ] No duration or token text
+  - [ ] Search cards show just paper titles
+  - [ ] Locate cards show just section names
+  - [ ] Read cards show page list with collapsed passages (`▸ 5 passages`)
+  - [ ] Think cards show a `Decided to …` decision line
+  - [ ] Audit ledger (cited / read / candidate) opens references on click
 
 - [ ] Start a new research answer. Confirm:
-  - [ ] Before the first event arrives, a single "Researching…" pulse card shows
-  - [ ] As events arrive, each one renders as a phase card with the right icon
-  - [ ] Multiple thinking passes collapse into one card with `pass N of M`
-  - [ ] Top status strip mirrors the latest phase
+  - [ ] Status header pulses while running
+  - [ ] Cards reveal one by one as events arrive
+  - [ ] Multiple think passes each show their own decision
 
 - [ ] Trigger or replay an error. Confirm:
   - [ ] The error card shows the full error message
-  - [ ] Icon and state pill use `--color-error`
+  - [ ] Status header shows the failed state
 
 - [ ] Toggle dark mode. Confirm:
   - [ ] All cards render with the dark-mode tokens
@@ -1092,12 +628,10 @@ Expected: both exit 0.
 
 Use the question and options from the verification block above.
 
-- [ ] **Step 5: If user says "Looks good"** — done. No commit required (no code change in this task).
-
-- [ ] **Step 5b: If user says "Needs rework"** — open a follow-up task, fix the issue, return to Task 6 Step 2.
+- [ ] **Step 5: If user says "Looks good"** — done. No commit required.
 
 ```json:metadata
-{"files": [], "verifyCommand": "", "acceptanceCriteria": ["user confirms cards are visually distinct", "user confirms evidence rows open references", "user confirms no regression in streaming flow"], "requiresUserVerification": true, "userVerificationPrompt": "Did the redesigned research process panel render each phase as a visually distinct card (search / locate / read / cite / think / answer / error), with the audit ledger rows opening references correctly and no regressions in streaming or error states?"}
+{"files": [], "verifyCommand": "", "acceptanceCriteria": ["user confirms cards are minimal and useful", "user confirms evidence rows open references", "user confirms no regression in streaming flow"], "requiresUserVerification": true, "userVerificationPrompt": "Does the redesigned research process panel now show useful info (paper names for search, sections for locate, page list + collapsed passages for read, one-line decisions for think) with no metric plumbing (no badges, no state pills, no duration/tokens, no pass counters), and the audit ledger rows still open references on click?"}
 ```
 
 ---
@@ -1105,25 +639,23 @@ Use the question and options from the verification block above.
 ## Self-Review
 
 **1. Spec coverage:**
-- Phase model ✓ Task 1, Task 2, Task 3
-- Phase rules table ✓ Task 1 (all 7 phases)
-- Item previews ✓ Task 1 (search/locate/read items), Task 2 (read collapse)
-- Layout (icon rail, headline, badge, one-liner, items, connector) ✓ Task 2
-- Audit ledger re-skin ✓ Task 4
-- State mapping (running/completed/failed colors) ✓ Task 2
-- Edge cases: empty / loading / error ✓ Task 5
-- Long evidence quote (3 lines + ellipsis) ✓ Task 2 (`-webkit-line-clamp: 3`)
-- Unknown tool/type fallthrough ✓ Task 1 (returns 'think' phase with 'Research progress' headline)
-- Same-phase collapse ✓ Task 5
-- Streaming → audit transition ✓ handled by `latestPresentedPhase` (Tasks 3, 5)
-- Verification (typecheck + lint + manual) ✓ Task 5 Step 6, Task 6 Step 2
-- Risks (visual regression) ✓ mitigated by Task 1 (no template change) as safe first commit
-- Rollback ✓ single-file revert documented in spec
+- Drop count badges ✓ Task 3.5 (deletes `badge` field, no `.phase-card__badge` in template)
+- Drop state pills ✓ Task 3.5 (deletes `.phase-card__state-pill`)
+- Drop duration suffix ✓ Task 3.5 (deletes `durationMs` field)
+- Drop token counts ✓ Task 3.5 (drops the think branch from `oneLinerOf` → `detailOf`)
+- Search shows just paper names ✓ Task 3.5 (search items already contain titles)
+- Locate shows just section names ✓ Task 3.5 (locate items already contain section + page)
+- Read stays collapsed ✓ Task 3.5 (already in place from Task 2)
+- Think shows decision ✓ Task 3.5 (new `decisionOf` + `decision` field)
+- Status header: pulse + activity ✓ Task 3.6
+- Audit ledger three groups preserved ✓ Task 4
+- Click-to-open-reference preserved ✓ Task 4
+- Verification ✓ Task 6
 
 **2. Placeholder scan:** No TBDs, no "implement later", no "fill in details", no "add appropriate error handling".
 
-**3. Type consistency:** `Phase`, `PhaseView`, `PhaseItem`, `PhaseInput` defined once in Task 1. `phaseOf`, `buildPhaseView`, `getPhaseIcon`, `auditStepToPhaseInput`, `latestPresentedPhase`, `collapsedPhaseCards` all reference the same names throughout. `presentedPhaseCards` referenced in Task 1, Task 3, Task 5 (replaced by `collapsedPhaseCards`). `latestPresentedPhase` defined and consumed in Task 5.
+**3. Type consistency:** `Phase`, `PhaseView`, `PhaseItem`, `PhaseInput` defined once in Task 1 (PhaseView updated in Task 3.5). `phaseOf`, `buildPhaseView`, `getPhaseIcon`, `decisionOf`, `detailOf`, `itemsOf`, `auditStepToPhaseInput` all consistent across tasks.
 
-**4. Verification requirement scan:** YES — spec verification section + user's "优化一下" UI request. Task 6 has `requiresUserVerification: true` and the standard verification block.
+**4. Verification requirement scan:** YES — user verification is part of the spec and the user explicitly said the display was "too abstract". Task 6 has `requiresUserVerification: true` and the standard verification block.
 
 No gaps. Plan ready.
