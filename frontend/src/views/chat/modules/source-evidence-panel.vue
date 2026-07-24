@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { request } from '@/service/request';
-import PdfDocumentViewer from '@/components/custom/pdf-document-viewer.vue';
 import { getServiceBaseURL } from '@/utils/service';
+import PdfDocumentViewer from '@/components/custom/pdf-document-viewer.vue';
 
 defineOptions({ name: 'SourceEvidencePanel' });
 
@@ -544,9 +544,7 @@ onBeforeUnmount(() => {
             :visual-regions="visualRegions || undefined"
             :visible="pdfViewerVisible"
           />
-          <div v-else class="evidence-image-modal__fallback">
-            PDF evidence is not available for this citation.
-          </div>
+          <div v-else class="evidence-image-modal__fallback">PDF evidence is not available for this citation.</div>
         </div>
       </div>
     </NModal>

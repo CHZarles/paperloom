@@ -705,7 +705,11 @@ function renderAssetPillAction(
   if (!count) {
     return (
       <span
-        class={variant === 'ok' ? 'library-asset-pill library-asset-pill--muted' : 'library-asset-pill library-asset-pill--muted'}
+        class={
+          variant === 'ok'
+            ? 'library-asset-pill library-asset-pill--muted'
+            : 'library-asset-pill library-asset-pill--muted'
+        }
       >
         {label}: 0
       </span>
@@ -714,7 +718,11 @@ function renderAssetPillAction(
   return (
     <button
       type="button"
-      class={variant === 'ok' ? 'library-asset-pill library-asset-pill--ok library-asset-pill--action' : 'library-asset-pill library-asset-pill--action'}
+      class={
+        variant === 'ok'
+          ? 'library-asset-pill library-asset-pill--ok library-asset-pill--action'
+          : 'library-asset-pill library-asset-pill--action'
+      }
       onClick={onClick}
     >
       {label}: {count}
@@ -806,11 +814,7 @@ function isUploadCompleted(row: Api.Paper.UploadTask) {
 
 function isPaperSearchable(row: Api.Paper.UploadTask) {
   if (row.searchable !== undefined) return row.searchable;
-  return (
-    isUploadCompleted(row) &&
-    row.processingStatus === 'COMPLETED' &&
-    hasRetrievalIndexUsage(row)
-  );
+  return isUploadCompleted(row) && row.processingStatus === 'COMPLETED' && hasRetrievalIndexUsage(row);
 }
 
 function isPipelineActive(row: Api.Paper.UploadTask) {
@@ -1766,7 +1770,9 @@ async function onBeforeUpload(
 
 .library-asset-pill--action {
   cursor: pointer;
-  transition: transform 80ms ease, background-color 120ms ease;
+  transition:
+    transform 80ms ease,
+    background-color 120ms ease;
 }
 
 .library-asset-pill--action:hover {

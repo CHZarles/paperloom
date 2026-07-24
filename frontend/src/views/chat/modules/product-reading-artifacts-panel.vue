@@ -25,9 +25,7 @@ const chatStore = useChatStore();
 
 const goal = computed(() => props.artifacts?.goalCard || null);
 const shortlist = computed(() =>
-  (props.artifacts?.paperShortlist?.items || [])
-    .filter(item => displayPaperTitle(item))
-    .slice(0, 5)
+  (props.artifacts?.paperShortlist?.items || []).filter(item => displayPaperTitle(item)).slice(0, 5)
 );
 const groupedShortlist = computed(() => {
   const groups: Array<{
@@ -73,14 +71,10 @@ const groupedShortlist = computed(() => {
   return groups;
 });
 const readingSteps = computed(() =>
-  (props.artifacts?.readingPlan?.steps || [])
-    .filter(step => step.locationLabel || step.paperTitle)
-    .slice(0, 5)
+  (props.artifacts?.readingPlan?.steps || []).filter(step => step.locationLabel || step.paperTitle).slice(0, 5)
 );
 const evidenceRows = computed(() =>
-  (props.artifacts?.claimEvidencePanel?.rows || [])
-    .filter(row => row.claim || row.quote)
-    .slice(0, 5)
+  (props.artifacts?.claimEvidencePanel?.rows || []).filter(row => row.claim || row.quote).slice(0, 5)
 );
 const decisionRows = computed(() => {
   const frame = props.artifacts?.intentFrame;
@@ -167,7 +161,9 @@ const missingEvidence = computed(() => props.artifacts?.missingEvidence || null)
 const uncertaintyNotes = computed(() => (props.artifacts?.uncertaintyNotes || []).filter(Boolean).slice(0, 3));
 const hasArtifacts = computed(
   () =>
-    Boolean(goal.value?.interpretedGoal || goal.value?.scopeLabel || typeof goal.value?.readablePaperCount === 'number') ||
+    Boolean(
+      goal.value?.interpretedGoal || goal.value?.scopeLabel || typeof goal.value?.readablePaperCount === 'number'
+    ) ||
     decisionRows.value.length > 0 ||
     shortlist.value.length > 0 ||
     readingSteps.value.length > 0 ||
@@ -259,9 +255,7 @@ function missingEvidenceLabels(missing?: string[] | null) {
     checkable_reading_target: 'Checkable reading target',
     validated_final_answer: 'Validated final answer'
   };
-  return (missing || [])
-    .map(item => labels[item] || 'Required reading evidence')
-    .filter(Boolean);
+  return (missing || []).map(item => labels[item] || 'Required reading evidence').filter(Boolean);
 }
 
 function locationPlanTitle(plan: Api.Chat.ReadingLocationQueryPlan) {
@@ -411,8 +405,7 @@ function claimTraceStatus(claims?: Api.Chat.ReadingClaimSummary | null) {
 function verificationSummaryText(verification?: Api.Chat.ReadingVerificationSummary | null) {
   if (!verification) return '';
   if (verification.valid) return 'The verification check passed.';
-  const gaps =
-    (verification.missingRequiredEvidenceCount || 0) + (verification.failedObligationCount || 0);
+  const gaps = (verification.missingRequiredEvidenceCount || 0) + (verification.failedObligationCount || 0);
   return gaps > 0
     ? `${gaps} verification check${gaps === 1 ? '' : 's'} still need evidence.`
     : 'More evidence is needed before this answer is fully verified.';

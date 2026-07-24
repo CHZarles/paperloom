@@ -169,10 +169,7 @@ onBeforeUnmount(() => {
 
       <section class="chat-workspace">
         <div class="chat-conversation">
-          <ChatList
-            @open-reference="handleOpenReference"
-            @open-process="handleOpenProcess"
-          />
+          <ChatList @open-reference="handleOpenReference" @open-process="handleOpenProcess" />
           <InputBox v-if="showDockInput" />
         </div>
 

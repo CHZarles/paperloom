@@ -321,9 +321,9 @@ test('reading artifacts render after reload and source evidence resolves from so
   await expect(page.locator('.scope-chip')).toContainText('Trace citation');
   await expect(page.locator('.scope-chip')).toContainText('p7');
   await expect(page.locator('.scope-chip')).toContainText('[1]');
-  await expect(page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]')).toHaveValue(
-    '解释这个引用'
-  );
+  await expect(
+    page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]')
+  ).toHaveValue('解释这个引用');
   expect(referenceDetailRequests).toBe(1);
 });
 
@@ -669,14 +669,12 @@ test('paper shortlist actions send structured focus and reading plan survives re
   await page.locator('.reading-artifacts button[title="Show readable locations"]').click();
   await expect(page.locator('.scope-chip')).toContainText('Agentic Eval Benchmark');
   await expect(page.locator('.scope-chip')).toContainText('List locations');
-  await expect(page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]')).toHaveValue(
-    '列出这篇论文可阅读的位置'
-  );
+  await expect(
+    page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]')
+  ).toHaveValue('列出这篇论文可阅读的位置');
 
   await page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]').press('Enter');
-  await expect
-    .poll(() => sentMessages.filter(item => item.type === 'user_message').length)
-    .toBe(1);
+  await expect.poll(() => sentMessages.filter(item => item.type === 'user_message').length).toBe(1);
   const listLocationsRequest = sentMessages.find(item => item.type === 'user_message');
   expect(listLocationsRequest?.conversationId).toBe('reading-session');
   expect(listLocationsRequest?.referenceFocus?.paperHandle).toBe('paper_handle_agent_eval');
@@ -692,14 +690,12 @@ test('paper shortlist actions send structured focus and reading plan survives re
   await page.locator('.reading-artifacts button[title="Read location"]').last().click();
   await expect(page.locator('.scope-chip')).toContainText('Agentic Eval Benchmark');
   await expect(page.locator('.scope-chip')).toContainText('Read location');
-  await expect(page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]')).toHaveValue(
-    '读取这个位置'
-  );
+  await expect(
+    page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]')
+  ).toHaveValue('读取这个位置');
 
   await page.locator('textarea[placeholder="Ask about a paper, method, claim, table, or citation"]').press('Enter');
-  await expect
-    .poll(() => sentMessages.filter(item => item.type === 'user_message').length)
-    .toBe(2);
+  await expect.poll(() => sentMessages.filter(item => item.type === 'user_message').length).toBe(2);
   const readLocationRequest = sentMessages.filter(item => item.type === 'user_message').at(-1);
   expect(readLocationRequest?.referenceFocus?.paperHandle).toBe('paper_handle_agent_eval');
   expect(readLocationRequest?.referenceFocus?.locationRef).toBe('page_ref_agent_eval_intro');

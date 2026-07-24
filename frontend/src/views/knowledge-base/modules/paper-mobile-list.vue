@@ -30,9 +30,7 @@ function isUploadCompleted(row: Api.Paper.UploadTask) {
 function isSearchable(row: Api.Paper.UploadTask) {
   if (row.searchable !== undefined) return row.searchable;
   return (
-    isUploadCompleted(row) &&
-    row.processingStatus === 'COMPLETED' &&
-    Number(row.retrievalIndexedLocationCount || 0) > 0
+    isUploadCompleted(row) && row.processingStatus === 'COMPLETED' && Number(row.retrievalIndexedLocationCount || 0) > 0
   );
 }
 

@@ -39,7 +39,7 @@
     {
       "id": 6,
       "subject": "Task 4: Re-skin audit ledger rows as cards",
-      "status": "pending",
+      "status": "completed",
       "description": "**Goal:** Update each .research-process__evidence-row to use the same minimal .phase-card shape. Preserve three audit groups and click-to-open-reference behavior.\n\n**Files:** Modify `frontend/src/views/chat/modules/research-process-panel.vue`.\n\n**Acceptance Criteria:**\n- Ledger rows render with minimal card visual\n- Three groups preserved\n- Click on row still emits openReference\n- No count badges, no metrics in ledger row headings\n- pnpm typecheck and pnpm lint pass\n\n**Verify:** cd frontend && pnpm typecheck && pnpm lint → both exit 0. Manual: click ledger rows open references.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/chat/modules/research-process-panel.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck && pnpm lint\", \"acceptanceCriteria\": [\"ledger rows use the same card shape\", \"openReference emit still fires\", \"click hover state preserved\", \"no count badges or metrics in ledger rows\"], \"requiresUserVerification\": false}\n```",
       "blockedBy": [4, 5]
     },

@@ -16,15 +16,7 @@
   "bugs": {
     "url": "https://github.com/CHZarles/paperloom/issues"
   },
-  "keywords": [
-    "ai",
-    "rag",
-    "llm",
-    "research-papers",
-    "evidence",
-    "folio",
-    "paperloom"
-  ],
+  "keywords": ["ai", "rag", "llm", "research-papers", "evidence", "folio", "paperloom"],
   "engines": {
     "node": ">=18.20.0",
     "pnpm": ">=8.7.0"
@@ -32,8 +24,8 @@
   "scripts": {
     "build": "vite build --mode prod && node scripts/check-frontend-bundle-budget.mjs",
     "build:test": "vite build --mode test",
-    "cleanup": "sa cleanup",
     "check:bundle": "node scripts/check-frontend-bundle-budget.mjs",
+    "cleanup": "sa cleanup",
     "commit": "sa git-commit -l=zh-cn",
     "commit:en": "sa git-commit",
     "dev": "vite --mode test",

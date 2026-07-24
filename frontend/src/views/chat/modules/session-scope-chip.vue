@@ -34,7 +34,9 @@ const label = computed(() => {
   if (scopeStatus.value === 'INVALID') return 'Invalid scope';
   if (!isSnapshot.value) return props.scope?.sourceLabel || 'All readable papers';
   const count = paperCount.value;
-  return props.scope?.sourceLabel || (typeof count === 'number' ? `${count.toLocaleString()} papers` : 'Selected papers');
+  return (
+    props.scope?.sourceLabel || (typeof count === 'number' ? `${count.toLocaleString()} papers` : 'Selected papers')
+  );
 });
 
 const statusClass = computed(() => {
