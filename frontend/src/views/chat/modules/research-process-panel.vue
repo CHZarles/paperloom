@@ -216,18 +216,19 @@ function toolLabel(tool?: string, running = false) {
 
 // Introduced for the phase-card template migration in Task 2.
 const presentedPhaseCards = computed<PhaseView[]>(() => {
-  // Step A: filter out *_started events so each tool/model call shows once as completion.
+  // Filter out *_started events so each tool/model call shows once as completion.
   const completed = events.value.slice(-MAX_VISIBLE_EVENTS).filter(event => {
     const type = eventTypeOf(event);
     return type !== 'tool_started' && type !== 'model_call_started';
   });
+  return collapseConsecutivePhases(completed);
+});
 
-  // Step B: collapse consecutive same-phase events, keeping the LAST in each run.
-  // The decision is derived from the event's actual next event in the unfiltered view.
+function collapseConsecutivePhases(inputs: PhaseInput[]): PhaseView[] {
   const collapsed: PhaseView[] = [];
-  for (const event of completed) {
+  for (const input of inputs) {
     const last = collapsed[collapsed.length - 1];
-    const view = buildPhaseView(event, completed, completed.indexOf(event));
+    const view = buildPhaseView(input, inputs, inputs.indexOf(input));
     if (last && last.phase === view.phase) {
       collapsed[collapsed.length - 1] = view;
     } else {
@@ -235,7 +236,7 @@ const presentedPhaseCards = computed<PhaseView[]>(() => {
     }
   }
   return collapsed;
-});
+}
 
 function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
   return {
@@ -250,7 +251,7 @@ function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
 
 const presentedAuditPhaseCards = computed(() => {
   const inputs = auditSteps.value.map(auditStepToPhaseInput);
-  return inputs.map((input, index, all) => buildPhaseView(input, all, index));
+  return collapseConsecutivePhases(inputs);
 });
 const latestPresentedPhase = computed<PhaseView | undefined>(() => {
   if (hasAuditTrail.value && auditSteps.value.length) {
