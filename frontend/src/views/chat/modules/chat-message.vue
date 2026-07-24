@@ -921,6 +921,29 @@ async function handleSourceFileClick(fileInfo: {
   margin: 0 0 12px;
 }
 
+.assistant-content :deep(.research-preformatted-block) {
+  display: block;
+  overflow-x: auto;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 6px;
+  background: var(--color-surface-alt);
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  color: var(--color-text);
+  font-family: var(--font-utility);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  tab-size: 4;
+}
+
+.assistant-content :deep(.research-preformatted-block),
+.assistant-content :deep(.research-preformatted-block *) {
+  color: var(--color-text) !important;
+}
+
 .message-actions {
   display: flex;
   width: auto;

@@ -45,9 +45,36 @@ const renderedContent = computed(() => markdown.render(props.content || ''));
   border-radius: 6px;
   background: var(--color-surface-alt);
   padding: 12px;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  tab-size: 4;
 }
 
 .streaming-markdown :deep(code) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.streaming-markdown :deep(.research-preformatted-block) {
+  display: block;
+  overflow-x: auto;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 6px;
+  background: var(--color-surface-alt);
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  color: var(--color-text);
+  font-family: var(--font-utility);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  tab-size: 4;
+}
+
+.streaming-markdown :deep(.research-preformatted-block),
+.streaming-markdown :deep(.research-preformatted-block *) {
+  color: var(--color-text) !important;
 }
 </style>
