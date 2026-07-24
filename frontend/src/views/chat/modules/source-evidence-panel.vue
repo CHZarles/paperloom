@@ -100,11 +100,6 @@ const evidenceRows = computed(() =>
   ].filter(row => row.value)
 );
 
-const pdfEvidenceTitle = computed(() => {
-  const page = props.pageNumber ? `Page ${props.pageNumber}` : 'PDF evidence';
-  const file = displayFilename.value || displayPaper.value;
-  return `${page} · ${file}`;
-});
 const pdfPreviewUrl = computed(() =>
   props.paperId ? resolveFileAccessUrl(`/api/v1/papers/${encodeURIComponent(props.paperId)}/preview/pdf-data`) : ''
 );
@@ -367,7 +362,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="source-evidence">
-    <header class="source-evidence__header">
+    <header v-if="!pdfViewerVisible" class="source-evidence__header">
       <div class="source-evidence__title-row">
         <span class="source-evidence__title">Source Evidence</span>
         <span v-if="referenceNumber" class="source-evidence__badge">#{{ referenceNumber }}</span>
@@ -375,78 +370,110 @@ onBeforeUnmount(() => {
       <div v-if="displayFilename" class="source-evidence__filename">{{ displayFilename }}</div>
     </header>
 
-    <dl class="source-evidence__grid">
-      <template v-for="row in evidenceRows" :key="row.label">
-        <dt>{{ row.label }}</dt>
-        <dd>{{ row.value }}</dd>
-      </template>
-    </dl>
-
-    <div v-if="readableAssetWarnings.length" class="source-evidence__asset-state">
-      <span
-        v-for="warning in readableAssetWarnings"
-        :key="warning"
-        class="source-evidence__asset-pill source-evidence__asset-pill--warning"
-      >
-        {{ warning }}
-      </span>
-    </div>
-
-    <div class="source-evidence__text-block">
-      <div class="source-evidence__text-label">Original text</div>
-      <p v-if="matchedText">{{ matchedText }}</p>
-      <p v-else class="source-evidence__empty-text">No matched text is available for this reference.</p>
-    </div>
-
-    <div v-if="isTableSource && tableEvidenceText" class="source-evidence__text-block">
-      <div class="source-evidence__text-label">Table evidence</div>
-      <pre class="source-evidence__table-text">{{ tableEvidenceText }}</pre>
-    </div>
-
-    <div v-if="tableImageUnavailable || figureImageUnavailable" class="source-evidence__missing-asset">
-      <span v-if="tableImageUnavailable">Table image unavailable. Extracted table text remains available.</span>
-      <span v-if="figureImageUnavailable">Figure image unavailable. Caption or matched text remains available.</span>
-    </div>
-
-    <div class="source-evidence__actions">
-      <NButton
-        v-if="isTableSource"
-        type="primary"
-        secondary
-        :loading="openingTableScreenshot"
-        :disabled="!paperId || !tableId || tableScreenshotAvailable === false"
-        @click="openTableScreenshot"
-      >
+    <header v-else class="source-evidence__header">
+      <div class="source-evidence__title-row">
+        <span class="source-evidence__title">PDF Evidence</span>
+        <span v-if="referenceNumber" class="source-evidence__badge">#{{ referenceNumber }}</span>
+      </div>
+      <NButton quaternary size="small" @click="pdfViewerVisible = false">
         <template #icon>
-          <icon-lucide:table-2 />
+          <icon-lucide:arrow-left />
         </template>
-        View table screenshot
+        Back to summary
       </NButton>
-      <NButton
-        v-if="isFigureSource"
-        type="primary"
-        secondary
-        :loading="openingFigureScreenshot"
-        :disabled="!paperId || !figureId || figureScreenshotAvailable === false"
-        @click="openFigureScreenshot"
-      >
-        <template #icon>
-          <icon-lucide:image />
+    </header>
+
+    <template v-if="!pdfViewerVisible">
+      <dl class="source-evidence__grid">
+        <template v-for="row in evidenceRows" :key="row.label">
+          <dt>{{ row.label }}</dt>
+          <dd>{{ row.value }}</dd>
         </template>
-        View figure screenshot
-      </NButton>
-      <NButton secondary :disabled="!canOpenPdfEvidence" @click="openPdfEvidence">
-        <template #icon>
-          <icon-lucide:file-text />
-        </template>
-        View PDF evidence
-      </NButton>
-      <NButton v-if="canDownloadOriginalPdf" secondary :loading="openingOriginal" @click="downloadOriginalPdf">
-        <template #icon>
-          <icon-lucide:download />
-        </template>
-        Download original PDF
-      </NButton>
+      </dl>
+
+      <div v-if="readableAssetWarnings.length" class="source-evidence__asset-state">
+        <span
+          v-for="warning in readableAssetWarnings"
+          :key="warning"
+          class="source-evidence__asset-pill source-evidence__asset-pill--warning"
+        >
+          {{ warning }}
+        </span>
+      </div>
+
+      <div class="source-evidence__text-block">
+        <div class="source-evidence__text-label">Original text</div>
+        <p v-if="matchedText">{{ matchedText }}</p>
+        <p v-else class="source-evidence__empty-text">No matched text is available for this reference.</p>
+      </div>
+
+      <div v-if="isTableSource && tableEvidenceText" class="source-evidence__text-block">
+        <div class="source-evidence__text-label">Table evidence</div>
+        <pre class="source-evidence__table-text">{{ tableEvidenceText }}</pre>
+      </div>
+
+      <div v-if="tableImageUnavailable || figureImageUnavailable" class="source-evidence__missing-asset">
+        <span v-if="tableImageUnavailable">Table image unavailable. Extracted table text remains available.</span>
+        <span v-if="figureImageUnavailable">Figure image unavailable. Caption or matched text remains available.</span>
+      </div>
+
+      <div class="source-evidence__actions">
+        <NButton
+          v-if="isTableSource"
+          type="primary"
+          secondary
+          :loading="openingTableScreenshot"
+          :disabled="!paperId || !tableId || tableScreenshotAvailable === false"
+          @click="openTableScreenshot"
+        >
+          <template #icon>
+            <icon-lucide:table-2 />
+          </template>
+          View table screenshot
+        </NButton>
+        <NButton
+          v-if="isFigureSource"
+          type="primary"
+          secondary
+          :loading="openingFigureScreenshot"
+          :disabled="!paperId || !figureId || figureScreenshotAvailable === false"
+          @click="openFigureScreenshot"
+        >
+          <template #icon>
+            <icon-lucide:image />
+          </template>
+          View figure screenshot
+        </NButton>
+        <NButton secondary :disabled="!canOpenPdfEvidence" @click="openPdfEvidence">
+          <template #icon>
+            <icon-lucide:file-text />
+          </template>
+          View PDF evidence
+        </NButton>
+        <NButton v-if="canDownloadOriginalPdf" secondary :loading="openingOriginal" @click="downloadOriginalPdf">
+          <template #icon>
+            <icon-lucide:download />
+          </template>
+          Download original PDF
+        </NButton>
+      </div>
+    </template>
+
+    <div v-else class="source-evidence__pdf-viewer">
+      <PdfDocumentViewer
+        v-if="pdfPreviewUrl"
+        :url="pdfPreviewUrl"
+        :paper-title="displayPaper"
+        :page-number="pageNumber || undefined"
+        :source-page-number="pageNumber || undefined"
+        :single-page-mode="Boolean(pageNumber)"
+        :anchor-text="matchedText"
+        :search-text="matchedText"
+        :bbox-json="bboxJson || undefined"
+        :visual-regions="visualRegions || undefined"
+        :visible="pdfViewerVisible"
+      />
+      <div v-else class="source-evidence__empty-text">PDF evidence is not available for this citation.</div>
     </div>
 
     <NModal v-model:show="evidenceImageVisible" class="evidence-image-modal-shell" :auto-focus="false">
@@ -502,52 +529,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </NModal>
-
-    <NModal v-model:show="pdfViewerVisible" class="evidence-pdf-modal-shell" :auto-focus="false">
-      <div class="evidence-pdf-modal">
-        <header class="evidence-image-modal__header">
-          <div class="evidence-image-modal__title-wrap">
-            <div class="evidence-image-modal__eyebrow">PDF Evidence</div>
-            <div class="evidence-image-modal__title">{{ pdfEvidenceTitle }}</div>
-          </div>
-          <div class="evidence-image-modal__tools">
-            <NButton
-              v-if="canDownloadOriginalPdf"
-              secondary
-              size="small"
-              :loading="openingOriginal"
-              @click="downloadOriginalPdf"
-            >
-              <template #icon>
-                <icon-lucide:download />
-              </template>
-              Download original PDF
-            </NButton>
-            <NButton quaternary circle size="small" @click="pdfViewerVisible = false">
-              <template #icon>
-                <icon-lucide:x />
-              </template>
-            </NButton>
-          </div>
-        </header>
-        <div class="evidence-pdf-modal__body">
-          <PdfDocumentViewer
-            v-if="pdfPreviewUrl"
-            :url="pdfPreviewUrl"
-            :paper-title="displayPaper"
-            :page-number="pageNumber || undefined"
-            :source-page-number="pageNumber || undefined"
-            :single-page-mode="Boolean(pageNumber)"
-            :anchor-text="matchedText"
-            :search-text="matchedText"
-            :bbox-json="bboxJson || undefined"
-            :visual-regions="visualRegions || undefined"
-            :visible="pdfViewerVisible"
-          />
-          <div v-else class="evidence-image-modal__fallback">PDF evidence is not available for this citation.</div>
-        </div>
-      </div>
-    </NModal>
   </section>
 </template>
 
@@ -555,9 +536,20 @@ onBeforeUnmount(() => {
 .source-evidence {
   display: flex;
   min-height: 0;
+  flex: 1;
   flex-direction: column;
   gap: 14px;
   color: var(--color-text);
+}
+
+.source-evidence__pdf-viewer {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
 }
 
 .source-evidence__header {
