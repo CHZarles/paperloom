@@ -15,9 +15,8 @@ interface PhaseView {
   phase: Phase;
   state: 'running' | 'completed' | 'failed';
   headline: string;
-  badge: string;
-  oneLiner: string;
-  durationMs?: number;
+  decision: string;
+  detail: string;
   items: PhaseItem[];
 }
 
@@ -80,71 +79,46 @@ function getPhaseIcon(phase: Phase): string {
   }
 }
 
-function headlineOf(input: PhaseInput, phase: Phase, state: 'running' | 'completed' | 'failed'): string {
-  if (phase === 'search') return state === 'running' ? 'Searching papers' : 'Searched papers';
-  if (phase === 'locate') return state === 'running' ? 'Locating sections' : 'Located sections';
-  if (phase === 'read') return state === 'running' ? 'Reading passages' : 'Read passages';
-  if (phase === 'cite') return state === 'running' ? 'Tracing citations' : 'Traced citations';
-  if (phase === 'think') {
-    const attempt = input.attempt && input.attempt > 1 ? ` · pass ${input.attempt}` : '';
-    return `Thinking${attempt}`;
-  }
-  if (phase === 'answer') return 'Answer prepared';
-  if (phase === 'error') {
-    return eventTypeOf(input) === 'job_cancelled' ? 'Research cancelled' : 'Research failed';
-  }
-  return 'Research progress';
-}
-
-function pluralize(n: number, singular: string): string {
-  return `${n} ${singular}${n === 1 ? '' : 's'}`;
-}
-
-function badgeOf(input: PhaseInput, phase: Phase): string {
-  const output = input.output || {};
+function headlineOf(phase: Phase): string {
   switch (phase) {
     case 'search':
-      return pluralize(Number(output.resultCount || 0), 'paper');
+      return 'Searched papers';
     case 'locate':
-      return pluralize(Number(output.resultCount || 0), 'location');
+      return 'Located sections';
     case 'read':
-      return pluralize(Number(output.evidenceCount || output.readCount || 0), 'passage');
+      return 'Read passages';
     case 'cite':
-      return pluralize(Number(output.edgeCount || 0), 'edge');
+      return 'Traced citations';
     case 'think':
-      return input.durationMs ? `${input.durationMs} ms` : '';
+      return 'Reasoning';
+    case 'answer':
+      return 'Answer prepared';
     case 'error':
-      return input.errorType || '';
+      return 'Research failed';
     default:
-      return '';
+      return 'Research progress';
   }
 }
 
-// Runtime phase summaries are intentionally derived by phase-specific deterministic branches.
-// eslint-disable-next-line complexity
-function oneLinerOf(input: PhaseInput, phase: Phase): string {
-  const inputData = input.input || {};
+function decisionOf(allEvents: PhaseInput[], index: number): string {
+  const next = allEvents[index + 1];
+  if (!next) return '';
+  const tool = next.tool || '';
+  const type = next.eventType || next.type || '';
+  if (tool === 'search_paper_candidates') return 'Decided to search papers';
+  if (tool === 'find_reading_locations') return 'Decided to locate sections';
+  if (tool === 'read_locations') return 'Decided to read passages';
+  if (tool === 'get_citation_edges') return 'Decided to trace citations';
+  if (type === 'answer_completed') return 'Decided to answer';
+  return '';
+}
+
+function detailOf(input: PhaseInput, phase: Phase): string {
   const output = input.output || {};
   switch (phase) {
-    case 'search': {
-      const query = String(inputData.query || '').trim();
-      const count = Number(output.resultCount || 0);
-      if (count === 1 && Array.isArray(output.papers) && output.papers.length) {
-        return String(output.papers[0].title || query);
-      }
-      return query;
-    }
-    case 'locate': {
-      const query = String(inputData.query || '').trim();
-      return query || 'Locating relevant sections';
-    }
     case 'read': {
       const pages = Array.isArray(output.pages) ? output.pages : [];
       return pages.length ? `pages ${pages.join(', ')}` : '';
-    }
-    case 'think': {
-      const tokens = Number(input.usage?.totalTokens || 0);
-      return tokens > 0 ? `${tokens.toLocaleString()} tokens` : '';
     }
     case 'error':
       return input.message || 'The harness stopped before completing the answer.';
@@ -182,17 +156,16 @@ function itemsOf(input: PhaseInput, phase: Phase): PhaseItem[] {
   return [];
 }
 
-function buildPhaseView(input: PhaseInput, index: number): PhaseView {
+function buildPhaseView(input: PhaseInput, allEvents: PhaseInput[], index: number): PhaseView {
   const phase = phaseOf(input);
   const state = stateOf(input);
   return {
     key: `${phase}:${index}:${input.attempt ?? ''}`,
     phase,
     state,
-    headline: headlineOf(input, phase, state),
-    badge: badgeOf(input, phase),
-    oneLiner: oneLinerOf(input, phase),
-    durationMs: input.durationMs,
+    headline: headlineOf(phase),
+    decision: phase === 'think' ? decisionOf(allEvents, index) : '',
+    detail: detailOf(input, phase),
     items: itemsOf(input, phase)
   };
 }
@@ -359,7 +332,7 @@ const presentedEvents = computed(() =>
 );
 // Introduced for the phase-card template migration in Task 2.
 const presentedPhaseCards = computed(() =>
-  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => buildPhaseView(event, index))
+  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index, all) => buildPhaseView(event, all, index))
 );
 
 function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
@@ -373,9 +346,10 @@ function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
   };
 }
 
-const presentedAuditPhaseCards = computed(() =>
-  auditSteps.value.map((step, index) => buildPhaseView(auditStepToPhaseInput(step), index))
-);
+const presentedAuditPhaseCards = computed(() => {
+  const inputs = auditSteps.value.map(auditStepToPhaseInput);
+  return inputs.map((input, index, all) => buildPhaseView(input, all, index));
+});
 const latestPresentedEvent = computed(() => presentedEvents.value[presentedEvents.value.length - 1]);
 const latestAuditStep = computed(() => auditSteps.value[auditSteps.value.length - 1]);
 
@@ -534,9 +508,24 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
           <div class="phase-card__body">
             <div class="phase-card__heading">
               <strong>{{ card.headline }}</strong>
-              <span v-if="card.badge" class="phase-card__badge">{{ card.badge }}</span>
             </div>
-            <div v-if="card.oneLiner" class="phase-card__one-liner">{{ card.oneLiner }}</div>
+            <div v-if="card.decision" class="phase-card__decision">{{ card.decision }}</div>
+            <div v-if="card.detail" class="phase-card__detail">{{ card.detail }}</div>
+            <div v-if="card.items.length && card.phase !== 'read'" class="phase-card__items">
+              <div v-for="item in card.items" :key="item.key" class="phase-card__item">
+                <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
+              </div>
+            </div>
+            <details
+              v-if="card.items.length && card.phase === 'read'"
+              class="phase-card__items phase-card__items--collapsed"
+            >
+              <summary>{{ card.items.length }} passage{{ card.items.length === 1 ? '' : 's' }}</summary>
+              <div v-for="item in card.items" :key="item.key" class="phase-card__item">
+                <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
+                <p v-if="item.text" class="phase-card__item-text">{{ item.text }}</p>
+              </div>
+            </details>
           </div>
         </article>
       </div>
@@ -577,12 +566,9 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
         <div class="phase-card__body">
           <div class="phase-card__heading">
             <strong>{{ card.headline }}</strong>
-            <span class="phase-card__state-pill" :class="`is-${card.state}`">
-              {{ card.state }}
-            </span>
-            <span v-if="card.badge" class="phase-card__badge">{{ card.badge }}</span>
           </div>
-          <div v-if="card.oneLiner" class="phase-card__one-liner">{{ card.oneLiner }}</div>
+          <div v-if="card.decision" class="phase-card__decision">{{ card.decision }}</div>
+          <div v-if="card.detail" class="phase-card__detail">{{ card.detail }}</div>
           <div v-if="card.items.length && card.phase !== 'read'" class="phase-card__items">
             <div v-for="item in card.items" :key="item.key" class="phase-card__item">
               <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
@@ -927,42 +913,14 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   font-weight: 700;
 }
 
-.phase-card__state-pill {
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.phase-card__decision {
+  margin-top: 2px;
+  color: var(--color-research);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.phase-card__state-pill.is-running {
-  background: rgba(183, 121, 31, 0.15);
-  color: var(--color-warning);
-}
-
-.phase-card__state-pill.is-completed {
-  background: rgba(22, 128, 57, 0.12);
-  color: var(--color-success);
-}
-
-.phase-card__state-pill.is-failed {
-  background: rgba(217, 45, 32, 0.12);
-  color: var(--color-error);
-}
-
-.phase-card__badge {
-  margin-left: auto;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--color-primary-soft-bg);
-  color: var(--color-text);
-  font-family: var(--font-utility);
-  font-size: 11px;
-}
-
-.phase-card__one-liner {
+.phase-card__detail {
   margin-top: 4px;
   color: var(--color-text-muted);
   font-size: 12px;
