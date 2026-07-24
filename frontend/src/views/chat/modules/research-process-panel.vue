@@ -287,13 +287,6 @@ function evidenceKey(row: Api.Chat.ResearchAuditEvidence, index: number) {
   );
 }
 
-function evidenceVisualLabel(row: Api.Chat.ResearchAuditEvidence) {
-  if (row.pageScreenshotAvailable) return row.bboxJson ? 'PDF page + bbox' : 'PDF page';
-  if (row.tableScreenshotAvailable) return 'Table image';
-  if (row.figureScreenshotAvailable) return 'Figure image';
-  return 'Text only';
-}
-
 function canOpenEvidence(row: Api.Chat.ResearchAuditEvidence) {
   return Boolean(row.paperId || row.sourceQuoteRef || evidenceText(row));
 }
@@ -389,20 +382,20 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
         <section v-for="group in auditGroups" :key="group.key" class="research-process__ledger-group">
           <div class="research-process__ledger-heading">
             <strong>{{ group.title }}</strong>
-            <span>{{ group.rows.length }}</span>
           </div>
           <button
             v-for="(row, rowIndex) in group.rows"
             :key="evidenceKey(row, rowIndex)"
             type="button"
-            class="research-process__evidence-row"
+            class="phase-card phase-card--ledger"
             :disabled="!canOpenEvidence(row)"
             @click="openEvidence(row)"
           >
-            <div class="research-process__evidence-title">{{ evidenceTitle(row) }}</div>
-            <p v-if="evidenceText(row)" class="research-process__result-text">{{ evidenceText(row) }}</p>
-            <div class="research-process__evidence-meta">{{ evidenceMeta(row) }}</div>
-            <div class="research-process__visual-state">{{ evidenceVisualLabel(row) }}</div>
+            <div class="phase-card__heading">
+              <strong>{{ evidenceTitle(row) }}</strong>
+            </div>
+            <p v-if="evidenceText(row)" class="phase-card__item-text">{{ evidenceText(row) }}</p>
+            <div v-if="evidenceMeta(row)" class="phase-card__detail">{{ evidenceMeta(row) }}</div>
           </button>
         </section>
       </div>
@@ -615,14 +608,6 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   font-weight: 650;
 }
 
-.research-process__result-text {
-  margin: 4px 0 0;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-}
-
 .research-process__result-ref {
   overflow-wrap: anywhere;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -644,54 +629,6 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   justify-content: space-between;
   color: var(--color-text);
   font-size: 12px;
-}
-
-.research-process__ledger-heading span {
-  color: var(--color-text-muted);
-}
-
-.research-process__evidence-row {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  padding: 9px 10px;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color 0.16s ease,
-    background 0.16s ease;
-}
-
-.research-process__evidence-row:hover:not(:disabled),
-.research-process__evidence-row:focus-visible {
-  border-color: var(--color-primary);
-  background: var(--color-accent-soft-bg);
-}
-
-.research-process__evidence-row:disabled {
-  cursor: default;
-}
-
-.research-process__evidence-title {
-  overflow-wrap: anywhere;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.research-process__evidence-meta,
-.research-process__visual-state {
-  margin-top: 4px;
-  overflow-wrap: anywhere;
-  color: var(--color-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-}
-
-.research-process__visual-state {
-  font-family: inherit;
 }
 
 .research-process__empty {
@@ -773,5 +710,31 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.phase-card--ledger {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.phase-card--ledger:hover:not(:disabled),
+.phase-card--ledger:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-accent-soft-bg);
+}
+
+.phase-card--ledger:disabled {
+  cursor: default;
+}
+
+.phase-card--ledger:not(:last-child)::after {
+  display: none;
 }
 </style>
