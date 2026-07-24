@@ -1,0 +1,48 @@
+{
+  "planPath": "docs/superpowers/plans/2026-07-24-research-process-display.md",
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Task 1: Add phase classifier and PhaseView type",
+      "status": "pending",
+      "description": "**Goal:** Introduce typed Phase/PhaseView model and pure buildPhaseView() helper. Add presentedPhaseCards computed alongside existing presentedEvents; template still uses old shape.\n\n**Files:** Modify `frontend/src/views/chat/modules/research-process-panel.vue`.\n\n**Acceptance Criteria:**\n- Phase and PhaseView types defined\n- buildPhaseView() returns a PhaseView for all 7 phases\n- getPhaseIcon() returns Iconify name\n- presentedPhaseCards computed produces one PhaseView per event\n- pnpm typecheck and pnpm lint pass\n- Template still renders presentedEvents — no visual change\n\n**Verify:** cd frontend && pnpm typecheck && pnpm lint → both exit 0.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/chat/modules/research-process-panel.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck && pnpm lint\", \"acceptanceCriteria\": [\"typecheck passes\", \"lint passes\", \"no template change\", \"phaseOf() classifies all 7 phases\", \"presentedPhaseCards computed returns one PhaseView per event\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": []
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Render phase cards for live events",
+      "status": "pending",
+      "description": "**Goal:** Replace the events branch of the template with a phase-card loop driven by presentedPhaseCards. Add scoped CSS for .phase-card anatomy.\n\n**Files:** Modify `frontend/src/views/chat/modules/research-process-panel.vue`.\n\n**Acceptance Criteria:**\n- Live-events branch renders one .phase-card per event\n- Each card shows icon, headline, state pill, count badge, one-liner\n- Read/search/locate cards show items list\n- Other branches unchanged\n- pnpm typecheck and pnpm lint pass\n\n**Verify:** cd frontend && pnpm typecheck && pnpm lint → both exit 0. Manual: open chat with live events in dev mode.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/chat/modules/research-process-panel.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck && pnpm lint\", \"acceptanceCriteria\": [\"events branch renders phase cards\", \"other branches unchanged\", \"icons render via SvgIcon iconify\", \"state pill uses correct tokens\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [1]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: Render phase cards for audit steps",
+      "status": "pending",
+      "description": "**Goal:** Reuse phase-card shape for ResearchAuditStep. Add presentedAuditPhaseCards and replace audit timeline template.\n\n**Files:** Modify `frontend/src/views/chat/modules/research-process-panel.vue`.\n\n**Acceptance Criteria:**\n- Audit steps render as .phase-card\n- Audit step kind maps to tool name before classification\n- auditStepTitle and auditStepDetail helpers deleted\n- pnpm typecheck and pnpm lint pass\n\n**Verify:** cd frontend && pnpm typecheck && pnpm lint → both exit 0. Manual: confirm audit trail renders as phase cards.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/chat/modules/research-process-panel.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck && pnpm lint\", \"acceptanceCriteria\": [\"audit steps render as phase cards\", \"audit timeline shares card shape with events timeline\", \"audit step kind maps correctly\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [1, 2]
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Re-skin audit ledger rows as cards",
+      "status": "pending",
+      "description": "**Goal:** Update each .research-process__evidence-row to use the same card shape. Preserve click-to-open-reference behavior.\n\n**Files:** Modify `frontend/src/views/chat/modules/research-process-panel.vue`.\n\n**Acceptance Criteria:**\n- Ledger rows show count badge\n- Rows use same hover/focus border color as phase cards\n- Click still emits openReference\n- pnpm typecheck and pnpm lint pass\n\n**Verify:** cd frontend && pnpm typecheck && pnpm lint → both exit 0. Manual: click ledger rows open references.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/chat/modules/research-process-panel.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck && pnpm lint\", \"acceptanceCriteria\": [\"ledger rows use the same card shape\", \"openReference emit still fires\", \"click hover state preserved\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [1, 2, 3]
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: Top status strip + edge cases",
+      "status": "pending",
+      "description": "**Goal:** Refresh top status strip with latest phase icon + headline. Add empty-running pulse card. Collapse consecutive think events.\n\n**Files:** Modify `frontend/src/views/chat/modules/research-process-panel.vue`.\n\n**Acceptance Criteria:**\n- Top status uses latest phase icon + headline\n- Empty-running shows pulse card\n- Consecutive think events collapse\n- pnpm typecheck and pnpm lint pass\n\n**Verify:** cd frontend && pnpm typecheck && pnpm lint → both exit 0. Manual: walk through the three states.\n\n```json:metadata\n{\"files\": [\"frontend/src/views/chat/modules/research-process-panel.vue\"], \"verifyCommand\": \"cd frontend && pnpm typecheck && pnpm lint\", \"acceptanceCriteria\": [\"top status uses phase icon + headline\", \"empty-running shows pulse card\", \"consecutive think events collapse\", \"state pill colors unchanged\"], \"requiresUserVerification\": false}\n```",
+      "blockedBy": [1, 2, 3, 4]
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: User verification of the visual redesign",
+      "status": "pending",
+      "description": "**Goal:** User confirms in dev mode that the redesigned panel meets the spec.\n\n**User Verification Required:**\nBefore marking this task complete, you MUST call AskUserQuestion:\n```yaml\nAskUserQuestion:\n  question: \"Did the redesigned research process panel render each phase as a visually distinct card (search / locate / read / cite / think / answer / error), with the audit ledger rows opening references correctly and no regressions in streaming or error states?\"\n  header: \"Verification\"\n  options:\n    - label: \"Looks good\"\n      description: \"Phase cards are visually distinct, references open on click, streaming and error states behave correctly\"\n    - label: \"Needs rework\"\n      description: \"Some phase cards still look abstract, references don't open, or a regression was noticed\"\n```\n\n**Acceptance Criteria:**\n- User confirms cards are visually distinct\n- User confirms evidence rows open references\n- User confirms no regression in streaming flow\n\n**Verify:** AskUserQuestion result is `Looks good`.\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"\", \"acceptanceCriteria\": [\"user confirms cards are visually distinct\", \"user confirms evidence rows open references\", \"user confirms no regression in streaming flow\"], \"requiresUserVerification\": true, \"userVerificationPrompt\": \"Did the redesigned research process panel render each phase as a visually distinct card (search / locate / read / cite / think / answer / error), with the audit ledger rows opening references correctly and no regressions in streaming or error states?\"}\n```",
+      "blockedBy": [1, 2, 3, 4, 5]
+    }
+  ],
+  "lastUpdated": "2026-07-24"
+}
