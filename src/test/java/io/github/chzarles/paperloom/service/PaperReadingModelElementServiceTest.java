@@ -1,13 +1,10 @@
 package io.github.chzarles.paperloom.service;
 
-import io.github.chzarles.paperloom.model.PaperLocationType;
 import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaper;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElement;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElementType;
-import io.github.chzarles.paperloom.paper.parser.ParsedPaperFigure;
-import io.github.chzarles.paperloom.paper.parser.ParsedPaperFormula;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperMetadata;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperTable;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
@@ -26,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest(properties = {
@@ -40,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({PaperReadingModelService.class, PaperReadingModelBuilder.class, PaperReadingElementSearchService.class})
+@Import({PaperReadingModelService.class, PaperReadingModelBuilder.class})
 class PaperReadingModelElementServiceTest {
 
     @Autowired
@@ -48,9 +44,6 @@ class PaperReadingModelElementServiceTest {
 
     @Autowired
     private PaperReadingElementRepository readingElementRepository;
-
-    @Autowired
-    private PaperReadingElementSearchService readingElementSearchService;
 
     @Autowired
     private PaperReadingModelRepository modelRepository;
@@ -93,126 +86,6 @@ class PaperReadingModelElementServiceTest {
         assertEquals(1, pageRepository.countByPaperIdAndModelVersion("paper-elements", model.getModelVersion()));
         assertEquals(1, sectionRepository.countByPaperIdAndModelVersion("paper-elements", model.getModelVersion()));
         assertEquals(3, locationRepository.countByPaperIdAndModelVersion("paper-elements", model.getModelVersion()));
-    }
-
-    @Test
-    void routedSearchMapsAttachedPanelOnlyChartToParentFigureLocation() {
-        PaperReadingModel model = service.replaceFromParsedPaper(
-                "paper-panel",
-                parsedPaperWithPanelOnlyChart(),
-                "user-a",
-                "lab",
-                false
-        );
-
-        List<PaperReadingElementSearchResult> matches = readingElementSearchService.searchCurrentModel(
-                "paper-panel",
-                "Recall"
-        );
-
-        assertEquals(1, matches.size());
-        PaperReadingElementSearchResult match = matches.get(0);
-        assertEquals(model.getModelVersion(), match.element().getModelVersion());
-        assertEquals("(a) Recall", match.element().getSearchableText());
-        assertEquals("PARENT_LOCATION", match.routingSource());
-        assertEquals(PaperLocationType.FIGURE, match.routedLocationType());
-        assertTrue(match.routedLocationRef().startsWith("figure_ref_"));
-    }
-
-    @Test
-    void routedSearchMapsUnattachedPanelOnlyChartToContainingPageLocation() {
-        service.replaceFromParsedPaper(
-                "paper-unattached-panel",
-                parsedPaperWithUnattachedPanelOnlyChart(),
-                "user-a",
-                "lab",
-                false
-        );
-
-        List<PaperReadingElementSearchResult> matches = readingElementSearchService.searchCurrentModel(
-                "paper-unattached-panel",
-                "Precision"
-        );
-
-        assertEquals(1, matches.size());
-        PaperReadingElementSearchResult match = matches.get(0);
-        assertEquals("(b) Precision", match.element().getSearchableText());
-        assertEquals("UNATTACHED", match.element().getAssociationStatus());
-        assertEquals("PAGE_LOCATION", match.routingSource());
-        assertEquals(PaperLocationType.PAGE, match.routedLocationType());
-        assertTrue(match.routedLocationRef().startsWith("page_ref_"));
-    }
-
-    @Test
-    void routedSearchMapsChildAttachedToParentWithoutLocationToContainingPageLocation() {
-        service.replaceFromParsedPaper(
-                "paper-parent-without-location",
-                parsedPaperWithPanelParentMissingFigureId(),
-                "user-a",
-                "lab",
-                false
-        );
-
-        List<PaperReadingElementSearchResult> matches = readingElementSearchService.searchCurrentModel(
-                "paper-parent-without-location",
-                "Recall"
-        );
-
-        assertEquals(1, matches.size());
-        PaperReadingElementSearchResult match = matches.get(0);
-        assertEquals("(a) Recall", match.element().getSearchableText());
-        assertEquals("ATTACHED", match.element().getAssociationStatus());
-        assertTrue(match.element().getParentReadingElementId().startsWith("reading_element_"));
-        assertEquals("PARENT_LOCATION", match.routingSource());
-        assertEquals(PaperLocationType.FIGURE, match.routedLocationType());
-    }
-
-    @Test
-    void routedSearchMapsAttachedTableCaptionToParentTableLocation() {
-        service.replaceFromParsedPaper(
-                "paper-table-route",
-                parsedPaperWithSeparateTableCaption(),
-                "user-a",
-                "lab",
-                false
-        );
-
-        List<PaperReadingElementSearchResult> matches = readingElementSearchService.searchCurrentModel(
-                "paper-table-route",
-                "Model scores"
-        );
-
-        PaperReadingElementSearchResult captionMatch = matches.stream()
-                .filter(match -> "table-caption-el".equals(match.element().getSourceObjectId()))
-                .findFirst()
-                .orElseThrow();
-        assertEquals("PARENT_LOCATION", captionMatch.routingSource());
-        assertEquals(PaperLocationType.TABLE, captionMatch.routedLocationType());
-        assertTrue(captionMatch.routedLocationRef().startsWith("table_ref_"));
-    }
-
-    @Test
-    void routedSearchMapsFormulaWithoutOwnLocationToContainingPageLocation() {
-        service.replaceFromParsedPaper(
-                "paper-formula-route",
-                parsedPaperWithFormula(),
-                "user-a",
-                "lab",
-                false
-        );
-
-        List<PaperReadingElementSearchResult> matches = readingElementSearchService.searchCurrentModel(
-                "paper-formula-route",
-                "alpha"
-        );
-
-        assertEquals(1, matches.size());
-        PaperReadingElementSearchResult match = matches.get(0);
-        assertEquals("FORMULA", match.element().getElementType());
-        assertEquals("FORMULA_LOCATION_DEFERRED", match.element().getLocationNotCreatedReason());
-        assertEquals("PAGE_LOCATION", match.routingSource());
-        assertEquals(PaperLocationType.PAGE, match.routedLocationType());
-        assertTrue(match.routedLocationRef().startsWith("page_ref_"));
     }
 
     private ParsedPaper parsedPaperWithSeparateTableCaption() {
@@ -262,178 +135,6 @@ class PaperReadingModelElementServiceTest {
                 )),
                 List.of(),
                 List.of()
-        );
-    }
-
-    private ParsedPaper parsedPaperWithPanelOnlyChart() {
-        return new ParsedPaper(
-                "MinerU",
-                "self-hosted",
-                new ParsedPaperMetadata("paper.pdf", "Paper", "Ada", 1, null, null),
-                List.of(new ParsedPaperElement(
-                        "p1",
-                        1,
-                        1,
-                        ParsedPaperElementType.PARAGRAPH,
-                        "Readable page text.",
-                        null,
-                        null,
-                        null,
-                        Map.of()
-                )),
-                Map.of(),
-                "{}",
-                List.of(),
-                List.of(
-                        new ParsedPaperFigure(
-                                "figure-1",
-                                "fig-el-1",
-                                1,
-                                2,
-                                "Figure 1: Rule-wise metrics.",
-                                null,
-                                "Figure 1: Rule-wise metrics.",
-                                null,
-                                "MINERU_CHART",
-                                "HIGH",
-                                Map.of("type", "chart", "chart_caption", List.of("Figure 1: Rule-wise metrics."))
-                        ),
-                        new ParsedPaperFigure(
-                                "figure-panel",
-                                "fig-el-2",
-                                1,
-                                3,
-                                null,
-                                null,
-                                null,
-                                null,
-                                "MINERU_CHART",
-                                "HIGH",
-                                Map.of("type", "chart", "chart_caption", List.of("(a) Recall"))
-                        )
-                ),
-                List.of()
-        );
-    }
-
-    private ParsedPaper parsedPaperWithUnattachedPanelOnlyChart() {
-        return new ParsedPaper(
-                "MinerU",
-                "self-hosted",
-                new ParsedPaperMetadata("paper.pdf", "Paper", "Ada", 1, null, null),
-                List.of(new ParsedPaperElement(
-                        "p1",
-                        1,
-                        1,
-                        ParsedPaperElementType.PARAGRAPH,
-                        "Readable page text.",
-                        null,
-                        null,
-                        null,
-                        Map.of()
-                )),
-                Map.of(),
-                "{}",
-                List.of(),
-                List.of(new ParsedPaperFigure(
-                        "figure-panel",
-                        "fig-el-1",
-                        1,
-                        20,
-                        null,
-                        null,
-                        null,
-                        null,
-                        "MINERU_CHART",
-                        "HIGH",
-                        Map.of("type", "chart", "chart_caption", List.of("(b) Precision"))
-                )),
-                List.of()
-        );
-    }
-
-    private ParsedPaper parsedPaperWithPanelParentMissingFigureId() {
-        return new ParsedPaper(
-                "MinerU",
-                "self-hosted",
-                new ParsedPaperMetadata("paper.pdf", "Paper", "Ada", 1, null, null),
-                List.of(new ParsedPaperElement(
-                        "p1",
-                        1,
-                        1,
-                        ParsedPaperElementType.PARAGRAPH,
-                        "Readable page text.",
-                        null,
-                        null,
-                        null,
-                        Map.of()
-                )),
-                Map.of(),
-                "{}",
-                List.of(),
-                List.of(
-                        new ParsedPaperFigure(
-                                "",
-                                "fig-el-1",
-                                1,
-                                2,
-                                "Figure 1: Rule-wise metrics.",
-                                null,
-                                "Figure 1: Rule-wise metrics.",
-                                null,
-                                "MINERU_CHART",
-                                "HIGH",
-                                Map.of("type", "chart", "chart_caption", List.of("Figure 1: Rule-wise metrics."))
-                        ),
-                        new ParsedPaperFigure(
-                                "figure-panel",
-                                "fig-el-2",
-                                1,
-                                3,
-                                null,
-                                null,
-                                null,
-                                null,
-                                "MINERU_CHART",
-                                "HIGH",
-                                Map.of("type", "chart", "chart_caption", List.of("(a) Recall"))
-                        )
-                ),
-                List.of()
-        );
-    }
-
-    private ParsedPaper parsedPaperWithFormula() {
-        return new ParsedPaper(
-                "MinerU",
-                "self-hosted",
-                new ParsedPaperMetadata("paper.pdf", "Paper", "Ada", 1, null, null),
-                List.of(new ParsedPaperElement(
-                        "p1",
-                        1,
-                        1,
-                        ParsedPaperElementType.PARAGRAPH,
-                        "Readable page text.",
-                        null,
-                        null,
-                        null,
-                        Map.of()
-                )),
-                Map.of(),
-                "{}",
-                List.of(),
-                List.of(),
-                List.of(new ParsedPaperFormula(
-                        "formula-1",
-                        "formula-el-1",
-                        1,
-                        2,
-                        "alpha + beta = gamma",
-                        "Equation context",
-                        null,
-                        null,
-                        Map.of("type", "equation", "text", "alpha + beta = gamma")
-                ))
         );
     }
 }

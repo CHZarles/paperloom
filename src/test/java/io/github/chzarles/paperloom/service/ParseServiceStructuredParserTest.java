@@ -120,7 +120,7 @@ class ParseServiceStructuredParserTest {
         assertEquals(3, chunk.getPageNumber());
         assertEquals("Methods", chunk.getSectionTitle());
         assertEquals(ParsedPaperElementType.PARAGRAPH.name(), chunk.getElementType());
-        assertEquals("opendataloader-pdf", chunk.getParserName());
+        assertEquals("mineru", chunk.getParserName());
         assertEquals("2.4.7", chunk.getParserVersion());
         assertEquals("TEXT", chunk.getSourceKind());
         assertTrue(chunk.getBboxJson().contains("\"pageNumber\":3"));
@@ -187,7 +187,7 @@ class ParseServiceStructuredParserTest {
 
     private ParsedPaper parsedPaper() {
         return new ParsedPaper(
-                "opendataloader-pdf",
+                "mineru",
                 "2.4.7",
                 new ParsedPaperMetadata("paper.pdf", "Evidence Paper", "Ada", 3, null, null),
                 List.of(

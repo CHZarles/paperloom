@@ -628,7 +628,7 @@ class ConversationServiceTest {
                     "sectionTitle": "Method",
                     "sectionLevel": 2,
                     "bboxJson": "{\\"x1\\":10,\\"y1\\":20,\\"x2\\":300,\\"y2\\":360}",
-                    "parserName": "OpenDataLoader",
+                    "parserName": "mineru",
                     "parserVersion": "2.4.7",
                     "sourceType": "%s",
                     "evidenceAssetLevel": "TEXT_ONLY",

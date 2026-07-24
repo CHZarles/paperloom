@@ -254,7 +254,7 @@ class PaperServiceTest {
                 "paper-md5",
                 new RuntimeException("Error processing task",
                         new MinerUUnavailableException(
-                                "MinerU sidecar unavailable at http://localhost:8000/health. Start the self-hosted MinerU service or explicitly set PAPER_PARSING_PROVIDER=opendataloader for local fallback.",
+                                "MinerU sidecar unavailable at http://localhost:8000/health. Start the self-hosted MinerU service.",
                                 new RuntimeException("finishConnect(..) failed: Connection refused")
                         ))
         );
@@ -264,7 +264,7 @@ class PaperServiceTest {
         Paper saved = captor.getValue();
         assertEquals(Paper.VECTORIZATION_STATUS_FAILED, saved.getVectorizationStatus());
         assertTrue(saved.getVectorizationErrorMessage().startsWith("MinerU sidecar unavailable"));
-        assertTrue(saved.getVectorizationErrorMessage().contains("PAPER_PARSING_PROVIDER=opendataloader"));
+        assertTrue(saved.getVectorizationErrorMessage().contains("Start the self-hosted MinerU service"));
     }
 
     @Test

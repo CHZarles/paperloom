@@ -79,7 +79,7 @@ class MinerUParserClientTest {
         );
 
         assertTrue(error.getMessage().contains("MinerU sidecar unavailable"));
-        assertTrue(error.getMessage().contains("PAPER_PARSING_PROVIDER=opendataloader"));
+        assertTrue(error.getMessage().contains("Start the self-hosted MinerU service"));
     }
 
     @Test

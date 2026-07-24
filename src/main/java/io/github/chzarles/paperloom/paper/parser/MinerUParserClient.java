@@ -204,7 +204,7 @@ public class MinerUParserClient {
         } catch (Exception e) {
             throw minerUUnavailable(
                     "MinerU sidecar unavailable at " + endpoint(healthPath)
-                            + ". Start the self-hosted MinerU service or explicitly set PAPER_PARSING_PROVIDER=opendataloader for local fallback.",
+                            + ". Start the self-hosted MinerU service.",
                     e
             );
         }

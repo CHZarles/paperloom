@@ -1,5 +1,6 @@
 package io.github.chzarles.paperloom.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Array;
@@ -34,31 +35,14 @@ public class ProductReadingConversationService {
     private static final Pattern LOCATION_REF_PATTERN =
             Pattern.compile("^(page_ref|section_ref|table_ref|figure_ref|location_ref)_[A-Za-z0-9_-]+$");
 
-    private final ProductReadingReActHarness readingHarness;
     private final PythonResearchHarnessClient pythonHarnessClient;
     private final ConversationService conversationService;
 
-    public ProductReadingConversationService(ProductReadingReActHarness readingHarness) {
-        this(readingHarness, null, null);
-    }
-
-    public ProductReadingConversationService(ProductReadingReActHarness readingHarness,
-                                             ConversationService conversationService) {
-        this(readingHarness, null, conversationService);
-    }
-
-    private ProductReadingConversationService(ProductReadingReActHarness readingHarness,
-                                              PythonResearchHarnessClient pythonHarnessClient,
-                                              ConversationService conversationService) {
-        this.readingHarness = readingHarness;
-        this.pythonHarnessClient = pythonHarnessClient;
-        this.conversationService = conversationService;
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public ProductReadingConversationService(PythonResearchHarnessClient pythonHarnessClient,
                                              ConversationService conversationService) {
-        this(null, pythonHarnessClient, conversationService);
+        this.pythonHarnessClient = pythonHarnessClient;
+        this.conversationService = conversationService;
     }
 
     public ProductTurnResult runTurn(Long userId,
@@ -98,10 +82,7 @@ public class ProductReadingConversationService {
                                      SourceScope lockedScope,
                                      ProductModelContext modelContext,
                                      Map<String, Object> effectiveScope,
-        Consumer<ToolProgressEvent> progressListener) {
-        if (pythonHarnessClient == null && readingHarness == null) {
-            return failed("The paper-reading service is not ready.");
-        }
+                                     Consumer<ToolProgressEvent> progressListener) {
         List<String> clickedSourceQuoteRefs = clickedSourceQuoteRefs(effectiveScope);
         List<String> clickedPaperHandles = clickedPaperHandles(effectiveScope);
         List<String> clickedLocationRefs = clickedLocationRefs(effectiveScope);
@@ -125,7 +106,7 @@ public class ProductReadingConversationService {
                 modelContext,
                 progressListener
         );
-        return pythonHarnessClient != null ? pythonHarnessClient.run(request) : readingHarness.run(request);
+        return pythonHarnessClient.run(request);
     }
 
     public CompletableFuture<ProductTurnResult> submitTurn(Long userId,
@@ -136,10 +117,6 @@ public class ProductReadingConversationService {
                                                            ProductModelContext modelContext,
                                                            Map<String, Object> effectiveScope,
                                                            Consumer<Map<String, Object>> progressListener) {
-        if (pythonHarnessClient == null) {
-            return CompletableFuture.supplyAsync(() -> runTurn(
-                    userId, conversationId, generationId, userMessage, lockedScope, modelContext, effectiveScope, null));
-        }
         List<String> clickedSourceQuoteRefs = clickedSourceQuoteRefs(effectiveScope);
         List<String> clickedPaperHandles = clickedPaperHandles(effectiveScope);
         List<String> clickedLocationRefs = clickedLocationRefs(effectiveScope);
@@ -165,9 +142,7 @@ public class ProductReadingConversationService {
     }
 
     public void cancelTurn(String generationId) {
-        if (pythonHarnessClient != null) {
-            pythonHarnessClient.cancel(generationId);
-        }
+        pythonHarnessClient.cancel(generationId);
     }
 
     private Map<String, Object> readingMemory(List<String> clickedSourceQuoteRefs,
@@ -186,8 +161,8 @@ public class ProductReadingConversationService {
                 && !hasLatestReadingStatePatch && !hasLatestResearchMemory) {
             return Map.of();
         }
-        Map<String, Object> memory = new java.util.LinkedHashMap<>();
-        Map<String, Object> anchors = new java.util.LinkedHashMap<>();
+        Map<String, Object> memory = new LinkedHashMap<>();
+        Map<String, Object> anchors = new LinkedHashMap<>();
         if (hasSourceQuoteRefs) {
             anchors.put("clickedSourceQuoteRefs", clickedSourceQuoteRefs);
         }
@@ -374,38 +349,5 @@ public class ProductReadingConversationService {
             return values;
         }
         return List.of();
-    }
-
-    private ProductTurnResult failed(String message) {
-        String answer = """
-                I understand your goal as: unresolved paper-reading goal.
-
-                Short answer: I cannot produce a validated paper-reading answer because the reading service is not ready.
-
-                Start here: no checkable reading target was observed.
-
-                How to verify: no paper, location, or quote was validated in this turn.
-
-                Not verified yet: the reading flow did not reach a validated observation.
-
-                Next step: try the paper-reading action again after the reading service is ready.
-                """;
-        return new ProductTurnResult(
-                answer,
-                new AnswerEnvelope(
-                        AnswerType.INSUFFICIENT_EVIDENCE,
-                        answer,
-                        List.of(),
-                        List.of(),
-                        List.of(message),
-                        List.of("No structured reading artifacts were produced."),
-                        List.of("validated_reading_service"),
-                        ProductStopReason.ANSWER_SCHEMA_INVALID.name()
-                ),
-                List.of(),
-                List.of(),
-                ProductStopReason.ANSWER_SCHEMA_INVALID,
-                ProductResultStatus.INCOMPLETE_PRECISE
-        );
     }
 }

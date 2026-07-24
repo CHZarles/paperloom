@@ -30,9 +30,4 @@ public class MinioConfig {
                 .credentials(accessKey, secretKey)
                 .build();
     }
-
-    @Bean
-    public String minioPublicUrl() {
-        return publicUrl;
-    }
 }

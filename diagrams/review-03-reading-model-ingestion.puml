@@ -19,7 +19,9 @@ participant "PaperProcessingConsumer" as Consumer #DBEAFE
 participant "PaperSearchabilityService" as Searchability #DBEAFE
 participant "UploadService" as Upload #DBEAFE
 participant "ParseService" as Parse #DCFCE7
-participant "PaperPdfParser" as Parser #DCFCE7
+participant "MinerUPaperPdfParser" as Parser #DCFCE7
+participant "MinerUParserClient" as MinerUClient #DCFCE7
+participant "MinerU self-hosted sidecar\nhttp://127.0.0.1:8000" as MinerU #FECACA
 participant "PaperParserArtifactService" as Artifact #DCFCE7
 participant "PaperReadingModelService" as ModelService #DCFCE7
 participant "PaperVisualAssetService" as Visuals #DCFCE7
@@ -54,7 +56,50 @@ else I1c parse and index
 
   Parse -> Parser : I4 parse(pdfBytes, originalFilename)
   activate Parser
-  Parser --> Parse : parsedPaper: ParsedPaper
+  Parser -> MinerUClient : I4a minerUParserClient.parse(pdfBytes, originalFilename)
+  activate MinerUClient
+  MinerUClient -> MinerU : GET /health  (assertSidecarAvailable)
+  alt MinerU sidecar reachable (2xx)
+    MinerU --> MinerUClient : 200 OK
+    MinerUClient -> MinerU : POST /tasks  (multipart, backend=pipeline)
+    alt immediate structured output in submit response
+      MinerU --> MinerUClient : {content_list_json, middle_json, markdown}
+    else async task with task_id
+      MinerU --> MinerUClient : {task_id, status: pending|processing|...}
+      loop poll GET /tasks/{taskId} every poll-interval-seconds, up to timeout-seconds
+        MinerUClient -> MinerU : GET /tasks/{taskId}
+        alt status == completed
+          MinerU --> MinerUClient : {status: completed}
+        else status == failed | error | interrupted
+          MinerU --> MinerUClient : {status: failed, error: ...}
+          MinerUClient --> Parser : throw PaperParsingException("MinerU task failed: ...")
+          Parser --> Parse : throw PaperParsingException
+        else status == pending | processing | running
+          MinerU --> MinerUClient : {status: <in-progress>}
+        end
+      end
+      alt task completed within timeout
+        MinerUClient -> MinerU : GET /tasks/{taskId}/result
+        MinerU --> MinerUClient : raw-result.zip  (content_list.json + middle.json + *.md)
+      else task did not complete within timeout
+        MinerUClient --> Parser : throw PaperParsingException("MinerU task timed out after ...")
+        Parser --> Parse : throw PaperParsingException
+      end
+    end
+    Parser --> Parse : parsedPaper: ParsedPaper  (with raw zip artifact)
+  else MinerU sidecar unreachable
+    MinerU --> MinerUClient : connection refused / timeout / non-2xx
+    MinerUClient --> Parser : throw MinerUUnavailableException
+    deactivate MinerUClient
+    Parser --> Parse : throw MinerUUnavailableException
+    deactivate Parser
+    Parse --> Consumer : MinerUUnavailableException  (sidecar not running at paper.parsing.mineru.base-url)
+    deactivate Parse
+    Consumer -> PaperService : markVectorizationFailed(paperId, MinerUUnavailableException)
+    Consumer --> Entry : failed
+    deactivate Consumer
+  end
+  deactivate MinerUClient
   deactivate Parser
 
   Parse -> Artifact : I5 saveParserArtifact(paperId, parsedPaper, ...)

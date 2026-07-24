@@ -261,7 +261,7 @@ public class ProductLaunchRuntimePreflightRunner {
                     + targetSuffix(target) + ".";
             case "mineru_health" -> "- `mineru_health`: start the self-hosted MinerU sidecar or align "
                     + "`PAPER_PARSING_MINERU_BASE_URL` and `PAPER_PARSING_MINERU_HEALTH_PATH`" + targetSuffix(target)
-                    + ". Do not switch to the OpenDataLoader fallback for launch evidence.";
+                    + ".";
             case "trace_config" -> "- `trace_config`: set `PAPERLOOM_TRACE_ENABLED=true` and a writable "
                     + "`PAPERLOOM_TRACE_ROOT` before running the live smoke.";
             default -> "- `" + failure.caseId() + "`: inspect `run.json` diagnostics and fix the reported "

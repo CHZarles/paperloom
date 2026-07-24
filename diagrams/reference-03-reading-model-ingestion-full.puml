@@ -18,15 +18,18 @@ component "PaperProcessingConsumer\nI1 task -> processing status" as Consumer #D
 component "ParseService\nI2 PDF bytes -> ParsedPaper + Reading Model" as Parse #DBEAFE
 component "RetrievalIndexingService\nI9 paperId -> IndexingResult" as Indexing #DBEAFE
 
-package "Parsing and model-building capabilities\n能力接口，不是网络端口" #DCFCE7 {
+package "In-process parsing and model-building capabilities" #DCFCE7 {
   component "UploadService\nI2a paperId -> merged PDF stream" as Upload
-  component "PaperPdfParser\nI3 PDF -> ParsedPaper\ndefault: MinerU / OpenDataLoader adapter" as Parser
+  component "MinerUPaperPdfParser\nI3 PDF bytes -> ParsedPaper\nproviderName=MinerU, providerVersion=self-hosted\n@ConditionalOnProperty(mineru, matchIfMissing=true)" as Parser
   component "PaperParserArtifactService\nI4 ParsedPaper -> parser artifact row/object" as Artifact
   component "PaperReadingModelService\nI5 replace current model transaction" as ModelService
   component "PaperReadingModelBuilder\nI5a ParsedPaper -> pages/sections/elements/locations" as Builder
   component "PaperVisualAssetService\nI6 PDF + parser assets -> MinIO visual assets" as Visuals
   component "PaperChunkBuilder\nI7 ParsedPaper -> legacy PaperTextChunk[]" as Chunker
+  component "MinerUParserClient\nHTTP client (WebClient) calling MinerU sidecar:\nGET /health -> POST /tasks (multipart) ->\nGET /tasks/{taskId} (poll every 3s, up to 900s) ->\nGET /tasks/{taskId}/result (zip up to 64MB)\nbase: paper.parsing.mineru.base-url (default http://localhost:8000)" as MinerUClient
 }
+
+node "MinerU self-hosted sidecar\nhttp://127.0.0.1:8000\n/tasks, /tasks/{id}, /tasks/{id}/result, /health" as MinerU #FECACA
 
 package "Persistence surfaces\nMySQL canonical state and object storage" #FEF3C7 {
   component "PaperReadingModelRepository\ncurrent READY model metadata" as ModelRepo
@@ -51,7 +54,12 @@ Consumer --> Searchability : skip duplicate searchable paper
 Consumer --> Upload : I2a getMergedFileStream(paperId)
 Consumer --> Parse : I2 parseAndSave(...)
 
-Parse --> Parser : I3 parse PDF
+Parse --> Parser : I3 parse(pdfBytes, originalFilename)
+Parser --> MinerUClient : invokes minerUParserClient.parse(pdfBytes, originalFilename)
+MinerUClient --> MinerU : GET /health (assertSidecarAvailable)
+MinerUClient --> MinerU : POST /tasks (multipart PDF, backend=pipeline)
+MinerUClient --> MinerU : GET /tasks/{taskId} (poll until completed/failed)
+MinerUClient --> MinerU : GET /tasks/{taskId}/result (raw-result.zip)
 Parse --> Artifact : I4 save parser artifact
 Parse --> ModelService : I5 replaceFromParsedPaper(...)
 ModelService --> Builder : I5a build PaperReadingModelBuildResult
@@ -80,6 +88,18 @@ Consumer --> Consumer : markVectorizationCompleted / Failed
 note right of Parse
 Parser output is retained for reproducibility,
 but the durable product contract is the Reading Model.
+end note
+
+note right of MinerU
+  MinerUParserClient throws MinerUUnavailableException when:
+  - GET /health fails or returns non-2xx (sidecar down)
+  - POST /tasks cannot reach the sidecar
+  - GET /tasks/{taskId} cannot reach the sidecar
+  - GET /tasks/{taskId}/result cannot reach the sidecar
+  Throws PaperParsingException when:
+  - task status becomes failed / error / interrupted
+  - task does not complete within timeout-seconds
+  - result zip or JSON lacks content_list.json
 end note
 
 note right of QdrantIndex

@@ -13,7 +13,7 @@ class PaperChunkBuilderTest {
     @Test
     void buildsPageAwareChunksWithSectionElementAndBoundingBoxProvenance() {
         ParsedPaper paper = new ParsedPaper(
-                "opendataloader-pdf",
+                "mineru",
                 "2.4.7",
                 new ParsedPaperMetadata("paper.pdf", "A Study", "Ada", 2, null, null),
                 List.of(
@@ -39,7 +39,7 @@ class PaperChunkBuilderTest {
         assertEquals(1, methodChunk.pageNumber());
         assertEquals("Methods", methodChunk.sectionTitle());
         assertEquals(ParsedPaperElementType.PARAGRAPH.name(), methodChunk.elementType());
-        assertEquals("opendataloader-pdf", methodChunk.parserName());
+        assertEquals("mineru", methodChunk.parserName());
         assertTrue(methodChunk.bboxJson().contains("\"left\":72.0"));
         assertTrue(methodChunk.rawProvenanceJson().contains("\"elementId\":\"p1\""));
 
@@ -55,7 +55,7 @@ class PaperChunkBuilderTest {
     void rawProvenanceStaysCompactWhenParserRawAttributesAreLarge() {
         String largeRawContent = "x".repeat(20_000);
         ParsedPaper paper = new ParsedPaper(
-                "opendataloader-pdf",
+                "mineru",
                 "2.4.7",
                 new ParsedPaperMetadata("paper.pdf", "A Study", "Ada", 1, null, null),
                 List.of(

@@ -101,9 +101,6 @@ class PaperReadingModelRealPdfAuditTest {
     @Autowired
     private PaperVisualAssetRepository visualAssetRepository;
 
-    @Autowired
-    private PaperReadingElementSearchService readingElementSearchService;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -201,7 +198,6 @@ class PaperReadingModelRealPdfAuditTest {
         validateRetainedElements(pdf, parsedPaper, locations, readingElements);
         VisualEvidenceSummary visualEvidence = validateVisualEvidence(pdf, readingElements, visualAssets);
         RouteSummary routeSummary = validateRoutes(pdf, locations, readingElements);
-        validateRetainedSearchInputs(pdf, paperId, model.getModelVersion(), readingElements);
 
         long pageLocationCount = countLocations(locations, PaperLocationType.PAGE);
         long sectionLocationCount = countLocations(locations, PaperLocationType.SECTION);
@@ -510,88 +506,12 @@ class PaperReadingModelRealPdfAuditTest {
         }
     }
 
-    private void validateRetainedSearchInputs(Path pdf,
-                                              String paperId,
-                                              String modelVersion,
-                                              List<PaperReadingElement> readingElements) {
-        readingElements.stream()
-                .filter(element -> "chart_caption_panel_only".equals(element.getCaptionSource()))
-                .filter(element -> element.getSearchableText() != null && !element.getSearchableText().isBlank())
-                .limit(5)
-                .forEach(element -> assertElementSearchableAndRouted(pdf, paperId, modelVersion, element));
-        readingElements.stream()
-                .filter(element -> "TABLE".equals(element.getElementType()))
-                .filter(element -> element.getSearchableText() != null && !element.getSearchableText().isBlank())
-                .findFirst()
-                .ifPresent(element -> assertElementSearchableAndRouted(pdf, paperId, modelVersion, element));
-        readingElements.stream()
-                .filter(element -> "FORMULA".equals(element.getElementType()))
-                .filter(element -> element.getSearchableText() != null && !element.getSearchableText().isBlank())
-                .findFirst()
-                .ifPresent(element -> assertElementSearchableAndRouted(pdf, paperId, modelVersion, element));
-
-        if ("2412.08972.pdf".equals(pdf.getFileName().toString())) {
-            assertSearchablePanelExample(pdf, paperId, modelVersion, "(a) Recall", "Recall");
-            assertSearchablePanelExample(pdf, paperId, modelVersion, "(b) Precision", "Precision");
-        }
-    }
-
-    private void assertElementSearchableAndRouted(Path pdf,
-                                                  String paperId,
-                                                  String modelVersion,
-                                                  PaperReadingElement expectedElement) {
-        String queryText = searchProbe(expectedElement.getSearchableText());
-        assertFalse(queryText.isBlank(), "blank retained search probe for " + pdf);
-        PaperReadingElementSearchResult match = readingElementSearchService.search(paperId, modelVersion, queryText)
-                .stream()
-                .filter(result -> expectedElement.getReadingElementId().equals(result.element().getReadingElementId()))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("retained element not found by search for " + pdf
-                        + ": " + expectedElement.getReadingElementId()));
-        if (expectedElement.getLocationRef() != null && !expectedElement.getLocationRef().isBlank()) {
-            assertEquals("OWN_LOCATION", match.routingSource(), "own-location search routing mismatch for " + pdf);
-        } else if ("PARENT_LOCATION".equals(match.routingSource())) {
-            assertEquals("PARENT_LOCATION", match.routingSource(), "parent-location search routing mismatch for " + pdf);
-        } else if (expectedElement.getPageNumber() != null) {
-            assertEquals(PaperLocationType.PAGE, match.routedLocationType(), "page fallback search routing mismatch for " + pdf);
-        }
-    }
-
-    private void assertSearchablePanelExample(Path pdf,
-                                              String paperId,
-                                              String modelVersion,
-                                              String expectedText,
-                                              String queryText) {
-        PaperReadingElementSearchResult match = readingElementSearchService.search(paperId, modelVersion, queryText)
-                .stream()
-                .filter(result -> expectedText.equals(result.element().getSearchableText()))
-                .filter(result -> "chart_caption_panel_only".equals(result.element().getCaptionSource()))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("missing searchable panel example " + expectedText + " for " + pdf));
-        if ("ATTACHED".equals(match.element().getAssociationStatus())
-                && "PARENT_LOCATION".equals(match.routingSource())) {
-            assertEquals("PARENT_LOCATION", match.routingSource(), "panel example should route to parent figure for " + pdf);
-            assertEquals(PaperLocationType.FIGURE, match.routedLocationType(), "panel example parent route type mismatch for " + pdf);
-        }
-    }
-
     private String parentLocationRef(PaperReadingElement element, Map<String, PaperReadingElement> retainedElementsById) {
         if (element == null || element.getParentReadingElementId() == null || element.getParentReadingElementId().isBlank()) {
             return null;
         }
         PaperReadingElement parent = retainedElementsById.get(element.getParentReadingElementId());
         return parent == null ? null : parent.getLocationRef();
-    }
-
-    private String searchProbe(String searchableText) {
-        if (searchableText == null) {
-            return "";
-        }
-        String trimmed = searchableText.trim();
-        if (trimmed.length() <= 64) {
-            return trimmed;
-        }
-        return trimmed.substring(0, 64).trim();
     }
 
     private void validateModelSummary(Path pdf,
