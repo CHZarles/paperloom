@@ -264,18 +264,9 @@ const latestPresentedPhase = computed<PhaseView | undefined>(() => {
 
 const auditDiagnostics = computed(() => auditTrail.value?.diagnostics || {});
 
-const auditGroups = computed(() => [
-  {
-    key: 'cited',
-    title: 'Cited',
-    rows: auditEvidence.value.filter(row => row.status === 'cited')
-  },
-  {
-    key: 'candidate',
-    title: 'Candidate only',
-    rows: auditEvidence.value.filter(row => !row.status || row.status === 'candidate' || row.status === 'read' || row.status === 'unavailable_visual')
-  }
-]);
+const citedEvidence = computed(() =>
+  auditEvidence.value.filter(row => row.status === 'cited')
+);
 
 function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
   return toolLabel(event.tool, event.status === 'executing');
@@ -397,13 +388,10 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
         </article>
       </div>
 
-      <div v-if="auditEvidence.length" class="research-process__ledger">
-        <section v-for="group in auditGroups" :key="group.key" class="research-process__ledger-group">
-          <div class="research-process__ledger-heading">
-            <strong>{{ group.title }}</strong>
-          </div>
+      <div v-if="citedEvidence.length" class="research-process__ledger">
+        <section class="research-process__ledger-group">
           <button
-            v-for="(row, rowIndex) in group.rows"
+            v-for="(row, rowIndex) in citedEvidence"
             :key="evidenceKey(row, rowIndex)"
             type="button"
             class="phase-card phase-card--ledger"
