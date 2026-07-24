@@ -114,7 +114,7 @@ function syncSidebarForViewport() {
   const nextNavigationNarrow = window.innerWidth <= 960;
   if (nextNavigationNarrow !== chatNavigationNarrow) sidebarCollapsed.value = nextNavigationNarrow;
   chatNavigationNarrow = nextNavigationNarrow;
-  reviewOverlayMode.value = window.innerWidth < 1200;
+  reviewOverlayMode.value = window.innerWidth < 768;
 }
 
 onMounted(() => {
@@ -173,12 +173,6 @@ onBeforeUnmount(() => {
           <InputBox v-if="showDockInput" />
         </div>
 
-        <div
-          v-if="referencePanelVisible && reviewOverlayMode"
-          class="review-panel-mask"
-          aria-hidden="true"
-          @click="closeReferencePanel"
-        />
         <aside
           v-if="referencePanelVisible"
           ref="referencePanelRef"
@@ -423,8 +417,8 @@ onBeforeUnmount(() => {
 
 .reference-panel {
   display: flex;
-  width: clamp(420px, 36vw, 620px);
-  min-width: 420px;
+  width: clamp(360px, 36vw, 620px);
+  min-width: 360px;
   flex-shrink: 0;
   flex-direction: column;
   overflow: hidden;
@@ -591,27 +585,6 @@ onBeforeUnmount(() => {
     z-index: 20;
     width: min(100vw, 560px);
     min-width: 0;
-  }
-}
-
-@media (max-width: 1199px) {
-  .review-panel-mask {
-    position: fixed;
-    inset: 58px 0 0;
-    z-index: 19;
-    display: block;
-    background: color-mix(in srgb, var(--color-text) 18%, transparent);
-  }
-}
-
-@media (min-width: 961px) and (max-width: 1199px) {
-  .reference-panel {
-    position: fixed;
-    inset: 58px 0 0 auto;
-    z-index: 20;
-    width: min(100vw, 560px);
-    min-width: 0;
-    box-shadow: var(--shadow-card-soft);
   }
 }
 
