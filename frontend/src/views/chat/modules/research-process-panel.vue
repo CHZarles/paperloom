@@ -57,21 +57,39 @@ function stateOf(input: PhaseInput): 'running' | 'completed' | 'failed' {
   return 'completed';
 }
 
+function searchHeadline(inputData: Record<string, any>): string {
+  const query = String(inputData.query || '').trim();
+  return query ? `Searched papers · "${query}"` : 'Searched papers';
+}
+
+function locateHeadline(inputData: Record<string, any>): string {
+  const query = String(inputData.query || '').trim();
+  return query ? `Located sections · "${query}"` : 'Located sections';
+}
+
+function readHeadline(inputData: Record<string, any>, output: Record<string, any>): string {
+  const count = Number(output.evidenceCount || output.readCount || inputData.locationCount || 0);
+  return count > 0 ? `Read ${count} passage${count === 1 ? '' : 's'}` : 'Read passages';
+}
+
+function citeHeadline(output: Record<string, any>): string {
+  const count = Number(output.edgeCount || 0);
+  return count > 0 ? `Traced ${count} citation${count === 1 ? '' : 's'}` : 'Traced citations';
+}
+
+// eslint-disable-next-line complexity
 function headlineOf(input: PhaseInput, phase: Phase): string {
   const inputData = input.input || {};
+  const output = input.output || {};
   switch (phase) {
-    case 'search': {
-      const query = String(inputData.query || '').trim();
-      return query ? `Searched papers · "${query}"` : 'Searched papers';
-    }
-    case 'locate': {
-      const query = String(inputData.query || '').trim();
-      return query ? `Located sections · "${query}"` : 'Located sections';
-    }
+    case 'search':
+      return searchHeadline(inputData);
+    case 'locate':
+      return locateHeadline(inputData);
     case 'read':
-      return 'Read passages';
+      return readHeadline(inputData, output);
     case 'cite':
-      return 'Traced citations';
+      return citeHeadline(output);
     case 'think':
       return 'Reasoning';
     case 'answer':
