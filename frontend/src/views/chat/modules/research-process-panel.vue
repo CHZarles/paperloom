@@ -264,9 +264,7 @@ const latestPresentedPhase = computed<PhaseView | undefined>(() => {
 
 const auditDiagnostics = computed(() => auditTrail.value?.diagnostics || {});
 
-const citedEvidence = computed(() =>
-  auditEvidence.value.filter(row => row.status === 'cited')
-);
+const citedEvidence = computed(() => auditEvidence.value.filter(row => row.status === 'cited'));
 
 function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
   return toolLabel(event.tool, event.status === 'executing');
@@ -283,12 +281,6 @@ function evidenceTitle(row: Api.Chat.ResearchAuditEvidence) {
 
 function evidenceText(row: Api.Chat.ResearchAuditEvidence) {
   return row.content || row.evidenceSnippet || row.matchedChunkText || row.anchorText || row.sectionTitle || '';
-}
-
-function evidenceMeta(row: Api.Chat.ResearchAuditEvidence) {
-  return [row.citationRef, row.sourceQuoteRef, row.evidenceRef, row.locationRef, row.sectionTitle]
-    .filter(Boolean)
-    .join(' · ');
 }
 
 function evidenceKey(row: Api.Chat.ResearchAuditEvidence, index: number) {
@@ -398,11 +390,7 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
             :disabled="!canOpenEvidence(row)"
             @click="openEvidence(row)"
           >
-            <div class="phase-card__heading">
-              <strong>{{ evidenceTitle(row) }}</strong>
-            </div>
-            <p v-if="evidenceText(row)" class="phase-card__item-text">{{ evidenceText(row) }}</p>
-            <div v-if="evidenceMeta(row)" class="phase-card__detail">{{ evidenceMeta(row) }}</div>
+            <span class="phase-card__heading">{{ evidenceTitle(row) }}</span>
           </button>
         </section>
       </div>
@@ -720,15 +708,22 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
 }
 
 .phase-card--ledger {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  background: var(--color-surface);
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
   cursor: pointer;
   text-align: left;
-  transition:
-    border-color 0.16s ease,
-    background 0.16s ease;
+  border-radius: 4px;
+  transition: background 0.12s ease;
+}
+
+.phase-card--ledger:hover:not(:disabled),
+.phase-card--ledger:focus-visible {
+  background: var(--color-accent-soft-bg);
 }
 
 .phase-card--ledger:hover:not(:disabled),
