@@ -1,6 +1,203 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+type Phase = 'search' | 'locate' | 'read' | 'cite' | 'think' | 'answer' | 'error';
+
+interface PhaseItem {
+  key: string | number;
+  title: string;
+  text: string;
+  reference: string;
+}
+
+interface PhaseView {
+  key: string | number;
+  phase: Phase;
+  state: 'running' | 'completed' | 'failed';
+  headline: string;
+  badge: string;
+  oneLiner: string;
+  durationMs?: number;
+  items: PhaseItem[];
+}
+
+interface PhaseInput {
+  type?: string;
+  eventType?: string;
+  tool?: string;
+  status?: string;
+  attempt?: number;
+  durationMs?: number;
+  message?: string;
+  errorType?: string;
+  input?: Record<string, any>;
+  output?: Record<string, any>;
+  usage?: { totalTokens?: number };
+}
+
+function eventTypeOf(input: PhaseInput): string {
+  return input.eventType || input.type || '';
+}
+
+function phaseOf(input: PhaseInput): Phase {
+  const type = eventTypeOf(input);
+  if (type === 'job_failed' || type === 'job_cancelled') return 'error';
+  if (input.tool === 'search_paper_candidates') return 'search';
+  if (input.tool === 'find_reading_locations') return 'locate';
+  if (input.tool === 'read_locations') return 'read';
+  if (input.tool === 'get_citation_edges') return 'cite';
+  if (type === 'model_call_started' || type === 'model_call_completed') return 'think';
+  if (type === 'answer_completed') return 'answer';
+  return 'think';
+}
+
+function stateOf(input: PhaseInput): 'running' | 'completed' | 'failed' {
+  const type = eventTypeOf(input);
+  if (type === 'job_failed' || input.status === 'failed') return 'failed';
+  if (type === 'tool_started' || type === 'model_call_started') return 'running';
+  return 'completed';
+}
+
+// Introduced for the phase-card template migration in Task 2.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getPhaseIcon(phase: Phase): string {
+  switch (phase) {
+    case 'search':
+      return 'lucide:search';
+    case 'locate':
+      return 'lucide:map-pin';
+    case 'read':
+      return 'lucide:book-open';
+    case 'cite':
+      return 'lucide:link';
+    case 'think':
+      return 'lucide:sparkles';
+    case 'answer':
+      return 'lucide:check-circle';
+    case 'error':
+      return 'lucide:alert-triangle';
+    default:
+      return 'lucide:sparkles';
+  }
+}
+
+function headlineOf(input: PhaseInput, phase: Phase, state: 'running' | 'completed' | 'failed'): string {
+  if (phase === 'search') return state === 'running' ? 'Searching papers' : 'Searched papers';
+  if (phase === 'locate') return state === 'running' ? 'Locating sections' : 'Located sections';
+  if (phase === 'read') return state === 'running' ? 'Reading passages' : 'Read passages';
+  if (phase === 'cite') return state === 'running' ? 'Tracing citations' : 'Traced citations';
+  if (phase === 'think') {
+    const attempt = input.attempt && input.attempt > 1 ? ` · pass ${input.attempt}` : '';
+    return `Thinking${attempt}`;
+  }
+  if (phase === 'answer') return 'Answer prepared';
+  if (phase === 'error') {
+    return eventTypeOf(input) === 'job_cancelled' ? 'Research cancelled' : 'Research failed';
+  }
+  return 'Research progress';
+}
+
+function pluralize(n: number, singular: string): string {
+  return `${n} ${singular}${n === 1 ? '' : 's'}`;
+}
+
+function badgeOf(input: PhaseInput, phase: Phase): string {
+  const output = input.output || {};
+  switch (phase) {
+    case 'search':
+      return pluralize(Number(output.resultCount || 0), 'paper');
+    case 'locate':
+      return pluralize(Number(output.resultCount || 0), 'location');
+    case 'read':
+      return pluralize(Number(output.evidenceCount || output.readCount || 0), 'passage');
+    case 'cite':
+      return pluralize(Number(output.edgeCount || 0), 'edge');
+    case 'think':
+      return input.durationMs ? `${input.durationMs} ms` : '';
+    case 'error':
+      return input.errorType || '';
+    default:
+      return '';
+  }
+}
+
+// Runtime phase summaries are intentionally derived by phase-specific deterministic branches.
+// eslint-disable-next-line complexity
+function oneLinerOf(input: PhaseInput, phase: Phase): string {
+  const inputData = input.input || {};
+  const output = input.output || {};
+  switch (phase) {
+    case 'search': {
+      const query = String(inputData.query || '').trim();
+      const count = Number(output.resultCount || 0);
+      if (count === 1 && Array.isArray(output.papers) && output.papers.length) {
+        return String(output.papers[0].title || query);
+      }
+      return query;
+    }
+    case 'locate': {
+      const query = String(inputData.query || '').trim();
+      return query || 'Locating relevant sections';
+    }
+    case 'read': {
+      const pages = Array.isArray(output.pages) ? output.pages : [];
+      return pages.length ? `pages ${pages.join(', ')}` : '';
+    }
+    case 'think': {
+      const tokens = Number(input.usage?.totalTokens || 0);
+      return tokens > 0 ? `${tokens.toLocaleString()} tokens` : '';
+    }
+    case 'error':
+      return input.message || 'The harness stopped before completing the answer.';
+    default:
+      return '';
+  }
+}
+
+function itemsOf(input: PhaseInput, phase: Phase): PhaseItem[] {
+  const output = input.output || {};
+  if (phase === 'search' && Array.isArray(output.papers)) {
+    return output.papers.slice(0, 10).map((p: any, i: number) => ({
+      key: p.paperId || i,
+      title: String(p.title || ''),
+      text: '',
+      reference: String(p.paperId || '')
+    }));
+  }
+  if (phase === 'locate' && Array.isArray(output.locations)) {
+    return output.locations.slice(0, 10).map((l: any, i: number) => ({
+      key: l.locationRef || i,
+      title: [l.section, l.page ? `p. ${l.page}` : ''].filter(Boolean).join(' · '),
+      text: '',
+      reference: String(l.locationRef || '')
+    }));
+  }
+  if (phase === 'read' && Array.isArray(output.evidence)) {
+    return output.evidence.slice(0, 10).map((e: any, i: number) => ({
+      key: e.evidenceId || i,
+      title: [e.section, e.page ? `p. ${e.page}` : ''].filter(Boolean).join(' · '),
+      text: String(e.quote || '').slice(0, 240),
+      reference: String(e.evidenceId || '')
+    }));
+  }
+  return [];
+}
+
+function buildPhaseView(input: PhaseInput, index: number): PhaseView {
+  const phase = phaseOf(input);
+  const state = stateOf(input);
+  return {
+    key: `${phase}:${index}:${input.attempt ?? ''}`,
+    phase,
+    state,
+    headline: headlineOf(input, phase, state),
+    badge: badgeOf(input, phase),
+    oneLiner: oneLinerOf(input, phase),
+    durationMs: input.durationMs,
+    items: itemsOf(input, phase)
+  };
+}
+
 defineOptions({ name: 'ResearchProcessPanel' });
 
 const props = defineProps<{
@@ -161,6 +358,11 @@ function presentEvent(event: Api.Chat.ResearchProgressEvent, index: number): Pre
 const presentedEvents = computed(() =>
   events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => presentEvent(event, index))
 );
+// Introduced for the phase-card template migration in Task 2.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const presentedPhaseCards = computed(() =>
+  events.value.slice(-MAX_VISIBLE_EVENTS).map((event, index) => buildPhaseView(event, index))
+);
 const latestPresentedEvent = computed(() => presentedEvents.value[presentedEvents.value.length - 1]);
 const latestAuditStep = computed(() => auditSteps.value[auditSteps.value.length - 1]);
 
@@ -205,7 +407,10 @@ function auditStepDetail(step: Api.Chat.ResearchAuditStep) {
 }
 
 function evidenceTitle(row: Api.Chat.ResearchAuditEvidence) {
-  return [row.paperTitle || row.originalFilename || row.paperId || 'Evidence', row.pageNumber ? `p. ${row.pageNumber}` : '']
+  return [
+    row.paperTitle || row.originalFilename || row.paperId || 'Evidence',
+    row.pageNumber ? `p. ${row.pageNumber}` : ''
+  ]
     .filter(Boolean)
     .join(' · ');
 }
@@ -221,7 +426,9 @@ function evidenceMeta(row: Api.Chat.ResearchAuditEvidence) {
 }
 
 function evidenceKey(row: Api.Chat.ResearchAuditEvidence, index: number) {
-  return String(row.auditEvidenceId || row.sourceQuoteRef || row.evidenceRef || row.locationRef || row.paperId || index);
+  return String(
+    row.auditEvidenceId || row.sourceQuoteRef || row.evidenceRef || row.locationRef || row.paperId || index
+  );
 }
 
 function evidenceVisualLabel(row: Api.Chat.ResearchAuditEvidence) {
