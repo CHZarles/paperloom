@@ -271,14 +271,9 @@ const auditGroups = computed(() => [
     rows: auditEvidence.value.filter(row => row.status === 'cited')
   },
   {
-    key: 'read',
-    title: 'Read but not cited',
-    rows: auditEvidence.value.filter(row => row.status === 'read' || row.status === 'unavailable_visual')
-  },
-  {
     key: 'candidate',
     title: 'Candidate only',
-    rows: auditEvidence.value.filter(row => !row.status || row.status === 'candidate')
+    rows: auditEvidence.value.filter(row => !row.status || row.status === 'candidate' || row.status === 'read' || row.status === 'unavailable_visual')
   }
 ]);
 
