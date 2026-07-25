@@ -217,12 +217,21 @@ const hasAuditTrail = computed(() => auditSteps.value.length > 0 || auditEvidenc
 const events = computed(() => props.message?.researchEvents || []);
 const legacyTools = computed(() => props.message?.toolEvents || []);
 const isRunning = computed(() => ['pending', 'loading'].includes(props.message?.status || ''));
-// Keep the animation alive while events are still streaming, even if status
-// has been marked complete upstream. Without this, switching sessions while
-// research is in-flight can drop the pulse before answer_completed arrives.
+// Once we've observed an in-flight message, stay active until we see a real
+// terminal state. status='success' is terminal, but transient flips to undefined
+// or 'cancelled' should not drop the pulse mid-flight.
+const sawInFlight = ref(isRunning.value);
+watch(isRunning, value => {
+  if (value) sawInFlight.value = true;
+});
+// Pulse plays while running, OR while events are still flowing (no
+// answer_completed yet). Combined with sawInFlight: if the panel ever saw
+// the research in flight, the pulse keeps going until events include
+// answer_completed.
 const isResearchActive = computed(
   () => isRunning.value ||
-    (events.value.length > 0 && !events.value.some(e => (e.eventType || e.type) === 'answer_completed'))
+    (sawInFlight.value && events.value.length > 0 &&
+      !events.value.some(e => (e.eventType || e.type) === 'answer_completed'))
 );
 const MAX_VISIBLE_EVENTS = 100;
 
