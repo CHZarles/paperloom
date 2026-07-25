@@ -10,6 +10,7 @@ import httpx
 
 from harness_py.utils.errors import HarnessCancelled
 from harness_py.corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
+from harness_py.corpus.in_memory_tools import InMemoryTools
 from harness_py.corpus.tools import ReadingCorpusTools
 
 
@@ -172,7 +173,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
             user_id=7,
             scope_paper_ids=["paper-a"],
         )
-        tools = ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader)
+        tools = InMemoryTools(reader.load_metadata_dataset())
 
         result = tools.read_locations({"location_refs": ["location_ref_hidden"]})
 
@@ -191,7 +192,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         dataset = reader.load_metadata_dataset()
 
         java_definitions = ReadingCorpusTools(dataset, reader=reader).definitions()
-        in_memory_definitions = ReadingCorpusTools(dataset).definitions()
+        in_memory_definitions = InMemoryTools(dataset).definitions()
 
         self.assertEqual(in_memory_definitions, java_definitions)
 

@@ -47,19 +47,26 @@ class ResearchRunContext:
 
     def __post_init__(self) -> None:
         # 每轮创建独立的 Corpus 工具实例，因此授权集合不会泄漏到其他用户或其他请求。
-        self.corpus = ReadingCorpusTools(self.turn.dataset, reader=self.turn.corpus_reader)
+        # 生产路径必传 reader 走 Java 委派；测试 / 评测夹具可不传，回退到 corpus/in_memory_tools 的本地 BM25 路径。
+        from harness_py.corpus.in_memory_tools import InMemoryTools
+        if self.turn.corpus_reader is not None:
+            self.corpus = ReadingCorpusTools(self.turn.dataset, reader=self.turn.corpus_reader)
+        else:
+            self.corpus = InMemoryTools(self.turn.dataset)
         # 上一轮已经引用过的论文和位置可直接用于追问，其余仍走工具授权链。
         self.corpus.authorized_paper_ids.update(
             paper_id
             for paper_id in self.turn.research_memory.selected_paper_ids
             if paper_id in self.turn.dataset.paper_records_by_id
         )
+        # documents_by_location 只在 InMemoryTools 上；ReadingCorpusTools 不暴露此字段（reader-only）。
+        disclosed_locations = getattr(self.corpus, "documents_by_location", {})
         self.corpus.disclosed_location_refs.update(
             str(item.get("location_ref") or item.get("location") or "")
             for item in self.turn.research_memory.evidence_items_by_id.values()
             if self.turn.corpus_reader is not None
             or str(item.get("location_ref") or item.get("location") or "")
-            in self.corpus.documents_by_location
+            in disclosed_locations
         )
 
     def check_cancelled(self) -> None:

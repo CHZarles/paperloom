@@ -15,7 +15,7 @@ import yaml
 
 from harness_py.cli import main
 from harness_py.utils.models import GoldenDataset
-from harness_py.corpus.tools import ReadingCorpusTools
+from harness_py.corpus.in_memory_tools import InMemoryTools
 from harness_py.evaluation.dataset import load_dataset
 from harness_py.evaluation.golden_case import paper_ids_for_case
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
@@ -191,8 +191,8 @@ class GoldenV4Test(unittest.TestCase):
             "expanded Golden Data must not change the established agent prompt",
         )
         self.assertEqual(
-            ReadingCorpusTools(self.dataset).definitions(),
-            ReadingCorpusTools(expanded).definitions(),
+            InMemoryTools(self.dataset).definitions(),
+            InMemoryTools(expanded).definitions(),
             "expanded Golden Data must not change model-visible corpus tools",
         )
 
@@ -310,7 +310,7 @@ class GoldenV4Test(unittest.TestCase):
         self.assertTrue(contains_normalized_phrase(text, quote))
 
     def test_runtime_anchor_matcher_rejects_partial_overlap_unrelated_passage(self) -> None:
-        from harness_py.corpus.tools import ReadingDocument, _match_anchors
+        from harness_py.corpus.in_memory_tools import ReadingDocument, _match_anchors
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         document = ReadingDocument(
@@ -328,7 +328,7 @@ class GoldenV4Test(unittest.TestCase):
         self.assertEqual((), _match_anchors(document, [anchor]))
 
     def test_runtime_anchor_matcher_requires_exact_quote_on_the_authored_page(self) -> None:
-        from harness_py.corpus.tools import ReadingDocument, _match_anchors
+        from harness_py.corpus.in_memory_tools import ReadingDocument, _match_anchors
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         quote = anchor["selector"]["exact_text"]
@@ -354,7 +354,7 @@ class GoldenV4Test(unittest.TestCase):
         )
 
     def test_runtime_anchor_matcher_keeps_multiple_anchors_in_one_element(self) -> None:
-        from harness_py.corpus.tools import ReadingDocument, _match_anchors
+        from harness_py.corpus.in_memory_tools import ReadingDocument, _match_anchors
 
         anchors = [{
             "anchor_id": anchor_id,
@@ -416,10 +416,11 @@ class GoldenV4Test(unittest.TestCase):
                     load_dataset(root / "manifest.yaml", repo_root=Path.cwd())
 
     def test_committed_runtime_anchor_tags_are_exact_and_page_constrained(self) -> None:
-        from harness_py.corpus.tools import ReadingCorpusTools, _normalize
+        from harness_py.corpus.in_memory_tools import InMemoryTools as ReadingCorpusTools
+        from harness_py.corpus.in_memory_tools import _normalize
 
         tagged: dict[str, list[str]] = {}
-        for document in ReadingCorpusTools(self.dataset).documents:
+        for document in InMemoryTools(self.dataset).documents:
             if not document.matched_anchor_ids:
                 continue
             for anchor_id in document.matched_anchor_ids:
@@ -441,7 +442,7 @@ class GoldenV4Test(unittest.TestCase):
         self.assertTrue(all(len(location_refs) == 1 for location_refs in tagged.values()), tagged)
 
     def test_physical_page_projection_grounds_a_cross_page_semantic_element(self) -> None:
-        from harness_py.corpus.tools import ReadingCorpusTools
+        from harness_py.corpus.in_memory_tools import InMemoryTools
 
         paper_id = "bert_2018"
         anchor_id = "cross_page_anchor"
@@ -499,7 +500,7 @@ class GoldenV4Test(unittest.TestCase):
             reading_models_by_paper_id={paper_id: model},
             anchors_by_id={anchor_id: anchor},
         )
-        tools = ReadingCorpusTools(dataset)
+        tools = InMemoryTools(dataset)
         tools.search_paper_candidates({"paper_ids": [paper_id], "limit": 1})
 
         result = tools.find_reading_locations({
@@ -514,10 +515,10 @@ class GoldenV4Test(unittest.TestCase):
         self.assertEqual(2, grounded.page)
 
     def test_expanded_multi_paper_query_keeps_both_human_gap_anchors(self) -> None:
-        from harness_py.corpus.tools import ReadingCorpusTools
+        from harness_py.corpus.in_memory_tools import InMemoryTools
 
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
-        tools = ReadingCorpusTools(dataset)
+        tools = InMemoryTools(dataset)
         paper_ids = ["gaia_2024", "webarena_2024"]
         tools.authorized_paper_ids.update(paper_ids)
 
@@ -541,9 +542,9 @@ class GoldenV4Test(unittest.TestCase):
         }.issubset(matched), matched)
 
     def test_multifacet_location_search_keeps_architecture_and_training_candidates(self) -> None:
-        from harness_py.corpus.tools import ReadingCorpusTools
+        from harness_py.corpus.in_memory_tools import InMemoryTools
 
-        tools = ReadingCorpusTools(self.dataset)
+        tools = InMemoryTools(self.dataset)
         tools.search_paper_candidates({
             "paper_ids": ["attention_is_all_you_need_2017", "bert_2018"],
             "limit": 2,
