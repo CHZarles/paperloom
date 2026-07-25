@@ -176,6 +176,14 @@ class _ScoredDocument:
 
 @dataclass
 class ReadingCorpusTools:
+    """论文检索工具门面。
+
+    构造时传 reader=... 走 Java 委派（生产路径，corpus/gateway.py:JavaCorpusGatewayReader
+    调 Java Corpus API）；不传 reader 则走本文件的 in-memory BM25 路径（仅供单测 + 评测夹具）。
+    五个公开 tool 方法（search_paper_candidates / find_papers_by_identity / find_reading_locations /
+    read_locations / get_citation_edges）都先看 self.reader 是否存在；存在时立刻委派并合并授权集，
+    不存在时退到 in-memory BM25 路径。
+    """
     dataset: GoldenDataset
     reader: CorpusReader | None = None
     observations_by_evidence_id: dict[str, JsonMap] = field(default_factory=dict)
@@ -183,6 +191,8 @@ class ReadingCorpusTools:
     disclosed_location_refs: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
+        # 生产路径必传 reader（见 agents/context.py），in-memory 路径仅供单元测试 + 评测夹具。
+        # 走 in-memory 时本字段非空；走 reader 时本字段是空 list，下游分支不会进入。
         self.documents = [] if self.reader is not None else _build_documents(self.dataset)
         self.documents_by_location = {doc.location_ref: doc for doc in self.documents}
 

@@ -94,14 +94,18 @@ For each turn, Python receives `user_id` and `scope.paper_ids` from Java. A requ
 `JavaCorpusGatewayReader` uses one reusable HTTP client to call the Java data plane:
 
 1. Paper discovery and identity lookup query authorized product metadata.
-2. Java encodes the location query as a BM25-style sparse vector and performs one scoped Qdrant search.
+2. Java encodes the location query as both a BM25-style sparse vector and a MiniMax-embedding dense vector, then issues a hybrid Qdrant search. A reciprocal-rank fusion (RRF, k=10) merges both result lists.
 3. Java applies deterministic paper and canonical-lead coverage, checks the current READY model, and hydrates previews from MySQL.
-4. Search returns non-citeable previews and stable `location_ref` values.
+4. Search returns non-citeable previews and stable `location_ref` values, each tagged with `sparse_score`, `dense_score`, and `fused_score`.
 5. `read_locations` revalidates scope/current model and reads exact canonical MySQL content.
 6. Python creates Evidence IDs only after that exact read.
 
-Qdrant is a rebuildable candidate index, not an evidence source. Golden fixtures and offline audits
-still use the in-memory BM25 adapter without Java, Qdrant, or provider calls.
+Qdrant is a rebuildable candidate index, not an evidence source. The contract is
+`paperloom_reading_locations_hybrid_v1`: named sparse `lexical_bm25_v1` + named dense
+`dense_embo01_v1` (1536-dim, MiniMax embo-01). AUTO_LIBRARY mode falls back to the user's
+globally accessible paper scope; SOURCE_SET_SNAPSHOT mode restricts to the picker-pinned set.
+Golden fixtures and offline audits still use the in-memory BM25 adapter without Java, Qdrant,
+or provider calls.
 
 ## Tool Authorization Ladder
 
@@ -141,7 +145,7 @@ do not replace the product-owned Reading Model.
 | Store | Live-path responsibility |
 | --- | --- |
 | MySQL | Users, access rules, papers, canonical Reading Models, conversations, research memory, and persistent reference data; exact source behind the Java Corpus API |
-| Qdrant | Rebuildable sparse BM25 candidate index over Current Reading Model locations; never a source of citeable content |
+| Qdrant | Rebuildable hybrid (sparse BM25 + dense MiniMax embedding) candidate index over Current Reading Model locations; never a source of citeable content |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and visual evidence crops |
 
 Kafka remains upload-processing infrastructure and Redis serves separate transient product concerns.

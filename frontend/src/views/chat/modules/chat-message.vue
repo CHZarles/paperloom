@@ -92,25 +92,19 @@ const assistantIsRunning = computed(
     props.msg.role === 'assistant' &&
     (props.msg.status === 'pending' || (props.msg.status === 'loading' && !props.msg.content))
 );
-// Once we've observed an in-flight assistant message in this session,
-// stay generating-state until events include answer_completed. status
-// can transiently drop to non-running during a session switch while the
-// research is still streaming; we don't want to lose the pulse for that.
-const sawAssistantGenerating = ref(false);
-watch(
-  () => props.msg.status,
-  status => {
-    if (status === 'pending' || status === 'loading') sawAssistantGenerating.value = true;
-  },
-  { immediate: true }
+// Keep the thinking animation alive across session switches and unmounts.
+// Once events have arrived for this message and answer_completed hasn't,
+// the research is still effectively running from the user's perspective —
+// even if upstream status transiently dropped to 'success'.
+const researchFinished = computed(() =>
+  researchEvents.value.some(e => (e.eventType || e.type) === 'answer_completed')
 );
 const assistantIsGenerating = computed(
   () =>
     props.msg.role === 'assistant' &&
+    !researchFinished.value &&
     (['pending', 'loading'].includes(props.msg.status || '') ||
-      (sawAssistantGenerating.value &&
-        researchEvents.value.length > 0 &&
-        !researchEvents.value.some(e => (e.eventType || e.type) === 'answer_completed')))
+      researchEvents.value.length > 0)
 );
 const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
 const hasReadingArtifacts = computed(() => {
