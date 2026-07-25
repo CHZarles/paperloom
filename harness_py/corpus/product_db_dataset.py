@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from ..core.models import GoldenDataset, JsonMap, as_list
+from ..utils.models import GoldenDataset, JsonMap, as_list
 from ..transport.provider_config import DockerMySqlProviderConfigStore, _database_name, _mysql_quote
 
 

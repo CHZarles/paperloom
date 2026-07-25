@@ -36,20 +36,12 @@ public class MiniMaxEmbeddingProvider implements EmbeddingProvider {
 
     @Override
     public Mono<List<float[]>> embed(List<String> texts) {
-        return embedForType(texts, "db");
-    }
-
-    public Mono<List<float[]>> embedForQuery(List<String> texts) {
-        return embedForType(texts, "query");
-    }
-
-    private Mono<List<float[]>> embedForType(List<String> texts, String type) {
         if (texts == null || texts.isEmpty()) {
             return Mono.just(List.of());
         }
         java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("model", model);
-        body.put("type", type);
+        body.put("type", "db");
         body.put("texts", texts);
         return webClient.post()
                 .uri(PATH)
@@ -107,7 +99,6 @@ public class MiniMaxEmbeddingProvider implements EmbeddingProvider {
 
     public record EmbeddingResponse(
             @JsonProperty("vectors") List<List<Double>> vectors,
-            @JsonProperty("total_tokens") Integer totalTokens,
             @JsonProperty("base_resp") BaseResp baseResp
     ) {
     }

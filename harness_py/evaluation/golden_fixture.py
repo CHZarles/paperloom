@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from .fact_assertions import FACT_FIELDS_SCHEMA_VERSION
 from .golden_case import case_expect, case_question
-from ..core.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map, stable_id
+from ..utils.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map, stable_id
 
 
 class GoldenFixtureHarness:

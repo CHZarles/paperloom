@@ -20,7 +20,7 @@ from agents import FunctionTool, FunctionToolResult, ToolsToFinalOutputResult
 from agents.run_context import RunContextWrapper
 from agents.tool_context import ToolContext
 
-from ...core.models import JsonMap, child_map
+from ...utils.models import JsonMap, child_map
 from ...corpus.tools import model_facing_payload
 from ..research_contract import (
     FINAL_TOOL_NAME,

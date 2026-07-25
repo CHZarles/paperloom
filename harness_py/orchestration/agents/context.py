@@ -7,11 +7,10 @@ OpenAI Agents SDK 的 Context 可以理解为“依赖注入容器 + 本轮工�
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from time import perf_counter
 
-from ...core.errors import HarnessCancelled
-from ...core.models import JsonMap
+from ...utils.errors import HarnessCancelled
+from ...utils.models import JsonMap, utc_now_iso
 from ...corpus.tools import ReadingCorpusTools
 from ..research_skills import ResearchSkillRegistry
 from ..runtime import TurnExecutionInput
@@ -37,7 +36,7 @@ class ResearchRunContext:
     completion_tokens: int = 0
     total_tokens: int = 0
     model_latency_ms: int = 0
-    started_at: str = field(default_factory=lambda: _now())
+    started_at: str = field(default_factory=lambda: utc_now_iso())
     started_monotonic: float = field(default_factory=perf_counter)
     current_model_call_id: str = ""
     current_model_started: float = 0.0
@@ -136,7 +135,3 @@ class ResearchRunContext:
             "disclosed_location_refs": sorted(self.corpus.disclosed_location_refs),
             "evidence_ids": sorted(self.corpus.observations_by_evidence_id),
         }
-
-
-def _now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")

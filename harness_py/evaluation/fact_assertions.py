@@ -6,7 +6,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-from ..core.models import JsonMap, child_map
+from ..utils.models import JsonMap, child_map
 
 
 FACT_FIELDS_SCHEMA_VERSION = "golden-facts/v1"

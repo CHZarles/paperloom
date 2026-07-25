@@ -10,13 +10,12 @@ import hashlib
 import logging
 import os
 from dataclasses import replace
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable
 
 from .conversation import ConversationState
-from ..core.errors import HarnessCancelled
-from ..core.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stable_id
+from ..utils.errors import HarnessCancelled
+from ..utils.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stable_id, utc_now_iso
 from ..evaluation.eval_recorder import EvalRecorder
 from .memory import ResearchMemory
 from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
@@ -166,7 +165,7 @@ def _technical_failure_run(run_id: str, case_id: str, question: str, message: st
         "fields": {},
         "cited_evidence_ids": [],
     }
-    now = _now()
+    now = utc_now_iso()
     return {
         "schema_version": RUN_TRACE_SCHEMA_VERSION,
         "run_id": run_id,
@@ -220,7 +219,3 @@ def _dataset_for_scope(dataset: GoldenDataset, paper_ids: list[str]) -> GoldenDa
             if edge.get("from_paper_id") in scoped or edge.get("to_paper_id") in scoped
         ],
     )
-
-
-def _now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")

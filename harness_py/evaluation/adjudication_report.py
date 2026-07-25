@@ -9,7 +9,7 @@ from pathlib import Path
 import yaml
 
 from .fact_assertions import contract_sha256
-from ..core.models import (
+from ..utils.models import (
     JsonMap,
     child_map,
 )

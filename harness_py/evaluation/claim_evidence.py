@@ -6,8 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from ..core.answer_blocks import answer_blocks
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.answer_blocks import answer_blocks
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from .claim_judge import (
     CLAIM_JUDGE_CONTRACT_VERSION,
     CLAIM_JUDGE_GATE_POLICY_VERSION,

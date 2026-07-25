@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from ..corpus.pages import contains_normalized_phrase, normalize_text, page_matches
 
 

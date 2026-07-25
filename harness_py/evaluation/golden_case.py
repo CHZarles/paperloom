@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import replace
 
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from ..orchestration.conversation import ConversationState
 
 

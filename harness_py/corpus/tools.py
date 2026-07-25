@@ -8,7 +8,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from .gateway import CorpusReader
 from .pages import (
     contains_normalized_phrase as _contains_normalized_phrase,

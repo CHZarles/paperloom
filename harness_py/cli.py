@@ -8,7 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
 
-from .core.models import as_list, child_map
+from .utils.models import as_list, child_map
 from .corpus.gateway import JavaCorpusGateway
 from .evaluation.audit import audit_dataset
 from .evaluation.claim_audit import audit_claim_locations

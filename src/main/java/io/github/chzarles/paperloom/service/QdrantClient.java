@@ -139,19 +139,12 @@ public class QdrantClient {
             List<Map<String, Object>> batch = new ArrayList<>();
             for (QdrantPoint point : points.subList(start, Math.min(points.size(), start + batchSize))) {
                 Map<String, Object> vector = new LinkedHashMap<>();
-                if (isHybridContract()) {
-                    vector.put(LEXICAL_VECTOR_NAME, Map.of(
-                            "indices", point.lexicalVector().indices(),
-                            "values", point.lexicalVector().values()
-                    ));
-                    if (point.hasDenseVector()) {
-                        vector.put(DENSE_VECTOR_NAME, toFloatList(point.denseVector()));
-                    }
-                } else {
-                    vector.put(LEXICAL_VECTOR_NAME, Map.of(
-                            "indices", point.lexicalVector().indices(),
-                            "values", point.lexicalVector().values()
-                    ));
+                vector.put(LEXICAL_VECTOR_NAME, Map.of(
+                        "indices", point.lexicalVector().indices(),
+                        "values", point.lexicalVector().values()
+                ));
+                if (isHybridContract() && point.hasDenseVector()) {
+                    vector.put(DENSE_VECTOR_NAME, toFloatList(point.denseVector()));
                 }
                 batch.add(Map.of(
                         "id", point.id(),

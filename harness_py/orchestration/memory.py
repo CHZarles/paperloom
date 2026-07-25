@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..core.models import JsonMap
+from ..utils.models import JsonMap
 
 
 @dataclass(frozen=True)

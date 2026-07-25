@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from ..core.models import JsonMap, as_list, child_map
+from ..utils.models import JsonMap, as_list, child_map
 from .judge_model import JudgeModel
 
 

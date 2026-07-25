@@ -6,7 +6,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-from ..core.models import JsonMap, as_list, child_map
+from ..utils.models import JsonMap, as_list, child_map
 from .research_contract import CITATION_RE
 
 

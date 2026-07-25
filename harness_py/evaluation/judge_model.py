@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 from typing import Protocol
 
-from ..core.models import JsonMap, child_map
+from ..utils.models import JsonMap, child_map
 from ..transport.provider_config import ProviderConfig
 
 

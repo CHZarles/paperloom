@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from harness_py.core.models import GoldenDataset
+from harness_py.utils.models import GoldenDataset
 from harness_py.evaluation.claim_audit import audit_claim_locations
 from harness_py.evaluation.claim_evidence import answer_blocks, generate_semantic_judgments
 from harness_py.evaluation.claim_judge import CLAIM_JUDGE_PROMPT_VERSION

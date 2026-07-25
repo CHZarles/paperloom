@@ -9,8 +9,8 @@ from typing import Callable, Protocol
 
 import httpx
 
-from ..core.errors import HarnessCancelled
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.errors import HarnessCancelled
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 
 
 class CorpusReader(Protocol):

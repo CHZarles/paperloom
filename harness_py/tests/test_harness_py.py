@@ -12,7 +12,7 @@ from unittest.mock import patch
 import yaml
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from harness_py.core.models import GoldenDataset
+from harness_py.utils.models import GoldenDataset
 from harness_py.corpus.product_db_dataset import build_product_dataset, summarize_product_corpus
 from harness_py.corpus.tools import ReadingCorpusTools
 from harness_py.evaluation.dataset import load_dataset

@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
-from ..core.models import JsonMap, as_list, child_map
+from ..utils.models import JsonMap, as_list, child_map
 from ..corpus.gateway import JavaCorpusGateway
 from ..corpus.product_db_dataset import summarize_product_corpus
 from ..orchestration.conversation import ConversationState

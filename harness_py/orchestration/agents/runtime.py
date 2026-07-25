@@ -30,7 +30,7 @@ from agents import (
     ToolExecutionConfig,
 )
 
-from ...core.models import JsonMap
+from ...utils.models import JsonMap
 from ...transport.provider_config import ProviderConfig
 from ..memory import RequestBackedSession, request_session_input
 from ..research_contract import research_agent_instructions

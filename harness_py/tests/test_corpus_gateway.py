@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import httpx
 
-from harness_py.core.errors import HarnessCancelled
+from harness_py.utils.errors import HarnessCancelled
 from harness_py.corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
 from harness_py.corpus.tools import ReadingCorpusTools
 

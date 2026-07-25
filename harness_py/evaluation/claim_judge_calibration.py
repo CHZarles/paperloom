@@ -22,7 +22,7 @@ from .claim_judge import (
 from .dataset import load_dataset
 from .golden_case import case_expect
 from .scoring import deterministic_claim_blocks
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 
 
 CLAIM_JUDGE_LABEL_SCHEMA_VERSION = "harness-claim-judge-labels/v1"

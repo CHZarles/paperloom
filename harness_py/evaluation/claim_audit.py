@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from .claim_evidence import canonical_sha256
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 
 
 CLAIM_LOCATION_AUDIT_SCHEMA_VERSION = "harness-claim-location-audit/v1"

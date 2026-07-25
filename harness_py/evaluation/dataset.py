@@ -6,7 +6,7 @@ import yaml
 
 from .golden_case import CITATION_POLICIES, OUTCOMES
 from .paths import display_repo_path, reading_model_path, resolve_authoring_path
-from ..core.models import (
+from ..utils.models import (
     GOLDEN_CLAIM_SCHEMA_VERSION,
     GOLDEN_CASE_SCHEMA_VERSION,
     GOLDEN_SCHEMA_VERSION,

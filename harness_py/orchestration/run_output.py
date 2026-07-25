@@ -2,9 +2,7 @@ from __future__ import annotations
 
 """Build the stable product Run and project tool progress/trace payloads."""
 
-from datetime import UTC, datetime
-
-from ..core.models import RUN_TRACE_SCHEMA_VERSION, JsonMap, as_list, child_map, stable_id
+from ..utils.models import RUN_TRACE_SCHEMA_VERSION, JsonMap, as_list, child_map, stable_id, unique_strings, utc_now_iso
 from ..corpus.tools import ReadingCorpusTools
 from .research_contract import CITATION_RE, FINAL_TOOL_NAME
 
@@ -30,7 +28,7 @@ def build_harness_run(
         "abstained": "INCOMPLETE_PRECISE",
     }[outcome]
     raw_markdown = str(final["markdown"]).strip()
-    cited_ids = _unique(CITATION_RE.findall(raw_markdown))
+    cited_ids = unique_strings(CITATION_RE.findall(raw_markdown))
     all_evidence = {**prior_evidence, **corpus.observations_by_evidence_id}
     cited_evidence = {
         evidence_id: all_evidence[evidence_id]
@@ -38,7 +36,7 @@ def build_harness_run(
         if evidence_id in all_evidence
     }
     markdown = _render_citations(raw_markdown, cited_ids, cited_evidence)
-    selected_paper_ids = _unique(
+    selected_paper_ids = unique_strings(
         str(cited_evidence[evidence_id].get("paper_id") or "")
         for evidence_id in cited_ids
         if cited_evidence.get(evidence_id, {}).get("paper_id")
@@ -65,7 +63,7 @@ def build_harness_run(
         "case_id": case_id,
         "harness_id": harness_id,
         "started_at": started_at,
-        "completed_at": _now(),
+        "completed_at": utc_now_iso(),
         "status": status,
         "result_status": status,
         "memory_update": {
@@ -174,7 +172,7 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
         return {
             "readCount": len(items),
             "evidenceCount": len(items),
-            "pages": _unique(
+            "pages": unique_strings(
                 item.get("page") for item in items
                 if item.get("page") not in {None, "", "unknown"}
             ),
@@ -222,7 +220,7 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
 
 
 def progress_evidence_ids(payload: JsonMap) -> list[str]:
-    return _unique(
+    return unique_strings(
         child_map(item).get("evidence_id")
         for item in as_list(payload.get("items"))
         if child_map(item).get("evidence_id")
@@ -281,18 +279,3 @@ def _corpus_tool_names(corpus: ReadingCorpusTools) -> set[str]:
         str(child_map(tool.get("function")).get("name") or "")
         for tool in corpus.definitions()
     }
-
-
-def _unique(values) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for value in values:
-        text = str(value or "")
-        if text and text not in seen:
-            seen.add(text)
-            result.append(text)
-    return result
-
-
-def _now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")

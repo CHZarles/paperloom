@@ -13,7 +13,7 @@ import httpx
 import yaml
 
 from harness_py.cli import main
-from harness_py.core.models import GoldenDataset
+from harness_py.utils.models import GoldenDataset
 from harness_py.corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
 from harness_py.corpus.tools import ReadingCorpusTools
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness

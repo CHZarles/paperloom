@@ -10,7 +10,7 @@ import json
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map, unique_strings
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ class ConversationState:
     ) -> ConversationState:
         return cls(
             conversation_id=conversation_id,
-            scope_paper_ids=_unique(scope_paper_ids or []),
+            scope_paper_ids=unique_strings(scope_paper_ids or []),
         )
 
     @classmethod
@@ -159,8 +159,8 @@ class ConversationState:
         return replace(
             self,
             turn_index=self.turn_index + 1,
-            selected_paper_ids=_unique(selected_paper_ids),
-            selected_evidence_ids=_unique(selected_evidence_ids),
+            selected_paper_ids=unique_strings(selected_paper_ids),
+            selected_evidence_ids=unique_strings(selected_evidence_ids),
             message_history=[
                 *self.message_history,
                 {
@@ -212,19 +212,8 @@ def _evidence_card(item: JsonMap) -> JsonMap:
 
 
 def _strings(value) -> list[str]:
-    return _unique(str(item) for item in as_list(value) if item is not None and str(item))
+    return unique_strings(str(item) for item in as_list(value) if item is not None and str(item))
 
 
 def _validated_ids(values, known: dict[str, object]) -> list[str]:
-    return _unique(str(value) for value in values if str(value) in known)
-
-
-def _unique(values) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for value in values:
-        text = str(value or "")
-        if text and text not in seen:
-            seen.add(text)
-            result.append(text)
-    return result
+    return unique_strings(str(value) for value in values if str(value) in known)

@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 from .judge import JudgeProtocolError
 from .judge_model import JudgeModel
-from ..core.answer_blocks import NON_MATERIAL_UNCITED_BLOCK_KINDS
-from ..core.models import JsonMap, as_list, child_map
+from ..utils.answer_blocks import NON_MATERIAL_UNCITED_BLOCK_KINDS
+from ..utils.models import JsonMap, as_list, child_map
 
 
 CLAIM_JUDGE_PROMPT_VERSION = "claim-evidence-judge/v15"

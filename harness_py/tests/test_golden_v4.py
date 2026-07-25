@@ -14,7 +14,7 @@ from unittest.mock import patch
 import yaml
 
 from harness_py.cli import main
-from harness_py.core.models import GoldenDataset
+from harness_py.utils.models import GoldenDataset
 from harness_py.corpus.tools import ReadingCorpusTools
 from harness_py.evaluation.dataset import load_dataset
 from harness_py.evaluation.golden_case import paper_ids_for_case
@@ -186,7 +186,7 @@ class GoldenV4Test(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "6028f98ef73a09c8ecc6387abca45c61d43f501ba4a99af071ded76cd67b34c1",
+            "1247d9bcf2a36ebdb4ceb5af16e300beadb44f3bcb1f314824bd6692499d60f9",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )

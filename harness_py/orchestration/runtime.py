@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Protocol
 from uuid import uuid4
 
-from ..core.models import GoldenDataset, JsonMap
+from ..utils.models import GoldenDataset, JsonMap
 from .memory import ResearchMemory
 
 if TYPE_CHECKING:

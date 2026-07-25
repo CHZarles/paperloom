@@ -51,10 +51,6 @@ public class ModelProviderConfigService {
         return resolveActiveProvider(SCOPE_EMBEDDING, "No active embedding provider is configured");
     }
 
-    public synchronized void reloadEmbeddingSettings() {
-        embeddingSettings = mergeOverrides(defaultEmbeddingSettings(), repository.findAll(), SCOPE_EMBEDDING);
-    }
-
     private ActiveProviderView resolveActiveProvider(String scope, String missingMessage) {
         ProviderConfigView provider = settingsFor(scope).providers().stream()
                 .filter(ProviderConfigView::active)

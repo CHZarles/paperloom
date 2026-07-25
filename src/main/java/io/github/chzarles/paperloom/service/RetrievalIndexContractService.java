@@ -13,10 +13,7 @@ import java.math.RoundingMode;
 public class RetrievalIndexContractService {
 
     static final double DEFAULT_AVERAGE_DOCUMENT_LENGTH = 256.0;
-    public static final String CONTRACT_SPARSE_ONLY_V1 = "sparse-only-v1";
     public static final String CONTRACT_SPARSE_DENSE_V1 = "sparse-dense-v1";
-    private static final String SCHEMA_VERSION_SPARSE_ONLY = "sparse-only-v1";
-    private static final String SCHEMA_VERSION_SPARSE_DENSE = "sparse-dense-v1";
     private static final String PROJECTION_VERSION = "canonical-location-v2";
     private static final String ANALYZER_VERSION = "unicode-nfkc-lower-min2-v1";
     private static final String TERM_ID_VERSION = "sha256-int31-v1";
@@ -78,7 +75,7 @@ public class RetrievalIndexContractService {
                 .setScale(6, RoundingMode.HALF_UP)
                 .stripTrailingZeros()
                 .toPlainString();
-        String schema = isHybridContract() ? SCHEMA_VERSION_SPARSE_DENSE : SCHEMA_VERSION_SPARSE_ONLY;
+        String schema = isHybridContract() ? CONTRACT_SPARSE_DENSE_V1 : "sparse-only-v1";
         String dense = isHybridContract() ? "|dense=" + DENSE_VERSION : "";
         return properties.getCollection()
                 + "|schema=" + schema

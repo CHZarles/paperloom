@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -55,14 +56,19 @@ def child_map(value: Any) -> JsonMap:
     return value if isinstance(value, dict) else {}
 
 
-def non_empty(value: Any) -> bool:
-    if value is None:
-        return False
-    if isinstance(value, str):
-        return bool(value.strip())
-    if isinstance(value, (list, dict, tuple, set)):
-        return bool(value)
-    return True
+def utc_now_iso(timespec: str = "seconds") -> str:
+    return datetime.now(UTC).isoformat(timespec=timespec).replace("+00:00", "Z")
+
+
+def unique_strings(values) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        text = str(value or "")
+        if text and text not in seen:
+            seen.add(text)
+            result.append(text)
+    return result
 
 
 def stable_id(prefix: str, raw: str) -> str:

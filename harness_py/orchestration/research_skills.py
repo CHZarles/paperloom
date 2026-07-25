@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
-from ..core.models import JsonMap
+from ..utils.models import JsonMap
 
 
 @dataclass(frozen=True)

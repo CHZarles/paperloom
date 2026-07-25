@@ -4,10 +4,11 @@ import json
 import logging
 import os
 import threading
-from datetime import UTC, datetime
 from pathlib import Path
 from time import monotonic_ns
 from typing import Any
+
+from ..utils.models import utc_now_iso
 
 
 EVENT_SCHEMA = "harness-eval-event/v1"
@@ -61,7 +62,7 @@ class EvalRecorder:
                 "run_id": self.run_id,
                 "sequence": sequence,
                 "kind": kind,
-                "recorded_at": _now(),
+                "recorded_at": utc_now_iso("milliseconds"),
                 "monotonic_ns": monotonic_ns(),
                 "operation_id": operation_id,
                 "attempt": attempt,
@@ -84,7 +85,7 @@ class EvalRecorder:
             payload = {
                 "schema_version": RESULT_SCHEMA,
                 "run_id": self.run_id,
-                "completed_at": _now(),
+                "completed_at": utc_now_iso("milliseconds"),
                 "event_count": self._sequence,
                 "duplicate_event_count": self._duplicates,
                 "capture_ok": self._ok,
@@ -119,7 +120,3 @@ class EvalRecorder:
         if not self._error:
             self._error = f"{type(error).__name__}: {error}"
             logging.getLogger(__name__).error("eval capture failed for run_id=%s: %s", self.run_id, error)
-
-
-def _now() -> str:
-    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")

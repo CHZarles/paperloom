@@ -3,7 +3,7 @@ from __future__ import annotations
 """Research Agent instructions and the deterministic final-answer contract."""
 
 import re
-from ..core.models import JsonMap
+from ..utils.models import JsonMap
 from .research_skills import ResearchSkillRegistry
 
 
@@ -28,7 +28,11 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "complete inventory. Never reconstruct paper titles from conversation history or general knowledge. A previous "
         "assistant refusal is not proof that a request is impossible; use the available tool again when the current "
         "follow-up can be answered. Metadata does not support claims about methods, findings, performance, importance, "
-        "or technical contributions.\n\n"
+        "or technical contributions. Before calling find_reading_locations or read_locations, you must first call "
+        "search_paper_candidates or find_papers_by_identity in the current turn to obtain valid paper_ids; pass only "
+        "the paper_id values returned by those discovery tools. Filenames such as paper_2018.pdf are not paper_ids "
+        "and will be rejected. Without that prerequisite call, every read attempt returns "
+        "paper_not_authorized_for_reading, so the answer cannot cite any paper content.\n\n"
         "Use get_research_skill when a paradigm playbook would help. Skills are guidance, not gates, and may be "
         "combined. Candidate metadata and navigation previews are not citeable as paper content. Read exact locations "
         "before making paper-content claims. A citation does not license related general knowledge: every factual "

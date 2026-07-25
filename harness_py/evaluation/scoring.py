@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 from .claim_evidence import answer_blocks, canonical_sha256, dataset_content_sha256
 from .fact_assertions import contract_sha256, evaluate_fact_assertions, fact_assertion_contract
 from .golden_case import case_expect
-from ..core.models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
-from ..core.status import (
+from ..utils.models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
+from ..utils.status import (
     ExecutionStatus,
     execution_status_error,
     normalize_research_outcome,

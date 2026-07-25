@@ -6,7 +6,7 @@ from typing import Callable
 
 import yaml
 
-from ..core.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from ..corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
 from .golden_case import paper_ids_for_case
 
