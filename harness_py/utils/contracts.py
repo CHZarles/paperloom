@@ -43,13 +43,13 @@ class ArtifactContractValidator:
         self._validate_answer_outcome(child_map(run.get("research_answer")), errors)
         return ContractValidation(errors=errors, warnings=warnings)
 
-    def _validate_required_fields(self, artifact_id: str, value: JsonMap, errors: list[str], suffix: str = "") -> None:
+    def _validate_required_fields(self, artifact_id: str, value: JsonMap, errors: list[str]) -> None:
         contract = self.artifacts.get(artifact_id)
         if not contract:
             errors.append(f"contract missing for {artifact_id}")
             return
         if not isinstance(value, dict):
-            errors.append(f"{artifact_id}{suffix} must be an object")
+            errors.append(f"{artifact_id} must be an object")
             return
         for field_name in as_list(contract.get("required_fields")):
             if (
@@ -59,7 +59,7 @@ class ArtifactContractValidator:
             ):
                 continue
             if not _has_field(value, str(field_name)):
-                errors.append(f"{artifact_id}{suffix}.{field_name} missing")
+                errors.append(f"{artifact_id}.{field_name} missing")
 
     def _validate_answer_outcome(self, answer: JsonMap, errors: list[str]) -> None:
         error = research_outcome_error(
