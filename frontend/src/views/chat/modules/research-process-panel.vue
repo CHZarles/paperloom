@@ -244,9 +244,10 @@ const presentedPhaseCards = computed<PhaseView[]>(() => {
 
 function collapseConsecutivePhases(inputs: PhaseInput[]): PhaseView[] {
   const collapsed: PhaseView[] = [];
-  for (const input of inputs) {
+  for (let index = 0; index < inputs.length; index += 1) {
+    const input = inputs[index];
     const last = collapsed[collapsed.length - 1];
-    const view = buildPhaseView(input, inputs, inputs.indexOf(input));
+    const view = buildPhaseView(input, inputs, index);
     if (last && last.phase === view.phase) {
       collapsed[collapsed.length - 1] = view;
     } else {
