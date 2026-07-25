@@ -6,8 +6,8 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from ..orchestration.research_contract import CITATION_RE
 from ..utils.models import JsonMap, as_list, child_map
-from .research_contract import CITATION_RE
 
 
 CONTENT_RESEARCH_TOOLS = {"find_reading_locations", "read_locations"}

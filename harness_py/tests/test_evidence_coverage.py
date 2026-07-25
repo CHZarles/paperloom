@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from harness_py.orchestration.evidence_coverage import evaluate_evidence_coverage
+from harness_py.evaluation.evidence_coverage import evaluate_evidence_coverage
 
 
 PAPERS = {

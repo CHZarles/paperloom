@@ -10,7 +10,7 @@ from typing import Callable, Protocol
 import httpx
 
 from ..utils.errors import HarnessCancelled
-from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
+from ..utils.models import GoldenDataset, JsonMap, as_list, child_map, unique_strings
 
 
 class CorpusReader(Protocol):
@@ -108,7 +108,7 @@ class JavaCorpusGatewayReader:
     def load_metadata_dataset(self) -> GoldenDataset:
         records = {
             paper_id: _paper_record({"paper_id": paper_id})
-            for paper_id in _strings(self.scope_paper_ids)
+            for paper_id in unique_strings(self.scope_paper_ids)
         }
         self.metadata_records_by_id = records
         return GoldenDataset(
@@ -131,9 +131,9 @@ class JavaCorpusGatewayReader:
         response = self._post("/internal/v1/corpus/papers/search", {
             **self._context(),
             "query_text": str(arguments.get("query_text") or ""),
-            "paper_ids": _strings(arguments.get("paper_ids")),
-            "authors": _strings(arguments.get("authors")),
-            "venues": _strings(arguments.get("venues")),
+            "paper_ids": unique_strings(arguments.get("paper_ids")),
+            "authors": unique_strings(arguments.get("authors")),
+            "venues": unique_strings(arguments.get("venues")),
             "year_from": arguments.get("year_from"),
             "year_to": arguments.get("year_to"),
             "offset": int(arguments.get("offset") or 0),
@@ -159,10 +159,10 @@ class JavaCorpusGatewayReader:
     def search_locations(self, arguments: JsonMap) -> JsonMap:
         return self._post("/internal/v1/corpus/locations/search", {
             **self._context(),
-            "paper_ids": _strings(arguments.get("paper_ids")),
+            "paper_ids": unique_strings(arguments.get("paper_ids")),
             "query_text": str(arguments.get("query_text") or ""),
             "section_query": str(arguments.get("section_query") or ""),
-            "element_types": _strings(arguments.get("element_types")),
+            "element_types": unique_strings(arguments.get("element_types")),
             "page_from": arguments.get("page_from"),
             "page_to": arguments.get("page_to"),
             "top_k": int(arguments.get("top_k") or 8),
@@ -171,7 +171,7 @@ class JavaCorpusGatewayReader:
     def read_locations(self, arguments: JsonMap) -> JsonMap:
         response = self._post("/internal/v1/corpus/locations/read", {
             **self._context(),
-            "location_refs": _strings(arguments.get("location_refs")),
+            "location_refs": unique_strings(arguments.get("location_refs")),
         })
         items: list[JsonMap] = []
         for raw in as_list(response.get("items")):
@@ -213,7 +213,7 @@ class JavaCorpusGatewayReader:
                 "pdf_evidence_available": _bool(item.get("pdf_evidence_available")),
                 "table_screenshot_available": _bool(item.get("table_screenshot_available")),
                 "figure_screenshot_available": _bool(item.get("figure_screenshot_available")),
-                "asset_warnings": _strings(item.get("asset_warnings")),
+                "asset_warnings": unique_strings(item.get("asset_warnings")),
                 "retrieval_strategy": "source_quote_reading",
                 "relevance_score": 1.0,
                 "evidence_quality": "verified",
@@ -222,7 +222,7 @@ class JavaCorpusGatewayReader:
             })
         return {
             "items": items,
-            "missing_location_refs": _strings(response.get("missing_location_refs")),
+            "missing_location_refs": unique_strings(response.get("missing_location_refs")),
         }
 
     def _context(self) -> JsonMap:
@@ -271,17 +271,6 @@ def _paper_record(card: JsonMap) -> JsonMap:
 def _evidence_id(paper_id: str, location_ref: str, element_type: str, page: object) -> str:
     raw = f"{paper_id}:{location_ref}:{element_type}:{page}"
     return "ev_" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
-
-
-def _strings(value: object) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for item in as_list(value):
-        text = str(item or "").strip()
-        if text and text not in seen:
-            seen.add(text)
-            result.append(text)
-    return result
 
 
 def _positive_int(value: object, fallback: int) -> int:

@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
-from ..utils.models import JsonMap, as_list, child_map
+from ..utils.models import JsonMap, as_list, child_map, unique_strings
 from ..corpus.gateway import JavaCorpusGateway
 from ..corpus.product_db_dataset import summarize_product_corpus
 from ..orchestration.conversation import ConversationState
@@ -60,7 +60,7 @@ class ResearchHarnessService:
             raise ValueError("conversation_id is required")
 
         scope = child_map(request.get("scope"))
-        paper_ids = _strings(scope.get("paper_ids"))
+        paper_ids = unique_strings(scope.get("paper_ids"))
         if not paper_ids:
             raise ValueError("scope.paper_ids must contain the papers authorized by Java")
 
@@ -231,14 +231,14 @@ def _conversation_state(request: JsonMap, conversation_id: str, paper_ids: list[
         for item in (child_map(raw) for raw in as_list(memory.get("previous_evidence")))
         if item.get("evidence_id")
     }
-    selected_evidence_ids = _strings(memory.get("selected_evidence_ids"))
+    selected_evidence_ids = unique_strings(memory.get("selected_evidence_ids"))
     if not selected_evidence_ids:
         selected_evidence_ids = list(previous_evidence)
     return ConversationState.from_dict({
         "conversation_id": conversation_id,
         "turn_index": len([item for item in history if item["role"] == "user"]),
         "scope_paper_ids": paper_ids,
-        "selected_paper_ids": _strings(memory.get("selected_paper_ids")),
+        "selected_paper_ids": unique_strings(memory.get("selected_paper_ids")),
         "selected_evidence_ids": selected_evidence_ids,
         "message_history": history,
         "evidence_items_by_id": previous_evidence,
@@ -258,7 +258,7 @@ def _turn_response(
         for item in (child_map(raw) for raw in as_list(ledger.get("items")))
         if item.get("evidence_id")
     }
-    cited_ids = _strings(answer.get("cited_evidence_ids"))
+    cited_ids = unique_strings(answer.get("cited_evidence_ids"))
     citations = [
         {**evidence_by_id[evidence_id], "reference_number": index}
         for index, evidence_id in enumerate(cited_ids, start=1)
@@ -298,14 +298,3 @@ def _turn_response(
             "finish_reason": diagnostics.get("finish_reason"),
         }
     return response
-
-
-def _strings(value: object) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for item in as_list(value):
-        text = str(item or "").strip()
-        if text and text not in seen:
-            seen.add(text)
-            result.append(text)
-    return result

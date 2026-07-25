@@ -61,6 +61,8 @@ def utc_now_iso(timespec: str = "seconds") -> str:
 
 
 def unique_strings(values) -> list[str]:
+    if values is None:
+        return []
     seen: set[str] = set()
     result: list[str] = []
     for value in values:
