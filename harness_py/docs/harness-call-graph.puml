@@ -2,7 +2,6 @@
 
 title harness_py — External Callers + Internal Sequence
 
-' === 视角 1: 谁在外部调用 harness_py ===
 ' Java Corpus 侧通过 HTTP 调 /internal/v1/corpus/*；
 ' Python 侧在 /v1/research/{turn,stream} 上对 Java 端暴露两个端点。
 
@@ -17,7 +16,6 @@ actor "用户" as user
 user -> transport : POST /v1/research/turn\n或 /v1/research/stream
 java -> transport : (无; Python 端\n是 client,\nJava 是 server)
 
-' === Python 内部调用链：每个 handler 怎么走到 Agents SDK ===
 transport -> livechat : LiveResearchChatHarness.run_turn()
 livechat -> runtime : TurnExecutionInput\n(dataset, case_id,\nrun_id, question,\nconversation_messages,\nresearch_memory,\ncorpus_reader)
 runtime -> agents : AgentsSdkHarnessRuntime.run_turn()
@@ -26,12 +24,5 @@ sdk -> agents : tool_calls + final_output
 agents -> livechat : TurnExecutionResult(run)
 livechat -> transport : Run JSON\n(answer, evidence,\nreferences)
 transport -> user : 200 OK
-
-' === 视角 2: InMemoryTools 替代路径（测试/夹具；prod 不走） ===
-note over java, transport
-  prod 路径 = corpus.gateway.JavaCorpusGateway → Java HTTP
-  测试 / 离线夹具路径 = corpus.in_memory_tools.InMemoryTools → 本地 BM25
-  两者在 ReadingCorpusTools 类里通过子类（prod 走 reader 委派；test 走 in-memory 评分）共用 tool schema
-end note
 
 @enduml
