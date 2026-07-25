@@ -1,0 +1,57 @@
+@startuml harness-internal-relationships
+
+title harness_py — Internal Module Call Relationships
+
+' 每个方块是一个文件，箭头表示「调用方 -> 被调用方」的方法层调用。
+' 加粗路径是 prod 一轮研究的必经之河；细箭头是 test / 离线夹具。
+
+node "transport/service.py\nResearchHarnessService" as transport
+node "orchestration/live_chat.py\nLiveResearchChatHarness" as livechat
+node "orchestration/runtime.py\nbuild_harness_runtime()" as runtime
+node "orchestration/agents/runtime.py\nAgentsSdkHarnessRuntime" as agents_runtime
+node "orchestration/agents/context.py\nResearchRunContext" as ctx
+node "orchestration/agents/tools.py\nbuild_agent_tools / call" as tools
+node "orchestration/agents/model.py\nprovider_agents_model" as model
+node "corpus/gateway.py\nJavaCorpusGateway" as gateway
+node "corpus/in_memory_tools.py\nInMemoryTools" as inmem
+node "corpus/tools.py\nReadingCorpusTools\n(reader facade)" as tools_facade
+node "orchestration/agents/runtime.py\n_run_agent (loop)" as run_loop
+node "OpenAI Agents SDK\nRunner / Agent" as sdk
+
+' --- prod 路径：实线 ---
+transport ..> livechat : run_job → run_turn
+livechat ..> runtime : build_harness_runtime
+runtime ..> agents_runtime : returns AgentsSdkHarnessRuntime
+livechat ..> agents_runtime : runtime.run_turn(turn)
+agents_runtime ..> ctx : turn → ResearchRunContext(...)
+ctx ..> tools : tools.reader
+ctx ..> tools_facade : self.turn.corpus_reader
+agents_runtime ..> tools : build_agent_tools(ctx)
+agents_runtime ..> run_loop : entry of ReAct loop
+run_loop ..> sdk : Runner.run(Agent(tools))
+run_loop ..> tools : tool call dispatch
+tools ..> tools_facade : search_paper_candidates / find_* / read_*
+tools_facade ..> gateway : reader.search_papers / search_locations / read_locations
+gateway ..> java : POST /internal/v1/corpus/*\n(HTTP, Java Corpus API)
+tools ..> ctx : update authorized_paper_ids /\ndisclosed_location_refs /\nobservations_by_evidence_id
+run_loop ..> tools : build_harness_run → final draft
+run_loop ..> ctx : ctx.completed_at, ctx.total_tokens
+agents_runtime ..> livechat : TurnExecutionResult(run)
+livechat ..> ctx : build new ConversationState\n(updated_from_run)
+livechat ..> transport : (Run dict,\nnew ConversationState)
+
+' --- test / 离线夹具：虚线 ---
+' 同一 ReadingCorpusTools 接口下，InMemoryTools 走本地 BM25 评分替代 reader 委派。
+inmem ..> tools_facade : subclasses ReadingCorpusTools\n(replaces 5 tool methods)
+agents_runtime .[hidden] ..> inmem : test fixture
+ctx .[hidden] ..> inmem : test fixture path
+
+' --- 旁路：CLI + 评测（不参与 prod） ---
+node "cli.py" as cli
+node "evaluation/*" as eval
+
+cli ..> livechat : prod 跑一次 Run 落盘
+cli ..> eval : replay + 评分 (offline)
+eval ..> livechat : GoldenFixtureHarness.run_case
+
+@enduml

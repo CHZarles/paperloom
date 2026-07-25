@@ -1,0 +1,85 @@
+@startuml harness-data-transform
+
+title harness_py — Data Structure Changes Per Stage
+
+' 一轮研究里数据结构的形态变化。实线箭头 = 形态改变（投影、合并、归约）；虚线 = 引用同一个对象。
+' 每节点只列在那一阶段 **新出现 / 改变** 的字段；保持安静的不列。
+
+' === Stage 1：HTTP 入口接收 ===
+participant "Java / 用户" as client
+participant "transport/service.py\nResearchHarnessService" as transport
+participant "orchestration/live_chat.py" as livechat
+
+client -> transport : POST /v1/research/turn\nbody: {user_message,\nconversation_id,\npaper_ids, ...}
+note over transport
+  Request dict 字段：原始 HTTP JSON
+  user_message, conversation_id, paper_ids, history, memory
+end note
+
+livechat -> transport : build TurnExecutionInput
+note over livechat
+  transport.run_job 调
+  LiveResearchChatHarness.run_turn
+end note
+
+' === Stage 2：run_turn 内部投影 ===
+note over livechat
+  TurnExecutionInput 字段：
+  - dataset: GoldenDataset （_dataset_for_scope 裁剪过）
+  - case_id: 派生 from (dataset, state, user_message)
+  - run_id: 来自 new_run_id()
+  - question, conversation_messages, research_memory
+  - corpus_reader: InMemoryTools or JavaCorpusGatewayReader
+
+  ConversationState 字段（livechat 重建）：
+  - conversation_id
+  - turn_index += 1
+  - selected_paper_ids, selected_evidence_ids, evidence_items_by_id
+  - message_history (append user/assistant)
+  - tool_traces
+end note
+
+livechat -> transport : (run dict, new_state)
+note over transport
+  Run dict 字段：turn trace
+  - schema_version
+  - run_id, case_id
+  - harness_id
+  - started_at, completed_at
+  - status, result_status
+  - evidence_ledger (items, rejected_items, missing_evidence)
+  - citation_validation
+  - research_answer, final_answer
+  - diagnostics (finish_reason, tool_call_count, error)
+  - react_trace (tool_trace_item list)
+end note
+
+' === Stage 3：Agent 循环 ===
+participant "orchestration/agents/runtime.py" as agents
+participant "orchestration/agents/context.py" as ctx as ctx_file
+participant "orchestration/agents/tools.py" as tools
+participant "ReadingCorpusTools" as tools_facade
+participant "JavaCorpusGatewayReader" as reader
+
+livechat -> agents : TurnExecutionInput
+note over agents
+  build_agent_tools(ctx) 产出 FunctionTool list；
+  model = provider_agents_model(provider)；
+  hooks = ResearchRunHooks()
+end note
+
+agents -> ctx_file : ResearchRunContext(turn, corpus, skills, trace, ...)
+
+loop per LLM iteration
+  agents -> tools : tool.call(name, args)
+  tools -> tools_facade : ReadingCorpusTools.search_*\n(self.reader.X or in-memory)
+  tools_facade -> reader : reader.search_papers(args)
+  reader -> transport : HTTP POST\n(internal/v1/corpus/...)
+  transport -> client : HTTP 200 + payload
+  reader --> tools_facade : (candidates/locations/items)
+  tools_facade -> ctx_file : authorized_paper_ids.update(\ndisclosed_location_refs.update(\nobservations_by_evidence_id[item] = item)
+end
+
+agents -> livechat : TurnExecutionResult(run)
+
+@enduml
