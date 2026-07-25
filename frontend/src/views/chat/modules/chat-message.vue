@@ -96,15 +96,12 @@ const assistantIsRunning = computed(
 // Once events have arrived for this message and answer_completed hasn't,
 // the research is still effectively running from the user's perspective —
 // even if upstream status transiently dropped to 'success'.
-const researchFinished = computed(() =>
-  researchEvents.value.some(e => (e.eventType || e.type) === 'answer_completed')
-);
+const researchFinished = computed(() => researchEvents.value.some(e => (e.eventType || e.type) === 'answer_completed'));
 const assistantIsGenerating = computed(
   () =>
     props.msg.role === 'assistant' &&
     !researchFinished.value &&
-    (['pending', 'loading'].includes(props.msg.status || '') ||
-      researchEvents.value.length > 0)
+    (['pending', 'loading'].includes(props.msg.status || '') || researchEvents.value.length > 0)
 );
 const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
 const hasReadingArtifacts = computed(() => {

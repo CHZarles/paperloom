@@ -231,7 +231,6 @@ onBeforeUnmount(() => {
           <SourceEvidencePanel
             v-else-if="referencePayload"
             :key="referenceEvidenceKey"
-            @pdf-viewer-toggle="handlePdfViewerToggle"
             :reference-number="referencePayload.referenceNumber"
             :paper-title="referencePayload.paperTitle"
             :paper-id="referencePayload.paperId || undefined"
@@ -252,6 +251,7 @@ onBeforeUnmount(() => {
             :evidence-asset-level="referencePayload.evidenceAssetLevel"
             :pdf-evidence-available="referencePayload.pdfEvidenceAvailable"
             :page-screenshot-available="referencePayload.pageScreenshotAvailable"
+            @pdf-viewer-toggle="handlePdfViewerToggle"
             :figure-screenshot-available="referencePayload.figureScreenshotAvailable"
             :asset-warnings="referencePayload.assetWarnings"
             :conversation-record-id="referencePayload.conversationRecordId"

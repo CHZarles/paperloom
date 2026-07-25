@@ -229,8 +229,10 @@ watch(isRunning, value => {
 // the research in flight, the pulse keeps going until events include
 // answer_completed.
 const isResearchActive = computed(
-  () => isRunning.value ||
-    (sawInFlight.value && events.value.length > 0 &&
+  () =>
+    isRunning.value ||
+    (sawInFlight.value &&
+      events.value.length > 0 &&
       !events.value.some(e => (e.eventType || e.type) === 'answer_completed'))
 );
 const MAX_VISIBLE_EVENTS = 100;
@@ -269,9 +271,7 @@ function buildCollapsedCards(inputs: PhaseInput[]): PhaseView[] {
   return collapsed;
 }
 
-const presentedPhaseCards = computed<PhaseView[]>(() =>
-  buildCollapsedCards(events.value.slice(-MAX_VISIBLE_EVENTS))
-);
+const presentedPhaseCards = computed<PhaseView[]>(() => buildCollapsedCards(events.value.slice(-MAX_VISIBLE_EVENTS)));
 
 function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
   return {
@@ -284,9 +284,7 @@ function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
   };
 }
 
-const presentedAuditPhaseCards = computed(() =>
-  buildCollapsedCards(auditSteps.value.map(auditStepToPhaseInput))
-);
+const presentedAuditPhaseCards = computed(() => buildCollapsedCards(auditSteps.value.map(auditStepToPhaseInput)));
 const latestPresentedPhase = computed<PhaseView | undefined>(() => {
   if (hasAuditTrail.value && auditSteps.value.length) {
     const lastStep = auditSteps.value[auditSteps.value.length - 1];

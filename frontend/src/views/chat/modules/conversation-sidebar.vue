@@ -243,39 +243,39 @@ function formatDate(dateStr?: string) {
                   归档后可在 Archived 中找回
                 </NPopconfirm>
                 <NButton
-                v-else
-                class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                text
-                size="tiny"
-                @click.stop="handleUnarchive(session.conversationId)"
-              >
-                <template #icon>
-                  <icon-lucide:archive-restore class="text-15px" />
-                </template>
-              </NButton>
-              <NPopconfirm
-                positive-text="删除"
-                negative-text="取消"
-                @positive-click="handleDelete(session.conversationId)"
-              >
-                <template #trigger>
-                  <NButton
-                    class="shrink-0 transition-opacity"
-                    :class="session.conversationId === conversationId ? '' : 'opacity-0 group-hover:opacity-100'"
-                    text
-                    size="tiny"
-                    :aria-label="`删除 ${session.title}`"
-                    @click.stop
-                  >
-                    <template #icon>
-                      <icon-lucide:trash-2 class="text-15px" />
-                    </template>
-                  </NButton>
-                </template>
-                删除后会移除此 session 和历史记录
-              </NPopconfirm>
-            </div>
-          </template>
+                  v-else
+                  class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  text
+                  size="tiny"
+                  @click.stop="handleUnarchive(session.conversationId)"
+                >
+                  <template #icon>
+                    <icon-lucide:archive-restore class="text-15px" />
+                  </template>
+                </NButton>
+                <NPopconfirm
+                  positive-text="删除"
+                  negative-text="取消"
+                  @positive-click="handleDelete(session.conversationId)"
+                >
+                  <template #trigger>
+                    <NButton
+                      class="shrink-0 transition-opacity"
+                      :class="session.conversationId === conversationId ? '' : 'opacity-0 group-hover:opacity-100'"
+                      text
+                      size="tiny"
+                      :aria-label="`删除 ${session.title}`"
+                      @click.stop
+                    >
+                      <template #icon>
+                        <icon-lucide:trash-2 class="text-15px" />
+                      </template>
+                    </NButton>
+                  </template>
+                  删除后会移除此 session 和历史记录
+                </NPopconfirm>
+              </div>
+            </template>
           </NVirtualList>
         </NSpin>
       </div>
