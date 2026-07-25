@@ -217,6 +217,13 @@ const hasAuditTrail = computed(() => auditSteps.value.length > 0 || auditEvidenc
 const events = computed(() => props.message?.researchEvents || []);
 const legacyTools = computed(() => props.message?.toolEvents || []);
 const isRunning = computed(() => ['pending', 'loading'].includes(props.message?.status || ''));
+// Keep the animation alive while events are still streaming, even if status
+// has been marked complete upstream. Without this, switching sessions while
+// research is in-flight can drop the pulse before answer_completed arrives.
+const isResearchActive = computed(
+  () => isRunning.value ||
+    (events.value.length > 0 && !events.value.some(e => (e.eventType || e.type) === 'answer_completed'))
+);
 const MAX_VISIBLE_EVENTS = 100;
 
 function toolLabel(tool?: string, running = false) {
@@ -336,13 +343,13 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
     <div class="research-process__status">
       <span
         class="research-process__status-dot"
-        :class="{ 'is-running': isRunning, 'is-failed': latestPresentedPhase?.phase === 'error' }"
+        :class="{ 'is-running': isResearchActive, 'is-failed': latestPresentedPhase?.phase === 'error' }"
       />
       <div class="research-process__status-title">
         {{
           latestPresentedPhase?.phase === 'error'
             ? 'Research failed'
-            : (latestPresentedPhase?.headline ?? (isRunning ? 'Researching…' : 'Research complete'))
+            : (latestPresentedPhase?.headline ?? (isResearchActive ? 'Researching…' : 'Research complete'))
         }}
       </div>
     </div>
