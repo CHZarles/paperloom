@@ -233,29 +233,29 @@ function toolLabel(tool?: string, running = false) {
 }
 
 // Introduced for the phase-card template migration in Task 2.
-const presentedPhaseCards = computed<PhaseView[]>(() => {
-  // Filter out *_started events so each tool/model call shows once as completion.
-  const completed = events.value.slice(-MAX_VISIBLE_EVENTS).filter(event => {
-    const type = eventTypeOf(event);
-    return type !== 'tool_started' && type !== 'model_call_started';
-  });
-  return collapseConsecutivePhases(completed);
-});
-
-function collapseConsecutivePhases(inputs: PhaseInput[]): PhaseView[] {
+// Filter out *_started events and collapse consecutive same-phase events in
+// one pass to avoid the intermediate array from filter + slice.
+function buildCollapsedCards(inputs: PhaseInput[]): PhaseView[] {
   const collapsed: PhaseView[] = [];
   for (let index = 0; index < inputs.length; index += 1) {
     const input = inputs[index];
-    const last = collapsed[collapsed.length - 1];
-    const view = buildPhaseView(input, inputs, index);
-    if (last && last.phase === view.phase) {
-      collapsed[collapsed.length - 1] = view;
-    } else {
-      collapsed.push(view);
+    const type = input.eventType || input.type || '';
+    if (type !== 'tool_started' && type !== 'model_call_started') {
+      const view = buildPhaseView(input, inputs, index);
+      const last = collapsed[collapsed.length - 1];
+      if (last && last.phase === view.phase) {
+        collapsed[collapsed.length - 1] = view;
+      } else {
+        collapsed.push(view);
+      }
     }
   }
   return collapsed;
 }
+
+const presentedPhaseCards = computed<PhaseView[]>(() =>
+  buildCollapsedCards(events.value.slice(-MAX_VISIBLE_EVENTS))
+);
 
 function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
   return {
@@ -268,14 +268,14 @@ function auditStepToPhaseInput(step: Api.Chat.ResearchAuditStep): PhaseInput {
   };
 }
 
-const presentedAuditPhaseCards = computed(() => {
-  const inputs = auditSteps.value.map(auditStepToPhaseInput);
-  return collapseConsecutivePhases(inputs);
-});
+const presentedAuditPhaseCards = computed(() =>
+  buildCollapsedCards(auditSteps.value.map(auditStepToPhaseInput))
+);
 const latestPresentedPhase = computed<PhaseView | undefined>(() => {
   if (hasAuditTrail.value && auditSteps.value.length) {
-    const inputs = auditSteps.value.map(auditStepToPhaseInput);
-    return buildPhaseView(inputs[inputs.length - 1], inputs, inputs.length - 1);
+    const lastStep = auditSteps.value[auditSteps.value.length - 1];
+    const lastInput = auditStepToPhaseInput(lastStep);
+    return buildPhaseView(lastInput, [lastInput], 0);
   }
   const cards = presentedPhaseCards.value;
   return cards[cards.length - 1];
