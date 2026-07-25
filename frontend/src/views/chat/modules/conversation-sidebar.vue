@@ -18,9 +18,6 @@ const router = useRouter();
 const { conversationId, sessions, sessionsLoading } = storeToRefs(chatStore);
 const keyword = ref('');
 const showArchived = ref(false);
-const sessionScrollRef = ref<HTMLElement | null>(null);
-const isSessionOverflowing = ref(false);
-let resizeObserver: ResizeObserver | null = null;
 
 const visibleSessions = computed(() => {
   const status = showArchived.value ? 'ARCHIVED' : 'ACTIVE';
@@ -49,40 +46,7 @@ const avatarStyle = computed(() => ({
 
 onMounted(() => {
   chatStore.loadSessions({ loadDetails: route.name === 'chat' });
-  syncSessionOverflow();
-  window.addEventListener('resize', syncSessionOverflow);
-
-  if (sessionScrollRef.value) {
-    resizeObserver = new ResizeObserver(syncSessionOverflow);
-    resizeObserver.observe(sessionScrollRef.value);
-  }
 });
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', syncSessionOverflow);
-  resizeObserver?.disconnect();
-});
-
-watch(
-  () => [visibleSessions.value.length, sessionsLoading.value, collapsed.value],
-  () => {
-    syncSessionOverflow();
-  },
-  { flush: 'post' }
-);
-
-function syncSessionOverflow() {
-  nextTick(() => {
-    const el = sessionScrollRef.value;
-    if (!el) return;
-
-    isSessionOverflowing.value = el.scrollHeight > el.clientHeight + 8;
-
-    if (!isSessionOverflowing.value) {
-      el.scrollTop = 0;
-    }
-  });
-}
 
 function handleCollapse() {
   collapsed.value = true;
@@ -229,54 +193,56 @@ function formatDate(dateStr?: string) {
         </button>
       </div>
 
-      <div
-        ref="sessionScrollRef"
-        class="session-scroll flex-1 px-2 pb-2"
-        :class="isSessionOverflowing ? 'session-scroll--overflowing overflow-y-auto' : 'overflow-hidden'"
-      >
+      <div class="session-scroll flex-1 px-2 pb-2">
         <NSpin :show="sessionsLoading" class="h-full">
-          <TransitionGroup name="session-list" tag="div">
-            <div v-if="visibleSessions.length === 0 && !sessionsLoading" class="empty-sessions">
-              <icon-lucide:message-circle class="empty-sessions__icon" />
-              <span>{{ showArchived ? '暂无归档 query' : '暂无 query 记录' }}</span>
-            </div>
+          <div v-if="visibleSessions.length === 0 && !sessionsLoading" class="empty-sessions">
+            <icon-lucide:message-circle class="empty-sessions__icon" />
+            <span>{{ showArchived ? '暂无归档 query' : '暂无 query 记录' }}</span>
+          </div>
 
-            <div
-              v-for="session in visibleSessions"
-              :key="session.conversationId"
-              data-testid="conversation-session"
-              :data-conversation-id="session.conversationId"
-              class="session-item group"
-              :class="session.conversationId === conversationId ? 'session-item--active' : ''"
-              @click="handleSelect(session.conversationId)"
-            >
-              <icon-lucide:circle-dot v-if="session.conversationId === conversationId" class="shrink-0 text-12px" />
-              <div class="min-w-0 flex-1">
-                <div class="session-title">
-                  {{ session.title }}
+          <NVirtualList
+            v-else
+            :items="visibleSessions"
+            :item-size="64"
+            key-field="conversationId"
+            class="session-virtual-list"
+          >
+            <template #default="{ item: session }">
+              <div
+                :key="session.conversationId"
+                data-testid="conversation-session"
+                :data-conversation-id="session.conversationId"
+                class="session-item group"
+                :class="session.conversationId === conversationId ? 'session-item--active' : ''"
+                @click="handleSelect(session.conversationId)"
+              >
+                <icon-lucide:circle-dot v-if="session.conversationId === conversationId" class="shrink-0 text-12px" />
+                <div class="min-w-0 flex-1">
+                  <div class="session-title">
+                    {{ session.title }}
+                  </div>
+                  <div class="session-date">
+                    {{ formatDate(session.updatedAt) }}
+                  </div>
                 </div>
-                <div class="session-date">
-                  {{ formatDate(session.updatedAt) }}
-                </div>
-              </div>
 
-              <NPopconfirm v-if="!showArchived" @positive-click="handleArchive(session.conversationId)">
-                <template #trigger>
-                  <NButton
-                    class="shrink-0 transition-opacity"
-                    :class="session.conversationId === conversationId ? '' : 'opacity-0 group-hover:opacity-100'"
-                    text
-                    size="tiny"
-                    @click.stop
-                  >
-                    <template #icon>
-                      <icon-lucide:archive class="text-15px" />
-                    </template>
-                  </NButton>
-                </template>
-                归档后可在 Archived 中找回
-              </NPopconfirm>
-              <NButton
+                <NPopconfirm v-if="!showArchived" @positive-click="handleArchive(session.conversationId)">
+                  <template #trigger>
+                    <NButton
+                      class="shrink-0 transition-opacity"
+                      :class="session.conversationId === conversationId ? '' : 'opacity-0 group-hover:opacity-100'"
+                      text
+                      size="tiny"
+                      @click.stop
+                    >
+                      <template #icon>
+                        <icon-lucide:archive class="text-15px" />
+                      </template>
+                    </NButton>
+                  </template>
+                  归档后可在 Archived 中找回
+                </NPopconfirm>
+                <NButton
                 v-else
                 class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                 text
@@ -309,7 +275,8 @@ function formatDate(dateStr?: string) {
                 删除后会移除此 session 和历史记录
               </NPopconfirm>
             </div>
-          </TransitionGroup>
+          </template>
+          </NVirtualList>
         </NSpin>
       </div>
 
@@ -531,6 +498,7 @@ function formatDate(dateStr?: string) {
 
 .session-item {
   display: flex;
+  height: 100%;
   min-height: 38px;
   cursor: pointer;
   align-items: center;
@@ -692,16 +660,6 @@ function formatDate(dateStr?: string) {
 .logout-button:hover {
   background: color-mix(in srgb, var(--color-accent-soft-bg) 78%, transparent);
   color: var(--color-error);
-}
-
-.session-list-enter-active,
-.session-list-leave-active {
-  transition: all 0.2s ease;
-}
-.session-list-enter-from,
-.session-list-leave-to {
-  opacity: 0;
-  transform: translateX(-8px);
 }
 
 .dark .chat-sidebar {
