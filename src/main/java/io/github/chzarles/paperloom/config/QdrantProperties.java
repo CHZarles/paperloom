@@ -12,6 +12,8 @@ public class QdrantProperties {
     private String baseUrl = "http://127.0.0.1:6333";
     private String apiKey = "";
     private String collection = "paperloom_reading_locations_bm25_v1";
+    private String contract = "sparse-only-v1";
+    private int embeddingDimension = 1536;
     private Duration connectTimeout = Duration.ofSeconds(5);
     private Duration requestTimeout = Duration.ofSeconds(20);
     private int upsertBatchSize = 64;
@@ -62,5 +64,21 @@ public class QdrantProperties {
 
     public void setUpsertBatchSize(int upsertBatchSize) {
         this.upsertBatchSize = upsertBatchSize;
+    }
+
+    public String getContract() {
+        return contract;
+    }
+
+    public void setContract(String contract) {
+        this.contract = contract;
+    }
+
+    public int getEmbeddingDimension() {
+        return embeddingDimension;
+    }
+
+    public void setEmbeddingDimension(int embeddingDimension) {
+        this.embeddingDimension = embeddingDimension;
     }
 }

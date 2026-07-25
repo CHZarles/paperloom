@@ -55,6 +55,9 @@ public class ModelProviderConfig {
     @Column(name = "active", nullable = false)
     private boolean active = false;
 
+    @Column(name = "dimension")
+    private Integer dimension;
+
     @Column(name = "updated_by", nullable = false, length = 255)
     private String updatedBy;
 

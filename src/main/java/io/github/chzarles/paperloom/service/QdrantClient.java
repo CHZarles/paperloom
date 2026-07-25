@@ -24,6 +24,7 @@ import java.util.Set;
 public class QdrantClient {
 
     static final String LEXICAL_VECTOR_NAME = "lexical_bm25_v1";
+    static final String DENSE_VECTOR_NAME = "dense_embo01_v1";
 
     private final ObjectMapper objectMapper;
     private final QdrantProperties properties;
@@ -37,13 +38,35 @@ public class QdrantClient {
                 .build();
     }
 
+    public boolean isHybridContract() {
+        return properties.getContract() != null
+                && "sparse-dense-v1".equalsIgnoreCase(properties.getContract());
+    }
+
     public synchronized void ensureCollection() {
         HttpResponse<String> existing = send("GET", collectionPath(), null, true);
         if (existing.statusCode() == 404) {
-            Map<String, Object> body = Map.of("sparse_vectors", Map.of(
-                    LEXICAL_VECTOR_NAME,
-                    Map.of("modifier", "idf", "index", Map.of("on_disk", true))
-            ));
+            Map<String, Object> body;
+            if (isHybridContract()) {
+                body = Map.of(
+                        "sparse_vectors", Map.of(LEXICAL_VECTOR_NAME, Map.of(
+                                "modifier", "idf",
+                                "index", Map.of("on_disk", true)
+                        )),
+                        "vectors", Map.of(DENSE_VECTOR_NAME, Map.of(
+                                "size", properties.getEmbeddingDimension(),
+                                "distance", "Cosine"
+                        ))
+                );
+            } else {
+                body = Map.of("sparse_vectors", Map.of(
+                        LEXICAL_VECTOR_NAME,
+                        Map.of(
+                                "modifier", "idf",
+                                "index", Map.of("on_disk", true)
+                        )
+                ));
+            }
             HttpResponse<String> created = send("PUT", collectionPath(), body, false);
             if (created.statusCode() == 409) {
                 existing = send("GET", collectionPath(), null, false);
@@ -70,10 +93,28 @@ public class QdrantClient {
         requireSuccess(existing, "inspect Qdrant collection");
         JsonNode params = readCollectionParams(existing.body());
         JsonNode vectors = params.path("vectors");
-        if (vectors.isObject() && vectors.size() > 0) {
-            throw new IllegalStateException("Qdrant lexical collection must not contain dense vectors");
-        }
         JsonNode sparseVectors = params.path("sparse_vectors");
+
+        if (isHybridContract()) {
+            // Hybrid contract: lexical under `sparse_vectors` (with modifier/idf),
+            // dense under `vectors.lexical/dense name` for the embedding model.
+            if (!sparseVectors.has(LEXICAL_VECTOR_NAME)) {
+                throw new IllegalStateException(
+                        "Hybrid collection is missing sparse vector: " + LEXICAL_VECTOR_NAME);
+            }
+            if (!vectors.has(DENSE_VECTOR_NAME)) {
+                throw new IllegalStateException(
+                        "Hybrid collection is missing dense vector: " + DENSE_VECTOR_NAME);
+            }
+            int size = vectors.path(DENSE_VECTOR_NAME).path("size").asInt(0);
+            if (size != properties.getEmbeddingDimension()) {
+                throw new IllegalStateException("Hybrid dense vector size mismatch: collection=" + size
+                        + ", configured=" + properties.getEmbeddingDimension());
+            }
+            return;
+        }
+
+        // sparse-only contract (legacy)
         if (!sparseVectors.has(LEXICAL_VECTOR_NAME)) {
             throw new IllegalStateException("Qdrant collection is missing " + LEXICAL_VECTOR_NAME);
         }
@@ -97,12 +138,24 @@ public class QdrantClient {
         for (int start = 0; start < points.size(); start += batchSize) {
             List<Map<String, Object>> batch = new ArrayList<>();
             for (QdrantPoint point : points.subList(start, Math.min(points.size(), start + batchSize))) {
+                Map<String, Object> vector = new LinkedHashMap<>();
+                if (isHybridContract()) {
+                    vector.put(LEXICAL_VECTOR_NAME, Map.of(
+                            "indices", point.lexicalVector().indices(),
+                            "values", point.lexicalVector().values()
+                    ));
+                    if (point.hasDenseVector()) {
+                        vector.put(DENSE_VECTOR_NAME, toFloatList(point.denseVector()));
+                    }
+                } else {
+                    vector.put(LEXICAL_VECTOR_NAME, Map.of(
+                            "indices", point.lexicalVector().indices(),
+                            "values", point.lexicalVector().values()
+                    ));
+                }
                 batch.add(Map.of(
                         "id", point.id(),
-                        "vector", Map.of(LEXICAL_VECTOR_NAME, Map.of(
-                                "indices", point.lexicalVector().indices(),
-                                "values", point.lexicalVector().values()
-                        )),
+                        "vector", vector,
                         "payload", point.payload()
                 ));
             }
@@ -197,10 +250,27 @@ public class QdrantClient {
     public List<QdrantSearchHit> searchLexical(QdrantSparseVector vector,
                                                Map<String, Object> filter,
                                                int limit) {
-        return search(Map.of(
+        Map<String, Object> named = Map.of(
                 "name", LEXICAL_VECTOR_NAME,
                 "vector", Map.of("indices", vector.indices(), "values", vector.values())
-        ), filter, limit);
+        );
+        return search(named, filter, limit);
+    }
+
+    public List<QdrantSearchHit> searchDense(float[] denseVector,
+                                              Map<String, Object> filter,
+                                              int limit) {
+        if (!isHybridContract()) {
+            throw new IllegalStateException("Dense search requires sparse-dense-v1 contract");
+        }
+        if (denseVector == null) {
+            return List.of();
+        }
+        Map<String, Object> named = Map.of(
+                "name", DENSE_VECTOR_NAME,
+                "vector", toFloatList(denseVector)
+        );
+        return search(named, filter, limit);
     }
 
     public Map<String, Object> filter(Map<String, String> activeModels,
@@ -268,6 +338,14 @@ public class QdrantClient {
         } catch (Exception exception) {
             throw new IllegalStateException("Invalid Qdrant search response", exception);
         }
+    }
+
+    private List<Float> toFloatList(float[] vector) {
+        List<Float> list = new ArrayList<>(vector.length);
+        for (float v : vector) {
+            list.add(v);
+        }
+        return list;
     }
 
     private HttpResponse<String> send(String method,

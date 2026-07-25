@@ -21,18 +21,21 @@ import java.util.Optional;
 public class ModelProviderConfigService {
 
     public static final String SCOPE_LLM = "llm";
+    public static final String SCOPE_EMBEDDING = "embedding";
     public static final String API_STYLE_OPENAI = "openai-compatible";
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
 
     private final ModelProviderConfigRepository repository;
     private final SecretCryptoService secretCryptoService;
     private volatile ScopeSettingsView currentSettings;
+    private volatile ScopeSettingsView embeddingSettings;
 
     public ModelProviderConfigService(ModelProviderConfigRepository repository,
                                       SecretCryptoService secretCryptoService) {
         this.repository = repository;
         this.secretCryptoService = secretCryptoService;
         this.currentSettings = defaultSettings();
+        this.embeddingSettings = defaultEmbeddingSettings();
     }
 
     @PostConstruct
@@ -41,13 +44,24 @@ public class ModelProviderConfigService {
     }
 
     public ActiveProviderView getActiveProvider(String scope) {
-        requireLlmScope(scope);
-        ProviderConfigView provider = currentSettings.providers().stream()
+        return resolveActiveProvider(scope, "No active LLM provider is configured");
+    }
+
+    public ActiveProviderView getActiveEmbeddingProvider() {
+        return resolveActiveProvider(SCOPE_EMBEDDING, "No active embedding provider is configured");
+    }
+
+    public synchronized void reloadEmbeddingSettings() {
+        embeddingSettings = mergeOverrides(defaultEmbeddingSettings(), repository.findAll(), SCOPE_EMBEDDING);
+    }
+
+    private ActiveProviderView resolveActiveProvider(String scope, String missingMessage) {
+        ProviderConfigView provider = settingsFor(scope).providers().stream()
                 .filter(ProviderConfigView::active)
                 .filter(ProviderConfigView::enabled)
                 .findFirst()
                 .orElseThrow(() -> new CustomException(
-                        "No active LLM provider is configured",
+                        missingMessage,
                         HttpStatus.INTERNAL_SERVER_ERROR
                 ));
         return new ActiveProviderView(
@@ -56,13 +70,24 @@ public class ModelProviderConfigService {
                 provider.apiStyle(),
                 provider.apiBaseUrl(),
                 provider.model(),
-                resolveProviderApiKey(provider.provider()).orElse(null),
-                null
+                resolveProviderApiKey(scope, provider.provider()).orElse(null),
+                provider.dimension()
         );
     }
 
+    private synchronized ScopeSettingsView settingsFor(String scope) {
+        if (SCOPE_EMBEDDING.equalsIgnoreCase(scope)) {
+            if (embeddingSettings == null) {
+                embeddingSettings = mergeOverrides(defaultEmbeddingSettings(), repository.findAll(), SCOPE_EMBEDDING);
+            }
+            return embeddingSettings;
+        }
+        return currentSettings;
+    }
+
     public synchronized void reloadSettings() {
-        currentSettings = mergeOverrides(defaultSettings(), repository.findAll());
+        currentSettings = mergeOverrides(defaultSettings(), repository.findAll(), SCOPE_LLM);
+        embeddingSettings = mergeOverrides(defaultEmbeddingSettings(), repository.findAll(), SCOPE_EMBEDDING);
     }
 
     private ScopeSettingsView defaultSettings() {
@@ -71,19 +96,32 @@ public class ModelProviderConfigService {
                 "minimax",
                 List.of(
                         new ProviderConfigView("minimax", "MiniMax", API_STYLE_OPENAI,
-                                "https://api.minimaxi.com/v1", "MiniMax-M3", true, true)
+                                "https://api.minimaxi.com/v1", "MiniMax-M3", true, true, null)
                 )
         );
     }
 
-    private ScopeSettingsView mergeOverrides(ScopeSettingsView defaults, List<ModelProviderConfig> configs) {
+    private ScopeSettingsView defaultEmbeddingSettings() {
+        return new ScopeSettingsView(
+                SCOPE_EMBEDDING,
+                "minimax",
+                List.of(
+                        new ProviderConfigView("minimax", "MiniMax", API_STYLE_OPENAI,
+                                "https://api.minimaxi.com/v1", "embo-01", true, true, 1536)
+                )
+        );
+    }
+
+    private ScopeSettingsView mergeOverrides(ScopeSettingsView defaults,
+                                              List<ModelProviderConfig> configs,
+                                              String scope) {
         Map<String, ProviderConfigView> providers = new LinkedHashMap<>();
         for (ProviderConfigView provider : defaults.providers()) {
             providers.put(provider.provider(), provider);
         }
 
         List<ModelProviderConfig> sorted = configs == null ? List.of() : configs.stream()
-                .filter(config -> SCOPE_LLM.equalsIgnoreCase(config.getConfigScope()))
+                .filter(config -> scope.equalsIgnoreCase(config.getConfigScope()))
                 .sorted(Comparator.comparing(ModelProviderConfig::getProviderCode))
                 .toList();
         String activeProvider = defaults.activeProvider();
@@ -92,6 +130,7 @@ public class ModelProviderConfigService {
             if (fallback == null) {
                 continue;
             }
+            Integer dimension = config.getDimension() != null ? config.getDimension() : fallback.dimension();
             ProviderConfigView merged = new ProviderConfigView(
                     fallback.provider(),
                     hasValue(config.getDisplayName()) ? config.getDisplayName() : fallback.displayName(),
@@ -100,7 +139,8 @@ public class ModelProviderConfigService {
                             ? config.getApiBaseUrl() : fallback.apiBaseUrl()),
                     hasValue(config.getModelName()) ? config.getModelName() : fallback.model(),
                     config.isEnabled(),
-                    config.isActive()
+                    config.isActive(),
+                    dimension
             );
             providers.put(merged.provider(), merged);
             if (merged.active() && merged.enabled()) {
@@ -119,14 +159,15 @@ public class ModelProviderConfigService {
                         provider.apiBaseUrl(),
                         provider.model(),
                         provider.enabled(),
-                        provider.provider().equals(selected)
+                        provider.provider().equals(selected),
+                        provider.dimension()
                 ))
                 .toList();
-        return new ScopeSettingsView(SCOPE_LLM, selected, normalized);
+        return new ScopeSettingsView(scope, selected, normalized);
     }
 
-    private Optional<String> resolveProviderApiKey(String provider) {
-        Optional<ModelProviderConfig> persisted = repository.findByConfigScopeAndProviderCode(SCOPE_LLM, provider);
+    private Optional<String> resolveProviderApiKey(String scope, String provider) {
+        Optional<ModelProviderConfig> persisted = repository.findByConfigScopeAndProviderCode(scope, provider);
         if (persisted.isPresent()) {
             String apiKey = secretCryptoService.decrypt(persisted.get().getApiKeyCiphertext());
             if (hasValue(apiKey)) {
@@ -134,13 +175,6 @@ public class ModelProviderConfigService {
             }
         }
         return Optional.empty();
-    }
-
-    private void requireLlmScope(String scope) {
-        String normalized = scope == null ? "" : scope.trim().toLowerCase(Locale.ROOT);
-        if (!SCOPE_LLM.equals(normalized)) {
-            throw new CustomException("Unsupported model scope: " + scope, HttpStatus.BAD_REQUEST);
-        }
     }
 
     public static String normalizeOpenAiCompatibleBaseUrl(String rawBaseUrl) {
@@ -179,7 +213,8 @@ public class ModelProviderConfigService {
             String apiBaseUrl,
             String model,
             boolean enabled,
-            boolean active
+            boolean active,
+            Integer dimension
     ) {
     }
 

@@ -29,8 +29,8 @@ class QdrantReadingLocationRetrieverTest {
         when(qdrant.indexVersion()).thenReturn("lexical-index-v1");
         QdrantReadingLocationRetriever retriever = new QdrantReadingLocationRetriever(qdrant);
 
-        ReadingLocationRetriever.RetrievalCandidates result = retriever.retrieve(
-                new ReadingLocationRetriever.LocationRetrievalRequest(
+        RetrievalCandidates result = retriever.retrieve(
+                new LocationRetrievalRequest(
                         Map.of("paper-a", "rm-1"),
                         "Alpha alpha",
                         "Beta",
@@ -41,7 +41,7 @@ class QdrantReadingLocationRetrieverTest {
                 ));
 
         assertEquals(List.of("best-ref", "table-ref", "paragraph-ref"), result.ranked().stream()
-                .map(ReadingLocationRetriever.RankedLocationCandidate::locationRef).toList());
+                .map(RankedLocationCandidate::locationRef).toList());
         assertEquals("lexical-index-v1", result.indexVersion());
         ArgumentCaptor<QdrantSparseVector> query = ArgumentCaptor.forClass(QdrantSparseVector.class);
         verify(qdrant).searchLexical(query.capture(), eq(filter), eq(100));

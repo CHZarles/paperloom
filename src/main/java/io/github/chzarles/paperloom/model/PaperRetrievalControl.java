@@ -50,7 +50,7 @@ public class PaperRetrievalControl {
     @Column(name = "last_error", length = 1000)
     private String lastError;
 
-    @Column(name = "active_index_contract", length = 255)
+    @Column(name = "active_index_contract", length = 512)
     private String activeIndexContract;
 
     @Column(name = "lexical_average_document_length")

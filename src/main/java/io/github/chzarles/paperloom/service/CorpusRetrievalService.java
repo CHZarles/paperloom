@@ -55,7 +55,14 @@ public class CorpusRetrievalService {
         List<Paper> papers = authorizedPapers(query.userId(), query.scopePaperIds());
         Set<String> scope = normalizedSet(query.scopePaperIds());
         Set<String> requestedIds = normalizedSet(query.paperIds());
-        if (!requestedIds.isEmpty() && !scope.containsAll(requestedIds)) {
+        // Align the validation scope with what authorizedPapers actually iterates over:
+        // when the session did not pin explicit papers (AUTO_LIBRARY), the session
+        // covers the user's globally accessible papers, so paper_ids requested by
+        // the harness must belong to that set.
+        Set<String> sessionScope = scope.isEmpty()
+                ? papers.stream().map(Paper::getPaperId).collect(java.util.stream.Collectors.toSet())
+                : scope;
+        if (!requestedIds.isEmpty() && !sessionScope.containsAll(requestedIds)) {
             throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
         }
         Set<String> authors = normalizedSet(query.authors());
@@ -122,7 +129,14 @@ public class CorpusRetrievalService {
         if (requested.isEmpty()) {
             throw new IllegalArgumentException("paper_ids is required");
         }
-        if (!scope.containsAll(requested)) {
+        // Empty scope_paper_ids means the session is in AUTO_LIBRARY mode — the session
+        // covers the user's globally accessible papers. Otherwise scope_paper_ids is the
+        // explicit pin and we enforce paper_ids ⊆ scope_paper_ids.
+        Set<String> sessionScope = scope.isEmpty()
+                ? authorizedPapers(query.userId(), List.of()).stream()
+                        .map(Paper::getPaperId).collect(java.util.stream.Collectors.toSet())
+                : scope;
+        if (!sessionScope.containsAll(requested)) {
             throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
         }
         List<String> authorizedIds = accessiblePapers(query.userId(), new ArrayList<>(requested)).stream()
@@ -142,8 +156,8 @@ public class CorpusRetrievalService {
 
         int topK = Math.max(1, Math.min(query.topK(), MAX_LOCATION_LIMIT));
         Set<String> elementTypeHints = new LinkedHashSet<>(normalizeElementTypes(query.elementTypes()));
-        ReadingLocationRetriever.RetrievalCandidates retrieval = readingLocationRetriever.retrieve(
-                new ReadingLocationRetriever.LocationRetrievalRequest(
+        RetrievalCandidates retrieval = readingLocationRetriever.retrieve(
+                new LocationRetrievalRequest(
                         activeModels,
                         query.queryText(),
                         query.sectionQuery(),
@@ -156,9 +170,9 @@ public class CorpusRetrievalService {
                 .map(candidate -> new FusedHit(
                         candidate.locationRef(),
                         candidate.payload(),
-                        0,
+                        candidate.denseScore(),
                         candidate.lexicalScore(),
-                        candidate.lexicalScore()
+                        candidate.fusedScore()
                 ))
                 .toList();
         Map<String, PaperLocation> locationsByRef = locationRepository.findByLocationRefIn(
@@ -239,7 +253,14 @@ public class CorpusRetrievalService {
         }
         Set<String> scope = normalizedSet(scopePaperIds);
         if (scope.isEmpty()) {
-            throw new IllegalArgumentException("scope_paper_ids is required");
+            // Empty scope means the session is in AUTO_LIBRARY mode — the session
+            // covers the user's globally accessible papers.
+            List<Paper> userWide = paperService.getAccessiblePapers(
+                    String.valueOf(userId), "default,admin");
+            return userWide.stream()
+                    .filter(paper -> paper != null && !safe(paper.getPaperId()).isBlank())
+                    .sorted(Comparator.comparing(Paper::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .toList();
         }
         Map<String, Paper> accessible = paperService.getAccessiblePapersByIds(
                         String.valueOf(userId), new ArrayList<>(scope)).stream()

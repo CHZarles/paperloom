@@ -19,7 +19,9 @@ app:
 qdrant:
   base-url: ${QDRANT_BASE_URL}
   api-key: ${QDRANT_API_KEY:}
-  collection: ${QDRANT_COLLECTION:paperloom_reading_locations_bm25_v1}
+  collection: ${QDRANT_COLLECTION:paperloom_reading_locations_hybrid_v1}
+  contract: ${QDRANT_CONTRACT:sparse-only-v1}
+  embedding-dimension: ${QDRANT_EMBEDDING_DIMENSION:1536}
 
 security:
   allowed-origins: ${SECURITY_ALLOWED_ORIGINS}

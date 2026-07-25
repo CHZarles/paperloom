@@ -13,12 +13,20 @@ import java.math.RoundingMode;
 public class RetrievalIndexContractService {
 
     static final double DEFAULT_AVERAGE_DOCUMENT_LENGTH = 256.0;
-    private static final String SCHEMA_VERSION = "sparse-only-v1";
+    public static final String CONTRACT_SPARSE_ONLY_V1 = "sparse-only-v1";
+    public static final String CONTRACT_SPARSE_DENSE_V1 = "sparse-dense-v1";
+    private static final String SCHEMA_VERSION_SPARSE_ONLY = "sparse-only-v1";
+    private static final String SCHEMA_VERSION_SPARSE_DENSE = "sparse-dense-v1";
     private static final String PROJECTION_VERSION = "canonical-location-v2";
     private static final String ANALYZER_VERSION = "unicode-nfkc-lower-min2-v1";
     private static final String TERM_ID_VERSION = "sha256-int31-v1";
     private static final String SCORER_VERSION = "bm25-tf-norm-v1";
+    private static final String DENSE_VERSION = "embo-01-1536-cosine-v1";
     private static final String QDRANT_VERSION = "1.15.5";
+
+    public boolean isHybridContract() {
+        return CONTRACT_SPARSE_DENSE_V1.equalsIgnoreCase(properties.getContract());
+    }
 
     private final QdrantProperties properties;
     private final PaperRetrievalControlRepository controlRepository;
@@ -70,8 +78,10 @@ public class RetrievalIndexContractService {
                 .setScale(6, RoundingMode.HALF_UP)
                 .stripTrailingZeros()
                 .toPlainString();
+        String schema = isHybridContract() ? SCHEMA_VERSION_SPARSE_DENSE : SCHEMA_VERSION_SPARSE_ONLY;
+        String dense = isHybridContract() ? "|dense=" + DENSE_VERSION : "";
         return properties.getCollection()
-                + "|schema=" + SCHEMA_VERSION
+                + "|schema=" + schema
                 + "|projection=" + PROJECTION_VERSION
                 + "|analyzer=" + ANALYZER_VERSION
                 + "|term-id=" + TERM_ID_VERSION
@@ -80,7 +90,8 @@ public class RetrievalIndexContractService {
                 + "|b=" + LexicalBm25Encoder.B
                 + "|avgdl=" + average
                 + "|qdrant=" + QDRANT_VERSION
-                + "|modifier=idf";
+                + "|modifier=idf"
+                + dense;
     }
 
     private String activate(PaperRetrievalControl control, double averageDocumentLength) {

@@ -66,7 +66,7 @@ public class PaperReadingModel {
     @Column(name = "retrieval_index_job_id", length = 64)
     private String retrievalIndexJobId;
 
-    @Column(name = "retrieval_index_contract", length = 255)
+    @Column(name = "retrieval_index_contract", length = 512)
     private String retrievalIndexContract;
 
     @Column(name = "retrieval_indexed_location_count")

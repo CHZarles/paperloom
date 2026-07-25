@@ -1,6 +1,6 @@
 package io.github.chzarles.paperloom.service;
 
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -9,8 +9,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-@Service
-public class QdrantReadingLocationRetriever implements ReadingLocationRetriever {
+@Component
+public class QdrantReadingLocationRetriever {
 
     private static final int MAX_CANDIDATE_LIMIT = 100;
 
@@ -20,7 +20,6 @@ public class QdrantReadingLocationRetriever implements ReadingLocationRetriever 
         this.qdrantClient = qdrantClient;
     }
 
-    @Override
     public RetrievalCandidates retrieve(LocationRetrievalRequest request) {
         String query = String.join(" ", List.of(request.queryText(), request.sectionQuery())).trim();
         if (query.isBlank()) {
@@ -47,7 +46,7 @@ public class QdrantReadingLocationRetriever implements ReadingLocationRetriever 
                 continue;
             }
             RankedLocationCandidate candidate = new RankedLocationCandidate(
-                    locationRef, hit.payload(), hit.score());
+                    locationRef, hit.payload(), hit.score(), 0.0, hit.score());
             candidates.merge(locationRef, candidate,
                     (left, right) -> right.lexicalScore() > left.lexicalScore() ? right : left);
         }

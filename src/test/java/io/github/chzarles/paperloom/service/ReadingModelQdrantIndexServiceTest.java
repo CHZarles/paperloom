@@ -68,7 +68,8 @@ class ReadingModelQdrantIndexServiceTest {
                 sectionRepository,
                 qdrantClient,
                 mock(PaperRetrievalControlRepository.class),
-                contractService
+                contractService,
+                mock(io.github.chzarles.paperloom.service.embedding.EmbeddingProviderFactory.class)
         ));
     }
 

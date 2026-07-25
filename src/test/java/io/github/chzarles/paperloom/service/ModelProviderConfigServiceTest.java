@@ -28,6 +28,8 @@ class ModelProviderConfigServiceTest {
         when(repository.findAll()).thenReturn(List.of());
         when(repository.findByConfigScopeAndProviderCode(ModelProviderConfigService.SCOPE_LLM, "minimax"))
                 .thenReturn(Optional.empty());
+        when(repository.findByConfigScopeAndProviderCode(ModelProviderConfigService.SCOPE_EMBEDDING, "minimax"))
+                .thenReturn(Optional.empty());
     }
 
     @Test
@@ -66,15 +68,26 @@ class ModelProviderConfigServiceTest {
     }
 
     @Test
-    void ignoresDeletedEmbeddingScopeRows() {
-        ModelProviderConfig embedding = provider("embedding", "minimax", true, true);
-        when(repository.findAll()).thenReturn(List.of(embedding));
-
+    void resolvesEmbeddingScopeProviderIndependently() {
         ModelProviderConfigService service = service();
-        service.reloadSettings();
+
+        ModelProviderConfigService.ActiveProviderView provider =
+                service.getActiveEmbeddingProvider();
+
+        assertEquals("minimax", provider.provider());
+        assertEquals("embo-01", provider.model());
+        assertEquals("https://api.minimaxi.com/v1", provider.apiBaseUrl());
+        assertEquals(1536, provider.dimension());
+    }
+
+    @Test
+    void embeddingAndLlmScopeAreIndependent() {
+        ModelProviderConfigService service = service();
 
         assertEquals("minimax", service.getActiveProvider(ModelProviderConfigService.SCOPE_LLM).provider());
-        assertThrows(CustomException.class, () -> service.getActiveProvider("embedding"));
+        assertEquals("minimax", service.getActiveEmbeddingProvider().provider());
+        assertEquals("MiniMax-M3", service.getActiveProvider(ModelProviderConfigService.SCOPE_LLM).model());
+        assertEquals("embo-01", service.getActiveEmbeddingProvider().model());
     }
 
     @Test

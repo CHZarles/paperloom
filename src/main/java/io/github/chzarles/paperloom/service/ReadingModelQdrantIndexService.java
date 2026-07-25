@@ -14,6 +14,8 @@ import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRetrievalControlRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
+import io.github.chzarles.paperloom.service.embedding.EmbeddingProvider;
+import io.github.chzarles.paperloom.service.embedding.EmbeddingProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class ReadingModelQdrantIndexService {
     private final QdrantClient qdrantClient;
     private final PaperRetrievalControlRepository controlRepository;
     private final RetrievalIndexContractService contractService;
+    private final EmbeddingProviderFactory embeddingProviderFactory;
 
     public ReadingModelQdrantIndexService(PaperReadingModelRepository modelRepository,
                                           PaperReadingElementRepository elementRepository,
@@ -57,7 +60,8 @@ public class ReadingModelQdrantIndexService {
                                           PaperSectionRepository sectionRepository,
                                           QdrantClient qdrantClient,
                                           PaperRetrievalControlRepository controlRepository,
-                                          RetrievalIndexContractService contractService) {
+                                          RetrievalIndexContractService contractService,
+                                          EmbeddingProviderFactory embeddingProviderFactory) {
         this.modelRepository = modelRepository;
         this.elementRepository = elementRepository;
         this.locationRepository = locationRepository;
@@ -66,6 +70,7 @@ public class ReadingModelQdrantIndexService {
         this.qdrantClient = qdrantClient;
         this.controlRepository = controlRepository;
         this.contractService = contractService;
+        this.embeddingProviderFactory = embeddingProviderFactory;
     }
 
     public IndexResult indexCurrentModel(String paperId, String requesterId) {
@@ -132,6 +137,8 @@ public class ReadingModelQdrantIndexService {
             List<QdrantPoint> points = new ArrayList<>(locations.size());
             int indexedTokens = 0;
             int hashCollisions = 0;
+            List<IndexedLocation> encodable = new ArrayList<>();
+            List<String> encodableTexts = new ArrayList<>();
             for (IndexedLocation location : locations) {
                 LexicalBm25Encoder.EncodedDocument encoded = LexicalBm25Encoder.encodeDocument(
                         location.searchableText(), averageDocumentLength);
@@ -146,8 +153,27 @@ public class ReadingModelQdrantIndexService {
                 points.add(new QdrantPoint(
                         pointId(location.paperId(), location.modelVersion(), location.locationRef()),
                         encoded.vector(),
+                        null,
                         payload
                 ));
+                encodable.add(location);
+                encodableTexts.add(location.searchableText());
+            }
+            if (qdrantClient.isHybridContract()) {
+                EmbeddingProvider embeddingProvider = embeddingProviderFactory.activeProvider();
+                List<float[]> vectors = embeddingProvider.embed(encodableTexts).block();
+                if (vectors == null || vectors.size() != encodable.size()) {
+                    throw new IllegalStateException("Embedding provider returned mismatched vector count for paperId=" + paperId);
+                }
+                for (int i = 0; i < points.size(); i++) {
+                    QdrantPoint sparsePoint = points.get(i);
+                    points.set(i, new QdrantPoint(
+                            sparsePoint.id(),
+                            sparsePoint.lexicalVector(),
+                            vectors.get(i),
+                            sparsePoint.payload()
+                    ));
+                }
             }
             if (points.isEmpty()) {
                 throw new IllegalStateException("Current Reading Model contains no lexical index points");

@@ -55,8 +55,8 @@ class CorpusRetrievalServiceTest {
         assertEquals(Set.of("location-a", "location-b"), result.locations().stream()
                 .map(CorpusRetrievalService.LocationCandidate::locationRef)
                 .collect(Collectors.toSet()));
-        ArgumentCaptor<ReadingLocationRetriever.LocationRetrievalRequest> request =
-                ArgumentCaptor.forClass(ReadingLocationRetriever.LocationRetrievalRequest.class);
+        ArgumentCaptor<LocationRetrievalRequest> request =
+                ArgumentCaptor.forClass(LocationRetrievalRequest.class);
         verify(fixture.retriever).retrieve(request.capture());
         assertEquals(Map.of("paper-a", "rm-a", "paper-b", "rm-b"), request.getValue().activeModels());
     }
@@ -233,8 +233,8 @@ class CorpusRetrievalServiceTest {
                 new CorpusRetrievalService.LocationSearchQuery(
                         7L, scope, scope, "query", "", List.of("table"), null, null, 1));
 
-        ArgumentCaptor<ReadingLocationRetriever.LocationRetrievalRequest> request =
-                ArgumentCaptor.forClass(ReadingLocationRetriever.LocationRetrievalRequest.class);
+        ArgumentCaptor<LocationRetrievalRequest> request =
+                ArgumentCaptor.forClass(LocationRetrievalRequest.class);
         verify(fixture.retriever).retrieve(request.capture());
         assertEquals(Set.of("table"), request.getValue().elementTypeHints());
         assertEquals("table-ref", result.locations().get(0).locationRef());
@@ -301,15 +301,15 @@ class CorpusRetrievalServiceTest {
         verifyNoInteractions(fixture.paperService, fixture.modelRepository, fixture.readService);
     }
 
-    private static ReadingLocationRetriever.RetrievalCandidates retrieval(
-            ReadingLocationRetriever.RankedLocationCandidate... candidates) {
-        return new ReadingLocationRetriever.RetrievalCandidates(
+    private static RetrievalCandidates retrieval(
+            RankedLocationCandidate... candidates) {
+        return new RetrievalCandidates(
                 List.of(candidates), candidates.length, "lexical-index-v1");
     }
 
-    private static ReadingLocationRetriever.RankedLocationCandidate candidate(
+    private static RankedLocationCandidate candidate(
             String paperId, String modelVersion, String locationRef, double score) {
-        return new ReadingLocationRetriever.RankedLocationCandidate(
+        return new RankedLocationCandidate(
                 locationRef,
                 Map.of(
                         "paper_id", paperId,
@@ -317,13 +317,15 @@ class CorpusRetrievalServiceTest {
                         "location_ref", locationRef,
                         "element_types", List.of("paragraph")
                 ),
+                score,
+                0.0,
                 score
         );
     }
 
-    private static ReadingLocationRetriever.RankedLocationCandidate leadCandidate(
+    private static RankedLocationCandidate leadCandidate(
             String paperId, String modelVersion, String locationRef, double score) {
-        return new ReadingLocationRetriever.RankedLocationCandidate(
+        return new RankedLocationCandidate(
                 locationRef,
                 Map.of(
                         "paper_id", paperId,
@@ -334,6 +336,8 @@ class CorpusRetrievalServiceTest {
                         "page_number", 1,
                         "element_types", List.of("paragraph")
                 ),
+                score,
+                0.0,
                 score
         );
     }
