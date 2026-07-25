@@ -30,6 +30,12 @@ type ReferencePanelPayload = Partial<Omit<Api.Chat.ReferenceEvidence, 'paperId' 
   referenceNumber: number;
 };
 const referencePayload = ref<ReferencePanelPayload | null>(null);
+const pdfViewerOpen = ref(false);
+
+function handlePdfViewerToggle(open: boolean) {
+  pdfViewerOpen.value = open;
+  if (open) sidebarCollapsed.value = true;
+}
 
 const showDockInput = computed(() => list.value.length > 0);
 const currentSessionTitle = computed(
@@ -177,6 +183,7 @@ onBeforeUnmount(() => {
           v-if="referencePanelVisible"
           ref="referencePanelRef"
           class="reference-panel"
+          :class="{ 'reference-panel--expanded': pdfViewerOpen }"
           :role="reviewOverlayMode ? 'dialog' : 'complementary'"
           :aria-modal="reviewOverlayMode ? 'true' : undefined"
           aria-label="Research review"
@@ -224,6 +231,7 @@ onBeforeUnmount(() => {
           <SourceEvidencePanel
             v-else-if="referencePayload"
             :key="referenceEvidenceKey"
+            @pdf-viewer-toggle="handlePdfViewerToggle"
             :reference-number="referencePayload.referenceNumber"
             :paper-title="referencePayload.paperTitle"
             :paper-id="referencePayload.paperId || undefined"
@@ -424,6 +432,11 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-left: 1px solid var(--chat-line);
   background: var(--color-bg);
+  transition: width 0.2s ease;
+}
+
+.reference-panel--expanded {
+  width: clamp(560px, 56vw, 980px);
 }
 
 .review-panel-mask {

@@ -43,6 +43,9 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const emit = defineEmits<{
+  (e: 'pdf-viewer-toggle', open: boolean): void;
+}>();
 const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
 const { baseURL: serviceBaseUrl } = getServiceBaseURL(import.meta.env, isHttpProxy);
 
@@ -58,6 +61,8 @@ const evidenceImageKind = ref<'page' | 'asset'>('asset');
 const evidenceImageElement = ref<HTMLImageElement | null>(null);
 const evidenceImageDisplaySize = ref({ width: 0, height: 0 });
 const pdfViewerVisible = ref(false);
+
+watch(pdfViewerVisible, open => emit('pdf-viewer-toggle', open));
 
 const assetWarningLabels: Record<string, string> = {
   pdf_page_visual_evidence_unavailable: 'PDF page visual evidence is unavailable.',
