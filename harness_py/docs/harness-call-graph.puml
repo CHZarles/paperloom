@@ -5,17 +5,16 @@ title harness_py — External Callers + Internal Sequence
 ' Java Corpus 侧通过 HTTP 调 /internal/v1/corpus/*；
 ' Python 侧在 /v1/research/{turn,stream} 上对 Java 端暴露两个端点。
 
-actor "Java 端" as java
-node "transport/service.py" as transport
+actor "Java 端 (8081)" as java
+node "transport/service.py\nStarlette 8091" as transport
 node "orchestration/live_chat.py" as livechat
 node "orchestration/runtime.py" as runtime
 node "orchestration/agents/runtime.py" as agents
 node "OpenAI Agents SDK\n(Runner + Agent)" as sdk
-actor "用户" as user
+actor "浏览器 (前端)\n+ Java WS" as user
 
-user -> transport : POST /v1/research/turn\n或 /v1/research/stream
-java -> transport : (无; Python 端\n是 client,\nJava 是 server)
-
+user -> java : WebSocket 收发\n(/api/v1/chat/websocket-token\n+ /api/v1/users/conversations)
+java -> transport : POST /v1/research/turn\n或 /v1/research/stream\n(Java 是 client，transport 是 Starlette server)
 transport -> livechat : LiveResearchChatHarness.run_turn()
 livechat -> runtime : TurnExecutionInput\n(dataset, case_id,\nrun_id, question,\nconversation_messages,\nresearch_memory,\ncorpus_reader)
 runtime -> agents : AgentsSdkHarnessRuntime.run_turn()
@@ -23,6 +22,7 @@ agents -> sdk : Runner.run(Agent(...))
 sdk -> agents : tool_calls + final_output
 agents -> livechat : TurnExecutionResult(run)
 livechat -> transport : Run JSON\n(answer, evidence,\nreferences)
-transport -> user : 200 OK
+transport -> java : 200 OK
+java -> user : WS 推流 (result)
 
 @enduml
