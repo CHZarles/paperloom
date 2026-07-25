@@ -20,12 +20,18 @@ const CHAT_ROUTES = new Set<Api.Chat.Route>([
   'PAPER_QA'
 ]);
 const MAX_RETAINED_RESEARCH_EVENTS = 200;
+const PRESERVED_HEAD_EVENTS = 20;
+
+function trimEvents<T>(events: T[] | undefined | null): T[] {
+  if (!events || events.length <= MAX_RETAINED_RESEARCH_EVENTS) return events || [];
+  return [...events.slice(0, PRESERVED_HEAD_EVENTS), ...events.slice(-MAX_RETAINED_RESEARCH_EVENTS + PRESERVED_HEAD_EVENTS)];
+}
 
 function boundResearchEvents(message: Api.Chat.Message) {
-  if (!message.researchEvents || message.researchEvents.length <= MAX_RETAINED_RESEARCH_EVENTS) return message;
+  if (!message.researchEvents) return message;
   return {
     ...message,
-    researchEvents: message.researchEvents.slice(-MAX_RETAINED_RESEARCH_EVENTS)
+    researchEvents: trimEvents(message.researchEvents)
   };
 }
 
@@ -139,7 +145,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
         assistant.researchAuditTrail = snapshot.researchAuditTrail;
       }
       if (snapshot.progressEvents) {
-        assistant.researchEvents = snapshot.progressEvents.slice(-MAX_RETAINED_RESEARCH_EVENTS);
+        assistant.researchEvents = trimEvents(snapshot.progressEvents);
       }
       return;
     }
@@ -165,7 +171,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       readingArtifacts: snapshot.readingArtifacts,
       readingStatePatch: snapshot.readingStatePatch,
       researchAuditTrail: snapshot.researchAuditTrail,
-      researchEvents: snapshot.progressEvents?.slice(-MAX_RETAINED_RESEARCH_EVENTS),
+      researchEvents: trimEvents(snapshot.progressEvents),
       route: normalizeChatRoute(snapshot.diagnostics?.route)
     });
   }
