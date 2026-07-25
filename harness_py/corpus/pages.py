@@ -1,5 +1,16 @@
 from __future__ import annotations
 
+# 页面解析与 anchor 模糊匹配的工具函数。
+#
+# - parse_positive_page / page_matches：把 raw page 值（int / float / 字符串）统一成
+#   "正整数" 或 None。这是 InMemoryTools 的 _matches_identity_hints 等 anchor 匹配
+#   与 _build_documents 走同一约定；同输入永远同一输出，避免 1.0 vs 1 错位。
+# - normalize_text / contains_normalized_phrase：剥去 inline XML 标签、转小写、只保留
+#   [a-zA-Z0-9_] 形态的 token，再做 tolerant 子串匹配。InMemoryTools 的 anchor 文本
+#   对齐依赖这一层；只有同 source 的 _matches_token_phrase 缓存才能命中。
+# - _matches_token_phrase 接受 1-3 词窗内的字符级 mismatch：纸版 anchor 在跨页 / 排版
+#   重排时 token 之间会插入 hyphen 或 whitespace，需要小幅度 fuzz。
+
 import re
 from functools import lru_cache
 

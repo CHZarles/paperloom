@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# Golden Data loader：把 research/golden-data/manifest*.yaml 解析成 GoldenDataset。
+# 入口 load_dataset：装载 manifest + paper packs + cases + reading models；
+# 校验 manifest schema、dataset_id、anchor 页面正整数等；解析时 resolve 所有
+# paper pack data_dir 至绝对路径。
+# 离线工具，被 BehaviorScorer / audit / CLI 跑 Golden Data 回归时使用；不参与 prod runtime。
+
 import json
 from pathlib import Path
 import yaml

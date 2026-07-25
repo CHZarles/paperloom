@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# Qdrant product corpus 离线迁移诊断：把 MySQL 的 paper_packs / reading_models /
+# parsed_typed 等表数据转成 GoldenDataset，用于 replay 调试与跨版本回归。
+# prod runtime 走 transport/service.py:JavaCorpusGateway；本文件不参与 hot path。
+# 数据源通过 subprocess 调 mysql 客户端，避免在 Python 侧再引入一个 DB driver。
+# 字符串 / SQL 拼装只用于诊断脚本，不是 Web 输入；不暴露给 OpenAI Agents SDK。
+
 import json
 import re
 import subprocess

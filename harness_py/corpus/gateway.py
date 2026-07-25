@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+# Java Corpus API 的 Python 客户端。
+#
+# 生产路径是 JavaCorpusGateway：HTTP POST 到 /internal/v1/corpus/*，把 Java 侧
+# 的权限校验 / 契约校验 / Qdrant 检索委派过去；Python 不直接碰 Qdrant。
+# 测试与离线夹具路径在 corpus/in_memory_tools.py:InMemoryTools，走本地 BM25 评分。
+# CorReader Protocol 是上面两条路径的最小交集（4 个 tool 方法），方便上层只对接协议。
+# 任何 prod 改动都应当：先调 Java 接口，再走 in-memory 回归，最后才在协议上加字段。
+
 import hashlib
 import json
 import os

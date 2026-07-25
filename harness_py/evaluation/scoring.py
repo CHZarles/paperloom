@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# Harness 行为评分器。
+# BehaviorScorer 是 score_case / score_dataset 的入口；
+# 输出 score report（每 case 的 dimensions + trace metrics + ground-truth hash）。
+# 行为评分只有针对人类 review 的 Golden Data fixture 才有意义；不参与 prod runtime。
+
 import re
 from dataclasses import dataclass, field
 

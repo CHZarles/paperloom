@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+# transport/service.py：harness 的 HTTP 入口。
+#
+# 暴露两个端点：POST /v1/research/turn（一次性返回完整 Run）和 POST /v1/research/stream
+# （逐 token 推送 NDJSON 事件）。认证走 Bearer token 共享密钥；先在内部 token 走通再考虑
+# OpenAI 兼容接口。Python 端不接 MySQL / Qdrant，所有数据通过 corpus/ 委派给 Java。
+# 启动用 uvicorn（走 pyproject 的 [start] 入口），单进程多线程；每个研究 run 串行处理。
+
 import json
 import os
 import queue

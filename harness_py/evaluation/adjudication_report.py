@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+# Blind adjudication report 校验器：
+# human-labeled 对照数据集 vs harness 实际跑出的 score report。
+# 流程：human label 给出每个 case 的 conformance / semantic_pass；
+# harness 跑同 fixture 产出 score report；本文件加载两边 JSON，
+# 比对 case_id、契约 hash、grounding 分布，输出一致性 + grounding summary。
+# 用法：python -m harness_py.evaluation.adjudication_report <left> <right>。
+# 不参与 prod runtime。
+
 import argparse
 import json
 import sys

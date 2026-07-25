@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+# 模型 provider 的环境变量解析。
+#
+# ProviderConfig 是只读 dataclass：scope + provider + base_url + model + api_key + style
+# 等字段。生产路径由 transport/service.py 在启动时构造一次，eval 路径在脚本里临时构造。
+# EnvProviderConfigStore：env 优先，没有再读 .env 文件。.env 解析只支持 shell 的
+# key=value 语法（无 export、无 multi-line），文件不会 watch，启动期读一次即可。
+# 加密：API key 在落盘前用 AES-GCM 加密（AES_KEY_FILE_PATH 提供 base64 32 字节 key）。
+# 内部 token 走 transport，不落到 Python 端以外。
+
 import base64
 import os
 import re

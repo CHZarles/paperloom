@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 离线 anchor 定位 audit：检查每个 Golden anchor 的 page + 文本能否在
+# reading_models 中精确定位，定位失败的 anchor 标为 not_found / ambiguous。
+# 用法：CLI 跑 audit_dataset 写报告，CI 跑同 fixture 校验 fixture 完整性。
+# 不参与 prod runtime。
+
 from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from ..corpus.pages import contains_normalized_phrase, normalize_text, page_matches
 
