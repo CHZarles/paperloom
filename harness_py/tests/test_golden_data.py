@@ -11,7 +11,7 @@ from unittest.mock import patch
 import yaml
 
 from harness_py.cli import main
-from harness_py.corpus.in_memory_tools import InMemoryTools
+from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
 from harness_py.evaluation.dataset import load_dataset
 from harness_py.evaluation.golden_case import paper_ids_for_case
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness

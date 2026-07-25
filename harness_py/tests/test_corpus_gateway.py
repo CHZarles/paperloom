@@ -10,7 +10,7 @@ import httpx
 
 from harness_py.utils.errors import HarnessCancelled
 from harness_py.corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
-from harness_py.corpus.in_memory_tools import InMemoryTools
+from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
 from harness_py.corpus.tools import ReadingCorpusTools
 
 

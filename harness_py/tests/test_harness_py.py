@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from harness_py.utils.models import GoldenDataset
 from harness_py.corpus.product_db_dataset import build_product_dataset, summarize_product_corpus
-from harness_py.corpus.in_memory_tools import InMemoryTools
+from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
 from harness_py.evaluation.dataset import load_dataset
 from harness_py.evaluation.fact_assertions import _scalar_string
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness

@@ -48,7 +48,7 @@ class ResearchRunContext:
     def __post_init__(self) -> None:
         # 每轮创建独立的 Corpus 工具实例，因此授权集合不会泄漏到其他用户或其他请求。
         # 生产路径必传 reader 走 Java 委派；测试 / 评测夹具可不传，回退到 corpus/in_memory_tools 的本地 BM25 路径。
-        from harness_py.corpus.in_memory_tools import InMemoryTools
+        from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
         if self.turn.corpus_reader is not None:
             self.corpus = ReadingCorpusTools(self.turn.dataset, reader=self.turn.corpus_reader)
         else:

@@ -7,7 +7,7 @@ from __future__ import annotations
 # 公共字段 / Tool 协议与 ReadingCorpusTools 完全一致；5 个 tool 方法覆盖父类同名方法，
 # 把 self.reader 委托替换为基于本地 ReadingDocument 集合的 BM25 评分。
 #
-# 评分函数（_bm25_score 等）已抽到 corpus/bm25.py。
+# 评分函数（_bm25_score 等）已抽到 corpus_test_fixtures/bm25.py。
 
 import hashlib
 import re
@@ -17,12 +17,12 @@ from typing import Any
 from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from .bm25 import Bm25Statistics, score as bm25_score, statistics as bm25_statistics
 from .bm25 import query_term_weights, token_overlap_ratio, tokenize
-from .pages import (
+from ..corpus.pages import (
     contains_normalized_phrase as _contains_normalized_phrase,
     normalize_text as _normalize,
     page_matches as _page_matches,
 )
-from .tools import ReadingCorpusTools, ToolResult
+from ..corpus.tools import ReadingCorpusTools, ToolResult
 
 
 # 评分权重与常量：仅 in-memory 路径使用。
