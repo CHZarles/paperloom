@@ -26,20 +26,20 @@ class ModelProviderConfigServiceTest {
         repository = mock(ModelProviderConfigRepository.class);
         secretCryptoService = mock(SecretCryptoService.class);
         when(repository.findAll()).thenReturn(List.of());
-        when(repository.findByConfigScopeAndProviderCode(ModelProviderConfigService.SCOPE_LLM, "deepseek"))
+        when(repository.findByConfigScopeAndProviderCode(ModelProviderConfigService.SCOPE_LLM, "minimax"))
                 .thenReturn(Optional.empty());
     }
 
     @Test
-    void defaultsToDeploymentManagedDeepSeekProvider() {
+    void defaultsToMiniMaxProvider() {
         ModelProviderConfigService service = service();
 
         ModelProviderConfigService.ActiveProviderView provider =
                 service.getActiveProvider(ModelProviderConfigService.SCOPE_LLM);
 
-        assertEquals("deepseek", provider.provider());
-        assertEquals("deepseek-chat", provider.model());
-        assertEquals("https://api.deepseek.com/v1", provider.apiBaseUrl());
+        assertEquals("minimax", provider.provider());
+        assertEquals("MiniMax-M3", provider.model());
+        assertEquals("https://api.minimaxi.com/v1", provider.apiBaseUrl());
         assertNull(provider.apiKey());
     }
 
@@ -73,7 +73,7 @@ class ModelProviderConfigServiceTest {
         ModelProviderConfigService service = service();
         service.reloadSettings();
 
-        assertEquals("deepseek", service.getActiveProvider(ModelProviderConfigService.SCOPE_LLM).provider());
+        assertEquals("minimax", service.getActiveProvider(ModelProviderConfigService.SCOPE_LLM).provider());
         assertThrows(CustomException.class, () -> service.getActiveProvider("embedding"));
     }
 

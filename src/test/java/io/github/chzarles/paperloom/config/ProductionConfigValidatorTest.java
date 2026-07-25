@@ -28,8 +28,6 @@ class ProductionConfigValidatorTest {
         environment.setProperty("spring.datasource.username", "paperloom");
         environment.setProperty("spring.datasource.password", "secret");
         environment.setProperty("jwt.secret-key", "secret");
-        environment.setProperty("deepseek.api.url", "https://model.example");
-        environment.setProperty("deepseek.api.key", "secret");
         environment.setProperty("minio.endpoint", "https://minio.example");
         environment.setProperty("minio.accessKey", "access");
         environment.setProperty("minio.secretKey", "secret");

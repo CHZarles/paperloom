@@ -101,35 +101,6 @@ public class LogUtils {
     }
     
     /**
-     * 记录聊天日志
-     */
-    public static void logChat(String userId, String sessionId, String messageType, int messageLength) {
-        try {
-            MDC.put(USER_ID, userId);
-            MDC.put(SESSION_ID, sessionId);
-            MDC.put(OPERATION, "CHAT");
-            BUSINESS_LOGGER.info("[聊天] [用户:{}] [会话:{}] [类型:{}] [长度:{}]", 
-                    userId, sessionId, messageType, messageLength);
-        } finally {
-            MDC.clear();
-        }
-    }
-    
-    /**
-     * 记录系统启动日志
-     */
-    public static void logSystemStart(String component, String status, String details) {
-        BUSINESS_LOGGER.info("[系统启动] [组件:{}] [状态:{}] {}", component, status, details);
-    }
-    
-    /**
-     * 记录系统错误日志
-     */
-    public static void logSystemError(String component, String error, Throwable throwable) {
-        BUSINESS_LOGGER.error("[系统错误] [组件:{}] [错误:{}]", component, error, throwable);
-    }
-    
-    /**
      * 设置请求上下文
      */
     public static void setRequestContext(String requestId, String userId, String sessionId) {

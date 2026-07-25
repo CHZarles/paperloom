@@ -64,37 +64,6 @@ public class RateLimitService {
         checkSingleWindow("embedding:query:day:user:" + userId, limit.dayMax(), limit.dayWindowSeconds(), "Embedding查询当日次数已达上限");
     }
 
-    public UsageQuotaService.TokenReservationBundle reserveEmbeddingUploadUsage(String userId, java.util.List<String> texts) {
-        RateLimitConfigService.TokenBudgetView limit = rateLimitConfigService.getCurrentSettings().embeddingUploadToken();
-        return usageQuotaService.reserveEmbeddingTokensWithGlobalBudget(
-                userId,
-                texts,
-                "embedding-upload",
-                "Embedding上传全网分钟Token预算已达上限",
-                "Embedding上传全网当日Token预算已达上限",
-                limit.minuteMax(),
-                limit.minuteWindowSeconds(),
-                limit.dayMax(),
-                limit.dayWindowSeconds()
-        );
-    }
-
-    public UsageQuotaService.TokenReservationBundle reserveEmbeddingQueryUsage(String userId, java.util.List<String> texts) {
-        checkEmbeddingQueryByUser(userId);
-        RateLimitConfigService.TokenBudgetView limit = rateLimitConfigService.getCurrentSettings().embeddingQueryGlobalToken();
-        return usageQuotaService.reserveEmbeddingTokensWithGlobalBudget(
-                userId,
-                texts,
-                "embedding-query",
-                "Embedding查询全网分钟Token预算已达上限",
-                "Embedding查询全网当日Token预算已达上限",
-                limit.minuteMax(),
-                limit.minuteWindowSeconds(),
-                limit.dayMax(),
-                limit.dayWindowSeconds()
-        );
-    }
-
     private void checkSingleWindow(String key, long max, long windowSeconds, String message) {
         Long current = stringRedisTemplate.opsForValue().increment(key);
         if (current == null) {

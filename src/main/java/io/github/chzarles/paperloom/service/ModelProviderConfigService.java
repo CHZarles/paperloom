@@ -28,15 +28,6 @@ public class ModelProviderConfigService {
     private final SecretCryptoService secretCryptoService;
     private volatile ScopeSettingsView currentSettings;
 
-    @Value("${deepseek.api.url:https://api.deepseek.com/v1}")
-    private String deepSeekApiUrl;
-
-    @Value("${deepseek.api.key:}")
-    private String deepSeekApiKey;
-
-    @Value("${deepseek.api.model:deepseek-chat}")
-    private String deepSeekModel;
-
     public ModelProviderConfigService(ModelProviderConfigRepository repository,
                                       SecretCryptoService secretCryptoService) {
         this.repository = repository;
@@ -75,20 +66,12 @@ public class ModelProviderConfigService {
     }
 
     private ScopeSettingsView defaultSettings() {
-        String apiUrl = hasValue(deepSeekApiUrl) ? deepSeekApiUrl : "https://api.deepseek.com/v1";
-        String model = hasValue(deepSeekModel) ? deepSeekModel : "deepseek-chat";
         return new ScopeSettingsView(
                 SCOPE_LLM,
-                "deepseek",
+                "minimax",
                 List.of(
-                        new ProviderConfigView("deepseek", "DeepSeek", API_STYLE_OPENAI,
-                                normalizeOpenAiCompatibleBaseUrl(apiUrl), model, true, true),
                         new ProviderConfigView("minimax", "MiniMax", API_STYLE_OPENAI,
-                                "https://api.minimaxi.com/v1", "MiniMax-M3", true, false),
-                        new ProviderConfigView("qwen", "Qwen", API_STYLE_OPENAI,
-                                "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-flash", true, false),
-                        new ProviderConfigView("zhipu", "ZhipuAI", API_STYLE_OPENAI,
-                                "https://open.bigmodel.cn/api/paas/v4", "glm-4.5-air", true, false)
+                                "https://api.minimaxi.com/v1", "MiniMax-M3", true, true)
                 )
         );
     }
@@ -149,9 +132,6 @@ public class ModelProviderConfigService {
             if (hasValue(apiKey)) {
                 return Optional.of(apiKey);
             }
-        }
-        if ("deepseek".equals(provider) && hasValue(deepSeekApiKey)) {
-            return Optional.of(deepSeekApiKey);
         }
         return Optional.empty();
     }
