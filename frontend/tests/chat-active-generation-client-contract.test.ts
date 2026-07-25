@@ -24,3 +24,9 @@ assert.match(
   /assistant\.conversationRecordId\s*=\s*payload\.conversationRecordId/,
   'completion payloads must attach the durable conversation record id before citation chips are clicked'
 );
+
+assert.match(
+  chatStoreSource,
+  /function loadConversationDetails[\s\S]{0,800}fetchActiveGenerationSnapshot\(\)[\s\S]{0,400}snapshot\.conversationId\s*===\s*targetConversationId/,
+  'loadConversationDetails must refetch the active generation snapshot and restore it when the snapshot belongs to the loaded conversation, so an in-flight answer survives a session switch and switch-back'
+);

@@ -488,8 +488,17 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
 
     const pending = Promise.all([loadConversationScope(targetConversationId), loadMessages(targetConversationId)]).then(
-      () => {
-        if (conversationId.value === targetConversationId) loadedConversationDetailsId = targetConversationId;
+      async () => {
+        if (conversationId.value !== targetConversationId) return;
+        loadedConversationDetailsId = targetConversationId;
+        const snapshot = await fetchActiveGenerationSnapshot();
+        if (
+          snapshot &&
+          snapshot.conversationId === targetConversationId &&
+          conversationId.value === targetConversationId
+        ) {
+          upsertGenerationSnapshot(snapshot);
+        }
       }
     );
     conversationDetailsInFlight.set(targetConversationId, pending);
