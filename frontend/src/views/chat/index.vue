@@ -436,7 +436,7 @@ onBeforeUnmount(() => {
 }
 
 .reference-panel--expanded {
-  width: clamp(560px, 56vw, 980px);
+  width: clamp(420px, 42vw, 720px);
 }
 
 .review-panel-mask {
