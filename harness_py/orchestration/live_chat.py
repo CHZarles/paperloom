@@ -15,7 +15,7 @@ from typing import Callable
 
 from .conversation import ConversationState
 from ..utils.errors import HarnessCancelled
-from ..utils.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, stable_id, utc_now_iso
+from ..utils.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, child_map, stable_id, utc_now_iso
 from ..evaluation.eval_recorder import EvalRecorder
 from .memory import ResearchMemory
 from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
@@ -44,6 +44,7 @@ class LiveResearchChatHarness:
         should_cancel: Callable[[], bool] | None = None,
         case_id_override: str = "",
         corpus_reader: CorpusReader | None = None,
+        retry_context: JsonMap | None = None,
     ) -> tuple[JsonMap, ConversationState]:
         """执行一轮用户消息，返回 Run 和下一轮要持久化的状态。"""
 
@@ -91,6 +92,7 @@ class LiveResearchChatHarness:
                 progress_listener=progress_listener,
                 should_cancel=should_cancel,
                 eval_recorder=recorder,
+                retry_context=child_map(retry_context),
             ))
             run = result.run
         except (HarnessCancelled, BrokenPipeError, ConnectionResetError) as error:

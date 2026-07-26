@@ -96,6 +96,30 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     return -1;
   }
 
+  function findAssistantIndexForRetry(payload: {
+    generationId?: string;
+    retryOfGenerationId?: string | null;
+    answerSlotId?: number | null;
+  }) {
+    const byGeneration = findAssistantIndexByGenerationId(payload.generationId);
+    if (byGeneration >= 0) return byGeneration;
+
+    if (typeof payload.answerSlotId === 'number') {
+      for (let i = list.value.length - 1; i >= 0; i -= 1) {
+        const item = list.value[i];
+        if (item?.role === 'assistant' && item.answerSlotId === payload.answerSlotId) {
+          return i;
+        }
+      }
+    }
+
+    if (payload.retryOfGenerationId) {
+      return findAssistantIndexByGenerationId(payload.retryOfGenerationId);
+    }
+
+    return -1;
+  }
+
   function getPendingGenerationId() {
     for (let i = list.value.length - 1; i >= 0; i -= 1) {
       const item = list.value[i];
@@ -112,7 +136,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
     conversationId.value = snapshot.conversationId || conversationId.value;
 
-    const assistantIndex = findAssistantIndexByGenerationId(snapshot.generationId);
+    const assistantIndex = findAssistantIndexForRetry(snapshot);
     const nextStatus = mapGenerationStatus(snapshot.status);
 
     if (assistantIndex >= 0) {
@@ -122,6 +146,15 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       assistant.generationId = snapshot.generationId;
       assistant.conversationId = snapshot.conversationId;
       assistant.timestamp ||= snapshot.updatedAt;
+      assistant.retryOfGenerationId = snapshot.retryOfGenerationId || assistant.retryOfGenerationId;
+      assistant.retryOfConversationRecordId =
+        typeof snapshot.retryOfConversationRecordId === 'number'
+          ? snapshot.retryOfConversationRecordId
+          : assistant.retryOfConversationRecordId;
+      assistant.answerSlotId = typeof snapshot.answerSlotId === 'number' ? snapshot.answerSlotId : assistant.answerSlotId;
+      assistant.answerRevision =
+        typeof snapshot.answerRevision === 'number' ? snapshot.answerRevision : assistant.answerRevision;
+      assistant.replaceMessage = Boolean(snapshot.replaceMessage || assistant.replaceMessage);
       if (snapshot.referenceMappings && Object.keys(snapshot.referenceMappings).length > 0) {
         assistant.referenceMappings = snapshot.referenceMappings;
       }
@@ -163,6 +196,12 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       timestamp: snapshot.updatedAt,
       conversationRecordId:
         typeof snapshot.conversationRecordId === 'number' ? snapshot.conversationRecordId : undefined,
+      retryOfGenerationId: snapshot.retryOfGenerationId || undefined,
+      retryOfConversationRecordId:
+        typeof snapshot.retryOfConversationRecordId === 'number' ? snapshot.retryOfConversationRecordId : undefined,
+      answerSlotId: typeof snapshot.answerSlotId === 'number' ? snapshot.answerSlotId : undefined,
+      answerRevision: typeof snapshot.answerRevision === 'number' ? snapshot.answerRevision : undefined,
+      replaceMessage: Boolean(snapshot.replaceMessage),
       referenceMappings: snapshot.referenceMappings,
       diagnostics: snapshot.diagnostics,
       readingArtifacts: snapshot.readingArtifacts,
@@ -176,6 +215,11 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   function applyGenerationStart(payload: {
     conversationId?: string;
     generationId?: string;
+    retryOfGenerationId?: string;
+    retryOfConversationRecordId?: number;
+    answerSlotId?: number;
+    answerRevision?: number;
+    replaceMessage?: boolean;
     timestamp?: string;
     route?: string;
   }) {
@@ -188,6 +232,44 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     conversationId.value = started.conversationId;
     list.value = started.messages;
     return started.assistant as Api.Chat.Message | null;
+  }
+
+  async function retryGeneration(message: Api.Chat.Message) {
+    if (!message.generationId) {
+      return false;
+    }
+    const { error, data } = await request<Api.Chat.RetryGenerationStart>({
+      url: `chat/generation/${message.generationId}/retry`,
+      method: 'POST',
+      data: {
+        reason: 'user_unsatisfied',
+        clientId: chatClientId
+      }
+    });
+    if (error || !data) {
+      return false;
+    }
+    const assistantIndex = findAssistantIndexForRetry(data);
+    if (assistantIndex >= 0) {
+      const assistant = list.value[assistantIndex];
+      assistant.content = '';
+      assistant.status = 'loading';
+      assistant.generationId = data.generationId;
+      assistant.conversationId = data.conversationId || assistant.conversationId;
+      assistant.retryOfGenerationId = data.retryOfGenerationId;
+      assistant.retryOfConversationRecordId = data.retryOfConversationRecordId;
+      assistant.answerSlotId = data.answerSlotId;
+      assistant.answerRevision = data.answerRevision;
+      assistant.replaceMessage = true;
+      assistant.referenceMappings = undefined;
+      assistant.diagnostics = undefined;
+      assistant.readingArtifacts = undefined;
+      assistant.readingStatePatch = undefined;
+      assistant.researchAuditTrail = undefined;
+      assistant.researchEvents = [];
+      assistant.toolEvents = [];
+    }
+    return true;
   }
 
   function applyLoadedMessages(messages: Api.Chat.Message[], targetConversationId?: string) {
@@ -728,6 +810,7 @@ function resetConnectionState() {
     createNewSession,
     switchSession,
     loadMessages,
+    retryGeneration,
     archiveSession,
     unarchiveSession,
     deleteSession

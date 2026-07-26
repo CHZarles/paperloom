@@ -70,6 +70,7 @@ class ChatHandlerStopResponseTest {
                 mock(ProductReadingConversationService.class),
                 mock(ProductPaperHandleService.class),
                 new ObjectMapper(),
+                3,
                 mock(ThreadPoolTaskExecutor.class)
         );
     }

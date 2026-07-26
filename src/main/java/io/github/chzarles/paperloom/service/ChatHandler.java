@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -67,6 +68,7 @@ public class ChatHandler {
     private final ProductPaperHandleService productPaperHandleService;
     private final ThreadPoolTaskExecutor chatMonitorExecutor;
     private final ObjectMapper objectMapper;
+    private final int maxUserRetriesPerMessage;
 
     // 用于存储每次生成任务的完整响应
     private final Map<String, StringBuilder> responseBuilders = new ConcurrentHashMap<>();
@@ -86,6 +88,7 @@ public class ChatHandler {
     private final Map<String, Map<String, Object>> generationReadingStatePatches = new ConcurrentHashMap<>();
     private final Map<String, Long> generationConversationRecordIds = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> generationEffectiveScopes = new ConcurrentHashMap<>();
+    private final Map<String, ConversationRetryContext> generationRetryContexts = new ConcurrentHashMap<>();
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
     @Autowired
@@ -98,6 +101,7 @@ public class ChatHandler {
                       ProductReadingConversationService productReadingConversationService,
                       ProductPaperHandleService productPaperHandleService,
                       ObjectMapper objectMapper,
+                      @Value("${research-harness.user-retry-max-per-message:3}") int maxUserRetriesPerMessage,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
         this.usageQuotaService = usageQuotaService;
@@ -108,6 +112,7 @@ public class ChatHandler {
         this.productReadingConversationService = productReadingConversationService;
         this.productPaperHandleService = productPaperHandleService;
         this.objectMapper = objectMapper;
+        this.maxUserRetriesPerMessage = Math.max(1, maxUserRetriesPerMessage);
         this.chatMonitorExecutor = chatMonitorExecutor;
     }
 
@@ -211,6 +216,94 @@ public class ChatHandler {
             }
             handleError(userId, requestClientId, generationId, e);
         }
+    }
+
+    public Map<String, Object> retryGeneration(String userId,
+                                               String retryOfGenerationId,
+                                               String clientId,
+                                               String reason) {
+        String safeUserId = trimToNull(userId);
+        String safeGenerationId = trimToNull(retryOfGenerationId);
+        String safeClientId = trimToNull(clientId);
+        if (safeUserId == null || safeGenerationId == null || safeClientId == null) {
+            throw new IllegalArgumentException("generationId and clientId are required");
+        }
+        chatGenerationStateService.getActiveGenerationForUserAndClient(safeUserId, safeClientId)
+                .filter(snapshot -> snapshot.status() == ChatGenerationStateService.GenerationStatus.STREAMING)
+                .ifPresent(snapshot -> {
+                    throw new IllegalStateException("当前对话还有回答在生成，完成后再重试");
+                });
+
+        ChatGenerationStateService.GenerationSnapshot parentSnapshot = chatGenerationStateService
+                .getGenerationForUser(safeGenerationId, safeUserId)
+                .orElseThrow(() -> new IllegalArgumentException("原回答不存在或无权重试"));
+        if (parentSnapshot.status() != ChatGenerationStateService.GenerationStatus.COMPLETED
+                || parentSnapshot.conversationRecordId() == null) {
+            throw new IllegalArgumentException("只有已完成的回答可以重新生成");
+        }
+
+        Long userIdLong = Long.parseLong(safeUserId);
+        ConversationRetryContext retryContext = conversationService
+                .prepareUserRetry(
+                        userIdLong,
+                        parentSnapshot.generationId(),
+                        parentSnapshot.conversationRecordId(),
+                        reason,
+                        maxUserRetriesPerMessage
+                )
+                .orElseThrow(() -> new IllegalArgumentException("原回答不存在或无权重试"));
+
+        String conversationId = retryContext.conversationId();
+        conversationService.requireActiveOwnedConversationSession(userIdLong, conversationId);
+        List<String> paperIds = retryPaperIds(userIdLong, conversationId, retryContext.effectiveScope());
+        SourceScope productScope = SourceScope.manual(paperIds, RetrievalBudgetProfile.INTERACTIVE);
+
+        ChatGenerationStateService.GenerationSnapshot generation =
+                chatGenerationStateService.createRetryGeneration(
+                        safeUserId,
+                        safeClientId,
+                        conversationId,
+                        retryContext.question(),
+                        retryContext
+                );
+        String generationId = generation.generationId();
+        generationClientIds.put(generationId, safeClientId);
+        generationEffectiveScopes.put(generationId, retryContext.effectiveScope());
+        generationRetryContexts.put(generationId, retryContext);
+        responseBuilders.put(generationId, new StringBuilder());
+        CompletableFuture<String> responseFuture = new CompletableFuture<>();
+        responseFutures.put(generationId, responseFuture);
+        generationTimings.put(generationId, ChatRequestTiming.start(retryContext.question()));
+
+        sendGenerationStart(safeUserId, generationId, conversationId, retryContext);
+        try {
+            chatMonitorExecutor.execute(() -> runReadingHarnessSafely(
+                    safeUserId,
+                    retryContext.question(),
+                    conversationId,
+                    generationId,
+                    productScope,
+                    responseFuture
+            ));
+        } catch (RejectedExecutionException ex) {
+            RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
+            chatGenerationStateService.markFailed(generationId, busyException.getMessage());
+            handleError(safeUserId, safeClientId, generationId, busyException);
+            sendCompletionNotification(safeUserId, generationId, conversationId, true, false);
+            cleanupGenerationState(generationId, ex);
+            throw busyException;
+        }
+        return retryContext.toClientPayload(generationId);
+    }
+
+    private List<String> retryPaperIds(Long userId, String conversationId, Map<String, Object> effectiveScope) {
+        List<String> paperIds = stringListValue(effectiveScope == null ? null : effectiveScope.get("paperIds"));
+        if (!paperIds.isEmpty()) {
+            return paperIds;
+        }
+        ConversationScopeService.EffectiveConversationScope resolved =
+                conversationScopeService.resolveForChat(userId, conversationId);
+        return conversationScopeService.authorizedPaperIdsForHarness(userId, resolved);
     }
 
     private ProductReferenceFocus referenceFocus(ProductReferenceFocus incomingScope) {
@@ -558,16 +651,30 @@ public class ChatHandler {
             timing.begin("product_reading_react_harness");
         }
         Map<String, Object> effectiveScope = generationEffectiveScopes.get(generationId);
-        productReadingConversationService.submitTurn(
-                Long.parseLong(userId),
-                conversationId,
-                generationId,
-                userMessage,
-                scope,
-                ProductModelContext.defaults(),
-                effectiveScope,
-                event -> sendResearchProgress(userId, generationId, conversationId, event)
-        ).whenComplete((answer, error) -> {
+        ConversationRetryContext retryContext = generationRetryContexts.get(generationId);
+        CompletableFuture<ProductTurnResult> turnFuture = retryContext == null
+                ? productReadingConversationService.submitTurn(
+                        Long.parseLong(userId),
+                        conversationId,
+                        generationId,
+                        userMessage,
+                        scope,
+                        ProductModelContext.defaults(),
+                        effectiveScope,
+                        event -> sendResearchProgress(userId, generationId, conversationId, event)
+                )
+                : productReadingConversationService.submitRetryTurn(
+                        Long.parseLong(userId),
+                        conversationId,
+                        generationId,
+                        userMessage,
+                        scope,
+                        ProductModelContext.defaults(),
+                        effectiveScope,
+                        retryContext.toPayload(),
+                        event -> sendResearchProgress(userId, generationId, conversationId, event)
+                );
+        turnFuture.whenComplete((answer, error) -> {
             Runnable completion = () -> {
                 if (error != null) {
                     if (isGenerationCancelled(generationId)) {
@@ -639,6 +746,7 @@ public class ChatHandler {
         List<Map<String, Object>> researchEvents = chatGenerationStateService.getGeneration(generationId)
                 .map(ChatGenerationStateService.GenerationSnapshot::progressEvents)
                 .orElse(List.of());
+        ConversationRetryContext retryContext = generationRetryContexts.get(generationId);
         Long conversationRecordId = conversationService.recordConversation(
                 Long.parseLong(userId),
                 userMessage,
@@ -648,7 +756,9 @@ public class ChatHandler {
                 effectiveScope == null ? Map.of() : effectiveScope,
                 answer.readingArtifacts(),
                 answer.readingStatePatch(),
-                researchEvents
+                researchEvents,
+                generationId,
+                retryContext
         );
         if (conversationRecordId != null) {
             generationConversationRecordIds.put(generationId, conversationRecordId);
@@ -1002,6 +1112,7 @@ public class ChatHandler {
         generationReadingStatePatches.remove(generationId);
         generationConversationRecordIds.remove(generationId);
         generationEffectiveScopes.remove(generationId);
+        generationRetryContexts.remove(generationId);
         generationTimings.remove(generationId);
         stopFlags.remove(generationId);
         cancelledGenerations.remove(generationId);
@@ -1206,12 +1317,23 @@ public class ChatHandler {
     }
 
     private void sendGenerationStart(String userId, String generationId, String conversationId) {
-        sendJsonToGenerationClient(userId, generationId, Map.of(
-                "type", "start",
-                "generationId", generationId,
-                "conversationId", conversationId,
-                "timestamp", System.currentTimeMillis()
-        ));
+        sendGenerationStart(userId, generationId, conversationId, null);
+    }
+
+    private void sendGenerationStart(String userId,
+                                     String generationId,
+                                     String conversationId,
+                                     ConversationRetryContext retryContext) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "start");
+        payload.put("generationId", generationId);
+        payload.put("conversationId", conversationId);
+        payload.put("timestamp", System.currentTimeMillis());
+        if (retryContext != null) {
+            payload.putAll(retryContext.toClientPayload(generationId));
+            payload.put("type", "start");
+        }
+        sendJsonToGenerationClient(userId, generationId, payload);
     }
 
     private void sendResponseChunk(String userId, String generationId, String conversationId, String chunk) {
@@ -1271,6 +1393,11 @@ public class ChatHandler {
         notification.put("message", failed ? "响应已中断" : "响应已完成");
         notification.put("timestamp", System.currentTimeMillis());
         notification.put("date", java.time.LocalDateTime.now().toString());
+        ConversationRetryContext retryContext = generationRetryContexts.get(generationId);
+        if (retryContext != null) {
+            notification.putAll(retryContext.toClientPayload(generationId));
+            notification.put("type", "completion");
+        }
         if (!failed) {
             Map<Integer, ReferenceInfo> referenceMappings = generationReferenceMappings.get(generationId);
             if (referenceMappings != null && !referenceMappings.isEmpty()) {

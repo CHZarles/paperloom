@@ -462,6 +462,10 @@ declare namespace Api {
 
     interface ResearchProgressEvent {
       generationId?: string;
+      retryOfGenerationId?: string;
+      retryOfConversationRecordId?: number;
+      answerSlotId?: number;
+      answerRevision?: number;
       sequence?: number;
       type: string;
       eventType?: string;
@@ -701,6 +705,14 @@ declare namespace Api {
       conversationId?: string;
       conversationRecordId?: number;
       generationId?: string;
+      retryOfGenerationId?: string;
+      retryOfConversationRecordId?: number;
+      answerSlotId?: number;
+      answerRevision?: number;
+      currentRevision?: boolean;
+      forkedFromConversationRecordId?: number;
+      retryKind?: string;
+      replaceMessage?: boolean;
       username?: string;
       route?: Route;
       referenceMappings?: Record<string, ReferenceEvidence>;
@@ -807,12 +819,46 @@ declare namespace Api {
       updatedAt: string;
       errorMessage?: string | null;
       conversationRecordId?: number | null;
+      retryOfGenerationId?: string | null;
+      retryOfConversationRecordId?: number | null;
+      answerSlotId?: number | null;
+      answerRevision?: number | null;
+      replaceMessage?: boolean | null;
       referenceMappings?: Record<string, ReferenceEvidence>;
       diagnostics?: Diagnostics;
       readingArtifacts?: ReadingTurnArtifacts;
       readingStatePatch?: Record<string, any>;
       researchAuditTrail?: ResearchAuditTrail | null;
       progressEvents?: ResearchProgressEvent[];
+    }
+
+    interface RetryGenerationStart {
+      generationId: string;
+      conversationId: string;
+      retryOfGenerationId: string;
+      retryOfConversationRecordId: number;
+      answerSlotId: number;
+      answerRevision: number;
+      replaceMessage: boolean;
+    }
+
+    interface AnswerRevision {
+      conversationRecordId: number;
+      conversationId: string;
+      generationId?: string | null;
+      answerSlotId: number;
+      answerRevision: number;
+      currentRevision: boolean;
+      forkedFromConversationRecordId?: number | null;
+      retryKind?: string | null;
+      retryReason?: string | null;
+      retryOfGenerationId?: string | null;
+      question: string;
+      answer: string;
+      timestamp?: string | null;
+      referenceMappings?: Record<string, ReferenceEvidence>;
+      researchEvents?: ResearchProgressEvent[];
+      researchAuditTrail?: ResearchAuditTrail | null;
     }
 
     interface ConversationSession {

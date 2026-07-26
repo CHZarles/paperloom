@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Protocol
 from uuid import uuid4
 
@@ -44,6 +44,7 @@ class TurnExecutionInput:
     progress_listener: ProgressListener | None = None
     should_cancel: CancellationCheck | None = None
     eval_recorder: EvalRecorder | None = None
+    retry_context: JsonMap = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

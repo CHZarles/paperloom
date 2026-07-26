@@ -90,6 +90,7 @@ class ResearchHarnessService:
             progress_listener=progress_listener,
             should_cancel=should_cancel,
             corpus_reader=corpus_reader,
+            retry_context=child_map(request.get("retry")),
         )
         return _turn_response(request, run, next_state, dataset)
 

@@ -4,6 +4,11 @@ export interface ChatMessageListItem {
   status?: 'pending' | 'loading' | 'finished' | 'error';
   conversationId?: string;
   generationId?: string;
+  retryOfGenerationId?: string;
+  answerSlotId?: number;
+  answerRevision?: number;
+  retryOfConversationRecordId?: number;
+  replaceMessage?: boolean;
   timestamp?: string;
   route?: string;
 }
@@ -11,6 +16,11 @@ export interface ChatMessageListItem {
 export interface GenerationStartPayload {
   conversationId?: string;
   generationId?: string;
+  retryOfGenerationId?: string;
+  retryOfConversationRecordId?: number;
+  answerSlotId?: number;
+  answerRevision?: number;
+  replaceMessage?: boolean;
   timestamp?: string;
   route?: string;
 }
@@ -45,7 +55,7 @@ export function applyGenerationStartToMessages<T extends ChatMessageListItem>({
   payload: GenerationStartPayload;
 }) {
   const conversationId = payload.conversationId || currentConversationId;
-  const assistantIndex = findStartedAssistantIndex(messages, payload.generationId);
+  const assistantIndex = findStartedAssistantIndex(messages, payload);
   const userIndex = findNearestUserIndex(messages, assistantIndex);
 
   const nextMessages = messages.map((message, index) => {
@@ -58,7 +68,19 @@ export function applyGenerationStartToMessages<T extends ChatMessageListItem>({
       conversationId: conversationId || message.conversationId,
       generationId: index === assistantIndex ? payload.generationId || message.generationId : message.generationId,
       timestamp: index === assistantIndex ? payload.timestamp || message.timestamp : message.timestamp,
-      route: index === assistantIndex ? payload.route || message.route : message.route
+      route: index === assistantIndex ? payload.route || message.route : message.route,
+      retryOfGenerationId:
+        index === assistantIndex ? payload.retryOfGenerationId || message.retryOfGenerationId : message.retryOfGenerationId,
+      retryOfConversationRecordId:
+        index === assistantIndex
+          ? payload.retryOfConversationRecordId || message.retryOfConversationRecordId
+          : message.retryOfConversationRecordId,
+      answerSlotId: index === assistantIndex ? payload.answerSlotId || message.answerSlotId : message.answerSlotId,
+      answerRevision:
+        index === assistantIndex ? payload.answerRevision || message.answerRevision : message.answerRevision,
+      replaceMessage: index === assistantIndex ? payload.replaceMessage || message.replaceMessage : message.replaceMessage,
+      content: index === assistantIndex && payload.replaceMessage ? '' : message.content,
+      status: index === assistantIndex && payload.replaceMessage ? 'loading' : message.status
     };
   }) as T[];
 
@@ -69,11 +91,29 @@ export function applyGenerationStartToMessages<T extends ChatMessageListItem>({
   };
 }
 
-function findStartedAssistantIndex(messages: readonly ChatMessageListItem[], generationId?: string) {
-  if (generationId) {
+function findStartedAssistantIndex(messages: readonly ChatMessageListItem[], payload: GenerationStartPayload) {
+  if (payload.generationId) {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const message = messages[i];
-      if (message?.role === 'assistant' && message.generationId === generationId) {
+      if (message?.role === 'assistant' && message.generationId === payload.generationId) {
+        return i;
+      }
+    }
+  }
+
+  if (payload.answerSlotId) {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i];
+      if (message?.role === 'assistant' && message.answerSlotId === payload.answerSlotId) {
+        return i;
+      }
+    }
+  }
+
+  if (payload.retryOfGenerationId) {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i];
+      if (message?.role === 'assistant' && message.generationId === payload.retryOfGenerationId) {
         return i;
       }
     }

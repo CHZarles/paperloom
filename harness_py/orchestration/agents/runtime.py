@@ -195,6 +195,17 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
                     ensure_ascii=False,
                 ),
             })
+        if turn.retry_context:
+            input_items.append({
+                "role": "system",
+                "content": (
+                    "The user explicitly requested a regenerated answer for the same question. "
+                    "Treat the previous assistant answer as non-final feedback context, not as an accepted fact. "
+                    "Re-check the authorized corpus evidence, improve the answer, and avoid simply copying the "
+                    "previous wording.\n"
+                    + json.dumps(_retry_context_card(turn.retry_context), ensure_ascii=False)
+                ),
+            })
 
         # 当前用户问题永远是本次新增输入的最后一项。
         input_items.append({"role": "user", "content": turn.question})
@@ -242,4 +253,17 @@ def _evidence_card(item: JsonMap) -> JsonMap:
         "section": item.get("section"),
         "page": item.get("page"),
         "span_text": str(item.get("span_text") or "")[:900],
+    }
+
+
+def _retry_context_card(item: JsonMap) -> JsonMap:
+    previous_answer = str(item.get("previous_answer_markdown") or "")
+    return {
+        "kind": item.get("kind"),
+        "retry_of_generation_id": item.get("retry_of_generation_id"),
+        "answer_slot_id": item.get("answer_slot_id"),
+        "target_revision": item.get("target_revision"),
+        "reason": item.get("reason"),
+        "previous_cited_evidence_ids": item.get("previous_cited_evidence_ids") or [],
+        "previous_answer_markdown": previous_answer[:8000],
     }

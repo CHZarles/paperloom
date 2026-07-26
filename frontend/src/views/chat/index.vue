@@ -62,17 +62,28 @@ const connectionText = computed(() => {
 function handleOpenReference(payload: NonNullable<typeof referencePayload.value>) {
   referencePayload.value = payload;
   activeReviewTab.value = 'evidence';
+  pdfViewerOpen.value = false;
   referencePanelVisible.value = true;
 }
 
 function handleOpenProcess(message: Api.Chat.Message) {
   processMessage.value = message;
   activeReviewTab.value = 'process';
+  pdfViewerOpen.value = false;
   referencePanelVisible.value = true;
 }
 
 function closeReferencePanel() {
   referencePanelVisible.value = false;
+  pdfViewerOpen.value = false;
+}
+
+function toggleReferencePanel() {
+  const nextVisible = !referencePanelVisible.value;
+  referencePanelVisible.value = nextVisible;
+  if (!nextVisible) {
+    pdfViewerOpen.value = false;
+  }
 }
 
 function handleReviewPanelKeydown(event: KeyboardEvent) {
@@ -167,7 +178,7 @@ onBeforeUnmount(() => {
           class="topbar-icon-button"
           :class="{ 'topbar-icon-button--active': referencePanelVisible }"
           aria-label="Research review"
-          @click="referencePanelVisible = !referencePanelVisible"
+          @click="toggleReferencePanel"
         >
           <icon-lucide:panel-right-open class="text-18px" />
         </button>
@@ -251,12 +262,12 @@ onBeforeUnmount(() => {
             :evidence-asset-level="referencePayload.evidenceAssetLevel"
             :pdf-evidence-available="referencePayload.pdfEvidenceAvailable"
             :page-screenshot-available="referencePayload.pageScreenshotAvailable"
-            @pdf-viewer-toggle="handlePdfViewerToggle"
             :figure-screenshot-available="referencePayload.figureScreenshotAvailable"
             :asset-warnings="referencePayload.assetWarnings"
             :conversation-record-id="referencePayload.conversationRecordId"
             :source-quote-ref="referencePayload.sourceQuoteRef || undefined"
             :visual-regions="referencePayload.visualRegions"
+            @pdf-viewer-toggle="handlePdfViewerToggle"
           />
           <div v-else class="reference-panel__empty">
             <icon-lucide:file-text class="text-34px" />
@@ -436,7 +447,8 @@ onBeforeUnmount(() => {
 }
 
 .reference-panel--expanded {
-  width: clamp(420px, 42vw, 720px);
+  width: 50vw;
+  min-width: min(50vw, 560px);
 }
 
 .review-panel-mask {
@@ -598,6 +610,10 @@ onBeforeUnmount(() => {
     z-index: 20;
     width: min(100vw, 560px);
     min-width: 0;
+  }
+
+  .reference-panel--expanded {
+    width: min(100vw, 720px);
   }
 }
 

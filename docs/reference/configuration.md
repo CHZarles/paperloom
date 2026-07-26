@@ -52,14 +52,31 @@ fallback.
 
 | Variable | Purpose |
 | --- | --- |
-| `RESEARCH_HARNESS_BASE_URL` | Internal harness endpoint used by Java |
+| `RESEARCH_HARNESS_TRANSPORT` | `redis` for the scalable worker-pool path, `http` for local debug or rollback |
+| `RESEARCH_HARNESS_BASE_URL` | Internal harness HTTP endpoint used only when `RESEARCH_HARNESS_TRANSPORT=http` |
 | `RESEARCH_HARNESS_INTERNAL_TOKEN` | Required shared internal-service credential; blank tokens reject Corpus requests |
+| `RESEARCH_HARNESS_USER_RETRY_MAX_PER_MESSAGE` | Maximum product-level regenerate attempts for one completed assistant answer |
+| `RESEARCH_HARNESS_REDIS_URL` | Redis URL used by `harness_py worker`; Java uses the Spring Redis settings |
+| `RESEARCH_HARNESS_REDIS_JOBS_STREAM` | Redis Stream key for Java-to-worker research jobs |
+| `RESEARCH_HARNESS_REDIS_EVENTS_PREFIX` | Redis Stream prefix for short-lived worker progress/results |
+| `RESEARCH_HARNESS_REDIS_STATUS_PREFIX` | Redis key prefix for short-lived runtime status |
+| `RESEARCH_HARNESS_REDIS_CANCEL_PREFIX` | Redis key prefix for cross-process cancellation |
+| `RESEARCH_HARNESS_REDIS_LOCK_PREFIX` | Redis key prefix for worker execution locks |
+| `RESEARCH_HARNESS_QUEUE_MAX_DEPTH` | Java fail-fast queue depth limit for online research turns |
+| `RESEARCH_HARNESS_EVENT_READ_TIMEOUT_SECONDS` | Java wait time for a terminal Redis event before failing the generation |
+| `RESEARCH_HARNESS_EVENT_TTL_SECONDS` | Worker TTL for event/status streams and keys |
+| `RESEARCH_HARNESS_STALE_PENDING_SECONDS` | Worker reclaim threshold for stale Redis Stream pending jobs |
+| `RESEARCH_HARNESS_WORKER_MAX_CONCURRENT_RUNS` | Keep at `1` for V1; scale by running more worker processes |
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
 | `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
 | `QDRANT_CONTRACT` | `sparse-only-v1` (default) or `sparse-dense-v1`; picks which Qdrant collection schema to use |
 | `EVAL_DUMP_DIR` | Optional saved-run output root |
+
+The production research path is Java -> Redis Streams -> one or more `harness_py worker` processes.
+No load balancer is required between Java and Python. The HTTP harness server can stay available for
+development and emergency rollback, but it is not the scalable production path.
 
 The Python service does not connect to MySQL or Qdrant. It calls the Java Corpus API with the locked
 scope; Java owns the hybrid Qdrant retrieval (sparse BM25 + dense MiniMax embedding, RRF-fused),

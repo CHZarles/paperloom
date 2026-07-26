@@ -1,0 +1,8 @@
+{
+  "schema_version": "research-harness-event/v1",
+  "generation_id": "generation-1",
+  "sequence": 1,
+  "created_at_ms": 1780000000001,
+  "type": "result",
+  "payload_json": "{\"request_id\":\"generation-1\",\"status\":\"COMPLETED\",\"answer\":{\"markdown\":\"LoRA freezes the base model and trains low-rank adapter matrices.\"},\"citations\":[],\"usage\":{\"total_tokens\":42},\"trace\":{\"finish_reason\":\"stop\"}}"
+}

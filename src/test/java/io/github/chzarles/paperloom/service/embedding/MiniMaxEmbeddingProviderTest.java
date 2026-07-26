@@ -31,20 +31,18 @@ class MiniMaxEmbeddingProviderTest {
         lastRequestBody = new AtomicReference<>();
         lastAuthHeader = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/embeddings", new HttpHandler() {
+        server.createContext("/v1/embeddings", new HttpHandler() {
             @Override
             public void handle(HttpExchange exchange) throws IOException {
                 lastAuthHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
                 lastRequestBody.set(new String(exchange.getRequestBody().readAllBytes()));
                 String body = """
                         {
-                          "object": "list",
-                          "data": [
-                            {"object": "embedding", "index": 0, "embedding": [0.1, 0.2, 0.3]},
-                            {"object": "embedding", "index": 1, "embedding": [0.4, 0.5, 0.6]}
+                          "vectors": [
+                            [0.1, 0.2, 0.3],
+                            [0.4, 0.5, 0.6]
                           ],
-                          "model": "embo-01",
-                          "usage": {"prompt_tokens": 4, "total_tokens": 4}
+                          "base_resp": {"status_code": 0}
                         }
                         """;
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -62,7 +60,7 @@ class MiniMaxEmbeddingProviderTest {
                 new ObjectMapper(),
                 "test-key",
                 "embo-01",
-                1536
+                3
         );
     }
 
@@ -85,12 +83,13 @@ class MiniMaxEmbeddingProviderTest {
         assertNotNull(body, "no request received");
         assertEquals("Bearer test-key", lastAuthHeader.get());
         assertEquals(true, body.contains("\"model\":\"embo-01\""));
-        assertEquals(true, body.contains("\"input\":[\"alpha\",\"beta\"]"));
+        assertEquals(true, body.contains("\"texts\":[\"alpha\",\"beta\"]"));
+        assertEquals(true, body.contains("\"type\":\"db\""));
     }
 
     @Test
     void exposesConfiguredModelAndDimension() {
         assertEquals("embo-01", provider.modelName());
-        assertEquals(1536, provider.dimension());
+        assertEquals(3, provider.dimension());
     }
 }

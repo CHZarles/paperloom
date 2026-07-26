@@ -63,14 +63,16 @@ class ServiceTest(unittest.TestCase):
 
         class FixtureRuntime:
             def run_turn(self, turn):
+                self.retry_context = turn.retry_context
                 run = GoldenFixtureHarness().run_case(turn.dataset, turn.dataset.cases[0])
                 run["run_id"] = turn.run_id
                 return TurnExecutionResult(run=run)
 
         gateway = CorpusGateway()
+        runtime = FixtureRuntime()
         service = ResearchHarnessService(
             provider=Provider(),
-            harness=LiveResearchChatHarness(FixtureRuntime()),
+            harness=LiveResearchChatHarness(runtime),
             corpus_gateway=gateway,
         )
 
@@ -82,6 +84,12 @@ class ServiceTest(unittest.TestCase):
             "history": [],
             "scope": {"paper_ids": ["synthetic_paper"]},
             "research_memory": {},
+            "retry": {
+                "kind": "USER_UNSATISFIED",
+                "answer_slot_id": 12,
+                "target_revision": 2,
+                "previous_answer_markdown": "old",
+            },
             "options": {"include_trace": True},
         })
 
@@ -92,3 +100,5 @@ class ServiceTest(unittest.TestCase):
         self.assertIn("tool_calls", response["trace"])
         self.assertEqual(7, gateway.arguments["user_id"])
         self.assertEqual(["synthetic_paper"], gateway.arguments["scope_paper_ids"])
+        self.assertEqual("USER_UNSATISFIED", runtime.retry_context["kind"])
+        self.assertEqual(12, runtime.retry_context["answer_slot_id"])

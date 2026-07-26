@@ -35,13 +35,13 @@ public class ProductReadingConversationService {
     private static final Pattern LOCATION_REF_PATTERN =
             Pattern.compile("^(page_ref|section_ref|table_ref|figure_ref|location_ref)_[A-Za-z0-9_-]+$");
 
-    private final PythonResearchHarnessClient pythonHarnessClient;
+    private final ResearchHarnessTransport researchHarnessTransport;
     private final ConversationService conversationService;
 
     @Autowired
-    public ProductReadingConversationService(PythonResearchHarnessClient pythonHarnessClient,
+    public ProductReadingConversationService(ResearchHarnessTransport researchHarnessTransport,
                                              ConversationService conversationService) {
-        this.pythonHarnessClient = pythonHarnessClient;
+        this.researchHarnessTransport = researchHarnessTransport;
         this.conversationService = conversationService;
     }
 
@@ -103,10 +103,11 @@ public class ProductReadingConversationService {
                         latestReadingStatePatch,
                         latestResearchMemory(userId, conversationId)
                 ),
+                Map.of(),
                 modelContext,
                 progressListener
         );
-        return pythonHarnessClient.run(request);
+        return researchHarnessTransport.run(request);
     }
 
     public CompletableFuture<ProductTurnResult> submitTurn(Long userId,
@@ -135,14 +136,49 @@ public class ProductReadingConversationService {
                         latestReadingStatePatch(userId, conversationId),
                         latestResearchMemory(userId, conversationId)
                 ),
+                Map.of(),
                 modelContext,
                 null
         );
-        return pythonHarnessClient.submit(request, progressListener);
+        return researchHarnessTransport.submit(request, progressListener);
+    }
+
+    public CompletableFuture<ProductTurnResult> submitRetryTurn(Long userId,
+                                                                String conversationId,
+                                                                String generationId,
+                                                                String userMessage,
+                                                                SourceScope lockedScope,
+                                                                ProductModelContext modelContext,
+                                                                Map<String, Object> effectiveScope,
+                                                                Map<String, Object> retryContext,
+                                                                Consumer<Map<String, Object>> progressListener) {
+        List<String> clickedSourceQuoteRefs = clickedSourceQuoteRefs(effectiveScope);
+        List<String> clickedPaperHandles = clickedPaperHandles(effectiveScope);
+        List<String> clickedLocationRefs = clickedLocationRefs(effectiveScope);
+        ProductTurnRequest request = new ProductTurnRequest(
+                userId,
+                conversationId,
+                generationId,
+                userMessage,
+                lockedScope,
+                conversationHistory(userId, conversationId),
+                readingMemory(
+                        clickedSourceQuoteRefs,
+                        clickedPaperHandles,
+                        clickedLocationRefs,
+                        readingAction(effectiveScope),
+                        latestReadingStatePatch(userId, conversationId),
+                        latestResearchMemory(userId, conversationId)
+                ),
+                retryContext == null ? Map.of() : retryContext,
+                modelContext,
+                null
+        );
+        return researchHarnessTransport.submit(request, progressListener);
     }
 
     public void cancelTurn(String generationId) {
-        pythonHarnessClient.cancel(generationId);
+        researchHarnessTransport.cancel(generationId);
     }
 
     private Map<String, Object> readingMemory(List<String> clickedSourceQuoteRefs,

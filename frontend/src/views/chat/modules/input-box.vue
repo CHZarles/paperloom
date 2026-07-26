@@ -192,11 +192,31 @@ function clearReferenceFocus() {
   chatStore.setReferenceFocus(null);
 }
 
-function findAssistantMessage(generationId?: string) {
+function findAssistantMessage(generationId?: string, payload?: Record<string, any>) {
   if (generationId) {
     for (let i = list.value.length - 1; i >= 0; i -= 1) {
       const item = list.value[i];
       if (item?.role === 'assistant' && item.generationId === generationId) {
+        return item;
+      }
+    }
+  }
+
+  const answerSlotId = Number(payload?.answerSlotId || 0);
+  if (answerSlotId > 0) {
+    for (let i = list.value.length - 1; i >= 0; i -= 1) {
+      const item = list.value[i];
+      if (item?.role === 'assistant' && item.answerSlotId === answerSlotId) {
+        return item;
+      }
+    }
+  }
+
+  const retryOfGenerationId = typeof payload?.retryOfGenerationId === 'string' ? payload.retryOfGenerationId : '';
+  if (retryOfGenerationId) {
+    for (let i = list.value.length - 1; i >= 0; i -= 1) {
+      const item = list.value[i];
+      if (item?.role === 'assistant' && item.generationId === retryOfGenerationId) {
         return item;
       }
     }
@@ -216,9 +236,34 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
     chatStore.applyGenerationStart({
       generationId: typeof payload.generationId === 'string' ? payload.generationId : undefined,
       conversationId: typeof payload.conversationId === 'string' ? payload.conversationId : undefined,
+      retryOfGenerationId: typeof payload.retryOfGenerationId === 'string' ? payload.retryOfGenerationId : undefined,
+      retryOfConversationRecordId:
+        typeof payload.retryOfConversationRecordId === 'number' ? payload.retryOfConversationRecordId : undefined,
+      answerSlotId: typeof payload.answerSlotId === 'number' ? payload.answerSlotId : undefined,
+      answerRevision: typeof payload.answerRevision === 'number' ? payload.answerRevision : undefined,
+      replaceMessage: Boolean(payload.replaceMessage),
       route: normalizeChatRoute(payload.route),
       timestamp
     }) || assistant;
+
+  if (payload.replaceMessage) {
+    discardPendingStreamChunks(startedAssistant);
+    startedAssistant.content = '';
+    startedAssistant.status = 'loading';
+    startedAssistant.referenceMappings = undefined;
+    startedAssistant.diagnostics = undefined;
+    startedAssistant.readingArtifacts = undefined;
+    startedAssistant.readingStatePatch = undefined;
+    startedAssistant.researchAuditTrail = undefined;
+    startedAssistant.researchEvents = [];
+    startedAssistant.toolEvents = [];
+  }
+  if (typeof payload.answerSlotId === 'number') startedAssistant.answerSlotId = payload.answerSlotId;
+  if (typeof payload.answerRevision === 'number') startedAssistant.answerRevision = payload.answerRevision;
+  if (typeof payload.retryOfGenerationId === 'string') startedAssistant.retryOfGenerationId = payload.retryOfGenerationId;
+  if (typeof payload.retryOfConversationRecordId === 'number') {
+    startedAssistant.retryOfConversationRecordId = payload.retryOfConversationRecordId;
+  }
 
   if (payload.conversationId) {
     chatStore.loadConversationScope(payload.conversationId).catch(() => {});
@@ -241,6 +286,18 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   }
   if (typeof payload.conversationRecordId === 'number') {
     assistant.conversationRecordId = payload.conversationRecordId;
+  }
+  if (typeof payload.answerSlotId === 'number') {
+    assistant.answerSlotId = payload.answerSlotId;
+  }
+  if (typeof payload.answerRevision === 'number') {
+    assistant.answerRevision = payload.answerRevision;
+  }
+  if (typeof payload.retryOfGenerationId === 'string') {
+    assistant.retryOfGenerationId = payload.retryOfGenerationId;
+  }
+  if (typeof payload.retryOfConversationRecordId === 'number') {
+    assistant.retryOfConversationRecordId = payload.retryOfConversationRecordId;
   }
   if (payload.diagnostics) {
     assistant.diagnostics = payload.diagnostics;
@@ -462,7 +519,7 @@ watch(wsData, val => {
     return;
   }
 
-  const assistant = findAssistantMessage(payload.generationId);
+  const assistant = findAssistantMessage(payload.generationId, payload);
 
   if (!assistant) return;
 

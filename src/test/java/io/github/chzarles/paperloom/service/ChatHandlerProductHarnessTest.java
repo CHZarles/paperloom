@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -82,7 +83,9 @@ class ChatHandlerProductHarnessTest {
                 any(),
                 any(),
                 any(),
-                any()
+                any(),
+                eq("generation-1"),
+                isNull()
         );
     }
 
@@ -127,6 +130,134 @@ class ChatHandlerProductHarnessTest {
         verify(fixture.valueOperations, never()).get("user:1:current_conversation");
         verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
         verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void retryGenerationCreatesNewGenerationAndReusesAnswerSlot() {
+        ChatFixture fixture = chatFixture("conversation-1", "generation-retry", sourceSetScope("paper-1"));
+        ConversationRetryContext retryContext = new ConversationRetryContext(
+                "USER_UNSATISFIED",
+                "generation-parent",
+                12L,
+                12L,
+                2,
+                "user_unsatisfied",
+                "old answer",
+                List.of("source_quote_1"),
+                "conversation-1",
+                "Question",
+                Map.of("paperIds", List.of("paper-1"))
+        );
+        when(fixture.generationStateService.getActiveGenerationForUserAndClient("1", "client-1"))
+                .thenReturn(Optional.empty());
+        when(fixture.generationStateService.getGenerationForUser("generation-parent", "1"))
+                .thenReturn(Optional.of(new ChatGenerationStateService.GenerationSnapshot(
+                        "generation-parent",
+                        "1",
+                        "conversation-1",
+                        "Question",
+                        ChatGenerationStateService.GenerationStatus.COMPLETED,
+                        "old answer",
+                        "2026-06-29T12:00:00",
+                        "2026-06-29T12:00:01",
+                        null,
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        12L
+                )));
+        when(fixture.conversationService.prepareUserRetry(
+                1L,
+                "generation-parent",
+                12L,
+                "user_unsatisfied",
+                3
+        )).thenReturn(Optional.of(retryContext));
+        when(fixture.generationStateService.createRetryGeneration(
+                "1",
+                "client-1",
+                "conversation-1",
+                "Question",
+                retryContext
+        )).thenReturn(new ChatGenerationStateService.GenerationSnapshot(
+                "generation-retry",
+                "1",
+                "conversation-1",
+                "Question",
+                ChatGenerationStateService.GenerationStatus.STREAMING,
+                "",
+                "2026-06-29T12:00:02",
+                "2026-06-29T12:00:02",
+                null,
+                Map.of(),
+                Map.of(),
+                Map.of(),
+                Map.of(),
+                null
+        ));
+        when(fixture.readingConversationService.submitRetryTurn(
+                eq(1L),
+                eq("conversation-1"),
+                eq("generation-retry"),
+                eq("Question"),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        )).thenReturn(CompletableFuture.completedFuture(completedTurn("new answer", List.of())));
+        when(fixture.conversationService.recordConversation(
+                eq(1L),
+                eq("Question"),
+                eq("new answer"),
+                eq("conversation-1"),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                eq("generation-retry"),
+                eq(retryContext)
+        )).thenReturn(99L);
+
+        Map<String, Object> started = fixture.handler.retryGeneration(
+                "1",
+                "generation-parent",
+                "client-1",
+                "user_unsatisfied"
+        );
+
+        assertEquals("generation-retry", started.get("generationId"));
+        assertEquals(12L, started.get("answerSlotId"));
+        assertEquals(2, started.get("answerRevision"));
+        assertEquals(true, started.get("replaceMessage"));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> retryPayloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(fixture.readingConversationService).submitRetryTurn(
+                eq(1L),
+                eq("conversation-1"),
+                eq("generation-retry"),
+                eq("Question"),
+                argThat(scope -> scope.paperIds().equals(List.of("paper-1"))),
+                any(),
+                any(),
+                retryPayloadCaptor.capture(),
+                any()
+        );
+        assertEquals("generation-parent", retryPayloadCaptor.getValue().get("retry_of_generation_id"));
+        assertEquals(12L, retryPayloadCaptor.getValue().get("answer_slot_id"));
+        verify(fixture.sessionRegistry).sendJsonToClient(eq("1"), eq("client-1"), argThat(payload ->
+                "start".equals(payload.get("type"))
+                        && "generation-retry".equals(payload.get("generationId"))
+                        && Boolean.TRUE.equals(payload.get("replaceMessage"))
+                        && Long.valueOf(12).equals(payload.get("answerSlotId"))
+                        && Integer.valueOf(2).equals(payload.get("answerRevision"))));
+        verify(fixture.sessionRegistry).sendJsonToClient(eq("1"), eq("client-1"), argThat(payload ->
+                "completion".equals(payload.get("type"))
+                        && "generation-retry".equals(payload.get("generationId"))
+                        && Long.valueOf(99).equals(payload.get("conversationRecordId"))
+                        && Long.valueOf(12).equals(payload.get("answerSlotId"))));
     }
 
     @Test
@@ -419,7 +550,9 @@ class ChatHandlerProductHarnessTest {
                 persistedScopeCaptor.capture(),
                 any(),
                 any(),
-                any()
+                any(),
+                eq("generation-1"),
+                isNull()
         );
         assertSourceQuoteMapping(persistedReferencesCaptor.getValue().get("1"));
         assertEquals("AUTO_LIBRARY", persistedScopeCaptor.getValue().get("scopeMode"));
@@ -442,7 +575,9 @@ class ChatHandlerProductHarnessTest {
                 any(),
                 any(),
                 any(),
-                any()
+                any(),
+                eq("generation-1"),
+                isNull()
         )).thenReturn(9001L);
         when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
                 .thenReturn(completedTurn(
@@ -846,6 +981,7 @@ class ChatHandlerProductHarnessTest {
                 readingConversationService,
                 productPaperHandleService,
                 new ObjectMapper(),
+                3,
                 executor
         );
 
@@ -871,6 +1007,17 @@ class ChatHandlerProductHarnessTest {
                 true,
                 "All readable papers",
                 List.of(),
+                Map.of()
+        );
+    }
+
+    private static ConversationScopeService.EffectiveConversationScope sourceSetScope(String paperId) {
+        return new ConversationScopeService.EffectiveConversationScope(
+                ConversationScopeMode.SOURCE_SET_SNAPSHOT,
+                ConversationScopeStatus.READY,
+                true,
+                "Selected papers",
+                List.of(paperId),
                 Map.of()
         );
     }

@@ -12,6 +12,7 @@ public record ProductTurnRequest(
         SourceScope lockedScope,
         List<Map<String, String>> history,
         Map<String, Object> memory,
+        Map<String, Object> retryContext,
         ProductModelContext modelContext,
         Consumer<ToolProgressEvent> progressListener
 ) {
@@ -22,8 +23,20 @@ public record ProductTurnRequest(
                               SourceScope lockedScope,
                               List<Map<String, String>> history,
                               Map<String, Object> memory,
+                              ProductModelContext modelContext,
+                              Consumer<ToolProgressEvent> progressListener) {
+        this(userId, conversationId, generationId, userMessage, lockedScope, history, memory, Map.of(), modelContext, progressListener);
+    }
+
+    public ProductTurnRequest(Long userId,
+                              String conversationId,
+                              String generationId,
+                              String userMessage,
+                              SourceScope lockedScope,
+                              List<Map<String, String>> history,
+                              Map<String, Object> memory,
                               ProductModelContext modelContext) {
-        this(userId, conversationId, generationId, userMessage, lockedScope, history, memory, modelContext, event -> {
+        this(userId, conversationId, generationId, userMessage, lockedScope, history, memory, Map.of(), modelContext, event -> {
         });
     }
 
@@ -34,6 +47,7 @@ public record ProductTurnRequest(
         lockedScope = lockedScope == null ? SourceScope.auto() : lockedScope;
         history = history == null ? List.of() : List.copyOf(history);
         memory = memory == null ? Map.of() : Map.copyOf(memory);
+        retryContext = retryContext == null ? Map.of() : Map.copyOf(retryContext);
         modelContext = modelContext == null ? ProductModelContext.defaults() : modelContext;
         progressListener = progressListener == null ? event -> {
         } : progressListener;

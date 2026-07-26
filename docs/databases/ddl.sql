@@ -267,6 +267,27 @@ CREATE TABLE IF NOT EXISTS conversation_source_quotes (
     INDEX idx_conversation_source_quotes_ref (source_quote_ref)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会话 Source Quote 引用注册表';
 
+-- Conversations revision metadata for answer retry/regenerate.
+-- Existing installations should apply docs/databases/migrations/2026-07-26-conversation-answer-revisions.sql.
+ALTER TABLE conversations
+    ADD COLUMN generation_id VARCHAR(64) NULL,
+    ADD COLUMN answer_slot_id BIGINT NULL,
+    ADD COLUMN answer_revision INT NOT NULL DEFAULT 1,
+    ADD COLUMN current_revision BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN forked_from_conversation_record_id BIGINT NULL,
+    ADD COLUMN retry_kind VARCHAR(64) NULL,
+    ADD COLUMN retry_reason VARCHAR(255) NULL,
+    ADD COLUMN retry_of_generation_id VARCHAR(64) NULL;
+
+CREATE INDEX idx_conversations_answer_slot
+    ON conversations(answer_slot_id, answer_revision);
+
+CREATE INDEX idx_conversations_current_revision
+    ON conversations(user_id, conversation_id, current_revision, timestamp);
+
+CREATE INDEX idx_conversations_generation
+    ON conversations(generation_id);
+
 CREATE TABLE IF NOT EXISTS paper_visual_assets (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     paper_id VARCHAR(32) NOT NULL COMMENT '论文 ID，对应 file_upload.file_md5',

@@ -9,11 +9,12 @@ Current assistant and evidence path:
 
 - Folio static frontend
 - Spring Boot backend
-- Python research harness
+- Python research harness workers
 - MinerU parser service
 - MySQL
 - MinIO
 - Qdrant
+- Redis Streams for online research job dispatch
 
 Full repository support services:
 
@@ -56,6 +57,8 @@ Production requirements include:
 - `ADMIN_BOOTSTRAP_ENABLED=false` after initial provisioning;
 - explicit CORS origins;
 - private network access for data services, MinerU, and the research harness;
+- `RESEARCH_HARNESS_TRANSPORT=redis` for production research chat; keep HTTP mode only as a
+  development/debug rollback path;
 - persistent volumes and a tested backup policy;
 - resource limits suitable for Qdrant, embedding traffic, and PDF parsing.
 
@@ -77,7 +80,17 @@ CRUD API. WebSocket upgrade headers must be forwarded explicitly.
 1. Start and verify MySQL, Redis, Kafka, MinIO, and Qdrant.
 2. Apply the database schema or allow the configured migration mechanism to run.
 3. Start MinerU and confirm its health endpoint.
-4. Start the research harness and confirm its internal health endpoint.
+4. Start one or more research harness workers:
+
+   ```bash
+   RESEARCH_HARNESS_REDIS_URL=redis://redis:6379/0 \
+   .venv-harness/bin/python -m harness_py worker \
+     --worker-id harness-$(hostname)-1 \
+     --max-concurrent-runs 1
+   ```
+
+   Add capacity by starting more worker processes or containers. V1 keeps one active run per worker
+   process; Redis Streams distributes new jobs across the worker group.
 5. Start the backend and verify authentication and dependency health.
 6. If canonical Current Reading Models were imported without their lexical index, call the
    destructive `POST /api/v1/admin/retrieval/rebuild-all` operation once with an administrator token
@@ -85,9 +98,10 @@ CRUD API. WebSocket upgrade headers must be forwarded explicitly.
 7. Publish the frontend assets.
 8. Run an authenticated upload, processing, research, and reference-reopen smoke test.
 
-For the research portion of that smoke test, verify that Java sends `user_id` and a locked paper
-scope, Python calls the Java Corpus API, Qdrant returns only current scoped locations, and returned
-citations reopen exact MySQL content.
+For the research portion of that smoke test, verify that Java writes a Redis job instead of calling
+`/v1/research/stream`, Python calls the Java Corpus API with `user_id` and a locked paper scope,
+Qdrant returns only current scoped locations, returned citations reopen exact MySQL content, and
+`XPENDING` does not accumulate stale jobs.
 
 ## Release Verification
 
@@ -99,6 +113,8 @@ At minimum, verify:
 - parser artifact and visual asset persistence;
 - paper search and scoped paper QA;
 - streamed answer completion and cancellation;
+- answer regenerate on a completed assistant message: the visible message is replaced, revision
+  history still exposes the previous answer and its references;
 - historical conversation reload;
 - reference detail reopening;
 - restart behavior for backend and harness processes.

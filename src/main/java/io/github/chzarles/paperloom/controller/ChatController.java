@@ -1,7 +1,10 @@
 package io.github.chzarles.paperloom.controller;
 
 import io.github.chzarles.paperloom.handler.ChatWebSocketHandler;
+import io.github.chzarles.paperloom.exception.CustomException;
+import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ChatGenerationStateService;
+import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import io.github.chzarles.paperloom.utils.LogUtils;
 import org.springframework.http.ResponseEntity;
@@ -26,13 +29,19 @@ public class ChatController {
     private final JwtUtils jwtUtils;
     private final ChatGenerationStateService chatGenerationStateService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final ChatHandler chatHandler;
+    private final ConversationService conversationService;
 
     public ChatController(JwtUtils jwtUtils,
                           ChatGenerationStateService chatGenerationStateService,
-                          StringRedisTemplate stringRedisTemplate) {
+                          StringRedisTemplate stringRedisTemplate,
+                          ChatHandler chatHandler,
+                          ConversationService conversationService) {
         this.jwtUtils = jwtUtils;
         this.chatGenerationStateService = chatGenerationStateService;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.chatHandler = chatHandler;
+        this.conversationService = conversationService;
     }
     
     /**
@@ -127,6 +136,47 @@ public class ChatController {
         )));
     }
 
+    @PostMapping("/generation/{generationId}/retry")
+    public ResponseEntity<?> retryGeneration(@PathVariable String generationId,
+                                             @RequestHeader("Authorization") String token,
+                                             @RequestBody(required = false) RetryGenerationRequest request) {
+        String userId = extractValidatedUserId(token);
+        if (userId == null) {
+            return ResponseEntity.status(401).body(responseBody(401, "Invalid token", null));
+        }
+        try {
+            Map<String, Object> started = chatHandler.retryGeneration(
+                    userId,
+                    generationId,
+                    request == null ? null : request.clientId(),
+                    request == null ? null : request.reason()
+            );
+            return ResponseEntity.ok(responseBody(200, "重新生成已开始", started));
+        } catch (IllegalArgumentException error) {
+            return ResponseEntity.badRequest().body(responseBody(400, error.getMessage(), null));
+        } catch (IllegalStateException error) {
+            return ResponseEntity.status(409).body(responseBody(409, error.getMessage(), null));
+        } catch (CustomException error) {
+            return ResponseEntity.status(error.getStatus()).body(responseBody(error.getStatus().value(), error.getMessage(), null));
+        } catch (Exception error) {
+            return ResponseEntity.status(500).body(responseBody(500, "重新生成失败：" + error.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/answer-slots/{answerSlotId}/revisions")
+    public ResponseEntity<?> getAnswerRevisions(@PathVariable Long answerSlotId,
+                                                @RequestHeader("Authorization") String token) {
+        String userId = extractValidatedUserId(token);
+        if (userId == null) {
+            return ResponseEntity.status(401).body(responseBody(401, "Invalid token", null));
+        }
+        return ResponseEntity.ok(responseBody(
+                200,
+                "获取回答版本成功",
+                conversationService.getAnswerRevisions(Long.parseLong(userId), answerSlotId)
+        ));
+    }
+
     private String buildFeedbackReason(FeedbackRequest request) {
         StringBuilder reason = new StringBuilder();
         if (request.reason() != null && !request.reason().isBlank()) {
@@ -173,6 +223,12 @@ public class ChatController {
             String reason,
             String conversationId,
             String generationId
+    ) {
+    }
+
+    public record RetryGenerationRequest(
+            String reason,
+            String clientId
     ) {
     }
 

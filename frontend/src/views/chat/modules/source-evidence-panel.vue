@@ -44,7 +44,7 @@ interface Props {
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
-  (e: 'pdf-viewer-toggle', open: boolean): void;
+  (e: 'pdfViewerToggle', open: boolean): void;
 }>();
 const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
 const { baseURL: serviceBaseUrl } = getServiceBaseURL(import.meta.env, isHttpProxy);
@@ -61,8 +61,14 @@ const evidenceImageKind = ref<'page' | 'asset'>('asset');
 const evidenceImageElement = ref<HTMLImageElement | null>(null);
 const evidenceImageDisplaySize = ref({ width: 0, height: 0 });
 const pdfViewerVisible = ref(false);
+const pdfModalVisible = ref(false);
 
-watch(pdfViewerVisible, open => emit('pdf-viewer-toggle', open));
+watch(pdfViewerVisible, open => {
+  emit('pdfViewerToggle', open);
+  if (!open) {
+    pdfModalVisible.value = false;
+  }
+});
 
 const assetWarningLabels: Record<string, string> = {
   pdf_page_visual_evidence_unavailable: 'PDF page visual evidence is unavailable.',
@@ -79,16 +85,8 @@ const isTableSource = computed(() => props.sourceKind === 'TABLE' || Boolean(pro
 const isFigureSource = computed(
   () => props.sourceKind === 'FIGURE' || props.sourceKind === 'CHART' || Boolean(props.figureId)
 );
-const isFormulaSource = computed(() => props.sourceKind === 'FORMULA' || Boolean(props.formulaId));
-const displaySourceKind = computed(() => {
-  if (isTableSource.value) return 'TABLE';
-  if (isFigureSource.value) return props.sourceKind === 'CHART' ? 'CHART' : 'FIGURE';
-  if (isFormulaSource.value) return 'FORMULA';
-  return props.sourceKind || 'TEXT';
-});
 const matchedText = computed(() => props.matchedChunkText || props.evidenceSnippet || '');
 const tableEvidenceText = computed(() => props.tableMarkdown || props.tableText || '');
-const sourceTypeLabel = computed(() => props.sourceType || 'PDF');
 const readableAssetWarnings = computed(() =>
   (props.assetWarnings || []).map(warning => assetWarningLabels[warning] || warning)
 );
@@ -96,18 +94,28 @@ const canDownloadOriginalPdf = computed(() => Boolean(props.paperId));
 const canOpenPdfEvidence = computed(() => Boolean(props.paperId));
 const tableImageUnavailable = computed(() => isTableSource.value && props.tableScreenshotAvailable === false);
 const figureImageUnavailable = computed(() => isFigureSource.value && props.figureScreenshotAvailable === false);
-const evidenceRows = computed(() =>
-  [
-    { label: 'Paper', value: displayPaper.value },
-    { label: 'Page', value: displayPage.value },
-    { label: 'Source type', value: sourceTypeLabel.value },
-    { label: 'Source', value: displaySourceKind.value }
-  ].filter(row => row.value)
-);
 
 const pdfPreviewUrl = computed(() =>
   props.paperId ? resolveFileAccessUrl(`/api/v1/papers/${encodeURIComponent(props.paperId)}/preview/pdf-data`) : ''
 );
+const sourceQuoteReferenceFocus = computed(() => ({
+  paperId: props.paperId || undefined,
+  paperTitle: props.paperTitle || props.originalFilename || undefined,
+  referenceNumber: props.referenceNumber,
+  sourceQuoteRef: props.sourceQuoteRef || undefined,
+  readingAction: props.sourceQuoteRef ? 'TRACE_SOURCE_QUOTE' : undefined
+}));
+const evidenceTraceAttributes = computed(() => ({
+  'data-chunk-id': dataAttributeValue(props.chunkId),
+  'data-conversation-record-id': dataAttributeValue(props.conversationRecordId),
+  'data-evidence-asset-level': dataAttributeValue(props.evidenceAssetLevel),
+  'data-formula-id': dataAttributeValue(props.formulaId),
+  'data-page-screenshot-available': dataAttributeValue(props.pageScreenshotAvailable),
+  'data-pdf-evidence-available': dataAttributeValue(props.pdfEvidenceAvailable),
+  'data-reading-action': dataAttributeValue(sourceQuoteReferenceFocus.value.readingAction),
+  'data-source-quote-ref': dataAttributeValue(props.sourceQuoteRef),
+  'data-source-type': dataAttributeValue(props.sourceType)
+}));
 
 const evidenceModalEyebrow = computed(() =>
   evidenceImageKind.value === 'page' ? 'Page Evidence' : 'Evidence Snapshot'
@@ -193,6 +201,19 @@ function openPdfEvidence() {
     return;
   }
   pdfViewerVisible.value = true;
+}
+
+function openPdfEvidenceModal() {
+  if (!pdfPreviewUrl.value) {
+    window.$message?.warning('PDF evidence is not available for this citation.');
+    return;
+  }
+  pdfModalVisible.value = true;
+}
+
+function dataAttributeValue(value: unknown) {
+  if (value === null || value === undefined || value === '') return undefined;
+  return String(value);
 }
 
 async function openTableScreenshot() {
@@ -366,36 +387,50 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="source-evidence">
+  <section class="source-evidence" v-bind="evidenceTraceAttributes">
     <header v-if="!pdfViewerVisible" class="source-evidence__header">
-      <div class="source-evidence__title-row">
-        <span class="source-evidence__title">Source Evidence</span>
-        <span v-if="referenceNumber" class="source-evidence__badge">#{{ referenceNumber }}</span>
+      <div class="source-evidence__header-copy">
+        <div class="source-evidence__title-row">
+          <span class="source-evidence__title">Source Evidence</span>
+          <span v-if="referenceNumber" class="source-evidence__badge">#{{ referenceNumber }}</span>
+        </div>
+        <div v-if="displayFilename" class="source-evidence__filename">{{ displayFilename }}</div>
       </div>
-      <div v-if="displayFilename" class="source-evidence__filename">{{ displayFilename }}</div>
+      <div class="source-evidence__header-tools">
+        <NButton secondary size="small" :disabled="!canOpenPdfEvidence" @click="openPdfEvidence">
+          <template #icon>
+            <icon-lucide:file-text />
+          </template>
+          View PDF evidence
+        </NButton>
+      </div>
     </header>
 
     <header v-else class="source-evidence__header">
-      <div class="source-evidence__title-row">
-        <span class="source-evidence__title">PDF Evidence</span>
-        <span v-if="referenceNumber" class="source-evidence__badge">#{{ referenceNumber }}</span>
+      <div class="source-evidence__header-copy">
+        <div class="source-evidence__title-row">
+          <span class="source-evidence__title">PDF Evidence</span>
+          <span v-if="referenceNumber" class="source-evidence__badge">#{{ referenceNumber }}</span>
+        </div>
+        <div v-if="displayFilename" class="source-evidence__filename">{{ displayFilename }}</div>
       </div>
-      <NButton quaternary size="small" @click="pdfViewerVisible = false">
-        <template #icon>
-          <icon-lucide:arrow-left />
-        </template>
-        Back to summary
-      </NButton>
+      <div class="source-evidence__header-tools">
+        <NButton secondary size="small" :disabled="!pdfPreviewUrl" @click="openPdfEvidenceModal">
+          <template #icon>
+            <icon-lucide:maximize-2 />
+          </template>
+          Open large view
+        </NButton>
+        <NButton quaternary size="small" @click="pdfViewerVisible = false">
+          <template #icon>
+            <icon-lucide:arrow-left />
+          </template>
+          Back to summary
+        </NButton>
+      </div>
     </header>
 
     <template v-if="!pdfViewerVisible">
-      <dl class="source-evidence__grid">
-        <template v-for="row in evidenceRows" :key="row.label">
-          <dt>{{ row.label }}</dt>
-          <dd>{{ row.value }}</dd>
-        </template>
-      </dl>
-
       <div v-if="readableAssetWarnings.length" class="source-evidence__asset-state">
         <span
           v-for="warning in readableAssetWarnings"
@@ -449,12 +484,6 @@ onBeforeUnmount(() => {
           </template>
           View figure screenshot
         </NButton>
-        <NButton secondary :disabled="!canOpenPdfEvidence" @click="openPdfEvidence">
-          <template #icon>
-            <icon-lucide:file-text />
-          </template>
-          View PDF evidence
-        </NButton>
         <NButton v-if="canDownloadOriginalPdf" secondary :loading="openingOriginal" @click="downloadOriginalPdf">
           <template #icon>
             <icon-lucide:download />
@@ -480,6 +509,39 @@ onBeforeUnmount(() => {
       />
       <div v-else class="source-evidence__empty-text">PDF evidence is not available for this citation.</div>
     </div>
+
+    <NModal v-model:show="pdfModalVisible" class="evidence-pdf-modal-shell" :auto-focus="false">
+      <div class="evidence-pdf-modal">
+        <header class="evidence-image-modal__header">
+          <div class="evidence-image-modal__title-wrap">
+            <div class="evidence-image-modal__eyebrow">PDF Evidence</div>
+            <div class="evidence-image-modal__title">{{ displayPaper }}</div>
+          </div>
+          <div class="evidence-image-modal__tools">
+            <NButton quaternary circle size="small" @click="pdfModalVisible = false">
+              <template #icon>
+                <icon-lucide:x />
+              </template>
+            </NButton>
+          </div>
+        </header>
+        <div class="evidence-pdf-modal__body">
+          <PdfDocumentViewer
+            v-if="pdfPreviewUrl"
+            :url="pdfPreviewUrl"
+            :paper-title="displayPaper"
+            :page-number="pageNumber || undefined"
+            :source-page-number="pageNumber || undefined"
+            :single-page-mode="Boolean(pageNumber)"
+            :anchor-text="matchedText"
+            :search-text="matchedText"
+            :bbox-json="bboxJson || undefined"
+            :visual-regions="visualRegions || undefined"
+            :visible="pdfModalVisible"
+          />
+        </div>
+      </div>
+    </NModal>
 
     <NModal v-model:show="evidenceImageVisible" class="evidence-image-modal-shell" :auto-focus="false">
       <div class="evidence-image-modal">
@@ -560,8 +622,24 @@ onBeforeUnmount(() => {
 .source-evidence__header {
   display: flex;
   min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.source-evidence__header-copy {
+  display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 4px;
+}
+
+.source-evidence__header-tools {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .source-evidence__title-row {
@@ -591,32 +669,6 @@ onBeforeUnmount(() => {
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.source-evidence__grid {
-  display: grid;
-  grid-template-columns: minmax(74px, max-content) minmax(0, 1fr);
-  gap: 8px 12px;
-  margin: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  padding: 12px;
-}
-
-.source-evidence__grid dt {
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.source-evidence__grid dd {
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-  color: var(--color-text);
-  font-size: 13px;
-  line-height: 18px;
 }
 
 .source-evidence__asset-state {
@@ -843,8 +895,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .source-evidence__grid {
-    grid-template-columns: 1fr;
+  .source-evidence__header {
+    flex-direction: column;
+  }
+
+  .source-evidence__header-tools {
+    justify-content: flex-start;
   }
 
   .evidence-pdf-modal {

@@ -117,13 +117,13 @@ class ConversationServiceTest {
 
     @Test
     void getMessagesByConversationIdQueriesWithinCurrentUserScope() {
-        when(conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(2L, "conversation-1"))
+        when(conversationRepository.findCurrentByUserIdAndConversationIdOrderBySlotAsc(2L, "conversation-1"))
                 .thenReturn(List.of());
 
         var result = conversationService.getMessagesByConversationId(2L, "conversation-1");
 
         assertEquals(0, result.size());
-        verify(conversationRepository).findByUserIdAndConversationIdOrderByTimestampAsc(2L, "conversation-1");
+        verify(conversationRepository).findCurrentByUserIdAndConversationIdOrderBySlotAsc(2L, "conversation-1");
     }
 
     @Test
@@ -158,6 +158,97 @@ class ConversationServiceTest {
         assertEquals("Agent papers", persistedScope.get("sourceLabel"));
         assertEquals(List.of("p1", "p2"), persistedScope.get("paperIds"));
         assertEquals(2, persistedScope.get("paperCount"));
+    }
+
+    @Test
+    void recordRetryConversationReusesAnswerSlotAndClearsPreviousCurrentRevision() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        User user = new User();
+        user.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> {
+            Conversation conversation = invocation.getArgument(0);
+            if (conversation.getId() == null) {
+                conversation.setId(99L);
+            }
+            return conversation;
+        });
+        ConversationRetryContext retryContext = new ConversationRetryContext(
+                "USER_UNSATISFIED",
+                "generation-old",
+                12L,
+                12L,
+                2,
+                "user_requested",
+                "old answer",
+                List.of("source_quote_1"),
+                "conversation-1",
+                "Question",
+                Map.of("paperIds", List.of("paper-1"))
+        );
+
+        Long savedId = conversationService.recordConversation(
+                1L,
+                "Question",
+                "New answer",
+                "conversation-1",
+                Map.of(),
+                Map.of("paperIds", List.of("paper-1")),
+                null,
+                ReadingStatePatch.empty(),
+                List.of(),
+                "generation-new",
+                retryContext
+        );
+
+        ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
+        verify(conversationRepository).clearCurrentRevision(1L, 12L);
+        verify(conversationRepository).save(conversationCaptor.capture());
+        Conversation saved = conversationCaptor.getValue();
+        assertEquals(99L, savedId);
+        assertEquals("generation-new", saved.getGenerationId());
+        assertEquals(12L, saved.getAnswerSlotId());
+        assertEquals(2, saved.getAnswerRevision());
+        assertEquals(12L, saved.getForkedFromConversationRecordId());
+        assertEquals("generation-old", saved.getRetryOfGenerationId());
+        assertTrue(saved.getCurrentRevision());
+    }
+
+    @Test
+    void prepareUserRetryBuildsForkContextFromOwnedCompletedConversation() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation parent = new Conversation();
+        parent.setId(12L);
+        parent.setConversationId("conversation-1");
+        parent.setQuestion("Question");
+        parent.setAnswer("Old answer");
+        parent.setAnswerSlotId(12L);
+        parent.setAnswerRevision(1);
+        parent.setReferenceMappingsJson("""
+                {
+                  "1": {
+                    "evidenceRef": "source_quote_1",
+                    "paperId": "paper-1"
+                  }
+                }
+                """);
+        parent.setEffectiveScopeJson("""
+                {
+                  "paperIds": ["paper-1"]
+                }
+                """);
+        when(conversationRepository.findByIdAndUserId(12L, 1L)).thenReturn(Optional.of(parent));
+        when(conversationRepository.findRevisionsByUserIdAndAnswerSlotId(1L, 12L)).thenReturn(List.of(parent));
+
+        ConversationRetryContext context = conversationService
+                .prepareUserRetry(1L, "generation-old", 12L, "user_unsatisfied", 3)
+                .orElseThrow();
+
+        assertEquals("generation-old", context.retryOfGenerationId());
+        assertEquals(12L, context.answerSlotId());
+        assertEquals(2, context.targetRevision());
+        assertEquals(List.of("source_quote_1"), context.previousCitedEvidenceIds());
+        assertEquals("paper-1", ((List<?>) context.effectiveScope().get("paperIds")).get(0));
     }
 
     @Test

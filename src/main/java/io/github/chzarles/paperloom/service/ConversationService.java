@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +40,7 @@ public class ConversationService {
 
     private static final Logger logger = LoggerFactory.getLogger(ConversationService.class);
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+    private static final int MAX_RETRY_PREVIOUS_ANSWER_CHARS = 16 * 1024;
 
     @Autowired
     private ConversationRepository conversationRepository;
@@ -102,11 +104,35 @@ public class ConversationService {
                                    ReadingTurnArtifacts readingArtifacts,
                                    ReadingStatePatch readingStatePatch,
                                    List<Map<String, Object>> researchEvents) {
+        return recordConversation(
+                userId,
+                question,
+                answer,
+                conversationId,
+                referenceMappings,
+                effectiveScope,
+                readingArtifacts,
+                readingStatePatch,
+                researchEvents,
+                null,
+                null
+        );
+    }
+
+    @Transactional
+    public Long recordConversation(Long userId, String question, String answer, String conversationId,
+                                   Map<String, Map<String, Object>> referenceMappings,
+                                   Map<String, Object> effectiveScope,
+                                   ReadingTurnArtifacts readingArtifacts,
+                                   ReadingStatePatch readingStatePatch,
+                                   List<Map<String, Object>> researchEvents,
+                                   String generationId,
+                                   ConversationRetryContext retryContext) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
         Long conversationRecordId = saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope,
-                readingArtifacts, readingStatePatch, researchEvents);
+                readingArtifacts, readingStatePatch, researchEvents, generationId, retryContext);
         updateSessionReadingMemory(userId, conversationId, readingStatePatch);
         updateSessionTitleIfDefault(userId, conversationId, question);
         touchSessionUpdatedAt(userId, conversationId);
@@ -119,6 +145,18 @@ public class ConversationService {
                                   ReadingTurnArtifacts readingArtifacts,
                                   ReadingStatePatch readingStatePatch,
                                   List<Map<String, Object>> researchEvents) {
+        return saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope,
+                readingArtifacts, readingStatePatch, researchEvents, null, null);
+    }
+
+    private Long saveConversation(User user, String question, String answer, String conversationId,
+                                  Map<String, Map<String, Object>> referenceMappings,
+                                  Map<String, Object> effectiveScope,
+                                  ReadingTurnArtifacts readingArtifacts,
+                                  ReadingStatePatch readingStatePatch,
+                                  List<Map<String, Object>> researchEvents,
+                                  String generationId,
+                                  ConversationRetryContext retryContext) {
         Conversation conversation = new Conversation();
         conversation.setUser(user);
         conversation.setQuestion(question);
@@ -129,8 +167,26 @@ public class ConversationService {
         conversation.setReadingArtifactsJson(writeReadingArtifacts(readingArtifacts));
         conversation.setReadingStatePatchJson(writeReadingStatePatch(readingStatePatch));
         conversation.setResearchEventsJson(writeResearchEvents(researchEvents));
+        conversation.setGenerationId(trimToNull(generationId));
+        if (retryContext != null) {
+            conversationRepository.clearCurrentRevision(user.getId(), retryContext.answerSlotId());
+            conversation.setAnswerSlotId(retryContext.answerSlotId());
+            conversation.setAnswerRevision(retryContext.targetRevision());
+            conversation.setCurrentRevision(true);
+            conversation.setForkedFromConversationRecordId(retryContext.retryOfConversationRecordId());
+            conversation.setRetryKind(retryContext.kind());
+            conversation.setRetryReason(retryContext.reason());
+            conversation.setRetryOfGenerationId(retryContext.retryOfGenerationId());
+        } else {
+            conversation.setAnswerRevision(1);
+            conversation.setCurrentRevision(true);
+        }
 
         Conversation saved = conversationRepository.save(conversation);
+        if (saved != null && saved.getId() != null && saved.getAnswerSlotId() == null) {
+            saved.setAnswerSlotId(saved.getId());
+            saved = conversationRepository.save(saved);
+        }
         if (saved != null && saved.getId() != null) {
             return saved.getId();
         }
@@ -393,7 +449,7 @@ public class ConversationService {
     // ---- Message queries ----
 
     public List<Map<String, Object>> getMessagesByConversationId(Long userId, String conversationId) {
-        List<Conversation> conversations = conversationRepository.findByUserIdAndConversationIdOrderByTimestampAsc(userId, conversationId);
+        List<Conversation> conversations = conversationRepository.findCurrentByUserIdAndConversationIdOrderBySlotAsc(userId, conversationId);
         return toMessageHistory(conversations, false);
     }
 
@@ -532,7 +588,8 @@ public class ConversationService {
 
         conversations.stream()
                 .sorted(Comparator
-                        .comparing(Conversation::getTimestamp, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .comparing(this::displaySlotId, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Conversation::getTimestamp, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(Conversation::getId))
                 .forEach(conversation -> {
                     String timestamp = conversation.getTimestamp() != null
@@ -554,7 +611,8 @@ public class ConversationService {
                             null,
                             null,
                             null,
-                            null
+                            null,
+                            revisionMetadata(conversation)
                     ));
                     Map<String, Map<String, Object>> referenceMappings =
                             parseReferenceMappings(conversation.getReferenceMappingsJson());
@@ -571,11 +629,42 @@ public class ConversationService {
                             parseJsonObject(conversation.getReadingArtifactsJson(), "reading artifacts"),
                             parseJsonObject(conversation.getReadingStatePatchJson(), "reading state patch"),
                             researchEvents,
-                            researchAuditTrailProjector.project("COMPLETED", referenceMappings, researchEvents)
+                            researchAuditTrailProjector.project("COMPLETED", referenceMappings, researchEvents),
+                            revisionMetadata(conversation)
                     ));
                 });
 
         return messages;
+    }
+
+    private Long displaySlotId(Conversation conversation) {
+        if (conversation == null) {
+            return null;
+        }
+        return conversation.getAnswerSlotId() == null ? conversation.getId() : conversation.getAnswerSlotId();
+    }
+
+    private Map<String, Object> revisionMetadata(Conversation conversation) {
+        if (conversation == null) {
+            return Map.of();
+        }
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("answerSlotId", displaySlotId(conversation));
+        metadata.put("answerRevision", conversation.getAnswerRevision() == null ? 1 : conversation.getAnswerRevision());
+        metadata.put("currentRevision", !Boolean.FALSE.equals(conversation.getCurrentRevision()));
+        if (conversation.getGenerationId() != null && !conversation.getGenerationId().isBlank()) {
+            metadata.put("generationId", conversation.getGenerationId());
+        }
+        if (conversation.getForkedFromConversationRecordId() != null) {
+            metadata.put("forkedFromConversationRecordId", conversation.getForkedFromConversationRecordId());
+        }
+        if (conversation.getRetryOfGenerationId() != null && !conversation.getRetryOfGenerationId().isBlank()) {
+            metadata.put("retryOfGenerationId", conversation.getRetryOfGenerationId());
+        }
+        if (conversation.getRetryKind() != null && !conversation.getRetryKind().isBlank()) {
+            metadata.put("retryKind", conversation.getRetryKind());
+        }
+        return metadata;
     }
 
     private Map<String, Object> buildMessage(String role, String content, String timestamp, String conversationId,
@@ -587,6 +676,20 @@ public class ConversationService {
                                              Map<String, Object> readingStatePatch,
                                              List<Map<String, Object>> researchEvents,
                                              ResearchAuditTrail researchAuditTrail) {
+        return buildMessage(role, content, timestamp, conversationId, conversationRecordId, referenceMappings,
+                username, effectiveScope, readingArtifacts, readingStatePatch, researchEvents, researchAuditTrail, Map.of());
+    }
+
+    private Map<String, Object> buildMessage(String role, String content, String timestamp, String conversationId,
+                                             Long conversationRecordId,
+                                             Map<String, Map<String, Object>> referenceMappings,
+                                             String username,
+                                             Map<String, Object> effectiveScope,
+                                             Map<String, Object> readingArtifacts,
+                                             Map<String, Object> readingStatePatch,
+                                             List<Map<String, Object>> researchEvents,
+                                             ResearchAuditTrail researchAuditTrail,
+                                             Map<String, Object> revisionMetadata) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
         message.put("content", content);
@@ -620,7 +723,119 @@ public class ConversationService {
         if (researchAuditTrail != null && researchAuditTrail.hasContent()) {
             message.put("researchAuditTrail", researchAuditTrail);
         }
+        if (revisionMetadata != null && !revisionMetadata.isEmpty()) {
+            message.putAll(revisionMetadata);
+        }
         return message;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ConversationRetryContext> prepareUserRetry(Long userId,
+                                                               String retryOfGenerationId,
+                                                               Long retryOfConversationRecordId,
+                                                               String reason,
+                                                               int maxRetriesPerMessage) {
+        if (userId == null || retryOfConversationRecordId == null) {
+            return Optional.empty();
+        }
+        Optional<Conversation> parent = conversationRepository.findByIdAndUserId(retryOfConversationRecordId, userId);
+        if (parent.isEmpty()) {
+            return Optional.empty();
+        }
+        Conversation conversation = parent.get();
+        Long answerSlotId = displaySlotId(conversation);
+        if (answerSlotId == null) {
+            return Optional.empty();
+        }
+        List<Conversation> revisions = conversationRepository.findRevisionsByUserIdAndAnswerSlotId(userId, answerSlotId);
+        int currentMaxRevision = revisions.stream()
+                .map(Conversation::getAnswerRevision)
+                .filter(value -> value != null && value > 0)
+                .max(Integer::compareTo)
+                .orElse(1);
+        if (currentMaxRevision >= Math.max(1, maxRetriesPerMessage) + 1) {
+            throw new CustomException("这条回答已达到最大重新生成次数", HttpStatus.TOO_MANY_REQUESTS);
+        }
+        return Optional.of(new ConversationRetryContext(
+                "USER_UNSATISFIED",
+                retryOfGenerationId,
+                conversation.getId(),
+                answerSlotId,
+                currentMaxRevision + 1,
+                retryReason(reason),
+                trimAnswerForRetry(conversation.getAnswer()),
+                citedEvidenceIds(parseReferenceMappings(conversation.getReferenceMappingsJson())),
+                conversation.getConversationId(),
+                conversation.getQuestion(),
+                Optional.ofNullable(parseEffectiveScope(conversation.getEffectiveScopeJson())).orElse(Map.of())
+        ));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAnswerRevisions(Long userId, Long answerSlotId) {
+        if (userId == null || answerSlotId == null) {
+            return List.of();
+        }
+        return conversationRepository.findRevisionsByUserIdAndAnswerSlotId(userId, answerSlotId).stream()
+                .map(conversation -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("conversationRecordId", conversation.getId());
+                    item.put("conversationId", conversation.getConversationId());
+                    item.put("generationId", conversation.getGenerationId());
+                    item.put("answerSlotId", displaySlotId(conversation));
+                    item.put("answerRevision", conversation.getAnswerRevision() == null ? 1 : conversation.getAnswerRevision());
+                    item.put("currentRevision", !Boolean.FALSE.equals(conversation.getCurrentRevision()));
+                    item.put("forkedFromConversationRecordId", conversation.getForkedFromConversationRecordId());
+                    item.put("retryKind", conversation.getRetryKind());
+                    item.put("retryReason", conversation.getRetryReason());
+                    item.put("retryOfGenerationId", conversation.getRetryOfGenerationId());
+                    item.put("question", conversation.getQuestion());
+                    item.put("answer", conversation.getAnswer());
+                    item.put("timestamp", formatTimestamp(conversation.getTimestamp()));
+                    item.put("referenceMappings", parseReferenceMappings(conversation.getReferenceMappingsJson()));
+                    item.put("researchEvents", parseResearchEvents(conversation.getResearchEventsJson()));
+                    item.put("researchAuditTrail", researchAuditTrailProjector.project(
+                            "COMPLETED",
+                            parseReferenceMappings(conversation.getReferenceMappingsJson()),
+                            parseResearchEvents(conversation.getResearchEventsJson())
+                    ));
+                    return item;
+                })
+                .toList();
+    }
+
+    private String retryReason(String reason) {
+        String value = trimToNull(reason);
+        if (value == null) {
+            return "user_requested";
+        }
+        return value.length() > 255 ? value.substring(0, 255) : value;
+    }
+
+    private String trimAnswerForRetry(String answer) {
+        String value = answer == null ? "" : answer;
+        if (value.length() <= MAX_RETRY_PREVIOUS_ANSWER_CHARS) {
+            return value;
+        }
+        return value.substring(0, MAX_RETRY_PREVIOUS_ANSWER_CHARS);
+    }
+
+    private List<String> citedEvidenceIds(Map<String, Map<String, Object>> referenceMappings) {
+        if (referenceMappings == null || referenceMappings.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> evidenceIds = new LinkedHashSet<>();
+        for (Map<String, Object> mapping : referenceMappings.values()) {
+            String evidenceRef = firstNonBlank(
+                    mapping.get("evidenceRef"),
+                    mapping.get("sourceQuoteRef"),
+                    mapping.get("citationRef")
+            );
+            if (!evidenceRef.isBlank()) {
+                evidenceIds.add(evidenceRef);
+            }
+        }
+        return List.copyOf(evidenceIds);
     }
 
     public Optional<Map<String, Object>> findReferenceDetail(Long userId, Long conversationRecordId, Integer referenceNumber) {
@@ -726,6 +941,9 @@ public class ConversationService {
         }
 
         normalized.putIfAbsent("originalFilename", normalized.get("paperTitle"));
+        if (isLegacyImportedReference(normalized)) {
+            normalized.put("parserName", "OpenDataLoader");
+        }
         normalized.remove("fileMd5");
         normalized.remove("fileName");
         normalized.put("sourceType", "PDF");
@@ -744,6 +962,15 @@ public class ConversationService {
         normalized.remove(legacyField("structured", "Import"));
         normalized.remove(legacyField("eval", "Import"));
         return normalized;
+    }
+
+    private boolean isLegacyImportedReference(Map<String, Object> detail) {
+        if (detail == null || detail.isEmpty()) {
+            return false;
+        }
+        return "EVAL_IMPORT".equals(stringValue(detail.get("sourceType")))
+                || booleanValue(detail.get(legacyField("structured", "Import")))
+                || booleanValue(detail.get(legacyField("eval", "Import")));
     }
 
     private Optional<Map<String, Object>> resolveReferenceDetail(Conversation conversation,
@@ -783,6 +1010,7 @@ public class ConversationService {
                 normalized.put(key, value);
             }
         });
+        appendSourceSpanDetail(normalized, resolution.sourceQuote().orElseThrow());
         normalized.put("sourceQuoteResolutionStatus", "OK");
         return Optional.of(normalized);
     }
@@ -818,6 +1046,54 @@ public class ConversationService {
             }
         });
         return detail;
+    }
+
+    private void appendSourceSpanDetail(Map<String, Object> detail, PaperSourceQuote quote) {
+        if (detail == null || quote == null) {
+            return;
+        }
+        detail.remove("bboxJson");
+        String sourceSpanJson = quote.getSourceSpanJson();
+        if (trimToNull(sourceSpanJson) == null) {
+            detail.put("visualRegions", List.of());
+            return;
+        }
+        detail.put("sourceSpanJson", sourceSpanJson);
+        try {
+            Map<String, Object> sourceSpan = objectMapper.readValue(
+                    sourceSpanJson,
+                    new TypeReference<LinkedHashMap<String, Object>>() {
+                    }
+            );
+            detail.put("visualRegions", sourceQuoteVisualRegions(sourceSpan.get("bbox")));
+        } catch (Exception error) {
+            logger.warn("解析 Source Quote source span 失败，将跳过视觉区域: sourceQuoteRef={}", quote.getSourceQuoteRef(), error);
+            detail.put("visualRegions", List.of());
+        }
+    }
+
+    private List<Map<String, Object>> sourceQuoteVisualRegions(Object rawBbox) {
+        if (rawBbox instanceof Map<?, ?> rawMap) {
+            return List.of(sourceQuoteVisualRegion(rawMap));
+        }
+        if (rawBbox instanceof List<?> rawList
+                && rawList.size() == 1
+                && rawList.get(0) instanceof Map<?, ?> rawMap) {
+            return List.of(sourceQuoteVisualRegion(rawMap));
+        }
+        return List.of();
+    }
+
+    private Map<String, Object> sourceQuoteVisualRegion(Map<?, ?> rawMap) {
+        Map<String, Object> region = new LinkedHashMap<>();
+        rawMap.forEach((key, value) -> {
+            if (key instanceof String textKey && value != null) {
+                region.put(textKey, value);
+            }
+        });
+        region.putIfAbsent("targetKind", "LOCATION");
+        region.putIfAbsent("confidence", "EXACT");
+        return region;
     }
 
     private String sourceKindFromContentKind(String contentKind) {
@@ -866,6 +1142,24 @@ public class ConversationService {
 
     private String stringValue(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String firstNonBlank(Object... values) {
+        for (Object value : values) {
+            String text = stringValue(value);
+            if (!text.isBlank()) {
+                return text;
+            }
+        }
+        return "";
     }
 
     private String writeReferenceMappings(Map<String, Map<String, Object>> referenceMappings) {

@@ -69,6 +69,100 @@ function handleCopy(content: string) {
   window.$message?.success('已复制');
 }
 
+const chatStore = useChatStore();
+const retrying = ref(false);
+const revisionModalVisible = ref(false);
+const revisionsLoading = ref(false);
+const answerRevisions = ref<Api.Chat.AnswerRevision[]>([]);
+
+async function handleRetry() {
+  if (retrying.value || !canRetryAnswer.value) return;
+  retrying.value = true;
+  try {
+    const started = await chatStore.retryGeneration(props.msg);
+    if (!started) {
+      window.$message?.error('重新生成失败，请稍后再试');
+    }
+  } finally {
+    retrying.value = false;
+  }
+}
+
+async function openAnswerRevisions() {
+  if (!props.msg.answerSlotId || revisionsLoading.value) return;
+  revisionModalVisible.value = true;
+  revisionsLoading.value = true;
+  answerRevisions.value = [];
+  try {
+    const { error, data } = await request<Api.Chat.AnswerRevision[]>({
+      url: `chat/answer-slots/${props.msg.answerSlotId}/revisions`
+    });
+    if (error || !Array.isArray(data)) {
+      window.$message?.error('版本历史加载失败');
+      return;
+    }
+    answerRevisions.value = data;
+  } finally {
+    revisionsLoading.value = false;
+  }
+}
+
+function revisionReferenceEntries(revision: Api.Chat.AnswerRevision) {
+  const mappings = revision.referenceMappings || {};
+  return Object.entries(mappings)
+    .map(([key, detail]) => ({
+      referenceNumber: Number(key),
+      detail
+    }))
+    .filter(item => Number.isFinite(item.referenceNumber));
+}
+
+function openRevisionReference(revision: Api.Chat.AnswerRevision, referenceNumber: number, detail: Api.Chat.ReferenceEvidence) {
+  const paperTitle = detail.paperTitle || detail.originalFilename || detail.paperId || `Reference #${referenceNumber}`;
+  revisionModalVisible.value = false;
+  emit('openReference', {
+    retrievalMode: detail.retrievalMode,
+    retrievalLabel: detail.retrievalLabel,
+    retrievalQuery: detail.retrievalQuery,
+    evidenceSnippet: detail.evidenceSnippet,
+    matchedChunkText: detail.matchedChunkText,
+    score: detail.score,
+    chunkId: detail.chunkId,
+    elementType: detail.elementType,
+    sectionTitle: detail.sectionTitle,
+    sectionLevel: detail.sectionLevel,
+    bboxJson: detail.bboxJson,
+    parserName: detail.parserName,
+    parserVersion: detail.parserVersion,
+    sourceKind: detail.sourceKind,
+    tableId: detail.tableId,
+    figureId: detail.figureId,
+    formulaId: detail.formulaId,
+    evidenceRole: detail.evidenceRole,
+    retrievalRoute: detail.retrievalRoute,
+    intent: detail.intent,
+    rankReason: detail.rankReason,
+    tableText: detail.tableText,
+    tableMarkdown: detail.tableMarkdown,
+    tableScreenshotAvailable: detail.tableScreenshotAvailable,
+    sourceType: detail.sourceType,
+    evidenceAssetLevel: detail.evidenceAssetLevel,
+    pdfEvidenceAvailable: detail.pdfEvidenceAvailable,
+    pageScreenshotAvailable: detail.pageScreenshotAvailable,
+    figureScreenshotAvailable: detail.figureScreenshotAvailable,
+    assetWarnings: detail.assetWarnings,
+    visualRegions: detail.visualRegions,
+    paperTitle,
+    originalFilename: detail.originalFilename,
+    paperId: detail.paperId,
+    pageNumber: detail.pageNumber,
+    anchorText: detail.anchorText,
+    conversationRecordId: revision.conversationRecordId,
+    referenceNumber,
+    sourceQuoteRef: detail.sourceQuoteRef
+  });
+}
+
 type MessageSourceFile = {
   paperTitle: string;
   originalFilename?: string | null;
@@ -104,6 +198,15 @@ const assistantIsGenerating = computed(
     (['pending', 'loading'].includes(props.msg.status || '') || researchEvents.value.length > 0)
 );
 const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
+const canRetryAnswer = computed(
+  () =>
+    props.msg.role === 'assistant' &&
+    props.msg.status === 'finished' &&
+    Boolean(props.msg.generationId && props.msg.conversationRecordId)
+);
+const canOpenAnswerRevisions = computed(
+  () => props.msg.role === 'assistant' && Boolean(props.msg.answerSlotId && (props.msg.answerRevision || 1) > 1)
+);
 const hasReadingArtifacts = computed(() => {
   const artifacts = props.msg.readingArtifacts;
   if (!artifacts) return false;
@@ -747,9 +850,63 @@ async function handleSourceFileClick(fileInfo: {
               <icon-lucide:copy />
             </template>
           </NButton>
+          <NButton
+            v-if="canOpenAnswerRevisions"
+            quaternary
+            :loading="revisionsLoading"
+            title="版本历史"
+            aria-label="版本历史"
+            @click="openAnswerRevisions"
+          >
+            <template #icon>
+              <icon-lucide:history />
+            </template>
+          </NButton>
+          <NButton
+            v-if="canRetryAnswer"
+            quaternary
+            :loading="retrying"
+            title="重新生成"
+            aria-label="重新生成"
+            @click="handleRetry"
+          >
+            <template #icon>
+              <icon-lucide:refresh-cw />
+            </template>
+          </NButton>
         </div>
       </div>
     </div>
+    <NModal v-model:show="revisionModalVisible" preset="card" title="版本历史" class="answer-revision-modal">
+      <NSpin :show="revisionsLoading">
+        <div class="answer-revisions">
+          <section v-for="revision in answerRevisions" :key="revision.conversationRecordId" class="answer-revision">
+            <div class="answer-revision__meta">
+              <span>v{{ revision.answerRevision }}</span>
+              <span v-if="revision.currentRevision">当前</span>
+              <span v-if="revision.forkedFromConversationRecordId">
+                forked from #{{ revision.forkedFromConversationRecordId }}
+              </span>
+              <span v-if="revision.timestamp">{{ revision.timestamp }}</span>
+            </div>
+            <div class="answer-revision__content">
+              <VueMarkdownIt :content="revision.answer || ''" />
+            </div>
+            <div v-if="revisionReferenceEntries(revision).length" class="answer-revision__refs">
+              <NButton
+                v-for="entry in revisionReferenceEntries(revision)"
+                :key="entry.referenceNumber"
+                size="small"
+                quaternary
+                @click="openRevisionReference(revision, entry.referenceNumber, entry.detail)"
+              >
+                [{{ entry.referenceNumber }}]
+              </NButton>
+            </div>
+          </section>
+        </div>
+      </NSpin>
+    </NModal>
   </div>
 </template>
 
@@ -962,6 +1119,46 @@ async function handleSourceFileClick(fileInfo: {
 
 .message-block--assistant .message-actions {
   justify-content: flex-start;
+}
+
+.answer-revision-modal {
+  max-width: min(920px, calc(100vw - 32px));
+}
+
+.answer-revisions {
+  display: grid;
+  max-height: min(70vh, 720px);
+  gap: 12px;
+  overflow: auto;
+}
+
+.answer-revision {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-surface);
+}
+
+.answer-revision__meta,
+.answer-revision__refs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.answer-revision__meta {
+  margin-bottom: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.answer-revision__content {
+  color: var(--color-text);
+}
+
+.answer-revision__refs {
+  margin-top: 8px;
 }
 
 @media (hover: hover) and (pointer: fine) {

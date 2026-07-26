@@ -1,0 +1,26 @@
+{
+  "request_id": "generation-1",
+  "status": "COMPLETED",
+  "answer": {
+    "markdown": "LoRA freezes the base model and trains low-rank adapter matrices."
+  },
+  "citations": [
+    {
+      "reference_number": 1,
+      "evidence_id": "source_quote_1",
+      "paper_id": "paper-1",
+      "title": "LoRA",
+      "page": 2,
+      "section": "Method",
+      "span_text": "LoRA injects trainable rank decomposition matrices."
+    }
+  ],
+  "usage": {
+    "total_tokens": 42
+  },
+  "trace": {
+    "finish_reason": "stop",
+    "tool_calls": [],
+    "paper_candidates": []
+  }
+}

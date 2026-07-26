@@ -11,7 +11,10 @@ import java.time.LocalDateTime;
 @Table(name = "conversations", indexes = {
         @Index(name = "idx_user_id", columnList = "user_id"),
         @Index(name = "idx_timestamp", columnList = "timestamp"),
-        @Index(name = "idx_conversation_id", columnList = "conversation_id")
+        @Index(name = "idx_conversation_id", columnList = "conversation_id"),
+        @Index(name = "idx_conversations_answer_slot", columnList = "answer_slot_id,answer_revision"),
+        @Index(name = "idx_conversations_current_revision", columnList = "user_id,conversation_id,current_revision,timestamp"),
+        @Index(name = "idx_conversations_generation", columnList = "generation_id")
 })
 public class Conversation {
 
@@ -46,6 +49,30 @@ public class Conversation {
 
     @Column(name = "research_events_json", columnDefinition = "LONGTEXT")
     private String researchEventsJson;
+
+    @Column(name = "generation_id", length = 64)
+    private String generationId;
+
+    @Column(name = "answer_slot_id")
+    private Long answerSlotId;
+
+    @Column(name = "answer_revision", nullable = false)
+    private Integer answerRevision = 1;
+
+    @Column(name = "current_revision", nullable = false)
+    private Boolean currentRevision = true;
+
+    @Column(name = "forked_from_conversation_record_id")
+    private Long forkedFromConversationRecordId;
+
+    @Column(name = "retry_kind", length = 64)
+    private String retryKind;
+
+    @Column(name = "retry_reason", length = 255)
+    private String retryReason;
+
+    @Column(name = "retry_of_generation_id", length = 64)
+    private String retryOfGenerationId;
 
     @CreationTimestamp
     private LocalDateTime timestamp; // 对话时间戳

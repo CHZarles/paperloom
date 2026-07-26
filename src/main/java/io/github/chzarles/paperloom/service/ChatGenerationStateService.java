@@ -54,6 +54,11 @@ public class ChatGenerationStateService {
                 now,
                 null,
                 trimToNull(clientId),
+                null,
+                null,
+                null,
+                null,
+                null,
                 null
         );
 
@@ -70,6 +75,40 @@ public class ChatGenerationStateService {
             redisTemplate.opsForValue().set(activeGenerationKey(userId, meta.clientId()), generationId, GENERATION_TTL);
         }
         return toSnapshot(meta, "", Collections.emptyMap(), Collections.emptyMap());
+    }
+
+    public GenerationSnapshot createRetryGeneration(String userId,
+                                                    String clientId,
+                                                    String conversationId,
+                                                    String question,
+                                                    ConversationRetryContext retryContext) {
+        GenerationSnapshot snapshot = createGeneration(userId, clientId, conversationId, question);
+        if (retryContext == null) {
+            return snapshot;
+        }
+        GenerationMeta meta = readMeta(snapshot.generationId());
+        if (meta == null) {
+            return snapshot;
+        }
+        GenerationMeta updated = new GenerationMeta(
+                meta.generationId(),
+                meta.userId(),
+                meta.conversationId(),
+                meta.question(),
+                meta.status(),
+                meta.createdAt(),
+                LocalDateTime.now().toString(),
+                meta.errorMessage(),
+                meta.clientId(),
+                meta.conversationRecordId(),
+                retryContext.retryOfGenerationId(),
+                retryContext.retryOfConversationRecordId(),
+                retryContext.answerSlotId(),
+                retryContext.targetRevision(),
+                true
+        );
+        writeMeta(updated);
+        return toSnapshot(updated, "", Collections.emptyMap(), Collections.emptyMap());
     }
 
     public void appendChunk(String generationId, String chunk) {
@@ -156,7 +195,12 @@ public class ChatGenerationStateService {
                 LocalDateTime.now().toString(),
                 meta.errorMessage(),
                 meta.clientId(),
-                conversationRecordId
+                conversationRecordId,
+                meta.retryOfGenerationId(),
+                meta.retryOfConversationRecordId(),
+                meta.answerSlotId(),
+                meta.answerRevision(),
+                meta.replaceMessage()
         );
         writeMeta(updated);
         expireGenerationKeys(generationId);
@@ -239,7 +283,12 @@ public class ChatGenerationStateService {
                 now,
                 errorMessage,
                 meta.clientId(),
-                meta.conversationRecordId()
+                meta.conversationRecordId(),
+                meta.retryOfGenerationId(),
+                meta.retryOfConversationRecordId(),
+                meta.answerSlotId(),
+                meta.answerRevision(),
+                meta.replaceMessage()
         );
         writeMeta(updated);
         clearActiveGeneration(meta.userId(), meta.clientId(), generationId);
@@ -261,7 +310,12 @@ public class ChatGenerationStateService {
                 LocalDateTime.now().toString(),
                 meta.errorMessage(),
                 meta.clientId(),
-                meta.conversationRecordId()
+                meta.conversationRecordId(),
+                meta.retryOfGenerationId(),
+                meta.retryOfConversationRecordId(),
+                meta.answerSlotId(),
+                meta.answerRevision(),
+                meta.replaceMessage()
         );
         writeMeta(updated);
         expireGenerationKeys(generationId);
@@ -429,7 +483,12 @@ public class ChatGenerationStateService {
                         referenceMappings,
                         progressEvents
                 ),
-                meta.conversationRecordId()
+                meta.conversationRecordId(),
+                meta.retryOfGenerationId(),
+                meta.retryOfConversationRecordId(),
+                meta.answerSlotId(),
+                meta.answerRevision(),
+                meta.replaceMessage()
         );
     }
 
@@ -494,7 +553,12 @@ public class ChatGenerationStateService {
             String updatedAt,
             String errorMessage,
             String clientId,
-            Long conversationRecordId
+            Long conversationRecordId,
+            String retryOfGenerationId,
+            Long retryOfConversationRecordId,
+            Long answerSlotId,
+            Integer answerRevision,
+            Boolean replaceMessage
     ) {
     }
 
@@ -514,7 +578,12 @@ public class ChatGenerationStateService {
             Map<String, Object> readingStatePatch,
             List<Map<String, Object>> progressEvents,
             ResearchAuditTrail researchAuditTrail,
-            Long conversationRecordId
+            Long conversationRecordId,
+            String retryOfGenerationId,
+            Long retryOfConversationRecordId,
+            Long answerSlotId,
+            Integer answerRevision,
+            Boolean replaceMessage
     ) {
         public GenerationSnapshot(String generationId,
                                   String userId,
@@ -532,7 +601,7 @@ public class ChatGenerationStateService {
                                   Long conversationRecordId) {
             this(generationId, userId, conversationId, question, status, content, createdAt, updatedAt,
                     errorMessage, referenceMappings, diagnostics, readingArtifacts, readingStatePatch,
-                    List.of(), null, conversationRecordId);
+                    List.of(), null, conversationRecordId, null, null, null, null, null);
         }
     }
 }

@@ -3,6 +3,7 @@ package io.github.chzarles.paperloom.repository;
 import io.github.chzarles.paperloom.model.Conversation;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Pageable;
@@ -52,25 +53,71 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     List<Conversation> findByUserIdAndConversationIdOrderByTimestampAsc(Long userId, String conversationId);
 
     @EntityGraph(attributePaths = "user")
+    @Query("""
+            SELECT c FROM Conversation c
+            WHERE c.user.id = :userId
+              AND c.conversationId = :conversationId
+              AND c.currentRevision = true
+            ORDER BY COALESCE(c.answerSlotId, c.id) ASC, c.answerRevision ASC, c.id ASC
+            """)
+    List<Conversation> findCurrentByUserIdAndConversationIdOrderBySlotAsc(
+            @Param("userId") Long userId,
+            @Param("conversationId") String conversationId
+    );
+
+    @EntityGraph(attributePaths = "user")
     Optional<Conversation> findByIdAndUserId(Long id, Long userId);
+
+    @EntityGraph(attributePaths = "user")
+    Optional<Conversation> findFirstByGenerationIdAndUserId(String generationId, Long userId);
 
     boolean existsByUserIdAndConversationId(Long userId, String conversationId);
 
-    @Query("SELECT DISTINCT c.conversationId FROM Conversation c WHERE c.user.id = :userId AND c.conversationId IS NOT NULL")
+    @Query("""
+            SELECT DISTINCT c.conversationId FROM Conversation c
+            WHERE c.user.id = :userId
+              AND c.conversationId IS NOT NULL
+              AND c.currentRevision = true
+            """)
     List<String> findDistinctConversationIdsByUserId(@Param("userId") Long userId);
 
     @Query("""
             SELECT c FROM Conversation c
             WHERE c.user.id = :userId
               AND c.conversationId = :conversationId
+              AND c.currentRevision = true
               AND (:beforeRecordId IS NULL OR c.id < :beforeRecordId)
-            ORDER BY c.timestamp DESC, c.id DESC
+            ORDER BY COALESCE(c.answerSlotId, c.id) DESC, c.id DESC
             """)
     List<Conversation> findConversationHistoryPage(
             @Param("userId") Long userId,
             @Param("conversationId") String conversationId,
             @Param("beforeRecordId") Long beforeRecordId,
             Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "user")
+    @Query("""
+            SELECT c FROM Conversation c
+            WHERE c.user.id = :userId
+              AND COALESCE(c.answerSlotId, c.id) = :answerSlotId
+            ORDER BY c.answerRevision ASC, c.id ASC
+            """)
+    List<Conversation> findRevisionsByUserIdAndAnswerSlotId(
+            @Param("userId") Long userId,
+            @Param("answerSlotId") Long answerSlotId
+    );
+
+    @Modifying
+    @Query("""
+            UPDATE Conversation c
+            SET c.currentRevision = false
+            WHERE c.user.id = :userId
+              AND COALESCE(c.answerSlotId, c.id) = :answerSlotId
+            """)
+    int clearCurrentRevision(
+            @Param("userId") Long userId,
+            @Param("answerSlotId") Long answerSlotId
     );
 
     void deleteByUserIdAndConversationId(Long userId, String conversationId);

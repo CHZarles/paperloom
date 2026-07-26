@@ -25,6 +25,39 @@ assert.equal(started.messages[1].generationId, 'generation-1');
 assert.equal(started.messages[1].route, 'AUTO_SOURCE_QA');
 assert.equal(started.messages[1].timestamp, '2026-06-29T11:30:00Z');
 
+const retried = applyGenerationStartToMessages({
+  currentConversationId: 'conversation-1',
+  messages: [
+    { role: 'user', content: 'What problem does LoRA solve?', conversationId: 'conversation-1' },
+    {
+      role: 'assistant',
+      content: 'Old answer',
+      status: 'finished',
+      conversationId: 'conversation-1',
+      generationId: 'generation-parent',
+      answerSlotId: 12,
+      answerRevision: 1
+    }
+  ],
+  payload: {
+    conversationId: 'conversation-1',
+    generationId: 'generation-retry',
+    retryOfGenerationId: 'generation-parent',
+    retryOfConversationRecordId: 12,
+    answerSlotId: 12,
+    answerRevision: 2,
+    replaceMessage: true
+  }
+});
+
+assert.equal(retried.messages.length, 2);
+assert.equal(retried.messages[1].content, '');
+assert.equal(retried.messages[1].status, 'loading');
+assert.equal(retried.messages[1].generationId, 'generation-retry');
+assert.equal(retried.messages[1].retryOfGenerationId, 'generation-parent');
+assert.equal(retried.messages[1].answerSlotId, 12);
+assert.equal(retried.messages[1].answerRevision, 2);
+
 assert.equal(
   shouldApplyLoadedConversationMessages({
     currentMessages: started.messages,
