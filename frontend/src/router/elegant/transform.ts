@@ -172,11 +172,7 @@ const routeMap: RouteMap = {
   "invite-code": "/invite-code",
   "knowledge-base": "/knowledge-base",
   "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
-  "org-tag": "/org-tag",
-  "personal-center": "/personal-center",
-  "recharge": "/recharge",
-  "recharge-manage": "/recharge-manage",
-  "usage-monitor": "/usage-monitor"
+  "personal-center": "/personal-center"
 };
 
 /**

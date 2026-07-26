@@ -3,7 +3,7 @@ package io.github.chzarles.paperloom.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.chzarles.paperloom.exception.RateLimitExceededException;
+import io.github.chzarles.paperloom.exception.QuotaExceededException;
 import io.github.chzarles.paperloom.model.ConversationScopeMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public class ChatHandler {
     private static final Pattern PAPER_HANDLE_PATTERN =
             Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
     private final RedisTemplate<String, String> redisTemplate;
-    private final RateLimitService rateLimitService;
+    private final UsageQuotaService usageQuotaService;
     private final ConversationService conversationService;
     private final ConversationScopeService conversationScopeService;
     private final ChatGenerationStateService chatGenerationStateService;
@@ -90,7 +90,7 @@ public class ChatHandler {
 
     @Autowired
     public ChatHandler(RedisTemplate<String, String> redisTemplate,
-                      RateLimitService rateLimitService,
+                      UsageQuotaService usageQuotaService,
                       ConversationService conversationService,
                       ConversationScopeService conversationScopeService,
                       ChatGenerationStateService chatGenerationStateService,
@@ -100,7 +100,7 @@ public class ChatHandler {
                       ObjectMapper objectMapper,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
         this.redisTemplate = redisTemplate;
-        this.rateLimitService = rateLimitService;
+        this.usageQuotaService = usageQuotaService;
         this.conversationService = conversationService;
         this.conversationScopeService = conversationScopeService;
         this.chatGenerationStateService = chatGenerationStateService;
@@ -125,7 +125,7 @@ public class ChatHandler {
         String conversationId = null;
         String generationId = null;
         try {
-            rateLimitService.checkChatByUser(userId);
+            usageQuotaService.recordChatRequest(userId);
 
             Long userIdLong = Long.parseLong(userId);
             if (requestedConversationId == null) {
@@ -201,8 +201,8 @@ public class ChatHandler {
                 cleanupGenerationState(finalGenerationId, ex);
             }
 
-        } catch (RateLimitExceededException e) {
-            sendRateLimitMessage(userId, requestClientId, null, e);
+        } catch (QuotaExceededException e) {
+            sendQuotaMessage(userId, requestClientId, null, e);
         } catch (Exception e) {
             logger.error("处理消息错误: {}", e.getMessage(), e);
             if (generationId != null) {
@@ -1317,11 +1317,11 @@ public class ChatHandler {
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("type", "error");
         errorResponse.put("generationId", generationId);
-        RateLimitExceededException rateLimitExceededException = findRateLimitException(error);
-        if (rateLimitExceededException != null) {
+        QuotaExceededException quotaExceededException = findQuotaException(error);
+        if (quotaExceededException != null) {
             errorResponse.put("code", 429);
-            errorResponse.put("message", rateLimitExceededException.getMessage());
-            errorResponse.put("retryAfterSeconds", rateLimitExceededException.getRetryAfterSeconds());
+            errorResponse.put("message", quotaExceededException.getMessage());
+            errorResponse.put("retryAfterSeconds", quotaExceededException.getRetryAfterSeconds());
             sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
             return;
         }
@@ -1332,18 +1332,18 @@ public class ChatHandler {
         sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
     }
 
-    private RateLimitExceededException findRateLimitException(Throwable error) {
+    private QuotaExceededException findQuotaException(Throwable error) {
         Throwable current = error;
         while (current != null) {
-            if (current instanceof RateLimitExceededException rateLimitExceededException) {
-                return rateLimitExceededException;
+            if (current instanceof QuotaExceededException quotaExceededException) {
+                return quotaExceededException;
             }
             current = current.getCause();
         }
         return null;
     }
 
-    private void sendRateLimitMessage(String userId, String clientId, String generationId, RateLimitExceededException exception) {
+    private void sendQuotaMessage(String userId, String clientId, String generationId, QuotaExceededException exception) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "error");
         payload.put("generationId", generationId);

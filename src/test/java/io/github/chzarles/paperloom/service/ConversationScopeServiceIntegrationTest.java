@@ -66,8 +66,6 @@ class ConversationScopeServiceIntegrationTest {
         user.setUsername("scope-owner");
         user.setPassword("password");
         user.setRole(User.Role.USER);
-        user.setPrimaryOrg("default");
-        user.setOrgTags("default");
         User savedUser = userRepository.saveAndFlush(user);
 
         ConversationSession session = new ConversationSession();

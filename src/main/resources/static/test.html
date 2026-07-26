@@ -381,17 +381,6 @@
                 </div>
 
                 <div class="form-group">
-                    <h3>组织标签管理</h3>
-                    <input type="text" id="tag-id" placeholder="标签ID" />
-                    <input type="text" id="tag-name" placeholder="标签名称" />
-                    <input type="text" id="tag-description" placeholder="标签描述" />
-                    <input type="text" id="parent-tag" placeholder="父标签ID（可选）" />
-                    <button onclick="createOrgTag()">创建组织标签</button>
-                    <button onclick="getAllOrgTags()">获取所有标签</button>
-                    <div id="org-tags-response" class="response"></div>
-                </div>
-
-                <div class="form-group">
                     <h3>用户活动</h3>
                     <input type="text" id="target-username" placeholder="目标用户名（可选）" />
                     <input type="datetime-local" id="activity-start-date" />
@@ -887,8 +876,7 @@
                     <h4>${file.paperTitle}</h4>
                     <p>大小: ${formatFileSize(file.sourceFileSizeBytes)}</p>
                     <p>状态: ${file.uploadStatus}</p>
-                    <p>组织: ${file.orgTagName || '未知'}</p>
-                    <p>可见性: ${file.public ? '公开' : '私有'}</p>
+                    <p>可见性: ${file.libraryScope === 'GLOBAL' ? '公开' : '私有'}</p>
                     <p>上传时间: ${new Date(file.createdAt).toLocaleString()}</p>
                     <div class="file-actions">
                         <button onclick="deletePaper('${file.paperId}')">删除</button>
@@ -995,47 +983,6 @@
                 showResponse('create-admin-response', data.message, data.code === 200);
             } catch (error) {
                 showResponse('create-admin-response', `创建管理员失败: ${error.message}`, false);
-            }
-        }
-
-        // 创建组织标签
-        async function createOrgTag() {
-            const tagId = document.getElementById('tag-id').value;
-            const name = document.getElementById('tag-name').value;
-            const description = document.getElementById('tag-description').value;
-            const parentTag = document.getElementById('parent-tag').value;
-            
-            try {
-                const response = await fetch('/api/v1/admin/org-tags', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ tagId, name, description, parentTag })
-                });
-                
-                const data = await response.json();
-                showResponse('org-tags-response', data.message, data.code === 200);
-            } catch (error) {
-                showResponse('org-tags-response', `创建组织标签失败: ${error.message}`, false);
-            }
-        }
-
-        // 获取所有组织标签
-        async function getAllOrgTags() {
-            try {
-                const response = await fetch('/api/v1/admin/org-tags', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                const data = await response.json();
-                document.getElementById('org-tags-response').innerHTML = 
-                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-            } catch (error) {
-                showResponse('org-tags-response', `获取组织标签失败: ${error.message}`, false);
             }
         }
 

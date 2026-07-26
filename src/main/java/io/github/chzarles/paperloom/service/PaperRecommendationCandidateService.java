@@ -34,7 +34,6 @@ public class PaperRecommendationCandidateService {
         List<PaperCandidate> paperCandidates = paperCandidateSearchService.search(new PaperCandidateSearchRequest(
                 request.queryText(),
                 request.userId(),
-                request.orgTags(),
                 request.paperLimit()
         ));
         if (paperCandidates.isEmpty()) {

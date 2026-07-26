@@ -17,9 +17,6 @@ public interface PaperCollectionRepository extends JpaRepository<PaperCollection
 
     List<PaperCollection> findAllByOrderByUpdatedAtDesc();
 
-    @Query("SELECT c FROM PaperCollection c WHERE c.visibility='ORG' AND c.orgTag IN :orgTags ORDER BY c.updatedAt DESC")
-    List<PaperCollection> findOrgVisibleCollections(@Param("orgTags") List<String> orgTags);
-
     @Query("SELECT c FROM PaperCollection c WHERE c.id = :id AND c.owner.id = :ownerId")
     Optional<PaperCollection> findByIdAndOwnerId(@Param("id") Long id, @Param("ownerId") Long ownerId);
 }

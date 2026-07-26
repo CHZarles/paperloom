@@ -59,24 +59,22 @@ class ParseServiceReadingModelIntegrationTest {
         when(paperRepository.findFirstByPaperIdOrderByCreatedAtDesc("paper123")).thenReturn(Optional.of(paper));
         ParsedPaper parsedPaper = parsedPaper();
         when(paperPdfParser.parse(any(), eq("uploaded.pdf"))).thenReturn(parsedPaper);
-        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true))
+        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7"))
                 .thenReturn(readyModel());
-        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
+        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7")))
                 .thenReturn(List.of());
 
         parseService.parseAndSave(
                 "paper123",
                 new ByteArrayInputStream("%PDF-test".getBytes(StandardCharsets.UTF_8)),
                 "uploaded.pdf",
-                "7",
-                "lab",
-                true
+                "7"
         );
 
         InOrder order = inOrder(paperParserArtifactService, paperReadingModelService, paperVisualAssetService);
-        order.verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7", "lab", true);
-        order.verify(paperReadingModelService).replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true);
-        order.verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true));
+        order.verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7");
+        order.verify(paperReadingModelService).replaceFromParsedPaper("paper123", parsedPaper, "7");
+        order.verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"));
     }
 
     private ParseService parseService() {

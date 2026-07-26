@@ -1,15 +1,10 @@
 package io.github.chzarles.paperloom.controller;
 
 import io.github.chzarles.paperloom.exception.CustomException;
-import io.github.chzarles.paperloom.model.OrganizationTag;
-import io.github.chzarles.paperloom.model.RechargePackage;
 import io.github.chzarles.paperloom.model.User;
-import io.github.chzarles.paperloom.repository.OrganizationTagRepository;
-import io.github.chzarles.paperloom.repository.RechargePackageRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.service.InviteCodeService;
-import io.github.chzarles.paperloom.service.RateLimitConfigService;
 import io.github.chzarles.paperloom.service.UsageDashboardService;
 import io.github.chzarles.paperloom.service.UsageQuotaService;
 import io.github.chzarles.paperloom.service.UserService;
@@ -47,9 +42,6 @@ public class AdminController {
     private UserTokenService userTokenService;
     
     @Autowired
-    private OrganizationTagRepository organizationTagRepository;
-
-    @Autowired
     private MinioMigrationUtil migrationUtil;
 
     @Autowired
@@ -60,12 +52,6 @@ public class AdminController {
 
     @Autowired
     private UsageQuotaService usageQuotaService;
-
-    @Autowired
-    private RateLimitConfigService rateLimitConfigService;
-
-    @Autowired
-    private RechargePackageRepository rechargePackageRepository;
 
     @Autowired
     private ConversationService conversationService;
@@ -187,47 +173,6 @@ public class AdminController {
             LogUtils.logBusinessError("ADMIN_GET_USAGE_OVERVIEW", adminUsername, "获取用量总览失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("code", 500, "message", "获取用量总览失败: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/rate-limits")
-    public ResponseEntity<?> getRateLimits(@RequestHeader("Authorization") String token) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-
-        try {
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "获取限流配置成功",
-                    "data", rateLimitConfigService.getCurrentSettings()
-            ));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_GET_RATE_LIMITS", adminUsername, "获取限流配置失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "获取限流配置失败: " + e.getMessage()));
-        }
-    }
-
-    @PutMapping("/rate-limits")
-    public ResponseEntity<?> updateRateLimits(
-            @RequestHeader("Authorization") String token,
-            @RequestBody RateLimitConfigService.UpdateRateLimitRequest request) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-
-        try {
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "限流配置更新成功",
-                    "data", rateLimitConfigService.updateSettings(request, adminUsername)
-            ));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("ADMIN_UPDATE_RATE_LIMITS", adminUsername, "更新限流配置失败: %s", e, e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_UPDATE_RATE_LIMITS", adminUsername, "更新限流配置异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "更新限流配置失败: " + e.getMessage()));
         }
     }
 
@@ -357,205 +302,24 @@ public class AdminController {
     }
     
     /**
-     * 创建组织标签
-     */
-    @PostMapping("/org-tags")
-    public ResponseEntity<?> createOrganizationTag(
-            @RequestHeader("Authorization") String token,
-            @RequestBody OrgTagRequest request) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            OrganizationTag tag = userService.createOrganizationTag(
-                request.tagId(), 
-                request.name(), 
-                request.description(), 
-                request.parentTag(), 
-                request.uploadMaxSizeMb(),
-                adminUsername
-            );
-            return ResponseEntity.ok(Map.of("code", 200, "message", "组织标签创建成功", "data", tag));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("ADMIN_CREATE_ORG_TAG", adminUsername, "创建组织标签失败: %s", e, e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_CREATE_ORG_TAG", adminUsername, "创建组织标签异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "创建组织标签失败: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * 获取所有组织标签
-     */
-    @GetMapping("/org-tags")
-    public ResponseEntity<?> getAllOrganizationTags(@RequestHeader("Authorization") String token) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            List<OrganizationTag> tags = organizationTagRepository.findAll();
-            return ResponseEntity.ok(Map.of("code", 200, "message", "获取组织标签成功", "data", tags));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_GET_ORG_TAGS", adminUsername, "获取组织标签失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "获取组织标签失败: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * 为用户分配组织标签
-     */
-    @PutMapping("/users/{userId}/org-tags")
-    public ResponseEntity<?> assignOrgTagsToUser(
-            @RequestHeader("Authorization") String token,
-            @PathVariable Long userId,
-            @RequestBody AssignOrgTagsRequest request) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            userService.assignOrgTagsToUser(userId, request.orgTags(), adminUsername);
-            return ResponseEntity.ok(Map.of("code", 200, "message", "组织标签分配成功"));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("ADMIN_ASSIGN_ORG_TAGS", adminUsername, "分配组织标签失败: %s", e, e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_ASSIGN_ORG_TAGS", adminUsername, "分配组织标签异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "分配组织标签失败: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * 获取组织标签树结构
-     */
-    @GetMapping("/org-tags/tree")
-    public ResponseEntity<?> getOrganizationTagTree(
-            @RequestHeader("Authorization") String token,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            List<Map<String, Object>> tagTree = userService.getOrganizationTagTree();
-            Object data = (page != null || size != null) ? paginateTree(tagTree, page, size) : tagTree;
-            return ResponseEntity.ok(Map.of(
-                "code", 200, 
-                "message", "获取组织标签树成功", 
-                "data", data
-            ));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_GET_ORG_TAG_TREE", adminUsername, "获取组织标签树失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "获取组织标签树失败: " + e.getMessage()));
-        }
-    }
-
-    private Map<String, Object> paginateTree(List<Map<String, Object>> tagTree, Integer page, Integer size) {
-        int pageNumber = page == null || page < 1 ? 1 : page;
-        int pageSize = size == null || size < 1 ? 10 : size;
-        int total = tagTree.size();
-        int fromIndex = Math.min((pageNumber - 1) * pageSize, total);
-        int toIndex = Math.min(fromIndex + pageSize, total);
-        List<Map<String, Object>> pagedTree = tagTree.subList(fromIndex, toIndex);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("data", pagedTree);
-        result.put("content", pagedTree);
-        result.put("number", pageNumber);
-        result.put("size", pageSize);
-        result.put("totalElements", total);
-        return result;
-    }
-    
-    /**
-     * 更新组织标签
-     */
-    @PutMapping("/org-tags/{tagId}")
-    public ResponseEntity<?> updateOrganizationTag(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String tagId,
-            @RequestBody OrgTagUpdateRequest request) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            OrganizationTag updatedTag = userService.updateOrganizationTag(
-                tagId, 
-                request.name(), 
-                request.description(), 
-                request.parentTag(), 
-                request.uploadMaxSizeMb(),
-                adminUsername
-            );
-            return ResponseEntity.ok(Map.of(
-                "code", 200, 
-                "message", "组织标签更新成功", 
-                "data", updatedTag
-            ));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("ADMIN_UPDATE_ORG_TAG", adminUsername, "更新组织标签失败: %s", e, e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_UPDATE_ORG_TAG", adminUsername, "更新组织标签异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "更新组织标签失败: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * 删除组织标签
-     */
-    @DeleteMapping("/org-tags/{tagId}")
-    public ResponseEntity<?> deleteOrganizationTag(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String tagId) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            userService.deleteOrganizationTag(tagId, adminUsername);
-            return ResponseEntity.ok(Map.of(
-                "code", 200, 
-                "message", "组织标签删除成功"
-            ));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("ADMIN_DELETE_ORG_TAG", adminUsername, "删除组织标签失败: %s", e, e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_DELETE_ORG_TAG", adminUsername, "删除组织标签异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "删除组织标签失败: " + e.getMessage()));
-        }
-    }
-    
-    /**
      * 获取用户列表
      */
     @GetMapping("/users/list")
     public ResponseEntity<?> getUserList(
             @RequestHeader("Authorization") String token,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String orgTag,
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        
+
         String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
         validateAdmin(adminUsername);
-        
+
         try {
-            Map<String, Object> usersData = userService.getUserList(keyword, orgTag, status, page, size);
+            Map<String, Object> usersData = userService.getUserList(keyword, status, page, size);
             return ResponseEntity.ok(Map.of(
-                "code", 200, 
-                "message", "获取用户列表成功", 
+                "code", 200,
+                "message", "获取用户列表成功",
                 "data", usersData
             ));
         } catch (CustomException e) {
@@ -908,231 +672,15 @@ public class AdminController {
         }
     }
 
-    // ==================== 充值套餐管理相关接口 ====================
-
-    /**
-     * 获取所有充值套餐列表（包含禁用）
-     */
-    @GetMapping("/recharge-packages")
-    public ResponseEntity<?> getAllRechargePackages(@RequestHeader("Authorization") String token) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            LogUtils.logBusiness("ADMIN_GET_RECHARGE_PACKAGES", adminUsername, "管理员开始获取充值套餐列表");
-            
-            List<RechargePackage> packages = rechargePackageRepository.findAllByDeletedFalseOrderBySortOrderAsc();
-            
-            LogUtils.logBusiness("ADMIN_GET_RECHARGE_PACKAGES", adminUsername, 
-                    "成功获取充值套餐列表，套餐数量：%d", packages.size());
-            
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "获取充值套餐列表成功",
-                    "data", packages
-            ));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_GET_RECHARGE_PACKAGES", adminUsername, "获取充值套餐列表失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "获取充值套餐列表失败：" + e.getMessage()));
-        }
     }
-
-    /**
-     * 创建充值套餐
-     */
-    @PostMapping("/recharge-packages")
-    public ResponseEntity<?> createRechargePackage(
-            @RequestHeader("Authorization") String token,
-            @RequestBody RechargePackageRequest request) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            LogUtils.logBusiness("ADMIN_CREATE_RECHARGE_PACKAGE", adminUsername, 
-                    "管理员开始创建充值套餐：%s", request.packageName());
-            
-            // 验证必填字段
-            if (request.packageName() == null || request.packageName().isBlank()) {
-                throw new CustomException("套餐名称不能为空", HttpStatus.BAD_REQUEST);
-            }
-            if (request.packagePrice() == null || request.packagePrice() <= 0) {
-                throw new CustomException("套餐价格必须大于 0", HttpStatus.BAD_REQUEST);
-            }
-            if (request.llmToken() == null || request.llmToken() < 0) {
-                throw new CustomException("LLM Token 数量不能为负数", HttpStatus.BAD_REQUEST);
-            }
-            if (request.embeddingToken() == null || request.embeddingToken() < 0) {
-                throw new CustomException("Embedding Token 数量不能为负数", HttpStatus.BAD_REQUEST);
-            }
-            
-            RechargePackage pkg = new RechargePackage();
-            pkg.setPackageName(request.packageName());
-            pkg.setPackagePrice(request.packagePrice());
-            pkg.setPackageDesc(request.packageDesc());
-            pkg.setPackageBenefit(request.packageBenefit());
-            pkg.setLlmToken(request.llmToken());
-            pkg.setEmbeddingToken(request.embeddingToken());
-            pkg.setEnabled(request.enabled() != null ? request.enabled() : true);
-            pkg.setSortOrder(request.sortOrder() != null ? request.sortOrder() : 0);
-            pkg.setDeleted(false);
-            
-            pkg = rechargePackageRepository.save(pkg);
-            
-            LogUtils.logBusiness("ADMIN_CREATE_RECHARGE_PACKAGE", adminUsername, 
-                    "成功创建充值套餐，id=%d", pkg.getId());
-            
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "创建充值套餐成功",
-                    "data", pkg
-            ));
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_CREATE_RECHARGE_PACKAGE", adminUsername, "创建充值套餐失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "创建充值套餐失败：" + e.getMessage()));
-        }
-    }
-
-    /**
-     * 更新充值套餐
-     */
-    @PutMapping("/recharge-packages/{id}")
-    public ResponseEntity<?> updateRechargePackage(
-            @RequestHeader("Authorization") String token,
-            @PathVariable Integer id,
-            @RequestBody RechargePackageRequest request) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            LogUtils.logBusiness("ADMIN_UPDATE_RECHARGE_PACKAGE", adminUsername, 
-                    "管理员开始更新充值套餐，id=%d", id);
-            
-            RechargePackage pkg = rechargePackageRepository.findById(id)
-                    .orElseThrow(() -> new CustomException("套餐不存在", HttpStatus.BAD_REQUEST));
-            
-            // 更新字段
-            if (request.packageName() != null) {
-                pkg.setPackageName(request.packageName());
-            }
-            if (request.packagePrice() != null) {
-                pkg.setPackagePrice(request.packagePrice());
-            }
-            if (request.packageDesc() != null) {
-                pkg.setPackageDesc(request.packageDesc());
-            }
-            if (request.packageBenefit() != null) {
-                pkg.setPackageBenefit(request.packageBenefit());
-            }
-            if (request.llmToken() != null) {
-                pkg.setLlmToken(request.llmToken());
-            }
-            if (request.embeddingToken() != null) {
-                pkg.setEmbeddingToken(request.embeddingToken());
-            }
-            if (request.enabled() != null) {
-                pkg.setEnabled(request.enabled());
-            }
-            if (request.sortOrder() != null) {
-                pkg.setSortOrder(request.sortOrder());
-            }
-            
-            pkg.setUpdatedAt(LocalDateTime.now());
-            pkg = rechargePackageRepository.save(pkg);
-            
-            LogUtils.logBusiness("ADMIN_UPDATE_RECHARGE_PACKAGE", adminUsername, 
-                    "成功更新充值套餐，id=%d", id);
-            
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "更新充值套餐成功",
-                    "data", pkg
-            ));
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_UPDATE_RECHARGE_PACKAGE", adminUsername, "更新充值套餐失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "更新充值套餐失败：" + e.getMessage()));
-        }
-    }
-
-    /**
-     * 删除充值套餐（逻辑删除）
-     */
-    @DeleteMapping("/recharge-packages/{id}")
-    public ResponseEntity<?> deleteRechargePackage(
-            @RequestHeader("Authorization") String token,
-            @PathVariable Integer id) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            LogUtils.logBusiness("ADMIN_DELETE_RECHARGE_PACKAGE", adminUsername, 
-                    "管理员开始删除充值套餐，id=%d", id);
-            
-            RechargePackage pkg = rechargePackageRepository.findById(id)
-                    .orElseThrow(() -> new CustomException("套餐不存在", HttpStatus.BAD_REQUEST));
-            
-            // 逻辑删除：设置 deleted=true
-            pkg.setDeleted(true);
-            pkg.setUpdatedAt(LocalDateTime.now());
-            rechargePackageRepository.save(pkg);
-            
-            LogUtils.logBusiness("ADMIN_DELETE_RECHARGE_PACKAGE", adminUsername, 
-                    "成功删除充值套餐（逻辑删除），id=%d", id);
-            
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "删除充值套餐成功"
-            ));
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_DELETE_RECHARGE_PACKAGE", adminUsername, "删除充值套餐失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "删除充值套餐失败：" + e.getMessage()));
-        }
-    }
-}
 
 /**
  * 管理员用户请求体
  */
 record AdminUserRequest(String username, String password) {}
 
-/**
- * 组织标签请求体
- */
-record OrgTagRequest(String tagId, String name, String description, String parentTag, Long uploadMaxSizeMb) {}
-
-/**
- * 分配组织标签请求体
- */
-record AssignOrgTagsRequest(List<String> orgTags) {}
-
 record AddUserTokenRequest(Long llmToken, Long embeddingToken, String reason) {}
-
-// 添加组织标签更新请求记录类
-record OrgTagUpdateRequest(String name, String description, String parentTag, Long uploadMaxSizeMb) {}
 
 record CreateInviteCodeRequest(String code, Integer maxUses, Integer count) {}
 
 record UpdateInviteCodeRequest(String code, Integer maxUses) {}
-
-/**
- * 充值套餐请求体
- */
-record RechargePackageRequest(
-        String packageName,
-        Long packagePrice,
-        String packageDesc,
-        String packageBenefit,
-        Long llmToken,
-        Long embeddingToken,
-        Boolean enabled,
-        Integer sortOrder
-) {}

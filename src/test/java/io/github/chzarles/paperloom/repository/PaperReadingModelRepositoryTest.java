@@ -64,8 +64,6 @@ class PaperReadingModelRepositoryTest {
         page.setParserName("MinerU");
         page.setParserVersion("1.3.0");
         page.setUserId("user-a");
-        page.setOrgTag("lab");
-        page.setPublic(true);
         pageRepository.save(page);
 
         PaperSection section = new PaperSection();
@@ -86,8 +84,6 @@ class PaperReadingModelRepositoryTest {
         section.setParserName("MinerU");
         section.setParserVersion("1.3.0");
         section.setUserId("user-a");
-        section.setOrgTag("lab");
-        section.setPublic(true);
         sectionRepository.save(section);
 
         PaperLocation location = new PaperLocation();
@@ -101,8 +97,6 @@ class PaperReadingModelRepositoryTest {
         location.setSourceSpanJson("{\"pageNumber\":1}");
         location.setContentKind("PAGE_TEXT");
         location.setUserId("user-a");
-        location.setOrgTag("lab");
-        location.setPublic(true);
         locationRepository.save(location);
 
         PaperReadingModel persisted = modelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-a").orElseThrow();

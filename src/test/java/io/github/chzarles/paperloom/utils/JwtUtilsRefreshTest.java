@@ -44,8 +44,6 @@ public class JwtUtilsRefreshTest {
         testUser.setId(1L);
         testUser.setUsername("testuser");
         testUser.setRole(User.Role.USER);
-        testUser.setOrgTags("org1,org2");
-        testUser.setPrimaryOrg("org1");
 
         // Mock用户仓库行为 (使用lenient模式避免不必要的stubbing警告)
         lenient().when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
@@ -130,14 +128,8 @@ public class JwtUtilsRefreshTest {
         // 测试提取各种信息
         String username = jwtUtils.extractUsernameFromToken(token);
         assertEquals("testuser", username);
-        
+
         String role = jwtUtils.extractRoleFromToken(token);
         assertEquals("USER", role);
-        
-        String orgTags = jwtUtils.extractOrgTagsFromToken(token);
-        assertEquals("org1,org2", orgTags);
-        
-        String primaryOrg = jwtUtils.extractPrimaryOrgFromToken(token);
-        assertEquals("org1", primaryOrg);
     }
 }

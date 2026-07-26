@@ -1,29 +1,15 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onMounted, ref, watch } from 'vue';
 import { NTag } from 'naive-ui';
-import RechargePage from '@/views/recharge/index.vue';
 
 const InviteCodePage = defineAsyncComponent(() => import('@/views/invite-code/index.vue'));
-const OrgTagPage = defineAsyncComponent(() => import('@/views/org-tag/index.vue'));
-const RechargeManagePage = defineAsyncComponent(() => import('@/views/recharge-manage/index.vue'));
-const UsageMonitorPage = defineAsyncComponent(() => import('@/views/usage-monitor/index.vue'));
 const UserPage = defineAsyncComponent(() => import('@/views/user/index.vue'));
 
 const settingsPanelCacheKey = Symbol.for('paperloom.settingsPanelCache');
 
 type SettingsPanelCache = {
   userId: string;
-  tags: Api.OrgTag.Mine;
-  usage: Api.User.UsageSnapshot;
-  tokenRecords: Api.User.TokenRecord[];
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    pageCount: number;
-  };
   profileLoaded: boolean;
-  ledgerLoaded: boolean;
 };
 
 type SettingsPanelGlobal = typeof globalThis & {
@@ -32,22 +18,12 @@ type SettingsPanelGlobal = typeof globalThis & {
 
 type SettingsSection =
   | 'general'
-  | 'usage'
-  | 'organization'
-  | 'ledger'
-  | 'recharge'
   | 'userAdmin'
-  | 'orgTagAdmin'
-  | 'inviteCode'
-  | 'usageMonitor'
-  | 'rechargeManage';
+  | 'inviteCode';
 
 const adminSections = new Set<SettingsSection>([
   'userAdmin',
-  'orgTagAdmin',
-  'inviteCode',
-  'usageMonitor',
-  'rechargeManage'
+  'inviteCode'
 ]);
 
 const emit = defineEmits<{
@@ -57,46 +33,9 @@ const emit = defineEmits<{
 const authStore = useAuthStore();
 const { userInfo } = storeToRefs(authStore);
 
-const tags = ref<Api.OrgTag.Mine>({
-  orgTags: [],
-  primaryOrg: '',
-  orgTagDetails: []
-});
-
-const usage = ref<Api.User.UsageSnapshot>({
-  day: '',
-  chatRequestCount: 0,
-  llm: {
-    enabled: false,
-    usedTokens: 0,
-    limitTokens: 0,
-    remainingTokens: 0,
-    requestCount: 0
-  },
-  embedding: {
-    enabled: false,
-    usedTokens: 0,
-    limitTokens: 0,
-    remainingTokens: 0,
-    requestCount: 0
-  }
-});
-
 const profileLoading = ref(false);
 const profileLoaded = ref(false);
-const tokenRecords = ref<Api.User.TokenRecord[]>([]);
-const tokenRecordLoading = ref(false);
-const tokenRecordsLoaded = ref(false);
-const pagination = ref({
-  page: 1,
-  pageSize: 10,
-  total: 0,
-  pageCount: 0
-});
 
-const visible = ref(false);
-const currentTagId = ref('');
-const submitLoading = ref(false);
 const activeSection = ref<SettingsSection>('general');
 
 const userCacheId = computed(() => String(userInfo.value.id || userInfo.value.username || 'anonymous'));
@@ -107,113 +46,8 @@ const avatarStyle = computed(() => ({
   '--account-avatar-fill': buildAvatarFill(accountName.value)
 }));
 
-const quotaCards = computed(() => [
-  {
-    key: 'llm',
-    title: 'LLM Token',
-    enabled: usage.value.llm.enabled,
-    usedTokens: usage.value.llm.usedTokens,
-    limitTokens: usage.value.llm.limitTokens,
-    remainingTokens: usage.value.llm.remainingTokens,
-    requestCount: usage.value.llm.requestCount
-  },
-  {
-    key: 'embedding',
-    title: 'Embedding Token',
-    enabled: usage.value.embedding.enabled,
-    usedTokens: usage.value.embedding.usedTokens,
-    limitTokens: usage.value.embedding.limitTokens,
-    remainingTokens: usage.value.embedding.remainingTokens,
-    requestCount: usage.value.embedding.requestCount
-  }
-]);
-
-const tokenRecordColumns = computed(() => [
-  {
-    title: '日期',
-    key: 'recordDate',
-    width: 100,
-    render: (row: Api.User.TokenRecord) => row.recordDate
-  },
-  {
-    title: 'Token 类型',
-    key: 'tokenType',
-    width: 100,
-    render: (row: Api.User.TokenRecord) => {
-      const typeMap: Record<string, { text: string; type: any }> = {
-        LLM: { text: 'LLM', type: 'info' },
-        EMBEDDING: { text: 'Embedding', type: 'success' }
-      };
-      const type = typeMap[row.tokenType] || { text: row.tokenType, type: 'default' };
-      return h(NTag, { type: type.type }, () => type.text);
-    }
-  },
-  {
-    title: '变动类型',
-    key: 'changeType',
-    width: 100,
-    render: (row: Api.User.TokenRecord) => {
-      const typeMap: Record<string, { text: string; type: any }> = {
-        INCREASE: { text: '充值', type: 'success' },
-        CONSUME: { text: '消耗', type: 'warning' }
-      };
-      const type = typeMap[row.changeType] || { text: row.changeType, type: 'default' };
-      return h(NTag, { type: type.type }, () => type.text);
-    }
-  },
-  {
-    title: '变动数量',
-    key: 'amount',
-    width: 120,
-    render: (row: Api.User.TokenRecord) => {
-      const sign = row.changeType === 'INCREASE' ? '+' : '-';
-      return `${sign}${row.amount.toLocaleString()}`;
-    }
-  },
-  {
-    title: '变动前余额',
-    key: 'balanceBefore',
-    width: 120,
-    render: (row: Api.User.TokenRecord) => row.balanceBefore?.toLocaleString() || '-'
-  },
-  {
-    title: '变动后余额',
-    key: 'balanceAfter',
-    width: 120,
-    render: (row: Api.User.TokenRecord) => row.balanceAfter?.toLocaleString() || '-'
-  },
-  {
-    title: '原因',
-    key: 'reason',
-    minWidth: 100,
-    ellipsis: { tooltip: true },
-    render: (row: Api.User.TokenRecord) => row.reason || '-'
-  },
-  {
-    title: '请求次数',
-    key: 'requestCount',
-    width: 80,
-    render: (row: Api.User.TokenRecord) => row.requestCount?.toLocaleString() || '0'
-  },
-  {
-    title: '创建时间',
-    key: 'createdAt',
-    width: 180,
-    render: (row: Api.User.TokenRecord) => new Date(row.createdAt).toLocaleString('zh-CN')
-  }
-]);
-
 onMounted(() => {
   restoreCachedSettings();
-  window.requestAnimationFrame(() => {
-    getPersonalData();
-  });
-});
-
-watch(activeSection, section => {
-  if (section === 'ledger' && !tokenRecordsLoaded.value && !tokenRecordLoading.value) {
-    getTokenRecords();
-  }
 });
 
 watch(
@@ -229,127 +63,24 @@ function isAdminSection(section: SettingsSection) {
   return adminSections.has(section);
 }
 
-async function getPersonalData() {
-  profileLoading.value = true;
-  const [{ error: orgError, data: orgData }, { error: usageError, data: usageData }] = await Promise.all([
-    request<Api.OrgTag.Mine>({
-      url: '/users/org-tags'
-    }),
-    request<Api.User.UsageSnapshot>({
-      url: '/users/usage'
-    })
-  ]);
-
-  if (!orgError) {
-    tags.value = orgData;
-  }
-
-  if (!usageError) {
-    usage.value = usageData;
-  }
-
-  profileLoaded.value = !orgError || !usageError;
-  cacheSettingsPanelState();
-  profileLoading.value = false;
-}
-
-async function getOrgTags() {
-  const { error, data } = await request<Api.OrgTag.Mine>({
-    url: '/users/org-tags'
-  });
-  if (!error) {
-    tags.value = data;
-    profileLoaded.value = true;
-    cacheSettingsPanelState();
-  }
-}
-
-function showModal(tagId: string) {
-  if (tagId === tags.value.primaryOrg) return;
-  visible.value = true;
-  currentTagId.value = tagId;
-}
-
-async function setPrimaryOrg() {
-  submitLoading.value = true;
-  const { error } = await request({
-    url: '/users/primary-org',
-    method: 'PUT',
-    data: { primaryOrg: currentTagId.value, userId: userInfo.value.id }
-  });
-  if (!error) {
-    visible.value = false;
-    await getOrgTags();
-  }
-  submitLoading.value = false;
-}
-
-async function getTokenRecords() {
-  tokenRecordLoading.value = true;
-  try {
-    const { error, data } = await request({
-      url: '/users/token-records',
-      method: 'GET',
-      params: {
-        page: pagination.value.page - 1,
-        size: pagination.value.pageSize
-      }
-    });
-
-    if (!error && data) {
-      tokenRecords.value = data.content || [];
-      pagination.value.total = data.totalElements || 0;
-      pagination.value.pageCount = data.totalPages || 0;
-      tokenRecordsLoaded.value = true;
-      cacheSettingsPanelState();
-    }
-  } finally {
-    tokenRecordLoading.value = false;
-  }
-}
-
-function handlePageChange(page: number) {
-  pagination.value.page = page;
-  getTokenRecords();
-}
-
 function restoreCachedSettings() {
   const cachedSettings = readSettingsPanelCache();
   if (!cachedSettings || cachedSettings.userId !== userCacheId.value) {
     return;
   }
 
-  tags.value = cachedSettings.tags;
-  usage.value = cachedSettings.usage;
-  tokenRecords.value = cachedSettings.tokenRecords;
-  pagination.value = { ...cachedSettings.pagination };
   profileLoaded.value = cachedSettings.profileLoaded;
-  tokenRecordsLoaded.value = cachedSettings.ledgerLoaded;
 }
 
 function cacheSettingsPanelState() {
   (globalThis as SettingsPanelGlobal)[settingsPanelCacheKey] = {
     userId: userCacheId.value,
-    tags: tags.value,
-    usage: usage.value,
-    tokenRecords: tokenRecords.value,
-    pagination: { ...pagination.value },
-    profileLoaded: profileLoaded.value,
-    ledgerLoaded: tokenRecordsLoaded.value
+    profileLoaded: profileLoaded.value
   };
 }
 
 function readSettingsPanelCache() {
   return (globalThis as SettingsPanelGlobal)[settingsPanelCacheKey] || null;
-}
-
-function formatToken(value?: number | null) {
-  return Number(value || 0).toLocaleString();
-}
-
-function quotaPercent(card: (typeof quotaCards.value)[number]) {
-  if (!card.enabled || !card.limitTokens) return 0;
-  return Math.min(100, Math.round((card.usedTokens / card.limitTokens) * 100));
 }
 
 function buildAvatarCells(seed: string) {
@@ -411,44 +142,6 @@ function buildAvatarFill(seed: string) {
           <icon-lucide:settings />
           <span>General</span>
         </button>
-        <button
-          type="button"
-          class="settings-nav__item"
-          :class="{ 'settings-nav__item--active': activeSection === 'usage' }"
-          @click="activeSection = 'usage'"
-        >
-          <icon-lucide:activity />
-          <span>Usage</span>
-        </button>
-        <button
-          type="button"
-          class="settings-nav__item"
-          :class="{ 'settings-nav__item--active': activeSection === 'organization' }"
-          @click="activeSection = 'organization'"
-        >
-          <icon-lucide:tags />
-          <span>Organization</span>
-        </button>
-        <button
-          type="button"
-          class="settings-nav__item"
-          :class="{ 'settings-nav__item--active': activeSection === 'ledger' }"
-          @click="activeSection = 'ledger'"
-        >
-          <icon-lucide:receipt-text />
-          <span>Token Ledger</span>
-        </button>
-
-        <div class="settings-nav__label">Billing</div>
-        <button
-          type="button"
-          class="settings-nav__item"
-          :class="{ 'settings-nav__item--active': activeSection === 'recharge' }"
-          @click="activeSection = 'recharge'"
-        >
-          <icon-lucide:credit-card />
-          <span>Recharge</span>
-        </button>
 
         <template v-if="authStore.isAdmin">
           <div class="settings-nav__label">Admin</div>
@@ -464,38 +157,11 @@ function buildAvatarFill(seed: string) {
           <button
             type="button"
             class="settings-nav__item"
-            :class="{ 'settings-nav__item--active': activeSection === 'orgTagAdmin' }"
-            @click="activeSection = 'orgTagAdmin'"
-          >
-            <icon-lucide:tags />
-            <span>Org Tag Admin</span>
-          </button>
-          <button
-            type="button"
-            class="settings-nav__item"
             :class="{ 'settings-nav__item--active': activeSection === 'inviteCode' }"
             @click="activeSection = 'inviteCode'"
           >
             <icon-lucide:ticket />
             <span>Invite Codes</span>
-          </button>
-          <button
-            type="button"
-            class="settings-nav__item"
-            :class="{ 'settings-nav__item--active': activeSection === 'usageMonitor' }"
-            @click="activeSection = 'usageMonitor'"
-          >
-            <icon-lucide:chart-line />
-            <span>Usage Monitor</span>
-          </button>
-          <button
-            type="button"
-            class="settings-nav__item"
-            :class="{ 'settings-nav__item--active': activeSection === 'rechargeManage' }"
-            @click="activeSection = 'rechargeManage'"
-          >
-            <icon-lucide:receipt />
-            <span>Recharge Management</span>
           </button>
         </template>
       </aside>
@@ -516,109 +182,8 @@ function buildAvatarFill(seed: string) {
             <label>Role</label>
             <strong>{{ accountRoleLabel }}</strong>
           </div>
-          <div class="settings-row">
-            <label>Primary organization</label>
-            <strong>{{ tags.primaryOrg || 'N/A' }}</strong>
-          </div>
-          <div class="settings-row">
-            <label>Quota day</label>
-            <strong>{{ usage.day || 'N/A' }}</strong>
-          </div>
         </section>
 
-        <section v-show="activeSection === 'usage'" class="settings-section">
-          <h1>Usage</h1>
-          <div class="settings-rule" />
-          <div class="quota-list">
-            <article v-for="card in quotaCards" :key="card.key" class="quota-panel">
-              <div class="quota-panel__head">
-                <div>
-                  <h2>{{ card.title }}</h2>
-                  <p>{{ card.enabled ? `${formatToken(card.requestCount)} requests` : 'Quota disabled' }}</p>
-                </div>
-                <strong>{{ card.enabled ? `${quotaPercent(card)}%` : 'OFF' }}</strong>
-              </div>
-              <NProgress
-                :percentage="quotaPercent(card)"
-                :show-indicator="false"
-                :status="card.enabled ? 'success' : 'default'"
-              />
-              <div class="quota-panel__metrics">
-                <span>
-                  <small>Used</small>
-                  {{ formatToken(card.usedTokens) }}
-                </span>
-                <span>
-                  <small>Limit</small>
-                  {{ card.enabled ? formatToken(card.limitTokens) : 'OFF' }}
-                </span>
-                <span>
-                  <small>Remaining</small>
-                  {{ card.enabled ? formatToken(card.remainingTokens) : 'OFF' }}
-                </span>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section v-show="activeSection === 'organization'" class="settings-section">
-          <h1>Organization</h1>
-          <div class="settings-rule" />
-          <div class="section-count">{{ tags.orgTagDetails.length }} tags</div>
-          <div v-if="tags.orgTagDetails.length" class="org-tag-grid">
-            <button
-              v-for="tag in tags.orgTagDetails"
-              :key="tag.tagId"
-              type="button"
-              class="org-tag-card"
-              :class="{ 'org-tag-card--primary': tag.tagId === tags.primaryOrg }"
-              :disabled="tag.tagId === tags.primaryOrg"
-              @click="showModal(tag.tagId)"
-            >
-              <span class="org-tag-card__title">
-                {{ tag.name }}
-                <NTag v-if="tag.tagId === tags.primaryOrg" type="primary" size="small">
-                  主标签
-                  <template #icon>
-                    <icon-lucide:check-circle class="text-icon" />
-                  </template>
-                </NTag>
-              </span>
-              <NEllipsis :line-clamp="2" class="org-tag-card__desc">
-                {{ tag.description || tag.tagId }}
-              </NEllipsis>
-            </button>
-          </div>
-          <NEmpty v-else description="暂无组织标签" />
-        </section>
-
-        <section v-show="activeSection === 'ledger'" class="settings-section settings-section--ledger">
-          <h1>Token Ledger</h1>
-          <div class="settings-rule" />
-          <div class="section-count">{{ pagination.total.toLocaleString() }} records</div>
-          <NSpin :show="tokenRecordLoading">
-            <NDataTable
-              v-if="tokenRecords.length > 0"
-              :columns="tokenRecordColumns"
-              :data="tokenRecords"
-              :loading="tokenRecordLoading"
-              :pagination="{
-                page: pagination.page,
-                pageSize: pagination.pageSize,
-                itemCount: pagination.total,
-                onChange: handlePageChange
-              }"
-              :scroll-x="1200"
-              size="small"
-              class="token-record-table"
-            />
-            <NEmpty v-else description="暂无记录" />
-          </NSpin>
-        </section>
-
-        <section v-if="activeSection === 'recharge'" class="settings-section settings-section--embedded">
-          <RechargePage />
-        </section>
         <section
           v-if="authStore.isAdmin && activeSection === 'userAdmin'"
           class="settings-section settings-section--embedded"
@@ -627,44 +192,15 @@ function buildAvatarFill(seed: string) {
           <UserPage />
         </section>
         <section
-          v-if="authStore.isAdmin && activeSection === 'orgTagAdmin'"
-          class="settings-section settings-section--embedded"
-        >
-          <OrgTagPage />
-        </section>
-        <section
           v-if="authStore.isAdmin && activeSection === 'inviteCode'"
           class="settings-section settings-section--embedded"
         >
           <InviteCodePage />
         </section>
-        <section
-          v-if="authStore.isAdmin && activeSection === 'usageMonitor'"
-          class="settings-section settings-section--embedded"
-        >
-          <UsageMonitorPage />
-        </section>
-        <section
-          v-if="authStore.isAdmin && activeSection === 'rechargeManage'"
-          class="settings-section settings-section--embedded"
-        >
-          <RechargeManagePage />
-        </section>
       </main>
     </div>
 
-    <NModal
-      v-model:show="visible"
-      :loading="submitLoading"
-      preset="dialog"
-      title="设置主标签"
-      content="确定将当前标签设置为主标签吗？"
-      positive-text="确认"
-      negative-text="取消"
-      @positive-click="setPrimaryOrg"
-      @negative-click="visible = false"
-    />
-  </div>
+      </div>
 </template>
 
 <style scoped lang="scss">
@@ -943,60 +479,6 @@ function buildAvatarFill(seed: string) {
   font-weight: 620;
 }
 
-.org-tag-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px;
-}
-
-.org-tag-card {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-alt);
-  color: var(--color-text);
-  cursor: pointer;
-  padding: 11px 12px;
-  text-align: left;
-  transition:
-    border-color 0.16s ease,
-    background-color 0.16s ease;
-}
-
-.org-tag-card:hover {
-  border-color: var(--color-primary);
-  background: var(--color-surface-alt);
-}
-
-.org-tag-card:disabled {
-  cursor: default;
-}
-
-.org-tag-card--primary,
-.org-tag-card--primary:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
-  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-primary) 8%);
-}
-
-.org-tag-card__title {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 720;
-}
-
-.org-tag-card__desc {
-  margin-top: 8px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .settings-section :deep(.n-data-table) {
   --n-td-color: var(--color-surface) !important;
   --n-th-color: var(--color-card-band) !important;
@@ -1075,10 +557,6 @@ function buildAvatarFill(seed: string) {
   }
 
   .quota-panel__metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .org-tag-grid {
     grid-template-columns: 1fr;
   }
 

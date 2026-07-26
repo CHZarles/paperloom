@@ -31,13 +31,9 @@ class PaperCandidateSearchServiceTest {
     void titleMatchRanksAboveFilenameMatch() {
         Paper filenameMatch = paper("filename-paper", "Unrelated", "agentic-eval-report.pdf", null);
         Paper titleMatch = paper("title-paper", "Agentic Eval Benchmark", "benchmark.pdf", null);
-        when(paperService.getAccessiblePapers("u1", "lab")).thenReturn(List.of(filenameMatch, titleMatch));
+        when(paperService.getAccessiblePapers("u1")).thenReturn(List.of(filenameMatch, titleMatch));
 
-        List<PaperCandidate> candidates = service.search(new PaperCandidateSearchRequest(
-                "agentic eval",
-                "u1",
-                "lab",
-                20
+        List<PaperCandidate> candidates = service.search(new PaperCandidateSearchRequest("agentic eval", "u1", 20
         ));
 
         assertEquals(List.of("title-paper", "filename-paper"), candidates.stream().map(PaperCandidate::paperId).toList());
@@ -51,13 +47,9 @@ class PaperCandidateSearchServiceTest {
     void abstractMatchReturnsCandidateWithPreview() {
         Paper paper = paper("abstract-paper", "Different Topic", "different.pdf",
                 "This work studies agentic evaluation loops for tool-using systems.");
-        when(paperService.getAccessiblePapers("u1", "lab")).thenReturn(List.of(paper));
+        when(paperService.getAccessiblePapers("u1")).thenReturn(List.of(paper));
 
-        List<PaperCandidate> candidates = service.search(new PaperCandidateSearchRequest(
-                "agentic evaluation",
-                "u1",
-                "lab",
-                20
+        List<PaperCandidate> candidates = service.search(new PaperCandidateSearchRequest("agentic evaluation", "u1", 20
         ));
 
         assertEquals(1, candidates.size());
@@ -70,23 +62,19 @@ class PaperCandidateSearchServiceTest {
     @Test
     void searchUsesAccessibleLibraryFromPaperService() {
         Paper accessible = paper("accessible-paper", "Agentic Evaluation", "accessible.pdf", null);
-        when(paperService.getAccessiblePapers("u1", "lab")).thenReturn(List.of(accessible));
+        when(paperService.getAccessiblePapers("u1")).thenReturn(List.of(accessible));
 
-        List<PaperCandidate> candidates = service.search(new PaperCandidateSearchRequest(
-                "agentic",
-                "u1",
-                "lab",
-                20
+        List<PaperCandidate> candidates = service.search(new PaperCandidateSearchRequest("agentic", "u1", 20
         ));
 
         assertEquals(List.of("accessible-paper"), candidates.stream().map(PaperCandidate::paperId).toList());
-        verify(paperService).getAccessiblePapers("u1", "lab");
+        verify(paperService).getAccessiblePapers("u1");
     }
 
     @Test
     void emptyOrTooShortQueryReturnsNoCandidatesWithoutLoadingLibrary() {
-        assertEquals(List.of(), service.search(new PaperCandidateSearchRequest(" ", "u1", "lab", 20)));
-        assertEquals(List.of(), service.search(new PaperCandidateSearchRequest("a", "u1", "lab", 20)));
+        assertEquals(List.of(), service.search(new PaperCandidateSearchRequest(" ", "u1", 20)));
+        assertEquals(List.of(), service.search(new PaperCandidateSearchRequest("a", "u1", 20)));
         verifyNoInteractions(paperService);
     }
 

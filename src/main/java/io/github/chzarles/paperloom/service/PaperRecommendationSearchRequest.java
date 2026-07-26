@@ -3,7 +3,6 @@ package io.github.chzarles.paperloom.service;
 public record PaperRecommendationSearchRequest(
         String queryText,
         String userId,
-        String orgTags,
         int paperLimit,
         int perPaperLocationLimit
 ) {
@@ -13,7 +12,6 @@ public record PaperRecommendationSearchRequest(
     public PaperRecommendationSearchRequest {
         queryText = queryText == null ? "" : queryText.trim();
         userId = userId == null ? "" : userId.trim();
-        orgTags = orgTags == null ? "" : orgTags.trim();
         paperLimit = PaperCandidateSearchRequest.clampLimit(paperLimit);
         perPaperLocationLimit = clampPerPaperLocationLimit(perPaperLocationLimit);
     }

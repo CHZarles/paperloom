@@ -35,7 +35,6 @@ public class PaperCollectionService {
     private final UserRepository userRepository;
     private final PaperRepository paperRepository;
     private final PaperSearchabilityService paperSearchabilityService;
-    private final OrgTagCacheService orgTagCacheService;
     private final PaperAccessService paperAccessService;
 
     public PaperCollectionService(PaperCollectionRepository collectionRepository,
@@ -43,14 +42,12 @@ public class PaperCollectionService {
                                   UserRepository userRepository,
                                   PaperRepository paperRepository,
                                   PaperSearchabilityService paperSearchabilityService,
-                                  OrgTagCacheService orgTagCacheService,
                                   PaperAccessService paperAccessService) {
         this.collectionRepository = collectionRepository;
         this.collectionPaperRepository = collectionPaperRepository;
         this.userRepository = userRepository;
         this.paperRepository = paperRepository;
         this.paperSearchabilityService = paperSearchabilityService;
-        this.orgTagCacheService = orgTagCacheService;
         this.paperAccessService = paperAccessService;
     }
 
@@ -68,14 +65,8 @@ public class PaperCollectionService {
         collectionRepository.findByOwnerIdOrderByUpdatedAtDesc(user.getId())
                 .forEach(collection -> visibleById.put(collection.getId(), collection));
 
-        List<String> orgTags = effectiveOrgTags(user);
-        if (!orgTags.isEmpty()) {
-            collectionRepository.findOrgVisibleCollections(orgTags)
-                    .forEach(collection -> visibleById.putIfAbsent(collection.getId(), collection));
-        }
-
         return visibleById.values().stream()
-                .filter(collection -> canView(user, collection, orgTags))
+                .filter(collection -> canView(user, collection))
                 .sorted(Comparator.comparing(PaperCollection::getUpdatedAt,
                         Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .map(collection -> toSummaryDto(collection, user))
@@ -90,10 +81,7 @@ public class PaperCollectionService {
         applyEditableFields(
                 collection,
                 requiredName(request == null ? null : request.name()),
-                request == null ? null : request.description(),
-                parseVisibility(request == null ? null : request.visibility()),
-                request == null ? null : request.orgTag(),
-                user
+                request == null ? null : request.description()
         );
         return toSummaryDto(collectionRepository.save(collection), user);
     }
@@ -113,10 +101,7 @@ public class PaperCollectionService {
         applyEditableFields(
                 collection,
                 requiredName(request == null ? null : request.name()),
-                request == null ? null : request.description(),
-                parseVisibility(request == null ? null : request.visibility()),
-                request == null ? null : request.orgTag(),
-                user
+                request == null ? null : request.description()
         );
         return toSummaryDto(collectionRepository.save(collection), user);
     }
@@ -183,7 +168,7 @@ public class PaperCollectionService {
     private PaperCollection visibleCollection(User user, Long collectionId) {
         PaperCollection collection = collectionRepository.findById(collectionId)
                 .orElseThrow(() -> new CustomException("Collection not found", HttpStatus.NOT_FOUND));
-        if (!canView(user, collection, effectiveOrgTags(user))) {
+        if (!canView(user, collection)) {
             throw new CustomException("Collection not found", HttpStatus.NOT_FOUND);
         }
         return collection;
@@ -195,13 +180,8 @@ public class PaperCollectionService {
         }
     }
 
-    private boolean canView(User user, PaperCollection collection, List<String> effectiveOrgTags) {
-        if (isOwner(user, collection) || isAdmin(user)) {
-            return true;
-        }
-        return collection.getVisibility() == PaperCollection.Visibility.ORG
-                && collection.getOrgTag() != null
-                && effectiveOrgTags.contains(collection.getOrgTag());
+    private boolean canView(User user, PaperCollection collection) {
+        return isOwner(user, collection) || isAdmin(user);
     }
 
     private boolean canEdit(User user, PaperCollection collection) {
@@ -218,21 +198,9 @@ public class PaperCollectionService {
 
     private void applyEditableFields(PaperCollection collection,
                                      String name,
-                                     String description,
-                                     PaperCollection.Visibility visibility,
-                                     String orgTag,
-                                     User user) {
-        String resolvedOrgTag = visibility == PaperCollection.Visibility.ORG
-                ? resolveOrgTag(orgTag, user)
-                : null;
+                                     String description) {
         collection.setName(name);
         collection.setDescription(trimDescription(description));
-        collection.setVisibility(visibility);
-        if (visibility == PaperCollection.Visibility.ORG) {
-            collection.setOrgTag(resolvedOrgTag);
-        } else {
-            collection.setOrgTag(null);
-        }
     }
 
     private String requiredName(String name) {
@@ -241,32 +209,6 @@ public class PaperCollectionService {
             throw new CustomException("Collection name is required", HttpStatus.BAD_REQUEST);
         }
         return trimmed;
-    }
-
-    private PaperCollection.Visibility parseVisibility(String visibility) {
-        String trimmed = trimToNull(visibility);
-        if (trimmed == null) {
-            return PaperCollection.Visibility.PRIVATE;
-        }
-        try {
-            return PaperCollection.Visibility.valueOf(trimmed.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new CustomException("Invalid collection visibility: " + visibility, HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    private String resolveOrgTag(String requestedOrgTag, User user) {
-        String orgTag = trimToNull(requestedOrgTag);
-        if (orgTag == null) {
-            orgTag = trimToNull(user.getPrimaryOrg());
-        }
-        if (orgTag == null) {
-            throw new CustomException("Organization tag is required for ORG collections", HttpStatus.BAD_REQUEST);
-        }
-        if (!isAdmin(user) && !effectiveOrgTags(user).contains(orgTag)) {
-            throw new CustomException("Forbidden", HttpStatus.FORBIDDEN);
-        }
-        return orgTag;
     }
 
     private String trimDescription(String description) {
@@ -283,48 +225,6 @@ public class PaperCollectionService {
                 .collect(Collectors.toCollection(LinkedHashSet::new))
                 .stream()
                 .toList();
-    }
-
-    private List<String> effectiveOrgTags(User user) {
-        LinkedHashSet<String> tags = new LinkedHashSet<>();
-        List<String> cachedTags = orgTagCacheService.getUserEffectiveOrgTags(user.getUsername());
-        if (cachedTags != null) {
-            cachedTags.stream()
-                    .map(this::trimToNull)
-                    .filter(Objects::nonNull)
-                    .forEach(tags::add);
-        }
-        LinkedHashSet<String> rawTags = rawOrgTags(user);
-        if (tags.isEmpty() || onlyDefaultOrgTag(tags)) {
-            tags.addAll(rawTags);
-        }
-        return new ArrayList<>(tags);
-    }
-
-    private LinkedHashSet<String> rawOrgTags(User user) {
-        LinkedHashSet<String> tags = new LinkedHashSet<>();
-        addCsvTags(tags, user.getOrgTags());
-        String primaryOrg = trimToNull(user.getPrimaryOrg());
-        if (primaryOrg != null) {
-            tags.add(primaryOrg);
-        }
-        return tags;
-    }
-
-    private boolean onlyDefaultOrgTag(Set<String> tags) {
-        return tags.size() == 1 && tags.stream().anyMatch(tag -> "DEFAULT".equalsIgnoreCase(tag));
-    }
-
-    private void addCsvTags(Set<String> tags, String csv) {
-        if (csv == null || csv.isBlank()) {
-            return;
-        }
-        for (String item : csv.split(",")) {
-            String tag = trimToNull(item);
-            if (tag != null) {
-                tags.add(tag);
-            }
-        }
     }
 
     private Map<String, Object> toSummaryDto(PaperCollection collection, User viewer) {
@@ -353,8 +253,6 @@ public class PaperCollectionService {
         dto.put("id", collection.getId());
         dto.put("name", collection.getName());
         dto.put("description", collection.getDescription());
-        dto.put("visibility", collection.getVisibility().name());
-        dto.put("orgTag", collection.getOrgTag());
         dto.put("ownerUserId", collection.getOwner() == null ? null : collection.getOwner().getId());
         dto.put("createdAt", collection.getCreatedAt());
         dto.put("updatedAt", collection.getUpdatedAt());
@@ -368,14 +266,13 @@ public class PaperCollectionService {
         }
 
         Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(memberPaperIds);
-        List<String> effectiveOrgTags = effectiveOrgTags(viewer);
         List<String> accessiblePaperIds = memberPaperIds.stream()
                 .filter(paperId -> papersByPaperId.getOrDefault(paperId, List.of()).stream()
-                        .anyMatch(paper -> canAccessPaper(viewer, paper, effectiveOrgTags)))
+                        .anyMatch(paper -> canAccessPaper(viewer, paper)))
                 .toList();
         long searchablePaperCount = accessiblePaperIds.stream()
                 .filter(paperId -> papersByPaperId.getOrDefault(paperId, List.of()).stream()
-                        .filter(paper -> canAccessPaper(viewer, paper, effectiveOrgTags))
+                        .filter(paper -> canAccessPaper(viewer, paper))
                         .anyMatch(paperSearchabilityService::isSearchable))
                 .count();
         return new MemberPaperAccess(accessiblePaperIds, searchablePaperCount);
@@ -408,20 +305,19 @@ public class PaperCollectionService {
             return;
         }
         Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(requestedPaperIds);
-        List<String> effectiveOrgTags = effectiveOrgTags(user);
         for (String paperId : requestedPaperIds) {
             List<Paper> papers = papersByPaperId.getOrDefault(paperId, List.of());
             if (papers.isEmpty()) {
                 throw new CustomException("Paper not found: " + paperId, HttpStatus.BAD_REQUEST);
             }
-            boolean accessible = papers.stream().anyMatch(paper -> canAccessPaper(user, paper, effectiveOrgTags));
+            boolean accessible = papers.stream().anyMatch(paper -> canAccessPaper(user, paper));
             if (!accessible) {
                 throw new CustomException("Forbidden", HttpStatus.FORBIDDEN);
             }
         }
     }
 
-    private boolean canAccessPaper(User user, Paper paper, List<String> effectiveOrgTags) {
+    private boolean canAccessPaper(User user, Paper paper) {
         return paperAccessService.canAccess(String.valueOf(user.getId()), paper.getPaperId());
     }
 

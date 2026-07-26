@@ -70,9 +70,7 @@ class PaperReadingModelServiceTest {
         PaperReadingModel model = service.replaceFromParsedPaper(
                 "paper-a",
                 parsedPaper("Readable text."),
-                "user-a",
-                "lab",
-                true
+                "user-a"
         );
 
         assertEquals(PaperReadingModelStatus.READING_MODEL_READY, model.getModelStatus());
@@ -102,9 +100,7 @@ class PaperReadingModelServiceTest {
         PaperReadingModel model = service.replaceFromParsedPaper(
                 "paper-a",
                 parsedPaper(" "),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         assertEquals(PaperReadingModelStatus.READING_MODEL_FAILED, model.getModelStatus());
@@ -133,7 +129,7 @@ class PaperReadingModelServiceTest {
                 new PaperReadingModelBuilder()
         );
 
-        PaperReadingModel model = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a", "lab", true);
+        PaperReadingModel model = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a");
 
         ArgumentCaptor<Iterable<PaperPage>> pagesCaptor = ArgumentCaptor.forClass(Iterable.class);
         ArgumentCaptor<Iterable<PaperSection>> sectionsCaptor = ArgumentCaptor.forClass(Iterable.class);
@@ -170,8 +166,8 @@ class PaperReadingModelServiceTest {
                 new PaperReadingModelBuilder()
         );
 
-        PaperReadingModel first = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a", "lab", true);
-        PaperReadingModel second = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a", "lab", true);
+        PaperReadingModel first = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a");
+        PaperReadingModel second = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a");
 
         assertFalse(first.getModelVersion().equals(second.getModelVersion()));
         verify(modelRepository).clearCurrentModels(eq("paper-a"), eq(first.getModelVersion()));

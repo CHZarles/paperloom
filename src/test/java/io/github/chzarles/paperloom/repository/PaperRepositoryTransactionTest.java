@@ -24,8 +24,6 @@ class PaperRepositoryTransactionTest {
         paper.setPaperId("litsearch:gold-1");
         paper.setOriginalFilename("litsearch:gold-1.json");
         paper.setUserId("eval-user");
-        paper.setOrgTag("eval-litsearch");
-        paper.setPublic(false);
         paper.setStatus(Paper.STATUS_COMPLETED);
 
         paperRepository.saveAndFlush(paper);

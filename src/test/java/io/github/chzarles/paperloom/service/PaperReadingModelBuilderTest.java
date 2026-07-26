@@ -37,9 +37,7 @@ class PaperReadingModelBuilderTest {
                 "paper-a",
                 "rm_test_1",
                 paper,
-                "user-a",
-                "lab",
-                true
+                "user-a"
         );
 
         assertEquals(2, result.pages().size());
@@ -75,9 +73,7 @@ class PaperReadingModelBuilderTest {
                 "rm_test_1",
                 paper,
                 3,
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         assertEquals(3, result.pages().size());
@@ -124,9 +120,7 @@ class PaperReadingModelBuilderTest {
                 "paper-a",
                 "rm_test_1",
                 paper,
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         assertEquals(1, result.readingElements().size());
@@ -143,7 +137,7 @@ class PaperReadingModelBuilderTest {
     void failsWhenParsedPaperIsMissing() {
         PaperReadingModelValidationException failure = assertThrows(
                 PaperReadingModelValidationException.class,
-                () -> builder.build("paper-a", "rm_test_1", null, "user-a", "lab", false)
+                () -> builder.build("paper-a", "rm_test_1", null, "user-a")
         );
 
         assertEquals("PARSED_PAPER_MISSING", failure.failureReason());
@@ -154,7 +148,7 @@ class PaperReadingModelBuilderTest {
     void failsWhenParsedElementsAreEmpty() {
         PaperReadingModelValidationException failure = assertThrows(
                 PaperReadingModelValidationException.class,
-                () -> builder.build("paper-a", "rm_test_1", parsedPaper(List.of()), "user-a", "lab", false)
+                () -> builder.build("paper-a", "rm_test_1", parsedPaper(List.of()), "user-a")
         );
 
         assertEquals("PARSED_ELEMENTS_EMPTY", failure.failureReason());
@@ -170,7 +164,7 @@ class PaperReadingModelBuilderTest {
 
         PaperReadingModelValidationException failure = assertThrows(
                 PaperReadingModelValidationException.class,
-                () -> builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false)
+                () -> builder.build("paper-a", "rm_test_1", paper, "user-a")
         );
 
         assertEquals("NO_READABLE_NUMBERED_TEXT", failure.failureReason());
@@ -196,9 +190,7 @@ class PaperReadingModelBuilderTest {
                 "paper-a",
                 "rm_test_1",
                 paper,
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         assertEquals("First\nLine\nSecond", result.pages().get(0).getPageText());

@@ -82,16 +82,5 @@ public class PaperTextChunk {
      */
     @Column(nullable = false, name = "user_id", length = 64)
     private String userId;
-    
-    /**
-     * 论文所属组织标签
-     */
-    @Column(name = "org_tag", length = 50)
-    private String orgTag;
-    
-    /**
-     * 论文是否公开
-     */
-    @Column(name = "is_public", nullable = false)
-    private boolean isPublic = false;
+
 }

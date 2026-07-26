@@ -21,9 +21,7 @@ async function installMockLoginState(page: import('@playwright/test').Page) {
         data: {
           id: 1,
           username: 'admin',
-          role: 'ADMIN',
-          orgTags: ['default'],
-          primaryOrg: 'default'
+          role: 'ADMIN'
         }
       })
     })
@@ -104,13 +102,6 @@ test('chat page loads only the selected conversation history on entry', async ({
   let scopedConversationRequests = 0;
   let currentSessionRequests = 0;
 
-  await page.route('**/users/org-tags', route =>
-    fulfillApi(route, {
-      orgTags: ['default'],
-      primaryOrg: 'default',
-      orgTagDetails: [{ tagId: 'default', name: 'Default', description: 'Default workspace' }]
-    })
-  );
   await page.route('**/users/usage', route =>
     fulfillApi(route, {
       day: '2026-07-01',

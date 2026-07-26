@@ -114,63 +114,12 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
-    name: 'org-tag',
-    path: '/org-tag',
-    component: 'layout.base$view.org-tag',
-    meta: {
-      title: 'org-tag',
-      i18nKey: 'route.org-tag',
-      icon: 'lucide:tags',
-      roles: ['ADMIN'],
-      order: 4,
-      hideInMenu: true
-    }
-  },
-  {
     name: 'personal-center',
     path: '/personal-center',
     component: 'layout.base$view.personal-center',
     meta: {
       title: 'personal-center',
       i18nKey: 'route.personal-center',
-      hideInMenu: true
-    }
-  },
-  {
-    name: 'recharge',
-    path: '/recharge',
-    component: 'layout.base$view.recharge',
-    meta: {
-      title: 'recharge',
-      i18nKey: 'route.recharge',
-      icon: 'lucide:credit-card',
-      order: 8,
-      hideInMenu: true
-    }
-  },
-  {
-    name: 'recharge-manage',
-    path: '/recharge-manage',
-    component: 'layout.base$view.recharge-manage',
-    meta: {
-      title: 'recharge-manage',
-      i18nKey: 'route.recharge-manage',
-      icon: 'lucide:receipt',
-      roles: ['ADMIN'],
-      order: 9,
-      hideInMenu: true
-    }
-  },
-  {
-    name: 'usage-monitor',
-    path: '/usage-monitor',
-    component: 'layout.base$view.usage-monitor',
-    meta: {
-      title: 'usage-monitor',
-      i18nKey: 'route.usage-monitor',
-      icon: 'lucide:chart-line',
-      roles: ['ADMIN'],
-      order: 6,
       hideInMenu: true
     }
   }

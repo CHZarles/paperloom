@@ -207,13 +207,11 @@ public class PaperController {
      * 获取用户可访问的所有论文列表。
      *
      * @param userId 当前用户ID
-     * @param orgTags 用户所属组织标签
      * @return 可访问的论文列表
      */
     @GetMapping("/accessible")
     public ResponseEntity<?> getAccessiblePapers(
             @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String query,
@@ -222,8 +220,7 @@ public class PaperController {
         LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_ACCESSIBLE_PAPERS");
         try {
             LogUtils.logBusiness("GET_ACCESSIBLE_PAPERS", userId,
-                    "接收到获取可访问论文请求: orgTags=%s, query=%s, readiness=%s",
-                    orgTags,
+                    "接收到获取可访问论文请求: query=%s, readiness=%s",
                     query,
                     readiness);
 
@@ -240,13 +237,13 @@ public class PaperController {
             if (isPagedRequest(page, size) || isCandidateSearchRequest(query, readiness)) {
                 PageRequest pageRequest = toPageRequest(page, size);
                 Page<Paper> paperPage = isCandidateSearchRequest(query, readiness)
-                        ? paperService.searchAccessiblePaperCandidates(userId, orgTags, query, readiness, pageRequest)
-                        : paperService.getAccessiblePapersPage(userId, orgTags, pageRequest);
+                        ? paperService.searchAccessiblePaperCandidates(userId, query, readiness, pageRequest)
+                        : paperService.getAccessiblePapersPage(userId, pageRequest);
                 List<Map<String, Object>> paperData = convertPapersToResponse(paperPage.getContent());
                 data = buildPageResponse(paperData, page, size, paperPage.getTotalElements());
                 total = paperPage.getTotalElements();
             } else {
-                List<Paper> files = paperService.getAccessiblePapers(userId, orgTags);
+                List<Paper> files = paperService.getAccessiblePapers(userId);
                 data = convertPapersToResponse(files);
                 total = files.size();
             }
@@ -273,8 +270,7 @@ public class PaperController {
     @GetMapping
     public ResponseEntity<?> getPapers(
             @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags,
-            @RequestParam(defaultValue = "accessible") String scope,
+                        @RequestParam(defaultValue = "accessible") String scope,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String query,
@@ -293,14 +289,13 @@ public class PaperController {
             }
             return response;
         }
-        return getAccessiblePapers(userId, orgTags, page, size, query, readiness);
+        return getAccessiblePapers(userId, page, size, query, readiness);
     }
 
     @PostMapping("/recommendation-candidates")
     public ResponseEntity<?> recommendationCandidates(
             @RequestBody(required = false) PaperRecommendationCandidatesRequest request,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
+            @RequestAttribute("userId") String userId) {
         if (request == null || !hasText(request.queryText())) {
             return ResponseEntity.badRequest().body(Map.of(
                     "code", HttpStatus.BAD_REQUEST.value(),
@@ -311,7 +306,6 @@ public class PaperController {
         PaperRecommendationSearchRequest searchRequest = new PaperRecommendationSearchRequest(
                 request.queryText(),
                 userId,
-                orgTags,
                 PaperCandidateSearchRequest.clampLimit(request.paperLimit()),
                 PaperRecommendationSearchRequest.clampPerPaperLocationLimit(request.perPaperLocationLimit())
         );
@@ -531,9 +525,8 @@ public class PaperController {
     @GetMapping("/{paperId}/tables")
     public ResponseEntity<?> listTables(
             @PathVariable String paperId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -552,9 +545,8 @@ public class PaperController {
     public ResponseEntity<?> getTable(
             @PathVariable String paperId,
             @PathVariable String tableId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+        Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -575,9 +567,8 @@ public class PaperController {
     public ResponseEntity<?> getTableScreenshot(
             @PathVariable String paperId,
             @PathVariable String tableId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+                    Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -598,9 +589,8 @@ public class PaperController {
     public ResponseEntity<?> getPageScreenshot(
             @PathVariable String paperId,
             @PathVariable Integer pageNumber,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+                    Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -616,9 +606,8 @@ public class PaperController {
     @GetMapping("/{paperId}/figures")
     public ResponseEntity<?> listFigures(
             @PathVariable String paperId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+                    Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -637,9 +626,8 @@ public class PaperController {
     public ResponseEntity<?> getFigure(
             @PathVariable String paperId,
             @PathVariable String figureId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+                    Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -660,9 +648,8 @@ public class PaperController {
     public ResponseEntity<?> getFigureScreenshot(
             @PathVariable String paperId,
             @PathVariable String figureId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+                    Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -682,9 +669,8 @@ public class PaperController {
     @GetMapping("/{paperId}/formulas")
     public ResponseEntity<?> listFormulas(
             @PathVariable String paperId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+                    Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -703,9 +689,8 @@ public class PaperController {
     public ResponseEntity<?> getFormula(
             @PathVariable String paperId,
             @PathVariable String formulaId,
-            @RequestAttribute("userId") String userId,
-            @RequestAttribute("orgTags") String orgTags) {
-        Optional<Paper> paper = findAccessiblePaper(paperId, userId, orgTags);
+            @RequestAttribute("userId") String userId) {
+                    Optional<Paper> paper = findAccessiblePaper(paperId, userId);
         if (paper.isEmpty()) {
             return paperNotFoundOrForbidden();
         }
@@ -804,8 +789,8 @@ public class PaperController {
         return 0L;
     }
 
-    private Optional<Paper> findAccessiblePaper(String paperId, String userId, String orgTags) {
-        return paperService.getAccessiblePapers(userId, orgTags).stream()
+    private Optional<Paper> findAccessiblePaper(String paperId, String userId) {
+        return paperService.getAccessiblePapers(userId).stream()
                 .filter(paper -> paper.getPaperId().equals(paperId))
                 .findFirst();
     }
@@ -1031,7 +1016,6 @@ public class PaperController {
         try {
             RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
             String userId = authContext.userId();
-            String orgTags = authContext.orgTags();
 
             LogUtils.logBusiness("DOWNLOAD_PAPER", userId != null ? userId : "anonymous", "接收到论文下载请求: paperId=%s", paperId);
 
@@ -1067,7 +1051,7 @@ public class PaperController {
                 return ResponseEntity.ok(response);
             }
 
-            List<Paper> accessibleFiles = paperService.getAccessiblePapers(userId, orgTags);
+            List<Paper> accessibleFiles = paperService.getAccessiblePapers(userId);
 
             Optional<Paper> targetFile = accessibleFiles.stream()
                     .filter(file -> file.getPaperId().equals(paperId))
@@ -1139,7 +1123,6 @@ public class PaperController {
         try {
             RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
             String userId = authContext.userId();
-            String orgTags = authContext.orgTags();
 
             LogUtils.logBusiness("PREVIEW_PAPER", userId != null ? userId : "anonymous",
                     "接收到论文预览请求: paperId=%s, pageNumber=%s", paperId, pageNumber);
@@ -1176,7 +1159,7 @@ public class PaperController {
                 return ResponseEntity.ok(response);
             }
 
-            List<Paper> accessibleFiles = paperService.getAccessiblePapers(userId, orgTags);
+            List<Paper> accessibleFiles = paperService.getAccessiblePapers(userId);
 
             Optional<Paper> targetFile = accessibleFiles.stream()
                     .filter(f -> f.getPaperId().equals(paperId))
@@ -1384,7 +1367,7 @@ public class PaperController {
 
             Map<String, Object> data = detailOpt.get();
             String paperId = String.valueOf(data.get("paperId"));
-            boolean hasAccess = paperService.getAccessiblePapers(authContext.userId(), authContext.orgTags()).stream()
+            boolean hasAccess = paperService.getAccessiblePapers(authContext.userId()).stream()
                     .anyMatch(file -> file.getPaperId().equals(paperId));
             if (!hasAccess) {
                 monitor.end("获取引用详情失败：无权限访问引用论文");
@@ -1492,7 +1475,7 @@ public class PaperController {
         if (authContext.userId() == null) {
             return findPublishedPaper(paperId);
         }
-        return findAccessiblePaper(paperId, authContext.userId(), authContext.orgTags());
+        return findAccessiblePaper(paperId, authContext.userId());
     }
 
     private Optional<Paper> findPublishedPaper(String paperId) {
@@ -1599,13 +1582,10 @@ public class PaperController {
         }
 
         if (jwtToken == null || jwtToken.isBlank()) {
-            return new RequestAuthContext(null, null);
+            return new RequestAuthContext(null);
         }
 
-        return new RequestAuthContext(
-                jwtUtils.extractUserIdFromToken(jwtToken),
-                jwtUtils.extractOrgTagsFromToken(jwtToken)
-        );
+        return new RequestAuthContext(jwtUtils.extractUserIdFromToken(jwtToken));
     }
 
     private String extractBearerToken(String authorization) {
@@ -1620,6 +1600,6 @@ public class PaperController {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private record RequestAuthContext(String userId, String orgTags) {}
+    private record RequestAuthContext(String userId) {}
 
 }

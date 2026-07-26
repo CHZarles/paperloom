@@ -136,8 +136,6 @@ class PaperControllerContractTest {
         paper.setStatus(Paper.STATUS_COMPLETED);
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
         paper.setUserId("2");
-        paper.setOrgTag("lab");
-        paper.setPublic(true);
 
         PaperParserArtifact artifact = new PaperParserArtifact();
         artifact.setPaperId("0123456789abcdef0123456789abcdef");
@@ -160,7 +158,6 @@ class PaperControllerContractTest {
         assertEquals("original.pdf", item.get("originalFilename"));
         assertEquals("COMPLETED", item.get("processingStatus"));
         assertEquals("GLOBAL", item.get("libraryScope"));
-        assertFalse(item.containsKey("isPublic"));
         assertFalse(item.containsKey("fileMd5"));
         assertFalse(item.containsKey("fileName"));
         assertFalse(item.containsKey("sourceFileName"));
@@ -185,14 +182,13 @@ class PaperControllerContractTest {
             paper.setStatus(Paper.STATUS_COMPLETED);
             paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
             paper.setUserId("1");
-            paper.setPublic(true);
             pageRows.add(paper);
         }
 
-        when(paperService.getAccessiblePapersPage(eq("1"), eq("default"), eq(PageRequest.of(0, 10))))
+        when(paperService.getAccessiblePapersPage(eq("1"), eq(PageRequest.of(0, 10))))
                 .thenReturn(new PageImpl<>(pageRows, PageRequest.of(0, 10), 25));
 
-        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, null);
+        var response = paperController.getAccessiblePapers("1", 1, 10, null, null);
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         Map<?, ?> data = (Map<?, ?>) body.get("data");
         List<?> content = (List<?>) data.get("content");
@@ -202,7 +198,7 @@ class PaperControllerContractTest {
         assertEquals(1, data.get("number"));
         assertEquals(10, data.get("size"));
         verify(paperParserArtifactService, times(10)).findLatestParserArtifact(anyString());
-        verify(paperService, never()).getAccessiblePapers("1", "default");
+        verify(paperService, never()).getAccessiblePapers("1");
     }
 
     @Test
@@ -224,13 +220,12 @@ class PaperControllerContractTest {
 
         when(paperService.searchAccessiblePaperCandidates(
                 eq("1"),
-                eq("default"),
                 eq("agent"),
                 isNull(),
                 eq(PageRequest.of(0, 10))
         )).thenReturn(new PageImpl<>(List.of(matchingPaper), PageRequest.of(0, 10), 1));
 
-        var response = paperController.getAccessiblePapers("1", "default", 1, 10, "agent", null);
+        var response = paperController.getAccessiblePapers("1", 1, 10, "agent", null);
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         Map<?, ?> data = (Map<?, ?>) body.get("data");
         List<?> content = (List<?>) data.get("content");
@@ -243,7 +238,6 @@ class PaperControllerContractTest {
                 .anyMatch(row -> nonMatchingPaper.getPaperId().equals(row.get("paperId"))));
         verify(paperService).searchAccessiblePaperCandidates(
                 eq("1"),
-                eq("default"),
                 eq("agent"),
                 isNull(),
                 eq(PageRequest.of(0, 10))
@@ -283,8 +277,7 @@ class PaperControllerContractTest {
 
         var response = paperController.recommendationCandidates(
                 new PaperController.PaperRecommendationCandidatesRequest("Agentic eval", 999, 99),
-                "1",
-                "default"
+                "1"
         );
 
         assertEquals(200, response.getStatusCode().value());
@@ -304,7 +297,7 @@ class PaperControllerContractTest {
                 ArgumentCaptor.forClass(PaperRecommendationSearchRequest.class);
         verify(paperRecommendationCandidateService).search(requestCaptor.capture());
         assertEquals("1", requestCaptor.getValue().userId());
-        assertEquals("default", requestCaptor.getValue().orgTags());
+
         assertEquals(100, requestCaptor.getValue().paperLimit());
         assertEquals(10, requestCaptor.getValue().perPaperLocationLimit());
     }
@@ -313,8 +306,7 @@ class PaperControllerContractTest {
     void recommendationCandidateEndpointRejectsBlankQuery() {
         var response = paperController.recommendationCandidates(
                 new PaperController.PaperRecommendationCandidatesRequest(" ", 20, 3),
-                "1",
-                "default"
+                "1"
         );
 
         assertEquals(400, response.getStatusCode().value());
@@ -511,13 +503,12 @@ class PaperControllerContractTest {
 
         when(paperService.searchAccessiblePaperCandidates(
                 eq("1"),
-                eq("default"),
                 isNull(),
                 eq("searchable"),
                 eq(PageRequest.of(0, 10))
         )).thenReturn(new PageImpl<>(List.of(searchablePaper), PageRequest.of(0, 10), 1));
 
-        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, "searchable");
+        var response = paperController.getAccessiblePapers("1", 1, 10, null, "searchable");
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         Map<?, ?> data = (Map<?, ?>) body.get("data");
         List<?> content = (List<?>) data.get("content");
@@ -531,7 +522,6 @@ class PaperControllerContractTest {
                 .anyMatch(row -> unsearchablePaper.getPaperId().equals(row.get("paperId"))));
         verify(paperService).searchAccessiblePaperCandidates(
                 eq("1"),
-                eq("default"),
                 isNull(),
                 eq("searchable"),
                 eq(PageRequest.of(0, 10))
@@ -548,10 +538,10 @@ class PaperControllerContractTest {
                 Paper.STATUS_COMPLETED
         );
 
-        when(paperService.getAccessiblePapersPage(eq("1"), eq("default"), eq(PageRequest.of(0, 10))))
+        when(paperService.getAccessiblePapersPage(eq("1"), eq(PageRequest.of(0, 10))))
                 .thenReturn(new PageImpl<>(List.of(paper), PageRequest.of(0, 10), 1));
 
-        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, null);
+        var response = paperController.getAccessiblePapers("1", 1, 10, null, null);
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         Map<?, ?> data = (Map<?, ?>) body.get("data");
         List<?> content = (List<?>) data.get("content");
@@ -564,14 +554,13 @@ class PaperControllerContractTest {
 
     @Test
     void accessiblePapersRejectsUnsupportedReadiness() {
-        var response = paperController.getAccessiblePapers("1", "default", 1, 10, null, "indexed");
+        var response = paperController.getAccessiblePapers("1", 1, 10, null, "indexed");
         Map<?, ?> body = (Map<?, ?>) response.getBody();
 
         assertEquals(400, response.getStatusCode().value());
         assertEquals(400, body.get("code"));
         verify(paperService, never()).searchAccessiblePaperCandidates(
                 eq("1"),
-                eq("default"),
                 isNull(),
                 eq("indexed"),
                 eq(PageRequest.of(0, 10))
@@ -646,7 +635,6 @@ class PaperControllerContractTest {
         paper.setVectorizationStatus(vectorizationStatus);
         paper.setStatus(status);
         paper.setUserId("1");
-        paper.setPublic(true);
         return paper;
     }
 }

@@ -74,13 +74,11 @@ public class PaperVisualAssetService {
                                                       String modelVersion,
                                                       byte[] pdfBytes,
                                                       ParsedPaper parsedPaper,
-                                                      String userId,
-                                                      String orgTag,
-                                                      boolean isPublic) {
+                                                      String userId) {
         deleteVisualAssets(paperId);
 
         ReadingElementIndex readingElementIndex = readingElementIndex(paperId, modelVersion);
-        saveParserImages(paperId, modelVersion, parsedPaper, readingElementIndex, userId, orgTag, isPublic);
+        saveParserImages(paperId, modelVersion, parsedPaper, readingElementIndex, userId);
 
         if (pdfBytes == null || pdfBytes.length == 0) {
             return paperVisualAssetRepository.findByPaperId(paperId);
@@ -108,9 +106,7 @@ public class PaperVisualAssetService {
                                 null,
                                 null,
                                 null,
-                                userId,
-                                orgTag,
-                                isPublic
+                                userId
                         );
                     } catch (Exception e) {
                         logger.warn("保存页面截图失败: paperId={}, pageNumber={}, error={}",
@@ -127,9 +123,7 @@ public class PaperVisualAssetService {
                                 null,
                                 null,
                                 e.getMessage(),
-                                userId,
-                                orgTag,
-                                isPublic
+                                userId
                         );
                     }
                 } catch (Exception e) {
@@ -147,14 +141,12 @@ public class PaperVisualAssetService {
                             null,
                             null,
                             e.getMessage(),
-                            userId,
-                            orgTag,
-                            isPublic
+                            userId
                     );
                 }
             }
 
-            saveReadingElementCrops(paperId, modelVersion, readingElementIndex, pageImages, userId, orgTag, isPublic);
+            saveReadingElementCrops(paperId, modelVersion, readingElementIndex, pageImages, userId);
 
             return paperVisualAssetRepository.findByPaperId(paperId);
         } catch (Exception e) {
@@ -302,9 +294,7 @@ public class PaperVisualAssetService {
                                   String modelVersion,
                                   ParsedPaper parsedPaper,
                                   ReadingElementIndex readingElementIndex,
-                                  String userId,
-                                  String orgTag,
-                                  boolean isPublic) {
+                                  String userId) {
         Map<String, byte[]> imageBytesByPath = parserImageBytes(parsedPaper);
         for (ParserImageSource source : parserImageSources(parsedPaper)) {
             PaperReadingElement readingElement = readingElementIndex.find(source);
@@ -329,9 +319,7 @@ public class PaperVisualAssetService {
                         source.parserElementId(),
                         source.parserImagePath(),
                         "Parser image referenced by content_list but absent from MinerU artifact",
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
                 continue;
             }
@@ -350,9 +338,7 @@ public class PaperVisualAssetService {
                         readingElement == null ? null : readingElement.getReadingElementId(),
                         source.parserElementId(),
                         source.parserImagePath(),
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
             } catch (Exception e) {
                 logger.warn("保存 MinerU parser image 失败: paperId={}, imgPath={}, error={}",
@@ -369,9 +355,7 @@ public class PaperVisualAssetService {
                         source.parserElementId(),
                         source.parserImagePath(),
                         e.getMessage(),
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
             }
         }
@@ -547,9 +531,7 @@ public class PaperVisualAssetService {
                                          String modelVersion,
                                          ReadingElementIndex readingElementIndex,
                                          Map<Integer, ImageBytes> pageImages,
-                                         String userId,
-                                         String orgTag,
-                                         boolean isPublic) {
+                                         String userId) {
         for (PaperReadingElement element : readingElementIndex.elements()) {
             if (element == null || element.getPageNumber() == null || element.getBboxJson() == null
                     || element.getBboxJson().isBlank()) {
@@ -573,9 +555,7 @@ public class PaperVisualAssetService {
                         element.getParserElementId(),
                         element.getParserImagePath(),
                         "PAGE_IMAGE_NOT_RENDERED",
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
                 continue;
             }
@@ -604,9 +584,7 @@ public class PaperVisualAssetService {
                         element.getReadingElementId(),
                         element.getParserElementId(),
                         element.getParserImagePath(),
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
             } catch (Exception e) {
                 logger.warn("生成阅读元素裁剪图失败: paperId={}, readingElementId={}, error={}",
@@ -623,9 +601,7 @@ public class PaperVisualAssetService {
                         element.getParserElementId(),
                         element.getParserImagePath(),
                         e.getMessage(),
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
             }
         }
@@ -651,9 +627,7 @@ public class PaperVisualAssetService {
                                              String readingElementId,
                                              String parserElementId,
                                              String parserImagePath,
-                                             String userId,
-                                             String orgTag,
-                                             boolean isPublic) throws Exception {
+                                             String userId) throws Exception {
         return saveVisualAsset(
                 paperId,
                 assetType,
@@ -667,9 +641,7 @@ public class PaperVisualAssetService {
                 readingElementId,
                 parserElementId,
                 parserImagePath,
-                userId,
-                orgTag,
-                isPublic
+                userId
         );
     }
 
@@ -685,9 +657,7 @@ public class PaperVisualAssetService {
                                              String readingElementId,
                                              String parserElementId,
                                              String parserImagePath,
-                                             String userId,
-                                             String orgTag,
-                                             boolean isPublic) throws Exception {
+                                             String userId) throws Exception {
         String effectiveContentType = contentType == null || contentType.isBlank() ? CONTENT_TYPE_PNG : contentType;
         minioClient.putObject(PutObjectArgs.builder()
                 .bucket(BUCKET)
@@ -713,8 +683,6 @@ public class PaperVisualAssetService {
         asset.setHeightPx(imageBytes.heightPx());
         asset.setSha256(sha256(imageBytes.bytes()));
         asset.setUserId(userId);
-        asset.setOrgTag(orgTag);
-        asset.setPublic(isPublic);
         return paperVisualAssetRepository.save(asset);
     }
 
@@ -729,9 +697,7 @@ public class PaperVisualAssetService {
                                                 String parserElementId,
                                                 String parserImagePath,
                                                 String failureReason,
-                                                String userId,
-                                                String orgTag,
-                                                boolean isPublic) {
+                                                String userId) {
         PaperVisualAsset asset = new PaperVisualAsset();
         asset.setPaperId(paperId);
         asset.setAssetType(assetType);
@@ -750,8 +716,6 @@ public class PaperVisualAssetService {
         asset.setSha256(null);
         asset.setFailureReason(failureReason);
         asset.setUserId(userId);
-        asset.setOrgTag(orgTag);
-        asset.setPublic(isPublic);
         return paperVisualAssetRepository.save(asset);
     }
 

@@ -28,7 +28,7 @@ class LlmProviderRouterPromptTest {
 
     @Test
     void disablesMiniMaxM3ThinkingInOpenAiRequests() {
-        LlmProviderRouter router = new LlmProviderRouter(new AiProperties(), null, null, null, new ObjectMapper());
+        LlmProviderRouter router = new LlmProviderRouter(new AiProperties(), null, null, new ObjectMapper());
 
         Map<String, Object> request = ReflectionTestUtils.invokeMethod(
                 router,
@@ -45,7 +45,7 @@ class LlmProviderRouterPromptTest {
 
     @Test
     void reactRequestOmitsMaxCompletionTokensWhenUnlimited() {
-        LlmProviderRouter router = new LlmProviderRouter(new AiProperties(), null, null, null, new ObjectMapper());
+        LlmProviderRouter router = new LlmProviderRouter(new AiProperties(), null, null, new ObjectMapper());
 
         Map<String, Object> unlimitedRequest = ReflectionTestUtils.invokeMethod(
                 router,
@@ -86,11 +86,10 @@ class LlmProviderRouterPromptTest {
         server.start();
 
         try {
-            RateLimitService rateLimitService = Mockito.mock(RateLimitService.class);
             UsageQuotaService usageQuotaService = Mockito.mock(UsageQuotaService.class);
             ModelProviderConfigService modelProviderConfigService = Mockito.mock(ModelProviderConfigService.class);
-            UsageQuotaService.TokenReservationBundle reservation = UsageQuotaService.TokenReservationBundle.noop("llm", "user-1");
-            when(rateLimitService.reserveLlmUsage(eq("user-1"), anyInt(), anyInt())).thenReturn(reservation);
+            UsageQuotaService.TokenReservation reservation = UsageQuotaService.TokenReservation.noop("llm", "user-1");
+            when(usageQuotaService.reserveLlmTokens(eq("user-1"), anyInt(), anyInt())).thenReturn(reservation);
             when(usageQuotaService.estimateTextTokens(org.mockito.ArgumentMatchers.any())).thenReturn(1);
             when(modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM))
                     .thenReturn(new ModelProviderConfigService.ActiveProviderView(
@@ -104,7 +103,6 @@ class LlmProviderRouterPromptTest {
                     ));
             LlmProviderRouter router = new LlmProviderRouter(
                     new AiProperties(),
-                    rateLimitService,
                     usageQuotaService,
                     modelProviderConfigService,
                     new ObjectMapper(),
@@ -172,11 +170,10 @@ class LlmProviderRouterPromptTest {
         server.start();
 
         try {
-            RateLimitService rateLimitService = Mockito.mock(RateLimitService.class);
             UsageQuotaService usageQuotaService = Mockito.mock(UsageQuotaService.class);
             ModelProviderConfigService modelProviderConfigService = Mockito.mock(ModelProviderConfigService.class);
-            UsageQuotaService.TokenReservationBundle reservation = UsageQuotaService.TokenReservationBundle.noop("llm", "user-1");
-            when(rateLimitService.reserveLlmUsage(eq("user-1"), anyInt(), anyInt())).thenReturn(reservation);
+            UsageQuotaService.TokenReservation reservation = UsageQuotaService.TokenReservation.noop("llm", "user-1");
+            when(usageQuotaService.reserveLlmTokens(eq("user-1"), anyInt(), anyInt())).thenReturn(reservation);
             when(usageQuotaService.estimateTextTokens(org.mockito.ArgumentMatchers.any())).thenReturn(1);
             when(modelProviderConfigService.getActiveProvider(ModelProviderConfigService.SCOPE_LLM))
                     .thenReturn(new ModelProviderConfigService.ActiveProviderView(
@@ -190,7 +187,6 @@ class LlmProviderRouterPromptTest {
                     ));
             LlmProviderRouter router = new LlmProviderRouter(
                     new AiProperties(),
-                    rateLimitService,
                     usageQuotaService,
                     modelProviderConfigService,
                     new ObjectMapper(),

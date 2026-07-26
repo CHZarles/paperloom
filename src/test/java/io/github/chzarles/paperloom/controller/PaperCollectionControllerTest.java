@@ -55,11 +55,7 @@ class PaperCollectionControllerTest {
     @Test
     void createPassesRequestAndUserId() {
         CreateCollectionRequest request = new CreateCollectionRequest(
-                "Agent papers",
-                "Agent system reading set",
-                "PRIVATE",
-                null
-        );
+                "Agent papers", "Agent system reading set");
         Map<String, Object> dto = Map.of(
                 "id", 12L,
                 "name", "Agent papers",
@@ -78,7 +74,7 @@ class PaperCollectionControllerTest {
 
     @Test
     void forbiddenServiceExceptionReturns403() {
-        UpdateCollectionRequest request = new UpdateCollectionRequest("Edited", "Nope", "ORG", "lab");
+        UpdateCollectionRequest request = new UpdateCollectionRequest("Edited", "Nope");
         when(service.updateCollection(2L, 12L, request))
                 .thenThrow(new CustomException("Forbidden", HttpStatus.FORBIDDEN));
 

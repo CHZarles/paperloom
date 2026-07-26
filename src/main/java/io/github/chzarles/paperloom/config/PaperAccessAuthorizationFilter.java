@@ -19,12 +19,11 @@ import java.util.Optional;
 
 /**
  * 提取请求身份，并对带 paper_id 的读取请求执行个人空间或全局发布授权。
- * 类名暂时保留，避免扩大本轮配置改动。
  */
 @Component
-public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
+public class PaperAccessAuthorizationFilter extends OncePerRequestFilter {
 
-    private static final Logger logger = LoggerFactory.getLogger(OrgTagAuthorizationFilter.class);
+    private static final Logger logger = LoggerFactory.getLogger(PaperAccessAuthorizationFilter.class);
     @Autowired
     private JwtUtils jwtUtils;
 
@@ -124,7 +123,7 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
             logger.debug("论文资源未找到，返回404: {}", resourceId);
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         } catch (Exception e) {
-            logger.error("组织标签授权过滤器发生错误: {}", e.getMessage(), e);
+            logger.error("论文访问授权过滤器发生错误: {}", e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
@@ -136,12 +135,10 @@ public class OrgTagAuthorizationFilter extends OncePerRequestFilter {
 
         String userId = jwtUtils.extractUserIdFromToken(token);
         String role = jwtUtils.extractRoleFromToken(token);
-        String orgTags = jwtUtils.extractOrgTagsFromToken(token);
         if (userId != null) {
             request.setAttribute("userId", userId);
             request.setAttribute("role", role);
-            request.setAttribute("orgTags", orgTags);
-            logger.debug("为{}请求设置userId属性: {}, role: {}, orgTags: {}", operation, userId, role, orgTags);
+            logger.debug("为{}请求设置userId属性: {}, role: {}", operation, userId, role);
         } else {
             logger.warn("{}请求中无法从token提取userId", operation);
         }

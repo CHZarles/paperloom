@@ -25,12 +25,6 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    @Column(name = "org_tags")
-    private String orgTags; // 用户所属组织标签，多个用逗号分隔
-
-    @Column(name = "primary_org")
-    private String primaryOrg; // 用户主组织标签
-
     @CreationTimestamp
     private LocalDateTime createdAt;
 

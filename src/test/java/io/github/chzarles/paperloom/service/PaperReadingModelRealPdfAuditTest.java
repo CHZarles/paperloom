@@ -151,9 +151,7 @@ class PaperReadingModelRealPdfAuditTest {
                 paperId,
                 parsedPaper,
                 pdfPageCount,
-                "audit-user",
-                "audit-org",
-                false
+                "audit-user"
         );
         assertEquals(PaperReadingModelStatus.READING_MODEL_READY, model.getModelStatus(), "model not ready for " + pdf);
         assertTrue(model.isCurrent(), "model not current for " + pdf);
@@ -162,9 +160,7 @@ class PaperReadingModelRealPdfAuditTest {
                 model.getModelVersion(),
                 pdfBytes,
                 parsedPaper,
-                "audit-user",
-                "audit-org",
-                false
+                "audit-user"
         );
 
         List<PaperPage> pages = pageRepository.findByPaperIdAndModelVersionOrderByPageNumberAsc(

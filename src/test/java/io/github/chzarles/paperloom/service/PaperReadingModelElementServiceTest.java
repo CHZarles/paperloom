@@ -62,9 +62,7 @@ class PaperReadingModelElementServiceTest {
         PaperReadingModel model = service.replaceFromParsedPaper(
                 "paper-elements",
                 parsedPaperWithSeparateTableCaption(),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         List<PaperReadingElement> matches = readingElementRepository.searchByPaperIdAndModelVersion(

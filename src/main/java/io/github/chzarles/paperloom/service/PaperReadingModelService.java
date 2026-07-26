@@ -43,19 +43,15 @@ public class PaperReadingModelService {
     @Transactional
     public PaperReadingModel replaceFromParsedPaper(String paperId,
                                                     ParsedPaper parsedPaper,
-                                                    String userId,
-                                                    String orgTag,
-                                                    boolean isPublic) {
-        return replaceFromParsedPaper(paperId, parsedPaper, null, userId, orgTag, isPublic);
+                                                    String userId) {
+        return replaceFromParsedPaper(paperId, parsedPaper, null, userId);
     }
 
     @Transactional
     public PaperReadingModel replaceFromParsedPaper(String paperId,
                                                     ParsedPaper parsedPaper,
                                                     Integer physicalPageCount,
-                                                    String userId,
-                                                    String orgTag,
-                                                    boolean isPublic) {
+                                                    String userId) {
         String modelVersion = newModelVersion();
         Integer pageCount = resolvePageCount(parsedPaper, physicalPageCount);
         PaperReadingModel model = new PaperReadingModel();
@@ -73,7 +69,7 @@ public class PaperReadingModelService {
 
         PaperReadingModelBuildResult result;
         try {
-            result = builder.build(paperId, modelVersion, parsedPaper, physicalPageCount, userId, orgTag, isPublic);
+            result = builder.build(paperId, modelVersion, parsedPaper, physicalPageCount, userId);
         } catch (PaperReadingModelValidationException exception) {
             model.setModelStatus(PaperReadingModelStatus.READING_MODEL_FAILED);
             model.setFailureReason(exception.failureReason());

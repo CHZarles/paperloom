@@ -104,9 +104,7 @@ async function installMockLoginState(page: Page) {
         data: {
           id: 1,
           username: 'admin',
-          role: 'ADMIN',
-          orgTags: ['default'],
-          primaryOrg: 'default'
+          role: 'ADMIN'
         }
       })
     })
@@ -125,24 +123,7 @@ async function installRegularUserState(page: Page) {
         data: {
           id: 9001,
           username: 'regular-user',
-          role: 'USER',
-          orgTags: ['default'],
-          primaryOrg: 'default'
-        }
-      })
-    })
-  );
-
-  await page.route('**/users/org-tags', route =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        code: 200,
-        data: {
-          orgTags: ['default'],
-          primaryOrg: 'default',
-          orgTagDetails: [{ tagId: 'default', name: 'Default', description: 'Default workspace' }]
+          role: 'USER'
         }
       })
     })
@@ -336,7 +317,6 @@ test('settings entry opens the real clickable settings modal in place', async ({
   const navItems = [
     { name: 'General', heading: 'General' },
     { name: 'Usage', heading: 'Usage' },
-    { name: 'Organization', heading: 'Organization' },
     { name: 'Token Ledger', heading: 'Token Ledger' }
   ];
 
@@ -452,17 +432,13 @@ test('settings modal exposes admin and billing entries in place', async ({ page 
 
   await expect(page.getByRole('button', { name: 'Recharge', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'User Management', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Org Tag Admin', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Invite Codes', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Usage Monitor', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Recharge Management', exact: true })).toBeVisible();
 
   for (const item of [
     { entry: 'Recharge', heading: 'Billing / 余额充值' },
     { entry: 'User Management', heading: 'User Registry / 用户' },
-    { entry: 'Org Tag Admin', heading: 'Taxonomy Tags / 分类标签' },
     { entry: 'Invite Codes', heading: 'Invite Codes / 邀请码' },
-    { entry: 'Usage Monitor', heading: 'Runtime Limits / 限流配置' },
     { entry: 'Recharge Management', heading: 'Billing Packages / 充值套餐' }
   ]) {
     await page.getByRole('button', { name: item.entry, exact: typeof item.entry === 'string' }).click();
@@ -475,9 +451,7 @@ test('settings modal exposes admin and billing entries in place', async ({ page 
 test('regular users do not see or load admin settings content', async ({ page }) => {
   const adminModuleFragments = [
     '/src/views/user/',
-    '/src/views/org-tag/',
     '/src/views/invite-code/',
-    '/src/views/usage-monitor/',
     '/src/views/recharge-manage/'
   ];
   const adminModuleRequests: string[] = [];
@@ -510,9 +484,7 @@ test('regular users do not see or load admin settings content', async ({ page })
 
   for (const adminEntry of [
     'User Management',
-    'Org Tag Admin',
     'Invite Codes',
-    'Usage Monitor',
     'Recharge Management'
   ]) {
     await expect(page.getByRole('button', { name: adminEntry, exact: true })).toHaveCount(0);
@@ -546,9 +518,7 @@ test('regular users cannot view admin pages through direct routes', async ({ pag
 
   const adminRoutes = [
     { path: '/chat-history', heading: 'Chat History' },
-    { path: '/org-tag', heading: 'Taxonomy Tags / 分类标签' },
     { path: '/invite-code', heading: 'Invite Codes / 邀请码' },
-    { path: '/usage-monitor', heading: 'Runtime Limits / 限流配置' },
     { path: '/recharge-manage', heading: 'Billing Packages / 充值套餐' }
   ];
 

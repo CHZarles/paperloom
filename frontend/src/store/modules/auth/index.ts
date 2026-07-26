@@ -22,9 +22,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   const defaultUserInfo: Api.Auth.UserInfo = {
     id: 0,
     username: '',
-    role: 'USER',
-    orgTags: [],
-    primaryOrg: ''
+    role: 'USER'
   };
 
   const userInfo: Api.Auth.UserInfo = reactive({ ...defaultUserInfo });

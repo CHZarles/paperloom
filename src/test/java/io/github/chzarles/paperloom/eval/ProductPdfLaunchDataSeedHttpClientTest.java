@@ -31,8 +31,6 @@ class ProductPdfLaunchDataSeedHttpClientTest {
                     3,
                     "paper-a.pdf",
                     1,
-                    false,
-                    "default",
                     "abc".getBytes(StandardCharsets.UTF_8)
             ));
 
@@ -51,8 +49,6 @@ class ProductPdfLaunchDataSeedHttpClientTest {
             assertTrue(request.body().contains("paper-a.pdf"));
             assertTrue(request.body().contains("name=\"totalChunks\""));
             assertTrue(request.body().contains("1"));
-            assertTrue(request.body().contains("name=\"isPublic\""));
-            assertTrue(request.body().contains("false"));
             assertTrue(request.body().contains("abc"));
         }
     }

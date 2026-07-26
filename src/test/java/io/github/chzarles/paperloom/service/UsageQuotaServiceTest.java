@@ -1,7 +1,7 @@
 package io.github.chzarles.paperloom.service;
 
 import io.github.chzarles.paperloom.config.UsageQuotaProperties;
-import io.github.chzarles.paperloom.exception.RateLimitExceededException;
+import io.github.chzarles.paperloom.exception.QuotaExceededException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +44,7 @@ class UsageQuotaServiceTest {
     void shouldRollbackWhenLlmQuotaExceeded() {
         when(valueOperations.increment(anyString(), eq(300L))).thenReturn(300L);
 
-        assertThrows(RateLimitExceededException.class,
+        assertThrows(QuotaExceededException.class,
                 () -> usageQuotaService.reserveLlmTokens("42", 100, 200));
 
         verify(valueOperations).increment(anyString(), eq(-300L));

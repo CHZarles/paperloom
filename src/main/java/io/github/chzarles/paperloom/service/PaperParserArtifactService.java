@@ -38,9 +38,7 @@ public class PaperParserArtifactService {
     @Transactional
     public PaperParserArtifact saveParserArtifact(String paperId,
                                                   ParsedPaper parsedPaper,
-                                                  String userId,
-                                                  String orgTag,
-                                                  boolean isPublic) {
+                                                  String userId) {
         if (paperId == null || paperId.isBlank() || parsedPaper == null) {
             return null;
         }
@@ -49,7 +47,7 @@ public class PaperParserArtifactService {
 
         if (parsedPaper.artifacts() != null && !parsedPaper.artifacts().isEmpty()) {
             List<PaperParserArtifact> saved = parsedPaper.artifacts().stream()
-                    .map(payload -> savePayload(paperId, parsedPaper, payload, userId, orgTag, isPublic))
+                    .map(payload -> savePayload(paperId, parsedPaper, payload, userId))
                     .filter(artifact -> artifact != null)
                     .toList();
             return saved.isEmpty() ? null : saved.get(0);
@@ -68,18 +66,14 @@ public class PaperParserArtifactService {
                         CONTENT_TYPE_JSON,
                         bytes
                 ),
-                userId,
-                orgTag,
-                isPublic
+                userId
         );
     }
 
     private PaperParserArtifact savePayload(String paperId,
                                             ParsedPaper parsedPaper,
                                             ParsedPaperArtifactPayload payload,
-                                            String userId,
-                                            String orgTag,
-                                            boolean isPublic) {
+                                            String userId) {
         if (payload == null || payload.bytes() == null || payload.bytes().length == 0) {
             return null;
         }
@@ -113,8 +107,6 @@ public class PaperParserArtifactService {
         artifact.setSizeBytes((long) payload.bytes().length);
         artifact.setSha256(sha256(payload.bytes()));
         artifact.setUserId(userId);
-        artifact.setOrgTag(orgTag);
-        artifact.setPublic(isPublic);
         return paperParserArtifactRepository.save(artifact);
     }
 

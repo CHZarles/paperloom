@@ -62,7 +62,7 @@ class ChatHandlerStopResponseTest {
                                        ChatSessionRegistry sessionRegistry) {
         return new ChatHandler(
                 mock(RedisTemplate.class),
-                mock(RateLimitService.class),
+                mock(UsageQuotaService.class),
                 mock(ConversationService.class),
                 mock(ConversationScopeService.class),
                 generationStateService,

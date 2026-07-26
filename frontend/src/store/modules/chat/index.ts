@@ -63,9 +63,6 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const authFailureNotified = ref(false);
   const handshakeConfirmed = ref(false);
   const intentionalDisconnect = ref(false);
-  const rateLimitUntil = ref<number | null>(null);
-  const rateLimitRemainingSeconds = ref(0);
-  let rateLimitTimer: ReturnType<typeof setInterval> | null = null;
   let scopedSessionCreationInFlight = false;
   let sessionIndexInFlight: Promise<Api.Chat.ConversationSession[] | null> | null = null;
   let loadedConversationDetailsId = '';
@@ -622,44 +619,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
   });
 
-  function syncRateLimitCountdown() {
-    if (!rateLimitUntil.value) {
-      rateLimitRemainingSeconds.value = 0;
-      return;
-    }
-    const remainingMs = rateLimitUntil.value - Date.now();
-    rateLimitRemainingSeconds.value = Math.max(0, Math.ceil(remainingMs / 1000));
-    if (remainingMs <= 0) {
-      clearRateLimitCountdown();
-    }
-  }
-
-  function clearRateLimitTimer() {
-    if (rateLimitTimer !== null) {
-      window.clearInterval(rateLimitTimer);
-      rateLimitTimer = null;
-    }
-  }
-
-  function clearRateLimitCountdown() {
-    clearRateLimitTimer();
-    rateLimitUntil.value = null;
-    rateLimitRemainingSeconds.value = 0;
-  }
-
-  function startRateLimitCountdown(retryAfterSeconds: number) {
-    const normalizedSeconds = Math.max(0, Math.ceil(retryAfterSeconds));
-    if (normalizedSeconds <= 0) {
-      clearRateLimitCountdown();
-      return;
-    }
-    rateLimitUntil.value = Date.now() + normalizedSeconds * 1000;
-    syncRateLimitCountdown();
-    clearRateLimitTimer();
-    rateLimitTimer = setInterval(syncRateLimitCountdown, 1000);
-  }
-
-  function resetConnectionState() {
+function resetConnectionState() {
     handshakeConfirmed.value = false;
     sessionId.value = '';
     authFailureNotified.value = false;
@@ -682,7 +642,6 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   }
 
   function handleAuthReset() {
-    clearRateLimitCountdown();
     resetConnectionState();
     conversationId.value = '';
     currentScope.value = null;
@@ -702,7 +661,6 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       resetConnectionState();
       if (!url) {
         wsClose();
-        clearRateLimitCountdown();
         return;
       }
       wsOpen();
@@ -724,7 +682,6 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
   });
 
-  const isRateLimited = computed(() => rateLimitRemainingSeconds.value > 0);
   const connectionStatus = computed(() => {
     if (wsStatus.value === 'OPEN') {
       return 'OPEN';
@@ -748,16 +705,12 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     referenceFocus,
     filteredSessions,
     connectionStatus,
-    isRateLimited,
-    rateLimitRemainingSeconds,
     wsStatus,
     wsData,
     wsSend: rawWsSend,
     wsOpen,
     wsClose,
     sessionId,
-    clearRateLimitCountdown,
-    startRateLimitCountdown,
     handleAuthReset,
     fetchGenerationSnapshot,
     upsertGenerationSnapshot,

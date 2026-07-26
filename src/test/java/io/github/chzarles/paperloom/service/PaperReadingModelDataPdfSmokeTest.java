@@ -79,9 +79,7 @@ class PaperReadingModelDataPdfSmokeTest {
                     "rm_smoke",
                     parsedPaper,
                     pdfPageCount,
-                    "smoke-user",
-                    "smoke-org",
-                    false
+                    "smoke-user"
             );
 
             assertEquals(pdfPageCount, result.pages().size(), "physical page mismatch for " + pdf);

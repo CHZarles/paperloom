@@ -38,7 +38,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement retained = retainedElement(result, "orphan-figure-el");
         assertEquals("IMAGE", retained.getElementType());
@@ -70,7 +70,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of(formula("formula-1", "formula-el", 1, 4, "E = mc^2"))
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         Set<String> parserElementIds = result.readingElements().stream()
                 .map(PaperReadingElement::getParserElementId)
@@ -116,7 +116,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement containing = retainedElement(result, "figure-containing");
         PaperReadingElement panel = retainedElement(result, "figure-panel");
@@ -165,7 +165,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement panel = retainedElement(result, "figure-panel");
         assertEquals("(a) Recall", panel.getSearchableText());
@@ -191,7 +191,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement panel = retainedElement(result, "figure-panel");
         assertEquals("(b) Precision", panel.getSearchableText());
@@ -211,7 +211,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement table = retainedElement(result, "table-2");
         PaperReadingElement caption = retainedElement(result, "table-caption-el");
@@ -236,7 +236,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement table = retainedElementByParserId(result, "table-el-2");
         PaperReadingElement caption = retainedElement(result, "table-caption-el");
@@ -276,7 +276,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement parent = retainedElementByParserId(result, "fig-parent");
         PaperReadingElement panel = retainedElement(result, "figure-panel");
@@ -317,7 +317,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement panel = retainedElement(result, "figure-panel");
 
@@ -335,7 +335,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement table = retainedElement(result, "table-blank");
         assertEquals("TABLE", table.getElementType());
@@ -366,7 +366,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperReadingElement chart = retainedElement(result, "figure-visual-only");
         assertEquals("CHART", chart.getElementType());
@@ -390,7 +390,7 @@ class PaperReadingModelElementBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         assertEquals("FOOTNOTE", retainedElement(result, "footnote-1").getElementType());
         assertEquals("ASIDE", retainedElement(result, "aside-1").getElementType());

@@ -31,30 +31,26 @@ public class LlmProviderRouter {
     private static final long REACT_PROVIDER_RETRY_BACKOFF_MILLIS = 200L;
 
     private final AiProperties aiProperties;
-    private final RateLimitService rateLimitService;
     private final UsageQuotaService usageQuotaService;
     private final ModelProviderConfigService modelProviderConfigService;
     private final ObjectMapper objectMapper;
     private final OutboundWebClientFactory outboundWebClientFactory;
 
     public LlmProviderRouter(AiProperties aiProperties,
-                             RateLimitService rateLimitService,
                              UsageQuotaService usageQuotaService,
                              ModelProviderConfigService modelProviderConfigService,
                              ObjectMapper objectMapper) {
-        this(aiProperties, rateLimitService, usageQuotaService, modelProviderConfigService, objectMapper,
+        this(aiProperties, usageQuotaService, modelProviderConfigService, objectMapper,
                 new OutboundWebClientFactory());
     }
 
     @Autowired
     public LlmProviderRouter(AiProperties aiProperties,
-                             RateLimitService rateLimitService,
                              UsageQuotaService usageQuotaService,
                              ModelProviderConfigService modelProviderConfigService,
                              ObjectMapper objectMapper,
                              OutboundWebClientFactory outboundWebClientFactory) {
         this.aiProperties = aiProperties;
-        this.rateLimitService = rateLimitService;
         this.usageQuotaService = usageQuotaService;
         this.modelProviderConfigService = modelProviderConfigService;
         this.objectMapper = objectMapper;
@@ -71,7 +67,7 @@ public class LlmProviderRouter {
 
         int estimatedPromptTokens = estimateObjectMessagesTokens(messages)
                 + (tools == null || tools.isEmpty() ? 0 : estimateToolsTokens(tools));
-        UsageQuotaService.TokenReservationBundle reservation = rateLimitService.reserveLlmUsage(
+        UsageQuotaService.TokenReservation reservation = usageQuotaService.reserveLlmTokens(
                 requesterId, estimatedPromptTokens, maxCompletionTokens);
 
         for (int attempt = 1; attempt <= REACT_PROVIDER_MAX_ATTEMPTS; attempt++) {

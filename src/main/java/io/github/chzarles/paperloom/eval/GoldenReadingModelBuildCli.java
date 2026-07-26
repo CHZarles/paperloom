@@ -53,9 +53,7 @@ public final class GoldenReadingModelBuildCli {
                 options.modelVersion(),
                 parsedPaper,
                 pageCount,
-                "golden-export",
-                "golden-export",
-                false
+                "golden-export"
         );
         writeParserArtifacts(parsedPaper, options.artifactsDir());
         new GoldenReadingModelExportWriter().write(

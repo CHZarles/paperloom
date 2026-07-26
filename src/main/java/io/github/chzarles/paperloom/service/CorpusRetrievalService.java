@@ -255,8 +255,7 @@ public class CorpusRetrievalService {
         if (scope.isEmpty()) {
             // Empty scope means the session is in AUTO_LIBRARY mode — the session
             // covers the user's globally accessible papers.
-            List<Paper> userWide = paperService.getAccessiblePapers(
-                    String.valueOf(userId), "default,admin");
+            List<Paper> userWide = paperService.getAccessiblePapers(String.valueOf(userId));
             return userWide.stream()
                     .filter(paper -> paper != null && !safe(paper.getPaperId()).isBlank())
                     .sorted(Comparator.comparing(Paper::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))

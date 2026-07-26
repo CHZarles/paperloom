@@ -69,7 +69,6 @@ class PaperServiceCandidateSearchTest {
 
         Page<Paper> result = paperService.searchAccessiblePaperCandidates(
                 "1",
-                "ignored",
                 " agent ",
                 "searchable",
                 pageable

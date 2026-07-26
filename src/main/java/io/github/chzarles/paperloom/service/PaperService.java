@@ -401,12 +401,9 @@ public class PaperService {
 
     /**
      * 获取用户可访问的所有论文列表：个人空间论文和管理员发布的全局论文。
-     *
-     * @param userId 用户ID
-     * @param orgTags 兼容参数，不参与论文权限判断
      * @return 用户可访问的论文列表
      */
-    public List<Paper> getAccessiblePapers(String userId, String orgTags) {
+    public List<Paper> getAccessiblePapers(String userId) {
         logger.info("获取用户可访问论文列表: userId={}", userId);
 
         try {
@@ -436,7 +433,7 @@ public class PaperService {
         return paperAccessService.accessiblePapers(userDbId, requestedIds);
     }
 
-    public Page<Paper> getAccessiblePapersPage(String userId, String orgTags, Pageable pageable) {
+    public Page<Paper> getAccessiblePapersPage(String userId, Pageable pageable) {
         logger.info("分页获取用户可访问论文列表: userId={}, page={}, size={}",
                 userId,
                 pageable == null ? null : pageable.getPageNumber(),
@@ -455,7 +452,6 @@ public class PaperService {
     }
 
     public Page<Paper> searchAccessiblePaperCandidates(String userId,
-                                                       String orgTags,
                                                        String query,
                                                        String readiness,
                                                        Pageable pageable) {

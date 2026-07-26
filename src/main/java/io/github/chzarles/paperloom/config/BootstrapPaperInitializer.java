@@ -156,8 +156,6 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
 
         Paper paper = existingFile.get();
         boolean metadataMatches = fileName.equals(paper.getOriginalFilename())
-                && paper.getOrgTag() == null
-                && !paper.isPublic()
                 && paper.getStatus() == 1;
         boolean publicationMatches = publicationRepository.existsByPaperId(fileMd5) == shouldPublish(ownerUserId);
 
@@ -179,7 +177,7 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         uploadToMinio(paperPath, fileMd5);
 
         try (InputStream inputStream = Files.newInputStream(paperPath)) {
-            parseService.parseAndSave(fileMd5, inputStream, fileName, ownerUserId, null, false);
+            parseService.parseAndSave(fileMd5, inputStream, fileName, ownerUserId);
         } catch (Exception e) {
             cleanupBootstrapData(fileMd5, ownerUserId);
             throw e;
@@ -195,8 +193,6 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
             paper.setTotalSize(totalSize);
             paper.setStatus(1);
             paper.setUserId(ownerUserId);
-            paper.setOrgTag(null);
-            paper.setPublic(false);
             paper.setMergedAt(LocalDateTime.now());
             paperRepository.save(paper);
             updatePublication(fileMd5, ownerUserId);

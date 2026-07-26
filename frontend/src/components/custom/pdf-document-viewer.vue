@@ -6,6 +6,8 @@ import { GlobalWorkerOptions, TextLayer, getDocument } from 'pdfjs-dist/legacy/b
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { buildPdfEvidenceRects, evidencePageNumber, resolvePdfEvidenceRegions } from './pdf-evidence-regions';
+import type { PdfEvidenceRegionLike } from './pdf-evidence-regions';
 import { createPdfPreviewSource } from './pdf-preview-loader';
 
 GlobalWorkerOptions.workerSrc = workerSrc;
@@ -18,6 +20,8 @@ interface Props {
   sourcePageNumber?: number;
   anchorText?: string;
   searchText?: string;
+  bboxJson?: string;
+  visualRegions?: PdfEvidenceRegionLike[] | null;
   visible?: boolean;
   embeddedHeader?: boolean;
 }
@@ -87,7 +91,16 @@ const pageShellRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const textLayerRef = ref<HTMLDivElement | null>(null);
 
-const targetPageNumber = computed(() => clampPage(props.pageNumber || 1, totalPages.value || 1));
+const evidenceTargetPageNumber = computed(
+  () =>
+    props.pageNumber ||
+    evidencePageNumber({
+      bboxJson: props.bboxJson,
+      visualRegions: props.visualRegions
+    }) ||
+    1
+);
+const targetPageNumber = computed(() => clampPage(evidenceTargetPageNumber.value, totalPages.value || 1));
 const matchCandidates = computed(() => buildMatchCandidates(props.searchText || props.anchorText || ''));
 const singlePagePreviewActive = computed(() => Boolean(props.singlePageMode && props.sourcePageNumber));
 const viewerKicker = computed(() => {
@@ -142,7 +155,7 @@ watch(
 );
 
 watch(
-  () => props.pageNumber,
+  () => targetPageNumber.value,
   pageNumber => {
     if (!pageNumber || !totalPages.value) return;
     currentPage.value = clampPage(pageNumber, totalPages.value);
@@ -161,6 +174,15 @@ watch(
   () => {
     applyHighlight();
   }
+);
+
+watch(
+  () => [props.bboxJson, props.visualRegions],
+  () => {
+    if (!pdfDocument.value || documentLoading.value) return;
+    highlightCount.value = applyHighlight();
+  },
+  { deep: true }
 );
 
 watch(
@@ -689,12 +711,19 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
 }
 
 function applyHighlight() {
+  highlightRects.value = [];
+
+  const evidenceRects = buildCurrentEvidenceRects();
+  if (evidenceRects.length) {
+    highlightRects.value = evidenceRects;
+    scrollHighlightRectIntoView(evidenceRects[0]);
+    return evidenceRects.length;
+  }
+
   const textLayer = textLayerRef.value;
   if (!textLayerTask || !textLayer) return 0;
 
   const textDivs = textLayerTask.textDivs;
-  highlightRects.value = [];
-
   const candidates = matchCandidates.value;
   if (!candidates.length) return 0;
 
@@ -777,6 +806,38 @@ function applyHighlight() {
   }
 
   return highlightRects.value.length;
+}
+
+function buildCurrentEvidenceRects() {
+  const displayWidth = canvasDisplaySize.value.width || canvasRef.value?.clientWidth || 0;
+  const displayHeight = canvasDisplaySize.value.height || canvasRef.value?.clientHeight || 0;
+  const regions = resolvePdfEvidenceRegions({
+    bboxJson: props.bboxJson,
+    visualRegions: props.visualRegions,
+    currentPage: currentPage.value
+  });
+
+  return buildPdfEvidenceRects({
+    regions,
+    displayWidth,
+    displayHeight
+  });
+}
+
+function scrollHighlightRectIntoView(rect: HighlightRect) {
+  const stage = stageRef.value;
+  const pageShell = pageShellRef.value;
+  const canvas = canvasRef.value;
+  if (!stage || !pageShell || !canvas) return;
+
+  const targetTop = pageShell.offsetTop + canvas.offsetTop + rect.top - stage.clientHeight / 2 + rect.height / 2;
+  const targetLeft = pageShell.offsetLeft + canvas.offsetLeft + rect.left - stage.clientWidth / 2 + rect.width / 2;
+
+  stage.scrollTo({
+    top: Math.max(0, targetTop),
+    left: Math.max(0, targetLeft),
+    behavior: 'smooth'
+  });
 }
 
 function resolveDirectClueHighlight(

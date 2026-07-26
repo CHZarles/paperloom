@@ -24,9 +24,5 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   chat: () => import("@/views/chat/index.vue"),
   "invite-code": () => import("@/views/invite-code/index.vue"),
   "knowledge-base": () => import("@/views/knowledge-base/index.vue"),
-  "org-tag": () => import("@/views/org-tag/index.vue"),
   "personal-center": () => import("@/views/personal-center/index.vue"),
-  "recharge-manage": () => import("@/views/recharge-manage/index.vue"),
-  recharge: () => import("@/views/recharge/index.vue"),
-  "usage-monitor": () => import("@/views/usage-monitor/index.vue"),
 };

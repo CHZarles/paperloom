@@ -41,7 +41,7 @@ public class ProductPdfLaunchDataSeedHttpClient implements ProductPdfLaunchDataS
     public void uploadChunk(ProductPdfLaunchDataSeedRunner.UploadChunkRequest request) {
         try {
             ProductPdfLaunchDataSeedRunner.UploadChunkRequest safeRequest = request == null
-                    ? new ProductPdfLaunchDataSeedRunner.UploadChunkRequest("", 0, 0, "paper.pdf", 1, false, null, new byte[0])
+                    ? new ProductPdfLaunchDataSeedRunner.UploadChunkRequest("", 0, 0, "paper.pdf", 1, new byte[0])
                     : request;
             String boundary = "----PaperLoomLaunchSeed" + UUID.randomUUID();
             HttpRequest httpRequest = HttpRequest.newBuilder()
@@ -123,10 +123,6 @@ public class ProductPdfLaunchDataSeedHttpClient implements ProductPdfLaunchDataS
         addTextPart(body, safeBoundary, "totalSize", String.valueOf(request.totalSize()));
         addTextPart(body, safeBoundary, "paperTitle", request.paperTitle());
         addTextPart(body, safeBoundary, "totalChunks", String.valueOf(request.totalChunks()));
-        addTextPart(body, safeBoundary, "isPublic", String.valueOf(request.isPublic()));
-        if (request.orgTag() != null && !request.orgTag().isBlank()) {
-            addTextPart(body, safeBoundary, "orgTag", request.orgTag());
-        }
         body.add(("--" + safeBoundary + "\r\n"
                 + "Content-Disposition: form-data; name=\"file\"; filename=\"" + request.paperTitle() + "\"\r\n"
                 + "Content-Type: application/pdf\r\n\r\n").getBytes(StandardCharsets.UTF_8));

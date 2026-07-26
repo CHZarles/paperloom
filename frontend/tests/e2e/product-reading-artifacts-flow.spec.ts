@@ -21,9 +21,7 @@ async function installMockLoginState(page: import('@playwright/test').Page) {
         data: {
           id: 1,
           username: 'admin',
-          role: 'ADMIN',
-          orgTags: ['default'],
-          primaryOrg: 'default'
+          role: 'ADMIN'
         }
       })
     })
@@ -238,13 +236,6 @@ test('reading artifacts render after reload and source evidence resolves from so
 
   let referenceDetailRequests = 0;
 
-  await page.route('**/users/org-tags', route =>
-    fulfillApi(route, {
-      orgTags: ['default'],
-      primaryOrg: 'default',
-      orgTagDetails: [{ tagId: 'default', name: 'Default', description: 'Default workspace' }]
-    })
-  );
   await page.route('**/users/usage', route =>
     fulfillApi(route, {
       day: '2026-07-08',
@@ -629,13 +620,6 @@ test('paper shortlist actions send structured focus and reading plan survives re
     });
   });
 
-  await page.route('**/users/org-tags', route =>
-    fulfillApi(route, {
-      orgTags: ['default'],
-      primaryOrg: 'default',
-      orgTagDetails: [{ tagId: 'default', name: 'Default', description: 'Default workspace' }]
-    })
-  );
   await page.route('**/users/usage', route =>
     fulfillApi(route, {
       day: '2026-07-08',

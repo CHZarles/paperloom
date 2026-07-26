@@ -4,7 +4,6 @@ import io.github.chzarles.paperloom.config.KafkaConfig;
 import io.github.chzarles.paperloom.exception.CustomException;
 import io.github.chzarles.paperloom.model.PaperProcessingTask;
 import io.github.chzarles.paperloom.model.Paper;
-import io.github.chzarles.paperloom.model.OrganizationTag;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.service.FileTypeValidationService;
 import io.github.chzarles.paperloom.service.ParseService;
@@ -114,36 +113,7 @@ public class PaperUploadController {
             LogUtils.logBusiness("UPLOAD_CHUNK", userId, "接收到个人论文分片上传请求: paperId=%s, chunkIndex=%d, paperTitle=%s, fileType=%s, contentType=%s, fileSize=%d, totalSize=%d",
                     paperId, chunkIndex, paperTitle, fileType, contentType, file.getSize(), totalSize);
 
-            String quotaOrgTag = null;
-            if (!userService.isAdminUser(userId)) {
-                try {
-                    quotaOrgTag = userService.getUserPrimaryOrg(userId);
-                } catch (Exception e) {
-                    LogUtils.logBusiness("UPLOAD_CHUNK", userId,
-                            "未找到用户主组织标签，跳过组织上传额度检查: paperTitle=%s", paperTitle);
-                }
-            }
-
-            if (quotaOrgTag != null && !quotaOrgTag.isBlank()) {
-                OrganizationTag uploadOrg = userService.getOrganizationTag(quotaOrgTag);
-                Long uploadMaxSizeBytes = uploadOrg.getUploadMaxSizeBytes();
-                long estimatedUploadedBytes = (long) chunkIndex * DEFAULT_CHUNK_SIZE_BYTES + file.getSize();
-                boolean exceedsLimit = uploadMaxSizeBytes != null
-                        && uploadMaxSizeBytes > 0
-                        && (totalSize > uploadMaxSizeBytes || estimatedUploadedBytes > uploadMaxSizeBytes);
-                if (exceedsLimit) {
-                    LogUtils.logUserOperation(userId, "UPLOAD_CHUNK", paperTitle, "FAILED_SIZE_LIMIT_EXCEEDED");
-                    monitor.end("分片上传失败: 论文 PDF 超过组织上传大小限制");
-
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("code", HttpStatus.PAYLOAD_TOO_LARGE.value());
-                    errorResponse.put("message", "当前组织限制非管理员上传论文 PDF 不超过 " + formatSize(uploadMaxSizeBytes)
-                            + "，当前 PDF 大小为 " + formatSize(totalSize));
-                    errorResponse.put("limitBytes", uploadMaxSizeBytes);
-                    errorResponse.put("fileSizeBytes", totalSize);
-                    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(errorResponse);
-                }
-            }
+            // 非管理员用户的上传大小由 Spring 全局 multipart 限制控制（见 application*.yml）
 
             LogUtils.logFileOperation(userId, "UPLOAD_CHUNK", paperTitle, paperId, "PROCESSING");
 

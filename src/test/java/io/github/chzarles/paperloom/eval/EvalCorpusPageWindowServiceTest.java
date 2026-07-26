@@ -51,7 +51,6 @@ class EvalCorpusPageWindowServiceTest {
         assertEquals("TABLE", first.getSourceKind());
         assertEquals("supporting", first.getEvidenceRole());
         assertEquals("EVAL_PAGE_WINDOW_INSPECT", first.getRetrievalRoute());
-        assertEquals("eval-qasper", first.getOrgTag());
     }
 
     @Test

@@ -68,9 +68,7 @@ class PaperReadingModelServicePersistenceTest {
         PaperReadingModel model = service.replaceFromParsedPaper(
                 "paper-a",
                 parsedPaperWithSection("Readable text.", 1),
-                "user-a",
-                "lab",
-                true
+                "user-a"
         );
 
         assertEquals(PaperReadingModelStatus.READING_MODEL_READY, model.getModelStatus());
@@ -110,17 +108,13 @@ class PaperReadingModelServicePersistenceTest {
         PaperReadingModel first = service.replaceFromParsedPaper(
                 "paper-a",
                 parsedPaper("Readable text.", 1),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         PaperReadingModel failed = service.replaceFromParsedPaper(
                 "paper-a",
                 parsedPaper(" ", 1),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         PaperReadingModel current = modelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-a").orElseThrow();
@@ -139,16 +133,12 @@ class PaperReadingModelServicePersistenceTest {
         PaperReadingModel first = service.replaceFromParsedPaper(
                 "paper-a",
                 parsedPaper("First version.", 1),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
         PaperReadingModel second = service.replaceFromParsedPaper(
                 "paper-a",
                 parsedPaper("Second version.", 1),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         PaperReadingModel current = modelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-a").orElseThrow();
@@ -166,9 +156,7 @@ class PaperReadingModelServicePersistenceTest {
         PaperReadingModel model = service.replaceFromParsedPaper(
                 "paper-panel",
                 parsedPaperWithPanelOnlyChart(),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         List<PaperReadingElement> matches = readingElementRepository.searchByPaperIdAndModelVersion(

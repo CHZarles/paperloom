@@ -71,7 +71,7 @@ public class ProductPaperHandleService {
             return false;
         }
 
-        List<Paper> accessiblePapers = paperService.getAccessiblePapers(userId(userId), null);
+        List<Paper> accessiblePapers = paperService.getAccessiblePapers(userId(userId));
         return accessiblePapers != null && accessiblePapers.stream()
                 .anyMatch(paper -> paper != null && normalizedPaperId.equals(normalize(paper.getPaperId())));
     }

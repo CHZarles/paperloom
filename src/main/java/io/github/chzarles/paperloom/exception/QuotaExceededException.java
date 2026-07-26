@@ -1,9 +1,9 @@
 package io.github.chzarles.paperloom.exception;
 
-public class RateLimitExceededException extends RuntimeException {
+public class QuotaExceededException extends RuntimeException {
     private final long retryAfterSeconds;
 
-    public RateLimitExceededException(String message, long retryAfterSeconds) {
+    public QuotaExceededException(String message, long retryAfterSeconds) {
         super(message);
         this.retryAfterSeconds = retryAfterSeconds;
     }

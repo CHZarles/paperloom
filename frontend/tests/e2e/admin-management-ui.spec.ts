@@ -20,7 +20,7 @@ type LoginToken = {
 const backendBaseURL = process.env.PAPERLOOM_E2E_API_BASE_URL || 'http://localhost:8081/api/v1';
 const storagePrefix = process.env.PAPERLOOM_E2E_STORAGE_PREFIX || 'CiteWeave_';
 
-const adminRoutes = ['org-tag', 'usage-monitor', 'invite-code', 'recharge', 'recharge-manage', 'chat-history'];
+const adminRoutes = ['invite-code', 'recharge', 'recharge-manage', 'chat-history'];
 
 function readRepoEnv() {
   const envPath = resolve(process.cwd(), '..', '.env');
@@ -180,9 +180,7 @@ test('admin management pages keep the Manus-style shell stable', async ({ page }
 test('management functions stay out of generated global navigation metadata', () => {
   const managementRouteNames = [
     'chat-history',
-    'org-tag',
     'invite-code',
-    'usage-monitor',
     'recharge',
     'recharge-manage'
   ];
@@ -200,7 +198,7 @@ test('user management is not exposed as a standalone route', () => {
 
 test('chat return button keeps a neutral focus treatment', async ({ page }) => {
   await installLoginState(page, await login());
-  await page.goto('/#/org-tag');
+  await page.goto('/#/invite-code');
 
   const button = page.getByRole('button', { name: '返回 Chat' });
   await button.focus();
@@ -228,11 +226,11 @@ test('chat return button keeps a neutral focus treatment', async ({ page }) => {
 test('global avatar exposes the management entry', async ({ page }) => {
   await installLoginState(page, await login());
 
-  await page.goto('/#/org-tag');
+  await page.goto('/#/invite-code');
   await expect(page.locator('.global-header-shell .avatar-identicon')).toBeVisible();
   await page.locator('.global-header-shell .avatar-identicon').click();
   await page.getByText('管理页面').click();
 
-  await expect(page).toHaveURL(/#\/org-tag/);
+  await expect(page).toHaveURL(/#\/invite-code/);
   await expect(page.locator('[data-testid="settings-modal"]')).toBeVisible();
 });

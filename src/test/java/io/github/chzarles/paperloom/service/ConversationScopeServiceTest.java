@@ -66,7 +66,7 @@ class ConversationScopeServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        user = user(1L, "owner", User.Role.USER, "default", "default");
+        user = user(1L, "owner", User.Role.USER);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(sessionRepository.save(any(ConversationSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paperRepository.findByPaperIdIn(anyList())).thenReturn(List.of());
@@ -108,10 +108,10 @@ class ConversationScopeServiceTest {
 
     @Test
     void autoLibraryScopeResponseCountsOnlyAccessibleReadyReadingModels() {
-        Paper ready = paper("paper-ready", "1", false, "default");
-        Paper readyDuplicate = paper("paper-ready", "1", false, "default");
-        Paper building = paper("paper-building", "1", false, "default");
-        Paper notSearchable = paper("paper-not-searchable", "1", false, "default");
+        Paper ready = paper("paper-ready", "1");
+        Paper readyDuplicate = paper("paper-ready", "1");
+        Paper building = paper("paper-building", "1");
+        Paper notSearchable = paper("paper-not-searchable", "1");
         when(paperAccessService.accessiblePapers("1"))
                 .thenReturn(List.of(ready, readyDuplicate, building, notSearchable));
         when(paperSearchabilityService.isSearchable(ready)).thenReturn(true);
@@ -141,8 +141,8 @@ class ConversationScopeServiceTest {
     @Test
     void unlockedSessionCanUpdateToSnapshot() throws Exception {
         ConversationSession session = ownedSession("conversation-1");
-        Paper first = paper("paper-1", "1", false, "default");
-        Paper second = paper("paper-2", "1", false, "default");
+        Paper first = paper("paper-1", "1");
+        Paper second = paper("paper-2", "1");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperRepository.findByPaperIdIn(List.of("paper-1", "paper-2"))).thenReturn(List.of(first, second));
         when(paperSearchabilityService.isSearchable(first)).thenReturn(true);
@@ -228,8 +228,8 @@ class ConversationScopeServiceTest {
     @Test
     void lockValidSnapshotScopeForFirstMessage() throws Exception {
         ConversationSession session = snapshotSession("conversation-1", List.of("paper-1", "paper-2"));
-        Paper first = paper("paper-1", "1", false, "default");
-        Paper second = paper("paper-2", "1", false, "default");
+        Paper first = paper("paper-1", "1");
+        Paper second = paper("paper-2", "1");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperRepository.findByPaperIdIn(List.of("paper-1", "paper-2"))).thenReturn(List.of(first, second));
         when(paperSearchabilityService.isSearchable(first)).thenReturn(true);
@@ -295,7 +295,7 @@ class ConversationScopeServiceTest {
     @Test
     void lockRejectsSnapshotWithInaccessiblePaper() throws Exception {
         ConversationSession session = snapshotSession("conversation-1", List.of("inaccessible-paper"));
-        Paper inaccessible = paper("inaccessible-paper", "2", false, "other");
+        Paper inaccessible = paper("inaccessible-paper", "2");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperRepository.findByPaperIdIn(List.of("inaccessible-paper"))).thenReturn(List.of(inaccessible));
 
@@ -311,7 +311,7 @@ class ConversationScopeServiceTest {
     @Test
     void lockRejectsSnapshotWithUnsearchablePaper() throws Exception {
         ConversationSession session = snapshotSession("conversation-1", List.of("unsearchable-paper"));
-        Paper unsearchable = paper("unsearchable-paper", "1", false, "default");
+        Paper unsearchable = paper("unsearchable-paper", "1");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperRepository.findByPaperIdIn(List.of("unsearchable-paper"))).thenReturn(List.of(unsearchable));
         when(paperSearchabilityService.isSearchable(unsearchable)).thenReturn(false);
@@ -328,9 +328,9 @@ class ConversationScopeServiceTest {
     @Test
     void collectionScopeResolvesSearchableAccessiblePapersOnly() throws Exception {
         ConversationSession session = ownedSession("conversation-1");
-        Paper searchable = paper("searchable-paper", "1", false, "default");
-        Paper unsearchable = paper("unsearchable-paper", "1", false, "default");
-        Paper inaccessible = paper("inaccessible-paper", "2", false, "other");
+        Paper searchable = paper("searchable-paper", "1");
+        Paper unsearchable = paper("unsearchable-paper", "1");
+        Paper inaccessible = paper("inaccessible-paper", "2");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperCollectionService.getCollection(1L, 11L)).thenReturn(Map.of(
                 "id", 11L,
@@ -365,7 +365,7 @@ class ConversationScopeServiceTest {
     @Test
     void emptyResolvedCollectionScopeIsRejected() {
         ConversationSession session = ownedSession("conversation-1");
-        Paper unsearchable = paper("unsearchable-paper", "1", false, "default");
+        Paper unsearchable = paper("unsearchable-paper", "1");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperCollectionService.getCollection(1L, 11L)).thenReturn(Map.of(
                 "id", 11L,
@@ -394,12 +394,12 @@ class ConversationScopeServiceTest {
     @Test
     void titleQueryPreviewReturnsOnlySearchableAccessibleMatches() {
         ConversationSession session = ownedSession("conversation-1");
-        Paper lora = paper("paper-lora", "1", false, "default");
+        Paper lora = paper("paper-lora", "1");
         lora.setPaperTitle("LoRA: Low-Rank Adaptation of Large Language Models");
         lora.setOriginalFilename("lora.pdf");
-        Paper unsearchable = paper("paper-unsearchable", "1", false, "default");
+        Paper unsearchable = paper("paper-unsearchable", "1");
         unsearchable.setPaperTitle("LoRA implementation note");
-        Paper unrelated = paper("paper-transformer", "1", false, "default");
+        Paper unrelated = paper("paper-transformer", "1");
         unrelated.setPaperTitle("Attention Is All You Need");
         when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperAccessService.accessiblePapers("1"))
@@ -439,7 +439,7 @@ class ConversationScopeServiceTest {
     @Test
     void titleRegexPreviewMatchesTitleOrFilename() {
         ConversationSession session = ownedSession("conversation-1");
-        Paper filenameMatch = paper("paper-lora", "1", false, "default");
+        Paper filenameMatch = paper("paper-lora", "1");
         filenameMatch.setPaperTitle("Low rank adapters");
         filenameMatch.setOriginalFilename("lora-notes.pdf");
         when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
@@ -470,7 +470,7 @@ class ConversationScopeServiceTest {
     @Test
     void titleMatchSnapshotStoresResolvedPaperIdsAndRecipe() throws Exception {
         ConversationSession session = ownedSession("conversation-1");
-        Paper lora = paper("paper-lora", "1", false, "default");
+        Paper lora = paper("paper-lora", "1");
         lora.setPaperTitle("LoRA: Low-Rank Adaptation of Large Language Models");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
         when(paperAccessService.accessiblePapers("1")).thenReturn(List.of(lora));
@@ -689,24 +689,20 @@ class ConversationScopeServiceTest {
         return session;
     }
 
-    private User user(Long id, String username, User.Role role, String primaryOrg, String orgTags) {
+    private User user(Long id, String username, User.Role role) {
         User user = new User();
         user.setId(id);
         user.setUsername(username);
         user.setRole(role);
-        user.setPrimaryOrg(primaryOrg);
-        user.setOrgTags(orgTags);
         return user;
     }
 
-    private Paper paper(String paperId, String userId, boolean isPublic, String orgTag) {
+    private Paper paper(String paperId, String userId) {
         Paper paper = new Paper();
         paper.setPaperId(paperId);
         paper.setPaperTitle(paperId);
         paper.setOriginalFilename(paperId + ".pdf");
         paper.setUserId(userId);
-        paper.setPublic(isPublic);
-        paper.setOrgTag(orgTag);
         paper.setStatus(Paper.STATUS_COMPLETED);
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
         return paper;

@@ -79,8 +79,6 @@ public class EvalCorpusPageWindowService {
                 text,
                 1.0d,
                 "eval-" + corpus + "-user",
-                "eval-" + corpus,
-                true,
                 paperTitle(paper),
                 originalFilename(paper, chunk),
                 chunk.getPageNumber(),

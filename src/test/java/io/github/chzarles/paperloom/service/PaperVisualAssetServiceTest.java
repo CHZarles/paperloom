@@ -98,9 +98,7 @@ class PaperVisualAssetServiceTest {
                 "rm-1",
                 null,
                 parsedPaper,
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         assertEquals(1, saved.size());
@@ -158,9 +156,7 @@ class PaperVisualAssetServiceTest {
                 "rm-1",
                 null,
                 parsedPaper,
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         assertEquals(1, saved.size());
@@ -213,9 +209,7 @@ class PaperVisualAssetServiceTest {
                 "rm-1",
                 simplePdf(),
                 parsedPaperWithoutParserImages(),
-                "user-a",
-                "lab",
-                false
+                "user-a"
         );
 
         PaperVisualAsset pageGap = saved.stream()

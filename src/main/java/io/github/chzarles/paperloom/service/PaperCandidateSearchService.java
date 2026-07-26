@@ -39,7 +39,7 @@ public class PaperCandidateSearchService {
         }
 
         Map<String, PaperCandidate> bestCandidatesByPaperId = new LinkedHashMap<>();
-        for (Paper paper : paperService.getAccessiblePapers(request.userId(), request.orgTags())) {
+        for (Paper paper : paperService.getAccessiblePapers(request.userId())) {
             if (paper == null || SearchText.isBlank(paper.getPaperId())) {
                 continue;
             }

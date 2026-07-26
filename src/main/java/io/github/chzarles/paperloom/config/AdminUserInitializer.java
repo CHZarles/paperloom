@@ -39,12 +39,6 @@ public class AdminUserInitializer implements CommandLineRunner {
     @Value("${admin.bootstrap.password:}")
     private String adminPassword;
 
-    @Value("${admin.bootstrap.primary-org:default}")
-    private String adminPrimaryOrg;
-
-    @Value("${admin.bootstrap.org-tags:default,admin}")
-    private String adminOrgTags;
-
     @Override
     public void run(String... args) throws Exception {
         if (!bootstrapEnabled) {
@@ -68,8 +62,6 @@ public class AdminUserInitializer implements CommandLineRunner {
             adminUser.setUsername(adminUsername);
             adminUser.setPassword(PasswordUtil.encode(adminPassword));
             adminUser.setRole(User.Role.ADMIN);
-            adminUser.setPrimaryOrg(adminPrimaryOrg);
-            adminUser.setOrgTags(adminOrgTags);
 
             userRepository.save(adminUser);
             logger.info("管理员账号 '{}' 创建成功", adminUsername);

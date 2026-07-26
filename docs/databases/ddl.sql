@@ -3,25 +3,10 @@ CREATE TABLE users (
                        username VARCHAR(255) NOT NULL UNIQUE COMMENT '用户名，唯一',
                        password VARCHAR(255) NOT NULL COMMENT '加密后的密码',
                        role ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER' COMMENT '用户角色',
-                       org_tags VARCHAR(255) DEFAULT NULL COMMENT '用户所属组织标签，多个用逗号分隔',
-                       primary_org VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '用户主组织标签',
                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                        INDEX idx_username (username) COMMENT '用户名索引'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
-CREATE TABLE organization_tags (
-                                   tag_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin PRIMARY KEY COMMENT '标签唯一标识',
-                                   name VARCHAR(100) NOT NULL COMMENT '标签名称',
-                                   description TEXT COMMENT '描述',
-                                   parent_tag VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '父标签ID',
-                                   upload_max_size_bytes BIGINT DEFAULT NULL COMMENT '非管理员上传文件大小上限，单位字节',
-                                   created_by BIGINT NOT NULL COMMENT '创建者ID',
-                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                                   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                                   FOREIGN KEY (parent_tag) REFERENCES organization_tags(tag_id) ON DELETE SET NULL,
-                                   FOREIGN KEY (created_by) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='组织标签表';
-
 
 CREATE TABLE file_upload (
                              id           BIGINT           NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -30,8 +15,6 @@ CREATE TABLE file_upload (
                              total_size   BIGINT           NOT NULL COMMENT '文件大小',
                              status       TINYINT          NOT NULL DEFAULT 0 COMMENT '上传状态：0上传中 1已完成 2合并中',
                              user_id      VARCHAR(64)      NOT NULL COMMENT '用户 ID',
-                             org_tag      VARCHAR(50)      DEFAULT NULL COMMENT '组织标签',
-                             is_public    BOOLEAN          NOT NULL DEFAULT FALSE COMMENT '是否公开',
                              paper_title  VARCHAR(255)     DEFAULT NULL COMMENT '论文标题',
                              authors      VARCHAR(1000)    DEFAULT NULL COMMENT '论文作者',
                              publication_year INT          DEFAULT NULL COMMENT '发表年份',
@@ -47,8 +30,7 @@ CREATE TABLE file_upload (
                              merged_at    TIMESTAMP        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '合并时间',
                              PRIMARY KEY (id),
                              UNIQUE KEY uk_md5_user (file_md5, user_id),
-                             INDEX idx_user (user_id),
-                             INDEX idx_org_tag (org_tag)
+                             INDEX idx_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件上传记录';
 
 CREATE TABLE IF NOT EXISTS paper_publications (
@@ -76,9 +58,7 @@ CREATE TABLE document_vectors (
                                   page_number INT COMMENT 'PDF页码，用于引用定位',
                                   anchor_text VARCHAR(255) COMMENT '页内定位锚点文本',
                                   model_version VARCHAR(32) COMMENT '向量模型版本',
-                                  user_id VARCHAR(64) NOT NULL COMMENT '上传用户ID',
-                                  org_tag VARCHAR(50) COMMENT '文件所属组织标签',
-                                  is_public BOOLEAN NOT NULL DEFAULT FALSE COMMENT '文件是否公开'
+                                  user_id VARCHAR(64) NOT NULL COMMENT '上传用户ID'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文档向量存储表';
 
 -- PaperLoom Reading Model 持久化闭环
@@ -93,8 +73,6 @@ CREATE TABLE IF NOT EXISTS paper_parser_artifacts (
     size_bytes BIGINT DEFAULT NULL COMMENT '文件大小',
     sha256 VARCHAR(64) DEFAULT NULL COMMENT '内容 SHA-256',
     user_id VARCHAR(64) DEFAULT NULL COMMENT '上传用户 ID',
-    org_tag VARCHAR(50) DEFAULT NULL COMMENT '组织标签',
-    is_public BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否公开',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_parser_artifact_paper (paper_id),
@@ -161,8 +139,6 @@ CREATE TABLE IF NOT EXISTS paper_pages (
     parser_name VARCHAR(64) DEFAULT NULL COMMENT 'Parser 名称',
     parser_version VARCHAR(64) DEFAULT NULL COMMENT 'Parser 版本',
     user_id VARCHAR(64) NOT NULL COMMENT '上传用户 ID',
-    org_tag VARCHAR(50) DEFAULT NULL COMMENT '组织标签',
-    is_public BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否公开',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_paper_pages_paper_model_page (paper_id, model_version, page_number)
@@ -187,8 +163,6 @@ CREATE TABLE IF NOT EXISTS paper_sections (
     parser_name VARCHAR(64) DEFAULT NULL COMMENT 'Parser 名称',
     parser_version VARCHAR(64) DEFAULT NULL COMMENT 'Parser 版本',
     user_id VARCHAR(64) NOT NULL COMMENT '上传用户 ID',
-    org_tag VARCHAR(50) DEFAULT NULL COMMENT '组织标签',
-    is_public BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否公开',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_paper_sections_paper_model_page (paper_id, model_version, page_number_from),
@@ -209,8 +183,6 @@ CREATE TABLE IF NOT EXISTS paper_locations (
     source_span_json TEXT NOT NULL COMMENT 'location source span JSON',
     content_kind VARCHAR(64) NOT NULL COMMENT 'PAGE_TEXT/PAGE_SURFACE/SECTION_TEXT/TABLE/FIGURE',
     user_id VARCHAR(64) NOT NULL COMMENT '上传用户 ID',
-    org_tag VARCHAR(50) DEFAULT NULL COMMENT '组织标签',
-    is_public BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否公开',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_paper_locations_ref (location_ref),
@@ -249,8 +221,6 @@ CREATE TABLE IF NOT EXISTS paper_reading_elements (
     parser_name VARCHAR(64) DEFAULT NULL COMMENT 'Parser 名称',
     parser_version VARCHAR(64) DEFAULT NULL COMMENT 'Parser 版本',
     user_id VARCHAR(64) NOT NULL COMMENT '上传用户 ID',
-    org_tag VARCHAR(50) DEFAULT NULL COMMENT '组织标签',
-    is_public BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否公开',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_paper_reading_elements_paper_model_page (paper_id, model_version, page_number),
@@ -316,8 +286,6 @@ CREATE TABLE IF NOT EXISTS paper_visual_assets (
     sha256 VARCHAR(64) DEFAULT NULL COMMENT '图片 SHA-256',
     failure_reason VARCHAR(1000) DEFAULT NULL COMMENT '缺失或失败原因',
     user_id VARCHAR(64) DEFAULT NULL COMMENT '上传用户 ID',
-    org_tag VARCHAR(50) DEFAULT NULL COMMENT '组织标签',
-    is_public BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否公开',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_visual_asset_paper (paper_id),
@@ -325,19 +293,6 @@ CREATE TABLE IF NOT EXISTS paper_visual_assets (
     INDEX idx_visual_asset_reading_element (paper_id, reading_element_id),
     INDEX idx_visual_asset_page (paper_id, page_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='论文视觉资产或视觉缺口';
-
-CREATE TABLE rate_limit_configs (
-                                    config_key VARCHAR(64) PRIMARY KEY COMMENT '限流配置键',
-                                    single_max INT DEFAULT NULL COMMENT '单窗口最大次数',
-                                    single_window_seconds BIGINT DEFAULT NULL COMMENT '单窗口秒数',
-                                    minute_max BIGINT DEFAULT NULL COMMENT '分钟窗口最大值',
-                                    minute_window_seconds BIGINT DEFAULT NULL COMMENT '分钟窗口秒数',
-                                    day_max BIGINT DEFAULT NULL COMMENT '日窗口最大值',
-                                    day_window_seconds BIGINT DEFAULT NULL COMMENT '日窗口秒数',
-                                    updated_by VARCHAR(255) NOT NULL COMMENT '最后更新人',
-                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='运行时限流配置表';
 
 CREATE TABLE model_provider_configs (
                                         id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '模型配置主键',

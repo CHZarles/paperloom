@@ -64,16 +64,6 @@ public class JwtUtils {
         claims.put("tokenId", tokenId); // 添加tokenId用于Redis缓存
         claims.put("role", user.getRole().name());
         claims.put("userId", user.getId().toString()); // 添加用户ID到JWT
-        
-        // 添加组织标签信息
-        if (user.getOrgTags() != null && !user.getOrgTags().isEmpty()) {
-            claims.put("orgTags", user.getOrgTags());
-        }
-        
-        // 添加主组织标签信息
-        if (user.getPrimaryOrg() != null && !user.getPrimaryOrg().isEmpty()) {
-            claims.put("primaryOrg", user.getPrimaryOrg());
-        }
 
         String token = Jwts.builder()
                 .setClaims(claims)
@@ -160,32 +150,6 @@ public class JwtUtils {
             return claims != null ? claims.get("role", String.class) : null;
         } catch (Exception e) {
             logger.error("Error extracting role from token: {}", token, e);
-            return null;
-        }
-    }
-    
-    /**
-     * 从 JWT Token 中提取组织标签
-     */
-    public String extractOrgTagsFromToken(String token) {
-        try {
-            Claims claims = extractClaimsIgnoreExpiration(token);
-            return claims != null ? claims.get("orgTags", String.class) : null;
-        } catch (Exception e) {
-            logger.error("Error extracting organization tags from token: {}", token, e);
-            return null;
-        }
-    }
-    
-    /**
-     * 从 JWT Token 中提取主组织标签
-     */
-    public String extractPrimaryOrgFromToken(String token) {
-        try {
-            Claims claims = extractClaimsIgnoreExpiration(token);
-            return claims != null ? claims.get("primaryOrg", String.class) : null;
-        } catch (Exception e) {
-            logger.error("Error extracting primary organization from token: {}", token, e);
             return null;
         }
     }

@@ -26,7 +26,7 @@ public class SecurityConfig {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
     
     @Autowired
-    private OrgTagAuthorizationFilter orgTagAuthorizationFilter;
+    private PaperAccessAuthorizationFilter paperAccessAuthorizationFilter;
 
     /**
      * 配置SecurityFilterChain bean的方法
@@ -68,8 +68,6 @@ public class SecurityConfig {
                             .requestMatchers("/api/v1/chat/**").hasAnyRole("USER", "ADMIN")
                             // 管理员专属接口 - 系统状态、用户活动、用量和配置管理
                             .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                            // 用户组织标签管理接口
-                            .requestMatchers("/api/v1/users/primary-org").hasAnyRole("USER", "ADMIN")
                             // 其他请求需要认证
                             .anyRequest().authenticated())
                     // 配置会话管理策略
@@ -78,8 +76,8 @@ public class SecurityConfig {
                             .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     // 添加JWT认证过滤器
                     .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                    // 添加组织标签授权过滤器
-                    .addFilterAfter(orgTagAuthorizationFilter, JwtAuthenticationFilter.class);
+                    // 添加论文访问授权过滤器
+                    .addFilterAfter(paperAccessAuthorizationFilter, JwtAuthenticationFilter.class);
 
             // 记录安全配置加载成功的信息
             logger.info("Security configuration loaded successfully.");

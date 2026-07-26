@@ -39,19 +39,15 @@ public class PaperReadingModelBuilder {
     public PaperReadingModelBuildResult build(String paperId,
                                               String modelVersion,
                                               ParsedPaper parsedPaper,
-                                              String userId,
-                                              String orgTag,
-                                              boolean isPublic) {
-        return build(paperId, modelVersion, parsedPaper, null, userId, orgTag, isPublic);
+                                              String userId) {
+        return build(paperId, modelVersion, parsedPaper, null, userId);
     }
 
     public PaperReadingModelBuildResult build(String paperId,
                                               String modelVersion,
                                               ParsedPaper parsedPaper,
                                               Integer physicalPageCount,
-                                              String userId,
-                                              String orgTag,
-                                              boolean isPublic) {
+                                              String userId) {
         Map<String, Object> diagnostics = new LinkedHashMap<>();
         diagnostics.put("paperId", paperId);
         diagnostics.put("modelVersion", modelVersion);
@@ -191,8 +187,6 @@ public class PaperReadingModelBuilder {
             page.setParserName(parsedPaper.parserName());
             page.setParserVersion(parsedPaper.parserVersion());
             page.setUserId(userId);
-            page.setOrgTag(orgTag);
-            page.setPublic(isPublic);
             pages.add(page);
             if (readablePage) {
                 readableCharCount += pageText.length();
@@ -211,8 +205,6 @@ public class PaperReadingModelBuilder {
             location.setSourceSpanJson(sourceSpanJson);
             location.setContentKind(readablePage ? "PAGE_TEXT" : "PAGE_SURFACE");
             location.setUserId(userId);
-            location.setOrgTag(orgTag);
-            location.setPublic(isPublic);
             locations.add(location);
         }
 
@@ -221,8 +213,6 @@ public class PaperReadingModelBuilder {
                 modelVersion,
                 parsedPaper,
                 userId,
-                orgTag,
-                isPublic,
                 sortedReadable,
                 displayOrder
         );
@@ -233,17 +223,13 @@ public class PaperReadingModelBuilder {
                 paperId,
                 modelVersion,
                 parsedPaper,
-                userId,
-                orgTag,
-                isPublic
+                userId
         );
         ElementLocationBuildResult elementLocations = buildElementLocations(
                 paperId,
                 modelVersion,
                 parsedPaper,
                 userId,
-                orgTag,
-                isPublic,
                 readingElements,
                 displayOrder
         );
@@ -337,8 +323,6 @@ public class PaperReadingModelBuilder {
                                                                 String modelVersion,
                                                                 ParsedPaper parsedPaper,
                                                                 String userId,
-                                                                String orgTag,
-                                                                boolean isPublic,
                                                                 List<ReadableElement> sortedReadable,
                                                                 int displayOrderStart) {
         List<PaperSection> sections = new ArrayList<>();
@@ -396,8 +380,6 @@ public class PaperReadingModelBuilder {
             section.setParserName(parsedPaper.parserName());
             section.setParserVersion(parsedPaper.parserVersion());
             section.setUserId(userId);
-            section.setOrgTag(orgTag);
-            section.setPublic(isPublic);
             sections.add(section);
 
             PaperLocation location = new PaperLocation();
@@ -413,8 +395,6 @@ public class PaperReadingModelBuilder {
             location.setSourceSpanJson(sourceSpanJson);
             location.setContentKind("SECTION_TEXT");
             location.setUserId(userId);
-            location.setOrgTag(orgTag);
-            location.setPublic(isPublic);
             locations.add(location);
         }
 
@@ -459,8 +439,6 @@ public class PaperReadingModelBuilder {
                                                              String modelVersion,
                                                              ParsedPaper parsedPaper,
                                                              String userId,
-                                                             String orgTag,
-                                                             boolean isPublic,
                                                              List<PaperReadingElement> readingElements,
                                                              int displayOrderStart) {
         List<PaperLocation> locations = new ArrayList<>();
@@ -506,8 +484,6 @@ public class PaperReadingModelBuilder {
                         modelVersion,
                         parsedPaper,
                         userId,
-                        orgTag,
-                        isPublic,
                         element,
                         PaperLocationType.TABLE,
                         "table_ref_",
@@ -544,8 +520,6 @@ public class PaperReadingModelBuilder {
                         modelVersion,
                         parsedPaper,
                         userId,
-                        orgTag,
-                        isPublic,
                         element,
                         PaperLocationType.FIGURE,
                         "figure_ref_",
@@ -577,8 +551,6 @@ public class PaperReadingModelBuilder {
                                                  String modelVersion,
                                                  ParsedPaper parsedPaper,
                                                  String userId,
-                                                 String orgTag,
-                                                 boolean isPublic,
                                                  PaperReadingElement element,
                                                  PaperLocationType locationType,
                                                  String refPrefix,
@@ -597,17 +569,13 @@ public class PaperReadingModelBuilder {
         location.setSourceSpanJson(readingElementLocationSourceSpanJson(parsedPaper, locationType, element));
         location.setContentKind(contentKind);
         location.setUserId(userId);
-        location.setOrgTag(orgTag);
-        location.setPublic(isPublic);
         return location;
     }
 
     private List<PaperReadingElement> buildReadingElements(String paperId,
                                                            String modelVersion,
                                                            ParsedPaper parsedPaper,
-                                                           String userId,
-                                                           String orgTag,
-                                                           boolean isPublic) {
+                                                           String userId) {
         TypedPayloadIndex typedPayloadIndex = typedPayloadIndex(parsedPaper);
         List<PaperReadingElement> retained = new ArrayList<>();
         List<PaperReadingElement> retainedTextElements = new ArrayList<>();
@@ -626,9 +594,7 @@ public class PaperReadingModelBuilder {
                         paperId,
                         modelVersion,
                         parsedPaper,
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
                 applyElementProvenance(readingElement, element);
 
@@ -663,9 +629,7 @@ public class PaperReadingModelBuilder {
                         paperId,
                         modelVersion,
                         parsedPaper,
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
                 applyTablePayload(readingElement, parsedPaper, table);
                 retained.add(readingElement);
@@ -683,9 +647,7 @@ public class PaperReadingModelBuilder {
                         paperId,
                         modelVersion,
                         parsedPaper,
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
                 applyFigurePayload(readingElement, parsedPaper, figure);
                 retained.add(readingElement);
@@ -703,9 +665,7 @@ public class PaperReadingModelBuilder {
                         paperId,
                         modelVersion,
                         parsedPaper,
-                        userId,
-                        orgTag,
-                        isPublic
+                        userId
                 );
                 applyFormulaPayload(readingElement, parsedPaper, formula);
                 retained.add(readingElement);
@@ -718,9 +678,7 @@ public class PaperReadingModelBuilder {
     private PaperReadingElement baseReadingElement(String paperId,
                                                    String modelVersion,
                                                    ParsedPaper parsedPaper,
-                                                   String userId,
-                                                   String orgTag,
-                                                   boolean isPublic) {
+                                                   String userId) {
         PaperReadingElement readingElement = new PaperReadingElement();
         readingElement.setPaperId(paperId);
         readingElement.setModelVersion(modelVersion);
@@ -728,8 +686,6 @@ public class PaperReadingModelBuilder {
         readingElement.setParserName(parsedPaper.parserName());
         readingElement.setParserVersion(parsedPaper.parserVersion());
         readingElement.setUserId(userId);
-        readingElement.setOrgTag(orgTag);
-        readingElement.setPublic(isPublic);
         return readingElement;
     }
 

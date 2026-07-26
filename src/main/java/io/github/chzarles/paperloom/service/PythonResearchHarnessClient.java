@@ -37,7 +37,6 @@ public class PythonResearchHarnessClient {
     private static final Logger logger = LoggerFactory.getLogger(PythonResearchHarnessClient.class);
 
     private final ObjectMapper objectMapper;
-    private final RateLimitService rateLimitService;
     private final UsageQuotaService usageQuotaService;
     private final HttpClient httpClient;
     private final URI streamUri;
@@ -51,12 +50,10 @@ public class PythonResearchHarnessClient {
 
     public PythonResearchHarnessClient(
             ObjectMapper objectMapper,
-            RateLimitService rateLimitService,
             UsageQuotaService usageQuotaService,
             @Value("${research-harness.base-url:http://127.0.0.1:8091}") String baseUrl,
             @Value("${research-harness.internal-token:}") String internalToken) {
         this.objectMapper = objectMapper;
-        this.rateLimitService = rateLimitService;
         this.usageQuotaService = usageQuotaService;
         this.streamUri = URI.create(baseUrl.replaceAll("/+$", "") + "/v1/research/stream");
         this.internalToken = internalToken == null ? "" : internalToken.trim();
@@ -78,7 +75,7 @@ public class PythonResearchHarnessClient {
         int maxCompletionTokens = request.modelContext().maxCompletionTokens() > 0
                 ? request.modelContext().maxCompletionTokens()
                 : 3000;
-        UsageQuotaService.TokenReservationBundle reservation = rateLimitService.reserveLlmUsage(
+        UsageQuotaService.TokenReservation reservation = usageQuotaService.reserveLlmTokens(
                 String.valueOf(request.userId()),
                 estimatedPromptTokens(request),
                 maxCompletionTokens

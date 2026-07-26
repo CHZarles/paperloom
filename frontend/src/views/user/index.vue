@@ -4,8 +4,6 @@ import { NButton } from 'naive-ui';
 import { enableStatusOptions } from '@/constants/common';
 import SvgIcon from '@/components/custom/svg-icon.vue';
 import UserSearch from './modules/user-search.vue';
-import OrgTagSettingDialog from './modules/org-tag-setting-dialog.vue';
-import TokenQuotaDialog from './modules/token-quota-dialog.vue';
 
 const appStore = useAppStore();
 const authStore = useAuthStore();
@@ -18,7 +16,6 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
   apiFn,
   apiParams: {
     keyword: null,
-    orgTag: null,
     status: null
   },
   showTotal: true,
@@ -41,26 +38,6 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
       )
     },
     {
-      key: 'orgTags',
-      title: 'Scopes / 组织',
-      width: 230,
-      render: row =>
-        row.orgTags?.length ? (
-          <div class="user-scope-list">
-            {row.orgTags.map(tag => (
-              <span
-                key={tag.tagId}
-                class={['user-scope-chip', tag.tagId === row.primaryOrg ? 'user-scope-chip--primary' : '']}
-              >
-                {tag.name}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span class="user-empty-text">未分配组织</span>
-        )
-    },
-    {
       key: 'status',
       title: 'Access / 状态',
       width: 118,
@@ -69,17 +46,6 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
           <span class="user-access__dot"></span>
           {Number(row.status) ? 'Active' : 'Paused'}
         </span>
-      )
-    },
-    {
-      key: 'chatUsage',
-      title: 'Chat / 今日',
-      width: 104,
-      render: row => (
-        <div class="user-metric-cell">
-          <span class="user-metric-cell__value">{formatNumber(row.usage?.chatRequestCount)}</span>
-          <span class="user-metric-cell__label">messages</span>
-        </div>
       )
     },
     {
@@ -94,50 +60,18 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
       )
     },
     {
-      key: 'llmUsage',
-      title: 'Budgets / 额度',
-      width: 220,
-      render: row => renderBudgetCell(row)
-    },
-    {
       key: 'operate',
       title: 'Actions / 操作',
       width: 180,
-      render: row => (
-        <div class="user-action-group">
-          <NButton type="primary" secondary size="small" onClick={() => handleOrgTag(row)}>
-            {{
-              icon: () => <SvgIcon icon="lucide:tag" class="text-14px" />,
-              default: () => '组织'
-            }}
-          </NButton>
-          {authStore.isAdmin ? (
-            <NButton type="warning" secondary size="small" onClick={() => handleTokenQuota(row)}>
-              {{
-                icon: () => <SvgIcon icon="lucide:database" class="text-14px" />,
-                default: () => 'Token'
-              }}
-            </NButton>
-          ) : null}
-        </div>
-      )
+      render: row => null
     }
   ]
 });
-
-const visible = ref(false);
-const editingData = ref<Api.User.Item | null>(null);
-const tokenVisible = ref(false);
-const tokenEditingData = ref<Api.User.Item | null>(null);
 
 const currentRows = computed(() => data.value || []);
 const totalUserCount = computed(() => Number(mobilePagination.value.itemCount || currentRows.value.length));
 const activeUserCount = computed(() => currentRows.value.filter(row => Number(row.status)).length);
 const pausedUserCount = computed(() => currentRows.value.filter(row => !Number(row.status)).length);
-const scopedUserCount = computed(() => currentRows.value.filter(row => row.orgTags?.length).length);
-const budgetEnabledCount = computed(
-  () => currentRows.value.filter(row => row.usage?.llm?.enabled || row.usage?.embedding?.enabled).length
-);
 
 const registryStats = computed(() => [
   {
@@ -154,28 +88,8 @@ const registryStats = computed(() => [
     label: 'Paused',
     value: formatNumber(pausedUserCount.value),
     detail: 'current page'
-  },
-  {
-    label: 'Scoped',
-    value: formatNumber(scopedUserCount.value),
-    detail: 'tagged rows'
-  },
-  {
-    label: 'Budgeted',
-    value: formatNumber(budgetEnabledCount.value),
-    detail: 'LLM / Embedding'
   }
 ]);
-
-function handleOrgTag(row: Api.User.Item) {
-  editingData.value = row;
-  visible.value = true;
-}
-
-function handleTokenQuota(row: Api.User.Item) {
-  tokenEditingData.value = row;
-  tokenVisible.value = true;
-}
 
 function formatNumber(value?: number | string | null) {
   return Number(value || 0).toLocaleString();
@@ -188,46 +102,6 @@ function shortId(value?: string) {
   return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
 }
 
-function renderBudgetCell(row: Api.User.Item) {
-  return (
-    <div class="user-budget-cell">
-      {renderBudgetLine('LLM', row.usage?.llm)}
-      {renderBudgetLine('EMB', row.usage?.embedding)}
-    </div>
-  );
-}
-
-function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
-  if (!quota?.enabled) {
-    return (
-      <div class="user-budget-line user-budget-line--disabled">
-        <span class="user-budget-line__label">{label}</span>
-        <span class="user-empty-text">off</span>
-      </div>
-    );
-  }
-
-  const used = Number(quota.usedTokens || 0);
-  const limit = Number(quota.limitTokens || 0);
-  const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-
-  return (
-    <div class="user-budget-line">
-      <div class="user-budget-line__top">
-        <span class="user-budget-line__label">{label}</span>
-        <span>
-          {formatNumber(used)} / {formatNumber(limit)}
-        </span>
-      </div>
-      <div class="user-quota-meter" aria-hidden="true">
-        <span style={{ width: `${percent}%` }}></span>
-      </div>
-      <div class="user-quota-cell__meta">
-        {formatNumber(quota.remainingTokens)} left · {formatNumber(quota.requestCount)} req
-      </div>
-    </div>
-  );
-}
 </script>
 
 <template>
@@ -266,10 +140,6 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
               <icon-lucide:search />
             </template>
           </NInput>
-        </label>
-        <label>
-          <span>组织标签</span>
-          <OrgTagCascader v-model:value="searchParams.orgTag" clearable size="small" />
         </label>
         <label>
           <span>启用状态</span>
@@ -314,9 +184,6 @@ function renderBudgetLine(label: string, quota?: Api.User.UsageQuota) {
         class="user-registry-table"
       />
     </NCard>
-
-    <OrgTagSettingDialog v-model:visible="visible" :row-data="editingData!" @submitted="getData" />
-    <TokenQuotaDialog v-model:visible="tokenVisible" :row-data="tokenEditingData!" @submitted="getData" />
   </div>
 </template>
 

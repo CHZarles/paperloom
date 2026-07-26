@@ -50,7 +50,7 @@ else I1c parse and index
   Upload --> Consumer : fileStream: InputStream
   deactivate Upload
 
-  Consumer -> Parse : I3 parseAndSave(paperId, fileStream, title, userId, orgTag, isPublic)
+  Consumer -> Parse : I3 parseAndSave(paperId, fileStream, title, userId)
   activate Parse
   Parse -> Parse : read pdfBytes + physicalPageCount
 

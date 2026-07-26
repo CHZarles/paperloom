@@ -2,7 +2,7 @@ package io.github.chzarles.paperloom.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.exception.CustomException;
-import io.github.chzarles.paperloom.exception.RateLimitExceededException;
+import io.github.chzarles.paperloom.exception.QuotaExceededException;
 import io.github.chzarles.paperloom.model.ConversationScopeMode;
 import io.github.chzarles.paperloom.model.ConversationScopeStatus;
 import org.junit.jupiter.api.Test;
@@ -198,7 +198,7 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
-    void productChatReturnsStructuredRateLimitErrorInsteadOfGenericAiUnavailable() {
+    void productChatReturnsStructuredQuotaErrorInsteadOfGenericAiUnavailable() {
         ChatFixture fixture = chatFixture();
         when(fixture.readingConversationService.runTurn(
                 eq(1L),
@@ -209,21 +209,21 @@ class ChatHandlerProductHarnessTest {
                 any(),
                 any(),
                 any()
-        )).thenThrow(new RateLimitExceededException("LLM全网分钟Token预算已达上限", 42));
+        )).thenThrow(new QuotaExceededException("LLM Token 额度已达上限", 42));
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null), fixture.session);
 
         verify(fixture.sessionRegistry).sendJsonToClient(eq("1"), eq("client-1"), argThat(payload ->
                 "error".equals(payload.get("type"))
                         && Integer.valueOf(429).equals(payload.get("code"))
-                        && "LLM全网分钟Token预算已达上限".equals(payload.get("message"))
+                        && "LLM Token 额度已达上限".equals(payload.get("message"))
                         && Long.valueOf(42).equals(payload.get("retryAfterSeconds"))
                         && !payload.containsKey("error")
         ));
     }
 
     @Test
-    void wrappedProductChatRateLimitErrorStillReturnsStructuredMessage() {
+    void wrappedProductChatQuotaErrorStillReturnsStructuredMessage() {
         ChatFixture fixture = chatFixture();
         when(fixture.readingConversationService.runTurn(
                 eq(1L),
@@ -236,7 +236,7 @@ class ChatHandlerProductHarnessTest {
                 any()
         )).thenThrow(new RuntimeException(
                 "ReAct 模型回合调用失败",
-                new RateLimitExceededException("LLM Token 余额不足，请联系管理员补充额度", 60)
+                new QuotaExceededException("LLM Token 余额不足，请联系管理员补充额度", 60)
         ));
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null), fixture.session);
@@ -838,7 +838,7 @@ class ChatHandlerProductHarnessTest {
         ConversationService conversationService = mock(ConversationService.class);
         ChatHandler handler = new ChatHandler(
                 redisTemplate,
-                mock(RateLimitService.class),
+                mock(UsageQuotaService.class),
                 conversationService,
                 conversationScopeService,
                 generationStateService,

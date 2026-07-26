@@ -80,8 +80,6 @@ class BootstrapPaperInitializerTest {
         Paper existingFile = new Paper();
         existingFile.setPaperId(fileMd5);
         existingFile.setOriginalFilename("paperloom.pdf");
-        existingFile.setOrgTag(null);
-        existingFile.setPublic(false);
         existingFile.setStatus(1);
         existingFile.setUserId("1");
 
@@ -99,7 +97,7 @@ class BootstrapPaperInitializerTest {
 
         initializer.run();
 
-        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), any(), anyBoolean());
+        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString());
         verify(retrievalIndexingService, never()).index(anyString(), anyString());
         verify(paperRepository, never()).save(any(Paper.class));
         verify(minioClient, never()).putObject(any(PutObjectArgs.class));
@@ -126,7 +124,7 @@ class BootstrapPaperInitializerTest {
         initializer.run();
 
         verify(minioClient).putObject(any(PutObjectArgs.class));
-        verify(parseService).parseAndSave(eq(fileMd5), any(), eq("paperloom.pdf"), eq("1"), isNull(), eq(false));
+        verify(parseService).parseAndSave(eq(fileMd5), any(), eq("paperloom.pdf"), eq("1"));
         verify(retrievalIndexingService).index(fileMd5, "system-bootstrap");
 
         ArgumentCaptor<Paper> captor = ArgumentCaptor.forClass(Paper.class);
@@ -136,8 +134,6 @@ class BootstrapPaperInitializerTest {
         assertEquals(fileMd5, savedFile.getPaperId());
         assertEquals("paperloom.pdf", savedFile.getOriginalFilename());
         assertEquals("1", savedFile.getUserId());
-        assertEquals(null, savedFile.getOrgTag());
-        assertEquals(false, savedFile.isPublic());
 
         ArgumentCaptor<PaperPublication> publicationCaptor = ArgumentCaptor.forClass(PaperPublication.class);
         verify(publicationRepository).save(publicationCaptor.capture());
@@ -154,8 +150,6 @@ class BootstrapPaperInitializerTest {
         newest.setId(1L);
         newest.setPaperId(fileMd5);
         newest.setOriginalFilename("paperloom.pdf");
-        newest.setOrgTag(null);
-        newest.setPublic(false);
         newest.setStatus(1);
         newest.setUserId("1");
 
@@ -163,8 +157,6 @@ class BootstrapPaperInitializerTest {
         duplicate.setId(2L);
         duplicate.setPaperId(fileMd5);
         duplicate.setOriginalFilename("paperloom.pdf");
-        duplicate.setOrgTag(null);
-        duplicate.setPublic(false);
         duplicate.setStatus(1);
         duplicate.setUserId("1");
 
@@ -183,7 +175,7 @@ class BootstrapPaperInitializerTest {
         initializer.run();
 
         verify(paperRepository).deleteAll(List.of(duplicate));
-        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString(), any(), anyBoolean());
+        verify(parseService, never()).parseAndSave(anyString(), any(), anyString(), anyString());
         verify(retrievalIndexingService, never()).index(anyString(), anyString());
     }
 

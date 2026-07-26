@@ -89,18 +89,16 @@ class ParseServiceStructuredParserTest {
         readyModel.setModelVersion("rm_test_1");
         readyModel.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
         readyModel.setCurrent(true);
-        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true))
+        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7"))
                 .thenReturn(readyModel);
-        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true)))
+        when(paperVisualAssetService.replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7")))
                 .thenReturn(List.of());
 
         parseService.parseAndSave(
                 "paper123",
                 new ByteArrayInputStream("%PDF-test".getBytes(StandardCharsets.UTF_8)),
                 "uploaded.pdf",
-                "7",
-                "lab",
-                true
+                "7"
         );
 
         ArgumentCaptor<PaperTextChunk> captor = ArgumentCaptor.forClass(PaperTextChunk.class);
@@ -126,21 +124,19 @@ class ParseServiceStructuredParserTest {
         assertTrue(chunk.getBboxJson().contains("\"pageNumber\":3"));
         assertTrue(chunk.getRawProvenanceJson().contains("\"elementId\":\"p1\""));
         assertEquals("7", chunk.getUserId());
-        assertEquals("lab", chunk.getOrgTag());
-        assertTrue(chunk.isPublic());
         assertEquals("table-t1", tableChunk.getTableId());
         assertTrue(tableChunk.getTextContent().contains("PaperLoom: 91.2"));
         assertEquals("Evidence Paper", paper.getPaperTitle());
         assertEquals("Ada", paper.getAuthors());
         assertEquals(Paper.VECTORIZATION_STATUS_CHUNKING, paper.getVectorizationStatus());
         verify(paperRepository, atLeastOnce()).save(paper);
-        verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7", "lab", true);
-        verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true));
+        verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7");
+        verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"));
 
         InOrder order = inOrder(paperParserArtifactService, paperReadingModelService, paperVisualAssetService);
-        order.verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7", "lab", true);
-        order.verify(paperReadingModelService).replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true);
-        order.verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"), eq("lab"), eq(true));
+        order.verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7");
+        order.verify(paperReadingModelService).replaceFromParsedPaper("paper123", parsedPaper, "7");
+        order.verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"));
     }
 
     @Test
@@ -167,7 +163,7 @@ class ParseServiceStructuredParserTest {
         failedModel.setModelVersion("rm_failed");
         failedModel.setModelStatus(PaperReadingModelStatus.READING_MODEL_FAILED);
         failedModel.setFailureReason("NO_READABLE_NUMBERED_TEXT");
-        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7", "lab", true))
+        when(paperReadingModelService.replaceFromParsedPaper("paper123", parsedPaper, "7"))
                 .thenReturn(failedModel);
 
         assertThrows(
@@ -176,9 +172,7 @@ class ParseServiceStructuredParserTest {
                         "paper123",
                         new ByteArrayInputStream("%PDF-test".getBytes(StandardCharsets.UTF_8)),
                         "uploaded.pdf",
-                        "7",
-                        "lab",
-                        true
+                        "7"
                 )
         );
 

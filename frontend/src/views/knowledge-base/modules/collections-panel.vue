@@ -20,8 +20,6 @@ const DETAIL_PAGE_SIZE = 50;
 interface CollectionFormModel {
   name: string;
   description: string;
-  visibility: Api.PaperCollection.Visibility;
-  orgTag: string | null;
 }
 
 const chatStore = useChatStore();
@@ -72,7 +70,6 @@ const pagedDetailPaperIds = computed(() => {
 const formTitle = computed(() => (formMode.value === 'create' ? 'Create Paper Set' : 'Edit Paper Set'));
 const canSubmitForm = computed(() => {
   if (!formModel.value.name.trim() || formLoading.value) return false;
-  if (formModel.value.visibility === 'ORG') return Boolean(formModel.value.orgTag?.trim());
   return true;
 });
 const canAddPapers = computed(() => selectedAddPaperIds.value.length > 0 && !addSubmitLoading.value);
@@ -84,9 +81,7 @@ onMounted(async () => {
 function createDefaultForm(): CollectionFormModel {
   return {
     name: '',
-    description: '',
-    visibility: 'PRIVATE',
-    orgTag: null
+    description: ''
   };
 }
 
@@ -126,7 +121,7 @@ function canEditCollection(collection?: Api.PaperCollection.Item | null) {
   if (collection.ownerUserId !== undefined && collection.ownerUserId !== null) {
     return String(collection.ownerUserId) === String(authStore.userInfo.id);
   }
-  return collection.visibility === 'PRIVATE';
+  return false;
 }
 
 function isStartingCollection(collection: Api.PaperCollection.Item) {
@@ -201,9 +196,7 @@ function openEditForm(collection: Api.PaperCollection.Item) {
   formMode.value = 'edit';
   formModel.value = {
     name: collection.name,
-    description: collection.description || '',
-    visibility: collection.visibility,
-    orgTag: collection.orgTag || null
+    description: collection.description || ''
   };
   editingCollectionId.value = collection.id;
   formVisible.value = true;
@@ -219,9 +212,7 @@ async function submitForm() {
 
   const payload: Api.PaperCollection.UpsertPayload = {
     name: formModel.value.name.trim(),
-    description: formModel.value.description?.trim() || null,
-    visibility: formModel.value.visibility,
-    orgTag: formModel.value.visibility === 'ORG' ? formModel.value.orgTag?.trim() || null : null
+    description: formModel.value.description?.trim() || null
   };
 
   formLoading.value = true;
@@ -369,15 +360,6 @@ function copyPaperId(paperId: string) {
 }
 
 watch(
-  () => formModel.value.visibility,
-  visibility => {
-    if (visibility === 'PRIVATE') {
-      formModel.value.orgTag = null;
-    }
-  }
-);
-
-watch(
   () => detail.value?.paperIds.length || 0,
   paperCount => {
     const maxPage = Math.max(1, Math.ceil(paperCount / DETAIL_PAGE_SIZE));
@@ -442,8 +424,6 @@ watch(
               <span class="collection-row__meta">
                 <span>{{ collection.paperCount }} papers</span>
                 <span>{{ collection.searchablePaperCount }} searchable</span>
-                <span>{{ collection.visibility }}</span>
-                <span v-if="collection.orgTag">{{ collection.orgTag }}</span>
               </span>
             </button>
 
@@ -524,8 +504,6 @@ watch(
               <div class="collection-detail__stats">
                 <span>{{ detail.paperCount }} papers</span>
                 <span>{{ detail.searchablePaperCount }} searchable</span>
-                <span>{{ detail.visibility }}</span>
-                <span v-if="detail.orgTag">{{ detail.orgTag }}</span>
                 <span>Updated {{ formatDateTime(detail.updatedAt) }}</span>
               </div>
 
@@ -577,25 +555,6 @@ watch(
             type="textarea"
             :autosize="{ minRows: 3, maxRows: 5 }"
             placeholder="Description"
-          />
-        </NFormItem>
-        <NFormItem label="Visibility">
-          <NRadioGroup v-model:value="formModel.visibility" name="collection-visibility">
-            <NSpace :size="16">
-              <NRadio value="PRIVATE">Private</NRadio>
-              <NRadio value="ORG">Org</NRadio>
-            </NSpace>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem v-if="formModel.visibility === 'ORG'" label="Org Tag">
-          <OrgTagCascader v-if="authStore.isAdmin" v-model:value="formModel.orgTag" />
-          <TheSelect
-            v-else
-            v-model:value="formModel.orgTag"
-            url="/users/org-tags"
-            key-field="orgTagDetails"
-            label-field="name"
-            value-field="tagId"
           />
         </NFormItem>
       </NForm>

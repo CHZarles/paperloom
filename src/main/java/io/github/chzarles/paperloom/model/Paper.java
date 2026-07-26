@@ -83,19 +83,6 @@ public class Paper {
     @Column(name = "user_id", length = 64, nullable = false)
     private String userId;
 
-    /**
-     * 论文所属组织标签。
-     */
-    @Column(name = "org_tag")
-    private String orgTag;
-
-    /**
-     * 论文是否公开。
-     * true表示所有用户可访问，false表示仅组织内用户可访问
-     */
-    @Column(name = "is_public", nullable = false)
-    private boolean isPublic = false;
-
     @Column(name = "retrieval_indexed_token_count")
     private Long retrievalIndexedTokenCount;
 

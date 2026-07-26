@@ -78,7 +78,7 @@ class PaperProcessingConsumerTest {
         consumer.processTask(task);
 
         verify(uploadService).getMergedFileStream(paperId);
-        verify(parseService).parseAndSave(eq(paperId), any(), eq("paper.pdf"), eq("1"), isNull(), eq(false));
+        verify(parseService).parseAndSave(eq(paperId), any(), eq("paper.pdf"), eq("1"));
         verify(paperService).markVectorizationCompleted(
                 eq(paperId),
                 eq(new RetrievalIndexingService.IndexingResult(10, 2, "lexical-contract"))

@@ -54,12 +54,6 @@ public class PaperParserArtifact {
     @Column(name = "user_id", length = 64)
     private String userId;
 
-    @Column(name = "org_tag", length = 50)
-    private String orgTag;
-
-    @Column(name = "is_public", nullable = false)
-    private boolean isPublic;
-
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

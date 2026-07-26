@@ -292,7 +292,7 @@ SELECT CONCAT(TABLE_NAME, '.', COLUMN_NAME)
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE TABLE_SCHEMA='${PRODUCT_DB_SCHEMA}'
   AND REFERENCED_TABLE_NAME='users'
-  AND TABLE_NAME NOT IN ('conversations', 'conversation_sessions', 'paper_collections', 'invite_codes', 'organization_tags')
+  AND TABLE_NAME NOT IN ('conversations', 'conversation_sessions', 'paper_collections', 'invite_codes')
 ORDER BY TABLE_NAME, COLUMN_NAME;
 ")"
   if [[ -n "$unknown_user_fks" ]]; then
@@ -423,26 +423,6 @@ WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username = 'admin
 DELETE ic
 FROM invite_codes ic
 LEFT JOIN users u ON u.id = ic.created_by
-WHERE u.id IS NULL OR u.username <> 'admin';
-
-UPDATE organization_tags child
-LEFT JOIN organization_tags parent ON parent.tag_id = child.parent_tag
-SET child.parent_tag = NULL
-WHERE parent.tag_id REGEXP '^(eval-|paperloom-eval-)';
-
-DELETE FROM organization_tags
-WHERE tag_id REGEXP '^(eval-|paperloom-eval-)';
-
-UPDATE organization_tags child
-LEFT JOIN organization_tags parent ON parent.tag_id = child.parent_tag
-LEFT JOIN users parent_creator ON parent_creator.id = parent.created_by
-SET child.parent_tag = NULL
-WHERE child.parent_tag IS NOT NULL
-  AND (parent.tag_id IS NULL OR parent_creator.id IS NULL OR parent_creator.username <> 'admin');
-
-DELETE ot
-FROM organization_tags ot
-LEFT JOIN users u ON u.id = ot.created_by
 WHERE u.id IS NULL OR u.username <> 'admin';
 
 DELETE FROM users WHERE username <> 'admin';
@@ -623,8 +603,6 @@ verify_user_dependent_counts() {
   print_assert_zero "user_daily_chat_count_non_admin" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM user_daily_chat_count WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username='admin');")"
   print_assert_zero "recharge_orders_non_admin" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM recharge_orders WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username='admin');")"
   print_assert_zero "invite_codes_non_admin_created" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM invite_codes ic LEFT JOIN users u ON u.id = ic.created_by WHERE u.id IS NULL OR u.username <> 'admin';")"
-  print_assert_zero "organization_tags_non_admin_created" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM organization_tags ot LEFT JOIN users u ON u.id = ot.created_by WHERE u.id IS NULL OR u.username <> 'admin';")"
-  print_assert_zero "organization_tags_eval_residue" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM organization_tags WHERE tag_id REGEXP '^(eval-|paperloom-eval-)';")"
 }
 
 verify_eval_counts() {

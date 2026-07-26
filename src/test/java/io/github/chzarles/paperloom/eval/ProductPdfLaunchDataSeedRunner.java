@@ -141,8 +141,6 @@ public class ProductPdfLaunchDataSeedRunner {
                         bytes.length,
                         originalFilename,
                         totalChunks,
-                        false,
-                        null,
                         Arrays.copyOfRange(bytes, start, end)
                 ));
             } catch (Exception exception) {
@@ -395,8 +393,6 @@ public class ProductPdfLaunchDataSeedRunner {
             long totalSize,
             String paperTitle,
             int totalChunks,
-            boolean isPublic,
-            String orgTag,
             byte[] bytes
     ) {
         public UploadChunkRequest {

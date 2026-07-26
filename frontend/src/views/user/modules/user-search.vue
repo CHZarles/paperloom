@@ -41,9 +41,6 @@ function reset() {
           </template>
         </NInput>
       </NFormItem>
-      <NFormItem label="组织标签" path="orgTag">
-        <OrgTagCascader v-model:value="model.orgTag" clearable size="small" class="user-filter-control" />
-      </NFormItem>
       <NFormItem label="启用状态" path="status">
         <NSelect
           v-model:value="model.status"

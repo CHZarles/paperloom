@@ -24,16 +24,7 @@ async function installWorkbenchMocks(page: import('@playwright/test').Page) {
     fulfillApi(route, {
       id: 1,
       username: 'researcher',
-      role: 'ADMIN',
-      orgTags: ['default'],
-      primaryOrg: 'default'
-    })
-  );
-  await page.route('**/users/org-tags**', route =>
-    fulfillApi(route, {
-      orgTags: ['default'],
-      primaryOrg: 'default',
-      orgTagDetails: [{ tagId: 'default', name: 'Default', description: 'Default workspace' }]
+      role: 'ADMIN'
     })
   );
   await page.route('**/users/usage**', route =>
@@ -84,8 +75,6 @@ test('mobile library uses paper rows without horizontal overflow', async ({ page
           figureAsset: { figureCount: 8 },
           formulaAsset: { formulaCount: 3 },
           visualAsset: { pageScreenshotCount: 18 },
-          isPublic: false,
-          orgTagName: 'Research',
           createdAt: '2026-07-13T08:00:00'
         }
       ],

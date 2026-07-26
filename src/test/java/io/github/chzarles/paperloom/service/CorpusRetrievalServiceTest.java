@@ -273,7 +273,7 @@ class CorpusRetrievalServiceTest {
 
         assertEquals(2, result.returnedCount());
         verify(fixture.paperService).getAccessiblePapersByIds("7", scope);
-        verify(fixture.paperService, never()).getAccessiblePapers("7", null);
+        verify(fixture.paperService, never()).getAccessiblePapers("7");
         verify(fixture.modelRepository).findByPaperIdInAndIsCurrentTrueAndModelStatus(
                 scope, PaperReadingModelStatus.READING_MODEL_READY);
     }

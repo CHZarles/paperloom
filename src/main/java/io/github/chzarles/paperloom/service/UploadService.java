@@ -631,8 +631,6 @@ public class UploadService {
         paper.setTotalSize(totalSize);
         paper.setStatus(Paper.STATUS_UPLOADING);
         paper.setUserId(userId);
-        paper.setOrgTag(null);
-        paper.setPublic(false);
         paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PENDING);
         paper.setVectorizationErrorMessage(null);
 

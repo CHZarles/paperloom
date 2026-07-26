@@ -16,9 +16,7 @@ const {
   conversationId,
   currentScope,
   input,
-  isRateLimited,
   list,
-  rateLimitRemainingSeconds,
   referenceFocus,
   wsData
 } = storeToRefs(chatStore);
@@ -123,9 +121,6 @@ const sendDisabled = computed(() => {
   if (isSending.value) {
     return false;
   }
-  if (isRateLimited.value) {
-    return true;
-  }
   if (sourceScopeUpdating.value) {
     return true;
   }
@@ -150,13 +145,6 @@ const connectionDotClass = computed(() => ({
   'connection-dot--closed': !['OPEN', 'CONNECTING', 'RECONNECTING'].includes(connectionStatus.value),
   'animate-pulse': connectionStatus.value === 'CONNECTING' || connectionStatus.value === 'RECONNECTING'
 }));
-
-const cooldownText = computed(() => {
-  if (!isRateLimited.value) {
-    return '';
-  }
-  return `${rateLimitRemainingSeconds.value} 秒后可重新发送`;
-});
 
 const referenceFocusLabel = computed(() => {
   const focus = referenceFocus.value;
@@ -287,9 +275,6 @@ function handleStopPayload(assistant: Api.Chat.Message) {
 
 function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
   discardPendingStreamChunks(assistant);
-  if (Number(payload.code) === 429) {
-    chatStore.startRateLimitCountdown(Number(payload.retryAfterSeconds || 0));
-  }
 
   const message = buildWsErrorMessage(payload);
   assistant.status = 'error';
@@ -297,11 +282,7 @@ function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string,
   markExecutingToolsAsFailed(assistant);
   stopGenerationStatusMonitor();
 
-  if (Number(payload.code) === 429) {
-    window.$message?.warning(message);
-  } else {
-    window.$message?.error(message);
-  }
+  window.$message?.error(message);
 }
 
 function handleChunkPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
@@ -529,10 +510,6 @@ const handleSend = async (messageOverride?: string) => {
   if (sourceScopeUpdating.value) {
     return;
   }
-  if (isRateLimited.value) {
-    window.$message?.warning(`当前发送受限，${cooldownText.value}`);
-    return;
-  }
 
   if (isSending.value) {
     if (messageOverride) {
@@ -687,9 +664,6 @@ onUnmounted(() => {
           <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
           <span class="chat-input-muted text-11px">{{ connectionText }}</span>
         </div>
-        <span v-if="isRateLimited" class="text-11px text-[rgb(var(--primary-color))]">
-          {{ cooldownText }}
-        </span>
       </div>
     </div>
   </div>

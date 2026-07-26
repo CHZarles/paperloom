@@ -166,11 +166,7 @@ const local: App.I18n.Schema = {
     'chat-history': '问答记录',
     'invite-code': '邀请码管理',
     'knowledge-base': '文献库',
-    'org-tag': '分类标签',
-    'usage-monitor': '用量曲线',
-    'personal-center': '个人档案',
-    recharge: '余额充值',
-    'recharge-manage': '充值管理'
+    'personal-center': '个人档案'
   },
   page: {
     login: {

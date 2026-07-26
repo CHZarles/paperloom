@@ -86,8 +86,6 @@ admin:
     enabled: ${ADMIN_BOOTSTRAP_ENABLED:false}
     username: ${ADMIN_BOOTSTRAP_USERNAME:}
     password: ${ADMIN_BOOTSTRAP_PASSWORD:}
-    primary-org: ${ADMIN_BOOTSTRAP_PRIMARY_ORG:default}
-    org-tags: ${ADMIN_BOOTSTRAP_ORG_TAGS:default,admin}
 
 app:
   auth:
@@ -95,27 +93,6 @@ app:
       # 默认邀请码注册，避免开发环境误开放
       mode: ${APP_AUTH_REGISTRATION_MODE:INVITE_ONLY}
       invite-required: ${APP_AUTH_INVITE_REQUIRED:true}
-
-rate-limit:
-  register:
-    max: ${RATE_LIMIT_REGISTER_MAX:20}
-    window-seconds: ${RATE_LIMIT_REGISTER_WINDOW_SECONDS:600}
-  login:
-    max: ${RATE_LIMIT_LOGIN_MAX:30}
-    window-seconds: ${RATE_LIMIT_LOGIN_WINDOW_SECONDS:60}
-  chat-message:
-    max: ${RATE_LIMIT_CHAT_MESSAGE_MAX:30}
-    window-seconds: ${RATE_LIMIT_CHAT_MESSAGE_WINDOW_SECONDS:60}
-  llm-request:
-    minute-max: ${RATE_LIMIT_LLM_MINUTE_MAX:20}
-    minute-window-seconds: ${RATE_LIMIT_LLM_MINUTE_WINDOW_SECONDS:60}
-    day-max: ${RATE_LIMIT_LLM_DAY_MAX:500}
-    day-window-seconds: ${RATE_LIMIT_LLM_DAY_WINDOW_SECONDS:86400}
-  embedding-batch:
-    minute-max: ${RATE_LIMIT_EMBEDDING_MINUTE_MAX:60}
-    minute-window-seconds: ${RATE_LIMIT_EMBEDDING_MINUTE_WINDOW_SECONDS:60}
-    day-max: ${RATE_LIMIT_EMBEDDING_DAY_MAX:2000}
-    day-window-seconds: ${RATE_LIMIT_EMBEDDING_DAY_WINDOW_SECONDS:86400}
 
 paper:
   parsing:

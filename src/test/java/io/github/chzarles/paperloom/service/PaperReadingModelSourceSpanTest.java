@@ -57,7 +57,7 @@ class PaperReadingModelSourceSpanTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", parsedPaper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", parsedPaper, "user-a");
 
         JsonNode sourceSpan = objectMapper.readTree(result.pages().get(0).getSourceSpanJson());
         assertEquals("MinerU", sourceSpan.get("parserName").asText());

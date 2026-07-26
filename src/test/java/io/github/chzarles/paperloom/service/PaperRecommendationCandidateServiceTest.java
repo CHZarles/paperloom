@@ -33,7 +33,7 @@ class PaperRecommendationCandidateServiceTest {
     void queryReturnsPaperGroupedCandidatesWithPerPaperLocationLimit() {
         PaperCandidate unsupported = candidate("paper-no-evidence", "No Evidence", 10);
         PaperCandidate supported = candidate("paper-supported", "Supported", 20);
-        when(paperCandidateSearchService.search(new PaperCandidateSearchRequest("agentic eval", "u1", "lab", 20)))
+        when(paperCandidateSearchService.search(new PaperCandidateSearchRequest("agentic eval", "u1", 20)))
                 .thenReturn(List.of(unsupported, supported));
         when(readingModelGrepSearchService.search(new ReadingModelGrepSearchRequest(
                 List.of("paper-no-evidence", "paper-supported"),
@@ -50,12 +50,7 @@ class PaperRecommendationCandidateServiceTest {
         when(readingModelGrepSearchService.hasCurrentModel("paper-no-evidence")).thenReturn(true);
         when(readingModelGrepSearchService.hasCurrentModel("paper-supported")).thenReturn(true);
 
-        List<PaperRecommendationCandidate> candidates = service.search(new PaperRecommendationSearchRequest(
-                "agentic eval",
-                "u1",
-                "lab",
-                20,
-                2
+        List<PaperRecommendationCandidate> candidates = service.search(new PaperRecommendationSearchRequest("agentic eval", "u1", 20, 2
         ));
 
         assertEquals(List.of("paper-supported", "paper-no-evidence"),
@@ -77,7 +72,7 @@ class PaperRecommendationCandidateServiceTest {
     void marksCandidateWithoutCurrentModelSeparatelyFromCurrentModelWithoutHits() {
         PaperCandidate noModel = candidate("paper-no-model", "No Model", 10);
         PaperCandidate noHit = candidate("paper-no-hit", "No Hit", 20);
-        when(paperCandidateSearchService.search(new PaperCandidateSearchRequest("agentic eval", "u1", "lab", 20)))
+        when(paperCandidateSearchService.search(new PaperCandidateSearchRequest("agentic eval", "u1", 20)))
                 .thenReturn(List.of(noModel, noHit));
         when(readingModelGrepSearchService.search(new ReadingModelGrepSearchRequest(
                 List.of("paper-no-model", "paper-no-hit"),
@@ -90,12 +85,7 @@ class PaperRecommendationCandidateServiceTest {
         when(readingModelGrepSearchService.hasCurrentModel("paper-no-model")).thenReturn(false);
         when(readingModelGrepSearchService.hasCurrentModel("paper-no-hit")).thenReturn(true);
 
-        List<PaperRecommendationCandidate> candidates = service.search(new PaperRecommendationSearchRequest(
-                "agentic eval",
-                "u1",
-                "lab",
-                20,
-                3
+        List<PaperRecommendationCandidate> candidates = service.search(new PaperRecommendationSearchRequest("agentic eval", "u1", 20, 3
         ));
 
         assertEquals("NO_CURRENT_READING_MODEL", candidates.get(0).evidenceStatus());

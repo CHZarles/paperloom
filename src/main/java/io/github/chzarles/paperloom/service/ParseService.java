@@ -59,14 +59,13 @@ public class ParseService {
      * Parses a research paper PDF, builds page-aware chunks, and persists chunk provenance.
      */
     public void parseAndSave(String paperId, InputStream fileStream,
-                             String userId, String orgTag, boolean isPublic) throws IOException {
-        parseAndSave(paperId, fileStream, null, userId, orgTag, isPublic);
+                             String userId) throws IOException {
+        parseAndSave(paperId, fileStream, null, userId);
     }
 
     public void parseAndSave(String paperId, InputStream fileStream, String originalFilename,
-                             String userId, String orgTag, boolean isPublic) throws IOException {
-        logger.info("开始解析论文 PDF，paperId: {}, userId: {}, orgTag: {}, isPublic: {}",
-                paperId, userId, orgTag, isPublic);
+                             String userId) throws IOException {
+        logger.info("开始解析论文 PDF，paperId: {}, userId: {}", paperId, userId);
 
         checkMemoryThreshold();
 
@@ -75,23 +74,19 @@ public class ParseService {
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_MINERU_RUNNING);
         ParsedPaper parsedPaper = paperPdfParser.parse(new ByteArrayInputStream(pdfBytes), originalFilename);
         updatePaperMetadata(paperId, parsedPaper);
-        paperParserArtifactService.saveParserArtifact(paperId, parsedPaper, userId, orgTag, isPublic);
+        paperParserArtifactService.saveParserArtifact(paperId, parsedPaper, userId);
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_MINERU_ARTIFACT_SAVED);
         PaperReadingModel readingModel = physicalPageCount == null
                 ? paperReadingModelService.replaceFromParsedPaper(
                 paperId,
                 parsedPaper,
-                userId,
-                orgTag,
-                isPublic
+                userId
         )
                 : paperReadingModelService.replaceFromParsedPaper(
                 paperId,
                 parsedPaper,
                 physicalPageCount,
-                userId,
-                orgTag,
-                isPublic
+                userId
         );
         if (readingModel == null || readingModel.getModelStatus() != PaperReadingModelStatus.READING_MODEL_READY) {
             String reason = readingModel == null ? "READING_MODEL_MISSING" : readingModel.getFailureReason();
@@ -105,13 +100,11 @@ public class ParseService {
                 readingModel.getModelVersion(),
                 pdfBytes,
                 parsedPaper,
-                userId,
-                orgTag,
-                isPublic
+                userId
         );
         updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_CHUNKING);
         List<PaperChunkCandidate> chunks = paperChunkBuilder.buildChunks(parsedPaper, chunkSize);
-        saveStructuredChunks(paperId, chunks, userId, orgTag, isPublic);
+        saveStructuredChunks(paperId, chunks, userId);
         logger.info("论文 PDF 结构化解析和入库完成，paperId: {}, chunkCount: {}", paperId, chunks.size());
     }
 
@@ -164,7 +157,7 @@ public class ParseService {
     }
 
     private void saveStructuredChunks(String paperId, List<PaperChunkCandidate> chunks,
-                                      String userId, String orgTag, boolean isPublic) {
+                                      String userId) {
         for (PaperChunkCandidate chunk : chunks) {
             PaperTextChunk paperChunk = new PaperTextChunk();
             paperChunk.setPaperId(paperId);
@@ -185,8 +178,6 @@ public class ParseService {
             paperChunk.setFormulaId(chunk.formulaId());
             paperChunk.setEvidenceRole(chunk.evidenceRole());
             paperChunk.setUserId(userId);
-            paperChunk.setOrgTag(orgTag);
-            paperChunk.setPublic(isPublic);
             paperTextChunkRepository.save(paperChunk);
         }
     }

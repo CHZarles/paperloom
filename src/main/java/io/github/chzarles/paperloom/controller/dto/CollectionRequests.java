@@ -6,10 +6,10 @@ public final class CollectionRequests {
     private CollectionRequests() {
     }
 
-    public record CreateCollectionRequest(String name, String description, String visibility, String orgTag) {
+    public record CreateCollectionRequest(String name, String description) {
     }
 
-    public record UpdateCollectionRequest(String name, String description, String visibility, String orgTag) {
+    public record UpdateCollectionRequest(String name, String description) {
     }
 
     public record AddCollectionPapersRequest(List<String> paperIds) {

@@ -17,8 +17,6 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
 
     List<Paper> findAllByPaperId(String paperId);
 
-    List<Paper> findAllByIsPublicTrue();
-
     List<Paper> findAllByPaperIdAndUserIdOrderByCreatedAtDesc(String paperId, String userId);
 
     List<Paper> findAllByUserIdAndPaperIdIn(String userId, List<String> paperIds);

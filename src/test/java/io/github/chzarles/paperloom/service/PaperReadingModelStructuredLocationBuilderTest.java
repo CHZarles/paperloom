@@ -43,7 +43,7 @@ class PaperReadingModelStructuredLocationBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         assertEquals(2, result.sections().size());
         PaperSection methods = result.sections().get(0);
@@ -90,7 +90,7 @@ class PaperReadingModelStructuredLocationBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         assertEquals(2, result.sections().size());
         assertEquals("Method", result.sections().get(0).getSectionTitle());
@@ -114,7 +114,7 @@ class PaperReadingModelStructuredLocationBuilderTest {
                 )
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperLocation tableLocation = onlyLocation(result, PaperLocationType.TABLE);
         PaperReadingElement tableElement = retainedElement(result, "table-1");
@@ -179,7 +179,7 @@ class PaperReadingModelStructuredLocationBuilderTest {
                 )
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         PaperLocation parentLocation = onlyLocation(result, PaperLocationType.FIGURE);
         PaperReadingElement parent = retainedElement(result, "figure-1");
@@ -231,7 +231,7 @@ class PaperReadingModelStructuredLocationBuilderTest {
                 ))
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         assertTrue(result.readingElements().stream()
                 .anyMatch(element -> "HEADING".equals(element.getElementType())
@@ -256,7 +256,7 @@ class PaperReadingModelStructuredLocationBuilderTest {
                 List.of()
         );
 
-        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a", "lab", false);
+        PaperReadingModelBuildResult result = builder.build("paper-a", "rm_test_1", paper, "user-a");
 
         assertEquals(1, result.pages().size());
         assertTrue(result.sections().isEmpty());

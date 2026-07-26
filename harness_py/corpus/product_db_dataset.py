@@ -149,8 +149,6 @@ def build_product_dataset(
             "product_db": {
                 "original_filename": row.get("original_filename"),
                 "user_id": row.get("user_id"),
-                "org_tag": row.get("org_tag"),
-                "is_public": bool(row.get("is_public")),
                 "updated_at": row.get("updated_at"),
             },
             "source_assets": {
@@ -229,8 +227,6 @@ select json_object(
   'doi', f.doi,
   'arxiv_id', f.arxiv_id,
   'user_id', f.user_id,
-  'org_tag', f.org_tag,
-  'is_public', f.is_public + 0,
   'model_version', m.model_version,
   'model_status', m.model_status,
   'parser_name', m.parser_name,

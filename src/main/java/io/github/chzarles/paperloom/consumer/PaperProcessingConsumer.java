@@ -82,7 +82,7 @@ public class PaperProcessingConsumer {
 
             // 解析论文 PDF
             parseService.parseAndSave(task.getPaperId(), fileStream,
-                    task.getPaperTitle(), task.getUserId(), null, false);
+                    task.getPaperTitle(), task.getUserId());
             log.info("论文 PDF 解析完成，paperId: {}", task.getPaperId());
 
             RetrievalIndexingService.IndexingResult indexingResult = retrievalIndexingService.indexWithMetrics(

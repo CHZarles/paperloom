@@ -59,7 +59,7 @@ class ProductPaperHandleServiceTest {
 
     @Test
     void visibilityRequiresPermissionAndLockedScope() {
-        when(paperService.getAccessiblePapers("7", null)).thenReturn(List.of(paper("paper-in-scope")));
+        when(paperService.getAccessiblePapers("7")).thenReturn(List.of(paper("paper-in-scope")));
 
         assertTrue(service.isPaperVisibleToUser("paper-in-scope", 7L, SourceScope.manual(List.of("paper-in-scope"))));
         assertFalse(service.isPaperVisibleToUser("paper-in-scope", 7L, SourceScope.manual(List.of("other-paper"))));

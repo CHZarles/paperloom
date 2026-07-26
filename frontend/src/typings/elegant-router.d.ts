@@ -26,11 +26,7 @@ declare module "@elegant-router/types" {
     "invite-code": "/invite-code";
     "knowledge-base": "/knowledge-base";
     "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?";
-    "org-tag": "/org-tag";
     "personal-center": "/personal-center";
-    "recharge": "/recharge";
-    "recharge-manage": "/recharge-manage";
-    "usage-monitor": "/usage-monitor";
   };
 
   /**
@@ -71,11 +67,7 @@ declare module "@elegant-router/types" {
     | "invite-code"
     | "knowledge-base"
     | "login"
-    | "org-tag"
     | "personal-center"
-    | "recharge"
-    | "recharge-manage"
-    | "usage-monitor"
   >;
 
   /**
@@ -101,11 +93,7 @@ declare module "@elegant-router/types" {
     | "chat"
     | "invite-code"
     | "knowledge-base"
-    | "org-tag"
     | "personal-center"
-    | "recharge-manage"
-    | "recharge"
-    | "usage-monitor"
   >;
 
   /**

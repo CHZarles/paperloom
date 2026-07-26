@@ -88,8 +88,6 @@ admin:
     enabled: ${ADMIN_BOOTSTRAP_ENABLED:false}
     username: ${ADMIN_BOOTSTRAP_USERNAME:}
     password: ${ADMIN_BOOTSTRAP_PASSWORD:}
-    primary-org: ${ADMIN_BOOTSTRAP_PRIMARY_ORG:default}
-    org-tags: ${ADMIN_BOOTSTRAP_ORG_TAGS:default,admin}
 
 app:
   auth:
@@ -99,28 +97,6 @@ app:
       # CLOSED: 完全关闭注册
       mode: ${APP_AUTH_REGISTRATION_MODE:INVITE_ONLY}
       invite-required: ${APP_AUTH_INVITE_REQUIRED:true}
-
-rate-limit:
-  # Redis 限流，用于保护登录、注册、聊天、LLM 和向量接口
-  register:
-    max: ${RATE_LIMIT_REGISTER_MAX:20}
-    window-seconds: ${RATE_LIMIT_REGISTER_WINDOW_SECONDS:600}
-  login:
-    max: ${RATE_LIMIT_LOGIN_MAX:30}
-    window-seconds: ${RATE_LIMIT_LOGIN_WINDOW_SECONDS:60}
-  chat-message:
-    max: ${RATE_LIMIT_CHAT_MESSAGE_MAX:30}
-    window-seconds: ${RATE_LIMIT_CHAT_MESSAGE_WINDOW_SECONDS:60}
-  llm-request:
-    minute-max: ${RATE_LIMIT_LLM_MINUTE_MAX:20}
-    minute-window-seconds: ${RATE_LIMIT_LLM_MINUTE_WINDOW_SECONDS:60}
-    day-max: ${RATE_LIMIT_LLM_DAY_MAX:500}
-    day-window-seconds: ${RATE_LIMIT_LLM_DAY_WINDOW_SECONDS:86400}
-  embedding-batch:
-    minute-max: ${RATE_LIMIT_EMBEDDING_MINUTE_MAX:60}
-    minute-window-seconds: ${RATE_LIMIT_EMBEDDING_MINUTE_WINDOW_SECONDS:60}
-    day-max: ${RATE_LIMIT_EMBEDDING_DAY_MAX:2000}
-    day-window-seconds: ${RATE_LIMIT_EMBEDDING_DAY_WINDOW_SECONDS:86400}
 
 usage-quota:
   # true 表示使用token总量消费机制； false 表示使用每日 token 重置的策略，默认是每日重置可用token的策略，沿用之前的逻辑

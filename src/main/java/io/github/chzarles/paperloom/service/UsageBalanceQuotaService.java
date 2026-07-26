@@ -1,7 +1,7 @@
 package io.github.chzarles.paperloom.service;
 
 import io.github.chzarles.paperloom.config.UsageQuotaProperties;
-import io.github.chzarles.paperloom.exception.RateLimitExceededException;
+import io.github.chzarles.paperloom.exception.QuotaExceededException;
 import io.github.chzarles.paperloom.model.DailyReqCountStat;
 import io.github.chzarles.paperloom.model.DailyUsageStat;
 import io.github.chzarles.paperloom.model.UserTokenRecord;
@@ -45,7 +45,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         // 检查用户余额是否充足
         if (!userTokenService.hasEnoughLlmTokens(userId, reserveTokens)) {
             Long balance = userTokenService.getLlmTokenBalance(userId);
-            throw new RateLimitExceededException(
+            throw new QuotaExceededException(
                     "LLM Token 余额不足，预估需要：" + reserveTokens + ", 当前余额：" + balance, 0);
         }
 
@@ -68,7 +68,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         // 检查用户余额是否充足
         if (!userTokenService.hasEnoughEmbeddingTokens(userId, estimatedTokens)) {
             Long balance = userTokenService.getEmbeddingTokenBalance(userId);
-            throw new RateLimitExceededException(
+            throw new QuotaExceededException(
                     "Embedding Token 余额不足，预估需要：" + estimatedTokens + ", 当前余额：" + balance, 0);
         }
 

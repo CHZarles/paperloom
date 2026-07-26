@@ -166,11 +166,7 @@ const local: App.I18n.Schema = {
     'chat-history': 'Q&A History',
     'invite-code': 'Invite Codes',
     'knowledge-base': 'Paper Library',
-    'org-tag': 'Taxonomy Tags',
-    'usage-monitor': 'Usage Curves',
-    'personal-center': 'Research Profile',
-    recharge: 'Recharge',
-    'recharge-manage': 'Recharge Management'
+    'personal-center': 'Research Profile'
   },
   page: {
     login: {

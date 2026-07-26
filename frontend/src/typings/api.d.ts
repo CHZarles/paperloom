@@ -41,8 +41,6 @@ declare namespace Api {
       id: number;
       username: string;
       role: 'USER' | 'ADMIN';
-      orgTags: string[];
-      primaryOrg: string;
     }
   }
 
@@ -64,61 +62,10 @@ declare namespace Api {
     }
   }
 
-  namespace OrgTag {
-    interface Item {
-      tagId: string;
-      name: string;
-      description: string;
-      parentTag: string | null;
-      uploadMaxSizeBytes: number | null;
-      uploadMaxSizeMb: number | null;
-      children?: Item[];
-    }
-
-    type List = Common.PaginatingQueryRecord<Item>;
-
-    type Details = Pick<Item, 'tagId' | 'name' | 'description'>;
-    type Mine = {
-      orgTags: string[];
-      primaryOrg: string;
-      orgTagDetails: Details[];
-    };
-  }
-
   namespace User {
-    interface UsageQuota {
-      enabled: boolean;
-      usedTokens: number;
-      limitTokens: number;
-      remainingTokens: number;
-      requestCount: number;
-    }
-
-    interface UsageSnapshot {
-      day: string;
-      chatRequestCount: number;
-      llm: UsageQuota;
-      embedding: UsageQuota;
-    }
-
-    interface TokenRecord {
-      id: number;
-      recordDate: string;
-      tokenType: 'LLM' | 'EMBEDDING';
-      changeType: 'INCREASE' | 'CONSUME';
-      amount: number;
-      balanceBefore: number | null;
-      balanceAfter: number | null;
-      reason: string;
-      remark: string | null;
-      requestCount: number;
-      createdAt: string;
-    }
-
     type SearchParams = CommonType.RecordNullable<
       Common.CommonSearchParams & {
         keyword: string;
-        orgTag: string;
         status: number;
       }
     >;
@@ -127,13 +74,7 @@ declare namespace Api {
       userId: string;
       username: string;
       status: number;
-      orgTags: Pick<OrgTag.Item, 'tagId' | 'name'>[];
-      primaryOrg: string;
       createdAt: string;
-      usage: UsageSnapshot;
-      chatUsage?: string;
-      llmUsage?: string;
-      embeddingUsage?: string;
     };
 
     type List = Common.PaginatingQueryRecord<Item>;
@@ -145,11 +86,6 @@ declare namespace Api {
         enabled: boolean;
       }
     >;
-
-    interface Creator {
-      id: number;
-      username: string;
-    }
 
     interface Item {
       id: number;
@@ -219,33 +155,6 @@ declare namespace Api {
   }
 
   namespace Admin {
-    interface WindowLimit {
-      max: number;
-      windowSeconds: number;
-    }
-
-    interface DualWindowLimit {
-      minuteMax: number;
-      minuteWindowSeconds: number;
-      dayMax: number;
-      dayWindowSeconds: number;
-    }
-
-    interface TokenBudgetLimit {
-      minuteMax: number;
-      minuteWindowSeconds: number;
-      dayMax: number;
-      dayWindowSeconds: number;
-    }
-
-    interface RateLimitSettings {
-      chatMessage: WindowLimit;
-      llmGlobalToken: TokenBudgetLimit;
-      embeddingUploadToken: TokenBudgetLimit;
-      embeddingQueryRequest: DualWindowLimit;
-      embeddingQueryGlobalToken: TokenBudgetLimit;
-    }
-
     interface UsageTrendPoint {
       day: string;
       chatRequestCount: number;
@@ -454,14 +363,10 @@ declare namespace Api {
   }
 
   namespace PaperCollection {
-    type Visibility = 'PRIVATE' | 'ORG';
-
     interface Item {
       id: number;
       name: string;
       description?: string | null;
-      visibility: Visibility;
-      orgTag?: string | null;
       ownerUserId?: number | string | null;
       paperCount: number;
       searchablePaperCount: number;
@@ -476,8 +381,6 @@ declare namespace Api {
     interface UpsertPayload {
       name: string;
       description?: string | null;
-      visibility: Visibility;
-      orgTag?: string | null;
     }
   }
 
